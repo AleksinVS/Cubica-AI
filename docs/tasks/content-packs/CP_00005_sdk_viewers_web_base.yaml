@@ -1,0 +1,367 @@
+id: CP_00005
+title: SDK Viewers Web Base (F_00005)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00005
+scope:
+  code:
+    - SDK/viewers/**
+  docs:
+    - SDK/viewers/web-base/README.md
+    - PROJECT_STRUCTURE.md
+    - docs/tasks/features/F_00005_sdk_viewers_web_base_(E_00001).md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00005_sdk_viewers_web_base_(E_00001).md
+  related:
+    - docs/architecture/adrs/014-viewers-library-architecture.md
+    - games/antarctica-nextjs-player/
+tools:
+  - name: shell
+    allowed: [read, write]
+    dirs:
+      - SDK/viewers/**
+      - games/antarctica-nextjs-player/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: SDK Viewers Web Base
+
+  Этот ExecPlan — живой документ. Он должен поддерживаться в соответствии с `docs/tasks/content-packs/PLAN.md`.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана:
+
+  1. Директория `SDK/viewers/web-base/` будет содержать базовую структуру веб-viewer
+  2. `package.json` определит пакет `@cubica/viewer-web-base`
+  3. `viewer.json` содержит метаданные viewer по ADR-014
+  4. Базовые типы и интерфейсы экспортированы для переиспользования
+  5. Документация объясняет использование viewer
+
+  Это создаст фундамент для переиспользуемой библиотеки плееров игр.
+
+  ## Progress
+
+  - [ ] Создать структуру SDK/viewers/web-base/
+  - [ ] Создать package.json
+  - [ ] Создать viewer.json
+  - [ ] Создать базовые типы
+  - [ ] Создать документацию
+  - [ ] Обновить PROJECT_STRUCTURE.md
+
+  ## Surprises & Discoveries
+
+  Пока нет.
+
+  ## Decision Log
+
+  Пока нет.
+
+  ## Outcomes & Retrospective
+
+  Заполняется после завершения.
+
+  ## Context and Orientation
+
+  **Текущее состояние:**
+
+  - Директория `SDK/viewers/` не существует
+  - Viewer реализован как монолитное приложение в `games/antarctica-nextjs-player/`
+  - Компоненты жестко связаны с контентом игры Antarctica
+  - ADR-014 описывает целевую архитектуру Viewers Library, но она не реализована
+
+  **Целевая структура по ADR-014:**
+
+  ```
+  SDK/viewers/
+  ├── web-base/           # Базовый веб-плеер
+  │   ├── package.json
+  │   ├── viewer.json     # Метаданные viewer
+  │   ├── src/
+  │   │   ├── index.ts
+  │   │   ├── types.ts
+  │   │   └── components/
+  │   └── README.md
+  ├── telegram-base/      # (будущее) Telegram-плеер
+  └── mobile-base/        # (будущее) Мобильный плеер
+  ```
+
+  **Ключевые концепции из ADR-014:**
+
+  - **Viewer** — клиентское приложение для рендеринга игр
+  - **Channel** — платформа доставки (web, telegram, mobile)
+  - **viewer.json** — метаданные о возможностях viewer
+  - **Capabilities** — набор функций viewer (ui-rendering, state-management, action-routing)
+
+  ## Plan of Work
+
+  ### Milestone 1: Создание структуры директории
+
+  Создать директорию `SDK/viewers/web-base/` со следующей структурой:
+
+  ```
+  SDK/viewers/web-base/
+  ├── package.json
+  ├── viewer.json
+  ├── tsconfig.json
+  ├── src/
+  │   ├── index.ts
+  │   ├── types.ts
+  │   └── components/
+  │       └── .gitkeep
+  └── README.md
+  ```
+
+  ### Milestone 2: Создание package.json
+
+  Файл `SDK/viewers/web-base/package.json`:
+
+  ```json
+  {
+    "name": "@cubica/viewer-web-base",
+    "version": "0.1.0",
+    "description": "Base web viewer for Cubica games",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": ["dist"],
+    "scripts": {
+      "build": "tsc",
+      "dev": "tsc --watch"
+    },
+    "dependencies": {
+      "@cubica/core": "workspace:*",
+      "@cubica/shared": "workspace:*"
+    },
+    "peerDependencies": {
+      "react": "^18.0.0",
+      "react-dom": "^18.0.0"
+    },
+    "devDependencies": {
+      "typescript": "^5.0.0",
+      "@types/react": "^18.0.0"
+    },
+    "keywords": ["cubica", "viewer", "game", "web"],
+    "license": "MIT"
+  }
+  ```
+
+  ### Milestone 3: Создание viewer.json
+
+  Файл `SDK/viewers/web-base/viewer.json`:
+
+  ```json
+  {
+    "id": "web-base-viewer",
+    "version": "0.1.0",
+    "name": "Cubica Web Base Viewer",
+    "description": "Base viewer for web-based game rendering",
+    "channel": "web",
+    "supported_schemas": ["1.0.0"],
+    "capabilities": [
+      "ui-rendering",
+      "state-management",
+      "action-routing",
+      "binding-resolution"
+    ],
+    "requirements": {
+      "browser": "modern",
+      "react": "^18.0.0"
+    }
+  }
+  ```
+
+  ### Milestone 4: Создание базовых типов
+
+  Файл `SDK/viewers/web-base/src/types.ts`:
+
+  ```typescript
+  /**
+   * Types for Cubica Web Base Viewer
+   *
+   * Эти типы определяют интерфейсы для компонентов viewer.
+   */
+
+  /** Метаданные viewer из viewer.json */
+  export interface ViewerMetadata {
+    id: string;
+    version: string;
+    name: string;
+    description: string;
+    channel: 'web' | 'telegram' | 'mobile';
+    supported_schemas: string[];
+    capabilities: ViewerCapability[];
+  }
+
+  /** Возможности viewer */
+  export type ViewerCapability =
+    | 'ui-rendering'
+    | 'state-management'
+    | 'action-routing'
+    | 'binding-resolution';
+
+  /** Конфигурация viewer */
+  export interface ViewerConfig {
+    gameManifestUrl: string;
+    uiManifestUrl: string;
+    routerUrl?: string;
+    onAction?: (action: GameAction) => Promise<void>;
+  }
+
+  /** Игровое действие */
+  export interface GameAction {
+    command: string;
+    payload?: Record<string, unknown>;
+  }
+
+  /** Состояние viewer */
+  export interface ViewerState {
+    loading: boolean;
+    error: string | null;
+    currentScreen: string | null;
+    gameState: Record<string, unknown>;
+  }
+  ```
+
+  Файл `SDK/viewers/web-base/src/index.ts`:
+
+  ```typescript
+  /**
+   * @cubica/viewer-web-base
+   *
+   * Base web viewer for Cubica games.
+   * Provides types, interfaces, and base components for building web-based game viewers.
+   */
+
+  export * from './types';
+
+  // Future exports:
+  // export { ManifestLoader } from './components/ManifestLoader';
+  // export { StateManager } from './components/StateManager';
+  // export { ActionRouter } from './components/ActionRouter';
+  ```
+
+  ### Milestone 5: Создание README.md
+
+  Файл `SDK/viewers/web-base/README.md`:
+
+  ```markdown
+  # @cubica/viewer-web-base
+
+  Базовый веб-viewer для игр Cubica.
+
+  ## Описание
+
+  Этот пакет предоставляет базовые типы, интерфейсы и компоненты для создания
+  веб-плееров игр Cubica. Он реализует архитектуру, описанную в ADR-014.
+
+  ## Установка
+
+  ```bash
+  npm install @cubica/viewer-web-base
+  ```
+
+  ## Использование
+
+  ```typescript
+  import { ViewerConfig, ViewerState, GameAction } from '@cubica/viewer-web-base';
+
+  const config: ViewerConfig = {
+    gameManifestUrl: '/api/game/antarctica/manifest',
+    uiManifestUrl: '/api/game/antarctica/ui',
+    onAction: async (action: GameAction) => {
+      // Handle action
+    }
+  };
+  ```
+
+  ## Возможности (Capabilities)
+
+  - **ui-rendering** — рендеринг UI-компонентов из манифеста
+  - **state-management** — управление состоянием игры
+  - **action-routing** — маршрутизация действий к Router/Engine
+  - **binding-resolution** — разрешение биндингов `{{state.public.x}}`
+
+  ## Структура
+
+  ```
+  web-base/
+  ├── src/
+  │   ├── index.ts      # Экспорты пакета
+  │   ├── types.ts      # TypeScript типы
+  │   └── components/   # React компоненты (в разработке)
+  ├── package.json
+  └── viewer.json       # Метаданные viewer
+  ```
+
+  ## Ссылки
+
+  - [ADR-014: Viewers Library Architecture](../../docs/architecture/adrs/014-viewers-library-architecture.md)
+  - [F_00071: Архитектура библиотеки viewers](../../docs/tasks/features/F_00071_viewers_library_architecture_(E_0010).md)
+  ```
+
+  ### Milestone 6: Создание tsconfig.json
+
+  Файл `SDK/viewers/web-base/tsconfig.json`:
+
+  ```json
+  {
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "ESNext",
+      "moduleResolution": "bundler",
+      "declaration": true,
+      "declarationMap": true,
+      "outDir": "./dist",
+      "strict": true,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "jsx": "react-jsx"
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+  }
+  ```
+
+  ## Concrete Steps
+
+  1. Создать директорию `SDK/viewers/` если не существует
+  2. Создать директорию `SDK/viewers/web-base/`
+  3. Создать `SDK/viewers/web-base/package.json`
+  4. Создать `SDK/viewers/web-base/viewer.json`
+  5. Создать `SDK/viewers/web-base/tsconfig.json`
+  6. Создать директорию `SDK/viewers/web-base/src/`
+  7. Создать `SDK/viewers/web-base/src/types.ts`
+  8. Создать `SDK/viewers/web-base/src/index.ts`
+  9. Создать директорию `SDK/viewers/web-base/src/components/`
+  10. Создать `SDK/viewers/web-base/README.md`
+  11. Обновить `PROJECT_STRUCTURE.md` с новой директорией
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. Директория `SDK/viewers/web-base/` существует со всеми файлами
+  2. `viewer.json` содержит корректные метаданные
+  3. TypeScript компилируется без ошибок:
+     ```bash
+     cd SDK/viewers/web-base && npx tsc --noEmit
+     ```
+  4. Типы экспортируются корректно
+  5. README.md содержит инструкции по использованию
+
+  Критерий успеха: создана базовая структура для переиспользуемого веб-viewer.
+  ```

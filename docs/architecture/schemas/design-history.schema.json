@@ -1,0 +1,153 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/design-history.v1.json",
+  "title": "Cubica Design History",
+  "description": "Схема истории версий дизайн-артефактов. Содержит реестр всех артефактов игры, их версий и граф связей между ними. Позволяет отслеживать эволюцию дизайна от концепта до финального asset.",
+  "type": "object",
+  "required": ["game_id", "artifacts"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Ссылка на JSON Schema для валидации."
+    },
+    "game_id": {
+      "type": "string",
+      "description": "Идентификатор игры, к которой относится история дизайна."
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Дата и время последнего обновления истории (ISO 8601)."
+    },
+    "artifacts": {
+      "type": "object",
+      "description": "Реестр артефактов. Ключ — уникальный ID артефакта, значение — метаданные и история версий.",
+      "additionalProperties": {
+        "$ref": "#/definitions/artifactEntry"
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "description": "Граф связей между артефактами. Описывает, как артефакты связаны друг с другом в процессе эволюции дизайна.",
+      "items": {
+        "$ref": "#/definitions/relationship"
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Дополнительные метаданные истории.",
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "artifactEntry": {
+      "type": "object",
+      "description": "Запись артефакта в реестре с историей версий.",
+      "required": ["type", "current_version"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Тип дизайн-артефакта.",
+          "enum": ["reference", "concept", "flowchart", "wireframe", "storyboard", "mockup", "asset"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Человекочитаемое название артефакта."
+        },
+        "current_version": {
+          "type": "string",
+          "description": "Текущая (актуальная) версия артефакта."
+        },
+        "derived_from": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "array", "items": { "type": "string" } }
+          ],
+          "description": "ID артефакта(ов), от которых произведён данный артефакт."
+        },
+        "status": {
+          "type": "string",
+          "description": "Статус артефакта в workflow.",
+          "enum": ["draft", "review", "approved", "deprecated", "archived"]
+        },
+        "versions": {
+          "type": "array",
+          "description": "История версий артефакта.",
+          "items": {
+            "$ref": "#/definitions/versionEntry"
+          }
+        },
+        "tags": {
+          "type": "array",
+          "description": "Теги для классификации.",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "versionEntry": {
+      "type": "object",
+      "description": "Запись одной версии артефакта.",
+      "required": ["version", "file"],
+      "properties": {
+        "version": {
+          "type": "string",
+          "description": "Номер версии (семантический или произвольный)."
+        },
+        "file": {
+          "type": "string",
+          "description": "Относительный путь к файлу *.design.json этой версии."
+        },
+        "date": {
+          "type": "string",
+          "description": "Дата создания версии (ISO 8601 date или date-time)."
+        },
+        "author": {
+          "type": "string",
+          "description": "Автор версии."
+        },
+        "changes": {
+          "type": "string",
+          "description": "Краткое описание изменений в этой версии."
+        },
+        "deprecated": {
+          "type": "boolean",
+          "description": "Флаг устаревшей версии.",
+          "default": false
+        }
+      },
+      "additionalProperties": true
+    },
+    "relationship": {
+      "type": "object",
+      "description": "Связь между двумя артефактами, описывающая их отношение в процессе дизайна.",
+      "required": ["from", "to", "type"],
+      "properties": {
+        "from": {
+          "type": "string",
+          "description": "ID исходного артефакта."
+        },
+        "to": {
+          "type": "string",
+          "description": "ID целевого артефакта."
+        },
+        "type": {
+          "type": "string",
+          "description": "Тип связи между артефактами.",
+          "enum": ["inspires", "structures", "animates", "refines", "extracts", "replaces", "references", "extends"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание связи."
+        },
+        "meta": {
+          "type": "object",
+          "description": "Дополнительные данные связи.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

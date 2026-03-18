@@ -1,0 +1,115 @@
+{
+  "meta": {
+    "id": "com.cubica.examples.rpg_ui",
+    "version": "1.0.0",
+    "name": "RPG Hybrid UI Example"
+  },
+  "engine": {
+    "system_prompt": "..."
+  },
+  "state": {
+    "hero": {
+      "name": "Arthur",
+      "hp": 80,
+      "maxHp": 100,
+      "gold": 250
+    },
+    "inventory": [
+      { "id": "sword", "name": "Iron Sword", "icon": "sword.png" },
+      { "id": "potion", "name": "Health Potion", "icon": "potion.png" }
+    ]
+  },
+  "ui": {
+    "entry_point": "dashboard",
+    "theme": {
+      "colors": {
+        "primary": "#ffcc00",
+        "background": "#121212"
+      }
+    },
+    "screens": {
+      "dashboard": {
+        "type": "screen",
+        "title": "Main Dashboard",
+        "root": {
+          "type": "container",
+          "style": {
+            "flexDirection": "column",
+            "padding": 20,
+            "background": "#121212",
+            "height": "100%"
+          },
+          "children": [
+            {
+              "type": "h-stack",
+              "style": { "justifyContent": "space-between", "marginBottom": 20 },
+              "children": [
+                {
+                  "type": "text",
+                  "props": { "content": "{{state.hero.name}}" },
+                  "style": { "color": "white", "fontSize": 24, "fontWeight": "bold" }
+                },
+                {
+                  "type": "text",
+                  "props": { "content": "Gold: {{state.hero.gold}}" },
+                  "style": { "color": "#ffcc00" }
+                }
+              ]
+            },
+            {
+              "type": "widget:stats-bar",
+              "props": {
+                "label": "Health",
+                "value": "{{state.hero.hp}}",
+                "max": "{{state.hero.maxHp}}",
+                "color": "red"
+              },
+              "style": { "marginBottom": 20 }
+            },
+            {
+              "type": "text",
+              "props": { "content": "Inventory" },
+              "style": { "color": "#aaa", "marginBottom": 10 }
+            },
+            {
+              "type": "widget:grid",
+              "props": {
+                "items": "{{state.inventory}}",
+                "columns": 3,
+                "itemTemplate": {
+                  "type": "v-stack",
+                  "style": { "padding": 10, "border": "1px solid #333", "alignItems": "center" },
+                  "actions": {
+                    "onClick": {
+                      "command": "EQUIP_ITEM",
+                      "payload": { "itemId": "{{item.id}}" }
+                    }
+                  },
+                  "children": [
+                    { "type": "image", "props": { "src": "{{item.icon}}", "width": 32, "height": 32 } },
+                    { "type": "text", "props": { "content": "{{item.name}}" }, "style": { "fontSize": 12, "color": "white" } }
+                  ]
+                }
+              }
+            },
+            {
+              "type": "container",
+              "style": { "marginTop": "auto" },
+              "children": [
+                {
+                  "type": "button",
+                  "props": { "label": "Explore World" },
+                  "style": { "background": "blue", "color": "white", "padding": 12, "borderRadius": 8 },
+                  "actions": {
+                    "onClick": { "command": "EXPLORE" }
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+

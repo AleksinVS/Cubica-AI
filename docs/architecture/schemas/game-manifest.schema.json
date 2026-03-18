@@ -1,0 +1,339 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/game-manifest.v1.json",
+  "title": "Cubica Game Manifest",
+  "description": "Schema for Cubica Game Manifests defining metadata, assets, engine configuration, state, and actions for LLM-driven games. UI may be embedded via the optional `ui` section or provided in a separate UI manifest.",
+  "type": "object",
+  "required": ["meta", "engine", "state"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["id", "version", "name", "schema_version", "min_engine_version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9.-]+$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "name": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "$ref": "#/definitions/localizedText"
+            }
+          ]
+        },
+        "description": {
+          "oneOf": [
+            { "type": "string" },
+            { "$ref": "#/definitions/localizedText" }
+          ]
+        },
+        "author": {
+          "type": "string"
+        },
+        "schema_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "min_engine_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "training": {
+          "type": "object",
+          "properties": {
+            "competencies": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "name"],
+                "properties": {
+                  "id": { "type": "string" },
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "format": {
+              "type": "string",
+              "enum": ["single", "single_team", "multi"]
+            },
+            "duration": {
+              "type": "object",
+              "properties": {
+                "min_minutes": { "type": "integer", "minimum": 1 },
+                "max_minutes": { "type": "integer", "minimum": 1 }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "assets": {
+      "type": "object",
+      "description": "Ресурсы игры: правила, сценарий, скрипты и медиафайлы.",
+      "required": ["rules", "scenario"],
+      "properties": {
+        "rules": {
+          "type": "string",
+          "description": "Путь к файлу с правилами игры (обязательный ресурс)."
+        },
+        "scenario": {
+          "type": "string",
+          "description": "Путь к файлу со сценарием игры (обязательный ресурс)."
+        },
+        "scripts": {
+          "type": "string",
+          "description": "Путь к файлу с пользовательскими скриптами (User Scripts)."
+        },
+        "images": {
+          "type": "object",
+          "description": "Карта путей к изображениям (ключ — идентификатор, значение — путь).",
+          "additionalProperties": { "type": "string" }
+        },
+        "audio": {
+          "type": "object",
+          "description": "Карта путей к аудиофайлам.",
+          "additionalProperties": { "type": "string" }
+        },
+        "video": {
+          "type": "object",
+          "description": "Карта путей к видеофайлам.",
+          "additionalProperties": { "type": "string" }
+        },
+        "methodology": {
+          "type": "object",
+          "description": "Методические материалы для участников и фасилитаторов.",
+          "properties": {
+            "participants": { "type": "string" },
+            "facilitators": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "config": {
+      "type": "object",
+      "properties": {
+        "players": {
+          "type": "object",
+          "properties": {
+            "min": { "type": "integer", "minimum": 1 },
+            "max": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "settings": { "type": "object" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "required": ["system_prompt"],
+      "properties": {
+        "system_prompt": { "type": "string" },
+        "model_config": { "type": "object" },
+        "context": {
+          "type": "object",
+          "description": "Настройки формирования контекста для LLM (LLM Context Pipeline — сборка данных и истории, которые отправляются в языковую модель).",
+          "properties": {
+            "include": {
+              "type": "array",
+              "description": "Белый список (whitelist — список разрешённых элементов) путей, которые можно включать в контекст. Если указан, всё остальное может быть отброшено движком ради экономии токенов.",
+              "items": { "type": "string" }
+            },
+            "history_window": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Количество последних сообщений/событий, которое движок пытается включить в контекст (0 — не включать историю)."
+            }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "state": {
+      "type": "object",
+      "description": "Определение начального состояния игры с разделением на публичную и секретную части.",
+      "required": ["public", "secret"],
+      "properties": {
+        "public": {
+          "type": "object",
+          "description": "Публичная часть состояния, видимая всем участникам (UI биндинги, счётчики, текущий экран)."
+        },
+        "secret": {
+          "type": "object",
+          "description": "Секретная часть состояния, видимая только движку и LLM (скрытые переменные, ключи сценария)."
+        }
+      },
+      "additionalProperties": false
+    },
+    "ui": {
+      "type": "object",
+      "required": ["screens", "entry_point"],
+      "properties": {
+        "entry_point": { "type": "string" },
+        "theme": {
+          "type": "object",
+          "properties": {
+            "colors": { "type": "object" },
+            "typography": { "type": "object" }
+          }
+        },
+        "screens": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-zA-Z0-9_-]+$": {
+              "type": "object",
+              "required": ["root"],
+              "properties": {
+                "type": { "const": "screen" },
+                "title": { "type": "string" },
+                "root": { "$ref": "#/definitions/uiComponent" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "object",
+      "description": "Registry of game actions and their handlers (Hybrid Execution Model). Keys are action identifiers referenced from the UI via uiComponent.actions.*.command.",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": {
+          "type": "object",
+          "required": ["handler_type"],
+          "properties": {
+            "handler_type": {
+              "type": "string",
+              "enum": ["llm", "script"]
+            },
+            "function": {
+              "type": "string",
+              "description": "Name of the exported function in assets.scripts, required when handler_type = 'script'."
+            },
+            "metadata": {
+              "type": "object",
+              "description": "Optional additional configuration for the action handler."
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Зависимости от Extension Packs (пакетов расширений). Ключ — идентификатор расширения, значение — объект с настройками зависимости.",
+      "patternProperties": {
+        "^@?[a-zA-Z0-9_/-]+$": {
+          "type": "object",
+          "description": "Конфигурация зависимости от Extension Pack.",
+          "required": ["version"],
+          "properties": {
+            "version": {
+              "type": "string",
+              "description": "Версия расширения (semver или диапазон, например '^1.0.0').",
+              "pattern": "^[\\^~]?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?$"
+            },
+            "type": {
+              "type": "string",
+              "description": "Тип расширения: viewer (UI-компоненты) или engine (серверная логика).",
+              "enum": ["viewer", "engine", "both"]
+            },
+            "optional": {
+              "type": "boolean",
+              "description": "Является ли зависимость опциональной (по умолчанию false).",
+              "default": false
+            },
+            "config": {
+              "type": "object",
+              "description": "Дополнительная конфигурация для расширения."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "definitions": {
+    "uiComponent": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string" },
+        "id": { "type": "string" },
+        "if": { "type": "string", "description": "Conditional rendering expression" },
+        "props": { "type": "object" },
+        "style": { "$ref": "#/definitions/uiStyle" },
+        "actions": { "$ref": "#/definitions/uiActions" },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/uiComponent" }
+        }
+      }
+    },
+    "uiStyle": {
+      "type": "object",
+      "properties": {
+        "width": { "type": ["string", "number"] },
+        "height": { "type": ["string", "number"] },
+        "padding": { "type": ["string", "number"] },
+        "margin": { "type": ["string", "number"] },
+        "background": { "type": "string" },
+        "color": { "type": "string" },
+        "fontSize": { "type": ["string", "number"] },
+        "fontWeight": { "type": ["string", "number"] },
+        "border": { "type": "string" },
+        "borderRadius": { "type": ["string", "number"] },
+        "gap": { "type": ["string", "number"] },
+        "flex": { "type": ["integer", "string"] },
+        "flexDirection": { "enum": ["row", "column", "row-reverse", "column-reverse"] },
+        "justifyContent": { "type": "string" },
+        "alignItems": { "type": "string" }
+      }
+    },
+    "uiActions": {
+      "type": "object",
+      "patternProperties": {
+        "^on[A-Z][a-zA-Z]+$": {
+          "type": "object",
+          "required": ["command"],
+          "properties": {
+            "command": { "type": "string" },
+            "payload": { "type": "object" }
+          }
+        }
+      }
+    },
+    "sourceRef": {
+      "type": "object",
+      "required": ["file", "anchor"],
+      "properties": {
+        "file": { "type": "string" },
+        "anchor": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "localizedText": {
+      "type": "object",
+      "required": ["source_ref"],
+      "properties": {
+        "source_ref": { "$ref": "#/definitions/sourceRef" },
+        "resolved": { "type": "string" },
+        "format": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

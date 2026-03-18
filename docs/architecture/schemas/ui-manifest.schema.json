@@ -1,0 +1,329 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/ui-manifest.v1.json",
+  "title": "Cubica UI Manifest",
+  "description": "Schema for Cubica UI Manifests describing screens, components and layouts for Hybrid SDUI.",
+  "type": "object",
+  "required": ["meta", "screens", "entry_point"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Метаданные UI-манифеста: идентификатор, версии и связь с игровым манифестом.",
+      "required": ["id", "version", "schema_version", "min_viewer_version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Уникальный идентификатор UI-манифеста (может включать namespace игры и канала).",
+          "pattern": "^[a-zA-Z0-9_.:-]+$"
+        },
+        "version": {
+          "type": "string",
+          "description": "Семантическая версия UI-манифеста.",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "Версия схемы UI-манифеста (например, '1.0'). Обязательное поле для совместимости.",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "min_viewer_version": {
+          "type": "string",
+          "description": "Минимальная версия Viewer, необходимая для корректного отображения этого UI-манифеста.",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "game_id": {
+          "type": "string",
+          "description": "Идентификатор целевого игрового манифеста (meta.id)."
+        },
+        "game_manifest_version": {
+          "type": "string",
+          "description": "Версия игрового манифеста, для которой разработан этот UI-манифест."
+        },
+        "channel": {
+          "type": "string",
+          "description": "Опциональный идентификатор канала (например, 'web', 'telegram')."
+        },
+        "author": {
+          "type": "string",
+          "description": "Автор UI-манифеста."
+        }
+      },
+      "additionalProperties": false
+    },
+    "theme": {
+      "type": "object",
+      "description": "Optional global theme configuration (colors, typography, etc.).",
+      "properties": {
+        "colors": { "type": "object" },
+        "typography": { "type": "object" }
+      },
+      "additionalProperties": true
+    },
+    "screens": {
+      "type": "object",
+      "description": "Registry of UI screens for this UI manifest.",
+      "patternProperties": {
+        "^[a-zA-Z0-9_.:-]+$": {
+          "type": "object",
+          "required": ["type", "root"],
+          "properties": {
+            "type": { "const": "screen" },
+            "title": { "type": "string" },
+            "layout_id": {
+              "type": "string",
+              "description": "Optional reference to a design layout defined in the 'layouts' section. DEPRECATED: Use design_artifact_id."
+            },
+            "design_artifact_id": {
+              "type": "string",
+              "description": "ID дизайн-артефакта из секции design_artifacts.registry, описывающего визуальный дизайн этого экрана."
+            },
+            "controller_id": {
+              "type": "string",
+              "description": "Optional identifier of a UI-level controller in the UI library."
+            },
+            "root": {
+              "$ref": "#/definitions/uiComponent"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "entry_point": {
+      "type": "string",
+      "description": "Identifier of the start screen to render (must exist in 'screens')."
+    },
+    "layouts": {
+      "type": "object",
+      "description": "Optional design layouts that link visual mockups and structured layout descriptions to screens or components. DEPRECATED: Prefer design_artifacts for new projects (see ADR-016).",
+      "patternProperties": {
+        "^[a-zA-Z0-9_.:-]+$": {
+          "type": "object",
+          "required": ["target", "image", "spec"],
+          "properties": {
+            "target": {
+              "type": "object",
+              "required": ["kind", "id"],
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["screen", "component"],
+                  "description": "Whether this layout targets a whole screen or a specific component."
+                },
+                "id": {
+                  "type": "string",
+                  "description": "Identifier of the target screen or component."
+                }
+              },
+              "additionalProperties": false
+            },
+            "image": {
+              "type": "string",
+              "description": "Path or URL to the layout image (export from design tool)."
+            },
+            "spec": {
+              "type": "object",
+              "description": "Free-form JSON description of the layout (grid, zones, annotations, etc.)."
+            },
+            "variant": {
+              "type": "string",
+              "description": "Optional variant identifier (e.g. 'desktop', 'mobile')."
+            },
+            "meta": {
+              "type": "object",
+              "description": "Optional metadata (author, timestamps, comments)."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "design_artifacts": {
+      "type": "object",
+      "description": "Реестр дизайн-артефактов для работы ИИ-агентов. Содержит ссылки на внешние JSON-описания изображений (reference, concept, flowchart, wireframe, storyboard, mockup, asset) с семантической разметкой и дизайн-токенами. См. ADR-016.",
+      "properties": {
+        "history": {
+          "type": "string",
+          "description": "Путь к файлу design-history.json с историей версий и графом связей артефактов."
+        },
+        "base_path": {
+          "type": "string",
+          "description": "Базовый путь к каталогу design/, относительно которого указаны пути в registry.",
+          "default": "design/"
+        },
+        "registry": {
+          "type": "object",
+          "description": "Реестр артефактов. Ключ — ID артефакта, значение — ссылка на описание и связь с UI.",
+          "additionalProperties": {
+            "$ref": "#/definitions/designArtifactRef"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "uiComponentType": {
+      "type": "string",
+      "description": "Стандартные типы UI-компонентов платформы Cubica. Viewer должен поддерживать все перечисленные типы.",
+      "enum": [
+        "screenComponent",
+        "areaComponent",
+        "cardComponent",
+        "gameVariableComponent",
+        "buttonComponent",
+        "textComponent",
+        "inputComponent",
+        "imageComponent"
+      ]
+    },
+    "uiComponent": {
+      "type": "object",
+      "description": "Описание UI-компонента в декларативном формате Hybrid SDUI.",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "oneOf": [
+            { "$ref": "#/definitions/uiComponentType" },
+            {
+              "type": "string",
+              "description": "Кастомный тип компонента (widget:*, extension:* или другой).",
+              "pattern": "^[a-zA-Z][a-zA-Z0-9_:-]*$"
+            }
+          ],
+          "description": "Тип компонента: стандартный (screenComponent, buttonComponent и др.) или кастомный (widget:inventory, extension:rpg-stats)."
+        },
+        "id": {
+          "type": "string",
+          "description": "Optional stable identifier of this component instance."
+        },
+        "if": {
+          "type": "string",
+          "description": "Optional conditional rendering expression evaluated by the presenter."
+        },
+        "props": {
+          "type": "object",
+          "description": "Component-specific properties, may include data bindings like {{state.public.hp}}."
+        },
+        "style": {
+          "$ref": "#/definitions/uiStyle"
+        },
+        "actions": {
+          "$ref": "#/definitions/uiActions"
+        },
+        "layout_id": {
+          "type": "string",
+          "description": "Optional reference to a layout entry that describes visual design for this component. DEPRECATED: Use design_artifact_id."
+        },
+        "design_artifact_id": {
+          "type": "string",
+          "description": "ID дизайн-артефакта из секции design_artifacts.registry, описывающего визуальный дизайн этого компонента."
+        },
+        "controller_id": {
+          "type": "string",
+          "description": "Optional identifier of a UI-level controller in the UI library."
+        },
+        "children": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/uiComponent" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiStyle": {
+      "type": "object",
+      "properties": {
+        "width": { "type": ["string", "number"] },
+        "height": { "type": ["string", "number"] },
+        "padding": { "type": ["string", "number"] },
+        "margin": { "type": ["string", "number"] },
+        "background": { "type": "string" },
+        "color": { "type": "string" },
+        "fontSize": { "type": ["string", "number"] },
+        "fontWeight": { "type": ["string", "number"] },
+        "border": { "type": "string" },
+        "borderRadius": { "type": ["string", "number"] },
+        "gap": { "type": ["string", "number"] },
+        "flex": { "type": ["integer", "string"] },
+        "flexDirection": { "enum": ["row", "column", "row-reverse", "column-reverse"] },
+        "justifyContent": { "type": "string" },
+        "alignItems": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "uiActions": {
+      "type": "object",
+      "description": "UI-level event handlers mapping events like 'onClick' to logical commands in the game manifest.",
+      "patternProperties": {
+        "^on[A-Z][a-zA-Z]+$": {
+          "type": "object",
+          "required": ["command"],
+          "properties": {
+            "command": {
+              "type": "string",
+              "description": "Identifier of the command to send to the presenter (must map to an action in the logical manifest)."
+            },
+            "payload": {
+              "type": "object",
+              "description": "Optional JSON payload with parameters for this invocation."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "designArtifactRef": {
+      "type": "object",
+      "description": "Ссылка на дизайн-артефакт в реестре design_artifacts. Использует паттерн source_ref из ADR-013.",
+      "required": ["type", "source_ref"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Тип дизайн-артефакта.",
+          "enum": ["reference", "concept", "flowchart", "wireframe", "storyboard", "mockup", "asset"]
+        },
+        "source_ref": {
+          "type": "object",
+          "description": "Ссылка на внешний файл с описанием артефакта.",
+          "required": ["file"],
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Относительный путь к файлу *.design.json от base_path."
+            }
+          },
+          "additionalProperties": true
+        },
+        "target": {
+          "type": "object",
+          "description": "Опциональная связь с UI-элементом (экраном или компонентом).",
+          "properties": {
+            "kind": {
+              "type": "string",
+              "enum": ["screen", "component"],
+              "description": "Тип целевого элемента."
+            },
+            "id": {
+              "type": "string",
+              "description": "ID целевого экрана или компонента."
+            }
+          },
+          "additionalProperties": true
+        },
+        "variant": {
+          "type": "string",
+          "description": "Опциональный вариант артефакта (desktop, mobile, dark-theme и др.)."
+        },
+        "meta": {
+          "type": "object",
+          "description": "Дополнительные метаданные.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,85 @@
+openapi: 3.0.3
+info:
+  title: Cubica Game Engine API (MVP)
+  version: 0.1.0
+  description: |
+    Game Engine — сервис исполнения игрового шага: принимает состояние/контекст и действие,
+    возвращает изменения состояния и побочные UI-эффекты.
+
+    Базовый формат патча состояния: JSON Merge Patch (RFC 7396).
+    JSON Patch (RFC 6902) допускается как опциональное расширение.
+servers:
+  - url: https://engine.cubica.example.com
+paths:
+  /evaluate:
+    post:
+      summary: Выполнить игровой шаг
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvaluateRequest'
+      responses:
+        '200':
+          description: Результат выполнения шага
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EvaluateResponse'
+        '400':
+          description: Ошибка запроса
+        '500':
+          description: Ошибка движка или внешнего LLM
+
+components:
+  schemas:
+    EvaluateRequest:
+      type: object
+      required: [manifest, state, action]
+      properties:
+        manifest:
+          type: object
+          description: Игровой манифест (валидный к `docs/architecture/schemas/manifest.v1.schema.json`).
+        state:
+          type: object
+          description: Текущее состояние сессии (public/secret и др.).
+        action:
+          type: object
+          required: [type]
+          properties:
+            type: { type: string }
+            payload: { type: object, nullable: true }
+      additionalProperties: false
+
+    EvaluateResponse:
+      type: object
+      description: |
+        Движок может вернуть:
+        - `state_merge_patch` (RFC 7396) как базовый вариант, или
+        - `state_json_patch` (RFC 6902) как опциональный вариант.
+      properties:
+        state_merge_patch:
+          type: object
+          nullable: true
+        state_json_patch:
+          type: array
+          nullable: true
+          items:
+            type: object
+            required: [op, path]
+            properties:
+              op: { type: string }
+              path: { type: string }
+              from: { type: string }
+              value: {}
+        ui_events:
+          type: array
+          nullable: true
+          items:
+            type: object
+            properties:
+              type: { type: string }
+              payload: { type: object, nullable: true }
+      additionalProperties: true
+

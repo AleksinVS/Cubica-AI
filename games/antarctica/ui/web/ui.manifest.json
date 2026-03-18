@@ -1,0 +1,229 @@
+{
+  "meta": {
+    "id": "antarctica.ui.web",
+    "version": "1.0.1",
+    "game_id": "antarctica",
+    "game_manifest_version": "1.0.0",
+    "channel": "web",
+    "author": "Cubica migration"
+  },
+  "design_artifacts": {
+    "history": "../../design/design-history.json",
+    "base_path": "../../design/",
+    "registry": {
+      "left-sidebar-6-cards": {
+        "type": "mockup",
+        "source_ref": {
+          "file": "mockups/left-sidebar-6-cards.design.json"
+        }
+      },
+      "leftsidebar-infocard": {
+        "type": "mockup",
+        "source_ref": {
+          "file": "mockups/leftsidebar-infocard.design.json"
+        }
+      },
+      "moves-journal": {
+        "type": "mockup",
+        "source_ref": {
+          "file": "mockups/moves-journal.design.json"
+        }
+      },
+      "top-sidebar-6-cards": {
+        "type": "mockup",
+        "source_ref": {
+          "file": "mockups/top-sidebar-6-cards.design.json"
+        }
+      },
+      "topsidebar-infocard": {
+        "type": "mockup",
+        "source_ref": {
+          "file": "mockups/topsidebar-infocard.design.json"
+        }
+      }
+    }
+  },
+  "entry_point": "S1",
+  "screens": {
+    "S1": {
+      "type": "screen",
+      "title": "Antarctica",
+      "layout_id": "layout.web.s1",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "description": "Оставшееся время в игре. Основной параметр.",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "description": "Уровень знаний, который игрок может использовать для решения задач.",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "description": "Уровень доверия команды и окружения к игроку.",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "description": "Ресурс на действия и принятие решений.",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "description": "Способность управлять ситуацией и направлением изменений.",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "description": "Положение игрока в системе и степень влияния.",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "description": "Доступность связей и поддержки вокруг игрока.",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "description": "Нацеленность на результат без пустых конфликтов.",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "cards-container"
+            },
+            "children": [
+              {
+                "type": "cardComponent",
+                "id": "card-requestServer",
+                "props": {
+                  "text": "Отправить команду requestServer (remote) или просто кликнуть (local)."
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "payload": {}
+                  }
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "btn-hint",
+                "props": {
+                  "caption": "Подсказка"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "showHint",
+                    "payload": {}
+                  }
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "btn-journal",
+                "props": {
+                  "caption": "Журнал"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "showHistory",
+                    "payload": {}
+                  }
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "btn-left",
+                "props": {
+                  "caption": "Левый сайдбар"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "showScreenWithLeftSideBar",
+                    "payload": {
+                      "fixtureKey": "leftsidebar"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "layouts": {
+    "layout.web.s1": {
+      "target": {
+        "kind": "screen",
+        "id": "S1"
+      },
+      "image": "games/antarctica-nextjs-player/public/images/arctic-background.png",
+      "spec": {
+        "notes": "MVP placeholder for the main web screen layout."
+      },
+      "variant": "web",
+      "meta": {
+        "source": "migration"
+      }
+    }
+  }
+}

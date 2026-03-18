@@ -1,0 +1,201 @@
+{
+  "$schema": "https://cubica.platform/schemas/extension.v1.json",
+  "meta": {
+    "id": "custom-mechanics",
+    "version": "1.0.0",
+    "name": "Custom Game Mechanics",
+    "description": "Game-specific mechanics including crafting system and reputation management",
+    "schema_version": "1.0",
+    "author": "Game Developer",
+    "license": "MIT"
+  },
+  "type": "both",
+  "trust_level": "trusted",
+  "capabilities": [
+    {
+      "id": "crafting",
+      "name": "Crafting System",
+      "description": "Item crafting from materials with recipe management",
+      "type": "action",
+      "exports": [
+        {
+          "name": "craftItem",
+          "signature": "(recipeId: string) => CraftResult",
+          "description": "Craft an item from materials"
+        },
+        {
+          "name": "learnRecipe",
+          "signature": "(recipeId: string) => LearnResult",
+          "description": "Learn a new crafting recipe"
+        },
+        {
+          "name": "getKnownRecipes",
+          "signature": "() => Recipe[]",
+          "description": "Get list of known recipes"
+        },
+        {
+          "name": "checkMaterials",
+          "signature": "(recipeId: string) => MaterialCheck",
+          "description": "Check if player has required materials"
+        }
+      ]
+    },
+    {
+      "id": "reputation",
+      "name": "Reputation System",
+      "description": "Faction reputation tracking and tier management",
+      "type": "action",
+      "exports": [
+        {
+          "name": "modify",
+          "signature": "(factionId: string, amount: number) => ReputationResult",
+          "description": "Modify reputation with a faction"
+        },
+        {
+          "name": "check",
+          "signature": "(factionId?: string) => ReputationStatus",
+          "description": "Check current reputation with factions"
+        },
+        {
+          "name": "getReputationTier",
+          "signature": "(factionId: string) => string",
+          "description": "Get reputation tier (hostile, neutral, friendly, etc.)"
+        }
+      ]
+    },
+    {
+      "id": "reputation-display",
+      "name": "Reputation Display Component",
+      "description": "UI component displaying faction reputation levels",
+      "type": "component"
+    },
+    {
+      "id": "crafting-panel",
+      "name": "Crafting Panel Component",
+      "description": "UI panel for crafting items",
+      "type": "component"
+    }
+  ],
+  "engine": {
+    "entry_point": "src/engine/index.js",
+    "actions": [
+      {
+        "id": "crafting.craftItem",
+        "function": "craftItem",
+        "description": "Craft an item from materials"
+      },
+      {
+        "id": "crafting.learnRecipe",
+        "function": "learnRecipe",
+        "description": "Learn a new crafting recipe"
+      },
+      {
+        "id": "reputation.modify",
+        "function": "modifyReputation",
+        "description": "Modify reputation with a faction"
+      },
+      {
+        "id": "reputation.check",
+        "function": "checkReputation",
+        "description": "Check current reputation with factions"
+      }
+    ],
+    "sandbox_api": [
+      {
+        "name": "crafting.craft",
+        "function": "craftItem",
+        "description": "Craft item (exposed to user scripts)"
+      },
+      {
+        "name": "crafting.checkMaterials",
+        "function": "checkMaterials",
+        "description": "Check materials availability"
+      },
+      {
+        "name": "reputation.get",
+        "function": "checkReputation",
+        "description": "Get reputation (exposed to user scripts)"
+      }
+    ],
+    "hooks": {
+      "onGameStart": "initializeCraftingSystem",
+      "onGameEnd": "cleanupCraftingSystem"
+    }
+  },
+  "viewer": {
+    "entry_point": "src/viewer/index.js",
+    "components": [
+      {
+        "type": "widget:custom-mechanics:reputation-display",
+        "component": "ReputationDisplay",
+        "description": "Displays reputation levels with all factions",
+        "props_schema": {
+          "type": "object",
+          "properties": {
+            "factions": {
+              "type": "object",
+              "description": "Map of faction IDs to reputation values"
+            },
+            "showLabels": {
+              "type": "boolean",
+              "default": true,
+              "description": "Whether to show faction names"
+            },
+            "compact": {
+              "type": "boolean",
+              "default": false,
+              "description": "Use compact display mode"
+            }
+          },
+          "required": ["factions"]
+        }
+      },
+      {
+        "type": "widget:custom-mechanics:crafting-panel",
+        "component": "CraftingPanel",
+        "description": "UI panel for crafting items",
+        "props_schema": {
+          "type": "object",
+          "properties": {
+            "recipes": {
+              "type": "array",
+              "description": "Available recipes to display"
+            },
+            "materials": {
+              "type": "object",
+              "description": "Current material inventory"
+            }
+          },
+          "required": ["recipes", "materials"]
+        }
+      },
+      {
+        "type": "widget:custom-mechanics:reputation-badge",
+        "component": "ReputationBadge",
+        "description": "Small badge showing reputation with one faction",
+        "props_schema": {
+          "type": "object",
+          "properties": {
+            "factionId": {
+              "type": "string"
+            },
+            "value": {
+              "type": "number"
+            }
+          },
+          "required": ["factionId", "value"]
+        }
+      }
+    ],
+    "styles": "src/viewer/styles.css"
+  },
+  "dependencies": {
+    "peer": {
+      "@cubica/core": "^0.5.0",
+      "react": "^18.0.0"
+    }
+  },
+  "security": {
+    "permissions": ["storage"]
+  }
+}

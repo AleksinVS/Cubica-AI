@@ -1,0 +1,169 @@
+openapi: 3.0.3
+info:
+  title: Cubica Game Repository API
+  version: 0.1.0
+  description: |
+    API для чтения версионированных игровых манифестов и разрешения каналов (stable/beta и т.п.).
+    В ответах указываются заголовки кэширования (`Cache-Control`, `ETag`, `Last-Modified`).
+servers:
+  - url: https://api.cubica.example.com
+paths:
+  /games/{slug}/versions/{versionId}/manifest:
+    get:
+      summary: Получить манифест по конкретной версии
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+        - in: path
+          name: versionId
+          required: true
+          schema: { type: string }
+        - in: header
+          name: If-None-Match
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Манифест найден
+          headers:
+            Cache-Control:
+              schema: { type: string }
+              description: public, max-age=31536000, immutable
+            ETag:
+              schema: { type: string }
+              description: Контент-хэш версии
+            Last-Modified:
+              schema: { type: string }
+              description: RFC1123 дата последней модификации
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestV1'
+        '304':
+          description: Не изменилось (по If-None-Match)
+        '404':
+          description: Не найдено
+
+  /games/{slug}/channels/{name}/manifest:
+    get:
+      summary: Получить манифест по каналу (stable/beta)
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+        - in: header
+          name: If-None-Match
+          required: false
+          schema: { type: string }
+      responses:
+        '200':
+          description: Манифест найден
+          headers:
+            Cache-Control:
+              schema: { type: string }
+              description: public, max-age=60, stale-while-revalidate=30
+            ETag:
+              schema: { type: string }
+              description: Контент-хэш версии, на которую указывает канал
+            Last-Modified:
+              schema: { type: string }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ManifestV1'
+        '304':
+          description: Не изменилось
+        '404':
+          description: Не найдено
+
+  /games/{slug}/versions:
+    post:
+      summary: Опубликовать новую версию манифеста и переключить канал (опционально)
+      parameters:
+        - in: path
+          name: slug
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [manifest, channel]
+              properties:
+                manifest:
+                  $ref: '#/components/schemas/ManifestV1'
+                channel:
+                  type: string
+                  description: Канал, который следует переключить на новую версию (напр., "stable")
+      responses:
+        '201':
+          description: Версия создана
+          headers:
+            ETag:
+              schema: { type: string }
+              description: Контент-хэш созданной версии
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  versionId: { type: string }
+                  channel: { type: string }
+        '400':
+          description: Ошибка валидации схемы
+
+components:
+  schemas:
+    ManifestV1:
+      description: |
+        Логический манифест игры (Game Manifest).
+        Каноническая спецификация: `docs/architecture/schemas/manifest.v1.schema.json` (JSON Schema).
+      type: object
+      properties:
+        meta:
+          type: object
+          description: Метаданные манифеста и версии схем.
+          properties:
+            id: { type: string, description: Уникальный идентификатор игры (namespace). }
+            version: { type: string, description: Семантическая версия контента игры. }
+            name:
+              description: Человекочитаемое имя игры (строка или локализованный объект).
+              oneOf:
+                - { type: string }
+                - { type: object }
+            schema_version: { type: string, description: Версия схемы манифеста (MAJOR.MINOR). }
+            min_engine_version: { type: string, description: Минимальная версия движка для запуска. }
+          required: [id, version, name, schema_version, min_engine_version]
+        config:
+          type: object
+          description: Опциональная конфигурация (например, ограничения по игрокам).
+        assets:
+          type: object
+          description: Ссылки на ассеты (правила, сценарий, изображения и т.д.).
+        engine:
+          type: object
+          description: Конфигурация игрового движка и LLM.
+          properties:
+            system_prompt: { type: string }
+            model_config: { type: object }
+            context: { type: object }
+          required: [system_prompt]
+        state:
+          type: object
+          description: Начальное состояние игры.
+        ui:
+          type: object
+          description: Встроенный UI-манифест (Hybrid SDUI) или минимальная конфигурация экранов.
+        actions:
+          type: object
+          description: Реестр действий и их обработчиков (LLM/скрипт).
+      required: [meta, engine, state]

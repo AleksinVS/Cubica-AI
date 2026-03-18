@@ -1,0 +1,252 @@
+id: CP_00070
+title: Текстовые якоря и разделение логического и UI-манифестов (F_00070)
+status: done
+owner: @todo
+role: implementer
+tasks:
+  - F_00070
+scope:
+  code:
+    - docs/architecture/**
+    - games/antarctica/**
+    - games/antarctica-nextjs-player/**
+    - scripts/**
+  docs:
+    - PROJECT_ARCHITECTURE.md
+    - docs/architecture/schemas/**
+    - docs/tasks/epics/E-25-00010-game-manifest-architecture.md
+    - docs/tasks/features/F_00070_manifest_text_anchors_and_ui_split.md
+    - docs/tasks/content-packs/PLAN.md
+links:
+  tasks:
+    - docs/tasks/epics/E-25-00010-game-manifest-architecture.md
+    - docs/tasks/features/F_00070_manifest_text_anchors_and_ui_split.md
+  related:
+    - docs/architecture/adrs/013-manifest-text-anchors-and-ui-split.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - docs/**
+      - games/antarctica/**
+      - games/antarctica-nextjs-player/**
+      - scripts/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Текстовые якоря и разделение логического и UI-манифестов
+
+  Этот ExecPlan — живой документ и должен поддерживаться в полном соответствии с `docs/tasks/content-packs/PLAN.md` на каждом шаге реализации. Документ рассчитан на новичка, который знает только базовые команды git/node и не знаком с архитектурой Cubica.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Surprises & Discoveries](#surprises--discoveries)
+  - [Decision Log](#decision-log)
+  - [Outcomes & Retrospective](#outcomes--retrospective)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+  - [Idempotence and Recovery](#idempotence-and-recovery)
+  - [Artifacts and Notes](#artifacts-and-notes)
+  - [Interfaces and Dependencies](#interfaces-and-dependencies)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана разработчик сможет:
+  - открывать сценарий игры (на примере «Antarctica»), где все смысловые тексты живут в Markdown‑описаниях с явными якорями (`<!-- anchor: ... -->`);
+  - запускать tooling, который по этим якорям генерирует/обновляет логический JSON‑манифест: заполняет поля `source_ref` и кэш‑тексты `resolved`;
+  - загружать в Next.js‑плеер пару артефактов: логический манифест и отдельный UI‑манифест с описанием экранов, компонентов и хотя бы одним макетом, не смешивая логику и UI в одном файле.
+
+  С точки зрения пользователя платформы это даст возможность:
+  - редактировать правила, сценарий и методические материалы естественным языком без ручного правки JSON;
+  - переиспользовать один и тот же логический сценарий с разными UI‑темами и каналами (Web/Telegram), так как UI вынесен в отдельный артефакт.
+
+  ## Progress
+
+  - [x] (2025-12-10 18:00Z) ADR‑013 создан, описывает текстовые якоря, разделение логического и UI‑манифестов, а также макеты.
+  - [x] (2025-12-10 18:15Z) Обновлены схемы: логический манифест (`game-manifest.schema.json` с `localizedText`/`source_ref`) и добавлен `ui-manifest.schema.json` с `screens` и `layouts`; актуализированы `manifest-structure.md` и `ui-schema-concept.md`.
+  - [x] (2025-12-10 18:30Z) Добавлен скрипт генерации манифеста из описаний (`scripts/manifest-tools/generate-from-anchors.cjs`) и протестирован на примере `logic-sample.json` для Antarctica.
+  - [x] (2025-12-19T08:13:12Z) Для Antarctica подготовлены пример логического манифеста и UI‑манифесты с якорями, `layouts` и валидными ссылками на сценарий.
+  - [x] (2025-12-19T08:13:12Z) Усилён генератор якорей: поддержка Markdown ID, ошибки при отсутствии якорей, валидация по JSON Schema.
+  - [x] (2025-12-19T08:13:12Z) ROADMAP, Epic и Feature‑задача обновлены, ExecPlan переведён в статус `done` с краткой ретроспективой.
+
+  При каждом существенном изменении плана исполнитель обязан обновлять этот список с датами/временем в формате UTC.
+
+  ## Surprises & Discoveries
+
+  Здесь фиксируются неожиданные особенности, баги или ограничения, которые важно помнить следующему исполнителю. Каждый пункт должен содержать короткое описание и ссылку на артефакт (файл, скрипт, коммит).
+
+  - Observation: новых неожиданностей не выявлено; все изменения укладываются в ADR‑013.
+    Evidence: `docs/architecture/adrs/013-manifest-text-anchors-and-ui-split.md`, `games/antarctica/game.manifest.json`, `scripts/manifest-tools/generate-from-anchors.cjs`.
+
+  ## Decision Log
+
+  В этом разделе фиксируются ключевые решения, принятые в ходе реализации, даже если они не попали в ADR целиком.
+
+  - Decision: Генератор якорей завершает работу с ошибкой при отсутствии `source_ref`‑якорей и всегда валидирует манифест по JSON Schema.
+    Rationale: Иначе рассинхронизация текстов и структуры остаётся незамеченной и приводит к накоплению скрытого долга.
+    Date/Author: 2025-12-19 / codex
+
+  - Decision: Для примера Antarctica якоря размещены в `games/antarctica/scenario.md`, а `meta.name` и `meta.description` берутся через `source_ref`.
+    Rationale: Держим минимум файлов и показываем корректную связку «тексты → манифест».
+    Date/Author: 2025-12-19 / codex
+
+  ## Outcomes & Retrospective
+
+  В конце работы сюда выносится краткое резюме:
+  - что удалось реализовать по сравнению с разделом Purpose;
+  - какие компромиссы были приняты;
+  - какие задачи и риски остаются открытыми и должны быть оформлены отдельными Features/Milestones.
+
+  Итог:
+  - В `games/antarctica/` добавлен полноценный пример якорного логического манифеста и UI‑манифесты с `layouts`.
+  - Скрипт генерации теперь поддерживает Markdown ID, валидирует манифест по JSON Schema и останавливается при пропуске якорей.
+  - Плеер читает отдельные манифесты и использует `command/payload` без локальной подмены в remote‑режиме.
+
+  Компромиссы:
+  - Текущие якоря покрывают `meta.name` и `meta.description`; расширение на остальные тексты зависит от будущего расширения схемы.
+
+  Открытые задачи и риски:
+  - Нужна отдельная фича для расширения `localizedText` на другие поля манифеста, если потребуется больше якорей.
+
+  ## Context and Orientation
+
+  Этот раздел объясняет новому исполнителю текущее состояние проекта, связанные артефакты и файлы.
+
+  - Репозиторий: корень — `Cubica/` (этот ExecPlan лежит в `docs/tasks/content-packs/`).
+  - Архитектура манифестов:
+    - `PROJECT_ARCHITECTURE.md` — общий обзор архитектуры, разделы про JSON‑манифесты и Hybrid SDUI.
+    - `docs/architecture/schemas/manifest-structure.md` — текстовое описание структуры игрового манифеста.
+    - `docs/architecture/schemas/game-manifest.schema.json` — действующая JSON Schema для комбинированного манифеста.
+    - `docs/architecture/schemas/ui-schema-concept.md` — описание подхода Hybrid Server-Driven UI (SDUI).
+  - Задачи и ADR:
+    - Epic: `docs/tasks/epics/E-25-00010-game-manifest-architecture.md`.
+    - Feature: `docs/tasks/features/F_00070_manifest_text_anchors_and_ui_split.md`.
+    - ADR‑013: `docs/architecture/adrs/013-manifest-text-anchors-and-ui-split.md`.
+  - Пример игры:
+    - `games/antarctica-nextjs-player/` — Next.js‑плеер сценария «Antarctica» с использованием SDK.
+    - Внутри каталога игры есть данные и утилиты для локального запуска (`src/app/data/**`, `src/app/utils/localDataLoader.js` и т.п.).
+
+  Задача этого ExecPlan — не переписать всё, а аккуратно добавить новый слой: текстовые якоря, разделение логики и UI‑описания, а также минимальные инструменты генерации и валидации.
+
+  ## Plan of Work
+
+  План работы делится на несколько логических этапов. Каждый этап должен завершаться наблюдаемым результатом (обновлённый документ, схема, скрипт или рабочий пример).
+
+  1. **Уточнение архитектурного решения (ADR и Feature)**
+     - Проверить согласованность ADR‑013 с существующими ADR‑001/003/007/008/012.
+     - Убедиться, что Feature F‑25‑00070 точно описывает цели, scope и критерии приёмки.
+     - При необходимости дополнить разделы ADR/Feature примерами на базе Antarctica.
+  2. **Обновление схем и архитектурной документации**
+     - Расширить `manifest-structure.md`, описав:
+       - текстовые источники (rules/scenario/methodology) и якоря;
+       - объект `source_ref` и инварианты по `resolved`/`format`;
+       - разделение логического и UI‑манифестов.
+     - Добавить или заполнить:
+       - `docs/architecture/schemas/manifest.v1.schema.json` — логический манифест без секции `ui`;
+       - `docs/architecture/schemas/ui-manifest.schema.json` — UI‑манифест (screens + layouts).
+     - Обновить `PROJECT_ARCHITECTURE.md` в разделе про манифесты.
+  3. **Tooling: генератор и валидатор**
+     - В каталоге `scripts/` создать простой скрипт (например, Node.js)
+       - вход: пути к текстовым файлам (rules/scenario/methodology) и к логическому манифесту;
+       - шаг 1: прочитать тексты, найти `<!-- anchor: ... -->` и построить индекс `file + anchor → текст`;
+       - шаг 2: пройти по манифесту, найти все объекты `source_ref` и заполнить/обновить поля `resolved` (и `format`, если нужно);
+       - шаг 3: записать обновлённый манифест и прогнать валидацию по JSON Schema.
+     - Зафиксировать в этом ExecPlan точную команду запуска скрипта и ожидаемый результат.
+  4. **Пример на Antarctica**
+     - Определить минимальный поднабор сценария «Antarctica» (1–2 экрана и несколько карточек), который удобно перенести в новый формат.
+     - Для этих экранов:
+       - добавить якоря в соответствующие Markdown‑описания (если нужно — создать такие файлы);
+       - подготовить логический манифест с `source_ref` для названий/описаний;
+       - подготовить UI‑манифест с описанием экранов и как минимум одним `layout`.
+     - Обновить Next.js‑плеер, чтобы он умел читать новый логический манифест и UI‑манифест (на уровне простого локального загрузчика).
+  5. **Рефакторинг, документация и синхронизация задач**
+     - Пройтись по изменениям, убедиться, что они согласованы с ADR‑013 и Feature.
+     - Обновить:
+       - `docs/tasks/ROADMAP.md` (добавить ссылку на F‑25‑00070 и текущий статус);
+       - `docs/tasks/epics/E-25-00010-game-manifest-architecture.md` (добавить ссылку на фичу);
+       - `docs/tasks/features/F_00070_manifest_text_anchors_and_ui_split.md` (передвинуть статус, отметить выполненные цели).
+     - В раздел Outcomes & Retrospective внести краткую ретроспективу.
+
+  ## Concrete Steps
+
+  В этом разделе приведён минимальный набор команд для запуска и проверки работы. По мере реализации он должен обновляться.
+
+  1. Клонировать репозиторий и установить зависимости (если ещё не сделано):
+
+      npm install
+
+  2. Запуск генератора якорей для логического манифеста Antarctica:
+
+      node scripts/manifest-tools/generate-from-anchors.cjs \
+        --manifest games/antarctica/game.manifest.json \
+        --scenario games/antarctica/scenario.md \
+        --schema docs/architecture/schemas/game-manifest.schema.json
+
+     Ожидание: манифест обновлён, ошибок по якорям и схеме нет.
+
+  3. Проверка UI‑манифестов через Ajv (опционально, если нужна отдельная валидация UI):
+
+      npx ajv-cli@5.0.0 validate -s docs/architecture/schemas/ui-manifest.schema.json -d games/antarctica/ui/web/ui.manifest.json
+      npx ajv-cli@5.0.0 validate -s docs/architecture/schemas/ui-manifest.schema.json -d games/antarctica/ui/telegram/ui.manifest.json
+
+  4. Локальный запуск Next.js‑плеера Antarctica (подробности см. README внутри `games/antarctica-nextjs-player`):
+
+      cd games/antarctica-nextjs-player
+      npm run dev
+
+     Затем открыть в браузере URL вида `http://localhost:3000?fixture=antarctica&local=true` или тот, который описан в локальном README, и убедиться, что первый экран отображается корректно.
+
+  ## Validation and Acceptance
+
+  Работа по этому ExecPlan считается принятой, если:
+  - ADR‑013 находится в статусе `Accepted` или `Proposed` с явным согласием владельца репозитория;
+  - схемы логического и UI‑манифестов присутствуют в `docs/architecture/schemas/` и используются в скриптах валидации;
+  - скрипт генерации манифеста из текстовых описаний:
+    - успешно обрабатывает по крайней мере один конфиг (Antarctica), заполняя `resolved` по `source_ref`;
+    - выдаёт понятные ошибки при отсутствии якорей или нарушении JSON Schema;
+  - пример игры Antarctica:
+    - имеет логический манифест и UI‑манифесты (web/telegram), соответствующие схемам и содержащие `layouts`;
+    - может быть локально запущен с использованием этих манифестов;
+  - Feature F‑25‑00070 переведена в статус `done`, ExecPlan — в `done` с финальной ретроспективой.
+
+  ## Idempotence and Recovery
+
+  - Скрипт генерации манифеста должен быть идемпотентным: повторный запуск поверх уже обновлённого манифеста не должен приводить к ошибкам или накоплению мусора, только к переобновлению полей `resolved` и вспомогательных хэшей.
+  - При неудачном запуске (ошибка парсинга Markdown/HTML или JSON) достаточно исправить входные файлы и повторно запустить скрипт.
+  - Изменения в манифестах и UI‑манифестах должны быть понятными в `git diff`; при необходимости стоит разбивать изменения на атомарные коммиты (но это уже политика репозитория, а не ExecPlan).
+
+  ## Artifacts and Notes
+
+  В ходе работы сюда можно добавлять:
+  - пример конфигурации для скрипта генерации манифеста;
+  - ссылку на минимальный логический манифест Antarctica и его UI‑манифесты;
+  - примеры типовых ошибок и способов их диагностики.
+
+  Актуальные артефакты:
+  - `games/antarctica/game.manifest.json`
+  - `games/antarctica/scenario.md`
+  - `games/antarctica/scripts/actions.js`
+  - `games/antarctica/ui/web/ui.manifest.json`
+  - `games/antarctica/ui/telegram/ui.manifest.json`
+
+  ## Interfaces and Dependencies
+
+  - Языковой стек tooling: рекомендуется Node.js (CommonJS/ESM — по фактическому стандарту репозитория), так как корневой `package.json` уже настроен.
+  - Схемы JSON: предпочтительно использовать тот же инструмент, что и сейчас (Ajv или аналог) для валидации манифестов.
+  - Интерфейсы:
+    - Логический манифест:
+      - содержит `meta`, `assets`, `engine`, `state`, `actions` и, при необходимости, раздел `flow`;
+      - текстовые поля представлены объектами с `source_ref` и опциональным `resolved`.
+    - UI‑манифест:
+      - содержит `meta`, `theme`, `screens`, `layouts`;
+      - компоненты описываются через `type`, `props`, `style`, `actions`, `children`;
+      - могут ссылаться на макеты через `layout_id`.
+
+  ExecPlan обновлён: TODO удалены из Progress, а Concrete Steps содержит фактические команды и пути.
+
+  ```

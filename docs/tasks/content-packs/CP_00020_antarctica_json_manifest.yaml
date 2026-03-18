@@ -1,0 +1,217 @@
+﻿id: CP_00020
+title: Сценарий Antarctica в Next.js game player (F_00021)
+status: in_progress
+owner: @todo
+role: implementer
+tasks:
+  - F_00021
+scope:
+  code:
+    - draft/Antarctica/Game.html
+    - games/antarctica-nextjs-player/**
+  docs:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00021_antarctica_json_manifest_(E_0020).md
+    - docs/tasks/content-packs/PLAN.md
+links:
+  tasks:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+  related:
+    - draft/Antarctica/README.md
+    - games/antarctica-nextjs-player/README.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - draft/Antarctica/**
+      - games/antarctica-nextjs-player/**
+      - docs/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Antarctica JSON-манифест для Next.js-плеера
+
+  Этот ExecPlan — живой документ и должен поддерживаться в полном соответствии с `docs/tasks/content-packs/PLAN.md` на каждом шаге реализации.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Surprises & Discoveries](#surprises--discoveries)
+  - [Decision Log](#decision-log)
+  - [Outcomes & Retrospective](#outcomes--retrospective)
+  - [Context and Orientation](#context-and-orientation)
+  - [Алгоритм преобразования cardsObj в JSON-манифест](#алгоритм-преобразования-cardsobj-в-json-манифест)
+  - [План переноса UI](#план-переноса-ui)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+  - [Idempotence and Recovery](#idempotence-and-recovery)
+  - [Artifacts and Notes](#artifacts-and-notes)
+  - [Interfaces and Dependencies](#interfaces-and-dependencies)
+  - [Revision Note](#revision-note)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана разработчик сможет запустить Next.js‑плеер `games/antarctica-nextjs-player` в режиме локальных данных, открыть `http://localhost:3000?fixture=antarctica&local=true` (или `?screen=antarctica`) и увидеть первый экран квеста, описанный целиком через JSON-манифест. Манифест вписывается в LLM-first (Large Language Model, большая языковая модель, служит игровым движком) архитектуру и MVP (Model–View–Presenter, разделение данных, отображения и презентера), а UI строится через Abstract View (описание интерфейса в данных, где каждый узел — компонент `screenComponent`, `areaComponent`, `cardComponent` и т. д.). Router (API-шлюз и менеджер игровых сессий) и Game Engine (сервис, применяющий правила и ответы LLM) смогут проверять поля `meta.schema_version` и `meta.min_engine_version`, а клики по карточкам уйдут через протокол действий `actions`/`requestServer` без локального DOM-скриптинга.
+
+  ## Progress
+
+  - [x] (2025-12-05 09:15Z) Изучены `draft/Antarctica/Game.html`, текущие фикстуры `screen_s1.json`, `screen_leftsidebar.json`, `screen_hint.json` и загрузчик `src/app/utils/localDataLoader.js`, чтобы понять структуру данных, метрики и способ выбора локального сценария.
+  - [x] (2025-12-05 12:45Z) Собран манифест `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json` (meta/config/assets/engine/state/ui/actions), включающий экран S1 из `screen_s1.json`, стартовые метрики и реестр действий для карточек 1–6; action_id приведены к формату `antarctica_card_*` под требования схемы.
+  - [x] (2025-12-05 13:10Z) Подключён манифест в `localDataLoader`, пройдена валидация через `ajv-cli` (strictMode warning-и остаются), зафиксирован блокер `npm run lint` — Next.js просит интерактивно сгенерировать ESLint-конфиг.
+
+  ## Surprises & Discoveries
+
+  - Наблюдение: `loadLocalFixture` (`games/antarctica-nextjs-player/src/app/utils/localDataLoader.js`) отдаёт данные фикстуры в виде JSON-дерева с `application.elements`, а `findEntryPoint` сразу ищет корневой экран, поэтому любой новый манифест обязан иметь корректный `application.elements` и явный entry point, иначе рендерер не увидит дерево.
+    Evidence: `createHybridDataSource.loadInitial` возвращает `{ state: manifest }`, и при отсутствии `application.elements` `findEntryPoint` выдаёт ошибку.
+  - Наблюдение: текущий `screen_s1.json` уже использует `gameVariableComponent`, `cardComponent`, `buttonComponent` и заготовленные `actions.onClick.proc`, поэтому новую фикстуру можно подключить без изменения `renderer.js`; достаточно держаться существующей схемы компонентов и слотов `actions`.
+      Evidence: структура `games/antarctica-nextjs-player/src/app/data/screen_s1.json` совпадает с ожидаемыми компонентами из `games/antarctica-nextjs-player/src/app/utils/renderer.js`.
+  - Observation: ключи действий с точками (`antarctica.card.1`) не проходят `patternProperties` (`^[a-zA-Z0-9_-]+$`) в `actions` JSON-схемы; замена на `antarctica_card_*` решает ошибку ajv.
+      Evidence: ajv-cli сначала возвращал `must NOT have additional properties` на `actions`, после переименования манифест стал valid (сохранились только strictMode warning-и).
+  - Observation: `npm run lint` в `games/antarctica-nextjs-player` открывает интерактивный выбор конфигурации ESLint (Strict/Base/Cancel), поэтому прогон в автоматическом режиме остановлен до добавления `.eslintrc`.
+      Evidence: вывод Next.js lint с prompt `How would you like to configure ESLint?`.
+
+  ## Decision Log
+
+  - Decision: Новый манифест хранится в `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json` и использует версию схемы из `docs/architecture/schemas/game-manifest.schema.json`, чтобы не смешивать его с временными `screen_*.json` и сразу задать целевой формат.
+    Rationale: отдельная папка `antarctica/` удерживает активы сценария в одном месте и упрощает будущую загрузку через Router/Game Engine.
+    Date/Author: 2025-12-05 / agent-codex.
+  - Decision: Переключение сценариев будет происходить через существующий параметр `localFixtureKey`, который понимает псевдоним `antarctica`, а в URL используются параметры `fixture` / `screen` / `view` (например, `?fixture=antarctica`).
+    Rationale: уже есть механизм `localFixtureKey`, а `page.js` читает `searchParams.screen`/`fixture`/`view`; достаточно расширить словарь фикстур и нормализацию ключей.
+    Date/Author: 2025-12-05 / agent-codex.
+  - Decision: Действия карточек описываются в `actions` манифеста с `handler_type: requestServer` или `script`, а в UI узлах задаются ссылки (`props.actions.onClick.proc`), чтобы `actions.js` мог диспатчить события без jQuery.
+    Rationale: протокол MVP требует, чтобы UI только ссылался на действие, а бизнес-логика обрабатывалась `actionHandlers` и `applyStateUpdates`.
+    Date/Author: 2025-12-05 / agent-codex.
+  - Decision: Идентификаторы действий приведены к формату `antarctica_card_<n>` (без точек), чтобы соответствовать regex `^[a-zA-Z0-9_-]+$` в разделе `actions` схемы.
+    Rationale: ajv-cli блокировал ключи с точками (`antarctica.card.*`) как дополнительные свойства; переименование избавляет от ошибки без правок схемы.
+    Date/Author: 2025-12-05 / agent-codex.
+
+  ## Outcomes & Retrospective
+
+  Собран стартовый манифест `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json` с разделами meta/config/assets/engine/state/ui/actions, реестром действий для карточек 1–6 и entryPoint `S1` из `screen_s1.json`; ajv-cli подтвердил валидность (остались только strictMode предупреждения схемы). Фикстура `antarctica` добавлена в `localDataLoader`, переключается через `?fixture=antarctica`. Проверка `npm run lint` прервана из-за интерактивного запроса Next.js на создание ESLint-конфига — требуется вручную добавить `.eslintrc` или ответить на prompt в отдельном сеансе.
+
+  ## Context and Orientation
+
+  Исходные данные сценария находятся в `draft/Antarctica/Game.html`. Там объявлены `cardsObj` (карточки, команды, подсказки) и `game.timeline` (последовательность сцен) вместе с переменными `pro`, `rep`, `lid`, `man`, `stat`, `cont`, `constr`, `time`, `score`. Эти значения нужно перенести в разделы `state` и `ui` будущего манифеста.
+
+    Next.js-плеер расположен в `games/antarctica-nextjs-player/`. Компонент `GameScreenRenderer` (`src/app/components/GameScreenRenderer.js`) использует хук `useViewState` из `@cubica/react-sdk`, гибридный источник данных `createHybridDataSource` (`src/app/sdk/dataSources.js`) и презентер `createActionPresenter` (`src/app/sdk/presenter.js`), чтобы переключаться между локальными фикстурами и Router. Рендеринг графа компонентов выполняет `src/app/utils/renderer.js`, который сопоставляет типы (`screenComponent`, `areaComponent`, `gameVariableComponent`, `cardComponent`, `buttonComponent`, `helperComponent`, `journalVariableComponent`) с компонентами из `@cubica/sdk-shared`.
+
+  Файл `src/app/utils/localDataLoader.js` содержит словарь `fixtureCatalog` и экспортирует `loadLocalFixture`. Сейчас он знает только `screen_s1`, `screen_leftsidebar`, `screen_hint`, `journal`. Нужно добавить туда «Antarctica» и убедиться, что загрузчик работает с параметрами `screen`/`fixture`/`view`, которые `page.js` уже передаёт в `localFixtureKey`. Обработчик `scenario` в `page.js` пока отсутствует.
+
+  ## Алгоритм преобразования cardsObj в JSON-манифест
+
+  Ниже — пошаговый алгоритм переноса словаря `cardsObj` из `draft/Antarctica/Game.html` в целевой JSON-манифест, совместимый со схемой `docs/architecture/schemas/game-manifest.schema.json`. Под «кортежом действия» понимается массив вида `['rep', -2]` или `['cont', '>', 10, ['time', -2]]`, то есть короткая запись условия и эффекта.
+
+  1. Инвентаризация исходных данных. Снимите таблицу по каждому элементу `cardsObj`: `id`, `type` (`cards`/`info`/`team`), `f.text`, `b.text`, `f.action`, `b.action`, `b.go`, `locked`, `alt`. Отдельно вынесите функции `goTo`, `swap`, `unlock`, `unlock39`, `f25_30`, `f34` и их параметры. Зафиксируйте порядок экранов из `game.timeline` (две сюжетные линии) и стартовые значения метрик из `game` (`pro`, `rep`, `lid`, `man`, `stat`, `cont`, `constr`, `time`, `score`).
+  2. Соберите состояние (`state`). В `state.public.metrics` создайте поля для всех метрик игры; `time` и `score` свяжите правилом `score = 60 - time`. Добавьте `state.public.timeline` с указанием текущей линии (`line`), шага (`step_index`) и идентификатора активного экрана (`screen_id`), а также `state.public.log` (список выбранных карт и членов команды) и `state.public.flags.cards.<id>.locked` для карточек с `locked`. В `state.secret` заведите счетчики `stage_picks.<stage_id>` (для функций `f25_30`/`unlock39`), чтобы хранить прогресс по этапу.
+  3. Нормализуйте кортежи действий в патчи состояния. Используйте следующие соответствия:
+     - `['metric', number]` → патч `{ op: 'inc', path: 'state.public.metrics.metric', value: number }`.
+     - `['metric', '>', threshold, nested]` → охранное условие (guard) `if: "state.public.metrics.metric > threshold"` с вложенным патчем по `nested`.
+     - `['metric', '<', threshold, nested]` → guard `if: "state.public.metrics.metric < threshold"` с вложенным патчем.
+     - `['metric', '=', threshold]` → патч `{ op: 'clamp', path: 'state.public.metrics.metric', value: threshold }` (установить потолок).
+     - `['log', 'in'/'out', 'leo', nested]` → guard над `state.public.log` (`includes`/`not includes`) с вложенными патчами.
+     - `['func', unlock, id]` → патч `state.public.flags.cards.<id>.locked = false`.
+     - `['func', unlock39, counter]` → патч `state.secret.stage_picks.<stage_id> += 1` и guard `if: "state.secret.stage_picks.<stage_id> >= counter"` → `state.public.flags.cards.39.locked = false`.
+     - `['func', f25_30, counter]` → патч `state.secret.stage_picks.<stage_id> += 1` и guard `if: "state.secret.stage_picks.<stage_id> >= counter"` → `state.public.timeline.can_advance = true`.
+     - `['func', swap, altId]` → в UI заведите альтернативный компонент с `if`, см. шаг 5.
+     - `['func', goTo, [targetId, line, cursor]]` и `f34` → патч `state.public.timeline = { line, step_index: cursor, screen_id: targetId }` плюс обновление `ui.entry_point` на экран линии проигрыша.
+  4. Постройте реестр действий (`actions`). Для каждой карточки создайте действие `antarctica.card.<id>` с `handler_type: "script"` и полем `metadata.updates`, куда положите нормализованные патчи из пункта 3 (объединяйте `f.action` и `b.action`). Для экранных переходов добавьте `actions.advance.<stage_id>` (устанавливает `can_advance = false`, сбрасывает `stage_picks` и увеличивает `timeline.step_index`) и `actions.timeline.jump_loss` (для `f34`/`goTo`). Если потребуется вызов LLM, отмечайте `handler_type: "llm"` и готовьте текст подсказки в `assets.scripts`/`engine.system_prompt`.
+  5. Сконструируйте UI-компоненты из карточек. Каждый `type: 'cards'` → компонент `card` (в `ui.screens.<screen_id>.root.children`), где `props.text.front = f.text`, `props.text.back = b.text`, `props.locked` читает `state.public.flags.cards.<id>.locked`, а `actions.onClick.command = "antarctica.card.<id>"`. Для карточек с `go: true` добавьте кнопку «Далее» (компонент `button`) с `actions.onClick.command = "actions.advance.<stage_id>"`. Для `alt` массивов создайте дубль карточки с другим `id` и условием `if` из исходного сравнения (например, `pro > 40` → карточка 3902 с `if: "state.public.metrics.pro > 40"`; базовая 39 получает `if: "state.public.metrics.pro <= 40"`). Карточки, открывающие счётчики (`unlock39`, `f25_30`), должны увеличивать `state.secret.stage_picks.<stage_id>` через свой action, а Next-кнопка появляется только при `state.public.timeline.can_advance`.
+  6. Перенесите `type: 'info'`. Для каждого инфо-экрана создайте отдельный `screen` с `root` типа `modal`/`area` (в зависимости от выбранного компонента), положите `title`, `text`, `backgroundImage` в `props`, а в `actions.onClose.command` поставьте `actions.advance.<stage_id>` или `actions.timeline.jump_loss`, если исходный экран содержит `alt` с `goTo`/`swap`. Если `locked: true`, используйте `if: "state.public.flags.cards.<id>.locked !== true"`.
+  7. Перенесите `type: 'team'`. Каждого участника опишите как карточку-персонажа с `props.avatar` (`img` из `cardsObj`), `props.name`, `props.description`, а `actions.onClick.command = "antarctica.team.pick.<id>"`, где действие добавляет `id` в `state.public.log` и применяет патчи из `action`. Ограничение «не больше 5» реализуйте через guard в действии или через вычисляемое поле `state.public.timeline.team_ready`.
+  8. Сформируйте экраны по таймлайну. Каждый элемент `game.timeline[line][step]` → отдельный `screen` с `id: "line<line>_step<stepIndex>"`. Внутри корневого контейнера разместите общую область метрик (повторно используемые компоненты из `screen_s1.json`) и область карточек/инфо/выбора команды для текущего шага. Поле `ui.entry_point` указывает на первый экран основной линии. Шаги проигрыша (`line = 1`) связывайте через `actions.timeline.jump_loss`.
+  9. Проверьте согласованность ссылок. Все `actions.onClick.command` в UI должны указывать на ключи из раздела `actions`. Все guards в UI и в действиях должны опираться на пути из `state`. Для каждой карточки и экрана укажите уникальный `id`, соответствующий исходному номеру, чтобы трассировка к `cardsObj` сохранялась.
+
+  ## План переноса UI
+
+  Этот план описывает, как развернуть HTML‑верстку `draft/Antarctica/Game.html` (navbar с метриками, сетка карточек, модальные окна, экран выбора команды) в граф компонентов JSON‑манифеста, совместимого с `games/antarctica-nextjs-player/src/app/utils/renderer.js`.
+
+  1. Каркас экрана. Создайте `ui.entry_point = "screen_line0_step0"` и определите `ui.screens.screen_line0_step0.root` с `type: "screenComponent"`, `props.cssClass` аналогом `main-screen`, `props.backgroundImage` при необходимости. Все последующие экраны `screen_line0_stepN`/`screen_line1_stepN` клонируют каркас и подменяют область карточек.
+  2. Верхняя панель метрик. В корне экрана добавьте область `areaComponent` (`id: "metrics_bar"`, `cssClass: "game-variables-container"`). Внутрь вложите `gameVariableComponent` для `score`, `pro`, `rep`, `lid`, `man`, `stat`, `cont`, `constr`. Присвойте `props.caption`, `props.value` (бинд к `state.public.metrics.<metric>`), `props.backgroundImage` (путь из `screen_s1.json`), `props.actions.onClick.command` можно оставить пустым или на `noop`, если нет логики.
+  3. Основная сетка карточек. Добавьте область `areaComponent` (`id: "cards_area"`, `cssClass: "cards-container"`) и в неё дочерние `cardComponent` на основе текущего шага `game.timeline[line][step]`. Для каждой карты задайте `props.text` (можно объединить front/back в одно поле или использовать `children` со вспомогательным флагом `state.public.flags.cards.<id>.flipped`, если понадобится), `props.locked` (бинд к `state.public.flags.cards.<id>.locked`), `props.state` (значение `stX`, если нужно), и `actions.onClick.command = "antarctica.card.<id>"`.
+  4. Кнопка «Далее». В `cards_area` или соседней области `areaComponent` (`id: "controls_area"`) добавьте `buttonComponent` с `props.caption: "Далее"` и `actions.onClick.command = "actions.advance.<stage_id>"`. Отображайте кнопку по условию `if: "state.public.timeline.can_advance === true"` или по наличию `go: true` в исходной карточке.
+  5. Панель вспомогательных кнопок. Добавьте область `areaComponent` (`id: "helpers_area"`, `cssClass: "button-container"`) со следующими кнопками: журнал (`buttonComponent` с `props.backgroundImage: "./images/jurnal-hodov.png"`, `actions.onClick.command = "showHistory"`), подсказка (`./images/podskazka.png`, `command = "showHint"`), стрелки (`./images/arrow-left.png`/`arrow-right.png`, `command = "showScreenWithLeftSideBar"` или другое из `presenter.js`). Эти команды уже поддерживаются `createActionPresenter`.
+  6. Модальные инфо-экраны. Для каждого `type: 'info'` создайте отдельный `screen` вида `screen_info_i0`, где `root` — `areaComponent` с `cssClass: "modal"` (или используйте `HelperComponent` как контейнер), `props.title`, `props.text`, `props.backgroundImage`. Добавьте кнопку/действие закрытия (`actions.onClose.command = "actions.advance.<stage_id>"`), соответствующее поведению `$('#modal-1').on('hidden...')` в HTML.
+  7. Экран выбора команды. Для шага с `type: 'team'` создайте `screen_team_stepX` с областью `areaComponent` (`cssClass: "team-grid"`), куда положите карточки персонажей (`cardComponent` или `helperComponent`), `props.avatar` (из `img`), `props.title` (имя), `props.text` (описание). Для выбора до 5 участников используйте `actions.onClick.command = "antarctica.team.pick.<id>"` и условное отображение кнопки подтверждения (`buttonComponent` `caption: "Далее"` с `if: "state.public.timeline.team_ready === true"`).
+  8. Журнал ходов. Если нужен вывод истории, создайте экран `screen_journal` с `journalVariableComponent` для отображения метрик до/после (по аналогии с узлом истории в HTML). Заполняйте его из `state.public.history` (можно оставить заглушку до реализации).
+  9. Стили и ассеты. Все `cssClass` и `backgroundImage` значения берите из `screen_s1.json` и `draft/Antarctica/penguines.css` (например, `game-card`, `button-helper`, `button-helper-arrow`). Картинки положите в `assets.images` с ключами, на которые будет ссылаться UI (`./images/top-sidebar/*.png`, постеры, модальные картинки `i*.png`).
+  10. Ссылки на действия. Убедитесь, что каждый UI-элемент, реагирующий на событие (`card`, `button`, `modal close`), имеет `actions.onClick` или `actions.onClose` с `command`, совпадающим с ключом в разделе `actions`. Для карточек с альтернативами добавьте взаимно исключающие `if`, чтобы только одна версия была отображена.
+
+  ## Plan of Work
+
+  Сначала инвентаризируйте исходные данные. Пройдитесь по `draft/Antarctica/Game.html`, соберите список карточек (идентификаторы, тексты, состояния `stX`), метрик и первого шага `game.timeline`. Запишите, какие элементы нужны на стартовом экране (панель метрик, набор карточек, кнопки журнала, подсказок, стрелок). Это позволит составить `state.public` (значения метрик, текущий шаг) и `ui.application.elements`.
+
+    Далее создайте структуру файла `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json`. Раздел `meta` должен включать `id`, `title`, `description`, `schema_version`, `min_engine_version`, `authors`, `training` (описание, аудитория, длительность), `tags`. В `config` укажите количество игроков и режим. В `assets` перечислите текстовые материалы (ссылки на `draft/Antarctica/README.md`, PDF, изображения) и методические файлы. Раздел `engine` зафиксируйте для будущих правил (`handlers`, `llm_prompts`).
+
+  После каркаса опишите `state`. В `state.public.metrics` заведите числовые поля `score`, `time`, `pro`, `rep`, `lid`, `man`, `stat`, `cont`, `constr`. Значения берите из стартового состояния `game`. В `state.public.timeline` сохраните идентификаторы текущего этапа и ссылку на карту UI. `state.secret` можно использовать для скрытых флагов (`visitedCards`, `pendingActions`) даже если пока пустые, чтобы Game Engine знал куда вписывать данные.
+
+  Затем разработайте `ui`. Верхний уровень — `application.elements.S_antarctica_intro` (или похожий id) с `component: screenComponent` и `props` (`cssClass`, фон). Внутри определите области: секция метрик (`areaComponent` с множеством `gameVariableComponent`), колода карточек (`areaComponent` с `cardComponent`), панель вспомогательных кнопок (`buttonComponent`). Используйте существующие изображения (`./images/top-sidebar/*.png`) или перенесите их в `assets`. Каждому узлу присвойте стабильный `id`, который совпадает с исходным `cardsObj` (например, `card_C1`). В `props.actions` задавайте ссылки вида `{ "onClick": { "proc": "antarctica.card.C1", "action_id": "action.card.C1" } }`, чтобы идентификатор действия совпадал с записью в `actions`.
+
+  Определите раздел `actions`. Для каждой карточки создайте запись `action.card.C1` с полями: `handler_type` (`requestServer` для вызова Router или `script` для локального обработчика), `payload_template` (какие метрики и параметры отправляются), `success_updates` (примеры патчей для `applyStateUpdates`). Для кнопок журнала/подсказок используйте существующие обработчики `showHistory`, `showHint`. Если понадобится локальная функция, добавьте ее описание в `actions.js` и задокументируйте схему входных данных. Свяжите `actions` с будущими состояниями (например, `action.card.C1` обновляет `state.public.metrics.rep`).
+
+  Модифицируйте `src/app/utils/localDataLoader.js`: добавьте новый импорт `import antarcticaManifest from '../data/antarctica/manifest.json';`, включите сценарий в `fixtureCatalog` (например, ключ `antarctica`), и расширьте нормализацию ключей так, чтобы `loadLocalFixture('antarctica')` отдавал данные нового манифеста. При необходимости добавьте helper `buildAppStateFromManifest`, если манифест будет отличаться по форме, но сохраняйте совместимость с текущим контрактом `createHybridDataSource` / `createActionPresenter`. Убедитесь, что старые ключи (`main`, `leftsidebar`, `hint`, `journal`) остаются работоспособными.
+
+  Когда манифест и загрузчик готовы, обновите документацию: в `docs/tasks/features/F_00021_antarctica_json_manifest_(E_0020).md` опишите новые артефакты и отметьте прогресс чек-листов; в `docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md` добавьте ссылку на манифест и уточните состояние фичи; при необходимости поправьте `docs/tasks/ROADMAP.md`. Запишите факт выполнения в разделе `Progress` текущего ExecPlan и синхронизируйте статусы задач.
+
+  ## Concrete Steps
+
+  1. Установите зависимости плеера (если не установлены):
+
+        cd games/antarctica-nextjs-player
+      npm install
+
+  2. Создайте директорию `src/app/data/antarctica/` и файл `manifest.json`, скопируйте туда каркас, описанный в разделе «Plan of Work».
+
+  3. Заполните разделы `meta`, `config`, `assets`, `engine`, `state`, `ui`, `actions`, сверяясь с `draft/Antarctica/Game.html` и существующими `screen_*.json`.
+
+  4. Расширьте `src/app/utils/localDataLoader.js`: импортируйте новый манифест, добавьте запись в `fixtureCatalog`, адаптируйте нормализацию ключей, и убедитесь, что `loadLocalFixture('antarctica')` возвращает дерево `application.elements` и корректно подхватывается `createHybridDataSource`.
+
+  5. (Опционально) Если понадобится специфический обработчик, обновите `src/app/utils/actions.js` и задокументируйте новый `handler`.
+
+  6. Запустите lint и dev-сервер:
+
+      npm run lint
+      npm run dev
+
+     В новом окне браузера перейдите на `http://localhost:3000?fixture=antarctica&local=true` (или `?screen=antarctica`) и зафиксируйте вывод консоли.
+
+  7. Проверьте JSON-схему:
+
+      npx ajv-cli@5.0.0 validate -s docs/architecture/schemas/game-manifest.schema.json -d src/app/data/antarctica/manifest.json
+
+  8. Обновите документацию задач и раздел `Progress` в этом ExecPlan, затем сохраните изменения.
+
+  ## Validation and Acceptance
+
+  - Локальный режим (`?fixture=antarctica&local=true` или `?screen=antarctica&local=true`) показывает экран с панелью метрик, карточками и кнопками без ошибок в консоли браузера или терминала.
+  - Клик по карточке логирует отправку действия (`actionTypes.requestServer` или локальная функция) и, при наличии подготовленных `success_updates`, применяет патч `APPLY_PATCH` через `applyStateUpdates`.
+  - Валидация схемы через `npx ajv-cli validate ...` проходит без ошибок.
+  - Команда `npm run lint` завершается успешно и не ломает существующие фикстуры (`screen_s1`, `screen_leftsidebar`, `screen_hint`).
+  - В файлах эпика и фичи обновлены статусы, ссылки на манифест и перечислены новые артефакты.
+
+  ## Idempotence and Recovery
+
+  Создание манифеста и правки загрузчика полностью идемпотентны: файл `manifest.json` можно править по частям, а повторный запуск `npm run dev` перечитает новые данные без необходимости чистить кеши. Если JSON сломан, `loadLocalFixture` упадет с понятной ошибкой, и достаточно вернуть последнюю рабочую версию из Git. При проблемах с новым сценарием достаточно удалить/комментировать запись `antarctica` в `fixtureCatalog`, чтобы вернуться к базовым фикстурам.
+
+  ## Artifacts and Notes
+
+  - Новый файл `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json`.
+    - Обновлённый `games/antarctica-nextjs-player/src/app/utils/localDataLoader.js` (включает импорт и ветку `antarctica`).
+    - Если добавлены пользовательские действия, соответствующие изменения в `games/antarctica-nextjs-player/src/app/sdk/presenter.js`.
+  - Обновлённые документы задач: `docs/tasks/features/F_00021_antarctica_json_manifest_(E_0020).md`, `docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md`, при необходимости `docs/tasks/ROADMAP.md`.
+
+  ## Interfaces and Dependencies
+
+  - JSON-схема: `docs/architecture/schemas/game-manifest.schema.json` определяет разрешённые поля `meta/config/assets/engine/state/ui/actions`.
+    - Рендерер: `games/antarctica-nextjs-player/src/app/utils/renderer.js` и компоненты из `@cubica/sdk-shared` (GameScreen, GameArea, GameVariable, GameCard, GameButton, JournalVariable, HelperComponent).
+    - Действия: `games/antarctica-nextjs-player/src/app/sdk/presenter.js` (диспетчер) и `applyStateUpdates` из `@cubica/sdk-core` (применение патчей) должны понимать новые `handler_type` и `action_id`.
+    - Локальная загрузка: `games/antarctica-nextjs-player/src/app/utils/localDataLoader.js` и `page.js`, которые принимают `searchParams` (`screen`, `fixture`, `view`).
+  - Исходные данные: `draft/Antarctica/Game.html` (карточки, таймлайн, метрики) и вспомогательные изображения/README в `draft/Antarctica/`.
+
+  ## Revision Note
+
+  2025-12-05 — план полностью переработан: добавлены определения терминов, подробный порядок работ, конкретные команды и требования к валидации, чтобы соответствовать `docs/tasks/content-packs/PLAN.md` и текущей архитектуре Next.js-плеера.
+
+  ```

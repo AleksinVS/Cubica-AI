@@ -1,0 +1,105 @@
+openapi: 3.0.3
+info:
+  title: Cubica Router API (MVP)
+  version: 0.1.0
+  description: |
+    Router — сервис оркестрации игровых сессий (session orchestration — управление жизненным циклом сессий),
+    который принимает действия клиента и возвращает либо полное состояние, либо патч состояния.
+
+    Базовый формат патча: JSON Merge Patch (RFC 7396).
+    Опциональный формат патча: JSON Patch (RFC 6902).
+servers:
+  - url: https://router.cubica.example.com
+paths:
+  /submit:
+    post:
+      summary: Отправить действие в сессию и получить обновление состояния
+      description: |
+        MVP-эндпоинт для клиентов SDK.
+        Долгосрочно может быть заменён на более явные эндпоинты `/sessions/*` и/или WebSocket протокол.
+      parameters:
+        - in: header
+          name: Authorization
+          required: false
+          schema: { type: string }
+          description: Bearer-токен доступа (если включена авторизация).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitRequest'
+      responses:
+        '200':
+          description: Успешная обработка действия
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmitResponse'
+        '400':
+          description: Ошибка запроса (валидация, неизвестное действие)
+        '401':
+          description: Не авторизован
+        '409':
+          description: Конфликт версий/состояния (например, устаревшее действие)
+        '500':
+          description: Внутренняя ошибка Router/Engine
+
+  /health:
+    get:
+      summary: Проверка живости сервиса
+      responses:
+        '200':
+          description: OK
+
+components:
+  schemas:
+    SubmitRequest:
+      type: object
+      required: [action]
+      properties:
+        sessionId:
+          type: string
+          nullable: true
+          description: Идентификатор сессии. Может быть null для старта игры.
+        action:
+          type: string
+          description: Идентификатор действия (например, StartGame, Clicked, requestServer).
+        payload:
+          type: object
+          nullable: true
+          description: Данные действия (структура зависит от action).
+      additionalProperties: false
+
+    SubmitResponse:
+      type: object
+      description: |
+        Ответ может содержать:
+        - `state` (полное состояние), или
+        - `mergePatch` (JSON Merge Patch, RFC 7396), или
+        - `jsonPatch` (JSON Patch, RFC 6902).
+
+        Поле `updates` оставлено как deprecated-алиас для `mergePatch` для совместимости с ранними клиентами.
+      properties:
+        state:
+          type: object
+          nullable: true
+        mergePatch:
+          type: object
+          nullable: true
+        updates:
+          type: object
+          nullable: true
+          deprecated: true
+        jsonPatch:
+          type: array
+          items:
+            type: object
+            required: [op, path]
+            properties:
+              op: { type: string }
+              path: { type: string }
+              from: { type: string }
+              value: {}
+      additionalProperties: true
+

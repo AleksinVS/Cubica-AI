@@ -1,0 +1,226 @@
+id: CP_00072
+title: Antarctica — UI manifest + command/payload + пакет игры в games/ (F_00072)
+status: done
+owner: @todo
+role: implementer
+tasks:
+  - F_00072
+scope:
+  code:
+    - games/antarctica-nextjs-player/**
+    - games/antarctica/**
+    - SDK/shared/**
+    - SDK/react-sdk/**
+    - docs/architecture/schemas/**
+  docs:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00072_antarctica_ui_manifest_actions_and_game_package_(E_0020).md
+    - docs/tasks/ROADMAP.md
+    - PROJECT_STRUCTURE.md
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+    - docs/tasks/content-packs/PLAN.md
+links:
+  tasks:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00072_antarctica_ui_manifest_actions_and_game_package_(E_0020).md
+  related:
+    - docs/architecture/schemas/game-manifest.schema.json
+    - docs/architecture/schemas/ui-manifest.schema.json
+    - docs/architecture/schemas/ui-schema-concept.md
+    - games/antarctica-nextjs-player/README.md
+    - games/antarctica/scenario.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - games/**
+      - SDK/**
+      - docs/**
+      - draft/Antarctica/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Antarctica — UI manifest + command/payload + пакет игры в games/
+
+  Этот ExecPlan — живой документ и должен поддерживаться в полном соответствии с `docs/tasks/content-packs/PLAN.md` на каждом шаге реализации.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Surprises & Discoveries](#surprises--discoveries)
+  - [Decision Log](#decision-log)
+  - [Outcomes & Retrospective](#outcomes--retrospective)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+  - [Idempotence and Recovery](#idempotence-and-recovery)
+  - [Artifacts and Notes](#artifacts-and-notes)
+  - [Interfaces and Dependencies](#interfaces-and-dependencies)
+  - [Revision Note](#revision-note)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана разработчик сможет запустить `games/antarctica-nextjs-player` и открыть сценарий “Antarctica” из пакета игры в `games/antarctica/` так, чтобы:
+
+  1) логика и состояние игры загружались из логического манифеста (game manifest) `games/antarctica/game.manifest.json`;
+  2) UI загружался из UI‑манифеста (UI manifest) выбранного канала, минимум `games/antarctica/ui/web/ui.manifest.json` и `games/antarctica/ui/telegram/ui.manifest.json`;
+  3) UI‑события использовали единый протокол `command/payload` (без обратной совместимости с `proc/props`);
+  4) патчи состояния применялись как JSON Merge Patch (RFC 7396) по умолчанию, а JSON Patch (RFC 6902) использовался опционально;
+  5) метрики находились только по путям `state.public.metrics.*`;
+  6) `npm run lint` в `games/antarctica-nextjs-player` не был интерактивным и завершался успешно.
+
+  В результате “Antarctica” станет примером целевого разбиения game/ui манифестов и поддержки нескольких UI‑каналов, а каталог `games/templates` будет удалён как устаревший.
+
+  ## Progress
+
+  - [x] (2025-12-18T23:08:27+03:00) Прочитаны конспект обсуждения, фича F_00072, текущий плеер и схемы манифестов; выявлены расхождения контрактов (см. Surprises & Discoveries).
+  - [x] (2025-12-18T23:25:42+03:00) Создан пакет игры `games/antarctica/` и перенесён “источник истины” сценария в `games/antarctica/scenario.md` (в `draft/Antarctica/scenario.md` оставлена ссылка).
+  - [x] (2025-12-18T23:25:42+03:00) Созданы `games/antarctica/game.manifest.json` и UI manifests по каналам (`ui/web`, `ui/telegram`).
+  - [x] (2025-12-18T23:25:42+03:00) Плеер переписан под UI manifest: `findEntryPoint` читает `ui.screens`/`ui.entry_point`, рендер поддерживает дерево `children` и legacy `elements`.
+  - [x] (2025-12-18T23:25:42+03:00) Действия мигрированы на `command/payload` в SDK/shared и плеере (жёстко); локальные фикстуры обновлены.
+  - [x] (2025-12-18T23:25:42+03:00) Dev Router стаб обновляет `game.state.public.metrics.*` через Merge Patch; JSON Patch поддерживается опционально через `patchMode=jsonPatch`.
+  - [x] (2025-12-18T23:25:42+03:00) Добавлен eslint-конфиг в `games/antarctica-nextjs-player` (неинтерактивный `next lint`).
+  - [x] (2025-12-18T23:25:42+03:00) Удалён `games/templates`, обновлены `PROJECT_STRUCTURE.md`, `docs/tasks/ROADMAP.md` и связанные задачи/ExecPlans, чтобы ссылки не указывали на удалённые файлы.
+
+  ## Surprises & Discoveries
+
+  - Observation: `docs/architecture/schemas/ui-schema-concept.md` и ExecPlan используют `entry_point` в UI‑манифесте, но `docs/architecture/schemas/ui-manifest.schema.json` сейчас не содержит `entry_point`.
+    Evidence: `ui-manifest.schema.json` требует только `meta` и `screens`, а `ui-schema-concept.md` показывает пример `ui.entry_point`.
+
+  - Observation: `data/fixtures/games/antarctica.json` ссылался на `games/templates/antarctica/manifest.json`, но в репозитории не было каталога `games/templates/antarctica/`.
+    Evidence: исправлено — `data/fixtures/games/antarctica.json` теперь ссылается на `games/antarctica/game.manifest.json`, а каталог `games/templates` удалён.
+
+  ## Decision Log
+
+  - Decision: Плеер хранит “view model” как единый объект `{ ui, game }`.
+    Rationale: Упростить загрузку и рендер на первом этапе миграции, чтобы не разделять два параллельных хранилища в React hook.
+    Date/Author: 2025-12-18 / user
+
+  - Decision: Протокол действий только `command/payload` без обратной совместимости.
+    Rationale: Убрать долг “двух протоколов”, привести код к действующим схемам манифестов.
+    Date/Author: 2025-12-18 / user
+
+  - Decision: Метрики живут только в `game.state.public.metrics.*`.
+    Rationale: Единый контракт для Router/Engine, UI биндинга и патчей.
+    Date/Author: 2025-12-18 / user
+
+  - Decision: UI manifests разделяются по каналам (web/telegram) сразу.
+    Rationale: Закладываем многоканальность как базовую возможность платформы.
+    Date/Author: 2025-12-18 / user
+
+  - Decision: В `ui-manifest.schema.json` добавляется `entry_point`, чтобы UI‑манифест мог быть самодостаточным (эквивалент секции `ui` в game manifest).
+    Rationale: ExecPlan и `ui-schema-concept.md` требуют явного стартового экрана; без `entry_point` плееру придётся вводить неописанные эвристики.
+    Date/Author: 2025-12-18 / codex
+
+  ## Outcomes & Retrospective
+
+  Реализован пакет игры `games/antarctica/` (game manifest + UI manifests + сценарий), а плеер `games/antarctica-nextjs-player` обновлён под UI manifest и протокол действий `command/payload`.
+  Валидация схем (Ajv) проходит для game manifest и обоих UI manifests. `npm run lint` и `npm run build` для `games/antarctica-nextjs-player` проходят успешно.
+
+  ## Context and Orientation
+
+  Термины:
+
+  - Viewer (плеер/просмотрщик) — клиентский модуль, который отображает UI‑манифест (UI manifest) выбранного канала и связывает UI‑события с командами Presenter.
+  - Game manifest — логический JSON‑манифест игры (метаданные, движок, начальное состояние, реестр действий).
+  - UI manifest — JSON‑описание экранов и дерева UI‑компонентов для конкретного канала (web/telegram).
+  - JSON Merge Patch (RFC 7396) — патч состояния как “частичный объект”, который сливается с текущим состоянием.
+  - JSON Patch (RFC 6902) — патч состояния как список операций по путям (JSON Pointer).
+
+  Текущее состояние репозитория, важное для работы:
+
+  - Плеер находится в `games/antarctica-nextjs-player/` и уже использует SDK (`@cubica/react-sdk`, `@cubica/sdk-shared`).
+  - В плеере есть локальные фикстуры и dev‑Router стаб (`src/app/api/submit/route.js`), но они ориентированы на старый формат данных.
+  - В `docs/architecture/schemas/` уже есть схемы game manifest и UI manifest, и они используют протокол действий `command/payload`.
+
+  ## Plan of Work
+
+  1) Подготовить пакет игры `games/antarctica/`:
+     - Перенести `draft/Antarctica/scenario.md` в `games/antarctica/scenario.md` (это “источник истины” сценария).
+     - Создать `games/antarctica/game.manifest.json` как логический манифест.
+     - Создать UI manifests:
+       - `games/antarctica/ui/web/ui.manifest.json`
+       - `games/antarctica/ui/telegram/ui.manifest.json`
+
+  2) Привести SDK/shared и плеер к протоколу действий `command/payload`:
+     - Обновить типы действий в `SDK/shared/src/actions.ts`.
+     - Обновить компоненты `SDK/shared/src/components/*` (кнопка, карточка, переменные), чтобы они диспатчили `command/payload`.
+     - Обновить `games/antarctica-nextjs-player/src/app/sdk/presenter.js`, чтобы он принимал `command/payload` и отправлял `ViewCommand` в data source.
+
+  3) Переписать рендерер в плеере под UI manifest:
+     - Заменить логику `findEntryPoint` на чтение `ui.screens` и `ui.entry_point`.
+     - Заменить обход `elements`-map на обход массива `children`.
+     - На первом этапе хранить “view model” единым объектом `state = { ui, game }`, чтобы `useViewState` продолжал быть единой точкой состояния.
+
+  4) Обновить dev‑Router стаб и обработку патчей:
+     - Возвращать Merge Patch, который обновляет `game.state.public.metrics.*`.
+     - Опционально поддержать JSON Patch в ответах (для проверки ветки).
+
+  5) Добавить минимальный ESLint конфиг в `games/antarctica-nextjs-player`, чтобы `npm run lint` проходил без интерактивных запросов.
+
+  6) Удалить `games/templates` и обновить документацию:
+     - `PROJECT_STRUCTURE.md` (структура `games/`).
+     - `docs/tasks/ROADMAP.md`, эпик E_0020 и эту фичу.
+     - При необходимости `docs/architecture/PROJECT_ARCHITECTURE.md`, если описание `games/`/viewers меняется.
+
+  ## Concrete Steps
+
+  Команды выполнять из `c:\\Work\\Tallent\\Cubica`.
+
+  1) Проверка схем (пример):
+
+       npx ajv-cli@5.0.0 validate -s docs/architecture/schemas/game-manifest.schema.json -d games/antarctica/game.manifest.json
+       npx ajv-cli@5.0.0 validate -s docs/architecture/schemas/ui-manifest.schema.json -d games/antarctica/ui/web/ui.manifest.json
+
+  2) Проверка плеера:
+
+       cd games/antarctica-nextjs-player
+       npm install
+       npm run lint
+       npm run dev
+
+     Ожидание: `npm run lint` не задаёт вопросов, dev‑сервер стартует, а в браузере сценарий открывается по параметрам, описанным в README плеера (обновить README по факту).
+
+  ## Validation and Acceptance
+
+  - UI “Antarctica” отображается из `games/antarctica/ui/web/ui.manifest.json`.
+  - Клик по элементу с `actions.onClick.command` приводит к вызову presenter и (в remote‑режиме) отправке команды через Router client.
+  - Merge Patch обновляет `game.state.public.metrics.score` и это видно в UI.
+  - Валидация `ajv-cli` проходит для game manifest и обоих UI manifests.
+  - `npm run lint` проходит без интерактива.
+
+  ## Idempotence and Recovery
+
+  - Создание файлов манифестов идемпотентно: повторные правки не требуют миграций, пока сохраняется валидность схем.
+  - Если рефакторинг рендера ломает отображение, временно переключить плеер на старые фикстуры и восстановить совместимость через `git checkout -- <file>`.
+
+  ## Artifacts and Notes
+
+  Ожидаемые новые/обновлённые артефакты:
+
+  - `games/antarctica/scenario.md`
+  - `games/antarctica/game.manifest.json`
+  - `games/antarctica/ui/web/ui.manifest.json`
+  - `games/antarctica/ui/telegram/ui.manifest.json`
+  - Обновления в `SDK/shared/src/actions.ts` и компонентах.
+  - Обновления в `games/antarctica-nextjs-player/src/app/*` (рендерер, presenter, loaders).
+  - Удаление `games/templates/` и правки документации структуры.
+
+  ## Interfaces and Dependencies
+
+  - Схемы:
+    - `docs/architecture/schemas/game-manifest.schema.json`
+    - `docs/architecture/schemas/ui-manifest.schema.json`
+  - Плеер использует:
+    - `@cubica/react-sdk` для загрузки/патчей состояния (Merge Patch и JSON Patch).
+    - `@cubica/sdk-shared` как библиотеку UI‑компонентов.
+  - Действия UI:
+    - `actions.onClick.command` (строка) и `actions.onClick.payload` (объект) — единственный поддерживаемый формат.
+
+  ## Revision Note
+
+  - 2025-12-18: добавлены обнаруженные расхождения (schema vs concept), и зафиксировано решение добавить `entry_point` в `ui-manifest.schema.json`.
+  ```

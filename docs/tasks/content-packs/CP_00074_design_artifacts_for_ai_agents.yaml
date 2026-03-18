@@ -1,0 +1,199 @@
+# Дизайн-артефакты для ИИ-агентов в UI-манифесте
+
+**Status: done**
+
+Данный ExecPlan — живой документ. Секции `Progress`, `Surprises & Discoveries`, `Decision Log` и `Outcomes & Retrospective` должны обновляться по мере выполнения работ.
+
+Правила ведения ExecPlan описаны в `docs/tasks/content-packs/PLAN.md`.
+
+## Purpose / Big Picture
+
+После реализации этой фичи ИИ-агенты смогут эффективно работать с дизайн-артефактами игр:
+- Понимать структуру и элементы макетов по JSON-описаниям
+- Генерировать или модифицировать изображения, используя сохранённые промпты
+- Отслеживать эволюцию дизайна от концепта до финального asset
+- Извлекать style-токены для консистентной генерации UI-кода
+
+**Как проверить результат:**
+1. Открыть `docs/architecture/schemas/design-artifact.schema.json` — схема должна быть валидной JSON Schema Draft-07
+2. Открыть примеры в `docs/architecture/schemas/examples/design-artifact-*.json` — они должны валидироваться против схемы
+3. Проверить, что `ui-manifest.schema.json` содержит секцию `design_artifacts`
+
+## Progress
+
+- [x] (2026-01-17 10:00Z) Изучен контекст: ADR-013, ADR-016, текущие схемы
+- [x] (2026-01-17 10:30Z) Создан ExecPlan
+- [x] (2026-01-17 11:00Z) Создать `design-artifact.schema.json` (гибкая схема)
+- [x] (2026-01-17 11:15Z) Создать `design-history.schema.json`
+- [x] (2026-01-17 11:30Z) Обновить `ui-manifest.schema.json` с секцией `design_artifacts`
+- [x] (2026-01-17 11:45Z) Обновить `manifest-structure.md`
+- [x] (2026-01-17 12:00Z) Обновить `PROJECT_ARCHITECTURE.md`
+- [x] (2026-01-17 12:15Z) Создать примеры:
+  - [x] `design-artifact-concept.json`
+  - [x] `design-artifact-mockup.json`
+  - [x] `design-history.json`
+- [x] (2026-01-17 12:30Z) Создать структуру `games/antarctica/design/`
+- [x] (2026-01-17 12:45Z) Обновить статус ADR-016 на Accepted
+- [x] (2026-01-17 13:00Z) Обновить ROADMAP.md и фичу F_00074
+
+## Surprises & Discoveries
+
+- Observation: Схема `regions` оказалась достаточно гибкой для описания сложных иерархий UI-элементов
+  Evidence: Рекурсивная структура `elements` внутри `region` позволяет описывать вложенные компоненты
+
+- Observation: Паттерн `source_ref` из ADR-013 отлично подходит для ссылок на дизайн-артефакты
+  Evidence: Структура `designArtifactRef` использует тот же подход с полем `file`
+
+## Decision Log
+
+- Decision: Схемы проектируются максимально гибкими с использованием `additionalProperties: true` для основных секций
+  Rationale: Точное содержание артефактов пока не известно, схема должна позволять расширения без нарушения валидации
+  Date/Author: 2026-01-17, AI Agent
+
+- Decision: Секция `regions` использует рекурсивную структуру для вложенных элементов
+  Rationale: Позволяет описывать сложные иерархии UI-элементов на изображении
+  Date/Author: 2026-01-17, AI Agent
+
+- Decision: Добавлены два дополнительных типа связей: `references` и `extends`
+  Rationale: Расширяют возможности графа связей для более сложных сценариев
+  Date/Author: 2026-01-17, AI Agent
+
+- Decision: Секция `layouts` в ui-manifest помечена как DEPRECATED
+  Rationale: Новые проекты должны использовать `design_artifacts`, но старые манифесты остаются совместимыми
+  Date/Author: 2026-01-17, AI Agent
+
+## Outcomes & Retrospective
+
+### Что было сделано
+
+1. **Создана гибкая JSON Schema для дизайн-артефактов** (`design-artifact.schema.json`)
+   - 7 типов артефактов: reference, concept, flowchart, wireframe, storyboard, mockup, asset
+   - Секции: image, generation, regions, style_tokens, meta
+   - Рекурсивная структура для вложенных элементов в regions
+
+2. **Создана JSON Schema для истории версий** (`design-history.schema.json`)
+   - Реестр артефактов с историей версий
+   - Граф связей с 8 типами: inspires, structures, animates, refines, extracts, replaces, references, extends
+
+3. **Обновлён UI-манифест**
+   - Добавлена секция `design_artifacts` с registry и source_ref
+   - Добавлено поле `design_artifact_id` в screens и uiComponent
+   - Секция `layouts` помечена как DEPRECATED
+
+4. **Создана документация**
+   - Раздел "Design Artifacts" в manifest-structure.md
+   - Описание ADR-016 в PROJECT_ARCHITECTURE.md
+   - Три примера: concept, mockup, history
+
+5. **Подготовлена структура для Antarctica**
+   - Создан каталог design/ с подкаталогами
+   - Создан пустой design-history.json
+
+### Уроки
+
+- Гибкие схемы с `additionalProperties: true` позволяют расширять формат без breaking changes
+- Рекурсивные структуры в JSON Schema требуют аккуратного использования `$ref`
+- Паттерн `source_ref` хорошо масштабируется на разные типы внешних ресурсов
+
+### Что осталось (out of scope)
+
+- CLI для валидации описаний
+- Инструменты автоматической разметки (CV-модели)
+- Миграция существующих layouts
+- Интеграция с Game Editor
+
+## Context and Orientation
+
+Проект Cubica использует JSON-манифесты для описания игр. Согласно ADR-013, манифесты разделены на логические (game-manifest) и UI-манифесты (ui-manifest).
+
+ADR-016 определяет архитектуру хранения дизайн-артефактов:
+- 7 типов артефактов: reference, concept, flowchart, wireframe, storyboard, mockup, asset
+- Паттерн `source_ref` для ссылок на внешние файлы
+- Структура каталогов `design/` рядом с манифестом
+- Файлы `*.design.json` с описаниями артефактов
+
+Ключевые файлы:
+- `docs/architecture/schemas/ui-manifest.schema.json` — текущая схема UI-манифеста
+- `docs/architecture/schemas/manifest-structure.md` — документация структуры манифестов
+- `docs/architecture/adrs/016-design-artifacts-in-ui-manifest.md` — ADR с решением
+
+## Plan of Work
+
+1. **Создать `design-artifact.schema.json`** — гибкая схема для описания артефакта:
+   - Обязательные поля: `id`, `type`, `name`
+   - Опциональные секции: `image`, `generation`, `regions`, `style_tokens`, `meta`
+   - Все секции допускают дополнительные свойства для расширяемости
+
+2. **Создать `design-history.schema.json`** — схема истории версий:
+   - Реестр артефактов с версиями
+   - Граф связей между артефактами
+
+3. **Обновить `ui-manifest.schema.json`**:
+   - Добавить секцию `design_artifacts` с полями `history`, `base_path`, `registry`
+   - Добавить поле `design_artifact_id` в screens и uiComponent
+
+4. **Обновить документацию**:
+   - `manifest-structure.md` — раздел про дизайн-артефакты
+   - `PROJECT_ARCHITECTURE.md` — ссылка на ADR-016
+
+5. **Создать примеры**:
+   - `design-artifact-concept.json` — пример концепта
+   - `design-artifact-mockup.json` — пример детального макета
+   - `design-history.json` — пример истории версий
+
+6. **Пилотное применение Antarctica**:
+   - Создать структуру каталогов в `games/antarctica/design/`
+   - Добавить placeholder-файлы
+
+## Concrete Steps
+
+Рабочий каталог: `c:\Work\Tallent\Cubica`
+
+1. Создать файл `docs/architecture/schemas/design-artifact.schema.json`
+2. Создать файл `docs/architecture/schemas/design-history.schema.json`
+3. Обновить `docs/architecture/schemas/ui-manifest.schema.json`
+4. Обновить `docs/architecture/schemas/manifest-structure.md`
+5. Обновить `docs/architecture/PROJECT_ARCHITECTURE.md`
+6. Создать примеры в `docs/architecture/schemas/examples/`
+7. Создать структуру `games/antarctica/design/`
+8. Обновить `docs/architecture/adrs/016-design-artifacts-in-ui-manifest.md` — статус Accepted
+9. Обновить `docs/tasks/ROADMAP.md` и фичу F_00074
+
+## Validation and Acceptance
+
+1. Все JSON Schema валидны по Draft-07
+2. Примеры проходят валидацию против схем
+3. Документация содержит описание всех 7 типов артефактов
+4. Документация содержит описание связей между артефактами
+5. Структура `design/` создана для Antarctica
+
+## Idempotence and Recovery
+
+Все шаги идемпотентны — повторное выполнение перезаписывает файлы без побочных эффектов.
+
+## Artifacts and Notes
+
+**Созданные файлы:**
+- `docs/architecture/schemas/design-artifact.schema.json`
+- `docs/architecture/schemas/design-history.schema.json`
+- `docs/architecture/schemas/examples/design-artifact-concept.json`
+- `docs/architecture/schemas/examples/design-artifact-mockup.json`
+- `docs/architecture/schemas/examples/design-history.json`
+- `games/antarctica/design/design-history.json`
+- `games/antarctica/design/README.md`
+- `games/antarctica/design/*/`.gitkeep (7 подкаталогов)
+
+**Обновлённые файлы:**
+- `docs/architecture/schemas/ui-manifest.schema.json`
+- `docs/architecture/schemas/manifest-structure.md`
+- `docs/architecture/PROJECT_ARCHITECTURE.md`
+- `docs/architecture/adrs/016-design-artifacts-in-ui-manifest.md`
+- `docs/tasks/ROADMAP.md`
+- `docs/tasks/features/F_00074_design_artifacts_for_ai_agents_(E_0010).md`
+
+## Interfaces and Dependencies
+
+- JSON Schema Draft-07
+- Паттерн `source_ref` из ADR-013
+- Типы артефактов из ADR-016: reference, concept, flowchart, wireframe, storyboard, mockup, asset
+- Типы связей из ADR-016: inspires, structures, animates, refines, extracts, replaces, references, extends

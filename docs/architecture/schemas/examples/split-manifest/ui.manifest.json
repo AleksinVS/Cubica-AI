@@ -1,0 +1,354 @@
+{
+  "$schema": "https://cubica.platform/schemas/ui-manifest.v1.json",
+  "meta": {
+    "id": "escape-room-demo:web",
+    "version": "1.0.0",
+    "schema_version": "1.0",
+    "min_viewer_version": "0.5.0",
+    "game_id": "escape-room-demo",
+    "game_manifest_version": "1.0.0",
+    "channel": "web",
+    "author": "Cubica Platform Team"
+  },
+  "theme": {
+    "colors": {
+      "primary": "#4A3728",
+      "secondary": "#8B7355",
+      "background": "#1A1A1A",
+      "surface": "#2D2D2D",
+      "text": "#E8E0D5",
+      "accent": "#D4AF37",
+      "error": "#CF6679"
+    },
+    "typography": {
+      "fontFamily": "'Crimson Text', Georgia, serif",
+      "headingFontFamily": "'Cinzel', 'Times New Roman', serif",
+      "baseFontSize": "16px"
+    }
+  },
+  "entry_point": "intro",
+  "screens": {
+    "intro": {
+      "type": "screen",
+      "title": "Welcome",
+      "layout_id": "layout-intro",
+      "root": {
+        "type": "container",
+        "style": {
+          "flexDirection": "column",
+          "padding": "24px",
+          "gap": "16px",
+          "background": "{{theme.colors.background}}",
+          "height": "100vh"
+        },
+        "children": [
+          {
+            "type": "text",
+            "id": "intro-title",
+            "props": {
+              "variant": "h1",
+              "content": "{{screens.intro.title}}"
+            },
+            "style": {
+              "color": "{{theme.colors.accent}}",
+              "fontSize": "32px",
+              "fontWeight": "bold"
+            }
+          },
+          {
+            "type": "container",
+            "style": {
+              "flex": 1,
+              "padding": "16px",
+              "background": "{{theme.colors.surface}}",
+              "borderRadius": "8px"
+            },
+            "children": [
+              {
+                "type": "text",
+                "id": "intro-content",
+                "props": {
+                  "content": "{{screens.intro.content}}",
+                  "format": "markdown"
+                },
+                "style": {
+                  "color": "{{theme.colors.text}}",
+                  "fontSize": "18px"
+                }
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "style": {
+              "flexDirection": "row",
+              "gap": "12px",
+              "justifyContent": "center"
+            },
+            "children": [
+              {
+                "type": "button",
+                "id": "btn-start",
+                "props": {
+                  "label": "Enter the Mansion"
+                },
+                "style": {
+                  "background": "{{theme.colors.primary}}",
+                  "color": "{{theme.colors.text}}",
+                  "padding": "12px 24px",
+                  "borderRadius": "4px"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "move",
+                    "payload": {
+                      "destination": "main-hall"
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "game": {
+      "type": "screen",
+      "title": "Explore",
+      "layout_id": "layout-game",
+      "root": {
+        "type": "container",
+        "style": {
+          "flexDirection": "column",
+          "height": "100vh",
+          "background": "{{theme.colors.background}}"
+        },
+        "children": [
+          {
+            "type": "container",
+            "id": "header",
+            "style": {
+              "flexDirection": "row",
+              "padding": "12px 24px",
+              "background": "{{theme.colors.surface}}",
+              "justifyContent": "space-between",
+              "alignItems": "center"
+            },
+            "children": [
+              {
+                "type": "text",
+                "props": {
+                  "content": "{{state.public.current_room}}",
+                  "variant": "h2"
+                },
+                "style": {
+                  "color": "{{theme.colors.accent}}"
+                }
+              },
+              {
+                "type": "widget:inventory-badge",
+                "id": "inventory-badge",
+                "props": {
+                  "items": "{{state.public.inventory}}"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "open_inventory"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "main-content",
+            "style": {
+              "flex": 1,
+              "padding": "24px",
+              "gap": "16px"
+            },
+            "children": [
+              {
+                "type": "widget:room-view",
+                "id": "room-view",
+                "props": {
+                  "roomId": "{{state.public.current_room}}",
+                  "description": "{{current_room_description}}"
+                }
+              },
+              {
+                "type": "widget:chat-interface",
+                "id": "chat",
+                "props": {
+                  "placeholder": "What do you want to do?",
+                  "history": "{{chat_history}}"
+                },
+                "actions": {
+                  "onSubmit": {
+                    "command": "player_action",
+                    "payload": {
+                      "text": "{{input.value}}"
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "type": "container",
+            "id": "action-bar",
+            "style": {
+              "flexDirection": "row",
+              "padding": "12px 24px",
+              "gap": "8px",
+              "background": "{{theme.colors.surface}}"
+            },
+            "children": [
+              {
+                "type": "button",
+                "props": {
+                  "label": "Examine",
+                  "icon": "search"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "examine",
+                    "payload": {
+                      "target": "room"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "button",
+                "props": {
+                  "label": "Hint",
+                  "icon": "lightbulb"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "get_hint"
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "victory": {
+      "type": "screen",
+      "title": "Victory",
+      "root": {
+        "type": "container",
+        "style": {
+          "flexDirection": "column",
+          "padding": "48px",
+          "gap": "24px",
+          "background": "{{theme.colors.background}}",
+          "height": "100vh",
+          "justifyContent": "center",
+          "alignItems": "center"
+        },
+        "children": [
+          {
+            "type": "text",
+            "props": {
+              "content": "{{screens.victory.title}}",
+              "variant": "h1"
+            },
+            "style": {
+              "color": "{{theme.colors.accent}}",
+              "fontSize": "48px"
+            }
+          },
+          {
+            "type": "text",
+            "props": {
+              "content": "{{screens.victory.content}}"
+            },
+            "style": {
+              "color": "{{theme.colors.text}}",
+              "fontSize": "20px",
+              "maxWidth": "600px"
+            }
+          },
+          {
+            "type": "button",
+            "props": {
+              "label": "Play Again"
+            },
+            "actions": {
+              "onClick": {
+                "command": "restart_game"
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "layouts": {
+    "layout-intro": {
+      "target": {
+        "kind": "screen",
+        "id": "intro"
+      },
+      "image": "assets/layouts/intro-screen.png",
+      "spec": {
+        "grid": "1fr",
+        "zones": [
+          {
+            "name": "title",
+            "position": "top",
+            "height": "auto"
+          },
+          {
+            "name": "content",
+            "position": "center",
+            "flex": 1
+          },
+          {
+            "name": "actions",
+            "position": "bottom",
+            "height": "auto"
+          }
+        ]
+      },
+      "variant": "desktop",
+      "meta": {
+        "author": "Design Team",
+        "created": "2026-01-10"
+      }
+    },
+    "layout-game": {
+      "target": {
+        "kind": "screen",
+        "id": "game"
+      },
+      "image": "assets/layouts/game-screen.png",
+      "spec": {
+        "grid": "1fr",
+        "zones": [
+          {
+            "name": "header",
+            "position": "top",
+            "height": "60px"
+          },
+          {
+            "name": "main",
+            "position": "center",
+            "flex": 1,
+            "children": ["room-view", "chat"]
+          },
+          {
+            "name": "action-bar",
+            "position": "bottom",
+            "height": "60px"
+          }
+        ]
+      },
+      "variant": "desktop"
+    }
+  }
+}

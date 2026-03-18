@@ -1,0 +1,173 @@
+id: CP_00042
+title: Session Recovery Mechanism (F_00042)
+status: in_progress
+owner: AI Agent
+role: backend
+tasks:
+  - F_00042
+scope:
+  docs:
+    - docs/architecture/adrs/005-session-persistence.md
+    - docs/architecture/backend/session-persistence.md
+    - docs/tasks/features/F_00042_session_recovery.md
+  services:
+    - services/router/**
+links:
+  tasks:
+    - docs/tasks/features/F_00042_session_recovery.md
+    - docs/tasks/epics/E_0030_backend_architecture_design.md
+  related:
+    - PROJECT_OVERVIEW.md
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - docs/**
+      - services/router/**
+exec_plan: |
+  ```md
+  # ExecPlan: Session Recovery Mechanism (F_00042)
+
+  This ExecPlan is maintained according to `docs/tasks/content-packs/PLAN.md` and describes how to design and implement a basic session recovery mechanism on top of ADR-005.
+
+  ## Purpose / Big Picture
+
+  After this plan is complete, Cubica will have a documented and partially implemented mechanism that:
+  - prevents sessions from getting stuck due to long-running or failed actions,
+  - defines how to detect and release "dead" locks using a time-to-live (TTL),
+  - ensures that, after a crash or timeout, the system can resume from the last consistent state and inform the user with a clear error instead of hanging forever.
+
+  User-visible behavior: if the engine or router crashes during a turn, the session will not hang indefinitely. A subsequent request will either be processed normally from the last saved state or will return a clear error message that the last turn failed and the session has been recovered.
+
+  ## Progress
+
+  - [x] (2025-12-01 01:00Z) Created ExecPlan CP_00042 for Session Recovery.
+  - [x] (2025-12-01 01:10Z) Expanded F_00042 feature with structured goals, scope and tasks.
+  - [x] (2025-12-01 01:20Z) Updated ADR-005 with recovery strategy (checkpointing, TTL, dead lock detection).
+  - [x] (2025-12-01 01:40Z) Added Router contracts for lock TTL and recovery (interfaces and in-memory example).
+  - [ ] (2025-12-01 01:50Z) Synced architecture docs, ROADMAP and feature checklists; set this ExecPlan to done.
+
+  ## Surprises & Discoveries
+
+  - Observation: There is no existing Router implementation; only directory scaffolding exists.
+    Evidence: `services/router/src` and `services/router/tests` contain only placeholders (and previously added multiplayer contracts).
+
+  ## Decision Log
+
+  - Decision: Implement recovery behavior first as contracts (TypeScript interfaces) and simple in-memory examples in `services/router`, without wiring a real database or message queue.
+    Rationale: The repo does not yet include a concrete Router service; establishing clear interfaces aligned with ADR-005 and ADR-011 is the safest way to move the architecture forward.
+    Date/Author: 2025-12-01, AI Agent.
+
+  ## Outcomes & Retrospective
+
+  At this stage:
+  - ADR-005 has been extended with a Session Recovery section describing checkpointing and TTL-based dead lock detection.
+  - F_00042 has been aligned with the feature template and linked to this ExecPlan.
+  - Router now contains contracts for lock management and recovery (`sessionRecovery.ts`) with an in-memory example and smoke-test.
+
+  After final sync of documentation and checklists, this section should be updated with a short summary of how to continue the implementation in a real Router service.
+
+  ## Context and Orientation
+
+  Repository structure:
+  - `PROJECT_OVERVIEW.md` — high-level description of Cubica.
+  - `PROJECT_STRUCTURE.md` — actual directory layout.
+  - `docs/architecture/PROJECT_ARCHITECTURE.md` — overview of services and ADRs.
+  - `docs/architecture/adrs/005-session-persistence.md` — ADR describing Session State Persistence (PostgreSQL + pessimistic locking).
+  - `docs/architecture/backend/session-persistence.md` — detailed doc with diagrams and schema for `game_sessions`.
+  - `docs/tasks/features/F_00042_session_recovery.md` — current feature description for Session Recovery.
+  - `services/router/` — future home of request routing, locking and recovery logic. Currently it contains only scaffolding and contracts.
+
+  Current state:
+  - ADR-005 defines pessimistic locking and single-row JSONB state in `game_sessions`.
+  - ADR-011 (multiplayer) extends this with event queue and state versioning (`state_version`, `last_event_sequence`).
+  - F_00042 asks for checkpointing, TTL-based dead lock detection and ADR-005 update, but details are not yet described.
+
+  ## Plan of Work
+
+  1. Refine F_00042 feature file:
+     - Convert it to the structured template used by other features (YAML header, TOC, sections for goals, scope, tasks, acceptance criteria, DoD).
+     - Keep all text in Russian and explain non-obvious terms (checkpointing, TTL) in simple language.
+  2. Extend ADR-005 (Session State Persistence):
+     - Add a new section describing the Session Recovery strategy on top of pessimistic locking.
+     - Define what "checkpointing" means in this architecture: saving a consistent snapshot of state before dangerous operations (LLM calls and external IO).
+     - Describe lock TTL and dead lock detection:
+       - how long a session may stay locked,
+       - how to detect a "dead" lock (e.g. lock held without progress for longer than TTL),
+       - how to safely release it.
+     - Align the field naming in `game_sessions` with ADR-011 (use `state_version` instead of a generic `version`, mention `last_event_sequence` as optional extension).
+  3. Add Router-side contracts for locks and recovery:
+     - Create a new module in `services/router/src/` (e.g. `sessionRecovery.ts`) that defines:
+       - `SessionLock` structure (session id, lock owner, acquiredAt, ttlMs).
+       - `SessionLockManagerPort` interface (acquire, refresh, release, detectExpired).
+       - `SessionRecoveryServicePort` interface that uses the lock manager and session state repository to:
+         - detect sessions stuck in processing,
+         - mark failed actions and unlock the session,
+         - provide a recovery summary to the caller.
+     - Add a simple in-memory implementation and a small smoke-test in `services/router/tests/` to illustrate the flow.
+  4. Synchronize documentation:
+     - Update `docs/architecture/backend/session-persistence.md` to mention:
+       - lock TTL,
+       - detection and handling of long-running actions,
+       - interaction points with Router’s recovery logic.
+     - Check `docs/architecture/PROJECT_ARCHITECTURE.md` for references to ADR-005 and mention that it now also covers recovery.
+     - Ensure F_00042 and this ExecPlan are cross-linked and their statuses reflect reality.
+
+  ## Concrete Steps
+
+  1. Feature refinement:
+     - Edit `docs/tasks/features/F_00042_session_recovery.md`:
+       - Add YAML metadata (id, title, status, owner, epic, tags, links).
+       - Add a small table of contents.
+       - Expand tasks into clear bullet points that map to ADR changes and Router contracts.
+  2. ADR-005 update:
+     - Edit `docs/architecture/adrs/005-session-persistence.md`:
+       - Add a new section "Session Recovery" (in Russian) that:
+         - defines checkpointing,
+         - explains TTL-based dead lock detection,
+         - clarifies how a session is unlocked and what the user sees after recovery.
+       - Adjust the schema description to use `state_version` instead of `version` and mention compatibility with ADR-011 for `last_event_sequence`.
+  3. Router contracts:
+     - Create `services/router/src/sessionRecovery.ts` with TypeScript interfaces for:
+       - `SessionLock`, `SessionLockManagerPort`, `SessionRecoveryServicePort`.
+     - Create `services/router/tests/sessionRecovery.test.ts`:
+       - implement a trivial in-memory lock manager with TTL,
+       - simulate a lock acquisition, expiration and recovery,
+       - throw errors if expectations are not met (so future test runners can catch regressions).
+  4. Documentation sync:
+     - Update `docs/architecture/backend/session-persistence.md` to mention recovery and TTL.
+     - Verify `docs/tasks/ROADMAP.md` still lists F_00042 under the correct epic and adjust status if needed later.
+     - Update this ExecPlan’s `Progress`, `Decision Log`, and `Outcomes` as work advances.
+
+  ## Validation and Acceptance
+
+  The work is considered accepted when:
+  - F_00042 has a structured feature document with clear goals, tasks and criteria.
+  - ADR-005 explicitly describes:
+    - how checkpointing is handled,
+    - how lock TTL and dead lock detection work conceptually,
+    - how a user-facing error is produced when a turn fails.
+  - Router contains reusable contracts for lock and recovery handling that align with ADR-005 (even if no real DB is wired yet).
+  - `docs/architecture/backend/session-persistence.md` and `docs/architecture/PROJECT_ARCHITECTURE.md` are consistent with the updated ADR-005.
+
+  ## Idempotence and Recovery
+
+  - Editing Markdown and YAML files is safe to repeat; in case of mistakes, `git diff` can be used to revert specific changes.
+  - The new TypeScript interfaces in Router are additive and do not affect any existing runtime, since Router has no current implementation.
+  - The in-memory tests are self-contained; they do not depend on external services or databases.
+
+  ## Artifacts and Notes
+
+  At completion, this ExecPlan should point to:
+  - Updated ADR: `docs/architecture/adrs/005-session-persistence.md`.
+  - Updated backend architecture doc: `docs/architecture/backend/session-persistence.md`.
+  - Refined feature: `docs/tasks/features/F_00042_session_recovery.md`.
+  - Router contracts: `services/router/src/sessionRecovery.ts` and tests in `services/router/tests/sessionRecovery.test.ts`.
+
+  ## Interfaces and Dependencies
+
+  - No new external libraries are required.
+  - All changes are limited to documentation and in-repo TypeScript contracts under `services/router`.
+  - The design must remain compatible with ADR-011 (multiplayer) and future Redis integration (F_00062).
+  ```

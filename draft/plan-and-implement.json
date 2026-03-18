@@ -1,0 +1,6 @@
+{"Plan": {
+        "prompt": "Research the codebase and make a detailed implementation plan for the user's  request: $prompt"
+    },
+    "Implement": {"prompt":"Implement the plan above."},
+    "Refactor":{"prompt":"Review all the changes that were made to the codebase. Make sure that the changes are correct and that the code is reagable and maintainable. Identify any issues or improvements that can be made and implement them."}
+}

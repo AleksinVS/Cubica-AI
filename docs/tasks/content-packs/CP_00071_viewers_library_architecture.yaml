@@ -1,0 +1,126 @@
+﻿# Архитектура библиотеки viewers и клиентских скриптов
+
+Этот ExecPlan — живой документ. Разделы Progress, Surprises & Discoveries, Decision Log и Outcomes & Retrospective должны обновляться по мере выполнения. Документ ведётся по правилам `docs/tasks/content-packs/PLAN.md`.
+
+## Оглавление
+
+- [Purpose / Big Picture](#purpose--big-picture)
+- [Progress](#progress)
+- [Surprises & Discoveries](#surprises--discoveries)
+- [Decision Log](#decision-log)
+- [Outcomes & Retrospective](#outcomes--retrospective)
+- [Context and Orientation](#context-and-orientation)
+- [Plan of Work](#plan-of-work)
+- [Concrete Steps](#concrete-steps)
+- [Validation and Acceptance](#validation-and-acceptance)
+- [Idempotence and Recovery](#idempotence-and-recovery)
+- [Artifacts and Notes](#artifacts-and-notes)
+- [Interfaces and Dependencies](#interfaces-and-dependencies)
+
+## Purpose / Big Picture
+
+Viewer (клиентский модуль, который читает UI‑манифест и отображает его пользователю) должен быть переиспользуемым и предсказуемым. После выполнения этого плана команда сможет однозначно определить, где лежат viewers, как игра выбирает нужный viewer, как проверяется совместимость и как безопасно подключать клиентские скрипты через проверку платформы. Результат подтверждается документами и ADR, а также синхронизацией задач в `docs/tasks/`.
+
+## Progress
+
+- [ ] (2025-12-19 12:09Z) Согласованы ключевые решения по размещению viewers, выбору viewer и политике клиентских скриптов.
+- [ ] (2025-12-19 12:09Z) Подготовлен и согласован ADR по библиотеке viewers и клиентским скриптам.
+- [ ] (2025-12-19 12:09Z) Обновлены архитектурные и проектные документы, ROADMAP и файл фичи.
+
+## Surprises & Discoveries
+
+Пока нет наблюдений. Раздел заполняется по мере работы.
+
+## Decision Log
+
+- Decision: viewers размещаются в `SDK/viewers/` как SDK‑пакеты, а игры в `games/*` содержат только контент и манифесты.
+  Rationale: viewers переиспользуются между играми и логически ближе к SDK, чем к игровому контенту.
+  Date/Author: 2025-12-19 / Agent.
+
+- Decision: выбор viewer задаётся в game manifest через поле `meta.viewer`, с проверкой совместимости по метаданным viewer.
+  Rationale: game manifest остаётся источником требований игры, а проверка совместимости становится формализованной.
+  Date/Author: 2025-12-19 / Agent.
+
+- Decision: клиентские скрипты разрешены только после проверки платформой; они получают доступ к DOM (Document Object Model — дерево элементов веб‑страницы) и не изолируются через iframe, оценка рисков отложена.
+  Rationale: требуется поддержка клиентских расширений уже сейчас, при этом контроль переносится в процедуру проверки и подписи.
+  Date/Author: 2025-12-19 / Agent.
+
+## Outcomes & Retrospective
+
+Раздел будет заполнен после завершения работ, с фиксацией итогов и найденных пробелов.
+
+## Context and Orientation
+
+Viewer — это клиентский модуль, который читает UI‑манифест (JSON‑описание игры) и отображает его пользователю. Game manifest — JSON‑описание логики и метаданных игры. SDK (Software Development Kit — набор библиотек и утилит) содержит общий код для клиентов. ADR (Architecture Decision Record — документ с зафиксированным архитектурным решением) фиксирует ключевые решения. Router — сервис, который принимает действия клиента и маршрутизирует их в движок. Presenter — слой, который связывает Model и View и формирует команды для UI. Sandbox (изолированное окружение выполнения кода с ограничениями) используется на сервере для исполнения скриптов. CSP (Content Security Policy — политика безопасности контента) ограничивает источники и виды выполняемого кода в браузере. DOM (Document Object Model — дерево элементов веб‑страницы) представляет интерфейс страницы. JSON Merge Patch — формат патча, где JSON с полями заменяет соответствующие значения, а `null` означает удаление. JSON Patch — список операций `add/replace/remove` по путям.
+
+В работе участвуют документы и каталоги: `docs/architecture/PROJECT_ARCHITECTURE.md`, `PROJECT_OVERVIEW.md`, `PROJECT_STRUCTURE.md`, `docs/architecture/adrs/`, `docs/architecture/schemas/`, `SDK/`, `games/`, `docs/tasks/features/F_00071_viewers_library_architecture_(E_0010).md` и `docs/tasks/ROADMAP.md`.
+
+## Plan of Work
+
+Сначала подготовить ADR, который зафиксирует архитектуру библиотеки viewers и политику клиентских скриптов, включая процедуру проверки, подписи и правила загрузки. Затем создать отдельный архитектурный документ, который описывает структуру каталога viewers, формат метаданных viewer, механизм выбора viewer, минимальные проверки, а также ограничения по безопасности и доступу к DOM. После этого обновить `docs/architecture/PROJECT_ARCHITECTURE.md` и `PROJECT_OVERVIEW.md`, чтобы они отражали новую архитектуру viewers и ссылались на новый документ. Если вводится новый каталог `SDK/viewers/`, добавить README для него и обновить `PROJECT_STRUCTURE.md`. В финале синхронизировать задачи: обновить файл фичи и ROADMAP, добавив ссылку на ExecPlan и ADR.
+
+## Concrete Steps
+
+1. В каталоге `c:\Work\Tallent\Cubica` найти существующие упоминания viewers и плееров:
+    rg -n "viewer|viewers|плеер|плееры" docs PROJECT_OVERVIEW.md PROJECT_STRUCTURE.md
+
+2. Создать ADR `docs/architecture/adrs/014-viewers-library-architecture.md` по шаблону `docs/architecture/adrs/000-template.md`, указав статус Proposed и включив решение о клиентских скриптах с доступом к DOM.
+
+3. Создать документ `docs/architecture/viewers-library.md` с оглавлением и разделами про размещение viewers, формат `viewer.json`, правила выбора viewer, проверки совместимости и процедуру проверки клиентских скриптов.
+
+4. Обновить `docs/architecture/PROJECT_ARCHITECTURE.md`, `PROJECT_OVERVIEW.md`, `PROJECT_STRUCTURE.md` и при необходимости `SDK/viewers/README.md`.
+
+5. Обновить `docs/tasks/features/F_00071_viewers_library_architecture_(E_0010).md` и `docs/tasks/ROADMAP.md`, добавив ссылки на ADR и ExecPlan.
+
+## Validation and Acceptance
+
+План считается выполненным, если:
+
+- существует ADR `docs/architecture/adrs/014-viewers-library-architecture.md` со статусом Proposed и описанием архитектуры viewers и политики клиентских скриптов;
+- создан документ `docs/architecture/viewers-library.md` с описанием размещения viewers, выбора viewer и процедуры проверки скриптов;
+- `docs/architecture/PROJECT_ARCHITECTURE.md`, `PROJECT_OVERVIEW.md` и `PROJECT_STRUCTURE.md` синхронизированы и не противоречат друг другу;
+- `docs/tasks/ROADMAP.md` и `docs/tasks/features/F_00071_viewers_library_architecture_(E_0010).md` содержат актуальные ссылки и статусы.
+
+## Idempotence and Recovery
+
+Все шаги относятся к документации и безопасны для повторного выполнения. Если правка оказалась некорректной, достаточно вернуть файл в исходное состояние и применить изменения заново. Для контроля использовать пофайловые изменения и проверку ссылок.
+
+## Artifacts and Notes
+
+Пример указания viewer в game manifest:
+
+    "meta": {
+      "viewer": {
+        "id": "web-default",
+        "version": "1.0.0",
+        "channel": "web"
+      }
+    }
+
+Пример метаданных viewer (`viewer.json`):
+
+    {
+      "id": "web-default",
+      "version": "1.0.0",
+      "supported_ui_schema_versions": ["1.0"],
+      "supported_game_schema_versions": ["1.0"],
+      "channels": ["web"],
+      "required_capabilities": ["actions.command_payload", "state.merge_patch"]
+    }
+
+Пример метаданных клиентского скрипта (пакет после проверки платформой):
+
+    {
+      "id": "client-graph-viz",
+      "version": "1.0.0",
+      "entry": "dist/index.js",
+      "sha256": "<hash>",
+      "capabilities": ["dom_access"],
+      "viewer_compat": ["web-default@^1.0.0"],
+      "review_status": "approved",
+      "signature": "<signature>"
+    }
+
+## Interfaces and Dependencies
+
+Viewer принимает UI‑манифест, game manifest и патчи состояния. Минимальный контракт действий — `command/payload` между Presenter и View. Базовый формат патчей состояния — JSON Merge Patch, с возможной поддержкой JSON Patch как расширения. Совместимость viewer определяется по метаданным `viewer.json` и полям `schema_version`/`min_engine_version` в game manifest. Клиентские скрипты загружаются только после проверки платформой и проверки подписи, доступны в реестре скриптов и исполняются с доступом к DOM без iframe. Ограничения по источникам кода и сетевым доступам должны быть описаны через CSP.

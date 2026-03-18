@@ -1,0 +1,25 @@
+{
+  "name": "@cubica/react-sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "React delivery channel for Cubica games.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {
+    "@cubica/sdk-core": "file:../core",
+    "@cubica/sdk-shared": "file:../shared"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "scripts": {
+    "build": "echo \"TODO: bundle with rollup\"",
+    "test": "echo \"TODO: add react-sdk tests\"",
+    "lint": "echo \"TODO: add lint rules\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

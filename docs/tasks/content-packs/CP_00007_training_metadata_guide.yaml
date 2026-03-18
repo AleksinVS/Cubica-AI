@@ -1,0 +1,252 @@
+id: CP_00007
+title: Training Metadata Usage Guide (F_00007)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00007
+scope:
+  code: []
+  docs:
+    - docs/architecture/training-metadata-usage-guide.md
+    - docs/architecture/adrs/012-training-metadata.md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00007_training_metadata_guide_(E_00001).md
+  related:
+    - docs/architecture/adrs/012-training-metadata.md
+    - games/antarctica/game.manifest.json
+tools:
+  - name: shell
+    allowed: [read, write]
+    dirs:
+      - docs/architecture/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Training Metadata Usage Guide
+
+  Этот ExecPlan — живой документ для создания руководства по обучающим метаданным.
+
+  ## Purpose / Big Picture
+
+  После выполнения плана:
+
+  1. Документ `training-metadata-usage-guide.md` объясняет использование training metadata
+  2. Приведены примеры отображения компетенций в UI
+  3. Описана интеграция с Game Engine
+  4. ADR-012 содержит ссылку на guide
+
+  ## Progress
+
+  - [ ] Создать training-metadata-usage-guide.md
+  - [ ] Документировать UI интеграцию
+  - [ ] Документировать Engine интеграцию
+  - [ ] Обновить ADR-012 со ссылкой
+
+  ## Context and Orientation
+
+  **ADR-012 (Training Metadata) описывает:**
+
+  - `meta.training.competencies` — список тренируемых компетенций
+  - `meta.training.format` — формат игры (single, single_team, multi)
+  - `assets.methodology` — методические материалы
+
+  **Проблема:**
+
+  Нет примеров, как эти данные используются:
+  - Как компетенции отображаются в каталоге игр?
+  - Как Engine формирует feedback на основе компетенций?
+  - Как генерируются аналитические отчеты?
+
+  ## Plan of Work
+
+  ### Milestone 1: Создание training-metadata-usage-guide.md
+
+  Создать файл `docs/architecture/training-metadata-usage-guide.md`:
+
+  ```markdown
+  # Руководство по использованию обучающих метаданных
+
+  ## Оглавление
+
+  - [1. Обзор](#1-обзор)
+  - [2. Структура Training Metadata](#2-структура-training-metadata)
+  - [3. UI интеграция](#3-ui-интеграция)
+  - [4. Engine интеграция](#4-engine-интеграция)
+  - [5. Аналитика](#5-аналитика)
+  - [6. Примеры](#6-примеры)
+
+  ## 1. Обзор
+
+  Training Metadata (ADR-012) позволяет описывать образовательные цели игры:
+  какие компетенции развиваются, для какой аудитории предназначена игра,
+  какие методические материалы доступны.
+
+  ## 2. Структура Training Metadata
+
+  ### 2.1. meta.training
+
+  ```json
+  {
+    "meta": {
+      "training": {
+        "competencies": [
+          {
+            "id": "communication",
+            "name": "Коммуникация",
+            "description": "Навыки эффективного общения"
+          },
+          {
+            "id": "decision-making",
+            "name": "Принятие решений",
+            "description": "Способность принимать обоснованные решения"
+          }
+        ],
+        "format": "single_team",
+        "target_audience": ["managers", "team-leads"],
+        "duration_minutes": 45
+      }
+    }
+  }
+  ```
+
+  ### 2.2. assets.methodology
+
+  ```json
+  {
+    "assets": {
+      "methodology": {
+        "participants": "methodology/participants-guide.md",
+        "facilitators": "methodology/facilitator-guide.md",
+        "debrief_questions": "methodology/debrief.md"
+      }
+    }
+  }
+  ```
+
+  ## 3. UI интеграция
+
+  ### 3.1. Карточка игры в каталоге
+
+  Компетенции отображаются как теги/бейджи:
+
+  ```tsx
+  // Пример React компонента
+  function GameCard({ game }) {
+    return (
+      <div className="game-card">
+        <h3>{game.meta.name}</h3>
+        <div className="competencies">
+          {game.meta.training.competencies.map(c => (
+            <Badge key={c.id} label={c.name} />
+          ))}
+        </div>
+        <div className="format">
+          <Icon name={game.meta.training.format} />
+          <span>{formatLabel(game.meta.training.format)}</span>
+        </div>
+      </div>
+    );
+  }
+  ```
+
+  ### 3.2. Фильтрация по компетенциям
+
+  Game Catalog позволяет фильтровать игры по компетенциям:
+
+  ```
+  GET /api/games?competency=communication&format=single_team
+  ```
+
+  ## 4. Engine интеграция
+
+  ### 4.1. Feedback на основе компетенций
+
+  Game Engine использует компетенции для формирования feedback:
+
+  ```
+  Промпт для LLM:
+  "Игрок выполнил действие X. Оцени, как это влияет на развитие
+  компетенции '{competency.name}': {competency.description}.
+  Дай конструктивную обратную связь."
+  ```
+
+  ### 4.2. Подсказки из методических материалов
+
+  ```javascript
+  // Engine загружает methodology при старте сессии
+  const facilitatorGuide = await loadAsset(game.assets.methodology.facilitators);
+
+  // Используется для формирования подсказок ведущему
+  const hint = await generateHint(facilitatorGuide, currentState);
+  ```
+
+  ## 5. Аналитика
+
+  ### 5.1. Структура отчета по сессии
+
+  ```json
+  {
+    "session_id": "sess_123",
+    "game_id": "antarctica",
+    "duration_minutes": 42,
+    "competency_scores": {
+      "communication": {
+        "initial": 0,
+        "final": 7,
+        "growth": 7,
+        "evidence": ["Успешно провел переговоры", "Четко формулировал задачи"]
+      },
+      "decision-making": {
+        "initial": 0,
+        "final": 5,
+        "growth": 5,
+        "evidence": ["Принял решение о эвакуации"]
+      }
+    }
+  }
+  ```
+
+  ### 5.2. Агрегированные метрики
+
+  Metadata DB хранит агрегированные данные:
+  - Средний прирост компетенций по играм
+  - Корреляция между компетенциями и успешностью
+  - Рекомендации игр на основе gap analysis
+
+  ## 6. Примеры
+
+  ### 6.1. Полный пример манифеста с training metadata
+
+  См. `games/antarctica/game.manifest.json` — реальный пример игры
+  с обучающими метаданными.
+
+  ### 6.2. Пример методических материалов
+
+  См. `games/antarctica/methodology/` — структура методических материалов.
+  ```
+
+  ### Milestone 2: Обновление ADR-012
+
+  Добавить в ADR-012 раздел "Related Documents":
+
+  ```markdown
+  ## Related Documents
+
+  - [Training Metadata Usage Guide](../training-metadata-usage-guide.md)
+  ```
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. `training-metadata-usage-guide.md` содержит полные примеры
+  2. Документированы UI, Engine и аналитика интеграции
+  3. ADR-012 содержит ссылку на guide
+  4. Примеры соответствуют реальным данным в games/antarctica/
+
+  Критерий успеха: разработчики понимают, как использовать training metadata.
+  ```

@@ -1,0 +1,351 @@
+{
+  "$schema": "https://cubica.platform/schemas/game-manifest.v1.json",
+  "meta": {
+    "id": "team-survival-demo",
+    "version": "1.0.0",
+    "name": "Team Survival: Zombie Outbreak",
+    "description": "A cooperative multiplayer game where 2-4 players must work together to survive waves of zombies. Each player has a unique role with special abilities.",
+    "author": "Cubica Platform Team",
+    "schema_version": "1.0",
+    "min_engine_version": "0.5.0",
+    "training": {
+      "competencies": [
+        {
+          "id": "teamwork",
+          "name": "Teamwork",
+          "description": "Ability to coordinate actions with team members"
+        },
+        {
+          "id": "strategic-thinking",
+          "name": "Strategic Thinking",
+          "description": "Planning and resource management under pressure"
+        },
+        {
+          "id": "communication",
+          "name": "Communication",
+          "description": "Clear and effective information sharing"
+        }
+      ],
+      "format": "multi",
+      "duration": {
+        "min_minutes": 30,
+        "max_minutes": 60
+      }
+    }
+  },
+  "assets": {
+    "scenario": "scenario.md",
+    "rules": "rules.md",
+    "scripts": "scripts/game-logic.js"
+  },
+  "config": {
+    "players": {
+      "min": 2,
+      "max": 4
+    },
+    "settings": {
+      "turn_timeout_seconds": 120,
+      "max_waves": 5,
+      "starting_resources": 10
+    }
+  },
+  "multiplayer": {
+    "mode": "cooperative",
+    "turn_order": "free-form",
+    "visibility": {
+      "world": "shared",
+      "player_data": "public_stats_only",
+      "secret_data": "hidden"
+    },
+    "roles": {
+      "medic": {
+        "name": "Medic",
+        "description": "Can heal other players and has extra medical supplies",
+        "max_instances": 1,
+        "starting_stats": {
+          "hp": 80,
+          "max_hp": 80,
+          "attack": 5,
+          "defense": 5
+        },
+        "abilities": ["heal_ally", "revive"],
+        "starting_items": ["medkit", "medkit", "bandage"]
+      },
+      "soldier": {
+        "name": "Soldier",
+        "description": "High damage dealer with extra ammunition",
+        "max_instances": 2,
+        "starting_stats": {
+          "hp": 100,
+          "max_hp": 100,
+          "attack": 15,
+          "defense": 8
+        },
+        "abilities": ["heavy_attack", "cover_fire"],
+        "starting_items": ["assault_rifle", "ammo", "ammo", "grenade"]
+      },
+      "engineer": {
+        "name": "Engineer",
+        "description": "Can build barricades and repair equipment",
+        "max_instances": 1,
+        "starting_stats": {
+          "hp": 90,
+          "max_hp": 90,
+          "attack": 8,
+          "defense": 10
+        },
+        "abilities": ["build_barricade", "repair", "set_trap"],
+        "starting_items": ["wrench", "scrap_metal", "scrap_metal", "toolkit"]
+      },
+      "scout": {
+        "name": "Scout",
+        "description": "Can reveal enemy positions and find hidden resources",
+        "max_instances": 1,
+        "starting_stats": {
+          "hp": 70,
+          "max_hp": 70,
+          "attack": 10,
+          "defense": 3
+        },
+        "abilities": ["reveal_area", "scavenge", "quick_escape"],
+        "starting_items": ["pistol", "binoculars", "lockpick"]
+      }
+    },
+    "team_resources": {
+      "shared_inventory": true,
+      "resource_pool": ["ammo", "medkits", "scrap"]
+    }
+  },
+  "engine": {
+    "system_prompt": "You are the game master for a cooperative zombie survival game. Describe the environment, control zombie behavior, and narrate combat outcomes. Always address players by their role names. When a player performs an action, consider how it affects the whole team. Maintain tension but give players fair chances to survive through teamwork.",
+    "model_config": {
+      "temperature": 0.7,
+      "max_tokens": 800
+    },
+    "context": {
+      "include": ["state.world", "state.players", "state.current_wave"],
+      "history_window": 20
+    }
+  },
+  "state": {
+    "public": {
+      "world": {
+        "location": "abandoned_mall",
+        "areas": {
+          "entrance": {
+            "name": "Mall Entrance",
+            "barricade_level": 0,
+            "max_barricade": 3,
+            "connected_to": ["food_court", "parking_lot"]
+          },
+          "food_court": {
+            "name": "Food Court",
+            "barricade_level": 0,
+            "max_barricade": 2,
+            "loot_available": true,
+            "connected_to": ["entrance", "storage_room"]
+          },
+          "storage_room": {
+            "name": "Storage Room",
+            "barricade_level": 1,
+            "max_barricade": 3,
+            "loot_available": true,
+            "connected_to": ["food_court", "roof_access"]
+          },
+          "parking_lot": {
+            "name": "Parking Lot",
+            "barricade_level": 0,
+            "max_barricade": 1,
+            "is_escape_route": true,
+            "connected_to": ["entrance"]
+          },
+          "roof_access": {
+            "name": "Roof Access",
+            "barricade_level": 2,
+            "max_barricade": 2,
+            "is_escape_route": true,
+            "connected_to": ["storage_room"]
+          }
+        },
+        "zombies": [],
+        "current_area": "entrance"
+      },
+      "players": {},
+      "team": {
+        "shared_resources": {
+          "ammo": 20,
+          "medkits": 4,
+          "scrap": 5
+        },
+        "objectives_completed": [],
+        "players_alive": 0
+      },
+      "current_wave": 0,
+      "game_phase": "setup"
+    },
+    "secret": {
+      "zombie_spawn_queue": [],
+      "hidden_loot": {
+        "food_court": ["ammo", "medkit"],
+        "storage_room": ["scrap_metal", "grenade", "ammo"]
+      },
+      "boss_wave": 5,
+      "escape_conditions": {
+        "roof_access": { "requires": ["rope", "signal_flare"] },
+        "parking_lot": { "requires": ["car_keys", "fuel_can"] }
+      }
+    }
+  },
+  "actions": {
+    "join_game": {
+      "handler_type": "script",
+      "function": "playerJoin",
+      "metadata": {
+        "description": "Player joins the game and selects a role",
+        "phase": "setup"
+      }
+    },
+    "start_game": {
+      "handler_type": "script",
+      "function": "startGame",
+      "metadata": {
+        "description": "Start the game when all players are ready",
+        "phase": "setup",
+        "requires_host": true
+      }
+    },
+    "move": {
+      "handler_type": "script",
+      "function": "playerMove",
+      "metadata": {
+        "description": "Move to a connected area",
+        "phase": "action"
+      }
+    },
+    "attack": {
+      "handler_type": "script",
+      "function": "playerAttack",
+      "metadata": {
+        "description": "Attack zombies in current area",
+        "phase": "action"
+      }
+    },
+    "use_ability": {
+      "handler_type": "script",
+      "function": "useAbility",
+      "metadata": {
+        "description": "Use a role-specific ability",
+        "phase": "action"
+      }
+    },
+    "use_item": {
+      "handler_type": "script",
+      "function": "useItem",
+      "metadata": {
+        "description": "Use an item from inventory",
+        "phase": "action"
+      }
+    },
+    "share_resource": {
+      "handler_type": "script",
+      "function": "shareResource",
+      "metadata": {
+        "description": "Share resources with team pool",
+        "phase": "action"
+      }
+    },
+    "take_resource": {
+      "handler_type": "script",
+      "function": "takeResource",
+      "metadata": {
+        "description": "Take resources from team pool",
+        "phase": "action"
+      }
+    },
+    "search_area": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Search current area for supplies - LLM describes findings",
+        "phase": "action"
+      }
+    },
+    "communicate": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Talk to teammates or call out information",
+        "phase": "any"
+      }
+    },
+    "end_turn": {
+      "handler_type": "script",
+      "function": "endTurn",
+      "metadata": {
+        "description": "End current player's turn (in turn-based variant)",
+        "phase": "action"
+      }
+    },
+    "zombie_wave": {
+      "handler_type": "script",
+      "function": "spawnZombieWave",
+      "metadata": {
+        "description": "System action - spawn next zombie wave",
+        "internal": true
+      }
+    },
+    "zombie_attack": {
+      "handler_type": "script",
+      "function": "zombieAttack",
+      "metadata": {
+        "description": "System action - zombies attack players",
+        "internal": true
+      }
+    }
+  },
+  "events": {
+    "on_player_join": {
+      "broadcast": true,
+      "message_template": "{{player.name}} joined as {{player.role}}!"
+    },
+    "on_player_leave": {
+      "broadcast": true,
+      "message_template": "{{player.name}} has disconnected.",
+      "action": "pause_if_critical"
+    },
+    "on_player_death": {
+      "broadcast": true,
+      "message_template": "{{player.name}} has fallen! They can be revived by a Medic.",
+      "check_game_over": true
+    },
+    "on_wave_complete": {
+      "broadcast": true,
+      "message_template": "Wave {{wave_number}} complete! Prepare for the next wave...",
+      "action": "brief_respite"
+    },
+    "on_game_win": {
+      "broadcast": true,
+      "message_template": "Victory! The team has escaped the zombie outbreak!",
+      "end_game": true
+    },
+    "on_game_lose": {
+      "broadcast": true,
+      "message_template": "Game Over. The zombie horde was too overwhelming.",
+      "end_game": true
+    }
+  },
+  "victory_conditions": [
+    {
+      "type": "escape",
+      "description": "All surviving players reach an escape route with required items"
+    },
+    {
+      "type": "survive",
+      "description": "Survive all 5 zombie waves"
+    }
+  ],
+  "defeat_conditions": [
+    {
+      "type": "team_wipe",
+      "description": "All players are dead and none can be revived"
+    }
+  ]
+}

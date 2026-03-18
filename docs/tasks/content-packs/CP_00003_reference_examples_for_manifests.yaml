@@ -1,0 +1,345 @@
+id: CP_00003
+title: Reference Examples for Manifests (F_00003)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00003
+scope:
+  code:
+    - docs/architecture/schemas/examples/**
+  docs:
+    - docs/architecture/schemas/examples/split-manifest/README.md
+    - docs/architecture/schemas/examples/hybrid-execution/README.md
+    - docs/architecture/schemas/examples/multiplayer-game/README.md
+    - docs/architecture/schemas/examples/extension-usage/README.md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00003_reference_examples_for_manifests_(E_00001).md
+  related:
+    - docs/architecture/adrs/007-hybrid-game-engine-and-scripting.md
+    - docs/architecture/adrs/011-multiplayer-architecture.md
+    - docs/architecture/adrs/013-manifest-text-anchors-and-ui-split.md
+    - docs/architecture/adrs/015-extension-packs-architecture.md
+tools:
+  - name: shell
+    allowed: [read, write]
+    dirs:
+      - docs/architecture/schemas/examples/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Reference Examples for Manifests
+
+  Этот ExecPlan — живой документ. Он должен поддерживаться в соответствии с `docs/tasks/content-packs/PLAN.md`.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана разработчики получат 4 референсных примера манифестов:
+
+  1. **split-manifest/** — демонстрация разделения логического и UI-манифестов по ADR-013
+  2. **hybrid-execution/** — демонстрация script handlers по ADR-007
+  3. **multiplayer-game/** — демонстрация многопользовательской игры по ADR-011
+  4. **extension-usage/** — демонстрация использования Extension Packs по ADR-015
+
+  Каждый пример будет содержать README.md с подробным объяснением структуры.
+
+  ## Progress
+
+  - [ ] Создать split-manifest example
+  - [ ] Создать hybrid-execution example
+  - [ ] Создать multiplayer-game example
+  - [ ] Создать extension-usage example
+
+  ## Surprises & Discoveries
+
+  Пока нет.
+
+  ## Decision Log
+
+  Пока нет.
+
+  ## Outcomes & Retrospective
+
+  Заполняется после завершения.
+
+  ## Context and Orientation
+
+  **Текущее состояние:**
+
+  В директории `docs/architecture/schemas/examples/` существуют примеры:
+  - `minimal-manifest.json` — содержит монолитный манифест с встроенной секцией `ui` (НЕ соответствует ADR-013)
+  - `ui-layout.json` — комбинированный манифест
+
+  Эти примеры устарели и не демонстрируют актуальную архитектуру.
+
+  **Целевое состояние:**
+
+  Создать 4 новых директории с референсными примерами, каждый из которых демонстрирует конкретный ADR.
+
+  ## Plan of Work
+
+  ### Milestone 1: split-manifest example (ADR-013)
+
+  Создать директорию `docs/architecture/schemas/examples/split-manifest/` со следующими файлами:
+
+  **game.manifest.json** — логический манифест с `source_ref`:
+  ```json
+  {
+    "meta": {
+      "id": "example-split-game",
+      "version": "1.0.0",
+      "schema_version": "1.0.0",
+      "name": {
+        "source_ref": {
+          "file": "scenario.md",
+          "anchor": "game.meta.name"
+        },
+        "resolved": "Пример игры с разделенными манифестами"
+      }
+    },
+    "assets": {
+      "rules": "scenario.md#rules",
+      "scenario": "scenario.md#scenario"
+    },
+    "state": {
+      "public": { "score": 0, "round": 1 },
+      "secret": { "correctAnswer": "42" }
+    },
+    "actions": {
+      "checkAnswer": {
+        "handler_type": "llm",
+        "prompt": "Check if user's answer is correct"
+      }
+    }
+  }
+  ```
+
+  **ui.manifest.json** — отдельный UI-манифест:
+  ```json
+  {
+    "meta": {
+      "id": "example-split-game-ui",
+      "version": "1.0.0",
+      "schema_version": "1.0.0",
+      "min_viewer_version": "0.1.0",
+      "channel": "web"
+    },
+    "screens": {
+      "main": {
+        "root": {
+          "type": "screenComponent",
+          "props": { "cssClass": "main-screen" },
+          "children": [
+            {
+              "type": "textComponent",
+              "props": { "text": "{{state.public.score}}" }
+            }
+          ]
+        }
+      }
+    }
+  }
+  ```
+
+  **scenario.md** — сценарий с якорями:
+  ```markdown
+  # Сценарий игры
+
+  <!-- anchor: game.meta.name -->
+  ## Пример игры с разделенными манифестами
+
+  <!-- anchor: rules -->
+  ## Правила
+  Угадайте число от 1 до 100.
+
+  <!-- anchor: scenario -->
+  ## Сценарий
+  Игрок вводит число, система проверяет ответ.
+  ```
+
+  **README.md** — объяснение структуры.
+
+  ### Milestone 2: hybrid-execution example (ADR-007)
+
+  Создать директорию `docs/architecture/schemas/examples/hybrid-execution/`:
+
+  **game.manifest.json** — с `handler_type: "script"`:
+  ```json
+  {
+    "meta": {
+      "id": "hybrid-execution-example",
+      "version": "1.0.0"
+    },
+    "assets": {
+      "rules": "rules.md",
+      "scenario": "scenario.md",
+      "scripts": {
+        "inventory": "scripts/inventory.js"
+      }
+    },
+    "state": {
+      "public": { "inventory": [] },
+      "secret": {}
+    },
+    "actions": {
+      "checkInventory": {
+        "handler_type": "script",
+        "script_path": "scripts/inventory.js",
+        "function": "checkInventory"
+      },
+      "analyzeStrategy": {
+        "handler_type": "llm",
+        "prompt": "Analyze player's strategy"
+      }
+    }
+  }
+  ```
+
+  **scripts/inventory.js** — реальная логика:
+  ```javascript
+  /**
+   * User Script для проверки инвентаря
+   * API: функция получает (state, args) и возвращает { delta, output }
+   */
+  function checkInventory(state, args) {
+    const hasItem = state.public.inventory.includes(args.itemId);
+    return {
+      delta: {},  // Изменения состояния (пусто, если только чтение)
+      output: { hasItem, inventory: state.public.inventory }
+    };
+  }
+
+  module.exports = { checkInventory };
+  ```
+
+  **README.md** — документация API для скриптов.
+
+  ### Milestone 3: multiplayer-game example (ADR-011)
+
+  Создать директорию `docs/architecture/schemas/examples/multiplayer-game/`:
+
+  **game.manifest.json**:
+  ```json
+  {
+    "meta": {
+      "id": "multiplayer-example",
+      "version": "1.0.0",
+      "training": {
+        "format": "multi",
+        "min_players": 2,
+        "max_players": 6,
+        "roles": [
+          { "id": "manager", "name": "Менеджер" },
+          { "id": "analyst", "name": "Аналитик" }
+        ]
+      }
+    },
+    "state": {
+      "public": {
+        "players": {},
+        "current_turn": null,
+        "round": 1,
+        "state_version": 0
+      },
+      "secret": {
+        "correct_answers": {}
+      }
+    },
+    "actions": {
+      "submitAnswer": {
+        "handler_type": "llm",
+        "turn_based": true,
+        "visibility": "public"
+      },
+      "endTurn": {
+        "handler_type": "script",
+        "script_path": "scripts/turn.js"
+      }
+    }
+  }
+  ```
+
+  **README.md** — описание мультиплеерной логики.
+
+  ### Milestone 4: extension-usage example (ADR-015)
+
+  Создать директорию `docs/architecture/schemas/examples/extension-usage/`:
+
+  **game.manifest.json**:
+  ```json
+  {
+    "meta": {
+      "id": "extension-usage-example",
+      "version": "1.0.0"
+    },
+    "extensions": [
+      { "id": "@cubica/physics", "version": "^1.0.0" },
+      { "id": "./extensions/custom-mechanics", "version": "local" }
+    ],
+    "state": {
+      "public": { "position": { "x": 0, "y": 0 } },
+      "secret": {}
+    },
+    "actions": {
+      "move": {
+        "handler_type": "extension",
+        "extension_id": "@cubica/physics",
+        "capability": "movement"
+      }
+    }
+  }
+  ```
+
+  **extensions/custom-mechanics/extension.json**:
+  ```json
+  {
+    "meta": {
+      "id": "custom-mechanics",
+      "version": "1.0.0",
+      "name": "Custom Game Mechanics",
+      "trust_level": "untrusted"
+    },
+    "capabilities": ["custom-scoring"],
+    "dependencies": {},
+    "entry_points": {
+      "main": "src/index.js"
+    }
+  }
+  ```
+
+  **README.md** — описание использования Extension Packs.
+
+  ## Concrete Steps
+
+  1. Создать директорию `docs/architecture/schemas/examples/split-manifest/`
+  2. Создать `game.manifest.json`, `ui.manifest.json`, `scenario.md`, `README.md`
+  3. Создать директорию `docs/architecture/schemas/examples/hybrid-execution/`
+  4. Создать `game.manifest.json`, `scripts/inventory.js`, `README.md`
+  5. Создать директорию `docs/architecture/schemas/examples/multiplayer-game/`
+  6. Создать `game.manifest.json`, `README.md`
+  7. Создать директорию `docs/architecture/schemas/examples/extension-usage/`
+  8. Создать `game.manifest.json`, `extensions/custom-mechanics/extension.json`, `README.md`
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. Каждая директория содержит минимум `game.manifest.json` и `README.md`
+  2. Все JSON-файлы валидны
+  3. README.md объясняет структуру и ссылается на соответствующий ADR
+  4. Примеры демонстрируют реальные паттерны использования
+
+  Критерий успеха: разработчик может скопировать пример и использовать как стартовую точку для своей игры.
+  ```

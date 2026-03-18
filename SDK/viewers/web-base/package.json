@@ -1,0 +1,42 @@
+{
+  "name": "@cubica/viewer-web-base",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Базовый веб-viewer для платформы Cubica. Содержит переиспользуемые компоненты для загрузки манифестов, управления состоянием и маршрутизации действий.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts"
+    },
+    "./components": {
+      "types": "./src/components/index.ts",
+      "import": "./src/components/index.ts"
+    }
+  },
+  "scripts": {
+    "build": "echo \"TODO: wire up TypeScript build\"",
+    "test": "echo \"TODO: implement unit tests\"",
+    "lint": "echo \"TODO: add lint pipeline\""
+  },
+  "peerDependencies": {
+    "react": "^18.0.0 || ^19.0.0",
+    "react-dom": "^18.0.0 || ^19.0.0"
+  },
+  "dependencies": {
+    "@cubica/sdk-core": "workspace:*",
+    "@cubica/shared": "workspace:*"
+  },
+  "keywords": [
+    "cubica",
+    "viewer",
+    "web",
+    "sdui",
+    "manifest"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,375 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/design-artifact.v1.json",
+  "title": "Cubica Design Artifact",
+  "description": "Схема описания дизайн-артефакта (design artifact) — изображения с JSON-метаданными для работы ИИ-агентов. Артефакт содержит информацию об изображении, параметрах генерации, семантической разметке зон и дизайн-токенах.",
+  "type": "object",
+  "required": [
+    "id",
+    "type",
+    "name"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "Ссылка на JSON Schema для валидации."
+    },
+    "id": {
+      "type": "string",
+      "description": "Уникальный идентификатор артефакта в рамках игры.",
+      "pattern": "^[a-zA-Z0-9_-]+$"
+    },
+    "type": {
+      "type": "string",
+      "description": "Тип дизайн-артефакта, определяющий его роль в процессе дизайна.",
+      "enum": [
+        "reference",
+        "concept",
+        "flowchart",
+        "wireframe",
+        "storyboard",
+        "mockup",
+        "asset"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "description": "Человекочитаемое название артефакта."
+    },
+    "description": {
+      "type": "string",
+      "description": "Развёрнутое описание артефакта: что изображено, для чего используется."
+    },
+    "image": {
+      "type": "object",
+      "description": "Параметры связанного изображения.",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Относительный путь к файлу изображения от каталога design/."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Альтернативный URL изображения (для внешних ресурсов)."
+        },
+        "format": {
+          "type": "string",
+          "description": "Формат файла: png, jpg, svg, webp и др."
+        },
+        "dimensions": {
+          "type": "object",
+          "description": "Размеры изображения в пикселях.",
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "height": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "dpi": {
+          "type": "integer",
+          "description": "Разрешение изображения (dots per inch).",
+          "minimum": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "generation": {
+      "type": "object",
+      "required": [
+        "prompt"
+      ],
+      "description": "Контекст генерации изображения для воспроизведения или модификации ИИ-моделями.",
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "description": "Основной промпт, использованный для генерации."
+        },
+        "negative_prompt": {
+          "type": "string",
+          "description": "Негативный промпт (что исключить из генерации)."
+        },
+        "style_reference": {
+          "type": "string",
+          "description": "ID артефакта-стиля или путь к референсу стиля."
+        },
+        "model": {
+          "type": "string",
+          "description": "Модель, использованная для генерации (midjourney-v6, dall-e-3, stable-diffusion-xl и др.)."
+        },
+        "parameters": {
+          "type": "object",
+          "description": "Параметры генерации, специфичные для модели (aspect_ratio, stylize, cfg_scale и др.).",
+          "additionalProperties": true
+        },
+        "seed": {
+          "type": [
+            "integer",
+            "string"
+          ],
+          "description": "Seed для воспроизводимой генерации."
+        }
+      },
+      "additionalProperties": true
+    },
+    "regions": {
+      "type": "array",
+      "description": "Семантическая разметка зон и элементов на изображении. Каждый регион описывает область с координатами и её назначение.",
+      "items": {
+        "$ref": "#/definitions/region"
+      }
+    },
+    "style_tokens": {
+      "type": "object",
+      "description": "Извлечённые дизайн-токены для консистентности стиля. Структура гибкая и может включать colors, typography, spacing, effects и др.",
+      "properties": {
+        "colors": {
+          "type": "object",
+          "description": "Цветовая палитра (primary, secondary, accent, background, text и др.).",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "typography": {
+          "type": "object",
+          "description": "Типографика (font_family, heading_size, body_size и др.).",
+          "additionalProperties": true
+        },
+        "spacing": {
+          "type": "object",
+          "description": "Параметры отступов (unit, padding, margin, gap и др.).",
+          "additionalProperties": true
+        },
+        "effects": {
+          "type": "object",
+          "description": "Визуальные эффекты (shadows, gradients, blur и др.).",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "annotations": {
+      "type": "array",
+      "description": "Произвольные аннотации и заметки к артефакту.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "position": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "meta": {
+      "type": "object",
+      "description": "Метаданные артефакта: автор, даты, версия, теги.",
+      "properties": {
+        "author": {
+          "type": "string",
+          "description": "Автор артефакта (человек или ИИ-агент)."
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Дата и время создания (ISO 8601)."
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Дата и время последнего обновления (ISO 8601)."
+        },
+        "version": {
+          "type": "string",
+          "description": "Версия артефакта."
+        },
+        "tags": {
+          "type": "array",
+          "description": "Теги для классификации и поиска.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Произвольные заметки автора."
+        },
+        "status": {
+          "type": "string",
+          "description": "Статус артефакта (draft, review, approved, deprecated).",
+          "enum": [
+            "draft",
+            "review",
+            "approved",
+            "deprecated"
+          ]
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "region": {
+      "type": "object",
+      "description": "Семантический регион на изображении с координатами и описанием.",
+      "required": [
+        "id",
+        "generation"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Уникальный идентификатор региона."
+        },
+        "bounds": {
+          "type": "object",
+          "description": "Ограничивающий прямоугольник региона (в пикселях от левого верхнего угла).",
+          "properties": {
+            "x": {
+              "type": "number",
+              "description": "X-координата левого верхнего угла."
+            },
+            "y": {
+              "type": "number",
+              "description": "Y-координата левого верхнего угла."
+            },
+            "width": {
+              "type": "number",
+              "description": "Ширина региона."
+            },
+            "height": {
+              "type": "number",
+              "description": "Высота региона."
+            }
+          }
+        },
+        "polygon": {
+          "type": "array",
+          "description": "Альтернатива bounds — произвольный полигон как массив точек.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "type": {
+          "type": "string",
+          "description": "Семантический тип элемента (container, button, text, image, input, progress-bar, card, icon и др.)."
+        },
+        "description": {
+          "type": "string",
+          "description": "Описание назначения и содержимого региона."
+        },
+        "label": {
+          "type": "string",
+          "description": "Текстовая метка элемента (если применимо)."
+        },
+        "style": {
+          "type": "object",
+          "description": "Стили региона (background, color, border, border_radius и др.).",
+          "additionalProperties": true
+        },
+        "maps_to_component": {
+          "type": "string",
+          "description": "ID или тип UI-компонента из UI-манифеста, которому соответствует регион."
+        },
+        "maps_to_state": {
+          "type": "string",
+          "description": "Путь к переменной состояния, которую отображает регион (например, state.public.resources.fuel)."
+        },
+        "maps_to_action": {
+          "type": "string",
+          "description": "ID действия, которое вызывает элемент (для интерактивных элементов)."
+        },
+        "generation": {
+          "type": "object",
+          "required": [
+            "prompt"
+          ],
+          "description": "Контекст генерации для конкретного элемента (inpainting/refinement). Обязательно для визуальных элементов.",
+          "properties": {
+            "prompt": {
+              "type": "string",
+              "description": "Промпт для генерации этого элемента."
+            },
+            "negative_prompt": {
+              "type": "string"
+            },
+            "model_ref": {
+              "type": "string",
+              "description": "ID модели или LoRA для этого элемента."
+            }
+          }
+        },
+        "layout": {
+          "type": "object",
+          "description": "Параметры лейаута для контейнеров.",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "grid",
+                "flex",
+                "absolute"
+              ]
+            },
+            "gap": {
+              "type": "number"
+            },
+            "rows": {
+              "type": "integer"
+            },
+            "columns": {
+              "type": "integer"
+            }
+          }
+        },
+        "state": {
+          "type": "string",
+          "description": "Визуальное состояние элемента (hover, disabled, selected)."
+        },
+        "visual_tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Теги визуальных особенностей (glowing, frosted, etc)."
+        },
+        "elements": {
+          "type": "array",
+          "description": "Вложенные элементы внутри региона (рекурсивная структура).",
+          "items": {
+            "$ref": "#/definitions/region"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

@@ -1,0 +1,575 @@
+{
+  "application": {
+    "class": "application",
+    "component": "here?",
+    "description": "This is the screen with leftsidebar layout",
+    "cssFile": "main.css",
+    "elements": {
+      "S1": {
+        "class": "screen",
+        "component": "screenComponent",
+        "cssClass": "main-screen",
+        "backgroundImage": "./images/arctic-background.png",
+        "cssInline": {
+          "display": "grid",
+          "gridTemplateColumns": "20% 71% 9%",
+          "gridTemplateRows": "90% 10%",
+          "backgroundSize": "cover",
+          "backgroundRepeat": "no-repeat"
+        },
+        "elements": {
+          "A2": {
+            "class": "area",
+            "component": "areaComponent",
+            "cssClass": "cards-container",
+            "cssInline": {
+              "display": "grid",
+              "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+              "gap": "1em",
+              "gridColumn": "2",
+              "gridRow": "1 / 2",
+              "paddingTop": "2em",
+              "overflow": "auto",
+              "alignContent": "start"
+            },
+            "elements": {
+              "C1": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+                "cssInline": {
+                  "width": "100%",
+                  "padding": "1.25em 1em",
+                  "borderRadius": "10px",
+                  "backgroundColor": "rgba(162, 217, 247, 0.5)",
+                  "color": "#fff",
+                  "fontWeight": "bold",
+                  "fontSize": "1.05rem",
+                  "lineHeight": "1.35",
+                  "boxSizing": "border-box"
+                }
+              },
+              "C2": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+                "cssInline": {
+                  "width": "100%",
+                  "padding": "1.25em 1em",
+                  "borderRadius": "10px",
+                  "backgroundColor": "rgba(162, 217, 247, 0.5)",
+                  "color": "#fff",
+                  "fontWeight": "bold",
+                  "fontSize": "1.05rem",
+                  "lineHeight": "1.35",
+                  "boxSizing": "border-box"
+                }
+              },
+              "C3": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+                "cssInline": {
+                  "width": "100%",
+                  "padding": "1.25em 1em",
+                  "borderRadius": "10px",
+                  "backgroundColor": "rgba(162, 217, 247, 0.5)",
+                  "color": "#fff",
+                  "fontWeight": "bold",
+                  "fontSize": "1.05rem",
+                  "lineHeight": "1.35",
+                  "boxSizing": "border-box"
+                }
+              },
+              "C4": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+                "cssInline": {
+                  "width": "100%",
+                  "padding": "1.25em 1em",
+                  "borderRadius": "10px",
+                  "backgroundColor": "rgba(162, 217, 247, 0.5)",
+                  "color": "#fff",
+                  "fontWeight": "bold",
+                  "fontSize": "1.05rem",
+                  "lineHeight": "1.35",
+                  "boxSizing": "border-box"
+                }
+              },
+              "C5": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+                "cssInline": {
+                  "width": "100%",
+                  "padding": "1.25em 1em",
+                  "borderRadius": "10px",
+                  "backgroundColor": "rgba(162, 217, 247, 0.5)",
+                  "color": "#fff",
+                  "fontWeight": "bold",
+                  "fontSize": "1.05rem",
+                  "lineHeight": "1.35",
+                  "boxSizing": "border-box"
+                }
+              },
+              "C6": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+                "cssInline": {
+                  "width": "100%",
+                  "padding": "1.25em 1em",
+                  "borderRadius": "10px",
+                  "backgroundColor": "rgba(162, 217, 247, 0.5)",
+                  "color": "#fff",
+                  "fontWeight": "bold",
+                  "fontSize": "1.05rem",
+                  "lineHeight": "1.35",
+                  "boxSizing": "border-box"
+                }
+              }
+            },
+            "A3": {
+              "class": "area",
+              "component": "areaComponent",
+              "cssClass": "button-container",
+              "elements": {
+                "B1": {
+                  "class": "button",
+                  "component": "buttonComponent",
+                  "cssClass": "button-next",
+                  "caption": "Далее",
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "B1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "A_sidebar": {
+            "class": "area",
+            "component": "areaComponent",
+            "cssClass": "sidebar",
+            "cssInline": {
+              "gridColumn": "1",
+              "gridRow": "1 / 3",
+              "display": "flex",
+              "flexDirection": "column",
+              "alignItems": "center",
+              "gap": "10px",
+              "padding": "24px 0 16px 0",
+              "listStyleType": "none",
+              "fontWeight": "bold",
+              "position": "sticky",
+              "top": "16px",
+              "alignSelf": "start",
+              "height": "fit-content"
+            },
+            "elements": {
+              "SB1": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "#fff",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": ".5em",
+                  "width": "85%",
+                  "height": "84px",
+                  "margin": "0 0 18px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/days.png",
+                "elements": {
+                  "SB1_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "45",
+                    "cssInline": {
+                      "fontSize": "clamp(22px, 3vw, 34px)",
+                      "fontWeight": "800",
+                      "lineHeight": "1"
+                    }
+                  },
+                  "SB1_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "Осталось дней",
+                    "cssInline": {
+                      "fontSize": "clamp(12px, 1.2vw, 16px)",
+                      "fontWeight": "800",
+                      "lineHeight": "1",
+                      "whiteSpace": "nowrap"
+                    }
+                  }
+                }
+              },
+              "SB2": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "rgb(28, 95, 145)",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": "0.75em",
+                  "alignSelf": "center",
+                  "width": "85%",
+                  "height": "56px",
+                  "margin": "6px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/znania.png",
+                "elements": {
+                  "SB2_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "-1",
+                    "cssInline": {
+                      "fontSize": "2em"
+                    }
+                  },
+                  "SB2_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "знания"
+                  }
+                }
+              },
+              "SB3": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "rgb(28, 95, 145)",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": "0.75em",
+                  "alignSelf": "center",
+                  "width": "85%",
+                  "height": "56px",
+                  "margin": "6px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/doverie.png",
+                "elements": {
+                  "SB3_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "15",
+                    "cssInline": {
+                      "fontSize": "2em"
+                    }
+                  },
+                  "SB3_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "доверие"
+                  }
+                }
+              },
+              "SB4": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "rgb(28, 95, 145)",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": "0.75em",
+                  "alignSelf": "center",
+                  "width": "85%",
+                  "height": "56px",
+                  "margin": "6px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/energia.png",
+                "elements": {
+                  "SB4_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "7",
+                    "cssInline": {
+                      "fontSize": "2em"
+                    }
+                  },
+                  "SB4_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "энергия"
+                  }
+                }
+              },
+              "SB5": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "rgb(28, 95, 145)",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": "0.75em",
+                  "alignSelf": "center",
+                  "width": "85%",
+                  "height": "56px",
+                  "margin": "6px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/energia.png",
+                "elements": {
+                  "SB5_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "-8",
+                    "cssInline": {
+                      "fontSize": "2em"
+                    }
+                  },
+                  "SB5_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "контроль"
+                  }
+                }
+              },
+              "SB6": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "rgb(28, 95, 145)",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": "0.75em",
+                  "alignSelf": "center",
+                  "width": "85%",
+                  "height": "56px",
+                  "margin": "6px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/status.png",
+                "elements": {
+                  "SB6_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "-5",
+                    "cssInline": {
+                      "fontSize": "2em"
+                    }
+                  },
+                  "SB6_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "статус"
+                  }
+                }
+              },
+              "SB7": {
+                "class": "score",
+                "component": "areaComponent",
+                "cssInline": {
+                  "color": "rgb(28, 95, 145)",
+                  "display": "flex",
+                  "alignItems": "center",
+                  "justifyContent": "center",
+                  "gap": "0.75em",
+                  "alignSelf": "center",
+                  "width": "85%",
+                  "height": "56px",
+                  "margin": "6px 0",
+                  "padding": "6px 10px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center"
+                },
+                "backgroundImage": "./images/left-sidebar/konstruktiv.png",
+                "elements": {
+                  "SB7_val": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-value",
+                    "text": "8",
+                    "cssInline": {
+                      "fontSize": "2em"
+                    }
+                  },
+                  "SB7_cap": {
+                    "class": "label",
+                    "component": "helperComponent",
+                    "cssClass": "score-caption",
+                    "text": "конструктив"
+                  }
+                }
+              }
+            }
+          },
+          "A_footer": {
+            "class": "area",
+            "component": "areaComponent",
+            "cssClass": "footer",
+            "cssInline": {
+              "display": "grid",
+              "gridTemplateColumns": "1fr 2fr 1fr 60% 1fr 1fr",
+              "gap": ".5em",
+              "padding": ".5em .5em",
+              "alignItems": "center",
+              "gridRow": "2",
+              "gridColumn": "2",
+              "minHeight": "56px",
+              "borderRadius": "8px",
+              "zIndex": 1
+            },
+            "elements": {
+              "F1": {
+                "class": "button",
+                "component": "buttonComponent",
+                "cssClass": "button-helper",
+                "caption": "журнал ходов",
+                "backgroundImage": "/images/jurnal-hodov.png",
+                "cssInline": {
+                  "gridColumn": "2",
+                  "justifySelf": "center",
+                  "height": "36px",
+                  "width": "160px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center",
+                  "backgroundColor": "transparent",
+                  "color": "rgb(95, 166, 197)",
+                  "fontWeight": "700",
+                  "textShadow": "0 1px 2px rgba(0,0,0,0.4)",
+                  "cursor": "pointer",
+                  "border": "none",
+                  "outline": "none"
+                }
+              },
+              "F2": {
+                "class": "button",
+                "component": "buttonComponent",
+                "cssClass": "button-helper",
+                "caption": "подсказка",
+                "backgroundImage": "/images/podskazka.png",
+                "cssInline": {
+                  "gridColumn": "3",
+                  "justifySelf": "center",
+                  "height": "36px",
+                  "width": "125px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center",
+                  "backgroundColor": "transparent",
+                  "color": "rgb(95, 166, 197)",
+                  "fontWeight": "700",
+                  "textShadow": "0 1px 2px rgba(0,0,0,0.4)",
+                  "cursor": "pointer",
+                  "border": "none",
+                  "outline": "none"
+                }
+              },
+              "F3": {
+                "class": "button",
+                "component": "buttonComponent",
+                "cssClass": "button-helper-arrow",
+                "caption": "",
+                "backgroundImage": "/images/arrow-left.png",
+                "actions": {
+                  "onClick": {
+                    "command": "showTopBar",
+                    "id": "42"
+                  }
+                },
+                "cssInline": {
+                  "gridColumn": "5",
+                  "justifySelf": "end",
+                  "height": "40px",
+                  "width": "40px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center",
+                  "backgroundColor": "transparent",
+                  "cursor": "pointer",
+                  "border": "none",
+                  "outline": "none",
+                  "filter": "drop-shadow(0 1px 2px rgba(0,0,0,0.5))"
+                }
+              },
+              "F4": {
+                "class": "button",
+                "component": "buttonComponent",
+                "cssClass": "button-helper-arrow",
+                "caption": "",
+                "backgroundImage": "/images/arrow-right.png",
+                "actions": {
+                  "onClick": {
+                    "command": "handleClick",
+                    "id": "43"
+                  }
+                },
+                "cssInline": {
+                  "gridColumn": "6",
+                  "justifySelf": "start",
+                  "height": "40px",
+                  "width": "40px",
+                  "backgroundSize": "contain",
+                  "backgroundRepeat": "no-repeat",
+                  "backgroundPosition": "center",
+                  "backgroundColor": "transparent",
+                  "cursor": "pointer",
+                  "border": "none",
+                  "outline": "none",
+                  "filter": "drop-shadow(0 1px 2px rgba(0,0,0,0.5))"
+                }
+              }
+            }
+          },
+          "A7": {
+            "class": "styling-area",
+            "component": "areaComponent",
+            "cssClass": "additional-background"
+          }
+        }
+      }
+    }
+  }
+}

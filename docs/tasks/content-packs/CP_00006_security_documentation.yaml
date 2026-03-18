@@ -1,0 +1,304 @@
+id: CP_00006
+title: Security Documentation & Assessment (F_00006)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00006
+scope:
+  code: []
+  docs:
+    - docs/architecture/client-scripts-security-assessment.md
+    - docs/architecture/extension-security-model.md
+    - docs/architecture/adrs/014-viewers-library-architecture.md
+    - docs/architecture/adrs/015-extension-packs-architecture.md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00006_security_documentation_(E_00001).md
+  related:
+    - docs/architecture/adrs/010-js-sandbox-security.md
+tools:
+  - name: shell
+    allowed: [read, write]
+    dirs:
+      - docs/architecture/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Security Documentation & Assessment
+
+  Этот ExecPlan — живой документ для создания документов безопасности.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Validation and Acceptance](#validation-and-acceptance)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана:
+
+  1. Документ `client-scripts-security-assessment.md` содержит полную оценку рисков клиентских скриптов
+  2. Документ `extension-security-model.md` описывает модель безопасности Extension Packs
+  3. ADR-014 и ADR-015 содержат ссылки на security документы
+  4. Разработчики понимают trust boundaries и риски
+
+  ## Progress
+
+  - [ ] Создать client-scripts-security-assessment.md
+  - [ ] Создать extension-security-model.md
+  - [ ] Обновить ADR-014 со ссылкой
+  - [ ] Обновить ADR-015 со ссылкой
+
+  ## Surprises & Discoveries
+
+  Пока нет.
+
+  ## Decision Log
+
+  Пока нет.
+
+  ## Outcomes & Retrospective
+
+  Заполняется после завершения.
+
+  ## Context and Orientation
+
+  **Проблема:**
+
+  ADR-014 (Viewers Library Architecture) признаёт:
+  > "Повышенные риски, которые нужно закрывать процессом проверки"
+
+  И упоминает:
+  > "Необходимость отдельной оценки рисков"
+
+  Но эта оценка НЕ проведена.
+
+  **Сравнение серверных и клиентских скриптов:**
+
+  | Аспект | Server Scripts (ADR-010) | Client Scripts (ADR-014) |
+  |--------|--------------------------|--------------------------|
+  | Изоляция | Технологическая (isolated-vm) | Процессная (code review) |
+  | Доступ | Ограничен API | Полный DOM access |
+  | Риск | Низкий (sandbox) | Высокий (XSS, data theft) |
+  | Защита | Технология | Процесс + подпись |
+
+  **Extension Packs (ADR-015):**
+
+  ADR-015 вводит два класса кода:
+  - **User Scripts** (Runtime, Sandbox) — строгая изоляция
+  - **Engine Extensions** (Build-time, Trusted) — без изоляции
+
+  Нет документа, описывающего trust boundaries между ними.
+
+  ## Plan of Work
+
+  ### Milestone 1: client-scripts-security-assessment.md
+
+  Создать файл `docs/architecture/client-scripts-security-assessment.md`:
+
+  ```markdown
+  # Оценка безопасности клиентских скриптов
+
+  ## Оглавление
+
+  - [1. Введение](#1-введение)
+  - [2. Матрица рисков](#2-матрица-рисков)
+  - [3. Митигация рисков](#3-митигация-рисков)
+  - [4. Процесс code review](#4-процесс-code-review)
+  - [5. Процесс подписи и дистрибуции](#5-процесс-подписи-и-дистрибуции)
+  - [6. CSP политики](#6-csp-политики)
+  - [7. Рекомендации](#7-рекомендации)
+
+  ## 1. Введение
+
+  Этот документ описывает оценку рисков клиентских скриптов (Client Scripts)
+  в архитектуре Viewers (ADR-014).
+
+  ## 2. Матрица рисков
+
+  | Риск | Вероятность | Влияние | Уровень | Митигация |
+  |------|-------------|---------|---------|-----------|
+  | XSS (Cross-Site Scripting) | Высокая | Критическое | P0 | CSP, санитизация |
+  | Data theft | Средняя | Критическое | P1 | Изоляция, минимальные права |
+  | DOM manipulation | Высокая | Среднее | P1 | Sandboxed iframe |
+  | Session hijacking | Низкая | Критическое | P1 | HttpOnly cookies |
+  | Resource exhaustion | Средняя | Низкое | P2 | Таймауты, лимиты |
+
+  ## 3. Митигация рисков
+
+  ### 3.1. XSS
+
+  - Все пользовательские данные санитизируются перед рендерингом
+  - CSP запрещает inline scripts
+  - Content-Type headers корректно установлены
+
+  ### 3.2. DOM Manipulation
+
+  - Высокорисковые скрипты выполняются в sandboxed iframe
+  - iframe имеет ограниченный sandbox="allow-scripts"
+  - Коммуникация через postMessage с валидацией origin
+
+  ## 4. Процесс code review
+
+  Все клиентские скрипты проходят обязательный code review:
+
+  1. Автоматическая проверка статическим анализатором
+  2. Ручной review security-специалистом
+  3. Подпись после одобрения
+
+  ## 5. Процесс подписи и дистрибуции
+
+  - Одобренные скрипты подписываются цифровой подписью
+  - Viewer проверяет подпись перед выполнением
+  - Неподписанные скрипты отклоняются
+
+  ## 6. CSP политики
+
+  Рекомендуемые CSP заголовки:
+
+  ```
+  Content-Security-Policy:
+    default-src 'self';
+    script-src 'self' 'nonce-{random}';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: https:;
+    connect-src 'self' https://api.cubica.io;
+  ```
+
+  ## 7. Рекомендации
+
+  1. Минимизировать объем клиентского кода
+  2. Предпочитать серверные скрипты (sandbox) где возможно
+  3. Регулярный security audit
+  ```
+
+  ### Milestone 2: extension-security-model.md
+
+  Создать файл `docs/architecture/extension-security-model.md`:
+
+  ```markdown
+  # Модель безопасности Extension Packs
+
+  ## Оглавление
+
+  - [1. Обзор](#1-обзор)
+  - [2. Классификация кода](#2-классификация-кода)
+  - [3. Trust Boundaries](#3-trust-boundaries)
+  - [4. Capability-based Security](#4-capability-based-security)
+  - [5. Процесс ревью расширений](#5-процесс-ревью-расширений)
+
+  ## 1. Обзор
+
+  Extension Packs (ADR-015) вводит гибридную модель выполнения кода.
+  Этот документ описывает модель безопасности и trust boundaries.
+
+  ## 2. Классификация кода
+
+  ### 2.1. Engine Extensions (Build-time, Trusted)
+
+  - **Trust level:** Полностью доверенный
+  - **Изоляция:** Нет (выполняется в Shared Context)
+  - **Доступ:** Полный Node.js API
+  - **Источник:** NPM пакеты, проверенные maintainers
+  - **Примеры:** @cubica/physics, @cubica/database
+
+  ### 2.2. User Scripts (Runtime, Untrusted)
+
+  - **Trust level:** Недоверенный
+  - **Изоляция:** Полная через isolated-vm
+  - **Доступ:** Ограниченный API (state, delta, output)
+  - **Источник:** Контент игр, пользовательский код
+  - **Примеры:** inventory.js, scoring.js
+
+  ## 3. Trust Boundaries
+
+  ```
+  ┌─────────────────────────────────────────┐
+  │           TRUSTED ZONE                   │
+  │  ┌─────────────────────────────────────┐│
+  │  │         Engine Core                  ││
+  │  │   (Node.js, full access)             ││
+  │  └─────────────────────────────────────┘│
+  │  ┌─────────────────────────────────────┐│
+  │  │       Engine Extensions              ││
+  │  │   (@cubica/physics, etc.)            ││
+  │  └─────────────────────────────────────┘│
+  ├─────────────────────────────────────────┤
+  │    TRUST BOUNDARY (isolated-vm)         │
+  ├─────────────────────────────────────────┤
+  │           UNTRUSTED ZONE                │
+  │  ┌─────────────────────────────────────┐│
+  │  │         User Scripts                 ││
+  │  │   (game content, limited API)        ││
+  │  └─────────────────────────────────────┘│
+  └─────────────────────────────────────────┘
+  ```
+
+  ## 4. Capability-based Security
+
+  Engine Extensions объявляют capabilities:
+
+  ```json
+  {
+    "capabilities": ["physics.movement", "physics.collision"]
+  }
+  ```
+
+  User Scripts могут использовать только объявленные capabilities:
+
+  ```javascript
+  // В User Script
+  const result = await use("physics.movement", { direction: "north" });
+  ```
+
+  ## 5. Процесс ревью расширений
+
+  ### 5.1. Engine Extensions
+
+  1. Code review maintainers
+  2. Security audit
+  3. Подпись и публикация в npm
+  4. Включение в allowlist
+
+  ### 5.2. User Scripts
+
+  - Автоматическая валидация sandbox API
+  - Runtime ограничения (timeout, memory)
+  - Нет доступа к file system, network, process
+  ```
+
+  ### Milestone 3: Обновление ADR
+
+  Добавить в ADR-014 раздел "Related Documents":
+
+  ```markdown
+  ## Related Documents
+
+  - [Client Scripts Security Assessment](../client-scripts-security-assessment.md)
+  ```
+
+  Добавить в ADR-015 раздел "Related Documents":
+
+  ```markdown
+  ## Related Documents
+
+  - [Extension Security Model](../extension-security-model.md)
+  ```
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. `client-scripts-security-assessment.md` содержит полную матрицу рисков
+  2. `extension-security-model.md` описывает trust boundaries
+  3. ADR-014 и ADR-015 содержат ссылки на документы
+  4. Все документы имеют оглавление с внутренними ссылками
+
+  Критерий успеха: разработчики понимают security модель и могут следовать рекомендациям.
+  ```

@@ -1,0 +1,120 @@
+id: CP_00023
+title: Antarctica — обучающие метаданные и методические материалы
+status: stop-list
+owner: @todo
+role: implementer
+tasks:
+  - F_00023
+scope:
+  code:
+    - draft/game-player-nextjs/**
+    - assets/**
+  docs:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md
+    - docs/tasks/content-packs/PLAN.md
+links:
+  tasks:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+  related:
+    - docs/architecture/adrs/012-training-metadata-and-methodology-in-manifest.md
+    - docs/architecture/schemas/game-manifest.schema.json
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - draft/game-player-nextjs/**
+      - assets/**
+      - docs/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Antarctica — обучающие метаданные и методические материалы
+
+  Этот ExecPlan — живой документ и должен поддерживаться в актуальном состоянии согласно `docs/tasks/content-packs/PLAN.md`.
+
+  ## Purpose / Big Picture
+
+  Цель — заполнить обучающие метаданные (`meta.training`) и привязать методические `.md` файлы (`assets.methodology.participants|facilitators`) в манифесте «Antarctica», чтобы компетенции, формат и длительность игры, а также материалы для участников и ведущих были формально описаны и версионируемы вместе с игрой.
+
+  ## Progress
+
+  - [ ] (TODO) Сформированы компетенции, формат и длительность для `meta.training`.
+  - [ ] (TODO) Созданы методички (.md) для участников и ведущих, согласованы по содержанию.
+  - [ ] (TODO) Манифест обновлён с новыми полями и ссылками; валидация схемой пройдена.
+  - [ ] (TODO) Обновлена документация задач (фича/эпик/ROADMAP).
+
+  ## Surprises & Discoveries
+
+  - Заполнять по мере выполнения (например, если потребуется дополнительная классификация компетенций или уточнение формата).
+
+  ## Decision Log
+
+  - Заполнять по мере выполнения (например, выбор конкретных компетенций и формата).
+
+  ## Outcomes & Retrospective
+
+  - Заполнить после завершения (какие компетенции и материалы добавлены, что остаётся на улучшение).
+
+  ## Context and Orientation
+
+  - Манифест `draft/game-player-nextjs/src/app/data/antarctica/manifest.json` — источник правды для сценария.
+  - ADR-012 описывает модель `meta.training` и `assets.methodology`.
+  - JSON Schema: `docs/architecture/schemas/game-manifest.schema.json` (поля `meta.training`, `assets.methodology` обязательны по логике задачи).
+  - Методички будут жить в `assets/methodology/` (точные пути зафиксировать в манифесте).
+
+  ## Plan of Work
+
+  1. Определить обучающие цели:
+     - Список компетенций (id/name/description) для «Antarctica».
+     - Формат игры: `single`, `single_team` или `multi`.
+     - Оценка длительности: `min_minutes`, `max_minutes`.
+  2. Создать методички:
+     - `participants`: правила, описания сущностей/переменных, рекомендации, подсказки, чек-листы (если применимо).
+     - `facilitators`: интерпретации, вопросы к действиям, подсказки/наводящие вопросы, критерии оценки, индикаторы паттернов поведения.
+  3. Обновить манифест:
+     - Заполнить `meta.training` выбранными данными.
+     - Добавить ссылки в `assets.methodology.participants|facilitators` на созданные файлы.
+     - Проверить валидность по `game-manifest.schema.json`.
+  4. Обновить документацию:
+     - Чек-листы в фиче/эпике/ROADMAP.
+     - При необходимости кратко описать содержимое методичек (1–2 предложения) в фиче.
+
+  ## Concrete Steps
+
+  - Выбор компетенций/формата/длительности: зафиксировать в `meta.training`.
+  - Создание файлов:
+      assets/methodology/antarctica-participants.md
+      assets/methodology/antarctica-facilitators.md
+    Заполнить согласно требованиям задачи (правила, описания, рекомендации/подсказки, вопросы, критерии).
+  - Обновление манифеста:
+      - добавить `training` и `methodology` в JSON;
+      - прогнать валидацию схемой.
+  - Обновление документации: отметить выполненные пункты в фиче, эпике и ROADMAP.
+
+  ## Validation and Acceptance
+
+  - `meta.training` присутствует и проходит валидацию схемой.
+  - Файлы `participants` и `facilitators` существуют и описывают заявленные разделы (правила/описания/подсказки/чек-листы для участников; интерпретации/вопросы/критерии для ведущих).
+  - Манифест ссылками указывает на эти файлы; при локальной сборке пути резолвятся.
+  - Документация задач обновлена.
+
+  ## Idempotence and Recovery
+
+  - Повторное редактирование JSON и `.md` безопасно; версии отслеживаются git.
+  - При ошибке валидации поправить JSON/пути и прогнать проверку снова.
+
+  ## Artifacts and Notes
+
+  - Обновлённый манифест: `draft/game-player-nextjs/src/app/data/antarctica/manifest.json`.
+  - Новые методички: `assets/methodology/antarctica-participants.md`, `assets/methodology/antarctica-facilitators.md`.
+  - Обновлённые задачи (фича, эпик, ROADMAP).
+
+  ## Interfaces and Dependencies
+
+  - ADR-012: `docs/architecture/adrs/012-training-metadata-and-methodology-in-manifest.md`.
+  - JSON Schema: `docs/architecture/schemas/game-manifest.schema.json`.
+  - Манифест Antarctica (зависит от F_00021 для структуры `ui/state/actions`).
+
+  ```

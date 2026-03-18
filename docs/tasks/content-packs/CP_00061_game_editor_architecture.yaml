@@ -1,0 +1,124 @@
+id: CP_00061
+title: Game Editor — Architecture (F_00064)
+status: planned
+owner: @team
+role: architect
+tasks:
+  - F_00064
+scope:
+  code: []
+  docs:
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+    - docs/architecture/adrs/
+    - docs/tasks/features/F_00064_game_editor_architecture_(E_00021).md
+links:
+  tasks:
+    - docs/tasks/features/F_00064_game_editor_architecture_(E_00021).md
+  related:
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - docs/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Game Editor — Architecture
+
+  Этот ExecPlan описывает процесс документирования архитектуры Game Editor (F_00064).
+  План должен поддерживаться в соответствии с `docs/tasks/content-packs/PLAN.md`.
+
+  ## Purpose / Big Picture
+
+  Цель — формализовать архитектуру графического редактора игр (Game Editor), определив его ключевые компоненты, модель данных, режимы работы и протоколы взаимодействия. Результатом работы станут обновлённая документация (`PROJECT_ARCHITECTURE.md`), необходимые ADR и диаграммы, которые послужат фундаментом для дальнейшей реализации редактора. Читатель архитектуры получит чёткое представление о том, как устроен редактор, как он хранит состояние и как взаимодействует с LLM-агентом.
+
+  ## Progress
+
+  - [ ] Анализ требований и существующих решений.
+  - [ ] Создание/обновление ADR для архитектуры редактора.
+  - [ ] Детализация раздела Game Editor в `PROJECT_ARCHITECTURE.md`.
+  - [ ] Добавление диаграмм компонентов.
+  - [ ] Валидация и ревью документации.
+
+  ## Surprises & Discoveries
+
+  (Заполняется в процессе работы)
+
+  ## Decision Log
+
+  (Заполняется в процессе работы)
+
+  ## Outcomes & Retrospective
+
+  (Заполняется по завершении)
+
+  ## Context and Orientation
+
+  В настоящий момент `docs/architecture/PROJECT_ARCHITECTURE.md` содержит лишь краткое упоминание сервиса **Game Editor** (`services/game-editor/`) как инструмента для редактирования сценариев и манифестов. Задача F_00064 ставит целью развернуть это описание, детализировав UI (Chat Panel, Editor Canvas), режимы работы (Dialog, Scenario, и др.) и интеграцию с LLM.
+
+  ## Plan of Work
+
+  1.  **Подготовка ADR**: Определить ключевые архитектурные решения (например, выбор стэка для UI редактора, способ управления состоянием сессии редактирования, протокол связи с агентом). Оформить это в виде нового ADR (или нескольких).
+  2.  **Обновление PROJECT_ARCHITECTURE.md**: На основе F_00064 и нового ADR, расширить секцию, посвященную Game Editor. Необходимо описать:
+      - **Интерфейс**: Chat Panel, Editor Canvas, Toolbar.
+      - **Режимы**: Dialog, Scenario, Mockup, Prototype, Debug.
+      - **Слой данных**: Editor State, Manifest, Session.
+      - **Интеграция с LLM**: Agent Context, Skills, Prompts.
+  3.  **Создание диаграмм**: Использовать Mermaid для визуализации архитектуры (компоненты и их взаимодействие) и включить их в документацию.
+  4.  **Синхронизация задач**: Обновить статус задачи F_00064 и связанных элементов.
+
+  ## Concrete Steps
+
+  1.  Создать ветку для архитектурных изменений (если не создана).
+  
+  2.  **Создать ADR**: Создать файл `docs/architecture/adrs/017-game-editor-architecture.md` (или следующий свободный номер) по шаблону `000-template.md`.
+      - Описать решение о SPA-архитектуре для редактора (вероятно, React/Next.js).
+      - Описать управление состоянием (local state + sync to backend/session).
+      - Зафиксировать выбор взаимодействия с LLM (WebSocket/SSE для стриминга ответов агента).
+      
+  3.  **Редактировать PROJECT_ARCHITECTURE.md**:
+      - Найти секцию `2.1. Backend‑сервисы` -> `Game Editor`.
+      - Существенно расширить описание. Можно выделить Game Editor в отдельный подраздел уровня 2, если контента много, или создать вложенную структуру.
+      - Добавить описание 5 режимов работы (Dialog, Scenario, Mockup, Prototype, Debug).
+      - Описать модель данных: как Editor State мапится на Game Manifest.
+      
+  4.  **Добавить диаграммы**: Вставить Mermaid-диаграмму в `PROJECT_ARCHITECTURE.md` (или в созданный ADR), показывающую поток данных: User -> UI -> Editor Service -> Agent/LLM -> Manifest Update.
+
+      Пример диаграммы (ориентировочно):
+      ```mermaid
+      graph TD
+        User[Пользователь] -->|Команды/Чат| UI[Game Editor UI]
+        UI -->|API| Service[Editor Service]
+        Service -->|Session Context| Agent[LLM Agent]
+        Agent -->|Suggestions/Code| Service
+        Service -->|Update| Manifest[Game Manifest]
+        UI -->|Render| Manifest
+      ```
+
+  5.  **Review**: Проверить, что все пункты из F_00064 (Acceptance Criteria) покрыты:
+      - Архитектура документирована.
+      - Интерфейсы определены.
+      - Жизненный цикл сессии описан.
+      - ADR создан.
+
+  6.  **Commit & Push**: Закоммитить изменения с сообщением "docs: define game editor architecture (F_00064)".
+
+  ## Validation and Acceptance
+
+  - Файл `docs/architecture/adrs/017-game-editor-architecture.md` (или другой номер) существует и описывает архитектурные решения.
+  - В `docs/architecture/PROJECT_ARCHITECTURE.md` присутствует детальное описание Game Editor, соответствующее требованиям F_00064.
+  - Описание включает компоненты UI, режимы, модель данных и интеграцию с LLM.
+  - Присутствуют диаграммы (Mermaid).
+
+  ## Artifacts and Notes
+
+  - `docs/architecture/adrs/017-game-editor-architecture.md`
+  - `docs/architecture/PROJECT_ARCHITECTURE.md`
+
+  ## Interfaces and Dependencies
+
+  - Зависит от F_00061 (Game Editor Intelligence) в части навыков агента.
+  - Ссылается на структуру манифестов (E_0010).
+  ```

@@ -1,0 +1,211 @@
+{
+  "$schema": "https://cubica.platform/schemas/design-artifact.v1.json",
+  "id": "game-screen-v2",
+  "type": "mockup",
+  "name": "Основной игровой экран (версия 2)",
+  "description": "Детальный макет игрового экрана с панелью ресурсов вверху, игровым полем в центре и панелью действий внизу. Оптимизирован для разрешения 1920x1080.",
+
+  "image": {
+    "path": "mockups/game-screen-v2.png",
+    "format": "png",
+    "dimensions": { "width": 1920, "height": 1080 },
+    "dpi": 72
+  },
+
+  "generation": {
+    "prompt": "Game screen UI for Arctic survival game, dark blue color scheme (#0d1b2a background), minimalist interface, resource panel at top showing fuel/food/health bars, large game field in center, action buttons panel at bottom, clean modern design, professional game UI mockup",
+    "negative_prompt": "cluttered, bright colors, realistic, low resolution, blurry",
+    "style_reference": "concepts/arctic-style-concept",
+    "model": "midjourney-v6",
+    "parameters": {
+      "aspect_ratio": "16:9",
+      "stylize": 750,
+      "quality": 2
+    },
+    "seed": "87654321"
+  },
+
+  "regions": [
+    {
+      "id": "resource-panel",
+      "bounds": { "x": 0, "y": 0, "width": 1920, "height": 80 },
+      "type": "container",
+      "description": "Горизонтальная панель с ресурсами экспедиции: топливо, еда, здоровье экипажа",
+      "style": {
+        "background": "linear-gradient(180deg, #1b263b 0%, #0d1b2a 100%)",
+        "border_bottom": "1px solid rgba(0, 212, 255, 0.2)"
+      },
+      "maps_to_component": "areaComponent",
+      "elements": [
+        {
+          "id": "fuel-indicator",
+          "bounds": { "x": 20, "y": 10, "width": 220, "height": 60 },
+          "type": "progress-bar",
+          "description": "Индикатор топлива с иконкой канистры слева и числовым значением справа",
+          "label": "Топливо",
+          "style": {
+            "background": "#162a40",
+            "fill": "#ff6b35",
+            "border_radius": 8
+          },
+          "maps_to_component": "gameVariableComponent",
+          "maps_to_state": "state.public.resources.fuel"
+        },
+        {
+          "id": "food-indicator",
+          "bounds": { "x": 260, "y": 10, "width": 220, "height": 60 },
+          "type": "progress-bar",
+          "description": "Индикатор запасов еды",
+          "label": "Еда",
+          "style": {
+            "background": "#162a40",
+            "fill": "#2ed573",
+            "border_radius": 8
+          },
+          "maps_to_component": "gameVariableComponent",
+          "maps_to_state": "state.public.resources.food"
+        },
+        {
+          "id": "health-indicator",
+          "bounds": { "x": 500, "y": 10, "width": 220, "height": 60 },
+          "type": "progress-bar",
+          "description": "Индикатор здоровья экипажа",
+          "label": "Здоровье",
+          "style": {
+            "background": "#162a40",
+            "fill": "#ff4757",
+            "border_radius": 8
+          },
+          "maps_to_component": "gameVariableComponent",
+          "maps_to_state": "state.public.crew.health"
+        },
+        {
+          "id": "day-counter",
+          "bounds": { "x": 1700, "y": 10, "width": 200, "height": 60 },
+          "type": "text",
+          "description": "Счётчик текущего дня экспедиции",
+          "label": "День 15",
+          "style": {
+            "font_size": 24,
+            "font_weight": 600,
+            "color": "#e0e0e0"
+          },
+          "maps_to_component": "textComponent",
+          "maps_to_state": "state.public.day"
+        }
+      ]
+    },
+    {
+      "id": "game-field",
+      "bounds": { "x": 0, "y": 80, "width": 1920, "height": 800 },
+      "type": "canvas",
+      "description": "Основное игровое поле с картой местности и маркерами объектов",
+      "maps_to_component": "areaComponent"
+    },
+    {
+      "id": "action-panel",
+      "bounds": { "x": 0, "y": 880, "width": 1920, "height": 200 },
+      "type": "container",
+      "description": "Панель действий с кнопками основных команд",
+      "style": {
+        "background": "linear-gradient(0deg, #1b263b 0%, #0d1b2a 100%)",
+        "border_top": "1px solid rgba(0, 212, 255, 0.2)",
+        "padding": 20
+      },
+      "maps_to_component": "areaComponent",
+      "elements": [
+        {
+          "id": "btn-move",
+          "bounds": { "x": 100, "y": 920, "width": 180, "height": 60 },
+          "type": "button",
+          "description": "Кнопка перемещения отряда",
+          "label": "Переместить",
+          "style": {
+            "background": "#00d4ff",
+            "color": "#0d1b2a",
+            "border_radius": 8,
+            "font_weight": 600
+          },
+          "maps_to_component": "buttonComponent",
+          "maps_to_action": "move_unit"
+        },
+        {
+          "id": "btn-explore",
+          "bounds": { "x": 300, "y": 920, "width": 180, "height": 60 },
+          "type": "button",
+          "description": "Кнопка исследования местности",
+          "label": "Исследовать",
+          "style": {
+            "background": "#2ed573",
+            "color": "#0d1b2a",
+            "border_radius": 8
+          },
+          "maps_to_component": "buttonComponent",
+          "maps_to_action": "explore_area"
+        },
+        {
+          "id": "btn-rest",
+          "bounds": { "x": 500, "y": 920, "width": 180, "height": 60 },
+          "type": "button",
+          "description": "Кнопка отдыха экипажа",
+          "label": "Отдых",
+          "style": {
+            "background": "#8899aa",
+            "color": "#0d1b2a",
+            "border_radius": 8
+          },
+          "maps_to_component": "buttonComponent",
+          "maps_to_action": "rest"
+        },
+        {
+          "id": "btn-end-day",
+          "bounds": { "x": 1640, "y": 920, "width": 180, "height": 60 },
+          "type": "button",
+          "description": "Кнопка завершения дня",
+          "label": "Завершить день",
+          "style": {
+            "background": "#ff6b35",
+            "color": "#ffffff",
+            "border_radius": 8
+          },
+          "maps_to_component": "buttonComponent",
+          "maps_to_action": "end_day"
+        }
+      ]
+    }
+  ],
+
+  "style_tokens": {
+    "colors": {
+      "primary": "#0d1b2a",
+      "secondary": "#1b263b",
+      "accent": "#00d4ff",
+      "accent_warm": "#ff6b35",
+      "text": "#e0e0e0",
+      "text_muted": "#8899aa",
+      "success": "#2ed573",
+      "danger": "#ff4757"
+    },
+    "typography": {
+      "font_family": "Inter",
+      "heading_size": 24,
+      "body_size": 16,
+      "button_size": 14
+    },
+    "spacing": {
+      "unit": 8,
+      "padding": 16,
+      "gap": 12
+    }
+  },
+
+  "meta": {
+    "author": "AI Agent",
+    "created_at": "2026-01-14T10:00:00Z",
+    "updated_at": "2026-01-17T14:30:00Z",
+    "version": "2.0",
+    "tags": ["game-screen", "arctic", "dark-theme", "1920x1080"],
+    "status": "approved",
+    "notes": "Версия 2.0: улучшена читабельность индикаторов ресурсов, добавлен контраст между панелями"
+  }
+}

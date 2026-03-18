@@ -1,0 +1,33 @@
+{
+  "meta": {
+    "id": "com.cubica.antarctica.sample",
+    "version": "1.0.0",
+    "schema_version": "1.0",
+    "min_engine_version": "0.1.0",
+    "name": "Antarctica (logic sample)",
+    "description": {
+      "source_ref": {
+        "file": "rules",
+        "anchor": "game.screen.sample.title"
+      },
+      "resolved": "Экран-пример для Antarctica\n\nЭтот текст используется как источник истины для заголовка экрана в логическом манифесте. Любые изменения нужно вносить здесь, а не в JSON.",
+      "format": "markdown"
+    },
+    "author": "Cubica sample"
+  },
+  "assets": {
+    "rules": "games/antarctica-nextjs-player/src/app/data/antarctica/rules-sample.md"
+  },
+  "engine": {
+    "system_prompt": "You are the Game Master for a small Antarctica sample manifest.",
+    "model_config": {
+      "temperature": 0.2
+    }
+  },
+  "state": {
+    "public": {
+      "sample": true
+    }
+  },
+  "actions": {}
+}

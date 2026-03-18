@@ -1,0 +1,174 @@
+{
+    "$schema": "https://cubica.platform/schemas/design-artifact.v1.json",
+    "id": "left-sidebar-6-cards",
+    "type": "mockup",
+    "name": "6 карточек с левым сайдбаром",
+    "description": "Экран с сеткой из 6 карточек выборов и левым сайдбаром ресурсов/метрик",
+    "image": {
+        "path": "mockups/left-sidebar-6-cards.jpg",
+        "format": "jpg",
+        "dimensions": {
+            "width": 1920,
+            "height": 1080
+        },
+        "dpi": 72
+    },
+    "generation": {
+        "prompt": "Game UI screen split into two sections: a left sidebar with resource metrics and a main content area with a grid of 6 interacting cards. Art style is flat vector illustration, clean lines, cool color palette.",
+        "negative_prompt": "realistic, 3d, cluttered, noise, warm colors",
+        "style_reference": "concepts/main-style",
+        "model": "midjourney-v6"
+    },
+    "regions": [
+        {
+            "id": "sidebar",
+            "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 400,
+                "height": 1080
+            },
+            "type": "container",
+            "description": "Левая боковая панель с метриками и статусом",
+            "layout": {
+                "type": "flex",
+                "direction": "column",
+                "padding": 20,
+                "gap": 15
+            },
+            "generation": {
+                "prompt": "Deep blue sidebar background with vector ice/snow decorations"
+            },
+            "style": {
+                "background": "#0f4c75"
+            },
+            "elements": [
+                {
+                    "id": "day-counter",
+                    "type": "indicator",
+                    "description": "Счетчик оставшихся дней",
+                    "label": "45 Осталось дней",
+                    "generation": {
+                        "prompt": "Icon of a yellow sun on a light blue background plate, text '45 Осталось дней'"
+                    }
+                },
+                {
+                    "id": "metrics-list",
+                    "type": "list",
+                    "description": "Список игровых метрик (знание, доверие, энергия и др.)",
+                    "generation": {
+                        "prompt": "Vertical list of metric items with ice shard backgrounds"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "main-content",
+            "bounds": {
+                "x": 400,
+                "y": 0,
+                "width": 1520,
+                "height": 1080
+            },
+            "type": "container",
+            "description": "Основная область контента с сеткой карточек",
+            "layout": {
+                "type": "grid",
+                "columns": 3,
+                "gap": 20
+            },
+            "style": {
+                "background": "#1b262c"
+            },
+            "generation": {
+                "prompt": "Dark blue main content area with a grid of 6 cards"
+            },
+            "elements": [
+                {
+                    "id": "cards-grid",
+                    "type": "grid",
+                    "description": "Сетка из 6 карточек",
+                    "generation": {
+                        "prompt": "Grid layout of 6 identical card placeholders"
+                    },
+                    "elements": [
+                        {
+                            "id": "card-1",
+                            "type": "card",
+                            "description": "Карточка 1",
+                            "generation": {
+                                "prompt": "Game card with illustration"
+                            }
+                        },
+                        {
+                            "id": "card-2",
+                            "type": "card",
+                            "description": "Карточка 2",
+                            "generation": {
+                                "prompt": "Game card with illustration"
+                            }
+                        },
+                        {
+                            "id": "card-3",
+                            "type": "card",
+                            "description": "Карточка 3",
+                            "generation": {
+                                "prompt": "Game card with illustration"
+                            }
+                        },
+                        {
+                            "id": "card-4",
+                            "type": "card",
+                            "description": "Карточка 4",
+                            "generation": {
+                                "prompt": "Game card with illustration"
+                            }
+                        },
+                        {
+                            "id": "card-5",
+                            "type": "card",
+                            "description": "Карточка 5",
+                            "generation": {
+                                "prompt": "Game card with illustration"
+                            }
+                        },
+                        {
+                            "id": "card-6",
+                            "type": "card",
+                            "description": "Карточка 6",
+                            "generation": {
+                                "prompt": "Game card with illustration"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "style_tokens": {
+        "colors": {
+            "sidebar_bg": "#0f4c75",
+            "main_bg": "#1b262c",
+            "text_primary": "#ffffff",
+            "text_secondary": "#bbe1fa",
+            "accent_ice": "#a8d8ea"
+        },
+        "typography": {
+            "font_family": "Sans-Serif",
+            "heading_style": "bold uppercase",
+            "body_style": "regular"
+        }
+    },
+    "meta": {
+        "author": "Antigravity Agent",
+        "created_at": "2026-01-18T22:30:00+03:00",
+        "version": "1.0",
+        "tags": [
+            "mockup",
+            "sidebar",
+            "cards-grid",
+            "antarctica"
+        ],
+        "notes": "Created based on left-sidebar-6-cards.jpg"
+    }
+}

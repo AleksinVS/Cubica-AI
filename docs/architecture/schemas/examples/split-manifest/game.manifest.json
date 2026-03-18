@@ -1,0 +1,205 @@
+{
+  "$schema": "https://cubica.platform/schemas/game-manifest.v1.json",
+  "meta": {
+    "id": "escape-room-demo",
+    "version": "1.0.0",
+    "name": {
+      "source_ref": {
+        "file": "scenario",
+        "anchor": "game.meta.name"
+      },
+      "resolved": "Escape Room: Mystery Mansion",
+      "format": "text"
+    },
+    "description": {
+      "source_ref": {
+        "file": "scenario",
+        "anchor": "game.meta.description"
+      },
+      "resolved": "You find yourself trapped in an old mansion. Solve puzzles and find the way out before time runs out.",
+      "format": "text"
+    },
+    "author": "Cubica Platform Team",
+    "schema_version": "1.0",
+    "min_engine_version": "0.5.0",
+    "training": {
+      "competencies": [
+        {
+          "id": "problem-solving",
+          "name": "Problem Solving",
+          "description": "Ability to analyze situations and find solutions"
+        },
+        {
+          "id": "attention-to-detail",
+          "name": "Attention to Detail",
+          "description": "Noticing important clues and patterns"
+        }
+      ],
+      "format": "single",
+      "duration": {
+        "min_minutes": 15,
+        "max_minutes": 45
+      }
+    }
+  },
+  "assets": {
+    "scenario": "scenario.md",
+    "rules": "rules.md"
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 1
+    }
+  },
+  "engine": {
+    "system_prompt": "You are the game master of an escape room game. Guide the player through the mansion, provide descriptions based on their location, and respond to their actions. Use the scenario anchors to maintain consistency. Never give away puzzle solutions directly - provide hints instead.",
+    "model_config": {
+      "temperature": 0.7,
+      "max_tokens": 500
+    },
+    "context": {
+      "include": ["state.public", "state.secret.visited_rooms"],
+      "history_window": 10
+    }
+  },
+  "state": {
+    "public": {
+      "current_room": "intro",
+      "inventory": [],
+      "discovered_hints": []
+    },
+    "secret": {
+      "puzzle_solutions": {
+        "library": "3-1-4-1-5",
+        "portrait": "look_left"
+      },
+      "visited_rooms": ["intro"],
+      "time_started": null
+    }
+  },
+  "actions": {
+    "move": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Player moves to a different room"
+      }
+    },
+    "examine": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Player examines an object or area"
+      }
+    },
+    "take": {
+      "handler_type": "script",
+      "function": "takeItem",
+      "metadata": {
+        "description": "Player picks up an item"
+      }
+    },
+    "use": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Player uses an item"
+      }
+    },
+    "get_hint": {
+      "handler_type": "script",
+      "function": "revealHint",
+      "metadata": {
+        "description": "Player requests a hint"
+      }
+    }
+  },
+  "screens": {
+    "intro": {
+      "title": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "screen.intro.title"
+        },
+        "resolved": "Welcome to the Mystery"
+      },
+      "content": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "screen.intro.body"
+        },
+        "resolved": "The door slams shut behind you. The only light comes from flickering candles scattered around the dusty room. On a table in the corner, you notice an old journal and a rusty key."
+      }
+    },
+    "main-hall": {
+      "title": "Main Hall",
+      "content": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "screen.main-hall.description"
+        },
+        "resolved": "A grand hall with a crystal chandelier hanging from the ceiling. Two doors lead to other rooms: one to the Library, another to the Kitchen. A large portrait on the wall seems to be watching you."
+      }
+    },
+    "victory": {
+      "title": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "screen.victory.title"
+        },
+        "resolved": "Freedom!"
+      },
+      "content": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "screen.victory.body"
+        },
+        "resolved": "Congratulations! You've solved all the puzzles and found the hidden exit."
+      }
+    }
+  },
+  "items": {
+    "journal": {
+      "name": "Old Journal",
+      "description": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "item.journal.description"
+        },
+        "resolved": "An old leather-bound journal. The last entry reads: 'The secret lies where knowledge rests. Look for the numbers that make sense.'"
+      },
+      "portable": true
+    },
+    "rusty-key": {
+      "name": "Rusty Key",
+      "description": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "item.rusty-key.description"
+        },
+        "resolved": "A small rusty key with an ornate handle. It looks like it might fit a cabinet or a drawer."
+      },
+      "portable": true
+    }
+  },
+  "hints": {
+    "library-books": {
+      "content": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "hint.library.books"
+        },
+        "resolved": "The books are arranged in a specific order. Notice the numbers on their spines."
+      },
+      "room": "library"
+    },
+    "portrait-secret": {
+      "content": {
+        "source_ref": {
+          "file": "scenario",
+          "anchor": "hint.portrait.secret"
+        },
+        "resolved": "The eyes of the portrait aren't just watching - they're pointing somewhere."
+      },
+      "room": "main-hall"
+    }
+  }
+}

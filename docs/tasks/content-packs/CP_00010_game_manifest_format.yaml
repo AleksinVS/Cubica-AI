@@ -1,0 +1,60 @@
+id: CP_00010
+title: Game Manifest Format and Schema (F_00010)
+status: completed
+owner: @user
+role: architect
+tasks:
+  - F_00010
+scope:
+  docs:
+    - docs/architecture/schemas/**
+    - docs/architecture/adrs/001-mvp-and-llm-first-game-manifests.md
+    - docs/tasks/features/F_00010_game_manifest_format_and_schema_(E_25_0001).md
+links:
+  tasks:
+    - docs/tasks/features/F_00010_game_manifest_format_and_schema_(E_25_0001).md
+    - docs/tasks/epics/E_0010_game_manifest_architecture.md
+  related:
+    - PROJECT_OVERVIEW.md
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - docs/**
+exec_plan: |
+  ```md
+  # ExecPlan: Game Manifest Format and Schema
+
+  This ExecPlan targets task `F_00010`.
+
+  ## Purpose
+  To define the standardized JSON structure ("Game Manifest") that drives the Cubica LLM-first player. This schema is the contract between the Game Developer (who writes the manifest), the Player (Presenter/View), and the Engine (LLM).
+
+  ## Plan of Work
+
+  1.  **Setup**: Create `docs/architecture/schemas/` and `docs/architecture/schemas/examples/`.
+  2.  **Conceptual Documentation**: Create `docs/architecture/schemas/manifest-structure.md`.
+      - Explain the "Why" and "How" of the manifest.
+      - Define top-level sections: `meta`, `config`, `state`, `ui`, `engine`.
+  3.  **Schema Definition**: Create `docs/architecture/schemas/game-manifest.schema.json`.
+      - JSON Schema Draft 7.
+      - Strict typing for top-level fields.
+      - Flexible (additionalProperties: true) for game-specific `state` and `ui` initially, to allow iteration.
+  4.  **Validation**: Create `docs/architecture/schemas/examples/minimal-manifest.json`.
+      - A valid, minimal example to prove the schema works.
+
+  ## Concrete Steps
+
+  - [x] Create directory structure.
+  - [x] Write `docs/architecture/schemas/manifest-structure.md`.
+  - [x] Write `docs/architecture/schemas/game-manifest.schema.json`.
+  - [x] Write `docs/architecture/schemas/examples/minimal-manifest.json`.
+  - [x] Update `PROJECT_OVERVIEW.md` or Architecture docs to link to these new schemas.
+
+  ## Outcomes
+  - Defined the core Game Manifest structure in `manifest-structure.md`.
+  - Created a JSON Schema `game-manifest.schema.json` for validation.
+  - Created a working example `minimal-manifest.json`.
+  - Updated project documentation to reference these artifacts.
+  ```

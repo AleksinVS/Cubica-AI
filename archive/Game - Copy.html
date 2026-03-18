@@ -1,0 +1,1277 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="iE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="icon" href="favicon.ico">
+
+    
+    <title>«АНТАРКТИЧЕСКАЯ КОРПОРАЦИЯ»</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <link href="assets/css/ie10-viewport-bug-workaround.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="penguines.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="https://oss.maxcdn.com/html5shiv/3.7.3/html5shiv.min.js"></script>
+      <script src="https://oss.maxcdn.com/respond/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+  </head>
+
+  <body>
+    <!-- Single-file prototype of the Antarctica training game.
+         Layout, assets and game logic live together here so the page can run from a file:// URL without a build step. -->
+
+    <!-- Fixed navbar -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+            
+              <ul class="nav nav-pills navbar-right">
+              <li><a href="#"><strong>ЗНАНИЯ </strong><span id="pro" class="badge">0</span></a></li>
+              <li><a href="#"><strong>ДОВЕРИЕ </strong><span id="rep" class="badge">0</span></a></li>
+              <li><a href="#"><strong>ЭНЕРГИЯ </strong><span id="lid" class="badge">0</span></a></li>
+              <li><a href="#"><strong>КОНТРОЛЬ </strong><span id="man" class="badge">0</span></a></li>
+              <li><a href="#"><strong>СТАТУС </strong><span id="stat" class="badge">0</span></a></li>
+              <li><a href="#"><strong>КОНТАКТ </strong><span id="cont" class="badge">0</span></a></li>
+              <li><a href="#"><strong>КОНСТРУКТИВ </strong><span id="constr" class="badge">0</span></a></li>
+              <li class="active"><a href="#"><strong>ОСТАТОК ДНЕЙ </strong><span id="score" class="badge">60</span></a></li>
+              <li class="active"><a id="teamselected" href="#" style="background-color: #449d44; display:none"><strong>Далее </strong></a></li>
+
+          </ul>
+<!--   <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="active nextButton"><a href="#">Далее</a></li>
+                </ul>
+            </div>
+
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button> -->
+            <div id="stage" class="navbar-brand" data-toggle="modal" data-target="#modal-1" href="#" style="cursor: pointer">«АНТАРКТИЧЕСКАЯ КОРПОРАЦИЯ»</div>
+            <div id="history" class="navbar-history" data-toggle="modal" data-target="#modal-history" href="#" style="cursor: pointer">Журнал ходов</div>
+         
+        
+    </div>
+          
+      </div>
+    </nav>
+
+
+
+    <div id='container' class="container">
+
+      <!-- Main component for a primary marketing message or call to action -->
+        <div id="content">
+        <!-- Modals -->
+            <div id="modals">
+                <div class="modal fade" id="modal-1" tabindex="-1" role="dialog" aria-labelledby="introModal-1">
+                    <div class="modal-dialog modal-lg" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header text-center">
+                                <button id="close" type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                                <h2 class="modal-title " id="introModal-1">
+                                    <img id="modalpic" src="img/i0.png" alt=""></br>
+                                    <big ><b id="modalName"></b></big></br>
+                                    <small id="modalSmallTitle"></small></h2>
+                            </div>
+                            <div class="modal-body">
+
+                                <h3 class="lead" id="modalText">
+
+                                </h3>
+                                <div class="modal-footer">
+                                <div class="text-center">
+                                    <button id="next" type="button" data-dismiss="modal" class="btn btn-lg btn-success">Далее</button>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <!-- ModalsEnd -->
+
+
+        <!-- team -->
+       
+     <div id="team" style="display:none">    
+        <div class="row">
+            <div class="col-md-6 panel-group">
+                <div id="t0" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+            <div class="col-md-6 panel-group">
+                <div id="t1" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6 panel-group">
+                <div id="t2" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+            <div class="col-md-6 panel-group">
+                <div id="t3" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+        </div>
+                 <div class="row">
+            <div class="col-md-6 panel-group">
+                <div id="t4" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+            <div class="col-md-6 panel-group">
+                <div id="t5" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+        </div>
+                 <div class="row">
+            <div class="col-md-6 panel-group">
+                <div id="t6" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+            <div class="col-md-6 panel-group">
+                <div id="t7" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+        </div>
+                 <div class="row">
+            <div class="col-md-6 panel-group">
+                <div id="t8" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+            <div class="col-md-6 panel-group">
+                <div id="t9" class="panel panel-default" style="cursor: pointer">
+                    <div class="panel-heading topTitle"></div>
+                </div>
+            </div>
+        </div>
+     </div>    
+
+        <!-- team -->
+
+        <!-- Cards -->
+     <div id="cards">
+
+         <div class="row">
+
+             <div class="col-md-4">
+                 <div id="0" class="panel-group" style="display:none">
+                     <div id="front0" class="panel panel-primary  collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back0" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="1" class="panel-group" style="display:none">
+                     <div id="front1" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back1" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="2" class="panel-group" style="display:none">
+                     <div id="front2" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back2" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+         </div>
+         <div class="row">
+
+             <div class="col-md-4">
+                 <div id="3" class="panel-group" style="display:none">
+                     <div id="front3" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back3" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="4" class="panel-group" style="display:none">
+                     <div id="front4" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back4" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="5" class="panel-group" style="display:none">
+                     <div id="front5" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back5" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+         </div>
+         <div class="row">
+             <div class="col-md-4">
+                 <div id="6" class="panel-group" style="display:none">
+                     <div id="front6" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back6" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="7" class="panel-group" style="display:none">
+                     <div id="front7" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back7" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="8" class="panel-group" style="display:none">
+                     <div id="front8" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back8" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+                         
+                     </div>
+                 </div>
+             </div>
+
+         </div>
+         
+         
+         <div class="row">
+             <div class="col-md-4">
+                 <div id="9" class="panel-group" style="display:none">
+                     <div id="front9" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back9" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="10" class="panel-group" style="display:none">
+                     <div id="front10" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back10" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+
+                     </div>
+                 </div>
+             </div>
+
+             <div class="col-md-4">
+                 <div id="11" class="panel-group" style="display:none">
+                     <div id="front11" class="panel panel-primary collapse in front" style="cursor: pointer">
+                         <div class="panel-heading topTitle"></div>
+
+                     </div>
+                     <div id="back11" class="panel panel-default collapse back">
+                         <div class="panel-heading topTitle"></div>
+                         <h5 class="panel-body">ДНЕЙ НА ВЫПОЛНЕНИЕ:<span class="label label-primary pull-right middleTitle">1</span></h5>
+                         
+                     </div>
+                 </div>
+             </div>
+
+         </div>
+         
+     </div>
+<!--cards-->
+        <!-- History -->
+    <div id="History">
+        <div class="modal fade" id="modal-history" tabindex="-1" role="dialog" aria-labelledby="HistoryModal">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header text-center">
+                        <button id="closehistory" type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h2 class="modal-title " id="HistoryModal">
+                            <b id="modalName">Журнал ходов</b>
+                        </h2>
+                    </div>
+                    
+                    <div id="historybody"     style="padding: 0px 20px 0px 20px"></div>                        
+                    
+                    <div class="modal-footer">
+                        <div class="text-center">
+                            <button id="closehistorybutt" type="button" data-dismiss="modal" class="btn btn-lg btn-success">Закрыть</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+        <div id="history-template" style="display:none">
+            <div class="row">
+                <div class="col-md-6">
+                    
+                        <div class="panel panel-primary front">
+
+                        </div>
+                    
+                </div>
+                <div class="col-md-6">
+                    
+                        <div class="panel panel-default back">
+                        </div>
+                    
+                </div>
+
+
+                
+            </div>
+            <div class="row historyresult-row">
+            
+
+                <div class="col-md-eight"><strong>ЗНАНИЯ<br/></strong><span class="badge history pro">0</span></div>
+                <div class="col-md-eight"><strong>ДОВЕРИЕ<br/></strong><span class="badge history rep">0</span></div>
+                <div class="col-md-eight"><strong>ЭНЕРГИЯ<br/></strong><span class="badge history lid">0</span></div>
+                <div class="col-md-eight"><strong>КОНТРОЛЬ<br/></strong><span class="badge history man">0</span></div>
+                <div class="col-md-eight"><strong>СТАТУС<br/></strong><span class="badge history stat">0</span></div>
+                <div class="col-md-eight"><strong>КОНТАКТ<br/></strong><span class="badge history cont">0</span></div>
+                <div class="col-md-eight"><strong>КОНСТРУКТИВ<br/></strong><span class="badge history constr">0</span></div>
+                <div class="col-md-eight"><strong>ОСТ. ДНЕЙ<br/></strong><span class="badge history score">60</span></div>
+
+            
+            </div>
+        </div>
+        <!-- HistoryEnd -->
+    </div>
+      <!-- Site footer 
+      <footer class="footer">
+        <p>&copy; 2016 Таллент</p>
+      </footer>-->
+
+    </div> 
+    
+
+        
+    <!-- /container -->
+
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    
+    <script src="jquery.min.js"></script>
+    <script>window.jQuery || document.write('<script src="assets/js/vendor/jquery.min.js"><\/script>')</script>
+    <script src="dist/js/bootstrap.min.js"></script>
+    <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
+    <script src="assets/js/ie10-viewport-bug-workaround.js"></script>
+
+
+    <script src="jquery.flip.min.js"></script>
+
+    <script type="text/javascript">
+    /*
+      The whole game runs inside this script: data definitions (cards/timeline) plus a lightweight runner.
+      Everything is designed to work offline; avoid adding network calls when extending the scenario.
+    */
+
+    $(document).ready(function(){
+        
+        
+        // Cache HTML templates so we can rebuild sections after each step without duplicating markup.
+        cardstemplate = $('#cards').html();
+        modaltemplate=$('#modals').html();
+        historytemplate=$('#history-template').html();
+        //$('#modal-history').modal();
+        
+        game.next();
+    });
+    
+// Runtime state for team selection and scripted jumps between timeline blocks.
+var team = [];
+var goTo = function(args){ // функция перехода по сценарию
+    game.curent=args[0];    // элемент на экране
+    game.line = args[1];    // сюжетная линиия
+    game.cursor = args[2];  // текущая группа (экран)
+    };
+
+var swap = function(swapID){game.curent=swapID;}; // функция замены текущего элемента экрана
+
+var unlock = function(unlockkey){ // (сделать через обработчик события) - разблокировка карточки
+    game.cards[unlockkey].f.locked = false;
+    cardKey = "[cardNum = "+unlockkey+"] .front";
+    $(cardKey).removeClass("panel-warning");
+};
+
+// Helper shortcuts used inside conditional actions to jump in the timeline or unlock later cards.
+var f34 = function() // переход на вторую сюжетную линию (проигрыш) первый экран
+{
+    game.line = 1;
+    game.cursor = -1;
+    game.next();
+    $('#cards').css({'display':'none'});
+};
+
+var f25_30 = function(counter){
+    game.timeline[game.line][game.cursor].forEach(function(cardID) { // считаем сколько карточек из текущего экрана уже выбраны
+        if (game.log.indexOf(cardID)>-1){counter--};
+    });
+    if (counter <= 0){ // если выбрано не меньше, чем параметр "counter", показываем кнопку "Далее" 
+        
+        cardKey = "[cardNum = "+game.curent+"] .back";
+        $(cardKey).append('<button type="button" class="btn btn-success btn-lg btn-block nextButton">Далее</button>');    
+        $('.nextButton').click(function(){
+            game.next();
+        });
+    };
+};
+
+// функция для разблокировки 39-й карточки, вызывается из ругих карточек
+var unlock39 = function(counter){
+    game.timeline[game.line][game.cursor].forEach(function(cardID) { // считаем сколько карточек из текущего экрана уже выбраны
+        if (game.log.indexOf(cardID)>-1){counter--};
+    });
+    if (counter <= 0){unlock(39)}; // если выбрано не меньше, чем параметр "counter", разблокируем 39-ю карточку
+};
+
+    // cardsObj contains every card, info screen, and team member used by the scenario.
+    // Keys are human-readable ids; values define layout text and the action arrays applied on click.
+    var cardsObj = {
+        1: {
+            'type': 'cards', 'f': { 'text': 'Есть идея! Создать клуб изучения' },
+            'b': { 'text': 'Некоторым понравились пещеры, кого-то напугали', 'action': [['pro', 8], ['rep', -1], ['man', 1], ['cont', 1], ['time', 5]] }
+        },
+        2: {
+            'type': 'cards', 'f': { 'text': 'Рассказать как можно большему количеству' },
+            'b': { 'text': 'Сколько пингвинов, столько и мнений.', 'action': [['pro', 0], ['rep', -2], ['time', 2]] }
+        },
+        3: {
+            'type': 'cards', 'f': { 'text': 'Поговорить с Аленой. Алена входит' },
+            'b': { 'text': 'Алена, как обычно, схватывает на', 'go': true, 'action': [['pro', 1], ['rep', 2], ['lid', 1], ['stat', 1], ['time', 1]] }
+        },
+        4: {
+            'type': 'cards', 'f': { 'text': 'Можно зайти к Георгию. Он' },
+            'b': { 'text': 'Георгия этот вопрос заинтересовал. Он', 'action': [['pro', 2], ['rep', 0], ['time', 3]] }
+        },
+        5: {
+            'type': 'cards', 'f': { 'text': 'Обратиться сразу к Вожаку всех' },
+            'b': { 'text': 'После некоторого ожидания, Леонид уделил', 'action': [['pro', 1], ['rep', 1], ['time', 3]] }
+        },
+        6: {
+            'type': 'cards', 'f': { 'text': 'Встретиться с Василием. Он общительный' },
+            'b': { 'text': 'Василий тут же предложил снять', 'action': [['pro', 0], ['rep', -1], ['time', 1]] }
+        },
+        7: {
+            'type': 'cards', 'f': { 'text': 'Алена хочет выступить сама на' },
+            'b': { 'text': 'Алена отлично выступила – живо,', 'action': [['rep', 0], ['time', 1]] }
+        },
+        8: {
+            'type': 'cards', 'f': { 'text': 'Убедить Совет – неплохая идея.' },
+            'b': { 'text': 'Обсуждения без санкции Совета оказалось', 'action': [['rep', -4], ['time', 3]] }
+        },
+        9: {
+            'type': 'cards', 'f': { 'text': 'Для презентации на Совете Федор' },
+            'b': { 'text': 'Кто-то спросил, почему не треснула', 'go': true, 'action': [['pro', 1], ['rep', 2], ['time', 2]] }
+        },
+        10: {
+            'type': 'cards', 'f': { 'text': 'Алена готова поговорить с участниками' },
+            'b': { 'text': 'Скепсис оказался гораздо большим, чем', 'action': [['rep', 0], ['time', 2]] }
+        },
+        11: {
+            'type': 'cards', 'f': { 'text': 'Федор кое-что знает о продажах.' },
+            'b': { 'text': 'Цель достигнута. Но лишь частично.', 'action': [['rep', -2], ['time', 2]] }
+        },
+        12: {
+            'type': 'cards', 'f': { 'text': 'Федор достал из сумки свой' },
+            'b': { 'text': 'С цифрами сложно спорить. Все', 'action': [['pro', 1], ['rep', -1], ['time', 1]] }
+        },
+        13: {
+            'type': 'cards', 'f': { 'text': 'Сразу выдать всю информацию на' },
+            'b': { 'text': 'Кажется, Совет боится своих сородичей.', 'action': [['rep', -5], ['time', 3]] }
+        },
+        14: {
+            'type': 'cards', 'f': { 'text': 'Можно выбрать наиболее лояльных Совету' },
+            'b': { 'text': 'Самые активные живо вовлеклись в', 'action': [['rep', 2], ['time', 1]] }
+        },
+        15: {
+            'type': 'cards', 'f': { 'text': 'Выбрать в стае наиболее ранимых,' },
+            'b': { 'text': 'Конечно, плоды у этой работы', 'action': [['rep', -1], ['time', 3]] }
+        },
+        16: {
+            'type': 'cards', 'f': { 'text': 'Сосредоточиться на Григорие и нескольких' },
+            'b': { 'text': 'Сделав профилактику возражений, Вы снизили', 'action': [['rep', 1], ['time', 1]] }
+        },
+        17: {
+            'type': 'cards', 'f': { 'text': 'Прежде чем сообщать на общем' },
+            'b': { 'text': 'После пяти дней совещаний стало', 'action': [['pro', 2], ['rep', -2], ['time', 5]] }
+        },
+        18: {
+            'type': 'cards', 'f': { 'text': 'Рассказать на общем собрании о' },
+            'b': { 'text': 'Конечно, пингвины испугались. Однако паники', 'go': true, 'action': [['pro', 2], ['rep', 2], ['time', 1]] }
+        },
+        19: {
+            'type': 'cards', 'f': { 'text': 'Глава штаба дает всем участникам' },
+            'b': { 'text': 'Команда решительно бросается на выполнение', 'action': [['rep', -1], ['time', 2]] }
+        },
+        20: {
+            'type': 'cards', 'f': { 'text': 'Лидер склоняется к тому, чтобы' },
+            'b': { 'text': 'В результате этих бесед удалось', 'action': [['lid', 1], ['man', 2], ['time', 2]] }
+        },
+        21: {
+            'type': 'cards', 'f': { 'text': 'Главарь Команды Изменений проводит установочное' },
+            'b': { 'text': 'Неопределенность слишком велика, а команда', 'action': [['time', 1]] }
+        },
+        22: {
+            'type': 'cards', 'f': { 'text': 'Лидер организует ловлю кальмаров. Пингвины' },
+            'b': { 'text': 'На какое-то время пингвины даже', 'go': true, 'action': [['rep', 1], ['lid', 2], ['constr', 2], ['time', 1]] }
+        },
+        23: {
+            'type': 'cards', 'f': { 'text': 'Главный пингвин команды решает провести' },
+            'b': { 'text': 'Тренинг создал нужный настрой, выросло', 'go': true, 'action': [['lid', 1], ['constr', 1], ['time', 2]] }
+        },
+        24: {
+            'type': 'cards', 'f': { 'text': 'Предводитель команды назначает график дежурства,' },
+            'b': { 'text': 'Участники поначалу воодушевлены возможностью проявить', 'action': [['time', 1]] }
+        },
+        25: {
+            'type': 'cards', 'f': { 'text': 'Профессор изучает статистику климатических изменений' },
+            'b': { 'text': 'Профессор очень доволен этой работой.', 'action': [['pro', 4], ['time', 4], ['func', f25_30, 3]] }
+        },
+        26: {
+            'type': 'cards', 'f': { 'text': 'Команда организует работы со всеми' },
+            'b': { 'text': 'Собран банк идей: сделать стоки,', 'action': [['pro', 2], ['rep', 2], ['cont', 2], ['time', 5], ['func', f25_30, 3]] }
+        },
+        27: {
+            'type': 'cards', 'f': { 'text': 'Организуется работа команды с теми' },
+            'b': { 'text': 'Совершенно новых идей не появилось.', 'action': [['pro', 2], ['rep', 1], ['cont', 1], ['time', 4], ['func', f25_30, 3]] }
+        },
+        28: {
+            'type': 'cards', 'f': { 'text': 'Команда прорабатывает возможные варианты укрепления' },
+            'b': { 'text': 'Идея укрепления казалась хорошей, но', 'action': [['pro', 2], ['time', 3], ['func', f25_30, 3]] }
+        },
+        29: {
+            'type': 'cards', 'f': { 'text': 'Формируются группы для проведения консультаций' },
+            'b': { 'text': 'Где-то предложили переехать к ним,', 'action': [['pro', 4], ['rep', 1], ['cont', 1], ['time', 5], ['func', f25_30, 3]] }
+        },
+        30: {
+            'type': 'cards', 'f': { 'text': 'Штаб решает погрузиться в серию' },
+            'b': { 'text': 'Было много идей типа склеить', 'action': [['pro', 2], ['time', 3], ['func', f25_30, 3]] }
+        },
+        31: {
+            'type': 'cards', 'f': { 'text': 'Создать комитет по борьбе с', 'action': [['cont', '>', 10, ['time', -2]]] },
+            'b': { 'text': 'Такая кропотливая работа, безусловно, полезна.', 'go': true, 'action': [['rep', 1], ['cont', 1], ['time', 4]] }
+        },
+        32: {
+            'type': 'cards', 'f': { 'text': 'Сделать мотивирующие листовки Айсберг не', 'action': [['pro', '>', 20, ['time', -1]]] },
+            'b': { 'text': 'Листовки получились интересные, многим они', 'go': true, 'action': [['rep', 1], ['time', 2]] }
+        },
+        33: {
+            'type': 'cards', 'f': { 'text': 'Выявить наиболее тревожных пингвинов и', 'action': [['cont', '>', 10, ['time', -2]]] },
+            'b': { 'text': 'Отличная идея! Разъясняя другим, пингвины', 'go': true, 'action': [['rep', 3], ['stat', 1], ['cont', 2], ['time', 3]] }
+        },
+        34: {
+            'type': 'cards', 'f': { 'text': 'Разработать и внедрить разумную систему' },
+            'b': { 'text': 'Паника затухает. Более точно было', 'go': true, 'action': [['stat', '<', 25, ['func', f34, '']], ['rep', -5], ['lid', -3], ['stat', 3], ['time', 2]] }
+        },
+        35: {
+            'type': 'cards', 'f': { 'text': 'Провести серию выступлений для небольших', 'action': [['cont', '>', 10, ['time', -1]]] },
+            'b': { 'text': 'Паника быстро затухает. Становится понятно,', 'go': true, 'action': [['rep', 2], ['cont', 1], ['time', 2]] }
+        },
+        36: {
+            'type': 'cards', 'f': { 'text': 'Провести разъяснения с каждым пингвином', 'action': [['cont', '>', 10, ['time', -3]]] },
+            'b': { 'text': 'Пожалуй, это слишком затратный путь.', 'go': true, 'action': [['time', 10]] }
+        },
+        37: {
+            'type': 'cards', 'f': { 'text': 'Было столько идей, что может', 'action': [['func', unlock39, 3]] },
+            'b': { 'text': 'Все 492 идеи помещены в', 'action': [['rep', -3], ['time', 3]] }
+        },
+        38: {
+            'type': 'cards', 'f': { 'text': 'Можно сделать еще одно общее', 'action': [['func', unlock39, 3]] },
+            'b': { 'text': 'Второго дыхания не случилось. Новых', 'action': [['rep', -3], ['time', 3]] }
+        },
+        39: {
+            'type': 'cards', 'f': { 'text': 'Лидер предлагает оставить пока поиск', 'locked': true },
+            'b': { 'text': 'Жизнь колонии выглядит прежней. Взрослые', 'go': true, 'action': [['time', 1]] },
+            'alt': [//массив альтернатив 
+                [//массив условий и действий
+                    ['pro', '>', 40, ['func', swap, 3902]]//условное действие
+                ]
+            ]
+        },
+        3902: {
+            'type': 'cards', 'f': { 'text': 'К вам приходит секретарь Клуба' },
+            'b': { 'text': 'Он ведет вас на край', 'go': true, 'action': [['time', 1]] }
+        },
+        40: {
+            'type': 'cards', 'f': { 'text': 'Решения не видно и пингвины', 'action': [['func', unlock39, 3]] },
+            'b': { 'text': 'Работа была непростой и заняла', 'action': [['rep', 5], ['time', 4]] }
+        },
+        41: {
+            'type': 'cards', 'f': { 'text': 'Выбрать случайным образом несколько групп', 'action': [['func', unlock39, 3]] },
+            'b': { 'text': 'Контакт с пингвинами приносит плоды.', 'action': [['rep', 4], ['time', 2]] }
+        },
+        42: {
+            'type': 'cards', 'f': { 'text': 'Все яснее, что айсберг не', 'action': [['func', unlock39, 3]] },
+            'b': { 'text': 'Спасательные льдины неустойчивы, обучение плану', 'action': [['pro', 1], ['rep', 2], ['time', 2]] }
+        },
+        43: {
+            'type': 'cards', 'f': { 'text': 'Леонид собирает общее собрание и', 'action': [['rep', '<', 15, ['rep', -3]], ['log', 'out', 'leo', ['time', 1]]] },
+            'b': { 'text': 'Конечно, пингвины в шоке… Это', 'go': true, 'action': [['rep', -2], ['time', 1]] }
+        },
+        44: {
+            'type': 'cards', 'f': { 'text': 'Леонид собирает общее собрание и', 'action': [['rep', '<', 15, ['rep', -5]], ['log', 'out', 'leo', ['time', 1]]] },
+            'b': { 'text': 'Пингвины снова в шоке… Это', 'action': [['rep', -3], ['time', 1]] }
+        },
+        45: {
+            'type': 'cards', 'f': { 'text': 'Леонид собирает общее собрание, дает', 'action': [['cont', '>', 10, ['cont', 10]], ['log', 'out', 'leo', ['time', 1]]] },
+            'b': { 'text': 'Конечно, пингвины в шоке… Это', 'go': true, 'action': [['rep', 3], ['time', 1]] }
+        },
+        46: {
+            'type': 'cards', 'f': { 'text': 'Совет собирает общее собрание, на' },
+            'b': { 'text': 'Пингвины снова в шоке… Это', 'action': [['rep', -5], ['time', 1]] }
+        },
+        47: {
+            'type': 'cards', 'f': { 'text': 'Совет принимает решение донести информацию' },
+            'b': { 'text': 'Конечно, пирнгвины в шоке… Это', 'go': true, 'action': [['rep', 1], ['time', 3]] }
+        },
+        48: {
+            'type': 'cards', 'f': { 'text': 'Совет решает распространить решение через', 'action': [['rep', '<', 15, ['rep', -5]]] },
+            'b': { 'text': 'Конечно, пирнгвины в шоке… Это', 'go': true, 'action': [['cont', -5], ['time', 2]] }
+        },
+        49: {
+            'type': 'cards', 'f': { 'text': 'Провести работу с лидерами мнений', 'action': [['cont', '<', 10, ['time', 2]]] },
+            'b': { 'text': 'Не все лидеры мнений готовы', 'go': true, 'action': [['rep', 2], ['constr', 1], ['time', 2]] }
+        },
+        50: {
+            'type': 'cards', 'f': { 'text': 'Провести совещания о будущих переменах' },
+            'b': { 'text': 'Возможность поговорить в рабочее время,', 'go': true, 'action': [['rep', 4], ['constr', 3], ['time', 1]] }
+        },
+        51: {
+            'type': 'cards', 'f': { 'text': 'Организовать семейные ужины - вечерние', 'action': [['cont', '<', 20, ['time', 1]]] },
+            'b': { 'text': 'Пингвины: а) выговорились, б) узнали,', 'go': true, 'action': [['rep', 3], ['constr', 3], ['time', 3]] }
+        },
+        52: {
+            'type': 'cards', 'f': { 'text': 'Организовать семинары в детских садах' },
+            'b': { 'text': 'Вовлечь детей было несложно! Увлекательные', 'go': true, 'action': [['rep', 4], ['time', 2]] }
+        },
+        53: {
+            'type': 'cards', 'f': { 'text': 'Сделать видео-ролик для Айсберг-ТВ и' },
+            'b': { 'text': 'Ролик очень понравился пингвинам. Это', 'go': true, 'action': [['rep', 2], ['time', 5]] }
+        },
+        54: {
+            'type': 'cards', 'f': { 'text': 'Заполнить айсберг жизнеутверждающими постерами о' },
+            'b': { 'text': 'У постеров хороший охват! Особенно', 'go': true, 'action': [['rep', 2], ['time', 2]] }
+        },
+        55: {
+            'type': 'cards', 'f': { 'text': 'Привлечь наиболее скептически настроенных пингвинов', 'action': [['rep', '<', 20, ['time', 1]], ['cont', '<', 20, ['time', 1]], ['constr', '<', 0, ['time', 2]]] },
+            'b': { 'text': 'Прежде чем привлечь скептиков, их', 'go': true, 'action': [['rep', 3], ['man', 3], ['constr', 3], ['time', 2]] }
+        },
+        56: {
+            'type': 'cards', 'f': { 'text': 'Нейтрализовать Григория путем приставления к' },
+            'b': { 'text': 'Помощник существенно уменьшает ущерб от', 'action': [['man', 2], ['constr', 2], ['time', 1]] }
+        },
+        57: {
+            'type': 'cards', 'f': { 'text': 'Некоторые дети сами предлагают свою', 'action': [['rep', '<', 25, ['time', 1]]] },
+            'b': { 'text': 'Общение с птенцами привело вас', 'go': true, 'action': [['rep', 2], ['time', 1]] }
+        },
+        58: {
+            'type': 'cards', 'f': { 'text': 'Организовать семейные ужины, на которых', 'action': [['rep', '<', 25, ['time', 1]], ['cont', '<', 20, ['time', 1]]] },
+            'b': { 'text': 'Боевой дух крепнет, а длительное', 'go': true, 'action': [['rep', 3], ['constr', 3], ['time', 1]] }
+        },
+        59: {
+            'type': 'cards', 'f': { 'text': 'Увеличить степень участия Команды изменений', 'action': [['rep', '<', 25, ['time', 1]], ['lid', '<', 20, ['time', 1]], ['man', '<', 20, ['time', 1]], ['stat', '<', 20, ['time', 1]]] },
+            'b': { 'text': 'Команда изменений работает на пределе,', 'action': [['rep', 2], ['man', 3], ['constr', -3], ['time', 2]] }
+        },
+        60: {
+            'type': 'cards', 'f': { 'text': 'Организовать Школу разведчика, чтобы подготовить', 'action': [['rep', '<', 25, ['time', 1]], ['man', '<', 20, ['time', 1]], ['stat', '<', 25, ['time', 1]]] },
+            'b': { 'text': 'Поначалу дело стопорится: то нет', 'go': true, 'action': [['pro', 20], ['rep', 1], ['constr', 2], ['time', 2]] }
+        },
+        61: {
+            'type': 'cards', 'f': { 'text': 'Отправить элитную группу разведчиков, не', 'action': [['pro', '<', 60, ['time', 2]], ['pro', '<', 45, ['time', 3]], ['log', 'out', '57', ['time', 5]]] },
+            'b': { 'text': 'Разведчики вернулись практически вовремя. Их', 'go': true, 'action': [['time', 7]] }
+        },
+        62: {
+            'type': 'cards', 'f': { 'text': 'Добрать в группу разведки всех' },
+            'b': { 'text': 'Желающих много и группа заполнилась', 'action': [['time', 1], ['func', unlock, 66]] }
+        },
+        63: {
+            'type': 'cards', 'f': { 'text': 'Доукомплектовать группу только самыми физически' },
+            'b': { 'text': 'Пингвины довольны получившейся разведгруппой, она', 'action': [['time', 3], ['func', unlock, 66]] }
+        },
+        64: {
+            'type': 'cards', 'f': { 'text': 'В достаточно жесткой директивной форме', 'action': [['stat', '<', 25, ['time', 1]]] },
+            'b': { 'text': 'Это было сделано быстрее, чем', 'action': [['rep', 3], ['man', 5], ['constr', 5], ['time', 0]] }
+        },
+        65: {
+            'type': 'cards', 'f': { 'text': 'Бороться с закулисной борьбой аккуратно', 'action': [['stat', '<', 25, ['time', 1]]] },
+            'b': { 'text': 'Это было сделано быстрее, чем', 'action': [['rep', 4], ['man', 5], ['constr', 7], ['time', 2]] }
+        },
+        66: {
+            'type': 'cards', 'f': { 'text': 'Отправить полностью укомплектованную и подготовленную', 'locked': true, 'action': [['pro', '<', 60, ['time', 2]], ['pro', '<', 45, ['time', 3]], ['log', 'in', '62', ['time', 5]], ['log', 'out', '57', ['time', 5]]] },
+            'b': { 'text': 'Разведчики вернулись практически вовремя. Их', 'go': true, 'action': [['time', 6]] }
+        },
+        67: {
+            'type': 'cards', 'f': { 'text': 'Чтобы не тратить время на' },
+            'b': { 'text': 'Профессор делает блестящий анализ, выделив', 'action': [['time', 1]] }
+        },
+        68: {
+            'type': 'cards', 'f': { 'text': 'Чтобы снизить риск ошибки, стоит', 'action': [['man', '<', 30, ['time', 1]], ['constr', '<', 30, ['time', 1]]] },
+            'b': { 'text': 'Дополнительная экспедиция показала, что айсберг', 'go': true, 'action': [['time', 3]] }
+        },
+        69: {
+            'type': 'cards', 'f': { 'text': 'Эти два месяца до зимы…' },
+            'b': { 'text': 'Конечно, к этому нельзя привыкнуть', 'go': true, 'action': [['rep', 5]] }
+        },
+        70: {
+            'type': 'cards', 'f': { 'text': 'Эти два месяца до зимы…' },
+            'b': { 'text': 'Возможно, люди и могут принять', 'action': [['rep', -5]] }
+        },
+
+        'i0': { 'type': 'info', 'title': 'Корпорация "Антарктика"<br/><small>бизнес-квест (основан на идеях Джона Коттера)</small>', 'text': '', 'bg': 'i0.png' },
+        'i02': { 'type': 'info', 'title': 'Мы находимся далеко-далеко на юге…', 'bg': 'i02.png', 'img': 'знак антарктика' },
+        'i03': { 'type': 'info', 'title': 'Что если пингвины были бы разумны как люди?', 'bg': 'i03.png', 'img': 'Пингвин "Можно меня крупным планом"' },
+
+        'i1': { 'type': 'info', 'title': 'Цель и ход игры', 'text': '<p>В этой игре вам нужно', 'bg': 'i1.png' },
+
+        'i2': { 'type': 'info', 'title': 'Немного теории', 'text': '<p>Для достижения цели вам нужно', 'bg': 'i1.png' },
+
+        'i3': { 'type': 'info', 'title': 'Добро пожаловать на айсберг!', 'text': '<p>Антарктика - это огромный мир', 'bg': 'i3.png' },
+
+        'i4': { 'type': 'info', 'title': 'Знакомьтесь: Федор!', 'text': '<p>Знакомство с пингвинами мы начинаем', 'bg': 'i4.png' },
+
+        'i5': { 'type': 'info', 'title': 'Зловещая находка', 'text': '<p>Федор изучал айсберг с разных', 'bg': 'i5.png', 'img': 'В глубине айсберга' },
+
+        'i6': { 'type': 'info', 'title': 'Пора что-то предпринять!', 'text': '<p>Федор хотел с кем-нибудь поделиться', 'bg': 'i4.png', 'img': 'Федор' },
+
+        'i7': { 'type': 'info', 'title': 'Отнеситесь к этому серьезно!', 'text': '<p>Мнение Алены важно для Вожака.', 'bg': 'i7.png', 'img': 'Алена и Федор' },
+
+        'i8': { 'type': 'info', 'title': 'Что скажет народ?', 'text': '<p>В какой-то момент показалось, что', 'bg': 'i8.png', 'img': 'Леонид, Алена и Федор - совещание' },
+
+        'i9': { 'type': 'info', 'title': 'Создание «штаба»', 'text': '<p>Хотя большинство пингвинов знали, что', 'bg': 'i9.png' },
+
+        'i10': { 'type': 'info', 'title': 'Работаем «в одной упряжке»', 'text': '<p>Пингвины не используют упряжки и', 'bg': 'i10.png', 'img': 'Пять пингвинов - Лепят' },
+
+        'i11': { 'type': 'info', 'title': 'Первые шаги', 'text': '<p>Теперь, когда команда почувствовала в', 'bg': 'i8.png', 'img': 'Леонид, Алена и Федор - совещание' },
+
+        'i12': { 'type': 'info', 'title': 'Разброд и шатание', 'text': '<p>С одной стороны, жизнь пингвинов', 'bg': 'i12.png', 'img': 'Протестующие пингвины' },
+
+        'i13': { 'type': 'info', 'title': 'Вперед-вперед!', 'text': '<p>Сдержав волну паники, команда изменений', 'bg': 'i13.png', 'img': 'Пингвины идут под флагом' },
+
+        'i14': { 'type': 'info', 'title': 'Открытие', 'text': '<p>Большинство пингвинов никогда не видели', 'bg': 'i14.png', 'img': 'Чайка' },
+
+        'i14_2': { 'type': 'info', 'title': 'Открытие (продолжение)', 'text': '<p>Но открытие случилось, оно изменило', 'bg': 'i14.png' },
+
+        'i15': { 'type': 'info', 'title': 'Для тех, кто не в курсе…', 'text': '<p>Пожалуй, решение подоспело вовремя. Кажется,', 'bg': 'i15.png', 'img': 'Айсберг - начало трещины' },
+
+        'i16': { 'type': 'info', 'title': 'Предвкушение приключений. С привкусом страха и боли.', 'text': '<p>Общее собрание, обсуждение того, что', 'bg': 'i16.png', 'img': 'Страхи' },
+
+        'i17': { 'type': 'info', 'title': 'Времени все меньше!..', 'text': '<p>С каждым днем готовность к', 'bg': 'i17.png', 'img': 'Айсберг с большой трещиной' },
+
+        'i18': { 'type': 'info', 'title': 'Прочь все сомнения!', 'text': '<p>Ожидая возвращения разведчиков, многие нервничали.', 'bg': 'i18.png', 'img': 'Возвращение разведгруппы' },
+
+        'i19': {
+            'type': 'info', 'title': 'Великое переселение пингвинов…', 'text': '<p>Вот и состоялся переезд... Конечно,', 'bg': 'i19-2.png',
+            'alt': [[['time', '<', 54, ['func', swap, 'i19_1']], ['time', '>', 59, ['func', goTo, ['i34_2', 1, 1]]]]]
+        },
+
+        'i19_1': { 'type': 'info', 'title': 'Великое переселение пингвинов…', 'text': '<p>Вот и состоялся переезд... Конечно,', 'bg': 'i19-2.png' },
+
+        'i20': { 'type': 'info', 'title': 'Правильный выбор!..', 'text': '<p>Это был правильный выбор и', 'bg': 'i20.png' },
+
+        'i21': {
+            'type': 'info', 'title': 'СПАСИБО ЗА ИГРУ!', 'text': '', 'bg': 'i1.png',
+            'locked': true
+        },
+
+        'i34': { 'type': 'info', 'title': 'Гибель неизбежна', 'text': 'Власти вашей команды оказалось недостаточно', 'bg': 'i34.png' },
+
+        'i34_2': { 'type': 'info', 'title': '', 'text': 'К сожалению, вам не удалось', 'bg': 'i34.png' },
+
+        'i_timeout': { 'type': 'info', 'title': '', 'text': 'К сожалению, вам не удалось', 'bg': 'i34.png' },
+
+        'fedya': { 'type': 'team', 'name': 'Федор', 'img': 'fedya.png', 'text': 'Любит наблюдать и искать закономерности.', 'action': [['pro', 10], ['man', 5], ['constr', 5], ['time', 0.4]] },
+        'aliona': { 'type': 'team', 'name': 'Алена', 'img': 'aliona.png', 'text': 'Входит в Совет не так', 'action': [['lid', 10], ['man', 10], ['stat', 10], ['constr', 5], ['time', 0.4]] },
+        'leo': { 'type': 'team', 'name': 'Леонид', 'img': 'leo.png', 'text': 'Просто так Вожаком не стать.', 'action': [['lid', 15], ['man', 5], ['stat', 10], ['constr', 10], ['time', 0.4]] },
+        'grisha': { 'type': 'team', 'name': 'Григорий', 'img': 'grisha.png', 'text': 'Консервативный пингвин в возрасте, пользуется', 'action': [['pro', 5], ['stat', 10], ['constr', -25], ['time', 0.4]] },
+        'liza': { 'type': 'team', 'name': 'Елизавета', 'img': 'liza.png', 'text': 'Умеет различать множество оттенков эмоций', 'action': [['man', 5], ['stat', 5], ['cont', 10], ['constr', 10], ['time', 0.4]] },
+        'zenya': { 'type': 'team', 'name': 'Евгений', 'img': 'zenya.png', 'text': 'С ним дружат почти все', 'action': [['cont', 10], ['constr', 5], ['time', 0.4]] },
+        'zora': { 'type': 'team', 'name': 'Георгий', 'img': 'zora.png', 'text': 'Пингвины называют его Профессор –', 'action': [['pro', 15], ['stat', 10], ['time', 0.4]] },
+        'arkadii': { 'type': 'team', 'name': 'Аркадий', 'img': 'arkadii.png', 'text': 'Энергичен и жизнерадостен. Не любит', 'action': [['cont', 10], ['constr', 5], ['time', 0.4]] },
+        'vasya': { 'type': 'team', 'name': 'Василий', 'img': 'vasya.png', 'text': 'Василий общителен и все время', 'action': [['cont', 10], ['constr', 5], ['time', 0.4]] },
+        'tima': { 'type': 'team', 'name': 'Тимофей', 'img': 'tima.png', 'text': 'Входит в Совет и дружит', 'action': [['man', 10], ['stat', 10], ['constr', -5], ['time', 0.4]] }
+
+    };
+
+    // game holds mutable state plus the scenario timeline. The "timeline" array is an ordered list of stages,
+    // and each stage is an array of card ids rendered together on screen.
+    game = {
+        timeline: [[['i0'], ['i02'], ['i03'], ['i1'], ['i2'], ['i3'], ['i4'], ['i5'], ['i6'], ['1', '2', '3', '4', '5', '6'], ['i7'], ['7', '8', '9', '10', '11', '12'], ['i8'], ['13', '14', '15', '16', '17', '18'], ['i9'], ['fedya', 'aliona', 'leo', 'grisha', 'liza', 'zenya', 'zora', 'arkadii', 'vasya', 'tima'], ['i10'],
+        //timeline :  [[['1','2','3','4','5','6'],['i7'],['7','8','9','10','11','12'],['i8'],['13','14','15','16','17','18'],['i9'],['fedya','aliona','leo','grisha','liza','zenya','zora','arkadii','vasya','tima'],['i10'],
+        ['19', '20', '21', '22', '23', '24'], ['i11'], ['25', '26', '27', '28', '29', '30'], ['i12'], ['31', '32', '33', '34', '35', '36'], ['i13'], ['37', '38', '39', '40', '41', '42'], ['i14'], ['i14_2'], ['43', '44', '45', '46', '47', '48'], ['i15'], ['49', '50', '51', '52', '53', '54'], ['i16'], ['55', '56', '57', '58', '59', '60'], ['i17'], ['61', '62', '63', '64', '65', '66'], ['i18'], ['67', '68'], ['i19'], ['69', '70'], ['i20'], ['i21']],
+        [['i34'], ['i34_2'], ['i21']]],
+        line: 0, //сюжетная линиия
+        cursor: -1,//текущая группа (экран)
+        curent: 0,//курсор в группе (массиве игры)
+        cards: cardsObj,
+        log: [],//список действий и членов команды
+        pro: 0,
+        rep: 0,
+        lid: 0,
+        man: 0,
+        stat: 0,
+        cont: 0,
+        constr: 0,
+        time: 0,
+        score: 0
+    };
+
+
+
+// timeline - трехмерный массив: 
+// первое измерение - сюжетные линии 
+// второе - этапы игры (шаги) 
+// третье - элементы cardsObj: наборы карточек, страницы, переходы или условия на весь этап игры
+// переход - содержит условие перехода на другую сюжетную линию
+// переходs и условия на этапы должны стоять первыми в массиве
+// пример перехода
+// 'g1':{'type':'jump','alt':[{'pro':[{'>':[40,'func',goto,{1,15}]}]}]}}};
+//примеры условий
+//'rep':[{'<':[15,'rep',-3]}],
+//если репутация < 15 то репутация -3
+//'log':[{'out':['leo','time',1]}]
+//если Леонид в списке действий и членов команды то время +1 (ходы и команда пишутся в один массив)
+//
+// параметр "go" -  определяет будет ли у карточки кнопка "Далее" (для лицевой стороны не реализован)
+//
+
+
+  //$('[data-toggle="popover"]').popover({placement : "top"});
+
+    // Action interpreter: applies a single action tuple from cardsObj to the mutable game state.
+    // Supported forms: ['metric', number], ['metric', comparison, threshold, nestedAction], ['func', fn, arg],
+    // and membership checks for array metrics (log/teams) via 'in'/'out'.
+    game.operate = function (data) // выполняет все операции на псевдоязыке игры, вызывается как из "game.operateArray", так и самостоятельно
+    {
+        //[['rep',2],['man',3],['constr',-3],['time',2 ]]
+        //'alt':[ [ ['pro','>',40,['func',swap,3902]] ] ]
+        //['pro','<',50,['time',3]]
+        if (data) 
+        {
+            if (data[0] === 'func') { data[1](data[2]); }// /добавить проверку "на дурака"
+            else if (typeof (data[1]) == 'number') { game[data[0]] += data[1]; }
+            else if (data[1] == '>') { if (game[data[0]] > data[2]) { game.operate(data[3]); } }
+            else if (data[1] == '<') { if (game[data[0]] < data[2]) { game.operate(data[3]); } }
+            else if (data[1] == '==') { if (game[data[0]] == data[2]) { game.operate(data[3]); } }// /добавить проверку "на дурака"
+            else if (data[1] == '=') { if (game[data[0]] > data[2]) { game[data[0]] = data[2]; } }
+            else if ((typeof (game[data[0]]) == 'object') && Array.isArray(game[data[0]])) 
+            {
+                if      (data[1] == 'in'  && game[data[0]].indexOf(data[2]) > -1) { game.operate(data[3]); }
+                else if (data[1] == 'out' && game[data[0]].indexOf(data[2]) < 0 ) { game.operate(data[3]); }
+            }
+            else if (data[1] == 'and') { };// .логическое и для массива условий
+        };
+    };
+
+    // Helper to apply a list of actions; keeps card definitions declarative and readable.
+    game.operateArray = function (dataArr) // dataArr - массив альтернатив для элемента игры (внутри массив усльвий и массив действий)
+    {
+        if (dataArr) {
+            dataArr.forEach(function (item) {//.добавить останавливать при нахождении подходящей альтернативы
+                game.operate(item);
+            });
+        }
+    };
+
+    // Core loop: advances the cursor over the timeline, renders the current block (cards/team/info),
+    // and wires up click handlers that apply the action arrays for each element.
+    game.next = function () { // обрабатывает новый шаг игры, заполняет и показывает элементы экрана
+
+        //alert(JSON.stringify(game));
+        var step = this.timeline[this.line][++this.cursor]; // текущий экран - элемент массива "timeline" (набор карточек, окно инфо и пр.)
+        var cardsblock = [];
+        var infoblock = [];
+        var blocktype = game.cards[step[0]].type; //Тип блока определяется по типу первого элемента
+
+
+
+        //Назначение событий (позднее перенести назначение событий в document-onload)
+        if (blocktype == 'cards') {
+
+            $("#cards").html(cardstemplate);                    // загружаем шаблон в элемент окна
+            $(".front").off('click');
+            $(".front").on("click", function () {               // Назначаем обработчик щелчка по лицевой стороне карточки
+
+                var cardNum = $(this).parent().attr("cardNum"); // Номер карточки по которой щелкнули
+
+                game.curent = cardNum;                          // 
+                if (game.cards[cardNum].f.locked != true) {
+
+                    var prev = {
+                        pro: game.pro,
+                        rep: game.rep,
+                        lid: game.lid,
+                        man: game.man,
+                        stat: game.stat,
+                        cont: game.cont,
+                        constr: game.constr,
+                        time: game.time,
+                        time: game.time
+                    }
+
+                    game['log'].push(cardNum);
+                    game.operateArray(game.cards[cardNum].b.action);
+                    game.operateArray(game.cards[cardNum].f.action);
+                    setVars();
+                    $(this).collapse("hide");
+                    $(this).on('hidden.bs.collapse', function () {
+                        $(this).next().collapse();
+                    });
+
+                    // Build a history entry that captures the front/back content and shows how each metric changed.
+                    var historynode = document.createElement('div');
+                    historynode.innerHTML = historytemplate;
+                    historynode.id = "c_" + cardNum;
+                    historynode.getElementsByClassName("front")[0].appendChild(this.firstElementChild.cloneNode(true));
+                    historynode.getElementsByClassName("back")[0].appendChild(this.nextElementSibling.firstElementChild.cloneNode(true));
+                    currentvar = historynode.getElementsByClassName("pro")[0];
+
+                    currentvar.innerHTML = game.pro;
+                    if (game.pro > prev.pro) {
+                        currentvar.previousSibling.innerHTML = "ЗНАНИЯ +" + (game.pro - prev.pro) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.pro < prev.pro) {
+                        currentvar.previousSibling.innerHTML = "ЗНАНИЯ " + (game.pro - prev.pro) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+
+                    currentvar = historynode.getElementsByClassName("rep")[0];
+                    if (game.rep > prev.rep) {
+                        currentvar.previousSibling.innerHTML = "ДОВЕРИЕ +" + (game.rep - prev.rep) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.rep < prev.rep) {
+                        currentvar.previousSibling.innerHTML = "ДОВЕРИЕ " + (game.rep - prev.rep) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+                    currentvar.innerHTML = game.rep;
+
+                    currentvar = historynode.getElementsByClassName("lid")[0];
+                    if (game.lid > prev.lid) {
+                        currentvar.previousSibling.innerHTML = "ЭНЕРГИЯ +" + (game.lid - prev.lid) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.lid < prev.lid) {
+                        currentvar.previousSibling.innerHTML = "ЭНЕРГИЯ " + (game.pro - prev.pro) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+                    currentvar.innerHTML = game.lid;
+
+                    currentvar = historynode.getElementsByClassName("man")[0];
+                    if (game.man > prev.man) {
+                        currentvar.previousSibling.innerHTML = "КОНТРОЛЬ +" + (game.man - prev.man) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.man < prev.man) {
+                        currentvar.previousSibling.innerHTML = "КОНТРОЛЬ " + (game.man - prev.man) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+                    currentvar.innerHTML = game.man;
+
+                    currentvar = historynode.getElementsByClassName("stat")[0];
+                    if (game.stat > prev.stat) {
+                        currentvar.previousSibling.innerHTML = "СТАТУС +" + (game.stat - prev.stat) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.stat < prev.stat) {
+                        currentvar.previousSibling.innerHTML = "СТАТУС " + (game.stat - prev.stat) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+                    currentvar.innerHTML = game.stat;
+
+                    currentvar = historynode.getElementsByClassName("cont")[0];
+                    if (game.cont > prev.cont) {
+                        currentvar.previousSibling.innerHTML = "КОНТАКТ +" + (game.cont - prev.cont) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.cont < prev.cont) {
+                        currentvar.previousSibling.innerHTML = "КОНТАКТ " + (game.cont - prev.cont) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+                    currentvar.innerHTML = game.cont;
+
+                    currentvar = historynode.getElementsByClassName("constr")[0];
+                    if (game.constr > prev.constr) {
+                        currentvar.previousSibling.innerHTML = "КОНСТРУКТИВ +" + (game.constr - prev.constr) + "<br/>";
+                        currentvar.previousSibling.classList.add("up");
+                    }
+                    else if (game.constr < prev.constr) {
+                        currentvar.previousSibling.innerHTML = "КОНСТРУКТИВ " + (game.constr - prev.constr) + "<br/>";
+                        currentvar.previousSibling.classList.add("down");
+                    }
+                    currentvar.innerHTML = game.constr;
+
+                    currentvar = historynode.getElementsByClassName("score")[0];
+                    currentvar.previousSibling.innerHTML = "ОСТ. ДНЕЙ " + Math.round(prev.time - game.time) + "<br/>";
+
+                    currentvar.innerHTML = Math.round(60 - game.time);
+
+                    document.getElementById("historybody").appendChild(historynode);
+                }
+            });
+        }
+        else if (blocktype == 'team') {
+
+            // Team selection stage: reuse the card grid to show crew profiles and gather a party of up to five members.
+            $("#cards").html(cardstemplate);                   // Сбросили карточки до шаблона
+            $("#team").css({ 'display': 'block' });
+            $("#team").off('click');
+
+            $(".teambut").click(function()
+            {
+                if ($(this).attr('class')=='btn btn-lg btn-primary teambut'){
+                    $(this).attr('class', 'btn btn-lg btn-success teambut');
+                    team[$(this).attr('id')]=true;
+
+                    if(++teamcount>5){
+                        $('#teamselected').click();
+                        //$('#team').hide();$('#cards').show();
+                    };
+                }else{
+                    $(this).attr('class', 'btn btn-lg btn-primary teambut');
+                    $(this).attr('id');
+                    teamcount--;
+                    team[$(this).attr('id')]=false;
+                }
+
+            });
+
+            $('#teamselected').click(function()
+            {
+                skills.humanity = (team.baddy || team.jain || team.john || team.griffin);
+                skills.leadership = (team.alice || team.luis || team.john);
+                skills.pro = (team.johnatan || team.fred);
+                skills.manager = (team.alice || team.luis || team.john);
+                skills.conflict = (team.nennet);
+                $('#team').hide();
+                $('#cards').show();
+                $(this).hide();
+                window.scrollTo(0,0);
+                (team.nennet)?score -= ((teamcount/2)+3):score -= (teamcount/2);
+                $('#score').text(score);
+                //$('#reputation').text(rep);
+            });
+
+            $("#team").on("click", ".teamButton", function () // При щелчке на "Далее" в окне выбора команды
+            {
+                team.forEach(function (item) 
+                {
+                    game.operateArray(game.cards[item].action); // для каждого персонажа выполняем назначенные при его выборе действия
+                    game['log'].push(item);                     // запихиваем его в лог игры
+                });
+                setVars();                                  // обновляем отображение переменных на экране
+                $("#team").off('click');                    // отключаем события выбора персонажей
+                $("#team").css({ 'display': 'none' });      // скрываем окно выбора комманды
+            });
+
+            $("#team .panel").on("click", function ()   // при выборе персонажа
+            {
+                var cardNum = $(this).attr("cardNum");
+                var ind = team.indexOf(cardNum);                    // проверяем был ли выбран персонаж ранее
+                if (ind > -1) {                                     // выбран ранее - удаляем из команды
+                    $(".teamButton").css({ 'display': 'none' });
+                    team.splice(ind, 1);
+                    $(this).removeClass("panel-primary");
+                    $(this).addClass("panel-default");
+                }
+                else if (team.length < 5) {                         // не был выбран ранее и численность не превышена - добавляем в команду
+                    $(this).removeClass("panel-default");
+                    $(this).addClass("panel-primary");
+                    team.push(cardNum);
+                    if (team.length > 4) {                          // Достигли максимума - показываем кнопку далее
+                        $(this).siblings(".teamButton").css({ 'display': 'block' });
+                    }
+                };
+            });
+
+        }
+
+        step.forEach(function (cardID, cn) {        // -- бежим по элементам текущего экрана (карточкам)
+            if (game.cards[cardID] !== undefined) { // если есть такой элемент в описании игры
+                game.curent = cardID;               // идентификатор (название) текущего элемента игры (карточки, окна инфо и т.п.)
+
+                if (game.cards[cardID].hasOwnProperty('alt'))           // проверяем есть ли для текущего элемента альтернативные
+                    game.cards[cardID].alt.forEach(function (cardAlt) { // бежим по альтернативам. добавить останавливать при нахождении подходящей альтернативы
+                        game.operateArray(cardAlt);                     // проверяем нужно ли заменять текущий элемент и если нужно заменяем альтернативным
+                                                                        // "cardAlt" - массив альтернатив
+                    });
+                var cur = game.curent; // ИД текущего элемента игры (карточки, окна инфо и т.п.)
+                
+                if (blocktype == 'cards') {
+
+                    var card = game.cards[cur];                 // получаем описание текущей карточки
+                    $('#' + cn).css({ 'display': 'block' });    // cn - номер карточки по порядку (в цикле)
+                    $('#' + cn).attr("cardNum", cur);          // указываем номер карточки для элемента окна (DOM)
+
+                    var cardkey = "#front" + cn;                // настраиваем лицевую сторону карточки
+
+                    $('#' + cn).attr("goNext", card['b'].go);       // goNext должен отвечать за наличие кнопки вперед на лицевой стороне карточки, но не реализован
+                    $(cardkey + " .topTitle").html(card['f'].text); 
+
+                    if (card.f.locked == true) {                    // Если карточка заблокирована
+                        // $(cardkey).removeClass("panel-warning");
+                        $(cardkey).addClass("panel-warning");         // Возможно нужно добавить не только класс, но и атрибут, но в этом будет некоторая избыточность
+                    }
+
+                    cardkey = "#back" + cn;
+                    $(cardkey + " .topTitle").html(card['b'].text);
+                    $(cardkey + " .panel-body").css({ 'display': 'none' }); // Изначально оборотная сторона не видна
+                    
+                    if (card.b.go) {
+                        $(cardkey).append('<button type="button" class="btn btn-success btn-lg btn-block nextButton">Далее</button>'); // добавляем кнопку "Далее"
+                    };
+                }
+                else if (blocktype == 'team') { // добавляем текущего персонажа на экран выбора команды
+                    var card = game.cards[cur];
+                    $('#t' + cn).attr("cardNum", cur);
+                    var cardkey = '#t' + cn;
+                    // всю систему работы с шаблонами HTML нужно переделать
+                    var teamText = "\
+                        <div class='media media-left'>\
+                            <img class='media-object pull-left' src='img/"+ card.img + "' alt=''>\
+                            <div class='media-body'>\
+                                <h3 class='media-heading'>"+ card.name + "</h3>\
+                                <h4 class='lead'>"+ card.text + "</h4>\
+                            </div>\
+                        </div>";
+                    $(cardkey + " .topTitle").html(teamText);
+                    $(cardkey).parent().append('<button type="button" class="btn btn-success btn-lg btn-block teamButton nextButton" style="display:none">Далее</button>');
+                }
+                else if (game.cards[cur].type == 'info') { // если тип экрана "info"
+
+                    window.scrollTo(0, 0);
+
+                    // Info cards are shown as modal overlays; we rebuild the modal from a cached template and pause the grid.
+                    $('#modal-1').replaceWith(modaltemplate); // загружаем шаблон в элемент для отображения
+
+                    if (game.cards[cur]['locked'] == true) { // если текущий экран заблокирован
+                        //$('#modal-1').removeClass("modal");
+                        //$('.navbar').css({'display':'none'});                    
+                        $('#next').css({ 'display': 'none' }); // скрываем кнопку далее
+                        //$('#close').css({'display':'none'});
+                        $('#cards').css({ 'display': 'none' }); // скрываем карточки
+                    };
+
+                    if (typeof (game.cards[cur]['bg']) != "undefined") { $('#modalpic').attr("src", 'img/' + game.cards[cur]['bg']); }; // загружаем картинку для окна инфо
+
+                    if (typeof (game.cards[cur]['title']) != "undefined") { $("#modalName").html(game.cards[cur]['title']); };  // Заголовок окна инфо
+                    if (typeof (game.cards[cur]['text']) != "undefined") { $("#modalText").html(game.cards[cur]['text']); };    // Текст окна инфо
+                    $('#modal-1').modal();                                                                                      // Создаем окно инфо
+                    if (typeof (game.cards[cur]['title']) != "undefined") { $("#stage").text(game.cards[cur]['title']) };       // Меняем заголовок в хедере игры
+
+                    $('#modal-1').on('hidden.bs.modal', function () { // назначаем обработчик события "скрытие модального окна"
+                        $('#modal-1').off('hidden.bs.modal');           // удаляем обработчик
+                        game.next();                                    // переходим к следующему шагу игры
+                    });
+                }
+            }
+        }); // бежим по элементам текущего экрана (карточкам) --
+
+        $('.nextButton').click(function () {
+            game.next();
+        });
+
+    };
+
+    // Syncs visible counters with the underlying game state; score is derived from elapsed "time".
+    function setVars() // Обновляем отображение переменных на экране
+    {
+        $('#score').text(Math.round(60 - game.time));
+        $('#pro').text(game.pro);
+        $('#rep').text(game.rep);
+        $('#lid').text(game.lid);
+        $('#man').text(game.man);
+        $('#stat').text(game.stat);
+        $('#cont').text(game.cont);
+        $('#constr').text(game.constr);
+    };
+
+
+
+    </script>
+
+  </body>
+</html>

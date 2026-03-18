@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/manifest.v1.json",
+  "title": "Cubica Manifest (v1)",
+  "description": "Версионированная JSON Schema для логического манифеста игры. На текущем этапе v1 является алиасом для `game-manifest.schema.json` и используется как стабильная точка ссылок для OpenAPI/инструментов.",
+  "$ref": "./game-manifest.schema.json"
+}

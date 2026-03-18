@@ -1,0 +1,44 @@
+{
+  "$schema": "../../../docs/architecture/schemas/viewer.schema.json",
+  "id": "web-base",
+  "name": "Cubica Web Base Viewer",
+  "version": "0.1.0",
+  "description": "Базовый веб-viewer для платформы Cubica. Обеспечивает загрузку и рендеринг игр на основе JSON-манифестов.",
+  "platform": "web",
+  "channel": "stable",
+  "supportedSchemas": {
+    "gameManifest": ["1.0", "1.1"],
+    "uiManifest": ["1.0", "1.1"]
+  },
+  "requiredCapabilities": [
+    "manifest-loading",
+    "state-management",
+    "action-routing",
+    "sdui-rendering"
+  ],
+  "optionalCapabilities": [
+    "client-scripts",
+    "extension-packs",
+    "multiplayer"
+  ],
+  "entryPoint": "src/index.ts",
+  "dependencies": {
+    "@cubica/sdk-core": "workspace:*",
+    "@cubica/shared": "workspace:*"
+  },
+  "compatibility": {
+    "browsers": {
+      "chrome": ">=90",
+      "firefox": ">=90",
+      "safari": ">=14",
+      "edge": ">=90"
+    },
+    "react": ">=18.0.0"
+  },
+  "author": "Cubica Team",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "directory": "SDK/viewers/web-base"
+  }
+}

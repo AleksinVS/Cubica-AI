@@ -1,0 +1,92 @@
+{
+  "$schema": "https://cubica.platform/schemas/design-artifact.v1.json",
+  "id": "arctic-style-concept",
+  "type": "concept",
+  "name": "Концепт визуального стиля Arctic Survival",
+  "description": "Мудборд и концептуальное изображение, определяющее общий визуальный стиль игры: тёмные холодные тона, минималистичный UI, акцент на контрастах.",
+
+  "image": {
+    "path": "concepts/arctic-style-concept.png",
+    "format": "png",
+    "dimensions": { "width": 2048, "height": 1536 },
+    "dpi": 144
+  },
+
+  "generation": {
+    "prompt": "Dark arctic survival game UI concept, minimalist design, deep blue and cyan color palette, ice and snow elements, modern flat interface, professional game art, moodboard style",
+    "negative_prompt": "bright colors, cluttered, realistic photo, low quality",
+    "model": "midjourney-v6",
+    "parameters": {
+      "aspect_ratio": "4:3",
+      "stylize": 750,
+      "chaos": 15
+    },
+    "seed": "12345678"
+  },
+
+  "style_tokens": {
+    "colors": {
+      "primary": "#0d1b2a",
+      "secondary": "#1b263b",
+      "accent": "#00d4ff",
+      "accent_warm": "#ff6b35",
+      "background": "#0a1628",
+      "surface": "#162a40",
+      "text_primary": "#e0e0e0",
+      "text_secondary": "#8899aa",
+      "danger": "#ff4757",
+      "success": "#2ed573"
+    },
+    "typography": {
+      "font_family": "Inter, system-ui, sans-serif",
+      "font_family_display": "Rajdhani, sans-serif",
+      "heading_weight": 600,
+      "body_weight": 400,
+      "scale_ratio": 1.25
+    },
+    "spacing": {
+      "unit": 8,
+      "xs": 4,
+      "sm": 8,
+      "md": 16,
+      "lg": 24,
+      "xl": 32
+    },
+    "effects": {
+      "glow": "0 0 20px rgba(0, 212, 255, 0.3)",
+      "shadow_sm": "0 2px 4px rgba(0, 0, 0, 0.3)",
+      "shadow_md": "0 4px 12px rgba(0, 0, 0, 0.4)",
+      "blur_overlay": "blur(8px)"
+    },
+    "borders": {
+      "radius_sm": 4,
+      "radius_md": 8,
+      "radius_lg": 16,
+      "width": 1,
+      "color": "rgba(0, 212, 255, 0.2)"
+    }
+  },
+
+  "annotations": [
+    {
+      "id": "note-1",
+      "text": "Основная палитра: тёмно-синие тона с неоновым акцентом",
+      "position": { "x": 100, "y": 50 }
+    },
+    {
+      "id": "note-2",
+      "text": "Тёплый акцент (#ff6b35) для критических элементов и предупреждений",
+      "position": { "x": 100, "y": 100 }
+    }
+  ],
+
+  "meta": {
+    "author": "AI Agent (Midjourney + Claude)",
+    "created_at": "2026-01-10T09:00:00Z",
+    "updated_at": "2026-01-15T14:30:00Z",
+    "version": "1.0",
+    "tags": ["arctic", "survival", "dark-theme", "minimalist", "concept", "moodboard"],
+    "status": "approved",
+    "notes": "Утверждённый концепт стиля для всех UI-экранов игры Antarctica"
+  }
+}

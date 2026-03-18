@@ -1,0 +1,243 @@
+id: CP_00008
+title: ADR Documentation Completion (F_00008)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00008
+scope:
+  code: []
+  docs:
+    - docs/architecture/adrs/002-abstract-view-protocol.md
+    - docs/architecture/adrs/003-hybrid-sdui-schema.md
+    - docs/architecture/adrs/006-view-adapters-deployment.md
+    - docs/architecture/adrs/014-viewers-library-architecture.md
+    - docs/architecture/adrs/015-extension-packs-architecture.md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00008_adr_documentation_completion_(E_00001).md
+  related:
+    - docs/architecture/adrs/000-template.md
+tools:
+  - name: shell
+    allowed: [read, write]
+    dirs:
+      - docs/architecture/adrs/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: ADR Documentation Completion
+
+  Этот ExecPlan — живой документ для заполнения пропущенных разделов ADR.
+
+  ## Purpose / Big Picture
+
+  После выполнения плана:
+
+  1. Все 5 ADR (002, 003, 006, 014, 015) соответствуют шаблону ADR-000
+  2. Нет плейсхолдеров "@todo"
+  3. Каждый ADR имеет Implementation Plan и Related Artifacts
+  4. Полнота ADR: 100% (14/14)
+
+  ## Progress
+
+  - [ ] Обновить ADR-002 (Abstract View Protocol)
+  - [ ] Обновить ADR-003 (Hybrid SDUI Schema)
+  - [ ] Обновить ADR-006 (View Adapters)
+  - [ ] Обновить ADR-014 (Viewers Library)
+  - [ ] Обновить ADR-015 (Extension Packs)
+
+  ## Context and Orientation
+
+  **Проблемы выявленные в ревью:**
+
+  | ADR | Проблема | Отсутствующие разделы |
+  |-----|----------|------------------------|
+  | ADR-002 | Очень краткий | Alternatives, Implementation Plan |
+  | ADR-003 | Неполный | Implementation Plan, Related Artifacts |
+  | ADR-006 | Слишком краткий (41 строка) | Implementation Plan, Related Artifacts, детальные Consequences |
+  | ADR-014 | Статус "Proposed", авторы "@todo" | Implementation Plan, детальное решение |
+  | ADR-015 | Deciders/Consulted: "@todo" | Implementation Plan, Related Artifacts |
+
+  **Шаблон ADR-000 требует:**
+
+  - Context
+  - Decision
+  - Alternatives Considered
+  - Consequences (Positive, Negative, Risks)
+  - Implementation Plan
+  - Related Artifacts (Features, Code, PRs)
+
+  ## Plan of Work
+
+  ### Milestone 1: ADR-002 (Abstract View Protocol)
+
+  Добавить в файл `docs/architecture/adrs/002-abstract-view-protocol.md`:
+
+  ```markdown
+  ## Alternatives Considered
+
+  ### 1. Direct DOM Manipulation
+  - **Description:** Viewer напрямую манипулирует DOM
+  - **Rejected because:** Нет абстракции, жесткая связь с платформой
+
+  ### 2. GraphQL-based Protocol
+  - **Description:** Использовать GraphQL для описания UI
+  - **Rejected because:** Overhead для простых сценариев, сложность
+
+  ### 3. Abstract View Protocol (Chosen)
+  - **Description:** Унифицированный протокол команд/событий
+  - **Chosen because:** Простота, расширяемость, платформонезависимость
+
+  ## Implementation Plan
+
+  1. Определить базовые типы протокола в SDK/core
+  2. Реализовать адаптеры для Web, Telegram
+  3. Интегрировать с Router для маршрутизации событий
+  4. Документировать API для разработчиков viewers
+
+  ## Related Artifacts
+
+  - Features: F_00012
+  - Code: SDK/core/src/types/protocol.ts
+  - ADR: ADR-006 (View Adapters)
+  ```
+
+  ### Milestone 2: ADR-003 (Hybrid SDUI Schema)
+
+  Добавить в файл `docs/architecture/adrs/003-hybrid-sdui-schema.md`:
+
+  ```markdown
+  ## Implementation Plan
+
+  1. Определить JSON Schema для ui-manifest
+  2. Создать базовые UI-примитивы (text, button, input, image)
+  3. Создать семантические виджеты (card, area, screen)
+  4. Реализовать биндинги состояния ({{state.public.x}})
+  5. Интегрировать с viewers
+
+  ## Related Artifacts
+
+  - Features: F_00020
+  - Schemas: docs/architecture/schemas/ui-manifest.schema.json
+  - Documentation: docs/architecture/schemas/ui-schema-concept.md
+  - ADR: ADR-013 (Text Anchors & UI Split)
+  ```
+
+  ### Milestone 3: ADR-006 (View Adapters)
+
+  Расширить файл `docs/architecture/adrs/006-view-adapters-deployment.md`:
+
+  ```markdown
+  ## Consequences
+
+  ### Positive
+  - Единый код Engine работает с любым viewer
+  - Простое добавление новых платформ
+  - Изоляция платформо-специфичного кода
+
+  ### Negative
+  - Дополнительный слой абстракции
+  - Возможные потери производительности при трансляции
+
+  ### Risks
+  - Риск: Несовместимость API между адаптерами
+  - Mitigation: Строгая типизация, contract testing
+
+  ## Implementation Plan
+
+  1. Определить интерфейс ViewAdapter в SDK/core
+  2. Реализовать WebViewAdapter для браузеров
+  3. Реализовать TelegramViewAdapter для Telegram Mini Apps
+  4. Создать тесты совместимости адаптеров
+  5. Документировать процесс создания новых адаптеров
+
+  ## Related Artifacts
+
+  - Features: F_00032
+  - Code: SDK/react-sdk/src/adapters/
+  - ADR: ADR-002 (Abstract View Protocol)
+  ```
+
+  ### Milestone 4: ADR-014 (Viewers Library)
+
+  Обновить файл `docs/architecture/adrs/014-viewers-library-architecture.md`:
+
+  ```markdown
+  <!-- Заменить @todo на реальные значения -->
+  Authors: @cubica-team
+  Deciders: @cubica-team
+  Consulted: @security-team
+
+  ## Implementation Plan
+
+  1. Phase 1: Создать SDK/viewers/web-base с базовой структурой
+     - package.json, viewer.json, types
+     - Базовые компоненты рендеринга
+
+  2. Phase 2: Экстрактовать компоненты из antarctica-nextjs-player
+     - ManifestLoader, StateManager, ActionRouter
+     - Интеграция с @cubica/core
+
+  3. Phase 3: Создать telegram-base viewer
+     - Адаптация для Telegram Mini Apps
+     - Специфичные UI компоненты
+
+  ## Related Artifacts
+
+  - Features: F_00071, F_00005
+  - Code: SDK/viewers/web-base/
+  - Security: docs/architecture/client-scripts-security-assessment.md
+  ```
+
+  ### Milestone 5: ADR-015 (Extension Packs)
+
+  Обновить файл `docs/architecture/adrs/015-extension-packs-architecture.md`:
+
+  ```markdown
+  <!-- Заменить @todo на реальные значения -->
+  Deciders: @cubica-team
+  Consulted: @security-team
+
+  ## Implementation Plan
+
+  1. Phase 1: Определить extension.schema.json
+     - Структура meta, capabilities, dependencies
+     - Валидация расширений
+
+  2. Phase 2: Реализовать Engine Extensions loader
+     - Build-time composition
+     - Capability registry
+
+  3. Phase 3: Реализовать User Scripts sandbox
+     - isolated-vm интеграция
+     - Bridge для вызова capabilities
+
+  4. Phase 4: Создать примеры расширений
+     - @cubica/physics (Engine Extension)
+     - game-specific scripts (User Scripts)
+
+  ## Related Artifacts
+
+  - Features: F_00073
+  - Schemas: docs/architecture/schemas/extension.schema.json
+  - Security: docs/architecture/extension-security-model.md
+  - ADR: ADR-010 (JS Sandbox Security)
+  ```
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. Все 5 ADR соответствуют шаблону ADR-000
+  2. Нет плейсхолдеров "@todo" в тексте
+  3. Каждый ADR имеет разделы:
+     - Alternatives Considered (где применимо)
+     - Implementation Plan
+     - Related Artifacts
+  4. Consequences детализированы (Positive, Negative, Risks)
+
+  Критерий успеха: полнота ADR документации 100%.
+  ```

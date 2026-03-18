@@ -1,0 +1,275 @@
+id: CP_00024
+title: Рефакторинг game-player-nextjs под SDK и целевую архитектуру (F_00024)
+status: in_progress
+owner: @todo
+role: implementer
+tasks:
+  - F_00024
+scope:
+  code:
+    - draft/game-player-nextjs/**
+    - games/**
+    - SDK/core/**
+    - SDK/react-sdk/**
+    - SDK/shared/**
+  docs:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00024_game_player_nextjs_refactor_(E_0020).md
+    - docs/tasks/features/F_00021_antarctica_json_manifest_(E_0020).md
+    - docs/tasks/features/F_00022_antarctica_local_loader_and_renderer.md
+    - docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md
+    - docs/tasks/ROADMAP.md
+    - PROJECT_ARCHITECTURE.md
+    - PROJECT_STRUCTURE.md
+    - PROJECT_OVERVIEW.md
+    - docs/tasks/content-packs/PLAN.md
+links:
+  tasks:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00024_game_player_nextjs_refactor_(E_0020).md
+  related:
+    - draft/game-player-nextjs/README.md
+    - games/antarctica-nextjs-player/README.md
+    - SDK/react-sdk/DEV_GUIDE.md
+    - SDK/shared/README.md
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+    - docs/architecture/adrs/001-mvp-and-llm-first-game-manifests.md
+    - docs/architecture/adrs/002-abstract-view-protocol.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - draft/game-player-nextjs/**
+      - SDK/**
+      - docs/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Рефакторинг game-player-nextjs под SDK и целевую архитектуру
+
+  Этот ExecPlan — живой документ и должен поддерживаться в полном соответствии с `docs/tasks/content-packs/PLAN.md` на каждом шаге реализации.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Surprises & Discoveries](#surprises--discoveries)
+  - [Decision Log](#decision-log)
+  - [Outcomes & Retrospective](#outcomes--retrospective)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+  - [Idempotence and Recovery](#idempotence-and-recovery)
+  - [Artifacts and Notes](#artifacts-and-notes)
+  - [Interfaces and Dependencies](#interfaces-and-dependencies)
+  - [Revision Note](#revision-note)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана Next.js-плеер, который сейчас живёт в `draft/game-player-nextjs`, перестанет быть самостоятельным «мини-SDK» и станет тонким клиентом, построенным поверх `SDK/core`, `SDK/shared` и `SDK/react-sdk`, а также будет перенесён в целевой каталог `games/` (например, `games/antarctica-nextjs-player/`) вместо зоны черновиков `draft/`. Разработчик сможет запускать сценарии (в том числе «Antarctica») через общие SDK-хуки (например, `useCubicaSession`), использовать переиспользуемые UI-компоненты из `SDK/shared` и полагаться на Presenter/Router для обработки команд ViewCommand/ViewResponse. Все сетевые параметры будут задаваться через конфигурацию и переменные окружения, а dev-заглушки будут формально зарегистрированы или удалены. Дальнейшие фичи эпика (манифест, локальная загрузка, методические материалы) будут строиться поверх стабильного SDK-слоя и новой структуры каталогов (`games/*` вместо `draft/*` для рабочего плеера).
+
+  ## Progress
+
+  - [x] (2025-12-03 10:00Z) Зафиксирован текущий статус плеера и SDK: прочитаны `draft/game-player-nextjs/README.md`, `SDK/react-sdk/DEV_GUIDE.md`, `SDK/shared/README.md`, `docs/architecture/PROJECT_ARCHITECTURE.md`, ревью `docs/architecture/reviews/`.
+  - [x] (2025-12-03 12:00Z) Спроектирована целевая интеграция: useViewState + createHybridDataSource, presenter для команд, целевой каталог `games/antarctica-nextjs-player/`.
+  - [x] (2025-12-03 12:30Z) Перенесены UI-компоненты и Presenter-логика в SDK, обновлён плеер под новую структуру.
+  - [x] (2025-12-03 13:00Z) Выполнен перенос плеера из `draft/game-player-nextjs` в целевой каталог `games/antarctica-nextjs-player`, обновлены импорты и пути.
+  - [x] (2025-12-03 13:10Z) Устранён хардкод адресов/токенов, dev-заглушки зарегистрированы в `docs/legacy`, конфигурация вынесена в env.
+  - [ ] (TODO) Обновлены задачи (эпик/фичи/ROADMAP), PROJECT_ARCHITECTURE.md, PROJECT_STRUCTURE.md и PROJECT_OVERVIEW.md; проведена базовая проверка (запуск плеера, тесты) — документация обновлена, автотесты/dev-запуск не выполнялись.
+
+  ## Surprises & Discoveries
+
+  Фиксируйте здесь любые неожиданные находки:
+
+  - Observation: Next.js-плеер не подключался к workspace-зависимостям SDK и содержал локальные `node_modules`/`.next`, поэтому импорт SDK-пакетов требовал `transpilePackages` и ссылок `file:` в package.json (исправлено при переносе в `games/antarctica-nextjs-player`).
+    Evidence: исходный package.json и структура `draft/game-player-nextjs`, отсутствие зависимостей `@cubica/sdk-*`; добавлены file:-зависимости и `transpilePackages` в новой версии.
+
+  ## Decision Log
+
+  Любое архитектурное решение по SDK/плееру фиксировать здесь:
+
+  - Decision: Целевой каталог плеера — `games/antarctica-nextjs-player/`; плеер работает как тонкий клиент поверх `SDK/core`, `SDK/react-sdk` и `SDK/shared`. Общие UI-компоненты (GameButton, GameCard, GameVariable, GameArea, GameScreen, JournalVariable, HelperComponent) выносятся в `SDK/shared`; применение патчей состояния переносится в `SDK/core`; Presenter и источники данных инкапсулируются в `SDK/react-sdk`.
+    Rationale: Это устраняет дублирование «мини-SDK» в плеере, выравнивает структуру каталога с требованиями PROJECT_STRUCTURE и внедряет MVP/LLM-first контракты из ADR-002 и ревью плеера.
+    Date/Author: 2025-12-03 / Codex
+  - Decision: Командный протокол реализован через `useViewState` и гибридный data source: локальные фикстуры отдаются из `localDataLoader`, Router подключается через `createRouterClient` и dev-заглушку `/api/submit`; действия View проксируются презентером (`src/app/sdk/presenter.js`) в ViewCommand.
+    Rationale: Это сохраняет совместимость с Abstract View, выносит бизнес-логику из компонентов и позволяет переключать источники данных без изменения UI.
+    Date/Author: 2025-12-03 / Codex
+
+  При изменении контрактов или паттернов MVP/View Protocol ссылаться на соответствующие ADR или создавать новый (по шаблону `docs/architecture/adrs/000-template.md`) после согласования.
+
+  ## Outcomes & Retrospective
+
+  Заполнить по завершении плана:
+
+  - Что удалось упростить в плеере.
+  - Какие части архитектуры SDK пришлось доработать.
+  - Какие ограничения или долги остались и вынесены в отдельные задачи.
+
+  ## Context and Orientation
+
+  Текущий прототип плеера (до рефакторинга и переезда в `games/`):
+
+  - `draft/game-player-nextjs/src/app/page.js` — точка входа Next.js, подключает `GameScreenRenderer` и управляет режимами локальных/удалённых данных.
+  - `draft/game-player-nextjs/src/app/components/GameScreenRenderer.js` — главный клиентский компонент, который сейчас сам решает, откуда брать данные (локальные JSON или удалённый сервер), и хранит состояние приложения (`appState`).
+  - `draft/game-player-nextjs/src/app/components/gameComponents/*.js` — компоненты UI (`GameButton`, `GameCard`, `GameVariable` и др.), которые содержат не только отображение, но и вызовы действий.
+  - `draft/game-player-nextjs/src/app/utils/actions.js` — каталог действий и хендлеров, включая прямые сетевые вызовы и манипуляцию состоянием.
+  - `draft/game-player-nextjs/src/app/utils/serverDataLoader.js` и `src/app/utils/localDataLoader.js` — самописные источники данных (удалённый и локальный).
+  - `draft/game-player-nextjs/src/app/api/route.js` — dev-API, поднимающий мок-ответы прямо в Next.js-приложении.
+
+  Целевые слои SDK и каталоги игр:
+
+  - `SDK/core/src/**` — контракты, протокол ViewCommand/ViewResponse, управление сессиями, формат JSON-манифестов.
+  - `SDK/shared/src/**` — переиспользуемые UI-компоненты и утилиты для разных плееров.
+  - `SDK/react-sdk/src/**` — React-обёртка над `SDK/core` (хуки для работы с сессиями и состоянием игр).
+  - `games/antarctica-nextjs-player/**` — целевой каталог Next.js-плеера для сценария «Antarctica» после переноса из `draft/` (конкретное имя каталога может быть уточнено в `Decision Log`, но приложение в любом случае должно находиться под `games/`, а не под `draft/`).
+
+  Архитектурные ориентиры:
+
+  - `docs/architecture/PROJECT_ARCHITECTURE.md` — общая архитектура платформы, место SDK и плеера.
+  - ADR-001 и ADR-002 — формализуют LLM-first, MVP и Abstract View Protocol.
+  - Ревью плеера: `docs/architecture/reviews/game-player-nextjs-review.md` и `docs/architecture/reviews/GAME_PLAYER_NEXTJS_REVIEW_2025-12-02.md`.
+
+  ## Plan of Work
+
+  Важно: придерживайтесь поэтапного подхода и держите плеер рабочим на каждом шаге.
+
+  1. Анализ и уточнение целевой архитектуры плеера
+
+  Откройте `docs/architecture/PROJECT_ARCHITECTURE.md`, ADR-001, ADR-002 и оба ревью плеера. Сформируйте краткое целевое видение: какие функции должен выполнять Next.js-плеер, какие — SDK (core/shared/react-sdk), как взаимодействуют Presenter и View. Зафиксируйте это видение в разделе `Decision Log` (как «целевое состояние»).
+
+  Параллельно изучите `SDK/react-sdk/DEV_GUIDE.md` и `SDK/shared/README.md`, чтобы понять существующие хуки/компоненты. Если нужных абстракций пока нет, отметьте это в `Surprises & Discoveries` и в `Decision Log` (например, потребуется добавить хук `useCubicaSession`).
+
+  2. Инвентаризация и декомпозиция текущего кода плеера
+
+  Пройдитесь по основным файлам `draft/game-player-nextjs` и разметьте, какие части относятся к:
+
+  - View (чистый UI, который может жить в `SDK/shared`).
+  - Presenter (обработка действий, применение патчей, выбор источника данных).
+  - Data source (Router/Game Engine, локальные фикстуры).
+
+  Составьте список компонентов и утилит, которые должны быть перенесены в SDK (например, обобщённые кнопки/переменные/карточки) и какие должны остаться специфичными для плеера (layout Next.js, маршрутизация, выбор сценариев). Результаты вкратце опишите в `Artifacts and Notes`.
+
+  3. Проектирование интеграции с SDK/react-sdk
+
+  Спроектируйте, каким образом Next.js-приложение будет использовать SDK:
+
+  - Какой хук или API предоставит доступ к сессии (например, `useCubicaSession(sessionId, routerConfig)`).
+  - Как View будет отправлять команды (ViewCommand) и получать ответы (ViewResponse/патчи).
+  - Как будет выглядеть минимальный контракт между плеером и SDK (какие пропсы ждут компоненты, какие данные нужны для рендера Abstract View).
+
+  Если потребуется доработать `SDK/core` или `SDK/react-sdk`, опишите это в `Decision Log` и при необходимости заложите отдельный ADR (без создания файла ADR на этом этапе, только ссылка-заготовка).
+
+  4. Выделение UI-компонентов в SDK/shared
+
+  Создайте в `SDK/shared/src/` набор компонентов, соответствующих текущим `GameButton`, `GameCard`, `GameVariable` и другим building blocks. Переносите только UI-логику и пропсы, не перенося сетевые вызовы и состояние. Обеспечьте совместимость с Abstract View (props должны принимать данные из манифеста).
+
+  Обновите импорты в `draft/game-player-nextjs` так, чтобы React-компоненты подтягивались из `SDK/shared`, а локальные реализации были либо удалены, либо оставлены как thin-обёртки над SDK-компонентами.
+
+  5. Введение Presenter-слоя и интеграция с SDK/core
+
+  Реализуйте Presenter/адаптер, который:
+
+  - Принимает ViewCommand от компонентов (клики, выборы).
+  - Преобразует их в запросы к Router/Game Engine через SDK/core.
+  - Применяет полученные ViewResponse/патчи к состоянию (используя существующую логику `applyStateUpdates`, при необходимости перенесённую в SDK/core).
+
+  В `GameScreenRenderer` оставьте только подключение к Presenter и передачу данных в View; удалите/замените прямые вызовы `requestServer` и другие сетевые функции.
+
+  6. Устранение хардкода, dev-заглушек и приведение конфигурации к стандарту
+
+  Перенесите адреса Router/Game Engine и токены в `.env` или конфигурационный модуль (например, `src/config/router.js`), как рекомендовано в ревью. Убедитесь, что:
+
+  - `src/app/utils/serverDataLoader.js` больше не содержит жёстко зашитых адресов/токенов.
+  - `src/app/api/route.js` используется только как зарегистрированная заглушка (при необходимости добавьте запись в `docs/legacy/stubs-register.md`) или удалён, если больше не нужен.
+
+  7. Перенос плеера из `draft/` в `games/`
+
+  После того как архитектурный рефакторинг и интеграция с SDK стабилизированы, перенесите сам проект плеера:
+
+  - Создайте целевой каталог, например `games/antarctica-nextjs-player/`, ориентируясь на `PROJECT_STRUCTURE.md`.
+  - Перенесите содержимое `draft/game-player-nextjs` в новый каталог (с сохранением структуры `src/`, `public/`, `package.json` и т.д.).
+  - Обновите относительные пути и импорты внутри проекта, чтобы они соответствовали новому расположению (особенно пути к общим ресурсам и документам).
+  - Удалите или архивируйте старую папку `draft/game-player-nextjs` (если она больше не нужна), либо оставьте там минимальный README с отсылкой на новый путь в `games/` и зарегистрируйте это как legacy-заглушку при необходимости.
+
+  8. Обновление документации и задач
+
+  После стабилизации архитектуры:
+
+  - Обновите README плеера (переместив его в новый каталог `games/antarctica-nextjs-player/` и описав новую роль плеера, использование SDK и порядок настройки окружения).
+  - Актуализируйте `PROJECT_ARCHITECTURE.md`, `PROJECT_STRUCTURE.md` и `PROJECT_OVERVIEW.md`, чтобы структура SDK, плеера и каталог игр (`games/*` вместо `draft/*` для рабочего плеера) соответствовала фактическому состоянию.
+  - Обновите эпик E_0020 и фичи F_00021/00022/00023: явно укажите, что они опираются на выполненный рефакторинг (F_00024) и используемую архитектуру.
+  - Обновите `docs/tasks/ROADMAP.md`, добавив F_00024 в качестве первой фичи эпика.
+
+  ## Concrete Steps
+
+  Этот раздел должен содержать конкретные команды и последовательность действий по мере выполнения плана. Заполните и актуализируйте его при реализации:
+
+  1. Подготовка окружения:
+
+      cd games/antarctica-nextjs-player
+      npm install --package-lock-only
+
+  2. Запуск dev-сервера для проверки текущего состояния:
+
+      npm run dev
+      # Открыть http://localhost:3000 и убедиться, что базовый сценарий рендерится.
+
+  3. При внедрении SDK:
+
+      cd SDK/react-sdk
+      npm install
+      npm test
+
+  4. Проверка интеграции SDK:
+
+      # Проверить работу с локальными фикстурами через GameScreenRenderer/useViewState
+      cd games/antarctica-nextjs-player
+      npm run dev
+
+  Дополняйте шаги по мере реальной работы, в том числе команды для запуска тестов и линтеров.
+
+  ## Validation and Acceptance
+
+  Для проверки успешности рефакторинга:
+
+  - Запустить `games/antarctica-nextjs-player` в dev-режиме и убедиться, что:
+    - Плеер использует SDK/react-sdk для загрузки и управления состоянием.
+    - Нет прямых сетевых вызовов к Game Engine/Router из React-компонентов.
+    - UI рендерится с использованием компонентов из `SDK/shared`.
+  - Запустить тесты SDK (`SDK/core/tests`, `SDK/react-sdk/tests`, `SDK/shared/tests`, если предусмотрены) и убедиться, что они проходят.
+  - Проверить, что сценарий «Antarctica» может быть реализован как манифест поверх новой архитектуры (минимум — рендер базового экрана из фикстуры), даже если сама фича F_00021 ещё не выполнена.
+  - Убедиться, что все задействованные документы (эпик, фичи, ROADMAP, PROJECT_ARCHITECTURE.md, PROJECT_STRUCTURE.md) обновлены и не противоречат коду.
+
+  ## Idempotence and Recovery
+
+  Поддерживайте возможность отката:
+
+  - Сохраняйте ключевые изменения архитектуры в отдельных коммитах, чтобы было легко откатить частичный рефакторинг.
+  - При необходимости оставляйте временные флаги/конфигурацию (например, переключатель «legacy vs SDK mode»), но фиксируйте их в `Decision Log` и `docs/legacy/debt-log`, если это долг.
+
+  ## Artifacts and Notes
+
+  Здесь перечисляйте финальные артефакты (файлы, схемы, ADR) и любые дополнительные замечания, которые помогут будущим разработчикам понять эволюцию плеера.
+
+  ## Interfaces and Dependencies
+
+  Опишите в этом разделе все важные интерфейсы между:
+
+  - Next.js-плеером и SDK/react-sdk.
+  - SDK/core и backend Router/Game Engine.
+  - Плеером и файлами манифестов (в т.ч. будущим манифестом «Antarctica»).
+
+  Для каждого интерфейса кратко изложите ожидаемые входы/выходы (структуру данных) и укажите, где в коде он реализован.
+
+  ## Revision Note
+
+  При каждом существенном изменении ExecPlan добавляйте сюда краткую запись:
+
+  - (Дата, автор) — что изменилось (например, «обновлён Plan of Work после внедрения нового хука в SDK/react-sdk»).
+
+  - (2025-12-03, Codex) — Обновлён статус на in_progress, зафиксировано целевое состояние (перенос в `games/`, опора на SDK), добавлены наблюдения по workspace-настройкам и уточнён список команд для последующего переноса.
+  - (2025-12-03, Codex) — Реализован перенос в `games/antarctica-nextjs-player`, вынесены UI в `SDK/shared`, добавлен гибридный data source и dev-заглушка `/api/submit`; обновлены зависимости и часть документации.
+
+  ```

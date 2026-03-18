@@ -1,0 +1,122 @@
+id: CP_00022
+title: Antarctica — локальная загрузка манифеста и рендер
+status: planned
+owner: @todo
+role: implementer
+tasks:
+  - F_00022
+scope:
+  code:
+    - draft/game-player-nextjs/**
+  docs:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+    - docs/tasks/features/F_00022_antarctica_local_loader_and_renderer.md
+    - docs/tasks/content-packs/PLAN.md
+links:
+  tasks:
+    - docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md
+  related:
+    - draft/game-player-nextjs/README.md
+    - docs/architecture/schemas/game-manifest.schema.json
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - draft/game-player-nextjs/**
+      - docs/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Antarctica — локальная загрузка манифеста и рендер
+
+  Этот ExecPlan — живой документ и должен поддерживаться в актуальном состоянии согласно `docs/tasks/content-packs/PLAN.md`.
+
+  ## Purpose / Big Picture
+
+  Цель — чтобы Next.js-плеер умел загружать манифест «Antarctica» локально, выбирать его по параметру (`scenario=antarctica`) и рендерить первый экран (метрики + карточки) без ошибок, используя существующие actionHandlers (`requestServer`, `showHint`, `showHistory` и т.д.).
+
+  ## Progress
+
+  - [ ] (TODO) Проверен dev-loop плеера (`npm install`, `npm run dev`) и базовая фикстура.
+  - [ ] (TODO) Добавлен переключатель сценария в `localDataLoader` и загрузка манифеста `antarctica`.
+  - [ ] (TODO) Проверен рендер UI из `ui.application` манифеста и работа кликов.
+  - [ ] (TODO) Обновлены документы задач (фича/эпик/ROADMAP).
+
+  ## Surprises & Discoveries
+
+  - Заполнять по мере выполнения (неожиданное поведение, ошибки, нюансы действия `requestServer`).
+
+  ## Decision Log
+
+  - Заполнять по мере выполнения (выбор способа переключения сценариев, обработка кликов).
+
+  ## Outcomes & Retrospective
+
+  - Заполнить после завершения (что удалось отрендерить, какие ограничения остались).
+
+  ## Context and Orientation
+
+  - `draft/game-player-nextjs/src/app/utils/localDataLoader.js` — загружает локальные JSON, сейчас заточен под `screen_s1.json`.
+  - `draft/game-player-nextjs/src/app/utils/renderUtils.js` (`findEntryPoint`) — находит корневой экран.
+  - `draft/game-player-nextjs/src/app/utils/actions.js` и `applyStateUpdates.js` — обработка действий и патчей состояния.
+  - Манифест «Antarctica» поставляется из фичи F_00021 (путь `src/app/data/antarctica/manifest.json`, содержит `ui.application`).
+  - Валидация манифеста — `docs/architecture/schemas/game-manifest.schema.json`.
+
+  ## Plan of Work
+
+  1. Запустить dev-сервер и убедиться, что текущая фикстура (`screen_s1.json`) работает.
+  2. Добавить в `localDataLoader.js` выбор сценария:
+     - читать query-параметр (`scenario`) или флаг окружения;
+     - для `antarctica` грузить `src/app/data/antarctica/manifest.json`;
+     - извлекать `ui.application` и превращать в `appState` через `findEntryPoint`.
+  3. Проверить рендер:
+     - `GameScreenRenderer` должен отображать метрики/карточки без ошибок;
+     - клики по карточкам вызывают `actionHandlers` (`requestServer` или локальные) — минимум лог или переключение состояния.
+  4. Оставить fallback на старую фикстуру, если параметр не задан.
+  5. Обновить фичу/эпик/ROADMAP статусами и ссылками на файлы.
+
+  ## Concrete Steps
+
+  - Проверка dev-окружения:
+      cd draft/game-player-nextjs
+      npm install
+      npm run dev
+    Ожидаемо: http://localhost:3000 рендерит дефолтную фикстуру без ошибок.
+  - Реализация загрузчика:
+      - изменить `src/app/utils/localDataLoader.js`;
+      - импортировать `antarctica/manifest.json`;
+      - добавить разбор query-параметров (например, через `window.location.search` или `useSearchParams` в уровне вызова).
+  - Тест рендера:
+      - открыть http://localhost:3000?scenario=antarctica&local=true;
+      - проверить наличие метрик и карточек;
+      - кликнуть карточку и убедиться, что handler вызывается.
+  - Документация:
+      - обновить чек-листы в фиче/эпике/ROADMAP.
+
+  ## Validation and Acceptance
+
+  - Манифест проходит валидацию схемой (ручной запуск любого JSON Schema валидатора).
+  - В dev-режиме при `scenario=antarctica` рендерится первый экран без ошибок в консоли.
+  - Клики по карточкам вызывают обработчики (`requestServer`/лог/переход) и не падают.
+  - Без параметра сценария плеер работает как раньше.
+
+  ## Idempotence and Recovery
+
+  - Повторный запуск `npm install`/`npm run dev` безопасен.
+  - При ошибке загрузки можно переключиться на дефолтный сценарий и поправить JSON/код.
+
+  ## Artifacts and Notes
+
+  - Обновлённый `src/app/utils/localDataLoader.js`.
+  - Путь к манифесту: `src/app/data/antarctica/manifest.json`.
+  - Изменения задокументированы в фиче/эпике/ROADMAP.
+
+  ## Interfaces and Dependencies
+
+  - Рендерер: `GameScreenRenderer`, `renderer.js`, `renderUtils.js`.
+  - Обработчики: `actions.js`, `applyStateUpdates.js`.
+  - Схема: `docs/architecture/schemas/game-manifest.schema.json`.
+  - Зависит от наличия манифеста из F_00021.
+
+  ```

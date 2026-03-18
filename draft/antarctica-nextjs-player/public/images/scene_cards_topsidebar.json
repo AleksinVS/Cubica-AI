@@ -1,0 +1,544 @@
+{
+    "component": "gamescreen",
+    "id": "1",
+    "css": {
+      "display": "grid",
+      "gridTemplateColumns": "20% 70% 10%",
+      "gridTemplateRows": "20% auto",
+      "background": "url('./arctic-background.png') no-repeat",
+      "backgroundSize": "cover"
+    },
+    "children": [
+      {
+        "component": "cardscontainer",
+        "id": "2",
+        "css": {
+          "display": "flex",
+          "flexWrap": "wrap",
+          "gap": "1em",
+          "gridColumn": "2",
+          "gridRow": "2",
+          "backgroundColor": "rgba(34, 46, 80, 0.5)",
+          "padding": "10px",
+          "overflow": "auto"
+        },
+        "children": [
+          {
+            "component": "card",
+            "id": "3",
+            "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+            "onclick" : "request",
+            "css": {
+              "width": "300px",
+              "padding": "1.25em 1em",
+              "backgroundColor": "rgba(162, 217, 247, 0.5)",
+              "color": "#fff",
+              "fontWeight": "bold",
+              "fontSize": "1.15rem"
+            }           
+          },
+          {
+            "component": "card",
+            "id": "4",
+            "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+            "css": {
+              "width": "300px",
+              "padding": "1.25em 1em",
+              "backgroundColor": "rgba(162, 217, 247, 0.5)",
+              "color": "#fff",
+              "fontWeight": "bold",
+              "fontSize": "1.15rem"
+            }           
+          },
+          {
+            "component": "card",
+            "id": "5",
+            "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,",
+            "css": {
+              "width": "300px",
+              "maxHeight": "300px",
+              "padding": "1.25em 1em",
+              "backgroundColor": "rgba(254, 254, 254, 0.7)",
+              "color": "rgb(33, 75, 122)",
+              "fontWeight": "bold",
+              "fontSize": "1.15rem"
+            }           
+          },
+          {
+            "component": "card",
+            "id": "6",
+            "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его",
+            "css": {
+              "width": "300px",
+              "maxHeight": "300px",
+              "padding": "1.25em 1em",
+              "backgroundColor": "rgba(162, 217, 247, 0.5)",
+              "color": "#fff",
+              "fontWeight": "bold",
+              "fontSize": "1.15rem"
+            }           
+          },
+          {
+            "component": "card",
+            "id": "7",
+            "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его",
+            "css": {
+              "width": "300px",
+              "maxHeight": "300px",
+              "padding": "1.25em 1em",
+              "backgroundColor": "rgba(162, 217, 247, 0.5)",
+              "color": "#fff",
+              "fontWeight": "bold",
+              "fontSize": "1.15rem"
+            }           
+          },
+          {
+            "component": "card",
+            "id": "8",
+            "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет егоАнтарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его",
+            "css": {
+              "width": "300px",
+              "maxHeight": "300px",
+              "overflow": "scroll",
+              "padding": "1.25em 1em",
+              "backgroundColor": "rgba(162, 217, 247, 0.5)",
+              "color": "rgba(255,255,255)",
+              "fontWeight": "bold",
+              "fontSize": "1.15rem"
+            }           
+          }
+        ]
+      },
+      {
+        "component": "div",
+        "id": "9",
+        "css": {
+        "gridColumn": "2",
+        "gridRow": "1",
+        "backgroundColor": "rgba(34, 46, 80, 0.5)"
+        }
+      },
+      {
+        "component": "sidebar",
+        "id": "10",
+        "css" : {
+          "gridColumn": "1 / 3",
+          "gridRow": "1",
+
+          "display": "flex",
+          "width": "85%",
+          "justifyContent": "space-between",
+          "listStyleType": "none",
+          "color": "#fff",
+          "fontSize": "2rem",
+          "fontWeight": "bold",
+          "marginLeft": "4.5em",
+          "marginTop": "1em"
+        },
+        "children": [
+          {
+            "component": "score",
+            "id": "11",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "12",
+                "text": "45",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/days-top.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "fontSize": "2rem",
+                  "fontWeight": "900",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "13",
+                "text": "Осталось дней",
+                "css": {
+                  "fontSize": "1rem",
+                  "width": "80px",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "14",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "15",
+                "text": "-1",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/znaniya.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "17",
+                "text": "знания",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "18",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "19",
+                "text": "-15",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/doverie.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "20",
+                "text": "доверие",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "21",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "22",
+                "text": "7",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/energia.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "23",
+                "text": "энергия",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "24",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "25",
+                "text": "-8",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/kontrol.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "26",
+                "text": "контроль",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "27",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "28",
+                "text": "-5",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/status.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "29",
+                "text": "статус",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "30",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "31",
+                "text": "10",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/kontakt.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "32",
+                "text": "контакт",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "33",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "34",
+                "text": "+8",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/konstruktiv.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "35",
+                "text": "конструктив",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          },
+          {
+            "component": "score",
+            "id": "36",
+            "css": {
+              "color": "#fff"
+            },
+            "children" : [
+              {
+                "component": "label",
+                "id": "37",
+                "text": "2",
+                "css": {
+                  "display": "flex",
+                  "justifyContent": "center",
+                  "alignItems": "center",
+                  "background": "url('./top-sidebar/gibkost.png') no-repeat",
+                  "backgroundSize": "cover",
+                  "color": "rgb(28, 95, 145)",
+                  "fontSize": "2rem",
+                  "textAlign": "center"
+                }
+              },
+              {
+                "component": "label",
+                "id": "38",
+                "text": "гибкость",
+                "css": {
+                  "fontSize": "1rem",
+                  "textAlign": "center",
+                  "lineHeight": "1",
+                  "marginTop": "0.5em"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "component": "footer",
+        "id": "39",
+        "css": {
+          "display": "flex",
+          "justifyContent": "space-between",
+          "gap": ".5em",
+          "padding": ".5em .5em",
+          "alignItems": "center",
+          "backgroundColor": "rgba(34, 46, 80, 0.5)",
+          "gridRow": "3",
+          "gridColumn": "2"      
+        },
+        "children": [
+          {
+            "component":"div",
+            "css": {
+              "display": "flex",
+              "gap": "2em",
+              "marginLeft": "10em"
+            },
+            "children": [
+              {
+                "component": "label",
+                "id": "40",
+                "text": "журнал ходов",
+                "css": {
+                  "height": "1.5em",
+                  "width": "8em",
+                  "textAlign": "center",
+                  "color": "rgb(95, 166, 197)",
+                  "fontWeight": "bold",
+                  "background": "url('./images/gurnal-hodov.png') no-repeat"
+                }
+              },
+              {
+                "component": "label",
+                "id": "41",
+                "text": "подсказка",
+                "css": {
+                  "height": "1.5em",
+                  "width": "6em",
+                  "textAlign": "center",
+                  "color": "rgb(95, 166, 197)",
+                  "fontWeight": "bold",
+                  "background": "url('./images/podskazka.png') no-repeat"
+                }
+              }
+            ]
+
+          },
+          {
+            "component": "div",
+            "id": "44",
+            "css": {
+              "display": "flex",
+              "gap": ".75em"
+            },
+            "children": [
+              {
+                "component": "btn",
+                "id": "42",
+                "onClick": "handleClick_2",
+                "css": {
+                  "background": "url('./images/navigacia/left_3.png') no-repeat",
+                  "height": "35px",
+                  "width": "35px"
+                }
+              },
+              {
+                "component": "btn",
+                "id": "43",
+                "id_tst": "forward",
+                "onClick": "handleClick",
+                "css": {
+                  "background": "url('./images/navigacia/right_3.png') no-repeat",
+                  "height": "35px",
+                  "width": "35px"
+                }
+              }
+            ]
+          }        
+        ]
+      }
+    ]
+  }

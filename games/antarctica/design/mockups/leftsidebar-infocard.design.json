@@ -1,0 +1,253 @@
+{
+    "$schema": "https://cubica.platform/schemas/design-artifact.v1.json",
+    "id": "leftsidebar-infocard",
+    "type": "mockup",
+    "name": "Инфокарточка с левым сайдбаром",
+    "description": "Экран с информационной карточкой события и левым сайдбаром ресурсов/метрик",
+    "image": {
+        "path": "mockups/leftsidebar-infocard.jpg",
+        "format": "jpg",
+        "dimensions": {
+            "width": 1920,
+            "height": 1080
+        },
+        "dpi": 72
+    },
+    "generation": {
+        "prompt": "Game UI screen split into two sections: a left sidebar with resource metrics and a large main info card on the right. Art style is flat vector illustration, clean lines, cool color palette (blues, whites).",
+        "negative_prompt": "realistic, 3d, cluttered, noise, warm colors",
+        "style_reference": "concepts/main-style",
+        "model": "midjourney-v6"
+    },
+    "regions": [
+        {
+            "id": "sidebar",
+            "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 400,
+                "height": 1080
+            },
+            "type": "container",
+            "description": "Левая боковая панель с метриками и статусом",
+            "layout": {
+                "type": "flex",
+                "direction": "column",
+                "padding": 20,
+                "gap": 15
+            },
+            "generation": {
+                "prompt": "Deep blue sidebar background with vector ice/snow decorations"
+            },
+            "style": {
+                "background": "#0f4c75"
+            },
+            "elements": [
+                {
+                    "id": "day-counter",
+                    "type": "indicator",
+                    "description": "Счетчик оставшихся дней с иконкой солнца",
+                    "label": "45 Осталось дней",
+                    "generation": {
+                        "prompt": "Icon of a yellow sun on a light blue background plate, text '45 Осталось дней'"
+                    }
+                },
+                {
+                    "id": "metrics-list",
+                    "type": "list",
+                    "description": "Список игровых метрик",
+                    "layout": {
+                        "type": "flex",
+                        "direction": "column",
+                        "gap": 10
+                    },
+                    "generation": {
+                        "prompt": "Vertical list of metric items with ice shard backgrounds"
+                    },
+                    "elements": [
+                        {
+                            "id": "metric-knowledge",
+                            "label": "-1 знания",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '-1 знания'"
+                            }
+                        },
+                        {
+                            "id": "metric-trust",
+                            "label": "15 доверие",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '15 доверие'"
+                            }
+                        },
+                        {
+                            "id": "metric-energy",
+                            "label": "7 энергия",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '7 энергия'"
+                            }
+                        },
+                        {
+                            "id": "metric-control",
+                            "label": "-8 контроль",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '-8 контроль'"
+                            }
+                        },
+                        {
+                            "id": "metric-status",
+                            "label": "-5 статус",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '-5 статус'"
+                            }
+                        },
+                        {
+                            "id": "metric-contact",
+                            "label": "10 контакт",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '10 контакт'"
+                            }
+                        },
+                        {
+                            "id": "metric-constructive",
+                            "label": "8 конструктив",
+                            "type": "stat-item",
+                            "generation": {
+                                "prompt": "Blue ice shard background plate with text '8 конструктив'"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "sidebar-decoration",
+                    "type": "image",
+                    "description": "Декоративная иллюстрация с пингвинами",
+                    "generation": {
+                        "prompt": "Small vector illustration of two penguins on an ice floe"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "main-content",
+            "bounds": {
+                "x": 400,
+                "y": 0,
+                "width": 1520,
+                "height": 1080
+            },
+            "type": "container",
+            "description": "Основная область контента с карточкой события",
+            "layout": {
+                "type": "flex",
+                "direction": "column",
+                "align": "center",
+                "justify": "center"
+            },
+            "style": {
+                "background": "#1b262c"
+            },
+            "generation": {
+                "prompt": "Dark blue main content area"
+            },
+            "elements": [
+                {
+                    "id": "event-card",
+                    "type": "card",
+                    "description": "Карточка события с иллюстрацией и текстом",
+                    "layout": {
+                        "type": "flex",
+                        "direction": "column"
+                    },
+                    "generation": {
+                        "prompt": "Event card container"
+                    },
+                    "elements": [
+                        {
+                            "id": "event-image",
+                            "type": "image",
+                            "description": "Иллюстрация локации 'Антарктика'",
+                            "generation": {
+                                "prompt": "Vector illustration of Antarctica landscape, icebergs, sea, signpost saying 'АНТАРКТИКА' in cyrillic, comic style"
+                            }
+                        },
+                        {
+                            "id": "event-text",
+                            "type": "text-block",
+                            "description": "Описание сюжетного события",
+                            "content": "Антарктика - это огромный мир из воды, льда и снега...",
+                            "style": {
+                                "color": "#ffffff",
+                                "font_size": 18
+                            },
+                            "generation": {
+                                "prompt": "Text description of Antarctica event"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "id": "navigation-footer",
+                    "type": "container",
+                    "description": "Навигация внизу страницы",
+                    "layout": {
+                        "type": "flex",
+                        "justify": "space-between"
+                    },
+                    "generation": {
+                        "prompt": "Navigation footer area"
+                    },
+                    "elements": [
+                        {
+                            "id": "nav-arrows",
+                            "type": "controls",
+                            "description": "Стрелки навигации",
+                            "generation": {
+                                "prompt": "Navigation arrows controls"
+                            }
+                        },
+                        {
+                            "id": "nav-journal",
+                            "type": "link",
+                            "label": "журнал ходов",
+                            "generation": {
+                                "prompt": "Link text 'журнал ходов'"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "style_tokens": {
+        "colors": {
+            "sidebar_bg": "#0f4c75",
+            "main_bg": "#1b262c",
+            "text_primary": "#ffffff",
+            "text_secondary": "#bbe1fa",
+            "accent_ice": "#a8d8ea"
+        },
+        "typography": {
+            "font_family": "Sans-Serif",
+            "heading_style": "bold uppercase",
+            "body_style": "regular"
+        }
+    },
+    "meta": {
+        "author": "Antigravity Agent",
+        "created_at": "2026-01-18T21:42:00+03:00",
+        "version": "1.0",
+        "tags": [
+            "mockup",
+            "sidebar",
+            "event-card",
+            "antarctica"
+        ],
+        "notes": "Created based on leftsidebar-infocard.jpg"
+    }
+}

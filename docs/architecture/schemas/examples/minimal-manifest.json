@@ -1,0 +1,57 @@
+{
+  "meta": {
+    "id": "com.cubica.examples.counter",
+    "version": "0.1.0",
+    "name": "Simple Counter",
+    "description": "A minimal example game where you increment a counter.",
+    "author": "Cubica Team"
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 1
+    }
+  },
+  "engine": {
+    "system_prompt": "You are a simple counter game engine. When the user says 'increment', increase the count by 1. When they say 'decrement', decrease it. Ignore other commands."
+  },
+  "state": {
+    "count": 0,
+    "history": []
+  },
+  "ui": {
+    "entry_point": "main",
+    "screens": {
+      "main": {
+        "type": "screen",
+        "root": {
+          "type": "container",
+          "style": { "padding": 20, "alignItems": "center", "gap": 10 },
+          "children": [
+            {
+              "type": "text",
+              "props": { "content": "Count: {{state.count}}" },
+              "style": { "fontSize": 32, "fontWeight": "bold" }
+            },
+            {
+              "type": "h-stack",
+              "style": { "gap": 10 },
+              "children": [
+                {
+                  "type": "button",
+                  "props": { "label": "+" },
+                  "actions": { "onClick": { "command": "INCREMENT", "payload": {} } }
+                },
+                {
+                  "type": "button",
+                  "props": { "label": "-" },
+                  "actions": { "onClick": { "command": "DECREMENT", "payload": {} } }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  }
+}

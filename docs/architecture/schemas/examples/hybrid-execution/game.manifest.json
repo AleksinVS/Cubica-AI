@@ -1,0 +1,255 @@
+{
+  "$schema": "https://cubica.platform/schemas/game-manifest.v1.json",
+  "meta": {
+    "id": "rpg-inventory-demo",
+    "version": "1.0.0",
+    "name": "RPG Inventory System Demo",
+    "description": "Demonstrates hybrid execution model with LLM for narrative and scripts for game mechanics",
+    "author": "Cubica Platform Team",
+    "schema_version": "1.0",
+    "min_engine_version": "0.5.0"
+  },
+  "assets": {
+    "rules": "rules.md",
+    "scenario": "scenario.md",
+    "scripts": "scripts/inventory.js"
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 1
+    },
+    "settings": {
+      "max_inventory_slots": 20,
+      "starting_gold": 100,
+      "max_stack_size": 99
+    }
+  },
+  "engine": {
+    "system_prompt": "You are a game master for an RPG adventure. Handle narrative interactions, describe environments, and roleplay NPCs. For inventory operations, combat calculations, and trading - use the script handlers. Focus on storytelling and player immersion.",
+    "model_config": {
+      "temperature": 0.8,
+      "max_tokens": 600
+    },
+    "context": {
+      "include": ["state.public"],
+      "history_window": 15
+    }
+  },
+  "state": {
+    "public": {
+      "player": {
+        "name": "Hero",
+        "level": 1,
+        "hp": 100,
+        "max_hp": 100,
+        "gold": 100,
+        "experience": 0
+      },
+      "inventory": {
+        "slots": [],
+        "max_slots": 20
+      },
+      "equipment": {
+        "weapon": null,
+        "armor": null,
+        "accessory": null
+      },
+      "current_location": "village_square"
+    },
+    "secret": {
+      "shop_inventory": [
+        { "id": "health_potion", "name": "Health Potion", "price": 25, "stock": 10 },
+        { "id": "iron_sword", "name": "Iron Sword", "price": 150, "stock": 3 },
+        { "id": "leather_armor", "name": "Leather Armor", "price": 100, "stock": 5 }
+      ],
+      "loot_tables": {
+        "goblin": ["gold_coins", "rusty_dagger", "health_potion"],
+        "chest": ["gold_coins", "rare_gem", "ancient_scroll"]
+      }
+    }
+  },
+  "actions": {
+    "talk": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Player talks to an NPC - handled by LLM for dynamic dialogue"
+      }
+    },
+    "explore": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Player explores the environment - LLM describes what they find"
+      }
+    },
+    "examine": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Player examines an object or creature - LLM provides description"
+      }
+    },
+    "add_item": {
+      "handler_type": "script",
+      "function": "addItem",
+      "metadata": {
+        "description": "Add an item to player inventory",
+        "params": {
+          "itemId": "string - unique item identifier",
+          "quantity": "number - amount to add (default: 1)"
+        }
+      }
+    },
+    "remove_item": {
+      "handler_type": "script",
+      "function": "removeItem",
+      "metadata": {
+        "description": "Remove an item from inventory",
+        "params": {
+          "itemId": "string - unique item identifier",
+          "quantity": "number - amount to remove (default: 1)"
+        }
+      }
+    },
+    "use_item": {
+      "handler_type": "script",
+      "function": "useItem",
+      "metadata": {
+        "description": "Use a consumable item",
+        "params": {
+          "itemId": "string - unique item identifier"
+        }
+      }
+    },
+    "equip_item": {
+      "handler_type": "script",
+      "function": "equipItem",
+      "metadata": {
+        "description": "Equip a weapon, armor, or accessory",
+        "params": {
+          "itemId": "string - unique item identifier"
+        }
+      }
+    },
+    "unequip_item": {
+      "handler_type": "script",
+      "function": "unequipItem",
+      "metadata": {
+        "description": "Unequip an item from a slot",
+        "params": {
+          "slot": "string - 'weapon' | 'armor' | 'accessory'"
+        }
+      }
+    },
+    "buy_item": {
+      "handler_type": "script",
+      "function": "buyItem",
+      "metadata": {
+        "description": "Purchase an item from a shop",
+        "params": {
+          "itemId": "string - unique item identifier",
+          "quantity": "number - amount to buy (default: 1)"
+        }
+      }
+    },
+    "sell_item": {
+      "handler_type": "script",
+      "function": "sellItem",
+      "metadata": {
+        "description": "Sell an item to a shop",
+        "params": {
+          "itemId": "string - unique item identifier",
+          "quantity": "number - amount to sell (default: 1)"
+        }
+      }
+    },
+    "attack": {
+      "handler_type": "script",
+      "function": "calculateAttack",
+      "metadata": {
+        "description": "Calculate attack damage",
+        "params": {
+          "targetId": "string - target creature identifier"
+        }
+      }
+    },
+    "loot": {
+      "handler_type": "script",
+      "function": "generateLoot",
+      "metadata": {
+        "description": "Generate loot from defeated enemy or container",
+        "params": {
+          "sourceType": "string - 'enemy' | 'chest' | 'corpse'",
+          "sourceId": "string - identifier of the loot source"
+        }
+      }
+    }
+  },
+  "items": {
+    "health_potion": {
+      "id": "health_potion",
+      "name": "Health Potion",
+      "type": "consumable",
+      "stackable": true,
+      "max_stack": 99,
+      "effects": {
+        "heal": 30
+      },
+      "base_price": 25
+    },
+    "iron_sword": {
+      "id": "iron_sword",
+      "name": "Iron Sword",
+      "type": "weapon",
+      "stackable": false,
+      "stats": {
+        "attack": 15,
+        "speed": 10
+      },
+      "base_price": 150
+    },
+    "leather_armor": {
+      "id": "leather_armor",
+      "name": "Leather Armor",
+      "type": "armor",
+      "stackable": false,
+      "stats": {
+        "defense": 10,
+        "speed": -2
+      },
+      "base_price": 100
+    },
+    "gold_coins": {
+      "id": "gold_coins",
+      "name": "Gold Coins",
+      "type": "currency",
+      "stackable": true,
+      "max_stack": 9999
+    },
+    "rusty_dagger": {
+      "id": "rusty_dagger",
+      "name": "Rusty Dagger",
+      "type": "weapon",
+      "stackable": false,
+      "stats": {
+        "attack": 5,
+        "speed": 15
+      },
+      "base_price": 10
+    },
+    "rare_gem": {
+      "id": "rare_gem",
+      "name": "Rare Gem",
+      "type": "treasure",
+      "stackable": true,
+      "max_stack": 10,
+      "base_price": 200
+    },
+    "ancient_scroll": {
+      "id": "ancient_scroll",
+      "name": "Ancient Scroll",
+      "type": "quest_item",
+      "stackable": false,
+      "base_price": 0
+    }
+  }
+}

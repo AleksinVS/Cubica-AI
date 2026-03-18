@@ -1,0 +1,157 @@
+body {
+  min-height: 1000px;
+  padding-top: 160px;
+  padding-bottom: 50px;
+  font-size: 15px;
+}
+
+.modal-content {
+  background-color: #ffffff;
+}
+.modal-body .lead {
+    margin-left: 35px;
+    margin-right: 35px;
+}
+
+.jumbotron ol {
+  margin-bottom: 15px;
+  font-size: 21px;
+  font-weight: 200;
+}
+
+.jumbotron p {
+  text-align: justify;
+  text-indent: 15px;
+}
+
+.jumbotron .text-center  {
+  text-indent: 0px;
+}
+
+
+.panel {
+  text-align: left;
+  font-size: 19px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+.panel h4 {
+  font-size: 19px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  line-height: 1.3;
+}
+
+.panel h5 {
+  font-size: 18px;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  line-height: 1.3;
+  padding:12px;
+}
+
+.modal-lg {
+  width: 1150px;
+}
+.navbar-right {
+    float: right!important;
+}
+.nav>li>a {
+    padding: 6px 13px;
+    font-size: 16px;
+}
+
+.col-xs-eight,
+.col-sm-eight,
+.col-md-eight,
+.col-lg-eight {
+    position: relative;
+    min-height: 1px;
+    /*padding-right: 10px;
+    padding-left: 10px;*/
+}
+
+.col-xs-eight {
+    width: 20%;
+    float: left;
+}
+
+@media (min-width: 768px) {
+    .col-sm-eight {
+        width: 12.5%;
+        float: left;
+    }
+}
+
+@media (min-width: 992px) {
+    .col-md-eight {
+        width: 12.5%;
+        float: left;
+    }
+}
+
+@media (min-width: 1200px) {
+    .col-lg-eight {
+        width: 12.5%;
+        float: left;
+    }
+}
+.popover {
+    font-size: 14px;
+    min-width:500px;
+    max-width: 900px;
+}
+
+#cards .topTitle {
+    min-height:235px;
+}
+
+.panel-heading {
+    min-height: 170px;
+}
+
+#team .topTitle {
+    min-height:260px;
+}
+
+.nav-pills>li>a>.badge {
+    margin-left: 4px;
+    font-size: 25px;
+}
+
+.navbar-history {
+    color: #777;
+    float: right;
+    height: 50px;
+    padding: 15px 15px;
+    font-size: 18px;
+    line-height: 20px;
+}
+
+.historyResults h5{
+    line-height: 1;
+    padding: 5px;
+}
+
+#History-body  {
+        padding-bottom: 20px;
+}
+
+.historyresult-row  {
+        padding-bottom: 20px;
+        padding-top: 5px;
+        text-align: center;
+}
+
+.down 
+{
+    color: #ea2d2d;
+}
+
+.up {
+    color: #4cae4c;
+}
+
+.badge.history {
+    background-color: #3479b8;
+}

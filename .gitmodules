@@ -1,0 +1,8 @@
+[submodule "draft/cubica-portal-nextjs"]
+	path = draft/cubica-portal-nextjs
+	url = https://github.com/aproskur/cubica-portal-nextjs.git
+
+[submodule "draft/game-player-nextjs"]
+	path = draft/game-player-nextjs
+	url = https://github.com/aproskur/game-player-nextjs.git
+

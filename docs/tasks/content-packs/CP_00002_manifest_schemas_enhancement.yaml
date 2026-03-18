@@ -1,0 +1,251 @@
+id: CP_00002
+title: Manifest Schemas Enhancement (F_00002)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00002
+scope:
+  code:
+    - docs/architecture/schemas/**
+  docs:
+    - docs/architecture/schemas/game-manifest.schema.json
+    - docs/architecture/schemas/ui-manifest.schema.json
+    - docs/architecture/schemas/extension.schema.json
+    - docs/tasks/features/F_00002_manifest_schemas_enhancement_(E_00001).md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00002_manifest_schemas_enhancement_(E_00001).md
+  related:
+    - docs/architecture/reviews/2026-01-13-architecture-review-comprehensive.md
+    - docs/architecture/adrs/015-extension-packs-architecture.md
+tools:
+  - name: shell
+    allowed: [read, write]
+    dirs:
+      - docs/architecture/schemas/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Manifest Schemas Enhancement
+
+  Этот ExecPlan — живой документ. Он должен поддерживаться в соответствии с `docs/tasks/content-packs/PLAN.md`. Документ рассчитан на новичка, который знает базовые команды git/node и не знаком с архитектурой Cubica.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Surprises & Discoveries](#surprises--discoveries)
+  - [Decision Log](#decision-log)
+  - [Outcomes & Retrospective](#outcomes--retrospective)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана:
+  - Схема game-manifest.schema.json будет требовать обязательные поля `assets.rules`, `assets.scenario`, `state.public`, `state.secret`
+  - Схема ui-manifest.schema.json будет требовать `schema_version` и `min_viewer_version` в meta
+  - Схема ui-manifest.schema.json будет содержать enum допустимых типов UI-компонентов
+  - Будет создан полноценный extension.schema.json для Extension Packs по ADR-015
+
+  Это обеспечит строгую валидацию манифестов и предотвратит ошибки на этапе разработки игр.
+
+  ## Progress
+
+  - [ ] Обновить game-manifest.schema.json
+  - [ ] Обновить ui-manifest.schema.json
+  - [ ] Создать extension.schema.json
+  - [ ] Проверить валидацию существующих манифестов
+  - [ ] Обновить документацию
+
+  ## Surprises & Discoveries
+
+  Пока нет.
+
+  ## Decision Log
+
+  Пока нет.
+
+  ## Outcomes & Retrospective
+
+  Заполняется после завершения.
+
+  ## Context and Orientation
+
+  **Текущее состояние схем:**
+
+  1. `docs/architecture/schemas/game-manifest.schema.json` — схема логического манифеста игры. Проблемы:
+     - Секция `assets` не требует `rules` и `scenario`
+     - Секция `state` не требует разделения на `public` и `secret`
+     - Нет секции `extensions` для Extension Pack зависимостей
+
+  2. `docs/architecture/schemas/ui-manifest.schema.json` — схема UI-манифеста. Проблемы:
+     - Секция `meta` не требует `schema_version` и `min_viewer_version`
+     - Поле `type` компонентов не ограничено enum
+
+  3. `docs/architecture/schemas/extension.schema.json` — практически пустой файл (1 строка), не содержит реальной схемы
+
+  **Ключевые файлы:**
+  - `docs/architecture/schemas/game-manifest.schema.json` — основная схема игр
+  - `docs/architecture/schemas/ui-manifest.schema.json` — схема UI
+  - `docs/architecture/schemas/extension.schema.json` — схема расширений (создать)
+  - `docs/architecture/adrs/015-extension-packs-architecture.md` — ADR для Extension Packs
+
+  ## Plan of Work
+
+  ### Milestone 1: Обновление game-manifest.schema.json
+
+  Открыть файл `docs/architecture/schemas/game-manifest.schema.json` и внести изменения:
+
+  1. В секции `assets` добавить:
+     ```json
+     "required": ["rules", "scenario"]
+     ```
+
+  2. В секции `state` изменить структуру:
+     ```json
+     "state": {
+       "type": "object",
+       "required": ["public", "secret"],
+       "properties": {
+         "public": { "type": "object", "description": "Public state visible to all players" },
+         "secret": { "type": "object", "description": "Secret state hidden from players" }
+       }
+     }
+     ```
+
+  3. Добавить новую секцию `extensions`:
+     ```json
+     "extensions": {
+       "type": "array",
+       "description": "List of Extension Pack dependencies",
+       "items": {
+         "type": "object",
+         "required": ["id", "version"],
+         "properties": {
+           "id": { "type": "string" },
+           "version": { "type": "string" }
+         }
+       }
+     }
+     ```
+
+  ### Milestone 2: Обновление ui-manifest.schema.json
+
+  Открыть файл `docs/architecture/schemas/ui-manifest.schema.json` и внести изменения:
+
+  1. В секции `meta` добавить обязательные поля:
+     ```json
+     "meta": {
+       "type": "object",
+       "required": ["id", "version", "schema_version", "min_viewer_version"],
+       "properties": {
+         "id": { "type": "string" },
+         "version": { "type": "string" },
+         "schema_version": { "type": "string", "description": "Version of UI manifest schema" },
+         "min_viewer_version": { "type": "string", "description": "Minimum viewer version required" },
+         "channel": { "type": "string" }
+       }
+     }
+     ```
+
+  2. Определить enum для типов компонентов:
+     ```json
+     "type": {
+       "type": "string",
+       "enum": [
+         "screenComponent",
+         "areaComponent",
+         "cardComponent",
+         "gameVariableComponent",
+         "buttonComponent",
+         "textComponent",
+         "inputComponent",
+         "imageComponent"
+       ],
+       "description": "Component type/role in the UI hierarchy"
+     }
+     ```
+
+  ### Milestone 3: Создание extension.schema.json
+
+  Создать полноценный файл `docs/architecture/schemas/extension.schema.json`:
+
+  ```json
+  {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Cubica Extension Pack Schema",
+    "description": "Schema for Extension Pack manifests (ADR-015)",
+    "type": "object",
+    "required": ["meta", "capabilities", "dependencies"],
+    "properties": {
+      "meta": {
+        "type": "object",
+        "required": ["id", "version", "name"],
+        "properties": {
+          "id": { "type": "string", "description": "Unique extension identifier" },
+          "version": { "type": "string", "description": "SemVer version" },
+          "name": { "type": "string", "description": "Human-readable name" },
+          "description": { "type": "string", "description": "Extension description" },
+          "trust_level": {
+            "type": "string",
+            "enum": ["trusted", "untrusted"],
+            "description": "Trust level: trusted (Engine Extension) or untrusted (User Script)"
+          }
+        }
+      },
+      "capabilities": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "List of capabilities provided by this extension"
+      },
+      "dependencies": {
+        "type": "object",
+        "description": "Dependencies on other extensions or packages"
+      },
+      "entry_points": {
+        "type": "object",
+        "properties": {
+          "main": { "type": "string", "description": "Main entry point file" },
+          "types": { "type": "string", "description": "TypeScript definitions file" }
+        }
+      }
+    }
+  }
+  ```
+
+  ## Concrete Steps
+
+  1. Открыть `docs/architecture/schemas/game-manifest.schema.json`
+  2. Найти секцию `assets` и добавить `"required": ["rules", "scenario"]`
+  3. Найти секцию `state` и обновить структуру с `public`/`secret`
+  4. Добавить новую секцию `extensions`
+  5. Открыть `docs/architecture/schemas/ui-manifest.schema.json`
+  6. Обновить `meta.required` с `schema_version` и `min_viewer_version`
+  7. Добавить enum для типов компонентов
+  8. Создать `docs/architecture/schemas/extension.schema.json` с полной схемой
+  9. Проверить валидацию существующих манифестов в `games/antarctica/`
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. Запустить валидацию game-manifest.schema.json:
+     - Манифест без `assets.rules` должен не пройти валидацию
+     - Манифест без `state.public` должен не пройти валидацию
+
+  2. Запустить валидацию ui-manifest.schema.json:
+     - Манифест без `meta.schema_version` должен не пройти валидацию
+     - Компонент с неизвестным `type` должен не пройти валидацию
+
+  3. Проверить extension.schema.json:
+     - Схема должна быть валидным JSON Schema
+     - Должна соответствовать ADR-015
+
+  Критерий успеха: все схемы корректны, валидация работает, документация обновлена.
+  ```

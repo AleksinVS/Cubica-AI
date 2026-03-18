@@ -1,0 +1,193 @@
+{
+  "$schema": "https://cubica.platform/schemas/design-history.v1.json",
+  "game_id": "antarctica",
+  "updated_at": "2026-01-17T14:30:00Z",
+
+  "artifacts": {
+    "arctic-ui-ref": {
+      "type": "reference",
+      "name": "Референс UI Frostpunk",
+      "current_version": "1.0",
+      "status": "approved",
+      "tags": ["reference", "frostpunk", "survival"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "references/arctic-ui-ref.design.json",
+          "date": "2026-01-08",
+          "author": "Designer"
+        }
+      ]
+    },
+    "arctic-style-concept": {
+      "type": "concept",
+      "name": "Концепт визуального стиля",
+      "current_version": "1.0",
+      "status": "approved",
+      "derived_from": "arctic-ui-ref",
+      "tags": ["concept", "moodboard", "style-guide"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "concepts/arctic-style-concept.design.json",
+          "date": "2026-01-10",
+          "author": "AI Agent"
+        }
+      ]
+    },
+    "game-flow": {
+      "type": "flowchart",
+      "name": "Схема игрового процесса",
+      "current_version": "1.0",
+      "status": "approved",
+      "tags": ["flowchart", "navigation", "game-loop"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "flowcharts/game-flow.design.json",
+          "date": "2026-01-09",
+          "author": "Game Designer"
+        }
+      ]
+    },
+    "game-screen-wireframe": {
+      "type": "wireframe",
+      "name": "Каркас игрового экрана",
+      "current_version": "1.0",
+      "status": "approved",
+      "derived_from": ["arctic-style-concept", "game-flow"],
+      "tags": ["wireframe", "layout", "game-screen"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "wireframes/game-screen.design.json",
+          "date": "2026-01-12",
+          "author": "AI Agent"
+        }
+      ]
+    },
+    "screen-transitions": {
+      "type": "storyboard",
+      "name": "Раскадровка переходов между экранами",
+      "current_version": "1.0",
+      "status": "review",
+      "derived_from": "game-flow",
+      "tags": ["storyboard", "animation", "transitions"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "storyboards/screen-transitions.design.json",
+          "date": "2026-01-13",
+          "author": "AI Agent"
+        }
+      ]
+    },
+    "game-screen-mockup": {
+      "type": "mockup",
+      "name": "Основной игровой экран",
+      "current_version": "2.0",
+      "status": "approved",
+      "derived_from": "game-screen-wireframe",
+      "tags": ["mockup", "game-screen", "final"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "mockups/game-screen-v1.design.json",
+          "date": "2026-01-14",
+          "author": "AI Agent",
+          "deprecated": true
+        },
+        {
+          "version": "2.0",
+          "file": "mockups/game-screen-v2.design.json",
+          "date": "2026-01-17",
+          "author": "AI Agent",
+          "changes": "Улучшена читабельность индикаторов ресурсов, добавлен контраст"
+        }
+      ]
+    },
+    "icon-fuel": {
+      "type": "asset",
+      "name": "Иконка топлива",
+      "current_version": "1.0",
+      "status": "approved",
+      "derived_from": "game-screen-mockup",
+      "tags": ["icon", "fuel", "resource"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "assets/icons/icon-fuel.design.json",
+          "date": "2026-01-16",
+          "author": "AI Agent"
+        }
+      ]
+    },
+    "icon-food": {
+      "type": "asset",
+      "name": "Иконка еды",
+      "current_version": "1.0",
+      "status": "approved",
+      "derived_from": "game-screen-mockup",
+      "tags": ["icon", "food", "resource"],
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "assets/icons/icon-food.design.json",
+          "date": "2026-01-16",
+          "author": "AI Agent"
+        }
+      ]
+    }
+  },
+
+  "relationships": [
+    {
+      "from": "arctic-ui-ref",
+      "to": "arctic-style-concept",
+      "type": "inspires",
+      "description": "Референс вдохновил концепт стиля"
+    },
+    {
+      "from": "game-flow",
+      "to": "game-screen-wireframe",
+      "type": "structures",
+      "description": "Схема игрового процесса определяет структуру экранов"
+    },
+    {
+      "from": "game-flow",
+      "to": "screen-transitions",
+      "type": "animates",
+      "description": "Схема определяет переходы и анимации"
+    },
+    {
+      "from": "arctic-style-concept",
+      "to": "game-screen-wireframe",
+      "type": "inspires",
+      "description": "Концепт стиля определяет визуальное направление"
+    },
+    {
+      "from": "game-screen-wireframe",
+      "to": "game-screen-mockup",
+      "type": "refines",
+      "description": "Каркас детализируется в финальный макет"
+    },
+    {
+      "from": "game-screen-mockup",
+      "to": "icon-fuel",
+      "type": "extracts",
+      "description": "Иконка извлечена из макета"
+    },
+    {
+      "from": "game-screen-mockup",
+      "to": "icon-food",
+      "type": "extracts",
+      "description": "Иконка извлечена из макета"
+    }
+  ],
+
+  "meta": {
+    "created_at": "2026-01-08T09:00:00Z",
+    "author": "AI Agent",
+    "description": "История дизайн-артефактов для игры Antarctica"
+  }
+}

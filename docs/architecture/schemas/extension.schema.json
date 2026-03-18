@@ -1,0 +1,360 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/extension.v1.json",
+  "title": "Cubica Extension Pack Manifest",
+  "description": "Схема манифеста Extension Pack (пакета расширений) для платформы Cubica. Определяет метаданные, возможности и зависимости расширения согласно ADR-015.",
+  "type": "object",
+  "required": ["meta", "type", "trust_level"],
+  "properties": {
+    "meta": {
+      "type": "object",
+      "description": "Метаданные Extension Pack: идентификатор, версия и описание.",
+      "required": ["id", "version", "name", "schema_version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Уникальный идентификатор расширения (npm-style: @scope/name или просто name).",
+          "pattern": "^@?[a-z0-9]([a-z0-9-]*[a-z0-9])?(/[a-z0-9]([a-z0-9-]*[a-z0-9])?)?$",
+          "examples": ["@cubica/ext-rpg-mechanics", "inventory-system", "@myorg/custom-ui"]
+        },
+        "version": {
+          "type": "string",
+          "description": "Семантическая версия расширения.",
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$",
+          "examples": ["1.0.0", "2.1.0-beta.1", "0.0.1+build.123"]
+        },
+        "name": {
+          "type": "string",
+          "description": "Человекочитаемое название расширения.",
+          "minLength": 1,
+          "examples": ["RPG Mechanics Extension", "Inventory System"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Подробное описание функциональности расширения."
+        },
+        "schema_version": {
+          "type": "string",
+          "description": "Версия схемы манифеста расширения (например, '1.0').",
+          "pattern": "^\\d+\\.\\d+$"
+        },
+        "author": {
+          "type": "string",
+          "description": "Автор или организация-разработчик расширения."
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX-идентификатор лицензии расширения.",
+          "examples": ["MIT", "Apache-2.0", "UNLICENSED"]
+        },
+        "repository": {
+          "type": "string",
+          "description": "URL репозитория с исходным кодом расширения.",
+          "format": "uri"
+        },
+        "homepage": {
+          "type": "string",
+          "description": "URL домашней страницы или документации расширения.",
+          "format": "uri"
+        }
+      },
+      "additionalProperties": false
+    },
+    "type": {
+      "type": "string",
+      "description": "Тип расширения: viewer (UI-компоненты на клиенте), engine (серверная логика) или both (комбинированное).",
+      "enum": ["viewer", "engine", "both"]
+    },
+    "trust_level": {
+      "type": "string",
+      "description": "Уровень доверия к расширению. trusted — код прошёл Code Review и CI/CD сканирование, выполняется нативно. untrusted — код выполняется в sandbox с ограничениями.",
+      "enum": ["trusted", "untrusted"],
+      "default": "untrusted"
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Список возможностей, предоставляемых расширением. Capabilities (возможности) — это именованные функции, которые расширение экспортирует для использования в играх.",
+      "items": {
+        "type": "object",
+        "required": ["id", "name"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Уникальный идентификатор возможности.",
+            "pattern": "^[a-z][a-z0-9_-]*$",
+            "examples": ["inventory", "combat-system", "dialogue-tree"]
+          },
+          "name": {
+            "type": "string",
+            "description": "Человекочитаемое название возможности."
+          },
+          "description": {
+            "type": "string",
+            "description": "Описание функциональности возможности."
+          },
+          "type": {
+            "type": "string",
+            "description": "Тип возможности: action (обработчик действий), component (UI-компонент), hook (хук жизненного цикла), api (API-функция для sandbox).",
+            "enum": ["action", "component", "hook", "api"]
+          },
+          "exports": {
+            "type": "array",
+            "description": "Список экспортируемых функций или компонентов в рамках этой возможности.",
+            "items": {
+              "type": "object",
+              "required": ["name"],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Имя экспортируемой функции/компонента."
+                },
+                "signature": {
+                  "type": "string",
+                  "description": "Сигнатура функции в TypeScript-нотации.",
+                  "examples": ["(itemId: string, quantity: number) => void", "React.FC<{items: Item[]}>"]
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Описание функции/компонента."
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "dependencies": {
+      "type": "object",
+      "description": "Зависимости расширения от других Extension Packs и внешних библиотек.",
+      "properties": {
+        "extensions": {
+          "type": "object",
+          "description": "Зависимости от других Extension Packs платформы Cubica.",
+          "patternProperties": {
+            "^@?[a-z0-9]([a-z0-9-/]*[a-z0-9])?$": {
+              "type": "string",
+              "description": "Версия зависимости (semver или диапазон).",
+              "pattern": "^[\\^~>=<]?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?( \\|\\| [\\^~>=<]?\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?)*$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "npm": {
+          "type": "object",
+          "description": "Зависимости от npm-пакетов (для Engine Extensions).",
+          "patternProperties": {
+            "^@?[a-z0-9]([a-z0-9-._/]*[a-z0-9])?$": {
+              "type": "string",
+              "description": "Версия npm-пакета (semver)."
+            }
+          },
+          "additionalProperties": false
+        },
+        "peer": {
+          "type": "object",
+          "description": "Peer dependencies (зависимости, которые должны быть предоставлены хостом).",
+          "patternProperties": {
+            "^@?[a-z0-9]([a-z0-9-._/]*[a-z0-9])?$": {
+              "type": "string",
+              "description": "Версия peer dependency."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "engine": {
+      "type": "object",
+      "description": "Конфигурация для Engine Extensions (серверная часть).",
+      "properties": {
+        "entry_point": {
+          "type": "string",
+          "description": "Путь к главному файлу расширения (относительно корня пакета).",
+          "examples": ["dist/index.js", "lib/main.js"]
+        },
+        "actions": {
+          "type": "array",
+          "description": "Список Action-обработчиков, регистрируемых расширением.",
+          "items": {
+            "type": "object",
+            "required": ["id", "function"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Идентификатор Action (используется в game.manifest.json)."
+              },
+              "function": {
+                "type": "string",
+                "description": "Имя экспортируемой функции-обработчика."
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "sandbox_api": {
+          "type": "array",
+          "description": "Список функций, доступных для вызова из User Scripts в sandbox (isolated-vm).",
+          "items": {
+            "type": "object",
+            "required": ["name", "function"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Имя функции в sandbox (например, 'inventory.addItem')."
+              },
+              "function": {
+                "type": "string",
+                "description": "Имя экспортируемой функции в расширении."
+              },
+              "description": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "hooks": {
+          "type": "object",
+          "description": "Хуки жизненного цикла расширения.",
+          "properties": {
+            "onInstall": {
+              "type": "string",
+              "description": "Функция, вызываемая при установке расширения."
+            },
+            "onGameStart": {
+              "type": "string",
+              "description": "Функция, вызываемая при старте игровой сессии."
+            },
+            "onGameEnd": {
+              "type": "string",
+              "description": "Функция, вызываемая при завершении игровой сессии."
+            },
+            "onUninstall": {
+              "type": "string",
+              "description": "Функция, вызываемая при удалении расширения."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "viewer": {
+      "type": "object",
+      "description": "Конфигурация для Viewer Extensions (клиентская часть).",
+      "properties": {
+        "entry_point": {
+          "type": "string",
+          "description": "Путь к главному файлу расширения для клиента.",
+          "examples": ["dist/viewer.js", "lib/components/index.js"]
+        },
+        "components": {
+          "type": "array",
+          "description": "Список UI-компонентов, регистрируемых расширением.",
+          "items": {
+            "type": "object",
+            "required": ["type", "component"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Идентификатор типа компонента для использования в UI-манифесте (например, 'widget:inventory').",
+                "pattern": "^[a-zA-Z][a-zA-Z0-9_:-]*$"
+              },
+              "component": {
+                "type": "string",
+                "description": "Имя экспортируемого React-компонента."
+              },
+              "description": {
+                "type": "string"
+              },
+              "props_schema": {
+                "type": "object",
+                "description": "JSON Schema для валидации props компонента."
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "styles": {
+          "type": "string",
+          "description": "Путь к CSS/SCSS файлу со стилями расширения.",
+          "examples": ["dist/styles.css"]
+        },
+        "hooks": {
+          "type": "object",
+          "description": "Хуки жизненного цикла Viewer Extension.",
+          "properties": {
+            "onInstall": {
+              "type": "string",
+              "description": "Функция инициализации расширения (вызывается Extension.install(context))."
+            },
+            "onThemeChange": {
+              "type": "string",
+              "description": "Функция, вызываемая при смене темы."
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "security": {
+      "type": "object",
+      "description": "Настройки безопасности расширения.",
+      "properties": {
+        "permissions": {
+          "type": "array",
+          "description": "Список запрашиваемых разрешений.",
+          "items": {
+            "type": "string",
+            "enum": [
+              "network",
+              "storage",
+              "file-system",
+              "external-api",
+              "database",
+              "user-data"
+            ]
+          }
+        },
+        "sandbox_limits": {
+          "type": "object",
+          "description": "Лимиты для выполнения в sandbox (для untrusted расширений).",
+          "properties": {
+            "memory_mb": {
+              "type": "integer",
+              "description": "Максимальный объём памяти (MB).",
+              "minimum": 1,
+              "default": 128
+            },
+            "timeout_ms": {
+              "type": "integer",
+              "description": "Таймаут выполнения одной операции (ms).",
+              "minimum": 100,
+              "default": 5000
+            },
+            "cpu_time_ms": {
+              "type": "integer",
+              "description": "Максимальное CPU-время на операцию (ms).",
+              "minimum": 10,
+              "default": 1000
+            }
+          },
+          "additionalProperties": false
+        },
+        "content_security_policy": {
+          "type": "string",
+          "description": "CSP-директива для Viewer Extensions."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

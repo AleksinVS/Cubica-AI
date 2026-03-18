@@ -1,0 +1,257 @@
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  overflow-x: hidden;
+}
+
+.default-main-screen {
+  background: no-repeat;
+  background-size: cover;
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 10% 80% 10%;
+  grid-template-rows: 15% 1fr auto;
+}
+
+
+.game-variables-container {
+  display: flex;
+  justify-content: space-between;
+  padding: 1em;
+  z-index: 2;
+  grid-row: 1;
+  grid-column: 1 / 3;
+}
+
+.game-variable {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  color: #fff;
+  font-weight: bold;
+  text-transform: lowercase;
+
+}
+
+.game-variable button {
+  background-repeat: no-repeat;
+  background-size: cover;
+  color: rgb(28, 95, 145);
+  font-size: 2rem;
+  font-weight: bold;
+  text-align: center;
+  padding: 5px 0px;
+  min-width: 75px;
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+
+.description-div {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 200px;
+  background-color: rgba(34, 46, 80);
+  padding: 10px;
+  z-index: 1;
+  font-weight: normal;
+  font-size: 0.75rem;
+  border-radius: 15px;
+}
+
+.cards-container {
+  /* background-color: rgba(34, 46, 80, 0.5); */
+  padding: 1em;
+  display: flex;
+  justify-content: center;
+  width: 80%;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 auto;
+  grid-row: 2;
+  grid-column: 2;
+  z-index: 1;
+}
+
+.game-card {
+  width: calc(33.33% - 20px);
+  padding: 1em;
+  background-color: rgba(162, 217, 247, 0.5);
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.4;
+}
+
+.button-container {
+  display: flex;
+  align-items: center;
+  padding: 2em;
+  gap: 1em;
+  grid-row: 3;
+  grid-column: 2;
+  z-index: 1;
+}
+/*
+.button-right {
+  display: flex;
+  padding: 2em;
+  gap: 1em;
+  grid-row: 3;
+  grid-column: 3;
+  z-index: 1;
+}
+
+
+.button-next {
+  padding: 1em 2em;
+  border-radius: 50px;
+  font-size: 1rem;
+  font-weight: bold;
+  color: #fff;
+  text-transform: lowercase;
+  background-color: rgba(34, 46, 80);
+} */
+
+
+/* ANIMATION CARD */
+.default-game-card {
+  transition: transform 0.5s ease-in-out;
+}
+
+.flipped {
+  transform: rotateY(180deg);
+}
+
+.button-helper {
+  all: unset;
+  background-repeat: no-repeat;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: .25em .75em;
+  font-weight: bold;
+  outline: none;
+  cursor: pointer;
+}
+
+.button-helper-arrow {
+  all: unset;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  width: 40px;
+  height: 40px;         
+}
+
+.button-helper + .button-helper-arrow {
+  margin-left: auto;
+}
+
+
+.button-helper-arrow:first-of-type {
+  margin-left: auto;
+}
+
+.additional-background {
+  background-color: rgba(34, 46, 80, 0.5);
+  grid-column: 2;
+  grid-row: 1 / 4;
+  z-index: 0;
+}
+
+.journal-container {
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem;
+  background-color: rgba(34, 46, 80, 0.8);
+}
+
+.journal-variables-container {
+  display: flex;
+  gap: 1em;
+  text-transform: lowercase;
+  font-weight: bold;
+
+}
+
+.journal-variables-container>* {
+  flex-grow: 1;
+}
+
+.journal-cards-container {
+  display: flex;
+  gap: 1rem;
+}
+
+.journal-cards-container>* {
+  flex-grow: 1;
+}
+
+.default-journal-variable-component {
+  margin-top: 1em;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #fff;
+  text-align: center;
+}
+
+.default-journal-variable-component .journal-variable__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.default-journal-variable-component .journal-variable__value {
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.default-journal-variable-component .journal-variable__diff {
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.default-journal-variable-component .journal-variable__diff sup {
+  line-height: 1;
+}
+
+.default-journal-variable-component .journal-variable__caption {
+  margin-top: 0.5rem;
+}
+
+
+.heading-h1 {
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.25rem;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.hint-text {
+  color: white;
+  font-weight: bold;
+  line-height: 1.5;
+}
+
+.hint-area {
+  width: 100%;
+  height: 90%;
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+

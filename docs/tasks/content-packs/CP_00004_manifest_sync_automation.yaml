@@ -1,0 +1,217 @@
+id: CP_00004
+title: Manifest Sync Automation (F_00004)
+status: planned
+owner: @claude-code
+role: implementer
+tasks:
+  - F_00004
+scope:
+  code:
+    - games/antarctica-nextjs-player/scripts/**
+    - games/antarctica-nextjs-player/package.json
+    - games/antarctica-nextjs-player/src/app/data/**
+  docs:
+    - docs/tasks/features/F_00004_manifest_sync_automation_(E_00001).md
+links:
+  tasks:
+    - docs/tasks/epics/E_00001_architecture_review_consolidation.md
+    - docs/tasks/features/F_00004_manifest_sync_automation_(E_00001).md
+  related:
+    - games/antarctica/game.manifest.json
+    - games/antarctica/ui/web/ui.manifest.json
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - games/antarctica-nextjs-player/**
+      - games/antarctica/**
+  - name: git
+    allowed: [status, diff]
+exec_plan: |
+  ```md
+  # ExecPlan: Manifest Sync Automation
+
+  Этот ExecPlan — живой документ. Он должен поддерживаться в соответствии с `docs/tasks/content-packs/PLAN.md`.
+
+  ## Оглавление
+
+  - [Purpose / Big Picture](#purpose--big-picture)
+  - [Progress](#progress)
+  - [Context and Orientation](#context-and-orientation)
+  - [Plan of Work](#plan-of-work)
+  - [Concrete Steps](#concrete-steps)
+  - [Validation and Acceptance](#validation-and-acceptance)
+
+  ## Purpose / Big Picture
+
+  После выполнения плана:
+
+  1. Команды `npm run dev` и `npm run build` в плеере будут автоматически синхронизировать манифесты из `games/antarctica/`
+  2. Источник истины (Single Source of Truth) будет соблюден: `games/antarctica/` — канонический источник
+  3. Дублирование данных (секция `application`) будет удалено из плеера
+  4. Изменения в манифестах игры автоматически отразятся в плеере при сборке
+
+  ## Progress
+
+  - [ ] Создать скрипт синхронизации
+  - [ ] Интегрировать в package.json
+  - [ ] Удалить секцию `application` из манифеста плеера
+  - [ ] Проверить работу плеера
+
+  ## Surprises & Discoveries
+
+  Пока нет.
+
+  ## Decision Log
+
+  Пока нет.
+
+  ## Outcomes & Retrospective
+
+  Заполняется после завершения.
+
+  ## Context and Orientation
+
+  **Проблема Single Source of Truth:**
+
+  Сейчас манифесты дублируются в двух местах:
+
+  1. **Источник истины:** `games/antarctica/`
+     - `games/antarctica/game.manifest.json` — логический манифест
+     - `games/antarctica/ui/web/ui.manifest.json` — UI манифест
+
+  2. **Копия в плеере:** `games/antarctica-nextjs-player/src/app/data/antarctica/`
+     - `manifest.json` — монолитный манифест с секциями `ui` и `application`
+
+  **Проблема дублирования:**
+
+  Файл `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json` содержит:
+  - Секцию `ui` (строки ~92-522)
+  - Секцию `application` (строки ~649-1078) — **полный дубликат** `ui.screens.S1`!
+
+  Это >400 строк дублированного кода.
+
+  **Целевое состояние:**
+
+  1. Плеер использует манифесты из `games/antarctica/` через автоматическую синхронизацию
+  2. Секция `application` удалена
+  3. Изменения в источнике автоматически применяются при сборке
+
+  ## Plan of Work
+
+  ### Milestone 1: Создание скрипта синхронизации
+
+  Создать файл `games/antarctica-nextjs-player/scripts/sync-manifest.js`:
+
+  ```javascript
+  /**
+   * Sync manifests from games/antarctica/ to player's data directory
+   *
+   * This script ensures Single Source of Truth:
+   * - Source: games/antarctica/
+   * - Target: games/antarctica-nextjs-player/src/app/data/antarctica/
+   */
+  const fs = require('fs');
+  const path = require('path');
+
+  const SOURCE_DIR = path.join(__dirname, '../../../antarctica');
+  const TARGET_DIR = path.join(__dirname, '../src/app/data/antarctica');
+
+  function syncManifests() {
+    console.log('🔄 Syncing manifests from games/antarctica/...');
+
+    // Ensure target directory exists
+    if (!fs.existsSync(TARGET_DIR)) {
+      fs.mkdirSync(TARGET_DIR, { recursive: true });
+    }
+
+    // Sync game.manifest.json
+    const gameManifestSource = path.join(SOURCE_DIR, 'game.manifest.json');
+    const gameManifestTarget = path.join(TARGET_DIR, 'game.manifest.json');
+
+    if (fs.existsSync(gameManifestSource)) {
+      fs.copyFileSync(gameManifestSource, gameManifestTarget);
+      console.log('  ✓ game.manifest.json synced');
+    } else {
+      console.warn('  ⚠ game.manifest.json not found in source');
+    }
+
+    // Sync ui.manifest.json
+    const uiManifestSource = path.join(SOURCE_DIR, 'ui/web/ui.manifest.json');
+    const uiManifestTarget = path.join(TARGET_DIR, 'ui.manifest.json');
+
+    if (fs.existsSync(uiManifestSource)) {
+      fs.copyFileSync(uiManifestSource, uiManifestTarget);
+      console.log('  ✓ ui.manifest.json synced');
+    } else {
+      console.warn('  ⚠ ui.manifest.json not found in source');
+    }
+
+    console.log('✅ Manifest sync complete');
+  }
+
+  syncManifests();
+  ```
+
+  ### Milestone 2: Интеграция в package.json
+
+  Обновить `games/antarctica-nextjs-player/package.json`:
+
+  ```json
+  {
+    "scripts": {
+      "predev": "node scripts/sync-manifest.js",
+      "prebuild": "node scripts/sync-manifest.js",
+      "dev": "next dev",
+      "build": "next build",
+      ...
+    }
+  }
+  ```
+
+  ### Milestone 3: Очистка дублирования
+
+  Удалить секцию `application` из `games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json`.
+
+  Перед удалением проверить, какая секция используется в коде плеера:
+  - Поиск по `application` в компонентах рендеринга
+  - Если используется `application`, обновить код для использования `ui`
+
+  ### Milestone 4: Проверка работы плеера
+
+  1. Запустить `npm run dev` в `games/antarctica-nextjs-player/`
+  2. Проверить, что манифесты синхронизируются
+  3. Проверить, что плеер корректно отображает игру
+  4. Запустить `npm run build` и проверить успешность сборки
+
+  ## Concrete Steps
+
+  1. Создать директорию `games/antarctica-nextjs-player/scripts/` если не существует
+  2. Создать файл `scripts/sync-manifest.js` с логикой синхронизации
+  3. Открыть `games/antarctica-nextjs-player/package.json`
+  4. Добавить `"predev"` и `"prebuild"` скрипты
+  5. Найти использование секции `application` в коде плеера
+  6. Обновить код для использования секции `ui` если необходимо
+  7. Удалить секцию `application` из манифеста плеера
+  8. Запустить `npm run dev` и проверить работу
+
+  ## Validation and Acceptance
+
+  После выполнения плана:
+
+  1. Запуск `npm run dev`:
+     ```
+     🔄 Syncing manifests from games/antarctica/...
+       ✓ game.manifest.json synced
+       ✓ ui.manifest.json synced
+     ✅ Manifest sync complete
+     ```
+
+  2. Плеер корректно отображает игру Antarctic
+
+  3. Файл `manifest.json` не содержит секцию `application`
+
+  4. При изменении `games/antarctica/game.manifest.json` и перезапуске `npm run dev` изменения отражаются в плеере
+
+  Критерий успеха: Single Source of Truth соблюден, дублирование устранено, плеер работает корректно.
+  ```

@@ -1,0 +1,1080 @@
+{
+  "meta": {
+    "id": "antarctica.manifest.v1",
+    "version": "1.0.0",
+    "name": "Antarctica (Next.js manifest draft)",
+    "description": "Стартовый экран квеста Antarctica, перенесённый в JSON-манифест для Next.js-плеера.",
+    "author": "Cubica migration",
+    "schema_version": "1.0",
+    "min_engine_version": "0.1.0",
+    "training": {
+      "competencies": [
+        {
+          "id": "change-management",
+          "name": "Управление изменениями",
+          "description": "Построение коалиции и коммуникация в кризисе."
+        },
+        {
+          "id": "communication",
+          "name": "Коммуникации",
+          "description": "Подача идей и работа с возражениями."
+        }
+      ],
+      "format": "single",
+      "duration": {
+        "min_minutes": 45,
+        "max_minutes": 90
+      }
+    }
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 1
+    },
+    "settings": {
+      "mode": "singleplayer",
+      "locale": "ru-RU"
+    }
+  },
+  "assets": {
+    "rules": "draft/Antarctica/README.md",
+    "scenario": "draft/Antarctica/Game.html",
+    "scripts": "draft/Antarctica/Game.html",
+    "images": {
+      "background": "./images/arctic-background.png",
+      "metrics": "./images/top-sidebar",
+      "helpers": "./images"
+    },
+    "methodology": {
+      "participants": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md",
+      "facilitators": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md"
+    }
+  },
+  "engine": {
+    "system_prompt": "Ты - игровой движок сценария Antarctica. Поддерживай состояние метрик (pro, rep, lid, man, stat, cont, constr, time, score) и применяй эффекты карточек, возвращая патчи состояния для клиента.",
+    "model_config": {
+      "temperature": 0.2,
+      "max_tokens": 512
+    }
+  },
+  "state": {
+    "public": {
+      "metrics": {
+        "score": 60,
+        "time": 0,
+        "pro": 0,
+        "rep": 0,
+        "lid": 0,
+        "man": 0,
+        "stat": 0,
+        "cont": 0,
+        "constr": 0
+      },
+      "timeline": {
+        "line": "main",
+        "step_index": 0,
+        "stage_id": "stage_intro",
+        "screen_id": "S1"
+      },
+      "log": [],
+      "flags": {
+        "cards": {}
+      }
+    },
+    "secret": {
+      "stage_picks": {
+        "stage_intro": 0,
+        "stage_mid": 0
+      }
+    }
+  },
+  "ui": {
+    "entry_point": "S1",
+    "screens": {
+      "S1": {
+        "type": "screen",
+        "title": "?????????? ? ????????? ?????",
+        "root": {
+          "class": "screen",
+          "component": "screenComponent",
+          "backgroundImage": "./images/arctic-background.png",
+          "cssClass": "main-screen",
+          "elements": {
+            "A1": {
+              "class": "area",
+              "component": "areaComponent",
+              "cssClass": "game-variables-container",
+              "elements": {
+                "score": {
+                  "caption": "Остаток дней",
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "cssInline": {
+                    "color": "#fff"
+                  },
+                  "backgroundImage": "./images/top-sidebar/days-top.png",
+                  "description": "Оставшееся время в игре. Основной параметр.",
+                  "value": 60,
+                  "actions": {
+                    "onClick": {
+                      "command": "changeColor",
+                      "id": "score",
+                      "payload": {
+                        "color": "pink"
+                      }
+                    },
+                    "onHover": {
+                      "command": "showDescription",
+                      "payload": {
+                        "description": "остаток дней в игре"
+                      }
+                    }
+                  }
+                },
+                "pro": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "backgroundImage": "./images/top-sidebar/znaniya.png",
+                  "description": "Уровень знаний, который игрок может приобрести и использовать для решения задач и преодоления препятствий. Они могут влиять на успешное завершение квестов, взаимодействие с другими персонажами и раскрытие сюжетных линий.",
+                  "caption": "Знания",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "pro"
+                    }
+                  }
+                },
+                "rep": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "backgroundImage": "./images/top-sidebar/doverie.png",
+                  "description": " Уровень доверия, который персонажи или организации проявляют к игроку. Это влияет на доступ к различным возможностям, информации и помощи, а также на возможность завоевать союзников и сформировать союзы в игровом мире.",
+                  "caption": "Доверие",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "rep"
+                    }
+                  }
+                },
+                "lead": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "caption": "Энергия",
+                  "backgroundImage": "./images/top-sidebar/energia.png",
+                  "description": "Уровень энергии, который определяет способность игрока к выполнению различных действий в игре. Он может влиять на возможность использования способностей и навыков",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "lead"
+                    }
+                  }
+                },
+                "man": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "caption": "контроль",
+                  "backgroundImage": "./images/top-sidebar/kontrol.png",
+                  "description": "Уровень контроля над игровой ситуацией. Это влияет на способность игрока управлять ходом сюжета, принимать решения и влиять на развитие игрового мира, а также на возможность управления своим персонажем и его действиями.",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "man"
+                    }
+                  }
+                },
+                "stat": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "backgroundImage": "./images/top-sidebar/status.png",
+                  "description": "Текущее состояние и положение игрока или персонажа в игровом мире. Это может включать в себя статус в обществе, репутацию, ранг, звание, уровень опыта и прочие характеристики, которые определяют степень влияния и важность персонажа в игре",
+                  "caption": "Статус",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "stat"
+                    }
+                  }
+                },
+                "cont": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "backgroundImage": "./images/top-sidebar/kontakt.png",
+                  "description": "Количество доступных контактов, связей или информационных ресурсов, на которые может полагаться игрок. Это может включать в себя доступ к союзникам, контрагентам, информаторам, специалистам и другим ключевым персонажам или ресурсам, которые могут быть полезны в различных ситуациях и заданиях.",
+                  "caption": "Контакт",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "cont"
+                    }
+                  }
+                },
+                "constr": {
+                  "class": "variable",
+                  "component": "gameVariableComponent",
+                  "cssClass": "game-variable",
+                  "backgroundImage": "./images/top-sidebar/konstruktiv.png",
+                  "description": " Уровень конструктивности подхода игрока к решению проблем и взаимодействию с окружающим миром. Это включает в себя способность игрока мыслить креативно, находить решения, способствующие продвижению вперед, и строить отношения на основе сотрудничества, уважения и взаимопонимани",
+                  "caption": "Конструктив",
+                  "value": 0,
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "constr"
+                    }
+                  }
+                }
+              }
+            },
+            "A2": {
+              "class": "area",
+              "cssClass": "cards-container",
+              "component": "areaComponent",
+              "elements": {
+                "C1": {
+                  "class": "card",
+                  "component": "cardComponent",
+                  "cssClass": "game-card",
+                  "state": "st1",
+                  "text": "Есть идея! Создать клуб изучения айсберга! Совместно с другими любопытными проводить наблюдения снаружи и внутри айсберга, обсуждать закономерности и прогнозы.",
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "id": "C1",
+                      "payload": {
+                        "action_id": "antarctica_card_1",
+                        "effects": [
+                          [
+                            "pro",
+                            8
+                          ],
+                          [
+                            "rep",
+                            -1
+                          ],
+                          [
+                            "man",
+                            1
+                          ],
+                          [
+                            "cont",
+                            1
+                          ],
+                          [
+                            "time",
+                            5
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "C2": {
+                  "class": "card",
+                  "component": "cardComponent",
+                  "cssClass": "game-card",
+                  "state": "st3",
+                  "text": "Рассказать как можно большему количеству пингвинов. Начать с близких друзей, затем – друзьям друзей и далее… Вероятно, о проблеме узнают все и дело пойдет!",
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "id": "C2",
+                      "payload": {
+                        "action_id": "antarctica_card_2",
+                        "effects": [
+                          [
+                            "rep",
+                            -2
+                          ],
+                          [
+                            "time",
+                            2
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "C3": {
+                  "class": "card",
+                  "component": "cardComponent",
+                  "cssClass": "game-card",
+                  "state": "st5",
+                  "text": "Поговорить с Аленой. Алена входит в Совет, ориентирована на достижения, всегда добивается результата. Быстро схватывает новые идеи. Быстро и остывает, если не видит скорой и явной отдачи.",
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "id": "C3",
+                      "payload": {
+                        "action_id": "antarctica_card_3",
+                        "effects": [
+                          [
+                            "pro",
+                            1
+                          ],
+                          [
+                            "rep",
+                            2
+                          ],
+                          [
+                            "lid",
+                            1
+                          ],
+                          [
+                            "stat",
+                            1
+                          ],
+                          [
+                            "time",
+                            1
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "C4": {
+                  "class": "card",
+                  "component": "cardComponent",
+                  "cssClass": "game-card",
+                  "state": "st7",
+                  "text": "Можно зайти к Георгию. Он входит в Совет, очень умен и авторитетен, недаром его зовут Профессор. Он любит изучать проблемы, любит искать решения. Возможно, он видел Федора в Департаменте погоды...",
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "id": "C4",
+                      "payload": {
+                        "action_id": "antarctica_card_4",
+                        "effects": [
+                          [
+                            "pro",
+                            2
+                          ],
+                          [
+                            "time",
+                            3
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "C5": {
+                  "class": "card",
+                  "component": "cardComponent",
+                  "cssClass": "game-card",
+                  "state": "st9",
+                  "text": "Обратиться сразу к Вожаку всех пингвинов – Леониду. Он, конечно, очень занят всякими важными делами, поэтому нужно заранее записаться на прием, но если он поддержит!...",
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "id": "C5",
+                      "payload": {
+                        "action_id": "antarctica_card_5",
+                        "effects": [
+                          [
+                            "pro",
+                            1
+                          ],
+                          [
+                            "rep",
+                            1
+                          ],
+                          [
+                            "time",
+                            3
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                },
+                "C6": {
+                  "class": "card",
+                  "component": "cardComponent",
+                  "cssClass": "game-card",
+                  "state": "st11",
+                  "text": "Встретиться с Василием. Он общительный и всегда готов обсудить что угодно. Еще Василий входит в Совет. Любит все свести в шутку и частенько опаздывает.",
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "id": "C6",
+                      "payload": {
+                        "action_id": "antarctica_card_6",
+                        "effects": [
+                          [
+                            "rep",
+                            -1
+                          ],
+                          [
+                            "time",
+                            1
+                          ]
+                        ]
+                      }
+                    }
+                  }
+                }
+              },
+              "A3": {
+                "class": "area",
+                "component": "areaComponent",
+                "cssClass": "button-container",
+                "elements": {
+                  "B1": {
+                    "class": "button",
+                    "cssClass": "button-next",
+                    "component": "buttonComponent",
+                    "caption": "Далее",
+                    "actions": {
+                      "onClick": {
+                        "command": "onClick",
+                        "id": "B1"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "A6": {
+              "class": "area",
+              "component": "areaComponent",
+              "cssClass": "button-container",
+              "elements": {
+                "B2": {
+                  "class": "button",
+                  "component": "buttonComponent",
+                  "backgroundImage": "./images/jurnal-hodov.png",
+                  "cssClass": "button-helper",
+                  "caption": "журнал ходов",
+                  "actions": {
+                    "onClick": {
+                      "command": "showHistory",
+                      "id": "B2"
+                    }
+                  }
+                },
+                "B3": {
+                  "class": "button",
+                  "component": "buttonComponent",
+                  "cssClass": "button-helper",
+                  "backgroundImage": "./images/podskazka.png",
+                  "caption": "подсказка",
+                  "actions": {
+                    "onClick": {
+                      "command": "showHint",
+                      "id": "B3"
+                    }
+                  }
+                },
+                "B4": {
+                  "class": "button",
+                  "component": "buttonComponent",
+                  "backgroundImage": "./images/arrow-left.png",
+                  "cssClass": "button-helper-arrow",
+                  "caption": "",
+                  "actions": {
+                    "onClick": {
+                      "command": "someProc",
+                      "id": "B4"
+                    }
+                  }
+                },
+                "B5": {
+                  "class": "button",
+                  "component": "buttonComponent",
+                  "cssClass": "button-helper-arrow",
+                  "backgroundImage": "./images/arrow-right.png",
+                  "caption": "",
+                  "actions": {
+                    "onClick": {
+                      "command": "showScreenWithLeftSideBar",
+                      "id": "B4"
+                    }
+                  }
+                }
+              }
+            },
+            "A7": {
+              "class": "styling-area",
+              "component": "areaComponent",
+              "cssClass": "additional-background"
+            }
+          },
+          "type": "screenComponent"
+        }
+      }
+    }
+  },
+  "actions": {
+    "antarctica_card_1": {
+      "handler_type": "script",
+      "metadata": {
+        "effects": [
+          [
+            "pro",
+            8
+          ],
+          [
+            "rep",
+            -1
+          ],
+          [
+            "man",
+            1
+          ],
+          [
+            "cont",
+            1
+          ],
+          [
+            "time",
+            5
+          ]
+        ],
+        "description": "Эффекты карточки 1 из Game.html"
+      }
+    },
+    "antarctica_card_2": {
+      "handler_type": "script",
+      "metadata": {
+        "effects": [
+          [
+            "rep",
+            -2
+          ],
+          [
+            "time",
+            2
+          ]
+        ],
+        "description": "Эффекты карточки 2 из Game.html"
+      }
+    },
+    "antarctica_card_3": {
+      "handler_type": "script",
+      "metadata": {
+        "effects": [
+          [
+            "pro",
+            1
+          ],
+          [
+            "rep",
+            2
+          ],
+          [
+            "lid",
+            1
+          ],
+          [
+            "stat",
+            1
+          ],
+          [
+            "time",
+            1
+          ]
+        ],
+        "description": "Эффекты карточки 3 из Game.html"
+      }
+    },
+    "antarctica_card_4": {
+      "handler_type": "script",
+      "metadata": {
+        "effects": [
+          [
+            "pro",
+            2
+          ],
+          [
+            "time",
+            3
+          ]
+        ],
+        "description": "Эффекты карточки 4 из Game.html"
+      }
+    },
+    "antarctica_card_5": {
+      "handler_type": "script",
+      "metadata": {
+        "effects": [
+          [
+            "pro",
+            1
+          ],
+          [
+            "rep",
+            1
+          ],
+          [
+            "time",
+            3
+          ]
+        ],
+        "description": "Эффекты карточки 5 из Game.html"
+      }
+    },
+    "antarctica_card_6": {
+      "handler_type": "script",
+      "metadata": {
+        "effects": [
+          [
+            "rep",
+            -1
+          ],
+          [
+            "time",
+            1
+          ]
+        ],
+        "description": "Эффекты карточки 6 из Game.html"
+      }
+    }
+  },
+  "application": {
+    "class": "application",
+    "component": "here?",
+    "description": "this is the screen with top sidebar layout",
+    "cssFile": "to load main css. suggestion: rename field as cssFile instead of css (suggestions for other css - cssClass, cssInline)",
+    "elements": {
+      "S1": {
+        "class": "screen",
+        "component": "screenComponent",
+        "backgroundImage": "./images/arctic-background.png",
+        "cssClass": "main-screen",
+        "elements": {
+          "A1": {
+            "class": "area",
+            "component": "areaComponent",
+            "cssClass": "game-variables-container",
+            "elements": {
+              "score": {
+                "caption": "Остаток дней",
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "cssInline": {
+                  "color": "#fff"
+                },
+                "backgroundImage": "./images/top-sidebar/days-top.png",
+                "description": "Оставшееся время в игре. Основной параметр.",
+                "value": 60,
+                "actions": {
+                  "onClick": {
+                    "command": "changeColor",
+                    "id": "score",
+                    "payload": {
+                      "color": "pink"
+                    }
+                  },
+                  "onHover": {
+                    "command": "showDescription",
+                    "payload": {
+                      "description": "остаток дней в игре"
+                    }
+                  }
+                }
+              },
+              "pro": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "backgroundImage": "./images/top-sidebar/znaniya.png",
+                "description": "Уровень знаний, который игрок может приобрести и использовать для решения задач и преодоления препятствий. Они могут влиять на успешное завершение квестов, взаимодействие с другими персонажами и раскрытие сюжетных линий.",
+                "caption": "Знания",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "pro"
+                  }
+                }
+              },
+              "rep": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "backgroundImage": "./images/top-sidebar/doverie.png",
+                "description": " Уровень доверия, который персонажи или организации проявляют к игроку. Это влияет на доступ к различным возможностям, информации и помощи, а также на возможность завоевать союзников и сформировать союзы в игровом мире.",
+                "caption": "Доверие",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "rep"
+                  }
+                }
+              },
+              "lead": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "caption": "Энергия",
+                "backgroundImage": "./images/top-sidebar/energia.png",
+                "description": "Уровень энергии, который определяет способность игрока к выполнению различных действий в игре. Он может влиять на возможность использования способностей и навыков",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "lead"
+                  }
+                }
+              },
+              "man": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "caption": "контроль",
+                "backgroundImage": "./images/top-sidebar/kontrol.png",
+                "description": "Уровень контроля над игровой ситуацией. Это влияет на способность игрока управлять ходом сюжета, принимать решения и влиять на развитие игрового мира, а также на возможность управления своим персонажем и его действиями.",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "man"
+                  }
+                }
+              },
+              "stat": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "backgroundImage": "./images/top-sidebar/status.png",
+                "description": "Текущее состояние и положение игрока или персонажа в игровом мире. Это может включать в себя статус в обществе, репутацию, ранг, звание, уровень опыта и прочие характеристики, которые определяют степень влияния и важность персонажа в игре",
+                "caption": "Статус",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "stat"
+                  }
+                }
+              },
+              "cont": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "backgroundImage": "./images/top-sidebar/kontakt.png",
+                "description": "Количество доступных контактов, связей или информационных ресурсов, на которые может полагаться игрок. Это может включать в себя доступ к союзникам, контрагентам, информаторам, специалистам и другим ключевым персонажам или ресурсам, которые могут быть полезны в различных ситуациях и заданиях.",
+                "caption": "Контакт",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "cont"
+                  }
+                }
+              },
+              "constr": {
+                "class": "variable",
+                "component": "gameVariableComponent",
+                "cssClass": "game-variable",
+                "backgroundImage": "./images/top-sidebar/konstruktiv.png",
+                "description": " Уровень конструктивности подхода игрока к решению проблем и взаимодействию с окружающим миром. Это включает в себя способность игрока мыслить креативно, находить решения, способствующие продвижению вперед, и строить отношения на основе сотрудничества, уважения и взаимопонимани",
+                "caption": "Конструктив",
+                "value": 0,
+                "actions": {
+                  "onClick": {
+                    "command": "onClick",
+                    "id": "constr"
+                  }
+                }
+              }
+            }
+          },
+          "A2": {
+            "class": "area",
+            "cssClass": "cards-container",
+            "component": "areaComponent",
+            "elements": {
+              "C1": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "state": "st1",
+                "text": "Есть идея! Создать клуб изучения айсберга! Совместно с другими любопытными проводить наблюдения снаружи и внутри айсберга, обсуждать закономерности и прогнозы.",
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "id": "C1",
+                    "payload": {
+                      "action_id": "antarctica_card_1",
+                      "effects": [
+                        [
+                          "pro",
+                          8
+                        ],
+                        [
+                          "rep",
+                          -1
+                        ],
+                        [
+                          "man",
+                          1
+                        ],
+                        [
+                          "cont",
+                          1
+                        ],
+                        [
+                          "time",
+                          5
+                        ]
+                      ]
+                    }
+                  }
+                }
+              },
+              "C2": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "state": "st3",
+                "text": "Рассказать как можно большему количеству пингвинов. Начать с близких друзей, затем – друзьям друзей и далее… Вероятно, о проблеме узнают все и дело пойдет!",
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "id": "C2",
+                    "payload": {
+                      "action_id": "antarctica_card_2",
+                      "effects": [
+                        [
+                          "rep",
+                          -2
+                        ],
+                        [
+                          "time",
+                          2
+                        ]
+                      ]
+                    }
+                  }
+                }
+              },
+              "C3": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "state": "st5",
+                "text": "Поговорить с Аленой. Алена входит в Совет, ориентирована на достижения, всегда добивается результата. Быстро схватывает новые идеи. Быстро и остывает, если не видит скорой и явной отдачи.",
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "id": "C3",
+                    "payload": {
+                      "action_id": "antarctica_card_3",
+                      "effects": [
+                        [
+                          "pro",
+                          1
+                        ],
+                        [
+                          "rep",
+                          2
+                        ],
+                        [
+                          "lid",
+                          1
+                        ],
+                        [
+                          "stat",
+                          1
+                        ],
+                        [
+                          "time",
+                          1
+                        ]
+                      ]
+                    }
+                  }
+                }
+              },
+              "C4": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "state": "st7",
+                "text": "Можно зайти к Георгию. Он входит в Совет, очень умен и авторитетен, недаром его зовут Профессор. Он любит изучать проблемы, любит искать решения. Возможно, он видел Федора в Департаменте погоды...",
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "id": "C4",
+                    "payload": {
+                      "action_id": "antarctica_card_4",
+                      "effects": [
+                        [
+                          "pro",
+                          2
+                        ],
+                        [
+                          "time",
+                          3
+                        ]
+                      ]
+                    }
+                  }
+                }
+              },
+              "C5": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "state": "st9",
+                "text": "Обратиться сразу к Вожаку всех пингвинов – Леониду. Он, конечно, очень занят всякими важными делами, поэтому нужно заранее записаться на прием, но если он поддержит!...",
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "id": "C5",
+                    "payload": {
+                      "action_id": "antarctica_card_5",
+                      "effects": [
+                        [
+                          "pro",
+                          1
+                        ],
+                        [
+                          "rep",
+                          1
+                        ],
+                        [
+                          "time",
+                          3
+                        ]
+                      ]
+                    }
+                  }
+                }
+              },
+              "C6": {
+                "class": "card",
+                "component": "cardComponent",
+                "cssClass": "game-card",
+                "state": "st11",
+                "text": "Встретиться с Василием. Он общительный и всегда готов обсудить что угодно. Еще Василий входит в Совет. Любит все свести в шутку и частенько опаздывает.",
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "id": "C6",
+                    "payload": {
+                      "action_id": "antarctica_card_6",
+                      "effects": [
+                        [
+                          "rep",
+                          -1
+                        ],
+                        [
+                          "time",
+                          1
+                        ]
+                      ]
+                    }
+                  }
+                }
+              }
+            },
+            "A3": {
+              "class": "area",
+              "component": "areaComponent",
+              "cssClass": "button-container",
+              "elements": {
+                "B1": {
+                  "class": "button",
+                  "cssClass": "button-next",
+                  "component": "buttonComponent",
+                  "caption": "Далее",
+                  "actions": {
+                    "onClick": {
+                      "command": "onClick",
+                      "id": "B1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "A6": {
+            "class": "area",
+            "component": "areaComponent",
+            "cssClass": "button-container",
+            "elements": {
+              "B2": {
+                "class": "button",
+                "component": "buttonComponent",
+                "backgroundImage": "./images/jurnal-hodov.png",
+                "cssClass": "button-helper",
+                "caption": "журнал ходов",
+                "actions": {
+                  "onClick": {
+                    "command": "showHistory",
+                    "id": "B2"
+                  }
+                }
+              },
+              "B3": {
+                "class": "button",
+                "component": "buttonComponent",
+                "cssClass": "button-helper",
+                "backgroundImage": "./images/podskazka.png",
+                "caption": "подсказка",
+                "actions": {
+                  "onClick": {
+                    "command": "showHint",
+                    "id": "B3"
+                  }
+                }
+              },
+              "B4": {
+                "class": "button",
+                "component": "buttonComponent",
+                "backgroundImage": "./images/arrow-left.png",
+                "cssClass": "button-helper-arrow",
+                "caption": "",
+                "actions": {
+                  "onClick": {
+                    "command": "someProc",
+                    "id": "B4"
+                  }
+                }
+              },
+              "B5": {
+                "class": "button",
+                "component": "buttonComponent",
+                "cssClass": "button-helper-arrow",
+                "backgroundImage": "./images/arrow-right.png",
+                "caption": "",
+                "actions": {
+                  "onClick": {
+                    "command": "showScreenWithLeftSideBar",
+                    "id": "B4"
+                  }
+                }
+              }
+            }
+          },
+          "A7": {
+            "class": "styling-area",
+            "component": "areaComponent",
+            "cssClass": "additional-background"
+          }
+        }
+      }
+    },
+    "entryPoint": "S1"
+  }
+}
+

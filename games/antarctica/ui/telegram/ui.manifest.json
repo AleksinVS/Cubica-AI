@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "id": "antarctica.ui.telegram",
+    "version": "1.0.0",
+    "game_id": "antarctica",
+    "game_manifest_version": "1.0.0",
+    "channel": "telegram",
+    "author": "Cubica migration"
+  },
+  "entry_point": "S1",
+  "screens": {
+    "S1": {
+      "type": "screen",
+      "title": "Antarctica (Telegram)",
+      "layout_id": "layout.telegram.s1",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "telegram-screen"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "telegram-main"
+            },
+            "children": [
+              {
+                "type": "helperComponent",
+                "id": "telegram-intro",
+                "props": {
+                  "text": "Telegram UI manifest (MVP): кнопки диспатчат команды, метрики читаются из game.state.public.metrics.*."
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "telegram-request",
+                "props": {
+                  "caption": "Действие: requestServer"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "requestServer",
+                    "payload": {}
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "layouts": {
+    "layout.telegram.s1": {
+      "target": {
+        "kind": "screen",
+        "id": "S1"
+      },
+      "image": "games/antarctica-nextjs-player/public/images/arctic-background.png",
+      "spec": {
+        "notes": "MVP placeholder for the Telegram screen layout."
+      },
+      "variant": "telegram",
+      "meta": {
+        "source": "migration"
+      }
+    }
+  }
+}
+

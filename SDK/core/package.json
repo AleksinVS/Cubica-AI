@@ -1,0 +1,22 @@
+{
+  "name": "@cubica/sdk-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Networking, session lifecycle and shared contracts for Cubica platform SDKs.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"TODO: wire up TypeScript build\"",
+    "test": "echo \"TODO: implement unit tests\"",
+    "lint": "echo \"TODO: add lint pipeline\""
+  },
+  "keywords": [
+    "cubica",
+    "sdk",
+    "core"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

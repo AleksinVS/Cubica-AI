@@ -1,0 +1,128 @@
+id: CP_00011
+title: MVP Interaction Protocol (F_00011)
+status: completed
+owner: @todo
+role: architect
+tasks:
+  - F_00011
+scope:
+  docs:
+    - docs/architecture/protocols/**
+    - docs/tasks/features/F_00011_mvp_interaction_protocol_(E_0010).md
+links:
+  tasks:
+    - docs/tasks/features/F_00011_mvp_interaction_protocol_(E_0010).md
+    - docs/tasks/features/F_00012_abstract_view_protocol.md
+    - docs/tasks/epics/E_0010_game_manifest_architecture.md
+  related:
+    - PROJECT_OVERVIEW.md
+    - docs/architecture/PROJECT_ARCHITECTURE.md
+    - docs/architecture/schemas/game-manifest.schema.json
+    - docs/architecture/adrs/002-abstract-view-protocol.md
+tools:
+  - name: shell
+    allowed: [read, write, run]
+    dirs:
+      - docs/**
+exec_plan: |
+  ```md
+  # ExecPlan: MVP Interaction Protocol
+
+  This ExecPlan is a living document. The sections `Progress`, `Surprises & Discoveries`, `Decision Log`, and `Outcomes & Retrospective` must be kept up to date as work proceeds.
+
+  This document must be maintained in accordance with `docs/tasks/content-packs/PLAN.md`. It targets task `F_00011`.
+
+  ## Purpose / Big Picture
+
+  The goal of this plan is to define the communication protocol between the three key components of the MVP architecture: the View (User Interface), the Presenter (Orchestrator), and the Model (LLM Game Engine).
+
+  Standardizing this protocol ensures that:
+  1.  Any "View" (React frontend, Mobile app, etc.) can talk to the "Game Engine" using a standard JSON format.
+  2.  The "Presenter" knows exactly how to construct the context for the LLM and how to parse its response.
+  3.  The "LLM" (System Prompt) is trained/instructed to output a specific JSON structure that the system can reliably execute.
+  4.  **Non-user events** (timers, NPC actions, system triggers) are handled uniformly alongside user actions.
+
+  ## Progress
+
+  - [x] (DONE) Create directory `docs/architecture/protocols/`.
+  - [x] (DONE) Draft `docs/architecture/protocols/mvp-interaction.md` containing the protocol specification.
+  - [x] (DONE) Define JSON schemas for `ClientRequest` (handling User and System events), `LLMContext` (input to LLM), and `LLMResponse` (output from LLM).
+  - [x] (DONE) Document "Happy Path" sequence: Init -> Render -> Action (User/System) -> Update -> Render.
+
+  ## Surprises & Discoveries
+
+  - Observation: The JSON structures for `ClientRequest` and `LLMResponse` were relatively straightforward to define as TypeScript interfaces.
+    Evidence: `docs/architecture/protocols/mvp-interaction.md`
+
+  ## Decision Log
+
+  - Decision: Use deep merge / JSON patch style for `state_update` in `LLMResponse`.
+    Rationale: It's more robust for LLMs to output a partial object than a complex sequence of JSON Patch operations, though both are possible.
+
+  ## Outcomes & Retrospective
+
+  - The protocol document `docs/architecture/protocols/mvp-interaction.md` has been created.
+  - It covers the communication flow between View, Presenter, and LLM.
+  - It handles both User and System events.
+  - **Update (F_00012):** The protocol was extended to include an Abstract View Layer (ADR-002), defining `IViewGateway`, `ViewCommand`, and `ViewResponse` for decoupled UI interaction.
+
+  ## Context and Orientation
+
+  In the LLM-first architecture:
+  -   **View** emits `UserActions` (e.g., `{ type: "click", target: "card_1" }`).
+  -   **System/Engine** emits `SystemEvents` (e.g., `{ type: "tick", payload: { time: 100 } }` or `{ type: "npc_turn", target: "enemy_1" }`).
+  -   **Presenter** catches these events (User or System), bundles them with current `GameState` and `GameManifest`, and sends a prompt to the **LLM**.
+  -   **LLM** thinks and returns a `StateUpdate` and `UIInstructions` (e.g., `{ state_patch: { score: 10 }, ui_events: ["show_modal"] }`).
+  -   **Presenter** applies the patch and instructs **View** to re-render.
+
+  This plan is about documenting the exact shapes of these JSON objects.
+
+  ## Plan of Work
+
+  1.  **Setup Structure**: Ensure `docs/architecture/protocols/` exists.
+  2.  **Draft Protocol Spec**: Create `mvp-interaction.md`.
+      -   **Section 1: View/System <-> Presenter**: Define the `Event` object (type: user|system, payload). explicitly handling non-user initiated events (timers, NPCs).
+      -   **Section 2: Presenter -> LLM**: Define the Context structure (System Prompt + Manifest Extract + State + History + Event).
+      -   **Section 3: LLM -> Presenter**: Define the Response structure (JSON mode output). Key fields: `thought` (for CoT), `state_update` (JSON patch or new state), `ui_events` (commands to frontend).
+  3.  **Scenario Documentation**: Add a "Sequence of Events" section to `mvp-interaction.md` walking through:
+      -   A user turn (e.g., playing a card).
+      -   A system event (e.g., "Day ends", "Enemy attacks").
+
+  ## Concrete Steps
+
+  1.  Create directory:
+      - `mkdir -p docs/architecture/protocols`
+
+  2.  Create `docs/architecture/protocols/mvp-interaction.md`:
+      - Start with a high-level diagram (Mermaid or text) of the loop.
+      - Define the JSON interfaces (TypeScript-like or JSON Schema style).
+      - Ensure `ClientRequest` or equivalent structure supports a `source` field (e.g., `user` vs `system`).
+      - Example `LLMResponse`:
+        ```json
+        {
+          "thought": "User clicked card X. Rules say this costs 5 resources.",
+          "state_update": { "resources": { "money": -5 } },
+          "ui_events": [{ "type": "toast", "message": "Bought card X" }]
+        }
+        ```
+
+  ## Validation and Acceptance
+
+  - The document `docs/architecture/protocols/mvp-interaction.md` exists.
+  - It clearly defines the JSON structure for `LLMResponse`.
+  - It explicitly covers how system-initiated events (timers, NPCs) are passed to the LLM.
+  - A developer reading this could write a mock backend that returns valid responses for the frontend to consume.
+
+  ## Idempotence and Recovery
+
+  - Safe to re-run or overwrite documentation files during drafting.
+
+  ## Artifacts and Notes
+
+  - `docs/architecture/protocols/mvp-interaction.md`
+
+  ## Interfaces and Dependencies
+
+  - Relies on concepts from `E_0010`.
+  - Must be compatible with the Manifest format from `CP_00010`.
+  ```

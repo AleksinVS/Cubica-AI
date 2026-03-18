@@ -1,0 +1,8 @@
+id,source,component,stub_reference,description,phase_remove,risk_level,priority,owner,issue_link,last_reviewed_at,status
+LEGACY-0001,service,game-engine,data/mocks/llm/default-response.json,LLM mock ответ заменить на реальную интеграцию,Phase1,high,high,Game Engine Team,https://tracker.local/LEGACY-0003,2025-09-30,active
+LEGACY-0002,client,antarctica-nextjs-player,games/antarctica-nextjs-player/src/app/api/submit/route.js,Dev-заглушка Router в Next.js-плеере для работы с фикстурами,Phase1,medium,medium,Frontend Team,F_00024,2025-12-03,active
+LEGACY-0003,service,game-engine,services/game-engine/,Backend-сервис Game Engine не реализован,Phase1,critical,high,Backend Team,E_0030,2026-01-13,active
+LEGACY-0004,service,backend,services/game-catalog/,Backend-сервисы Catalog/Editor/Repository/Metadata не реализованы,Phase1,high,high,Backend Team,E_0030,2026-01-13,active
+LEGACY-0005,client,sdk,SDK/viewers/,SDK/viewers библиотека не реализована,Phase1,high,high,SDK Team,F_00071,2026-01-13,active
+LEGACY-0006,service,extension-packs,SDK/extensions/,Extension Packs архитектура не реализована,Phase2,medium,medium,Engine Team,ADR-015,2026-01-13,active
+LEGACY-0007,client,antarctica-player,games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json,Дублирование манифеста Antarctica нарушает SSOT,Phase1,high,high,Content Team,F_00024,2026-01-13,active

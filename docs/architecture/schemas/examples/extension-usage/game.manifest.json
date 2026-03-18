@@ -1,0 +1,287 @@
+{
+  "$schema": "https://cubica.platform/schemas/game-manifest.v1.json",
+  "meta": {
+    "id": "rpg-with-extensions-demo",
+    "version": "1.0.0",
+    "name": "Fantasy RPG with Custom Mechanics",
+    "description": "Demonstrates how to use Extension Packs to add custom game mechanics, UI components, and integrations",
+    "author": "Cubica Platform Team",
+    "schema_version": "1.0",
+    "min_engine_version": "0.6.0"
+  },
+  "extensions": {
+    "@cubica/ext-ui-kit": {
+      "version": "^1.0.0",
+      "type": "viewer"
+    },
+    "@cubica/ext-rpg-hud": {
+      "version": "^1.2.0",
+      "type": "viewer"
+    },
+    "@cubica/ext-rpg-mechanics": {
+      "version": "^2.0.0",
+      "type": "engine",
+      "config": {
+        "combat_system": "turn-based",
+        "experience_curve": "exponential",
+        "loot_rarity_weights": {
+          "common": 60,
+          "uncommon": 25,
+          "rare": 10,
+          "epic": 4,
+          "legendary": 1
+        }
+      }
+    },
+    "@cubica/ext-quest-system": {
+      "version": "^1.5.0",
+      "type": "engine"
+    },
+    "@cubica/ext-weather": {
+      "version": "^1.0.0",
+      "type": "engine",
+      "config": {
+        "change_interval_minutes": 30,
+        "effects_enabled": true
+      }
+    },
+    "./extensions/custom-mechanics": {
+      "version": "^1.0.0",
+      "type": "both"
+    }
+  },
+  "assets": {
+    "scenario": "scenario.md",
+    "rules": "rules.md",
+    "scripts": "scripts/game-logic.js"
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 4
+    }
+  },
+  "engine": {
+    "system_prompt": "You are the game master for a fantasy RPG. Use the available extensions for combat (ext-rpg-mechanics), quests (ext-quest-system), and weather (ext-weather). The crafting system and reputation are handled by custom game mechanics.",
+    "model_config": {
+      "temperature": 0.7,
+      "max_tokens": 600
+    },
+    "context": {
+      "include": ["state.public", "state.quests", "state.weather"],
+      "history_window": 15
+    }
+  },
+  "state": {
+    "public": {
+      "player": {
+        "name": "Hero",
+        "class": "warrior",
+        "level": 1,
+        "experience": 0,
+        "hp": 100,
+        "max_hp": 100,
+        "mana": 50,
+        "max_mana": 50,
+        "gold": 100
+      },
+      "inventory": [],
+      "equipment": {
+        "weapon": null,
+        "armor": null,
+        "accessory": null
+      },
+      "location": "village",
+      "quests": {
+        "active": [],
+        "completed": [],
+        "available": [
+          {
+            "id": "q001",
+            "name": "The Missing Blacksmith",
+            "description": "Find the missing blacksmith in the forest",
+            "objectives": [
+              { "id": "obj1", "description": "Talk to the village elder", "completed": false },
+              { "id": "obj2", "description": "Search the forest", "completed": false },
+              { "id": "obj3", "description": "Return with the blacksmith", "completed": false }
+            ],
+            "rewards": {
+              "experience": 100,
+              "gold": 50,
+              "items": ["iron_sword"]
+            }
+          }
+        ]
+      },
+      "weather": {
+        "current": "clear",
+        "intensity": 0,
+        "effects": []
+      },
+      "crafting": {
+        "known_recipes": ["health_potion", "basic_sword"],
+        "materials": {
+          "herbs": 5,
+          "iron_ore": 3,
+          "wood": 10
+        }
+      },
+      "reputation": {
+        "village": 0,
+        "forest_guild": 0,
+        "merchants": 0
+      }
+    },
+    "secret": {
+      "hidden_quests": [],
+      "world_state": {}
+    }
+  },
+  "actions": {
+    "talk": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Talk to NPCs"
+      }
+    },
+    "explore": {
+      "handler_type": "llm",
+      "metadata": {
+        "description": "Explore the environment"
+      }
+    },
+    "attack": {
+      "handler_type": "extension",
+      "extension": "@cubica/ext-rpg-mechanics",
+      "function": "combat.attack",
+      "metadata": {
+        "description": "Attack an enemy using RPG mechanics extension"
+      }
+    },
+    "use_skill": {
+      "handler_type": "extension",
+      "extension": "@cubica/ext-rpg-mechanics",
+      "function": "combat.useSkill",
+      "metadata": {
+        "description": "Use a combat skill"
+      }
+    },
+    "accept_quest": {
+      "handler_type": "extension",
+      "extension": "@cubica/ext-quest-system",
+      "function": "quests.accept",
+      "metadata": {
+        "description": "Accept an available quest"
+      }
+    },
+    "complete_objective": {
+      "handler_type": "extension",
+      "extension": "@cubica/ext-quest-system",
+      "function": "quests.completeObjective",
+      "metadata": {
+        "description": "Mark a quest objective as complete"
+      }
+    },
+    "turn_in_quest": {
+      "handler_type": "extension",
+      "extension": "@cubica/ext-quest-system",
+      "function": "quests.turnIn",
+      "metadata": {
+        "description": "Turn in a completed quest for rewards"
+      }
+    },
+    "check_weather": {
+      "handler_type": "extension",
+      "extension": "@cubica/ext-weather",
+      "function": "weather.getCurrent",
+      "metadata": {
+        "description": "Check current weather conditions"
+      }
+    },
+    "craft_item": {
+      "handler_type": "extension",
+      "extension": "./extensions/custom-mechanics",
+      "function": "crafting.craftItem",
+      "metadata": {
+        "description": "Craft an item using local extension"
+      }
+    },
+    "learn_recipe": {
+      "handler_type": "extension",
+      "extension": "./extensions/custom-mechanics",
+      "function": "crafting.learnRecipe",
+      "metadata": {
+        "description": "Learn a new crafting recipe"
+      }
+    },
+    "change_reputation": {
+      "handler_type": "extension",
+      "extension": "./extensions/custom-mechanics",
+      "function": "reputation.modify",
+      "metadata": {
+        "description": "Modify reputation with a faction"
+      }
+    },
+    "check_reputation": {
+      "handler_type": "extension",
+      "extension": "./extensions/custom-mechanics",
+      "function": "reputation.check",
+      "metadata": {
+        "description": "Check reputation level with factions"
+      }
+    }
+  },
+  "ui": {
+    "entry_point": "main",
+    "screens": {
+      "main": {
+        "root": {
+          "type": "container",
+          "children": [
+            {
+              "type": "widget:rpg-hud:health-bar",
+              "id": "health-bar",
+              "props": {
+                "current": "{{state.public.player.hp}}",
+                "max": "{{state.public.player.max_hp}}",
+                "color": "red"
+              }
+            },
+            {
+              "type": "widget:rpg-hud:mana-bar",
+              "id": "mana-bar",
+              "props": {
+                "current": "{{state.public.player.mana}}",
+                "max": "{{state.public.player.max_mana}}",
+                "color": "blue"
+              }
+            },
+            {
+              "type": "widget:rpg-hud:minimap",
+              "id": "minimap",
+              "props": {
+                "location": "{{state.public.location}}",
+                "markers": "{{state.quests.active}}"
+              }
+            },
+            {
+              "type": "widget:custom-mechanics:reputation-display",
+              "id": "reputation",
+              "props": {
+                "factions": "{{state.reputation}}"
+              }
+            },
+            {
+              "type": "widget:weather:indicator",
+              "id": "weather",
+              "props": {
+                "weather": "{{state.weather.current}}",
+                "intensity": "{{state.weather.intensity}}"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
