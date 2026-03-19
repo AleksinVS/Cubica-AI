@@ -2,26 +2,18 @@
   "meta": {
     "id": "antarctica",
     "version": "1.0.0",
-    "name": {
-      "source_ref": {
-        "file": "scenario",
-        "anchor": "game.meta.name"
-      },
-      "resolved": "Антарктическая корпорация",
-      "format": "markdown"
-    },
-    "description": {
-      "source_ref": {
-        "file": "scenario",
-        "anchor": "game.meta.description"
-      },
-      "resolved": "Текстовый квест про изменения в компании «Антарктическая корпорация» с акцентом на управленческие решения и метрики команды.",
-      "format": "markdown"
-    },
+    "name": "Антарктическая корпорация",
+    "description": "Текстовый квест про изменения в компании «Антарктическая корпорация» с акцентом на управленческие решения и метрики команды.",
     "author": "Cubica migration",
-    "schema_version": "1.0",
-    "min_engine_version": "0.1.0",
+    "schemaVersion": "1.1",
+    "minEngineVersion": "0.1.0",
+    "tags": ["training", "text-quest", "management", "singleplayer"],
     "training": {
+      "format": "single",
+      "duration": {
+        "minMinutes": 45,
+        "maxMinutes": 90
+      },
       "competencies": [
         {
           "id": "change-management",
@@ -33,13 +25,20 @@
           "name": "Коммуникации",
           "description": "Подача идей и работа с возражениями."
         }
-      ],
-      "format": "single",
-      "duration": {
-        "min_minutes": 45,
-        "max_minutes": 90
+      ]
+    },
+    "references": [
+      {
+        "path": "games/antarctica/scenario.md",
+        "kind": "legacy-scenario",
+        "note": "Reference material for mechanics extraction; not runtime source of truth."
+      },
+      {
+        "path": "draft/Antarctica/README.md",
+        "kind": "legacy-prototype-notes",
+        "note": "Reference material for gameplay structure extraction."
       }
-    }
+    ]
   },
   "config": {
     "players": {
@@ -51,29 +50,57 @@
       "locale": "ru-RU"
     }
   },
-  "assets": {
-    "scenario": "games/antarctica/scenario.md",
-    "scripts": "games/antarctica/scripts/actions.js",
-    "images": {
-      "player_public": "games/antarctica-nextjs-player/public/images"
+  "content": {
+    "scenario": {
+      "path": "games/antarctica/scenario.md",
+      "kind": "legacy-scenario"
+    },
+    "scripts": [
+      {
+        "path": "games/antarctica/scripts/actions.js",
+        "kind": "runtime-script"
+      }
+    ],
+    "design": {
+      "mockups": [
+        {
+          "path": "games/antarctica/design/mockups/left-sidebar-6-cards.design.json",
+          "kind": "mockup"
+        },
+        {
+          "path": "games/antarctica/design/mockups/leftsidebar-infocard.design.json",
+          "kind": "mockup"
+        },
+        {
+          "path": "games/antarctica/design/mockups/moves-journal.design.json",
+          "kind": "mockup"
+        },
+        {
+          "path": "games/antarctica/design/mockups/top-sidebar-6-cards.design.json",
+          "kind": "mockup"
+        },
+        {
+          "path": "games/antarctica/design/mockups/topsidebar-infocard.design.json",
+          "kind": "mockup"
+        }
+      ]
     },
     "methodology": {
-      "participants": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md",
-      "facilitators": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md"
+      "participants": {
+        "path": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md",
+        "kind": "methodology-doc"
+      },
+      "facilitators": {
+        "path": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md",
+        "kind": "methodology-doc"
+      }
     }
   },
   "engine": {
-    "system_prompt": {
-      "source_ref": {
-        "file": "prompts",
-        "anchor": "system.main"
-      },
-      "resolved": "Ты - игровой движок сценария Antarctica...",
-      "format": "markdown"
-    },
-    "model_config": {
+    "systemPrompt": "Ты - игровой движок сценария Antarctica...",
+    "modelConfig": {
       "temperature": 0.2,
-      "max_tokens": 512
+      "maxTokens": 512
     }
   },
   "state": {
@@ -91,9 +118,9 @@
       },
       "timeline": {
         "line": "main",
-        "step_index": 0,
-        "stage_id": "stage_intro",
-        "screen_id": "S1"
+        "stepIndex": 0,
+        "stageId": "stage_intro",
+        "screenId": "S1"
       },
       "log": [],
       "flags": {
@@ -101,7 +128,7 @@
       }
     },
     "secret": {
-      "stage_picks": {
+      "stagePicks": {
         "stage_intro": 0,
         "stage_mid": 0
       }
@@ -109,24 +136,29 @@
   },
   "actions": {
     "requestServer": {
-      "handler_type": "script",
-      "function": "requestServer"
+      "handlerType": "script",
+      "function": "requestServer",
+      "displayName": "Request server"
     },
     "showHint": {
-      "handler_type": "script",
-      "function": "showHint"
+      "handlerType": "script",
+      "function": "showHint",
+      "displayName": "Show hint"
     },
     "showHistory": {
-      "handler_type": "script",
-      "function": "showHistory"
+      "handlerType": "script",
+      "function": "showHistory",
+      "displayName": "Show history"
     },
     "showTopBar": {
-      "handler_type": "script",
-      "function": "showTopBar"
+      "handlerType": "script",
+      "function": "showTopBar",
+      "displayName": "Show top bar"
     },
     "showScreenWithLeftSideBar": {
-      "handler_type": "script",
-      "function": "showScreenWithLeftSideBar"
+      "handlerType": "script",
+      "function": "showScreenWithLeftSideBar",
+      "displayName": "Show screen with left sidebar"
     }
   }
 }

@@ -11,9 +11,22 @@ type SessionVersion = {
 
 type PublicState = {
   timeline: {
+    stepIndex?: number;
+    stageId?: string;
+    screenId?: string;
     stage_id: string;
+    step_index?: number;
+    screen_id?: string;
+  };
+  flags: {
+    cards: Record<string, unknown>;
   };
   log: Array<Record<string, unknown>>;
+};
+
+type SecretState = {
+  stagePicks?: Record<string, unknown>;
+  stage_picks?: Record<string, unknown>;
 };
 
 type RuntimeState = {
@@ -23,6 +36,7 @@ type RuntimeState = {
 
 type SessionState = {
   public: PublicState;
+  secret?: SecretState;
   runtime?: RuntimeState;
 };
 
@@ -98,6 +112,7 @@ test("POST /sessions creates an antarctica session", async () => {
 
   assert.equal(session.version.stateVersion, 0);
   assert.equal(session.version.lastEventSequence, 0);
+  assert.equal(session.state.public.timeline.stageId, "stage_intro");
   assert.equal(session.state.public.timeline.stage_id, "stage_intro");
   assert.deepEqual(session.state.public.log, []);
 });
@@ -110,6 +125,7 @@ test("GET /sessions/:id returns the created session snapshot", async () => {
   assert.equal(session.sessionId, created.sessionId);
   assert.equal(session.gameId, "antarctica");
   assert.equal(session.version.stateVersion, 0);
+  assert.equal(session.state.public.timeline.stageId, "stage_intro");
   assert.equal(session.state.public.timeline.stage_id, "stage_intro");
 });
 

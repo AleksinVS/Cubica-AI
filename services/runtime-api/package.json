@@ -5,6 +5,7 @@
   "description": "Modular monolith backend for Cubica runtime API.",
   "type": "module",
   "dependencies": {
+    "@cubica/contracts-manifest": "file:../../packages/contracts/manifest",
     "@cubica/contracts-runtime": "file:../../packages/contracts/runtime",
     "@cubica/contracts-session": "file:../../packages/contracts/session"
   },
