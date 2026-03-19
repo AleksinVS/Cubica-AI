@@ -1,0 +1,70 @@
+{
+  "kind": "collectionType",
+  "collectionName": "orders",
+  "info": {
+    "singularName": "order",
+    "pluralName": "orders",
+    "displayName": "Order",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "orders"
+    },
+    "game": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::game.game",
+      "inversedBy": "orders"
+    },
+    "package_type": {
+      "type": "enumeration",
+      "enum": [
+        "one-time",
+        "day",
+        "month"
+      ]
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "order_status": {
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "paid",
+        "cancelled"
+      ]
+    },
+    "order_created_at": {
+      "type": "datetime"
+    },
+    "order_updated_at": {
+      "type": "datetime"
+    },
+    "purchase": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::purchase.purchase",
+      "mappedBy": "order"
+    },
+    "payment_events": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::payment-event.payment-event",
+      "mappedBy": "order"
+    }
+  }
+}

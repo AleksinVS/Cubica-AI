@@ -1,0 +1,77 @@
+:root {
+  --background: 25, 28, 30;
+  --foreground: 232, 235, 242;
+  --theme-yellow: 251, 188, 5;
+  --theme-grey: 128, 128, 128;
+}
+
+
+html,
+body {
+  max-width: 100vw;
+}
+
+body {
+  color: rgb(var(--foreground));
+  background: rgb(var(--background));
+  font-family: var(--font-montserrat), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.flexWrapper {
+  display: flex;
+  width: 100%;
+  flex-grow: 1;
+  align-items: flex-start;
+}
+
+
+/* SOME SWIPER SETTINGS */
+/* Prevents focus highlight on Swiper images */
+.swiper-slide img {
+  outline: none;
+  user-select: none;
+  /* Prevents accidental selection */
+}
+
+/* Remove blue hover effect on navigation arrows */
+.swiper-button-next,
+.swiper-button-prev {
+  outline: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+/* Optional: Remove default focus styles (for accessibility, use cautiously) */
+.swiper-button-next:focus,
+.swiper-button-prev:focus {
+  outline: none !important;
+}
+
+/* Prevents any background highlight */
+.swiper-slide {
+  background: transparent !important;
+}
+
+/* Change the color of the navigation arrows */
+.swiper-button-next,
+.swiper-button-prev {
+  color: rgb(var(--theme-yellow)) !important;
+
+}
+
+.swiper-pagination-bullet-active {
+  background-color: rgb(var(--theme-yellow)) !important;
+}

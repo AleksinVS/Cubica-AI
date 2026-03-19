@@ -1,0 +1,40 @@
+[
+    {
+        "gameId": 1,
+        "gameName": "Интересная игра1",
+        "links": [
+            {
+                "id": 101,
+                "date": "22/09/2025",
+                "url": "http://game1.cubica.pro",
+                "type": "день"
+            },
+            {
+                "id": 102,
+                "date": "22/10/2025",
+                "url": "http://game1.cubica.pro",
+                "type": "разовая"
+            }
+        ]
+    },
+    {
+        "gameId": 2,
+        "gameName": "Пингвины",
+        "links": [
+            {
+                "id": 201,
+                "date": "22/09/2025",
+                "url": "http://game2.cubica.pro",
+                "type": "разовая"
+            },
+            {
+                "id": 202,
+                "date": "22/10/2025",
+                "url": "http://game2.cubica.pro",
+                "type": "месяц",
+                "startDate": "22/09/2025",
+                "endDate": "22/10/2025"
+            }
+        ]
+    }
+]

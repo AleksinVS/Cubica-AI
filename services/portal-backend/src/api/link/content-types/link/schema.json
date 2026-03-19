@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "links",
+  "info": {
+    "singularName": "link",
+    "pluralName": "links",
+    "displayName": "game_link",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "url": {
+      "type": "string"
+    },
+    "start_date": {
+      "type": "date"
+    },
+    "end_date": {
+      "type": "date"
+    },
+    "type": {
+      "type": "enumeration",
+      "enum": [
+        "one-time",
+        "day",
+        "month"
+      ]
+    },
+    "purchase": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::purchase.purchase",
+      "inversedBy": "links"
+    },
+    "token": {
+      "type": "uid"
+    },
+    "label": {
+      "type": "integer",
+      "unique": true
+    },
+    "game": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::game.game"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "game_links"
+    },
+    "expired": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

@@ -1,0 +1,13 @@
+@media (max-width: 768px) {
+    .main {
+        position: static !important;
+        /* Ensure normal behavior */
+        height: 300vh;
+        width: 100vw;
+        max-width: 100%;
+    }
+
+    .flexWrapper {
+        padding-top: 150px !important;
+    }
+}

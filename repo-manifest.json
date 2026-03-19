@@ -49,6 +49,14 @@
       ]
     },
     {
+      "id": "app.portal-nextjs",
+      "kind": "app",
+      "path": "apps/portal-nextjs",
+      "status": "draft",
+      "owner": "frontend",
+      "source_of_truth": false
+    },
+    {
       "id": "repo.next-steps",
       "kind": "working-agreement",
       "path": "NEXT_STEPS.md",
@@ -77,6 +85,14 @@
       "kind": "service-boundary",
       "path": "services/game-repository",
       "status": "placeholder",
+      "owner": "backend",
+      "source_of_truth": false
+    },
+    {
+      "id": "service.portal-backend",
+      "kind": "service",
+      "path": "services/portal-backend",
+      "status": "draft",
       "owner": "backend",
       "source_of_truth": false
     },

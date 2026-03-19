@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "payment_events",
+  "info": {
+    "singularName": "payment-event",
+    "pluralName": "payment-events",
+    "displayName": "Payment_event",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "direction": {
+      "type": "enumeration",
+      "enum": [
+        "sent",
+        "received"
+      ]
+    },
+    "endpoint": {
+      "type": "text"
+    },
+    "payload": {
+      "type": "json"
+    },
+    "order": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::order.order",
+      "inversedBy": "payment_events"
+    }
+  }
+}

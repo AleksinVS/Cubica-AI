@@ -1,0 +1,169 @@
+{
+  "kind": "collectionType",
+  "collectionName": "games",
+  "info": {
+    "singularName": "game",
+    "pluralName": "games",
+    "displayName": "Game",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "required": true,
+      "targetField": "title"
+    },
+    "image": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "price_per_launch": {
+      "type": "decimal"
+    },
+    "price_per_month": {
+      "type": "decimal"
+    },
+    "description": {
+      "type": "text"
+    },
+    "rating": {
+      "type": "decimal"
+    },
+    "total_played": {
+      "type": "integer"
+    },
+    "format": {
+      "type": "string"
+    },
+    "duration": {
+      "type": "enumeration",
+      "enum": [
+        "d30_min",
+        "d1_hr",
+        "d2_hr",
+        "d3_hr",
+        "d4_hr",
+        "d5_hr",
+        "d6_hr",
+        "d8_hr"
+      ]
+    },
+    "author": {
+      "type": "string"
+    },
+    "images": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": [
+        "images",
+        "files",
+        "videos",
+        "audios"
+      ]
+    },
+    "favourites": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::favourite.favourite",
+      "mappedBy": "games"
+    },
+    "orders": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::order.order",
+      "mappedBy": "game"
+    },
+    "purchases": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::purchase.purchase",
+      "mappedBy": "game"
+    },
+    "game_type": {
+      "type": "enumeration",
+      "enum": [
+        "one-player",
+        "multiplayer"
+      ]
+    },
+    "price_per_day": {
+      "type": "decimal"
+    },
+    "rating_count": {
+      "type": "decimal"
+    },
+    "game_purpose": {
+      "type": "blocks"
+    },
+    "game_plot": {
+      "type": "blocks"
+    },
+    "game_support": {
+      "type": "text"
+    },
+    "reviews_tmp": {
+      "type": "text"
+    },
+    "developed_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "games"
+    },
+    "is_published": {
+      "type": "boolean",
+      "default": false,
+      "required": true
+    },
+    "game_published_at": {
+      "type": "datetime"
+    },
+    "competencies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::competency.competency",
+      "mappedBy": "games"
+    },
+    "about_author": {
+      "type": "blocks"
+    },
+    "contacts_email": {
+      "type": "email"
+    },
+    "contacts_whatsapp": {
+      "type": "string"
+    },
+    "contacts_telegram": {
+      "type": "string"
+    },
+    "contacts_phone": {
+      "type": "string"
+    },
+    "faqs": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::faq.faq",
+      "mappedBy": "game"
+    },
+    "game_links": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::link.link"
+    }
+  }
+}

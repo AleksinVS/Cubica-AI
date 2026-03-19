@@ -1,0 +1,26 @@
+{
+  "kind": "collectionType",
+  "collectionName": "competencies",
+  "info": {
+    "singularName": "competency",
+    "pluralName": "competencies",
+    "displayName": "competency",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "competency_name": {
+      "type": "string",
+      "unique": true,
+      "required": true
+    },
+    "games": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::game.game",
+      "inversedBy": "competencies"
+    }
+  }
+}
