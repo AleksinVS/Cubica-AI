@@ -96,6 +96,8 @@ export interface GameManifestState<TPublicState = Record<string, unknown>, TSecr
 
 export interface GameManifestActionDefinition {
   handlerType: "script" | "ui" | "ai" | "system" | "unknown" | string;
+  capabilityFamily?: string;
+  capability?: string;
   function?: string;
   displayName?: string;
   description?: string;

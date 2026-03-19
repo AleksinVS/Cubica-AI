@@ -21,6 +21,13 @@ type PublicState = {
   flags: {
     cards: Record<string, unknown>;
   };
+  ui?: {
+    lastCapabilityFamily?: string;
+    lastCapability?: string;
+    activePanel?: string;
+    activeScreen?: string;
+    serverRequested?: boolean;
+  };
   log: Array<Record<string, unknown>>;
 };
 
@@ -32,6 +39,8 @@ type SecretState = {
 type RuntimeState = {
   lastActionId?: string;
   lastActionFunction?: string;
+  lastCapabilityFamily?: string;
+  lastCapability?: string;
 };
 
 type SessionState = {
@@ -159,17 +168,43 @@ test("POST /actions applies a deterministic runtime transition", async () => {
   assert.equal(action.version.lastEventSequence, 1);
   assert.equal(action.state.runtime?.lastActionId, "showHint");
   assert.equal(action.state.runtime?.lastActionFunction, "showHint");
+  assert.equal(action.state.runtime?.lastCapabilityFamily, "ui.panel");
+  assert.equal(action.state.runtime?.lastCapability, "ui.panel.hint");
+  assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.panel");
+  assert.equal(action.state.public.ui?.activePanel, "hint");
 
   const log = action.state.public.log;
   assert.equal(log.length, 1);
   assert.equal(log[0].actionId, "showHint");
+  assert.equal(log[0].capabilityFamily, "ui.panel");
+  assert.equal(log[0].capability, "ui.panel.hint");
 
   const { response: getResponse, body: persisted } = await requestJson<SessionResponse>(`/sessions/${created.sessionId}`);
 
   assert.equal(getResponse.status, 200);
   assert.equal(persisted.version.stateVersion, 1);
   assert.equal(persisted.state.runtime?.lastActionId, "showHint");
+  assert.equal(persisted.state.runtime?.lastCapabilityFamily, "ui.panel");
   assert.equal(persisted.state.public.log.length, 1);
+});
+
+test("POST /actions routes different Antarctica actions through manifest capability families", async () => {
+  const created = await createSession({ playerId: "router" });
+  const { response, body: action } = await requestJson<ActionResponse>("/actions", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId: created.sessionId,
+      playerId: "router",
+      actionId: "showScreenWithLeftSideBar",
+      payload: { source: "integration-test" }
+    })
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(action.state.runtime?.lastCapabilityFamily, "ui.screen");
+  assert.equal(action.state.runtime?.lastCapability, "ui.screen.left-sidebar");
+  assert.equal(action.state.public.ui?.activeScreen, "left-sidebar");
+  assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
 });
 
 test("POST /actions rejects invalid request bodies", async () => {

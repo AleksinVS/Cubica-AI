@@ -154,6 +154,18 @@ const validateActions = (actions: unknown): Record<string, GameManifestActionDef
       throw new ManifestValidationError(`Manifest action "${actionId}" must define "handlerType"`);
     }
 
+    if (action.capabilityFamily !== undefined) {
+      assertString(action.capabilityFamily, `actions.${actionId}.capabilityFamily`);
+    } else {
+      throw new ManifestValidationError(`Manifest action "${actionId}" must define "capabilityFamily"`);
+    }
+
+    if (action.capability !== undefined) {
+      assertString(action.capability, `actions.${actionId}.capability`);
+    } else {
+      throw new ManifestValidationError(`Manifest action "${actionId}" must define "capability"`);
+    }
+
     if (action.function !== undefined) {
       assertString(action.function, `actions.${actionId}.function`);
     }

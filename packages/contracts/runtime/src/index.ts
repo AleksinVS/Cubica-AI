@@ -26,6 +26,8 @@ export interface RuntimeActionResult<TState = unknown> {
 export interface RuntimeManifestActionDefinition {
   actionId: string;
   handlerType: string;
+  capabilityFamily?: string;
+  capability?: string;
   functionName?: string;
   raw: Record<string, unknown>;
 }

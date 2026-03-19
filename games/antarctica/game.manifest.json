@@ -137,26 +137,36 @@
   "actions": {
     "requestServer": {
       "handlerType": "script",
+      "capabilityFamily": "runtime.server",
+      "capability": "runtime.server.request",
       "function": "requestServer",
       "displayName": "Request server"
     },
     "showHint": {
       "handlerType": "script",
+      "capabilityFamily": "ui.panel",
+      "capability": "ui.panel.hint",
       "function": "showHint",
       "displayName": "Show hint"
     },
     "showHistory": {
       "handlerType": "script",
+      "capabilityFamily": "ui.panel",
+      "capability": "ui.panel.history",
       "function": "showHistory",
       "displayName": "Show history"
     },
     "showTopBar": {
       "handlerType": "script",
+      "capabilityFamily": "ui.panel",
+      "capability": "ui.panel.top-bar",
       "function": "showTopBar",
       "displayName": "Show top bar"
     },
     "showScreenWithLeftSideBar": {
       "handlerType": "script",
+      "capabilityFamily": "ui.screen",
+      "capability": "ui.screen.left-sidebar",
       "function": "showScreenWithLeftSideBar",
       "displayName": "Show screen with left sidebar"
     }

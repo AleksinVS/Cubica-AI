@@ -25,7 +25,12 @@ const validManifest = {
     }
   },
   actions: {
-    showHint: { handlerType: "script", function: "showHint" }
+    showHint: {
+      handlerType: "script",
+      capabilityFamily: "ui.panel",
+      capability: "ui.panel.hint",
+      function: "showHint"
+    }
   }
 };
 
@@ -44,6 +49,22 @@ test("validateGameManifest rejects a manifest without required fields", () => {
         meta: {
           ...validManifest.meta,
           name: ""
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects actions without capability metadata", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "script",
+            function: "showHint"
+          }
         }
       }),
     ManifestValidationError

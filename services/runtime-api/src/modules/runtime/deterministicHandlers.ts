@@ -7,18 +7,36 @@ import type {
 
 type RuntimeState = Record<string, unknown>;
 
-const UI_EFFECTS: Record<string, { kind: string; target: string; value: string }> = {
-  requestServer: { kind: "ui", target: "server", value: "requested" },
-  showHint: { kind: "ui", target: "panel", value: "hint" },
-  showHistory: { kind: "ui", target: "panel", value: "history" },
-  showTopBar: { kind: "ui", target: "panel", value: "top-bar" },
-  showScreenWithLeftSideBar: { kind: "ui", target: "screen", value: "left-sidebar" }
-};
+type CapabilityFamily = "runtime.server" | "ui.panel" | "ui.screen" | "unknown";
 
 const ensureObject = (value: unknown): RuntimeState =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as RuntimeState) : {};
 
 const cloneState = <TState,>(state: TState): TState => structuredClone(state);
+
+const resolveCapabilityFamily = (capabilityFamily?: string, capability?: string): CapabilityFamily => {
+  const source = capabilityFamily ?? capability ?? "";
+
+  if (source.startsWith("runtime.server")) {
+    return "runtime.server";
+  }
+
+  if (source.startsWith("ui.panel")) {
+    return "ui.panel";
+  }
+
+  if (source.startsWith("ui.screen")) {
+    return "ui.screen";
+  }
+
+  return "unknown";
+};
+
+const resolveCapabilityLeaf = (capability?: string, fallback?: string) => {
+  const source = capability ?? fallback ?? "unknown";
+  const segments = source.split(".");
+  return segments[segments.length - 1] || "unknown";
+};
 
 const appendLogEntry = (state: RuntimeState, entry: Record<string, unknown>) => {
   const publicState = ensureObject(state.public);
@@ -28,37 +46,121 @@ const appendLogEntry = (state: RuntimeState, entry: Record<string, unknown>) => 
   state.public = publicState;
 };
 
+const ensureUiState = (state: RuntimeState) => {
+  const publicState = ensureObject(state.public);
+  const uiState = ensureObject(publicState.ui);
+  publicState.ui = uiState;
+  state.public = publicState;
+  return uiState;
+};
+
 const setRuntimeMetadata = (
   state: RuntimeState,
   context: RuntimeActionContext<RuntimeState>,
-  effect: RuntimeActionEffect
+  effect: RuntimeActionEffect,
+  capabilityFamily: CapabilityFamily
 ) => {
   const runtime = ensureObject(state.runtime);
   runtime.lastActionId = context.actionId;
   runtime.lastActionFunction = context.manifestAction.functionName ?? context.actionId;
+  runtime.lastCapabilityFamily = capabilityFamily;
+  runtime.lastCapability = context.manifestAction.capability ?? context.manifestAction.functionName ?? context.actionId;
   runtime.lastUpdatedAt = context.now.toISOString();
   runtime.lastPayload = context.payload ?? null;
   runtime.lastEffect = effect;
   state.runtime = runtime;
 };
 
-const buildTransition = (context: RuntimeActionContext<RuntimeState>): RuntimeActionResult<RuntimeState> => {
-  const effect = UI_EFFECTS[context.manifestAction.functionName ?? context.actionId] ?? {
+const buildCapabilityEffect = (
+  context: RuntimeActionContext<RuntimeState>,
+  capabilityFamily: CapabilityFamily
+): RuntimeActionEffect => {
+  const capabilityLeaf = resolveCapabilityLeaf(
+    context.manifestAction.capability,
+    context.manifestAction.functionName ?? context.actionId
+  );
+
+  if (capabilityFamily === "runtime.server") {
+    return {
+      kind: "runtime",
+      target: "server",
+      value: "requested",
+      data: {
+        capability: context.manifestAction.capability,
+        family: capabilityFamily
+      }
+    };
+  }
+
+  if (capabilityFamily === "ui.panel") {
+    return {
+      kind: "ui",
+      target: "panel",
+      value: capabilityLeaf,
+      data: {
+        capability: context.manifestAction.capability,
+        family: capabilityFamily
+      }
+    };
+  }
+
+  if (capabilityFamily === "ui.screen") {
+    return {
+      kind: "ui",
+      target: "screen",
+      value: capabilityLeaf,
+      data: {
+        capability: context.manifestAction.capability,
+        family: capabilityFamily
+      }
+    };
+  }
+
+  return {
     kind: "runtime",
     target: "session",
-    value: context.actionId
+    value: context.actionId,
+    data: {
+      capability: context.manifestAction.capability,
+      family: capabilityFamily
+    }
   };
+};
+
+const buildTransition = (
+  context: RuntimeActionContext<RuntimeState>,
+  capabilityFamily: CapabilityFamily
+): RuntimeActionResult<RuntimeState> => {
+  const effect = buildCapabilityEffect(context, capabilityFamily);
   const nextState = cloneState(context.state);
+  const capabilityLeaf = resolveCapabilityLeaf(
+    context.manifestAction.capability,
+    context.manifestAction.functionName ?? context.actionId
+  );
   const logEntry = {
     actionId: context.actionId,
+    capability: context.manifestAction.capability,
+    capabilityFamily,
     functionName: context.manifestAction.functionName ?? context.actionId,
-    handlerType: context.manifestAction.handlerType,
     at: context.now.toISOString(),
     payload: context.payload ?? null
   };
 
   appendLogEntry(nextState, logEntry);
-  setRuntimeMetadata(nextState, context, effect);
+
+  const uiState = ensureUiState(nextState);
+  uiState.lastCapabilityFamily = capabilityFamily;
+  uiState.lastCapability = context.manifestAction.capability ?? context.actionId;
+
+  if (capabilityFamily === "ui.panel") {
+    uiState.activePanel = capabilityLeaf;
+  } else if (capabilityFamily === "ui.screen") {
+    uiState.activeScreen = capabilityLeaf;
+  } else if (capabilityFamily === "runtime.server") {
+    uiState.serverRequested = true;
+  }
+
+  setRuntimeMetadata(nextState, context, effect, capabilityFamily);
 
   return {
     ok: true,
@@ -69,6 +171,13 @@ const buildTransition = (context: RuntimeActionContext<RuntimeState>): RuntimeAc
   };
 };
 
-export function createDeterministicHandler(): RuntimeActionHandler<RuntimeState> {
-  return (context) => buildTransition(context);
+export function createDeterministicHandler(capabilityFamily: CapabilityFamily): RuntimeActionHandler<RuntimeState> {
+  return (context) => buildTransition(context, capabilityFamily);
+}
+
+export function resolveActionCapabilityFamily(
+  capabilityFamily?: string,
+  capability?: string
+): CapabilityFamily {
+  return resolveCapabilityFamily(capabilityFamily, capability);
 }

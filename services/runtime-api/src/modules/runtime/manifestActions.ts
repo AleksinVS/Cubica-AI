@@ -28,10 +28,24 @@ export function listManifestActionDefinitions(bundle: GameBundle): Array<Runtime
         : typeof action.functionName === "string"
           ? action.functionName
           : undefined;
+    const capabilityFamily =
+      typeof action.capabilityFamily === "string"
+        ? action.capabilityFamily
+        : typeof action.capability_family === "string"
+          ? action.capability_family
+          : undefined;
+    const capability =
+      typeof action.capability === "string"
+        ? action.capability
+        : typeof action.capability_name === "string"
+          ? action.capability_name
+          : undefined;
 
     return {
       actionId,
       handlerType,
+      capabilityFamily,
+      capability,
       functionName,
       raw: action
     };

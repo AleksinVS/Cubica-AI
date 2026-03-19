@@ -4,20 +4,23 @@ import type {
   RuntimeActionRegistry
 } from "@cubica/contracts-runtime";
 import { getManifestActionDefinition, listManifestActionDefinitions } from "./manifestActions.ts";
-import { createDeterministicHandler } from "./deterministicHandlers.ts";
+import {
+  createDeterministicHandler,
+  resolveActionCapabilityFamily
+} from "./deterministicHandlers.ts";
 
 type RuntimeState = Record<string, unknown>;
 
 const createRegistryMap = (bundle: GameBundle) => {
   const registry = new Map<string, RuntimeActionHandler<RuntimeState>>();
-  const deterministicHandler = createDeterministicHandler();
 
   for (const definition of listManifestActionDefinitions(bundle)) {
     if (definition.handlerType !== "script") {
       continue;
     }
 
-    registry.set(definition.actionId, deterministicHandler);
+    const capabilityFamily = resolveActionCapabilityFamily(definition.capabilityFamily, definition.capability);
+    registry.set(definition.actionId, createDeterministicHandler(capabilityFamily));
   }
 
   return registry;
