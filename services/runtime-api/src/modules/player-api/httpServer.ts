@@ -1,5 +1,11 @@
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type {
+  CreateSessionInput,
+  CreateSessionRequest,
+  DispatchActionInput
+} from "@cubica/contracts-session";
+import { dispatchRuntimeAction } from "../runtime/actionDispatcher.ts";
 import { extractInitialState, loadGameBundle } from "../content/manifestLoader.ts";
 import { InMemorySessionStore } from "../session/inMemorySessionStore.ts";
 
@@ -7,13 +13,7 @@ interface RuntimeApiServerOptions {
   port?: number;
 }
 
-interface JsonRequestBody {
-  gameId?: string;
-  sessionId?: string;
-  playerId?: string;
-  actionId?: string;
-  payload?: unknown;
-}
+type JsonRequestBody = Partial<CreateSessionRequest> & Partial<DispatchActionInput>;
 
 const sessionStore = new InMemorySessionStore<Record<string, unknown>>();
 
@@ -39,6 +39,7 @@ const readJsonBody = async (request: IncomingMessage): Promise<JsonRequestBody> 
 
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
+  let activePort = port;
 
   const server = http.createServer(async (request, response) => {
     try {
@@ -51,11 +52,12 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const body = await readJsonBody(request);
         const gameId = body.gameId ?? "antarctica";
         const bundle = await loadGameBundle(gameId);
-        const snapshot = await sessionStore.createSession({
+        const createSessionInput = {
           gameId,
           playerId: body.playerId,
           initialState: extractInitialState(bundle) as Record<string, unknown>
-        });
+        } satisfies CreateSessionInput<Record<string, unknown>>;
+        const snapshot = await sessionStore.createSession(createSessionInput);
 
         sendJson(response, 201, {
           sessionId: snapshot.sessionId,
@@ -87,11 +89,14 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           return;
         }
 
-        const snapshot = await sessionStore.dispatchAction({
-          sessionId: body.sessionId,
-          playerId: body.playerId,
-          actionId: body.actionId,
-          payload: body.payload
+        const { snapshot } = await dispatchRuntimeAction({
+          sessionStore,
+          input: {
+            sessionId: body.sessionId,
+            playerId: body.playerId,
+            actionId: body.actionId,
+            payload: body.payload
+          } satisfies DispatchActionInput
         });
 
         sendJson(response, 200, {
@@ -110,11 +115,19 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   });
 
   return {
-    port,
+    get port() {
+      return activePort;
+    },
     server,
     start() {
       return new Promise<void>((resolve) => {
-        server.listen(port, () => resolve());
+        server.listen(port, () => {
+          const address = server.address();
+          if (address && typeof address === "object") {
+            activePort = address.port;
+          }
+          resolve();
+        });
       });
     }
   };

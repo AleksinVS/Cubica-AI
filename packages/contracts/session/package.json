@@ -1,0 +1,17 @@
+{
+  "name": "@cubica/contracts-session",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Session lifecycle and player API contracts for Cubica.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"TODO: add contracts-session build\"",
+    "test": "echo \"TODO: add contracts-session tests\"",
+    "lint": "echo \"TODO: add contracts-session lint\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

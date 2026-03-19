@@ -1,0 +1,17 @@
+{
+  "name": "@cubica/contracts-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runtime execution contracts for Cubica.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"TODO: add contracts-runtime build\"",
+    "test": "echo \"TODO: add contracts-runtime tests\"",
+    "lint": "echo \"TODO: add contracts-runtime lint\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

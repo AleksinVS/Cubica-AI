@@ -8,10 +8,19 @@
     "SDK/core",
     "SDK/shared",
     "SDK/react-sdk",
-    "services/runtime-api"
+    "services/runtime-api",
+    "packages/contracts/manifest",
+    "packages/contracts/session",
+    "packages/contracts/runtime",
+    "packages/contracts/ai"
   ],
   "scripts": {
-    "bootstrap": "npm install --workspaces"
+    "bootstrap": "npm install --workspaces",
+    "typecheck": "npm run typecheck --workspace services/runtime-api"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "typescript": "^5.9.3"
   },
   "engines": {
     "node": ">=18"

@@ -6,9 +6,11 @@
 
 Сейчас в нём уже есть:
 
+- `packages/contracts/session` как canonical source of truth для session DTO/contracts
 - `src/modules/session/contracts.ts`
 - `src/modules/session/inMemorySessionStore.ts`
 - `src/modules/content/manifestLoader.ts`
+- `src/modules/runtime/*` для deterministic action registry и dispatch
 - `src/modules/player-api/httpServer.ts`
 - `src/bootstrap.ts`
 
@@ -26,10 +28,8 @@
 - `POST /sessions` загружает `games/antarctica/game.manifest.json`;
 - initial state берётся из `manifest.state`;
 - сессии хранятся in-memory;
-- `POST /actions` пока делает placeholder transition и записывает:
-  - `runtime.lastActionId`
-  - `runtime.lastPayload`
-  - `runtime.lastUpdatedAt`
+- `POST /actions` проходит через deterministic action registry, валидирует `actionId` по manifest и применяет controlled state transition;
+- runtime metadata пишется в `state.runtime`, а `public.log` получает append-only запись о действии.
 
 ## Как запускать локально
 
@@ -49,27 +49,34 @@ npm run dev --workspace services/runtime-api
 - импорт `services/runtime-api/src/index.ts`
 - загрузка `games/antarctica` через `manifestLoader`
 - создание HTTP server через `createRuntimeApiServer`
+- базовые HTTP/integration tests через `node:test`
 
-Полноценные HTTP/integration tests ещё не добавлены.
+Есть executable smoke script:
+
+```bash
+npm run smoke --workspace services/runtime-api
+```
+
+Есть integration test command:
+
+```bash
+npm test --workspace services/runtime-api
+```
 
 ## Что ещё НЕ сделано
 
-- нет реального runtime execution layer;
-- нет dispatch в manifest `actions`;
-- нет отделения command/query DTO в отдельный contracts package;
 - нет health/readiness различия;
 - нет persistence, locks, recovery;
 - нет schema validation на входе API;
-- нет test runner и автотестов для `runtime-api`.
+- нет persistence-aware test fixtures.
 
 ## Следующие шаги по приоритету
 
-1. Вынести player-facing request/response DTO в отдельные контракты.
-2. Подключить manifest `actions` из `games/antarctica/game.manifest.json`.
-3. Добавить deterministic handler layer вместо placeholder runtime update.
+1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.
+2. Добавить schema validation на вход API и для manifest action definitions.
+3. Расширять deterministic handler layer от текущего registry.
 4. Перенести полезные router/session наработки в модули `session` и `player-api`.
-5. Добавить integration tests через HTTP.
-6. Подготовить выделение `packages/contracts/*` и `apps/player-web`.
+5. Расширить `packages/contracts/*` и `apps/player-web`.
 
 ## Важные замечания
 

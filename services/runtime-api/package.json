@@ -4,12 +4,18 @@
   "private": true,
   "description": "Modular monolith backend for Cubica runtime API.",
   "type": "module",
+  "dependencies": {
+    "@cubica/contracts-runtime": "file:../../packages/contracts/runtime",
+    "@cubica/contracts-session": "file:../../packages/contracts/session"
+  },
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
     "dev": "node --experimental-strip-types --enable-source-maps src/bootstrap.ts",
+    "smoke": "node --experimental-strip-types --enable-source-maps scripts/smoke-runtime-api.ts",
+    "test": "node --test --experimental-strip-types tests/runtime-api.integration.ts",
+    "typecheck": "tsc -p tsconfig.json",
     "build": "echo \"TODO: add runtime-api build\"",
-    "test": "echo \"TODO: add runtime-api tests\"",
     "lint": "echo \"TODO: add runtime-api lint\""
   },
   "engines": {

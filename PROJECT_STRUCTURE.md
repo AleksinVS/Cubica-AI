@@ -10,6 +10,7 @@
 - [Каталог `docs/`](#каталог-docs)
 - [Каталог `draft/`](#каталог-draft)
 - [Каталог `games/`](#каталог-games)
+- [Каталог `packages/`](#каталог-packages)
 - [Каталог `scripts/`](#каталог-scripts)
 - [Каталог `SDK/`](#каталог-sdk)
 - [Каталог `services/`](#каталог-services)
@@ -24,6 +25,7 @@ Cubica — это монорепозиторий (monorepo — один репо
 - `docs/` — архитектура, схемы, задачи и планирование.
 - `data/` — тестовые данные и моки.
 - `games/` — пакеты игр (контент и манифесты) и связанные ресурсы.
+- `packages/` — новые переиспользуемые пакеты платформы (контракты и будущие runtime/viewer слои).
 - `scripts/` — служебные скрипты для разработки и индексирования.
 - `draft/` — черновые материалы, эксперименты и архивные компоненты.
 - `archive/` — устаревшие документы, сохранённые для истории.
@@ -41,11 +43,13 @@ Cubica/
 ├── docs/                   # Архитектура, задачи, планирование
 ├── draft/                  # Черновые материалы, эксперименты и архивные компоненты
 ├── games/                  # Пакеты игр и связанные ресурсы
+├── packages/               # Переиспользуемые платформенные пакеты
 ├── scripts/                # Скрипты разработки и индексирования
 ├── SDK/                    # SDK и вспомогательные библиотеки
 ├── services/               # Сервисы и инфраструктура
 ├── AGENTS.md               # Правила работы ИИ‑агентов
-├── package.json            # Корневой npm-workspace (workspaces: SDK/core, SDK/shared, SDK/react-sdk, services/runtime-api)
+├── NEXT_STEPS.md           # Ближайшие инженерные шаги и приоритеты миграции
+├── package.json            # Корневой npm-workspace (workspaces: SDK/core, SDK/shared, SDK/react-sdk, services/runtime-api, packages/contracts/*)
 ├── PROJECT_OVERVIEW.md     # Общий обзор проекта
 ├── PROJECT_STRUCTURE.md    # Описание структуры репозитория (этот файл)
 ├── README.md               # Основное описание репозитория
@@ -125,6 +129,22 @@ games/
 ```
 
 **Примечание:** Дублирующий Next.js-плеер архивирован в `draft/antarctica-nextjs-player/` для сохранения в истории. Это решение устраняет нарушение Single Source of Truth, выявленное в архитектурном ревью от 2026-01-13.
+
+## Каталог `packages/`
+
+Каталог `packages/` содержит новые переиспользуемые пакеты платформы. На текущем этапе здесь зафиксирован стартовый `contracts layer`:
+
+```text
+packages/
+└── contracts/
+    ├── README.md           # Назначение contracts layer
+    ├── ai/                 # Контракты AI task/result и eval
+    ├── manifest/           # Контракты manifest bundle и content layer
+    ├── runtime/            # Контракты runtime action result / delta / effects
+    └── session/            # Контракты session lifecycle и player-facing DTO
+```
+
+`packages/contracts/*` пока являются каркасом для следующей фазы миграции. Цель — вынести в них DTO и события, которые сейчас временно живут внутри `services/runtime-api/`.
 
 ## Каталог `scripts/`
 
@@ -208,18 +228,22 @@ services/
 ```text
 runtime-api/
 ├── DEV_GUIDE.md            # Назначение и внутренние модульные границы
+├── HANDOFF.md              # Краткий handoff для следующего агента
 ├── package.json            # Пакет deployable backend-а
+├── scripts/
+│   └── smoke-runtime-api.ts # Executable smoke check для runtime path
 ├── src/
 │   ├── index.ts            # Точка входа и реестр модулей
 │   └── modules/
 │       ├── player-api/
-│       ├── session/
 │       ├── runtime/
+│       ├── session/
 │       ├── content/
 │       ├── ai/
 │       ├── telemetry/
 │       └── admin/
 └── tests/
+    └── runtime-api.integration.ts # Базовые HTTP integration tests для вертикального slice
 ```
 
 ## Как поддерживать структуру в актуальном состоянии

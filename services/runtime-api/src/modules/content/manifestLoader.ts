@@ -1,13 +1,16 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 export interface GameBundle {
   gameId: string;
   manifest: Record<string, unknown>;
 }
 
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
+
 const resolveGameManifestPath = (gameId: string) =>
-  path.resolve(process.cwd(), "games", gameId, "game.manifest.json");
+  path.resolve(repoRoot, "games", gameId, "game.manifest.json");
 
 export async function loadGameBundle(gameId: string): Promise<GameBundle> {
   const manifestPath = resolveGameManifestPath(gameId);

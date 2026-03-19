@@ -1,0 +1,17 @@
+{
+  "name": "@cubica/contracts-manifest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Manifest and content contracts for Cubica.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"TODO: add contracts-manifest build\"",
+    "test": "echo \"TODO: add contracts-manifest tests\"",
+    "lint": "echo \"TODO: add contracts-manifest lint\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

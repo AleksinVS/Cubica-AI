@@ -1,0 +1,17 @@
+{
+  "name": "@cubica/contracts-ai",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI task, result and eval contracts for Cubica.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"TODO: add contracts-ai build\"",
+    "test": "echo \"TODO: add contracts-ai tests\"",
+    "lint": "echo \"TODO: add contracts-ai lint\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

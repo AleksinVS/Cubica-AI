@@ -49,6 +49,14 @@
       ]
     },
     {
+      "id": "repo.next-steps",
+      "kind": "working-agreement",
+      "path": "NEXT_STEPS.md",
+      "status": "actual",
+      "owner": "platform",
+      "source_of_truth": true
+    },
+    {
       "id": "service.router",
       "kind": "service-boundary",
       "path": "services/router",
@@ -92,6 +100,55 @@
       "path": "SDK/shared",
       "status": "actual",
       "owner": "frontend-platform"
+    },
+    {
+      "id": "contracts.manifest",
+      "kind": "package",
+      "path": "packages/contracts/manifest",
+      "status": "target",
+      "owner": "platform"
+    },
+    {
+      "id": "contracts.session",
+      "kind": "package",
+      "path": "packages/contracts/session",
+      "status": "target",
+      "owner": "platform"
+    },
+    {
+      "id": "contracts.runtime",
+      "kind": "package",
+      "path": "packages/contracts/runtime",
+      "status": "target",
+      "owner": "platform"
+    },
+    {
+      "id": "contracts.ai",
+      "kind": "package",
+      "path": "packages/contracts/ai",
+      "status": "target",
+      "owner": "platform"
+    },
+    {
+      "id": "runtime-api.runtime",
+      "kind": "module",
+      "path": "services/runtime-api/src/modules/runtime",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
+      "id": "runtime-api.smoke",
+      "kind": "script",
+      "path": "services/runtime-api/scripts/smoke-runtime-api.ts",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
+      "id": "runtime-api.integration",
+      "kind": "test",
+      "path": "services/runtime-api/tests/runtime-api.integration.ts",
+      "status": "actual",
+      "owner": "platform"
     },
     {
       "id": "player.antarctica.nextjs",
