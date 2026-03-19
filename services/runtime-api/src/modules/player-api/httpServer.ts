@@ -2,18 +2,17 @@ import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type {
   CreateSessionInput,
-  CreateSessionRequest,
   DispatchActionInput
 } from "@cubica/contracts-session";
+import { HttpError } from "../errors.ts";
 import { dispatchRuntimeAction } from "../runtime/actionDispatcher.ts";
 import { extractInitialState, loadGameBundle } from "../content/manifestLoader.ts";
 import { InMemorySessionStore } from "../session/inMemorySessionStore.ts";
+import { parseCreateSessionRequest, parseDispatchActionRequest } from "./requestValidation.ts";
 
 interface RuntimeApiServerOptions {
   port?: number;
 }
-
-type JsonRequestBody = Partial<CreateSessionRequest> & Partial<DispatchActionInput>;
 
 const sessionStore = new InMemorySessionStore<Record<string, unknown>>();
 
@@ -22,7 +21,7 @@ const sendJson = (response: ServerResponse, statusCode: number, payload: unknown
   response.end(JSON.stringify(payload));
 };
 
-const readJsonBody = async (request: IncomingMessage): Promise<JsonRequestBody> => {
+const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
 
   for await (const chunk of request) {
@@ -34,7 +33,11 @@ const readJsonBody = async (request: IncomingMessage): Promise<JsonRequestBody> 
   }
 
   const text = Buffer.concat(chunks).toString("utf-8");
-  return JSON.parse(text) as JsonRequestBody;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    throw new HttpError(400, "Request body must be valid JSON");
+  }
 };
 
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
@@ -50,11 +53,12 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
 
       if (request.method === "POST" && request.url === "/sessions") {
         const body = await readJsonBody(request);
-        const gameId = body.gameId ?? "antarctica";
+        const requestBody = parseCreateSessionRequest(body);
+        const gameId = requestBody.gameId ?? "antarctica";
         const bundle = await loadGameBundle(gameId);
         const createSessionInput = {
           gameId,
-          playerId: body.playerId,
+          playerId: requestBody.playerId,
           initialState: extractInitialState(bundle) as Record<string, unknown>
         } satisfies CreateSessionInput<Record<string, unknown>>;
         const snapshot = await sessionStore.createSession(createSessionInput);
@@ -83,19 +87,15 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
 
       if (request.method === "POST" && request.url === "/actions") {
         const body = await readJsonBody(request);
-
-        if (!body.sessionId || !body.actionId) {
-          sendJson(response, 400, { error: "sessionId and actionId are required" });
-          return;
-        }
+        const requestBody = parseDispatchActionRequest(body);
 
         const { snapshot } = await dispatchRuntimeAction({
           sessionStore,
           input: {
-            sessionId: body.sessionId,
-            playerId: body.playerId,
-            actionId: body.actionId,
-            payload: body.payload
+            sessionId: requestBody.sessionId,
+            playerId: requestBody.playerId,
+            actionId: requestBody.actionId,
+            payload: requestBody.payload
           } satisfies DispatchActionInput
         });
 
@@ -109,6 +109,11 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
 
       sendJson(response, 404, { error: "Not found" });
     } catch (error) {
+      if (error instanceof HttpError) {
+        sendJson(response, error.statusCode, { error: error.message });
+        return;
+      }
+
       const message = error instanceof Error ? error.message : "Internal server error";
       sendJson(response, 500, { error: message });
     }

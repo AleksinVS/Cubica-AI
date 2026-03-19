@@ -14,7 +14,7 @@
   "scripts": {
     "dev": "node --experimental-strip-types --enable-source-maps src/bootstrap.ts",
     "smoke": "node --experimental-strip-types --enable-source-maps scripts/smoke-runtime-api.ts",
-    "test": "node --test --experimental-strip-types tests/runtime-api.integration.ts",
+    "test": "node --test --experimental-strip-types tests/*.test.ts tests/*.integration.ts",
     "typecheck": "tsc -p tsconfig.json",
     "build": "echo \"TODO: add runtime-api build\"",
     "lint": "echo \"TODO: add runtime-api lint\""

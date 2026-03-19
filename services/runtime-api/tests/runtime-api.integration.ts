@@ -117,6 +117,18 @@ test("POST /sessions creates an antarctica session", async () => {
   assert.deepEqual(session.state.public.log, []);
 });
 
+test("POST /sessions rejects invalid request bodies", async () => {
+  const { response, body } = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: 42
+    })
+  });
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /gameId must be a non-empty string/);
+});
+
 test("GET /sessions/:id returns the created session snapshot", async () => {
   const created = await createSession({ playerId: "reader" });
   const { response, body: session } = await requestJson<SessionResponse>(`/sessions/${created.sessionId}`);
@@ -158,4 +170,18 @@ test("POST /actions applies a deterministic runtime transition", async () => {
   assert.equal(persisted.version.stateVersion, 1);
   assert.equal(persisted.state.runtime?.lastActionId, "showHint");
   assert.equal(persisted.state.public.log.length, 1);
+});
+
+test("POST /actions rejects invalid request bodies", async () => {
+  const created = await createSession({ playerId: "validator" });
+  const { response, body } = await requestJson<{ error: string }>("/actions", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId: created.sessionId,
+      actionId: 123
+    })
+  });
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /actionId is required and must be a non-empty string/);
 });

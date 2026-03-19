@@ -5,6 +5,7 @@ import type {
 } from "@cubica/contracts-session";
 import type { RuntimeActionResult } from "@cubica/contracts-runtime";
 import { loadGameBundle } from "../content/manifestLoader.ts";
+import { NotFoundError, RequestValidationError } from "../errors.ts";
 import { createRuntimeActionRegistry, getRegisteredActionDefinition } from "./actionRegistry.ts";
 
 type RuntimeState = Record<string, unknown>;
@@ -31,21 +32,23 @@ export async function dispatchRuntimeAction(
   const current = await options.sessionStore.getSession(options.input.sessionId);
 
   if (!current) {
-    throw new Error(`Session "${options.input.sessionId}" was not found`);
+    throw new NotFoundError(`Session "${options.input.sessionId}" was not found`);
   }
 
   const bundle = await loadGameBundle(current.gameId);
   const definition = getRegisteredActionDefinition(bundle, options.input.actionId);
 
   if (!definition) {
-    throw new Error(`Action "${options.input.actionId}" is not defined for game "${current.gameId}"`);
+    throw new RequestValidationError(
+      `Action "${options.input.actionId}" is not defined for game "${current.gameId}"`
+    );
   }
 
   const registry = createRuntimeActionRegistry(bundle);
   const handler = registry.get(options.input.actionId);
 
   if (!handler) {
-    throw new Error(
+    throw new RequestValidationError(
       `Action "${options.input.actionId}" is not supported by deterministic runtime for game "${current.gameId}"`
     );
   }
