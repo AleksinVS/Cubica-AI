@@ -1,0 +1,113 @@
+{
+  "repo": {
+    "id": "cubica-monorepo",
+    "name": "Cubica",
+    "status": "actual",
+    "last_verified_at": "2026-03-19",
+    "source_of_truth": [
+      "PROJECT_OVERVIEW.md",
+      "PROJECT_STRUCTURE.md",
+      "docs/architecture/PROJECT_ARCHITECTURE.md"
+    ]
+  },
+  "artifacts": [
+    {
+      "id": "root.package",
+      "kind": "workspace-root",
+      "path": "package.json",
+      "status": "actual",
+      "owner": "platform",
+      "source_of_truth": true
+    },
+    {
+      "id": "docs.architecture.overview",
+      "kind": "architecture-document",
+      "path": "docs/architecture/PROJECT_ARCHITECTURE.md",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
+      "id": "adr.017.modular-monolith",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
+      "status": "proposed",
+      "owner": "platform"
+    },
+    {
+      "id": "backend.runtime-api",
+      "kind": "deployable-service",
+      "path": "services/runtime-api",
+      "status": "target",
+      "owner": "backend",
+      "adr_refs": [
+        "ADR-017"
+      ],
+      "depends_on": [
+        "contracts.session",
+        "contracts.runtime",
+        "content.games"
+      ]
+    },
+    {
+      "id": "service.router",
+      "kind": "service-boundary",
+      "path": "services/router",
+      "status": "placeholder",
+      "owner": "backend",
+      "source_of_truth": false
+    },
+    {
+      "id": "service.game-engine",
+      "kind": "service-boundary",
+      "path": "services/game-engine",
+      "status": "placeholder",
+      "owner": "backend",
+      "source_of_truth": false
+    },
+    {
+      "id": "service.game-repository",
+      "kind": "service-boundary",
+      "path": "services/game-repository",
+      "status": "placeholder",
+      "owner": "backend",
+      "source_of_truth": false
+    },
+    {
+      "id": "sdk.core",
+      "kind": "package",
+      "path": "SDK/core",
+      "status": "actual",
+      "owner": "frontend-platform"
+    },
+    {
+      "id": "sdk.react",
+      "kind": "package",
+      "path": "SDK/react-sdk",
+      "status": "actual",
+      "owner": "frontend-platform"
+    },
+    {
+      "id": "sdk.shared",
+      "kind": "package",
+      "path": "SDK/shared",
+      "status": "actual",
+      "owner": "frontend-platform"
+    },
+    {
+      "id": "player.antarctica.nextjs",
+      "kind": "app",
+      "path": "draft/antarctica-nextjs-player",
+      "status": "draft",
+      "owner": "frontend",
+      "source_of_truth": false
+    },
+    {
+      "id": "game.antarctica",
+      "kind": "game-content-bundle",
+      "path": "games/antarctica",
+      "status": "actual",
+      "owner": "content",
+      "source_of_truth": true
+    }
+  ]
+}

@@ -7,7 +7,8 @@
     "games/antarctica-nextjs-player",
     "SDK/core",
     "SDK/shared",
-    "SDK/react-sdk"
+    "SDK/react-sdk",
+    "services/runtime-api"
   ],
   "scripts": {
     "bootstrap": "npm install --workspaces"

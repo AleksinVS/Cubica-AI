@@ -1,0 +1,17 @@
+{
+  "name": "@cubica/runtime-api",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Modular monolith backend for Cubica runtime API.",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"TODO: add runtime-api build\"",
+    "test": "echo \"TODO: add runtime-api tests\"",
+    "lint": "echo \"TODO: add runtime-api lint\""
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

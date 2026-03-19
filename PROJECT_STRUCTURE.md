@@ -27,6 +27,7 @@ Cubica — это монорепозиторий (monorepo — один репо
 - `scripts/` — служебные скрипты для разработки и индексирования.
 - `draft/` — черновые материалы, эксперименты и архивные компоненты.
 - `archive/` — устаревшие документы, сохранённые для истории.
+- `repo-manifest.json` — машиночитаемый индекс артефактов репозитория и их статусов.
 
 ## Корень репозитория
 
@@ -44,10 +45,11 @@ Cubica/
 ├── SDK/                    # SDK и вспомогательные библиотеки
 ├── services/               # Сервисы и инфраструктура
 ├── AGENTS.md               # Правила работы ИИ‑агентов
-├── package.json            # Корневой npm-workspace (workspaces: SDK/core, SDK/shared, SDK/react-sdk)
+├── package.json            # Корневой npm-workspace (workspaces: SDK/core, SDK/shared, SDK/react-sdk, services/runtime-api)
 ├── PROJECT_OVERVIEW.md     # Общий обзор проекта
 ├── PROJECT_STRUCTURE.md    # Описание структуры репозитория (этот файл)
 ├── README.md               # Основное описание репозитория
+├── repo-manifest.json      # Машиночитаемый индекс артефактов репозитория
 └── ...                     # Прочие вспомогательные файлы (например, .gitignore)
 ```
 
@@ -183,6 +185,7 @@ SDK/viewers/
 
 ```text
 services/
+├── runtime-api/            # Целевой единый deployable backend (модульный монолит)
 ├── game-catalog/           # Сервис каталога игр
 ├── game-editor/            # Сервис редактора игр
 ├── game-engine/            # Исполнительный игровой движок
@@ -198,6 +201,25 @@ services/
 ├── docs/                   # Локальная документация по сервису
 ├── src/                    # Исходный код
 └── tests/                  # Автотесты
+```
+
+Для `runtime-api/` структура уточняется в соответствии с ADR-017:
+
+```text
+runtime-api/
+├── DEV_GUIDE.md            # Назначение и внутренние модульные границы
+├── package.json            # Пакет deployable backend-а
+├── src/
+│   ├── index.ts            # Точка входа и реестр модулей
+│   └── modules/
+│       ├── player-api/
+│       ├── session/
+│       ├── runtime/
+│       ├── content/
+│       ├── ai/
+│       ├── telemetry/
+│       └── admin/
+└── tests/
 ```
 
 ## Как поддерживать структуру в актуальном состоянии
