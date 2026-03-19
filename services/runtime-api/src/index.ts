@@ -3,6 +3,11 @@ export interface RuntimeApiModuleDescriptor {
   description: string;
 }
 
+export * from "./modules/session/contracts.ts";
+export * from "./modules/session/inMemorySessionStore.ts";
+export * from "./modules/content/manifestLoader.ts";
+export * from "./modules/player-api/httpServer.ts";
+
 export const runtimeApiModules: RuntimeApiModuleDescriptor[] = [
   { id: "player-api", description: "External client-facing session and action endpoints." },
   { id: "session", description: "Session lifecycle, locks, sequencing and recovery." },

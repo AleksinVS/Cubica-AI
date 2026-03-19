@@ -7,6 +7,7 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
+    "dev": "node --experimental-strip-types --enable-source-maps src/bootstrap.ts",
     "build": "echo \"TODO: add runtime-api build\"",
     "test": "echo \"TODO: add runtime-api tests\"",
     "lint": "echo \"TODO: add runtime-api lint\""
