@@ -2,15 +2,16 @@
 
 ## Текущее состояние
 
-`services/runtime-api/` создан как каркас модульного монолита по ADR-017.
+`services/runtime-api/` работает как модульный монолитный backend runtime для `Antarctica`.
 
 Сейчас в нём уже есть:
 
-- `packages/contracts/session` как canonical source of truth для session DTO/contracts
-- `src/modules/session/contracts.ts`
+- `packages/contracts/session` и `packages/contracts/runtime` как canonical DTO/contracts layer
+- `packages/contracts/manifest` как typed manifest model
 - `src/modules/session/inMemorySessionStore.ts`
 - `src/modules/content/manifestLoader.ts`
-- `src/modules/runtime/*` для deterministic action registry и dispatch
+- `src/modules/content/manifestValidation.ts`
+- `src/modules/runtime/*` для capability-based deterministic dispatch
 - `src/modules/player-api/httpServer.ts`
 - `src/bootstrap.ts`
 
@@ -27,9 +28,10 @@
 
 - `POST /sessions` загружает `games/antarctica/game.manifest.json`;
 - initial state берётся из `manifest.state`;
-- сессии хранятся in-memory;
-- `POST /actions` проходит через deterministic action registry, валидирует `actionId` по manifest и применяет controlled state transition;
-- runtime metadata пишется в `state.runtime`, а `public.log` получает append-only запись о действии.
+- request bodies и manifest shape проходят bounded validation;
+- `POST /actions` роутится по manifest capability family;
+- runtime metadata и `public.log` фиксируют фактический dispatch;
+- сессии пока хранятся in-memory.
 
 ## Как запускать локально
 
@@ -37,49 +39,40 @@
 npm run dev --workspace services/runtime-api
 ```
 
-Текущий runtime использует:
+Текущий runtime использует Node `v22+` и `--experimental-strip-types`.
 
-- Node `v22+`
-- `--experimental-strip-types`
+## Что проверить
 
-## Что проверено
+Для текущего canonical slice используй root-level команды:
 
-Проверялись:
+```bash
+npm run verify:runtime-api
+npm run verify:player-web
+npm run verify:canonical
+```
 
-- импорт `services/runtime-api/src/index.ts`
-- загрузка `games/antarctica` через `manifestLoader`
-- создание HTTP server через `createRuntimeApiServer`
-- базовые HTTP/integration tests через `node:test`
-
-Есть executable smoke script:
+Если нужен более узкий цикл:
 
 ```bash
 npm run smoke --workspace services/runtime-api
 ```
 
-Есть integration test command:
-
-```bash
-npm test --workspace services/runtime-api
-```
-
 ## Что ещё НЕ сделано
 
-- нет health/readiness различия;
 - нет persistence, locks, recovery;
-- нет schema validation на входе API;
-- нет persistence-aware test fixtures.
+- нет readiness endpoint;
+- capability handlers пока покрывают только текущие `Antarctica` actions;
+- нет полноценного shared viewer/runtime package между apps.
 
 ## Следующие шаги по приоритету
 
-1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.
-2. Добавить schema validation на вход API и для manifest action definitions.
-3. Расширять deterministic handler layer от текущего registry.
-4. Перенести полезные router/session наработки в модули `session` и `player-api`.
-5. Расширить `packages/contracts/*` и `apps/player-web`.
+1. Расширять capability-based runtime только когда появятся новые concrete game mechanics.
+2. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
+3. Добавлять persistence только после появления реального operational need.
+4. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
 
 ## Важные замечания
 
-- `package-lock.json` уже изменён в рабочем дереве и требует аккуратности при дальнейших npm-операциях.
-- В репозитории всё ещё есть старые сервисные каталоги `services/router`, `services/game-engine`, `services/game-repository`; на ближайшей фазе их нужно трактовать как legacy/service-boundary references, а не как основной runtime path.
-- Канонический content source of truth для игры — `games/antarctica/`.
+- `services/router`, `services/game-engine`, `services/game-repository` остаются legacy/service-boundary references.
+- Канонический content source of truth для игры - `games/antarctica/`.
+- `apps/player-web/` уже входит в current canonical slice и должен оставаться чистым от generated artifacts.

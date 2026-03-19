@@ -1,6 +1,6 @@
 # Next Steps
 
-Документ фиксирует ближайшие инженерные шаги по развитию Cubica после перехода к модульному монолиту и появления `services/runtime-api/`.
+Документ фиксирует ближайшие инженерные шаги по развитию Cubica после перехода к AI/Code-first ядру, появления `services/runtime-api/` и канонического `apps/player-web/`.
 
 ## Truth Model для Antarctica
 
@@ -13,6 +13,17 @@
 
 Это закреплено в `ADR-018`.
 
+## Текущая фаза
+
+Следующий крупный этап уже собран в рабочий vertical slice:
+
+- `games/antarctica/game.manifest.json` как source of truth для исполнимой логики;
+- capability-based deterministic runtime в `services/runtime-api/`;
+- канонический web-player scaffold в `apps/player-web/`;
+- root-level verify scripts для `runtime-api` и `player-web`.
+
+Оставшаяся работа теперь относится к фазе расширения, а не к базовому переходу.
+
 ## Приоритет 1. Complete the Antarctica Truth Model
 
 1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.
@@ -23,25 +34,23 @@
 
 ## Приоритет 2. Harden Runtime API
 
-1. Добавить schema validation для `POST /sessions` и `POST /actions`.
-2. Расширять deterministic handler layer от текущего registry.
-3. Привязать runtime handlers к manifest-defined actions и capability model.
-4. Разделить `health` и `readiness`.
+1. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`.
+2. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
+3. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
+4. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
 
 ## Приоритет 3. Introduce Full Contracts Layer
 
-1. Заполнить `packages/contracts/session` DTO для session lifecycle и player API.
-2. Заполнить `packages/contracts/runtime` DTO для action result, state delta, effects и capability execution.
-3. Заполнить `packages/contracts/manifest` типами manifest bundle, action definitions, stage/timeline model и metadata.
-4. Заполнить `packages/contracts/ai` контрактами для AI task/result и eval hooks.
-5. Перевести `runtime-api` и SDK на импорты из contracts layer.
+1. Заполнить `packages/contracts/session` и `packages/contracts/runtime` DTO только по мере появления новых потребителей.
+2. Продолжить расширять `packages/contracts/manifest` под новые game types и capabilities.
+3. Добавлять `packages/contracts/ai` только когда появится реальный AI execution path, а не абстрактный placeholder.
+4. Переводить SDK и вспомогательные tools на contracts layer по мере фактической интеграции.
 
 ## Приоритет 4. Build Player-Web from Canonical Sources
 
-1. Создать `apps/player-web`.
-2. Проектировать его от `runtime-api`, `packages/contracts/*`, `games/antarctica/game.manifest.json` и `games/antarctica/design/mockups/`.
-3. Использовать `draft/antarctica-nextjs-player/` только как визуальный набросок, если это полезно, но не переносить из него структуру, data flow и runtime assumptions.
-4. Выделить viewer/runtime слой в отдельный reusable package.
+1. Развивать `apps/player-web` как канонический web delivery layer для `Antarctica`.
+2. Подключать новые UI-паттерны только через canonical content/model layer, а не через draft-player структуру.
+3. Если появятся новые платформы или каналы, сначала выделять shared viewer/runtime contracts, а потом уже отдельные apps.
 
 ## Приоритет 5. Manifest and Capability Evolution
 
@@ -52,8 +61,6 @@
 
 ## Приоритет 6. Repository Hygiene
 
-1. Расширить `repo-manifest.json` до полного индекса крупных артефактов.
-2. Явно размечать `actual / target / draft / archive / placeholder`.
-3. Явно фиксировать roles для `games/antarctica/`, `games/antarctica/design/mockups/`, `games/antarctica/scenario.md`, `draft/Antarctica/README.md`, `draft/antarctica-nextjs-player/`.
-4. Обновить `PROJECT_STRUCTURE.md` после появления `packages/` и `apps/`.
-5. Согласовать `package-lock.json` с актуальной workspace-структурой.
+1. Поддерживать `repo-manifest.json` и `PROJECT_STRUCTURE.md` синхронно с фактическими workspace-артефактами.
+2. Явно размечать `actual / target / draft / archive / placeholder` только там, где это помогает агентам не путать канонические и draft-слои.
+3. Держать root-level `verify:*` scripts в актуальном состоянии, чтобы следующий агент мог быстро проверить текущий canonical slice.
