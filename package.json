@@ -5,6 +5,7 @@
   "license": "UNLICENSED",
   "workspaces": [
     "games/antarctica-nextjs-player",
+    "apps/player-web",
     "SDK/core",
     "SDK/shared",
     "SDK/react-sdk",

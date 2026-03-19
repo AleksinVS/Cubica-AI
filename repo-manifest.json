@@ -57,6 +57,20 @@
       "source_of_truth": false
     },
     {
+      "id": "app.player-web",
+      "kind": "app",
+      "path": "apps/player-web",
+      "status": "actual",
+      "owner": "frontend-platform",
+      "source_of_truth": false,
+      "depends_on": [
+        "backend.runtime-api",
+        "game.antarctica",
+        "contracts.manifest",
+        "contracts.session"
+      ]
+    },
+    {
       "id": "repo.next-steps",
       "kind": "working-agreement",
       "path": "NEXT_STEPS.md",
