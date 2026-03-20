@@ -11,7 +11,8 @@
       "PROJECT_STRUCTURE.md",
       "docs/architecture/PROJECT_ARCHITECTURE.md",
       "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
-      "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md"
+      "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md",
+      "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md"
     ]
   },
   "artifacts": [
@@ -38,13 +39,21 @@
       "owner": "platform"
     },
     {
+      "id": "adr.019.runtime-owned-player-content",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
       "id": "backend.runtime-api",
       "kind": "deployable-service",
       "path": "services/runtime-api",
       "status": "actual",
       "owner": "backend",
       "adr_refs": [
-        "ADR-017"
+        "ADR-017",
+        "ADR-019"
       ],
       "depends_on": [
         "contracts.session",
@@ -67,6 +76,9 @@
       "status": "actual",
       "owner": "frontend-platform",
       "source_of_truth": false,
+      "adr_refs": [
+        "ADR-019"
+      ],
       "depends_on": [
         "backend.runtime-api",
         "game.antarctica",

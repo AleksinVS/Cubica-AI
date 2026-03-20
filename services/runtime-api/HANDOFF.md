@@ -15,6 +15,8 @@
 - `src/modules/player-api/httpServer.ts`
 - `src/bootstrap.ts`
 
+Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
+
 ## Что уже работает
 
 Минимальный HTTP-контур:
@@ -62,14 +64,17 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
+- ещё нет player-facing content DTO/API, поэтому `apps/player-web` пока читает repo files напрямую;
 - нет полноценного shared viewer/runtime package между apps.
 
 ## Следующие шаги по приоритету
 
-1. Расширять capability-based runtime только когда появятся новые concrete game mechanics.
-2. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
-3. Добавлять persistence только после появления реального operational need.
-4. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
+1. Добавить player-facing content query/DTO и endpoint в `runtime-api`, чтобы backend стал единственным owner загрузки `games/*` для player delivery.
+2. Держать transport/content split явным: `player-api` отдаёт HTTP boundary, а `content`-модуль загружает и проецирует manifest/design data.
+3. Расширять capability-based runtime только когда появятся новые concrete game mechanics.
+4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
+5. Добавлять persistence только после появления реального operational need.
+6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
 
 ## Важные замечания
 

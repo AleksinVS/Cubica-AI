@@ -15,8 +15,8 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
-- `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
-- `apps/player-web/` - канонический web delivery layer.
+- `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
+- `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
 - `packages/contracts/*` - общий contracts layer.
 - `draft/*` и импортированные portal/player drafts - reference only, а не canonical runtime/architecture sources.
 
@@ -100,7 +100,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 **Клиентские приложения:**
 - `draft/antarctica-nextjs-player/` — archived UI prototype and visual reference only.
 - `apps/player-web/` — current canonical web-player scaffold.
-  - Опирается на `runtime-api` и `games/antarctica/`.
+  - Должен опираться на `runtime-api` как на session/action boundary и player-facing content boundary.
 - `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
 - `draft/Antarctica/` — legacy mechanics reference, not a source of truth for the current runtime slice.
 
@@ -205,6 +205,8 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-015 (Extension Packs):** Архитектура пакетов расширений и гибридная модель движка (Engine Extensions + User Scripts).
 - **ADR-016 (Design Artifacts):** Дизайн-артефакты для ИИ-агентов в UI-манифесте — JSON-описания изображений с семантической разметкой и дизайн-токенами.
 - **ADR-017 (Modular Monolith Transition):** Ближайшая backend-фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
+- **ADR-018 (JSON Manifest Truth Model):** Исполнимая логика игры закрепляется в `games/<id>/game.manifest.json`, а narrative и draft-артефакты не считаются runtime source of truth.
+- **ADR-019 (Runtime-Owned Player Content Boundary):** `runtime-api` владеет загрузкой game content и проекцией player-facing content DTO/API; `player-web` не должен читать `games/*` напрямую.
 
 
 ---
@@ -240,6 +242,7 @@ Execution Model определяет, как платформа обрабаты
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
+- Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
 - `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.
 - Future games should be added through `games/*`, `packages/contracts/*` and `runtime-api`, not by extending old draft paths.

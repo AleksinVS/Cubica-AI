@@ -13,6 +13,8 @@
 
 Это закреплено в `ADR-018`.
 
+Следующий канонический boundary step закреплён в `ADR-019`: `services/runtime-api` должен владеть загрузкой игрового контента и отдавать player-facing content DTO/API, а `apps/player-web` должен перестать читать repo files напрямую.
+
 ## Текущая фаза
 
 Следующий крупный этап уже собран в рабочий vertical slice:
@@ -34,10 +36,12 @@
 
 ## Приоритет 2. Harden Runtime API
 
-1. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`.
-2. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
-3. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
-4. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
+1. Сделать `runtime-api` единственным владельцем загрузки `games/*` для runtime и player-facing delivery, как зафиксировано в `ADR-019`.
+2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
+3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`.
+4. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
+5. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
+6. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
 
 ## Приоритет 3. Introduce Full Contracts Layer
 
@@ -49,8 +53,9 @@
 ## Приоритет 4. Build Player-Web from Canonical Sources
 
 1. Развивать `apps/player-web` как канонический web delivery layer для `Antarctica`.
-2. Подключать новые UI-паттерны только через canonical content/model layer, а не через draft-player структуру.
-3. Если появятся новые платформы или каналы, сначала выделять shared viewer/runtime contracts, а потом уже отдельные apps.
+2. Перевести `apps/player-web` на player-facing content API/DTO из `runtime-api` и считать прямое чтение `games/*` временным состоянием до миграции.
+3. Подключать новые UI-паттерны только через canonical content/model layer, а не через draft-player структуру.
+4. Если появятся новые платформы или каналы, сначала выделять shared viewer/runtime contracts, а потом уже отдельные apps.
 
 ## Приоритет 5. Manifest and Capability Evolution
 
