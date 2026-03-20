@@ -67,6 +67,7 @@ npm run smoke --workspace services/runtime-api
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
 - нет полноценного shared viewer/runtime package между apps.
+- для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/Game.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `Game.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 
 ## Следующие шаги по приоритету
 
@@ -76,6 +77,7 @@ npm run smoke --workspace services/runtime-api
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
+7. Для ближайшего Antarctica gameplay slice извлекать механику из `draft/Antarctica/Game.html` через scripts и переносить её в `games/antarctica/game.manifest.json` как в конечный исполнимый source of truth.
 
 ## Важные замечания
 

@@ -29,14 +29,14 @@
     },
     "references": [
       {
-        "path": "games/antarctica/scenario.md",
-        "kind": "legacy-scenario",
-        "note": "Reference material for mechanics extraction; not runtime source of truth."
+        "path": "draft/Antarctica/Game.html",
+        "kind": "legacy-prototype",
+        "note": "Current factual source for Antarctica mechanics extraction during migration; not runtime source of truth."
       },
       {
         "path": "draft/Antarctica/README.md",
         "kind": "legacy-prototype-notes",
-        "note": "Reference material for gameplay structure extraction."
+        "note": "Reference material describing the legacy Game.html structure for targeted mechanics extraction."
       }
     ]
   },
@@ -51,10 +51,6 @@
     }
   },
   "content": {
-    "scenario": {
-      "path": "games/antarctica/scenario.md",
-      "kind": "legacy-scenario"
-    },
     "scripts": [
       {
         "path": "games/antarctica/scripts/actions.js",

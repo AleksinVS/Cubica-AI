@@ -15,6 +15,7 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
+- `draft/Antarctica/Game.html` - текущий factual extraction source для Antarctica mechanics migration; это не canonical runtime source of truth и не новое архитектурное решение.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
 - `packages/contracts/*` - общий contracts layer.
@@ -102,7 +103,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 - `apps/player-web/` — current canonical web-player scaffold.
   - Должен опираться на `runtime-api` как на session/action boundary и player-facing content boundary.
 - `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
-- `draft/Antarctica/` — legacy mechanics reference, not a source of truth for the current runtime slice.
+- `draft/Antarctica/` — legacy mechanics reference. На текущем migration этапе `draft/Antarctica/Game.html` остаётся фактическим extraction source для ещё не перенесённой gameplay-логики, но не считается canonical runtime truth.
 
 ### 2.3. Данные и игровые манифесты (current conventions + target model)
 
