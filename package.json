@@ -4,7 +4,7 @@
   "description": "Workspace root for Cubica SDK packages, games and supporting apps.",
   "license": "UNLICENSED",
   "workspaces": [
-    "games/antarctica-nextjs-player",
+
     "apps/player-web",
     "SDK/core",
     "SDK/shared",

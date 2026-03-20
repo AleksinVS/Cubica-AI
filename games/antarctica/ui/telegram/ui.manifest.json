@@ -57,7 +57,7 @@
         "kind": "screen",
         "id": "S1"
       },
-      "image": "games/antarctica-nextjs-player/public/images/arctic-background.png",
+      "image": "games/antarctica/assets/images/arctic-background.png",
       "spec": {
         "notes": "MVP placeholder for the Telegram screen layout."
       },
