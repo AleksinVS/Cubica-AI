@@ -3,11 +3,15 @@
     "id": "cubica-monorepo",
     "name": "Cubica",
     "status": "actual",
-    "last_verified_at": "2026-03-19",
+    "last_verified_at": "2026-03-21",
     "source_of_truth": [
+      "NEXT_STEPS.md",
+      "services/runtime-api/HANDOFF.md",
       "PROJECT_OVERVIEW.md",
       "PROJECT_STRUCTURE.md",
-      "docs/architecture/PROJECT_ARCHITECTURE.md"
+      "docs/architecture/PROJECT_ARCHITECTURE.md",
+      "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
+      "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md"
     ]
   },
   "artifacts": [
@@ -30,14 +34,14 @@
       "id": "adr.017.modular-monolith",
       "kind": "adr",
       "path": "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
-      "status": "proposed",
+      "status": "actual",
       "owner": "platform"
     },
     {
       "id": "backend.runtime-api",
       "kind": "deployable-service",
       "path": "services/runtime-api",
-      "status": "target",
+      "status": "actual",
       "owner": "backend",
       "adr_refs": [
         "ADR-017"
@@ -135,21 +139,21 @@
       "id": "contracts.manifest",
       "kind": "package",
       "path": "packages/contracts/manifest",
-      "status": "target",
+      "status": "actual",
       "owner": "platform"
     },
     {
       "id": "contracts.session",
       "kind": "package",
       "path": "packages/contracts/session",
-      "status": "target",
+      "status": "actual",
       "owner": "platform"
     },
     {
       "id": "contracts.runtime",
       "kind": "package",
       "path": "packages/contracts/runtime",
-      "status": "target",
+      "status": "actual",
       "owner": "platform"
     },
     {

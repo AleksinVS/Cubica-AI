@@ -24,6 +24,14 @@
 
 Платформа обеспечивает полный цикл: от разработки игры до проведения игровых сессий и анализа.  
 
+### Текущий канонический срез
+- `games/antarctica/game.manifest.json` - источник истины для исполнимой логики `Antarctica`.
+- `games/antarctica/design/mockups/` - источник истины для UI-намерения и экранных макетов.
+- `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
+- `apps/player-web/` - канонический web delivery слой для `Antarctica`.
+- `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI.
+- `draft/antarctica-nextjs-player/`, `apps/portal-nextjs/` и `services/portal-backend/` - draft-артефакты и прототипы, не целевая архитектура.
+
 ### Основные сценарии использования
 1. Разработчик создаёт игру в редакторе (чат с LLM + визуальный редактор логики + редактор интерфейсов).
 2. Игра публикуется в **каталоге** и становится доступной для покупки.
@@ -48,9 +56,11 @@
 - **Stub-to-Production Path** — каждая временная заглушка регистрируется и имеет план снятия (см. `docs/legacy/debt-log.csv`).
 - **Security & Privacy** — секреты хранятся вне кода, доступы разграничены RBAC, данные пользователей минимальны.
 - **Trunk-based development** — короткие feature-ветки, обязательные проверки и ревью, единая ветка `main`.
-- **MVP + LLM-first** — пользовательские интерфейсы и SDK проектируются по шаблону MVP (Model–View–Presenter), а игровая логика и сценарии — вокруг LLM-first архитектуры, в которой LLM (Large Language Model, большая языковая модель) выступает основным «движком» игры и работает на основе JSON‑манифестов.
+- **MVP + LLM-first** — исторический target для более ранней версии платформы; текущий canonical slice использует deterministic runtime и JSON‑manifest source of truth, а LLM остаётся будущим capability layer для авторинга и расширения.
 
 ## 3. Логическая архитектура
+
+Раздел ниже описывает target platform architecture. Текущий canonical slice уже зафиксирован выше и в `NEXT_STEPS.md`, `repo-manifest.json` и `services/runtime-api/HANDOFF.md`.
 
 ## MVP (Model–View–Presenter)
 
@@ -206,9 +216,10 @@
 
 ## 7. Текущее состояние
 На данный момент есть:
-- Сервер для деплоя MVP
-- Репозиторий с MVP Game Catalog (draft/cubica-portal-nextjs) + развернутый на сервере для деплоя экземпляр
-- Исходный код игры "Antarctica" (draft/Antarctica) — источник бизнес-логики.
-- Рабочая версия Next.js-плеера сценария «Antarctica» в каталоге `games/antarctica-nextjs-player/`. Реализована на базе целевой архитектуры (SDK/core, SDK/shared, SDK/react-sdk) и использует JSON-манифесты.
+- Канонический content bundle `games/antarctica/` с `game.manifest.json`, `ui.manifest.json` и design mockups.
+- Канонический backend runtime `services/runtime-api/` с bounded validation, capability routing и deterministic handlers.
+- Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/antarctica/` и `packages/contracts/*`.
+- `apps/portal-nextjs/` и `services/portal-backend/` как импортированные draft-артефакты портала для последующего анализа.
+- `draft/antarctica-nextjs-player/` как визуальный prototype/reference, но не source of truth для кода, структуры или runtime-логики.
 
 ---

@@ -8,6 +8,18 @@
 > - **MVP‑паттерн** — Model–View–Presenter, шаблон разделения модели данных, представления и прослойки‑«презентера».
 > - **ADR** — Architecture Decision Record, документ с зафиксированным архитектурным решением.
 
+## Текущий канонический срез
+
+Текущий канонический срез уже реализован и должен читаться первым:
+
+- `games/antarctica/` - canonical content bundle.
+- `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
+- `games/antarctica/design/mockups/` - source of truth для UI intent.
+- `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
+- `apps/player-web/` - канонический web delivery layer.
+- `packages/contracts/*` - общий contracts layer.
+- `draft/*` и импортированные portal/player drafts - reference only, а не canonical runtime/architecture sources.
+
 ## Оглавление
 
 - [1. Контекст и цели](#1-контекст-и-цели)
@@ -35,7 +47,8 @@
 - Основная ценность — возможность быстро разрабатывать сценарии (игровые «манифесты») и переиспользовать инфраструктуру запуска игр.
 
 ### Техническая стратегия
-- Платформа опирается на LLM‑first подход: LLM рассматривается как игровой движок и принимает решения на основании структурированных данных.
+- Исторический target дизайна платформы опирался на LLM‑first подход, но текущий canonical slice уже использует deterministic runtime и JSON‑manifest source of truth.
+- LLM остаётся будущим capability layer для authoring, assistance и richer runtime modes, а не текущим основанием канонического execution path.
 - Формат данных: **JSON‑манифесты игр** и версионируемый каталог контента (`data/fixtures/`, `games/`, схемы в `docs/architecture/schemas/`).
 - Архитектурные принципы MVP и формат манифестов формализованы в ADR‑001 (`docs/architecture/adrs/001-mvp-and-llm-first-game-manifests.md`).
 - Протоколы взаимодействия слоев зафиксированы в ADR-002 (`docs/architecture/adrs/002-abstract-view-protocol.md`) и описывают взаимодействие Presenter и View через абстрактный шлюз (Command Pattern + Promises).
@@ -44,9 +57,9 @@
 
 ## 2. Логическая архитектура платформы
 
-### 2.1. Backend‑сервисы
+### 2.1. Backend‑сервисы (target)
 
-Backend‑слой реализуется как набор независимых сервисов (каждый — отдельный каталог в `services/`):
+Target backend layer still describes a set of independent services (each in `services/`):
 
 - **Game Editor** (`services/game-editor/`) — редактор игр и сценариев.
   - Позволяет редактировать сценарии и манифесты (JSON) и публиковать их в репозиторий.
@@ -66,7 +79,7 @@ Backend‑слой реализуется как набор независимы
 - **Metadata Database** (`services/metadata-db/`) — аналитический слой.
   - Сводит события из Router, Engine и Repository для аналитики и отчетности (детально будет развиваться во Фазе 2+).
 
-На момент актуализации документа все сервисы представлены заготовками: каталоги с `DEV_GUIDE.md` и пустыми `src/`/`tests/`. Это зафиксированный каркас для будущей реализации.
+Outside the current canonical `runtime-api` slice, most service folders remain scaffolds with `DEV_GUIDE.md` and mostly empty `src/`/`tests/`. Это target architecture scaffolding, а не текущая runtime reality.
 
 ### 2.2. Клиентские компоненты и SDK
 
@@ -85,13 +98,13 @@ Backend‑слой реализуется как набор независимы
 - `SDK/custom-examples/` — примерные и вспомогательные пакеты с документацией.
 
 **Клиентские приложения:**
-- `draft/antarctica-nextjs-player/` — рабочий прототип Next.js‑плеера (архивный, перенесён из `games/`).
-  - Используется как референс интеграции SDK, но не является частью основного релизного цикла.
-  - Целевой плеер для игр собирается на базе `SDK/viewers/`.
-- `draft/cubica-portal-nextjs/` — прототип портала каталога и запуска игр.
-- `draft/Antarctica/` — исходная версия игры «Antarctica» в виде монолитного HTML/JS, служит источником бизнес‑логики и контента.
+- `draft/antarctica-nextjs-player/` — archived UI prototype and visual reference only.
+- `apps/player-web/` — current canonical web-player scaffold.
+  - Опирается на `runtime-api` и `games/antarctica/`.
+- `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
+- `draft/Antarctica/` — legacy mechanics reference, not a source of truth for the current runtime slice.
 
-### 2.3. Данные и игровые манифесты
+### 2.3. Данные и игровые манифесты (current conventions + target model)
 
 Игровые манифесты описывают сценарий игры как данные: сущности, переменные, действия, поток экранов и правила формирования контекста для LLM. Они являются источником истины для движка и редактора.
 
@@ -226,12 +239,10 @@ Execution Model определяет, как платформа обрабаты
 
 На момент актуализации:
 
-- Backend‑сервисы в `services/*` находятся в статусе архитектурного каркаса.
-- SDK реализован частично:
-  - `SDK/core` содержит базовые контракты сессии и протокола View.
-  - `SDK/react-sdk` имеет базовый хук сессии и компонент игрового полотна.
-- Основная «живая» логика UI сосредоточена в `draft/antarctica-nextjs-player` (прототип на SDK) и `draft/cubica-portal-nextjs`.
-- Работа по переносу сценария «Antarctica» на новый плеер описана в `docs/tasks/content-packs/CP_00020_antarctica_json_manifest.yaml` (ExecPlan).
+- `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
+- `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
+- `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.
+- Future games should be added through `games/*`, `packages/contracts/*` and `runtime-api`, not by extending old draft paths.
 
 ---
 
