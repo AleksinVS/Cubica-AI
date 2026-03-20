@@ -4,7 +4,7 @@ import type {
   SessionStorePort
 } from "@cubica/contracts-session";
 import type { RuntimeActionResult } from "@cubica/contracts-runtime";
-import { loadGameBundle } from "../content/manifestLoader.ts";
+import type { GameBundle } from "../content/manifestLoader.ts";
 import { NotFoundError, RequestValidationError } from "../errors.ts";
 import { createRuntimeActionRegistry, getRegisteredActionDefinition } from "./actionRegistry.ts";
 
@@ -18,6 +18,7 @@ const createNextVersion = (current: SessionRecord<RuntimeState>) => ({
 
 export interface DispatchRuntimeActionOptions {
   sessionStore: SessionStorePort<RuntimeState>;
+  bundle: GameBundle;
   input: DispatchActionInput;
 }
 
@@ -35,7 +36,7 @@ export async function dispatchRuntimeAction(
     throw new NotFoundError(`Session "${options.input.sessionId}" was not found`);
   }
 
-  const bundle = await loadGameBundle(current.gameId);
+  const { bundle } = options;
   const definition = getRegisteredActionDefinition(bundle, options.input.actionId);
 
   if (!definition) {

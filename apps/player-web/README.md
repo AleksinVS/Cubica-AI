@@ -19,14 +19,12 @@ The app does not talk to `runtime-api` directly from the browser. It proxies req
 - `POST /api/runtime/sessions`
 - `GET /api/runtime/sessions/:sessionId`
 - `POST /api/runtime/actions`
+- `GET /api/runtime/player-content/:gameId`
 
 Those routes forward to `RUNTIME_API_URL` or `http://127.0.0.1:3001` by default.
 
-## Source material
+## Content loading
 
-The scaffold reads canonical local content from:
-
-- `games/antarctica/game.manifest.json`
-- `games/antarctica/design/mockups/*.design.json`
+The app loads game content through the player-facing content API (`GET /api/runtime/player-content/:gameId`) which proxies to `runtime-api`'s `GET /games/:gameId/player-content` endpoint. This follows ADR-019: `runtime-api` is the sole owner of loading `games/*` content, and `player-web` consumes it through a typed DTO contract.
 
 It intentionally does not reuse the imported portal drafts as architecture reference.

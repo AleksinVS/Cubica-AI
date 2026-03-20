@@ -220,3 +220,59 @@ test("POST /actions rejects invalid request bodies", async () => {
   assert.equal(response.status, 400);
   assert.match(body.error, /actionId is required and must be a non-empty string/);
 });
+
+test("GET /games/:gameId/player-content returns player-facing content DTO", async () => {
+  const { response, body } = await requestJson<{
+    gameId: string;
+    version: string;
+    name: string;
+    description: string;
+    locale: string;
+    playerConfig: { min: number; max: number };
+    training?: { format: string };
+    actions: Array<{ actionId: string; displayName: string; capabilityFamily: string | null; capability: string | null }>;
+    mockups: Array<{ id: string; name: string; description: string; type: string; imagePath: string }>;
+  }>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+  assert.equal(body.gameId, "antarctica");
+  assert.equal(typeof body.version, "string");
+  assert.equal(typeof body.name, "string");
+  assert.equal(typeof body.description, "string");
+  assert.equal(body.locale, "ru-RU");
+  assert.deepEqual(body.playerConfig, { min: 1, max: 1 });
+  assert.ok(Array.isArray(body.actions));
+  assert.ok(body.actions.length > 0);
+  const showHintAction = body.actions.find((a) => a.actionId === "showHint");
+  assert.ok(showHintAction);
+  assert.equal(showHintAction.displayName, "Show hint");
+  assert.equal(showHintAction.capabilityFamily, "ui.panel");
+  assert.equal(showHintAction.capability, "ui.panel.hint");
+  assert.ok(Array.isArray(body.mockups));
+  assert.ok(body.mockups.length > 0);
+  const firstMockup = body.mockups[0];
+  assert.equal(typeof firstMockup.id, "string");
+  assert.equal(typeof firstMockup.name, "string");
+  assert.equal(typeof firstMockup.description, "string");
+  assert.equal(typeof firstMockup.type, "string");
+  assert.equal(typeof firstMockup.imagePath, "string");
+});
+
+test("GET /games/:gameId/player-content returns 404 for non-existent game", async () => {
+  const { response, body } = await requestJson<{ error: string }>("/games/non-existent-game/player-content");
+
+  assert.equal(response.status, 404);
+  assert.equal(body.error, "Game \"non-existent-game\" was not found");
+});
+
+test("POST /sessions returns 404 for non-existent game", async () => {
+  const { response, body } = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "non-existent-game"
+    })
+  });
+
+  assert.equal(response.status, 404);
+  assert.equal(body.error, "Game \"non-existent-game\" was not found");
+});

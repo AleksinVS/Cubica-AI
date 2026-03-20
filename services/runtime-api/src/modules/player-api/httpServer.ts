@@ -1,20 +1,17 @@
 import http from "node:http";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type {
-  CreateSessionInput,
-  DispatchActionInput
-} from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
-import { dispatchRuntimeAction } from "../runtime/actionDispatcher.ts";
-import { extractInitialState, loadGameBundle } from "../content/manifestLoader.ts";
-import { InMemorySessionStore } from "../session/inMemorySessionStore.ts";
+import { SessionService } from "../session/session.service.ts";
+import { RuntimeService } from "../runtime/runtime.service.ts";
+import { loadPlayerFacingContent } from "../content/contentService.ts";
 import { parseCreateSessionRequest, parseDispatchActionRequest } from "./requestValidation.ts";
 
 interface RuntimeApiServerOptions {
   port?: number;
 }
 
-const sessionStore = new InMemorySessionStore<Record<string, unknown>>();
+const sessionService = new SessionService();
+const runtimeService = new RuntimeService();
 
 const sendJson = (response: ServerResponse, statusCode: number, payload: unknown) => {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
@@ -51,30 +48,25 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      const playerContentMatch = request.method === "GET" && request.url?.match(/^\/games\/([^/]+)\/player-content$/);
+      if (playerContentMatch) {
+        const gameId = playerContentMatch[1];
+        const { content } = await loadPlayerFacingContent({ gameId });
+        sendJson(response, 200, content);
+        return;
+      }
+
       if (request.method === "POST" && request.url === "/sessions") {
         const body = await readJsonBody(request);
         const requestBody = parseCreateSessionRequest(body);
-        const gameId = requestBody.gameId ?? "antarctica";
-        const bundle = await loadGameBundle(gameId);
-        const createSessionInput = {
-          gameId,
-          playerId: requestBody.playerId,
-          initialState: extractInitialState(bundle) as Record<string, unknown>
-        } satisfies CreateSessionInput<Record<string, unknown>>;
-        const snapshot = await sessionStore.createSession(createSessionInput);
-
-        sendJson(response, 201, {
-          sessionId: snapshot.sessionId,
-          gameId: snapshot.gameId,
-          version: snapshot.version,
-          state: snapshot.state
-        });
+        const snapshot = await sessionService.createSession(requestBody);
+        sendJson(response, 201, snapshot);
         return;
       }
 
       if (request.method === "GET" && request.url?.startsWith("/sessions/")) {
         const sessionId = request.url.slice("/sessions/".length);
-        const snapshot = await sessionStore.getSession(sessionId);
+        const snapshot = await sessionService.getSession(sessionId);
 
         if (!snapshot) {
           sendJson(response, 404, { error: `Session "${sessionId}" was not found` });
@@ -89,21 +81,23 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const body = await readJsonBody(request);
         const requestBody = parseDispatchActionRequest(body);
 
-        const { snapshot } = await dispatchRuntimeAction({
-          sessionStore,
+        const sessionSnapshot = await sessionService.getSession(requestBody.sessionId);
+        if (!sessionSnapshot) {
+          throw new HttpError(404, `Session "${requestBody.sessionId}" was not found`);
+        }
+
+        const { response: dispatchResponse } = await runtimeService.dispatch({
+          sessionStore: sessionService.getSessionStore(),
+          gameId: sessionSnapshot.gameId,
           input: {
             sessionId: requestBody.sessionId,
             playerId: requestBody.playerId,
             actionId: requestBody.actionId,
             payload: requestBody.payload
-          } satisfies DispatchActionInput
+          }
         });
 
-        sendJson(response, 200, {
-          sessionId: snapshot.sessionId,
-          version: snapshot.version,
-          state: snapshot.state
-        });
+        sendJson(response, 200, dispatchResponse);
         return;
       }
 

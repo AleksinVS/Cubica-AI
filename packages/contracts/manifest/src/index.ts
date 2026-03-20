@@ -129,3 +129,30 @@ export interface ManifestBundle<
   manifest: TManifest;
   uiManifest?: TUiManifest;
 }
+
+export interface PlayerFacingAction {
+  actionId: string;
+  displayName: string;
+  capabilityFamily: string | null;
+  capability: string | null;
+}
+
+export interface PlayerFacingMockup {
+  id: string;
+  name: string;
+  description: string;
+  type: string;
+  imagePath: string;
+}
+
+export interface PlayerFacingContent {
+  gameId: GameManifestId;
+  version: GameManifestVersion;
+  name: string;
+  description: string;
+  locale: GameManifestLocale;
+  playerConfig: GameManifestPlayerConfig;
+  training?: GameManifestTraining;
+  actions: Array<PlayerFacingAction>;
+  mockups: Array<PlayerFacingMockup>;
+}

@@ -7,10 +7,11 @@
 Сейчас в нём уже есть:
 
 - `packages/contracts/session` и `packages/contracts/runtime` как canonical DTO/contracts layer
-- `packages/contracts/manifest` как typed manifest model
+- `packages/contracts/manifest` как typed manifest model (включая `PlayerFacingContent` DTO)
 - `src/modules/session/inMemorySessionStore.ts`
 - `src/modules/content/manifestLoader.ts`
 - `src/modules/content/manifestValidation.ts`
+- `src/modules/content/contentService.ts` (загружает и проецирует player-facing content)
 - `src/modules/runtime/*` для capability-based deterministic dispatch
 - `src/modules/player-api/httpServer.ts`
 - `src/bootstrap.ts`
@@ -25,6 +26,7 @@
 - `POST /sessions`
 - `GET /sessions/:id`
 - `POST /actions`
+- `GET /games/:gameId/player-content`
 
 Поведение:
 
@@ -64,13 +66,12 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- ещё нет player-facing content DTO/API, поэтому `apps/player-web` пока читает repo files напрямую;
 - нет полноценного shared viewer/runtime package между apps.
 
 ## Следующие шаги по приоритету
 
-1. Добавить player-facing content query/DTO и endpoint в `runtime-api`, чтобы backend стал единственным owner загрузки `games/*` для player delivery.
-2. Держать transport/content split явным: `player-api` отдаёт HTTP boundary, а `content`-модуль загружает и проецирует manifest/design data.
+1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
+2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
 3. Расширять capability-based runtime только когда появятся новые concrete game mechanics.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.

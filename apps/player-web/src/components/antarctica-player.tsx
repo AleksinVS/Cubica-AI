@@ -1,39 +1,23 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import type { AntarcticaMockup, ActionSnapshot, SessionSnapshot } from "@/lib/antarctica";
+import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
+import type { ActionSnapshot, SessionSnapshot } from "@/lib/antarctica";
+
+export type { PlayerFacingMockup as AntarcticaMockup };
 
 type AntarcticaAction = {
   actionId: string;
   displayName: string;
-  capabilityFamily: string;
+  capabilityFamily: string | null;
   capability: string | null;
 };
 
 type AntarcticaPlayerProps = {
   runtimeApiUrl: string;
-  manifest: {
-    meta: {
-      name: string;
-      description: string;
-      version: string;
-    };
-    config: {
-      players: {
-        min: number;
-        max: number;
-      };
-      settings: {
-        mode: string;
-        locale: string;
-      };
-    };
-    state: {
-      public: Record<string, unknown>;
-    };
-  };
+  content: PlayerFacingContent;
   actions: Array<AntarcticaAction>;
-  mockups: Array<AntarcticaMockup>;
+  mockups: Array<PlayerFacingMockup>;
 };
 
 type AntarcticaSession = SessionSnapshot & {
@@ -65,7 +49,7 @@ const formatValue = (value: unknown) => {
   return String(value);
 };
 
-export function AntarcticaPlayer({ runtimeApiUrl, manifest, actions, mockups }: AntarcticaPlayerProps) {
+export function AntarcticaPlayer({ runtimeApiUrl, content, actions, mockups }: AntarcticaPlayerProps) {
   const [session, setSession] = useState<AntarcticaSession | null>(null);
   const [booting, setBooting] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -120,7 +104,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, manifest, actions, mockups }: 
     return () => {
       cancelled = true;
     };
-  }, [manifest.meta.name]);
+  }, [content.name]);
 
   const dispatchAction = (actionId: string) => {
     if (!session) {
@@ -167,8 +151,8 @@ export function AntarcticaPlayer({ runtimeApiUrl, manifest, actions, mockups }: 
       <div className="frame">
         <section className="hero">
           <div className="eyebrow">Cubica Player Web</div>
-          <h1 className="title">{manifest.meta.name}</h1>
-          <p className="subtitle">{manifest.meta.description}</p>
+          <h1 className="title">{content.name}</h1>
+          <p className="subtitle">{content.description}</p>
         </section>
 
         <section className="grid">
@@ -224,9 +208,8 @@ export function AntarcticaPlayer({ runtimeApiUrl, manifest, actions, mockups }: 
                   </div>
                   <div className="status-row" style={{ marginTop: 14 }}>
                     <span className="chip">runtime: {runtimeApiUrl}</span>
-                    <span className="chip">players: {manifest.config.players.min}-{manifest.config.players.max}</span>
-                    <span className="chip">mode: {manifest.config.settings.mode}</span>
-                    <span className="chip">locale: {manifest.config.settings.locale}</span>
+                    <span className="chip">players: {content.playerConfig.min}-{content.playerConfig.max}</span>
+                    <span className="chip">locale: {content.locale}</span>
                   </div>
                   {error ? <div className="error">{error}</div> : null}
                 </section>
