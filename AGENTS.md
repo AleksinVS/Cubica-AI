@@ -22,8 +22,9 @@ Agents must always:
 1. **For any work in Cubica, use `$cubica` as the Codex wrapper; when working in another runtime, follow the same repo-local Cubica process contract in this file.**
 2. **When planning, configuring, and developing, always use Context7 MCP to get up-to-date documentation and best practices.**
 3. **Use reasoning effort deliberately**
-   - Use built-in **Codex subagents** with **high reasoning effort** for architecture work, architecture reviews, decomposition of large tasks, and review of risky diffs.
+   - Use built-in **Codex subagents** with **high reasoning effort** for architecture work, decomposition of large tasks, and review of risky diffs.
    - Use **opencode subagents** with preferred model **`minimax-coding-plan/MiniMax-M2.7`** for code-writing implementation slices when that worker is available; otherwise fall back to built-in Codex subagents for the same bounded slice.
+   - Use an **opencode high-review worker** only for risky or non-trivial slices that benefit from an additional bounded review pass.
    - Use **medium reasoning effort** by default for bounded implementation slices unless the task clearly needs more depth.
    - Use **low reasoning effort** only for simple mechanical follow-up edits.
 4. **Maintain documentation**
@@ -53,7 +54,7 @@ Agents must always:
 8. **Keep architectural authority and final review with the main agent**
    - Built-in Codex subagents may support architecture work only as analysts: they may gather facts, compare options, and analyze bounded areas.
    - Built-in Codex subagents must not be treated as the final decision-maker for architectural choices.
-   - Built-in Codex subagents may perform additional focused review, but they must not replace the final review by the main agent before commit.
+   - `opencode` high-review workers may perform additional focused or intermediate review for risky or non-trivial slices, but they must not replace the final review by the main agent before commit.
    - `opencode` subagents with model `minimax-coding-plan/MiniMax-M2.7` are the preferred implementation workers for code-writing slices when available; otherwise use built-in Codex subagents for the same slice.
 ---
 
