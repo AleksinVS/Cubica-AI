@@ -390,6 +390,22 @@
             "locked": true,
             "available": false
           },
+          "67": {
+            "selected": false,
+            "resolved": false
+          },
+          "68": {
+            "selected": false,
+            "resolved": false
+          },
+          "69": {
+            "selected": false,
+            "resolved": false
+          },
+          "70": {
+            "selected": false,
+            "resolved": false
+          },
           "3902": {
             "selected": false,
             "resolved": false,
@@ -3583,6 +3599,7 @@
           "targetStepIndex": 0,
           "targetStageId": "stage_loss",
           "targetScreenId": "S1",
+          "targetInfoId": "i34",
           "timelineCanAdvance": false
         },
         "log": {
@@ -7167,6 +7184,441 @@
         }
       }
     },
+    "opening.card.67": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.67",
+      "displayName": "Opening card 67 - Поручить Профессору кабинетный анализ",
+      "description": "Deterministic payload extracted from legacy opening card 67 for the step-34 relocation aftermath board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "relocation-aftermath"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "67",
+            "lineIndex": 0,
+            "stepIndex": 34
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 34,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "67",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "67",
+          "summary": "Кабинетный анализ оказался быстрым, но не снял все сомнения и заставил оставить запас на полевую проверку."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "67",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.68": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.68",
+      "displayName": "Opening card 68 - Отправить маленькую экспертную группу",
+      "description": "Deterministic payload extracted from legacy opening card 68 for the step-34 relocation aftermath board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "relocation-aftermath"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "68",
+            "lineIndex": 0,
+            "stepIndex": 34
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 34,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "68",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "man",
+              "operator": "<",
+              "threshold": 30
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 1
+              }
+            ]
+          },
+          {
+            "when": {
+              "metricId": "constr",
+              "operator": "<",
+              "threshold": 30
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 1
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "68",
+          "summary": "Экспертная группа подтвердила пригодность айсберга, и колония начинает переезд."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "68",
+          "cardFlags": {
+            "cardId": "68",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.68.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.68.advance",
+      "displayName": "Opening card 68 - advance to relocation aftermath",
+      "description": "Deterministic transition from legacy opening card 68 to i19, i19_1, or the loss-line i34_2 depending on total relocation time.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "relocation-aftermath"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "68",
+            "lineIndex": 0,
+            "stepIndex": 34
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 34,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "68"
+          },
+          "card": {
+            "id": "68",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "conditionalInfoVariant": {
+          "when": {
+            "metricId": "time",
+            "operator": "<",
+            "threshold": 54
+          },
+          "activeInfoId": "i19_1"
+        },
+        "conditionalLineSwitch": {
+          "when": {
+            "metricId": "time",
+            "operator": ">",
+            "threshold": 59
+          },
+          "targetLine": "loss",
+          "targetStepIndex": 1,
+          "targetStageId": "stage_loss",
+          "targetScreenId": "S1",
+          "targetInfoId": "i34_2",
+          "timelineCanAdvance": false
+        },
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "68",
+          "summary": "Карточка 68 завершена, и последствия переезда определены по итоговому времени."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 35,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1",
+          "activeInfoId": "i19"
+        }
+      }
+    },
+    "opening.info.i19.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i19.advance",
+      "displayName": "Opening info i19 - advance to cards 69..70",
+      "description": "Deterministic transition from legacy info block i19 or i19_1 to the next board with cards 69..70.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "relocation-aftermath"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i19",
+            "lineIndex": 0,
+            "stepIndex": 35
+          },
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i19_1",
+            "lineIndex": 0,
+            "stepIndex": 35
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 35,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i19 завершено, достигнута следующая board boundary."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 36,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
+    "opening.card.69": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.69",
+      "displayName": "Opening card 69 - Начать готовить второй переезд",
+      "description": "Deterministic payload extracted from legacy opening card 69 for the step-36 second-relocation board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "second-relocation"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "69",
+            "lineIndex": 0,
+            "stepIndex": 36
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 36,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "69",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 5
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "69",
+          "summary": "Колония восприняла идею второго переезда с неожиданным азартом."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "69",
+          "cardFlags": {
+            "cardId": "69",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.69.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.69.advance",
+      "displayName": "Opening card 69 - advance to info i20",
+      "description": "Deterministic transition from legacy opening card 69 to info block i20.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "second-relocation"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "69",
+            "lineIndex": 0,
+            "stepIndex": 36
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 36,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "69"
+          },
+          "card": {
+            "id": "69",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "69",
+          "summary": "Карточка 69 завершена, переход к i20."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 37,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1",
+          "activeInfoId": "i20"
+        }
+      }
+    },
+    "opening.card.70": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.70",
+      "displayName": "Opening card 70 - Взять паузу перед новыми изменениями",
+      "description": "Deterministic payload extracted from legacy opening card 70 for the step-36 second-relocation board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "second-relocation"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "70",
+            "lineIndex": 0,
+            "stepIndex": 36
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 36,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "70",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -5
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "70",
+          "summary": "Попытка взять паузу была воспринята как сомнение и ударила по доверию к Совету."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "70",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.info.i20.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i20.advance",
+      "displayName": "Opening info i20 - advance to info i21",
+      "description": "Deterministic transition from legacy info block i20 to final info block i21.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "second-relocation"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i20",
+            "lineIndex": 0,
+            "stepIndex": 37
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 37,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i20 завершено, достигнут финальный экран i21."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 38,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1",
+          "activeInfoId": "i21"
+        }
+      }
+    },
     "opening.info.i34.advance": {
       "handlerType": "manifest-data",
       "capabilityFamily": "antarctica.opening",
@@ -7201,7 +7653,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 1,
           "timelineStageId": "stage_loss",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i34_2"
         }
       }
     },
@@ -7239,7 +7692,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 2,
           "timelineStageId": "stage_loss",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i21"
         }
       }
     },

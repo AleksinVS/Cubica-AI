@@ -417,12 +417,30 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
         `${actionPath}.deterministic.conditionalLineSwitch.targetScreenId`
       );
     }
+    if (deterministic.conditionalLineSwitch.targetInfoId !== undefined) {
+      assertString(
+        deterministic.conditionalLineSwitch.targetInfoId,
+        `${actionPath}.deterministic.conditionalLineSwitch.targetInfoId`
+      );
+    }
     if (deterministic.conditionalLineSwitch.timelineCanAdvance !== undefined) {
       assertBoolean(
         deterministic.conditionalLineSwitch.timelineCanAdvance,
         `${actionPath}.deterministic.conditionalLineSwitch.timelineCanAdvance`
       );
     }
+  }
+
+  if (deterministic.conditionalInfoVariant !== undefined) {
+    assertObjectRecord(deterministic.conditionalInfoVariant, `${actionPath}.deterministic.conditionalInfoVariant`);
+    validateMetricCondition(
+      deterministic.conditionalInfoVariant.when,
+      `${actionPath}.deterministic.conditionalInfoVariant.when`
+    );
+    assertString(
+      deterministic.conditionalInfoVariant.activeInfoId,
+      `${actionPath}.deterministic.conditionalInfoVariant.activeInfoId`
+    );
   }
 
   assertObjectRecord(deterministic.log, `${actionPath}.deterministic.log`);
@@ -447,6 +465,9 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
   }
   if (deterministic.stateUpdate.timelineScreenId !== undefined) {
     assertString(deterministic.stateUpdate.timelineScreenId, `${actionPath}.deterministic.stateUpdate.timelineScreenId`);
+  }
+  if (deterministic.stateUpdate.activeInfoId !== undefined) {
+    assertString(deterministic.stateUpdate.activeInfoId, `${actionPath}.deterministic.stateUpdate.activeInfoId`);
   }
   if (deterministic.stateUpdate.selectedCardId !== undefined) {
     assertString(deterministic.stateUpdate.selectedCardId, `${actionPath}.deterministic.stateUpdate.selectedCardId`);

@@ -433,6 +433,18 @@ const resolveConditionalLineSwitch = (
   return evaluateMetricCondition(state, lineSwitch.when) ? lineSwitch : null;
 };
 
+const resolveConditionalInfoVariant = (
+  state: RuntimeState,
+  metadata: GameManifestDeterministicActionMetadata
+) => {
+  const infoVariant = metadata.conditionalInfoVariant;
+  if (!infoVariant) {
+    return null;
+  }
+
+  return evaluateMetricCondition(state, infoVariant.when) ? infoVariant : null;
+};
+
 const appendManifestLogEntry = (
   state: RuntimeState,
   context: RuntimeActionContext<RuntimeState>,
@@ -463,7 +475,8 @@ const appendManifestLogEntry = (
 const applyManifestStateUpdate = (
   state: RuntimeState,
   metadata: GameManifestDeterministicActionMetadata,
-  conditionalLineSwitch: GameManifestDeterministicActionMetadata["conditionalLineSwitch"] | null = null
+  conditionalLineSwitch: GameManifestDeterministicActionMetadata["conditionalLineSwitch"] | null = null,
+  conditionalInfoVariant: GameManifestDeterministicActionMetadata["conditionalInfoVariant"] | null = null
 ) => {
   const publicState = ensureObject(state.public);
   const timeline = ensureObject(publicState.timeline);
@@ -485,6 +498,9 @@ const applyManifestStateUpdate = (
   if (stateUpdate.timelineScreenId !== undefined) {
     timeline.screenId = stateUpdate.timelineScreenId;
     timeline.screen_id = stateUpdate.timelineScreenId;
+  }
+  if (stateUpdate.activeInfoId !== undefined) {
+    timeline.activeInfoId = stateUpdate.activeInfoId;
   }
 
   if (stateUpdate.cardFlags) {
@@ -602,6 +618,10 @@ const applyManifestStateUpdate = (
     state.secret = secretState;
   }
 
+  if (conditionalInfoVariant) {
+    timeline.activeInfoId = conditionalInfoVariant.activeInfoId;
+  }
+
   if (conditionalLineSwitch) {
     timeline.line = conditionalLineSwitch.targetLine;
     timeline.stepIndex = conditionalLineSwitch.targetStepIndex;
@@ -615,6 +635,9 @@ const applyManifestStateUpdate = (
     if (conditionalLineSwitch.targetScreenId !== undefined) {
       timeline.screenId = conditionalLineSwitch.targetScreenId;
       timeline.screen_id = conditionalLineSwitch.targetScreenId;
+    }
+    if (conditionalLineSwitch.targetInfoId !== undefined) {
+      timeline.activeInfoId = conditionalLineSwitch.targetInfoId;
     }
 
     if (conditionalLineSwitch.timelineCanAdvance !== undefined) {
@@ -662,9 +685,10 @@ const buildManifestActionTransition = (
 
   const nextState = cloneState(context.state);
   const conditionalLineSwitch = resolveConditionalLineSwitch(context.state, metadata);
+  const conditionalInfoVariant = resolveConditionalInfoVariant(context.state, metadata);
   applyManifestMetricDeltas(nextState, metadata);
   const logEntry = appendManifestLogEntry(nextState, context, metadata);
-  applyManifestStateUpdate(nextState, metadata, conditionalLineSwitch);
+  applyManifestStateUpdate(nextState, metadata, conditionalLineSwitch, conditionalInfoVariant);
 
   const effect: RuntimeActionEffect = {
     kind: "runtime",

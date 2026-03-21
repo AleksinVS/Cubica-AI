@@ -186,7 +186,16 @@ export interface GameManifestDeterministicConditionalLineSwitch {
   targetStepIndex: number;
   targetStageId?: string;
   targetScreenId?: string;
+  targetInfoId?: string;
   timelineCanAdvance?: boolean;
+}
+
+/**
+ * Local info variant switch used when entering an info block.
+ */
+export interface GameManifestDeterministicConditionalInfoVariant {
+  when: GameManifestDeterministicMetricCondition;
+  activeInfoId: string;
 }
 
 export interface GameManifestDeterministicLogMetadata {
@@ -202,6 +211,7 @@ export interface GameManifestDeterministicStateUpdate {
   timelineStepIndex?: number;
   timelineStageId?: string;
   timelineScreenId?: string;
+  activeInfoId?: string;
   selectedCardId?: string;
   boardThreshold?: {
     cardIds: Array<string>;
@@ -241,6 +251,7 @@ export interface GameManifestDeterministicActionMetadata {
   metricDeltas: Array<GameManifestDeterministicMetricDelta>;
   conditionalMetricBonuses?: Array<GameManifestDeterministicConditionalMetricBonus>;
   conditionalCardBonuses?: Array<GameManifestDeterministicConditionalCardBonus>;
+  conditionalInfoVariant?: GameManifestDeterministicConditionalInfoVariant;
   conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
   log: GameManifestDeterministicLogMetadata;
   stateUpdate: GameManifestDeterministicStateUpdate;

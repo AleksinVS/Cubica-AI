@@ -20,6 +20,7 @@ type PublicState = {
     stepIndex?: number;
     stageId?: string;
     screenId?: string;
+    activeInfoId?: string;
     canAdvance?: boolean;
     stage_id: string;
     step_index?: number;
@@ -351,6 +352,18 @@ const reachOpeningStep32Boundary = async (sessionId: string, playerId: string) =
   );
   assert.equal(i17AdvanceResponse.status, 200);
   return body as ActionResponse;
+};
+
+const reachOpeningStep34Boundary = async (
+  sessionId: string,
+  playerId: string,
+  options: {
+    step30ActionIds: ReadonlyArray<string>;
+    step32ActionIds: ReadonlyArray<string>;
+  }
+) => {
+  await reachOpeningStep30Boundary(sessionId, playerId);
+  return dispatchActionSequence(sessionId, playerId, [...options.step30ActionIds, ...options.step32ActionIds]);
 };
 
 before(async () => {
@@ -2054,6 +2067,191 @@ test("POST /actions resolves opening.card.66 with bounded card-history bonuses a
   assert.equal(i18AdvanceAction.state.secret?.opening?.selectedCardId, "66");
   assert.equal(i18AdvanceLogEntry.actionId, "opening.info.i18.advance");
   assert.equal(i18AdvanceLogEntry.kind, "opening-info-advance");
+});
+
+test("POST /actions routes opening.card.68 to fast-variant i19_1 and reaches i21 through the main-line ending", async () => {
+  const created = await createSession({ playerId: "step-34-fast" });
+  const step34Action = await reachOpeningStep34Boundary(created.sessionId, "step-34-fast", {
+    step30ActionIds: ["opening.card.60", "opening.card.60.advance", "opening.info.i17.advance"],
+    step32ActionIds: [
+      "opening.card.62",
+      "opening.card.66",
+      "opening.card.66.advance",
+      "opening.info.i18.advance"
+    ]
+  });
+
+  assert.equal(step34Action.state.public.timeline.stepIndex, 34);
+  assert.equal(step34Action.state.public.metrics?.time, 48);
+
+  const { response: card68Response, body: card68Body } = await dispatchAction(
+    created.sessionId,
+    "step-34-fast",
+    "opening.card.68"
+  );
+  assert.equal(card68Response.status, 200);
+  const card68Action = card68Body as ActionResponse;
+
+  assert.equal(card68Action.state.public.timeline.stepIndex, 34);
+  assert.equal(card68Action.state.public.timeline.canAdvance, true);
+  assert.equal(card68Action.state.public.flags.cards["68"]?.selected, true);
+  assert.equal(card68Action.state.public.flags.cards["68"]?.resolved, true);
+  assert.equal(card68Action.state.secret?.opening?.selectedCardId, "68");
+
+  const { response: card68AdvanceResponse, body: card68AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-fast",
+    "opening.card.68.advance"
+  );
+  assert.equal(card68AdvanceResponse.status, 200);
+  const card68AdvanceAction = card68AdvanceBody as ActionResponse;
+
+  assert.equal(card68AdvanceAction.state.public.timeline.line, "main");
+  assert.equal(card68AdvanceAction.state.public.timeline.stepIndex, 35);
+  assert.equal(card68AdvanceAction.state.public.timeline.step_index, 35);
+  assert.equal(card68AdvanceAction.state.public.timeline.screenId, "S1");
+  assert.equal(card68AdvanceAction.state.public.timeline.activeInfoId, "i19_1");
+  assert.equal(card68AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(card68AdvanceAction.state.public.metrics?.time, 53);
+
+  const { response: i19AdvanceResponse, body: i19AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-fast",
+    "opening.info.i19.advance"
+  );
+  assert.equal(i19AdvanceResponse.status, 200);
+  const i19AdvanceAction = i19AdvanceBody as ActionResponse;
+
+  assert.equal(i19AdvanceAction.state.public.timeline.stepIndex, 36);
+  assert.equal(i19AdvanceAction.state.public.timeline.screenId, "S2");
+  assert.equal(i19AdvanceAction.state.public.timeline.canAdvance, false);
+
+  const { response: card69Response, body: card69Body } = await dispatchAction(
+    created.sessionId,
+    "step-34-fast",
+    "opening.card.69"
+  );
+  assert.equal(card69Response.status, 200);
+  const card69Action = card69Body as ActionResponse;
+
+  assert.equal(card69Action.state.public.timeline.stepIndex, 36);
+  assert.equal(card69Action.state.public.timeline.canAdvance, true);
+  assert.equal(card69Action.state.public.metrics?.rep, 11);
+  assert.equal(card69Action.state.secret?.opening?.selectedCardId, "69");
+
+  const { response: card69AdvanceResponse, body: card69AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-fast",
+    "opening.card.69.advance"
+  );
+  assert.equal(card69AdvanceResponse.status, 200);
+  const card69AdvanceAction = card69AdvanceBody as ActionResponse;
+
+  assert.equal(card69AdvanceAction.state.public.timeline.stepIndex, 37);
+  assert.equal(card69AdvanceAction.state.public.timeline.activeInfoId, "i20");
+  assert.equal(card69AdvanceAction.state.public.timeline.canAdvance, false);
+
+  const { response: i20AdvanceResponse, body: i20AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-fast",
+    "opening.info.i20.advance"
+  );
+  assert.equal(i20AdvanceResponse.status, 200);
+  const i20AdvanceAction = i20AdvanceBody as ActionResponse;
+
+  assert.equal(i20AdvanceAction.state.public.timeline.stepIndex, 38);
+  assert.equal(i20AdvanceAction.state.public.timeline.activeInfoId, "i21");
+  assert.equal(i20AdvanceAction.state.public.timeline.canAdvance, false);
+});
+
+test("POST /actions routes opening.card.68 to default i19 after a bounded delay on step 34", async () => {
+  const created = await createSession({ playerId: "step-34-default" });
+  const step34Action = await reachOpeningStep34Boundary(created.sessionId, "step-34-default", {
+    step30ActionIds: ["opening.card.55", "opening.card.55.advance", "opening.info.i17.advance"],
+    step32ActionIds: ["opening.card.61", "opening.card.61.advance", "opening.info.i18.advance"]
+  });
+
+  assert.equal(step34Action.state.public.timeline.stepIndex, 34);
+  assert.equal(step34Action.state.public.metrics?.time, 49);
+
+  const { response: card67Response } = await dispatchAction(created.sessionId, "step-34-default", "opening.card.67");
+  assert.equal(card67Response.status, 200);
+
+  const { response: card68Response } = await dispatchAction(created.sessionId, "step-34-default", "opening.card.68");
+  assert.equal(card68Response.status, 200);
+
+  const { response: card68AdvanceResponse, body: card68AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-default",
+    "opening.card.68.advance"
+  );
+  assert.equal(card68AdvanceResponse.status, 200);
+  const card68AdvanceAction = card68AdvanceBody as ActionResponse;
+
+  assert.equal(card68AdvanceAction.state.public.timeline.line, "main");
+  assert.equal(card68AdvanceAction.state.public.timeline.stepIndex, 35);
+  assert.equal(card68AdvanceAction.state.public.timeline.activeInfoId, "i19");
+  assert.equal(card68AdvanceAction.state.public.metrics?.time, 55);
+});
+
+test("POST /actions routes opening.card.68 directly to loss-line i34_2 when relocation time exceeds 59", async () => {
+  const created = await createSession({ playerId: "step-34-loss" });
+  const step34Action = await reachOpeningStep34Boundary(created.sessionId, "step-34-loss", {
+    step30ActionIds: [
+      "opening.card.56",
+      "opening.card.59",
+      "opening.card.60",
+      "opening.card.60.advance",
+      "opening.info.i17.advance"
+    ],
+    step32ActionIds: [
+      "opening.card.62",
+      "opening.card.63",
+      "opening.card.64",
+      "opening.card.65",
+      "opening.card.66",
+      "opening.card.66.advance",
+      "opening.info.i18.advance"
+    ]
+  });
+
+  assert.equal(step34Action.state.public.timeline.stepIndex, 34);
+  assert.equal(step34Action.state.public.metrics?.time, 57);
+
+  const { response: card67Response } = await dispatchAction(created.sessionId, "step-34-loss", "opening.card.67");
+  assert.equal(card67Response.status, 200);
+
+  const { response: card68Response } = await dispatchAction(created.sessionId, "step-34-loss", "opening.card.68");
+  assert.equal(card68Response.status, 200);
+
+  const { response: card68AdvanceResponse, body: card68AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-loss",
+    "opening.card.68.advance"
+  );
+  assert.equal(card68AdvanceResponse.status, 200);
+  const card68AdvanceAction = card68AdvanceBody as ActionResponse;
+
+  assert.equal(card68AdvanceAction.state.public.timeline.line, "loss");
+  assert.equal(card68AdvanceAction.state.public.timeline.stepIndex, 1);
+  assert.equal(card68AdvanceAction.state.public.timeline.step_index, 1);
+  assert.equal(card68AdvanceAction.state.public.timeline.stageId, "stage_loss");
+  assert.equal(card68AdvanceAction.state.public.timeline.activeInfoId, "i34_2");
+  assert.equal(card68AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(card68AdvanceAction.state.public.metrics?.time, 62);
+
+  const { response: i34_2AdvanceResponse, body: i34_2AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "step-34-loss",
+    "opening.info.i34_2.advance"
+  );
+  assert.equal(i34_2AdvanceResponse.status, 200);
+  const i34_2AdvanceAction = i34_2AdvanceBody as ActionResponse;
+
+  assert.equal(i34_2AdvanceAction.state.public.timeline.line, "loss");
+  assert.equal(i34_2AdvanceAction.state.public.timeline.stepIndex, 2);
+  assert.equal(i34_2AdvanceAction.state.public.timeline.activeInfoId, "i21");
+  assert.equal(i34_2AdvanceAction.state.public.timeline.canAdvance, false);
 });
 
 test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {
