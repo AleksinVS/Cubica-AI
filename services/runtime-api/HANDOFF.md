@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Следующий gameplay boundary зафиксирован в `ADR-020`: bounded manifest-driven team selection на step `15` уже реализован, а следующий открытый boundary теперь начинается после confirm-перехода на `stepIndex = 16`. Intended public shape: `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
+Следующий gameplay boundary зафиксирован в `ADR-020`: bounded manifest-driven team selection на step `15` уже реализован, post-confirm path через `stepIndex = 18` тоже реализован, а следующий открытый boundary теперь начинается на `stepIndex = 19`. Intended public shape: `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
 
 ## Что уже работает
 
@@ -88,7 +88,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` are implemented; the next slice is the post-confirm boundary at step `16`, not a generic workflow engine;
+- team-selection mechanics for step `15` are implemented, and the post-confirm path through step `18` is complete; the next slice starts at the unreached board on step `19`, not a generic workflow engine;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -98,7 +98,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice is the post-confirm boundary after the implemented ADR-020 team-selection step, starting at `stepIndex = 16`.
+3. Следующий Antarctica gameplay slice starts at the unreached board after the implemented ADR-020 team-selection and post-confirm slices, beginning at `stepIndex = 19`.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

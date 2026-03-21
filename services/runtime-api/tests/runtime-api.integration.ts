@@ -713,7 +713,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(i9AdvanceLogEntry.kind, "opening-info-advance");
 });
 
-test("POST /actions applies bounded team selection at step 15 and confirms at five picks", async () => {
+test("POST /actions applies bounded team selection through the step 18 boundary", async () => {
   const created = await createSession({ playerId: "team-selection-path" });
   const introActions = [
     "opening.info.i0.advance",
@@ -886,6 +886,78 @@ test("POST /actions applies bounded team selection at step 15 and confirms at fi
   assert.equal(confirmAction.state.public.timeline.screenId, "S1");
   assert.equal(confirmAction.state.public.teamSelection?.pickCount, 5);
   assert.deepEqual(confirmAction.state.public.teamSelection?.selectedMemberIds, teamPicks.map((item) => item.memberId));
+
+  const { response: i10AdvanceResponse, body: i10AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.info.i10.advance"
+  );
+  assert.equal(i10AdvanceResponse.status, 200);
+  const i10AdvanceAction = i10AdvanceBody as ActionResponse;
+  assert.equal(i10AdvanceAction.state.public.timeline.stepIndex, 17);
+  assert.equal(i10AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(i10AdvanceAction.state.public.timeline.screenId, "S2");
+  assert.equal(i10AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(i10AdvanceAction.state.secret?.opening?.selectedCardId, "18");
+
+  const { response: card21Response, body: card21Body } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.card.21"
+  );
+  assert.equal(card21Response.status, 200);
+  const card21Action = card21Body as ActionResponse;
+  assert.equal(card21Action.state.public.timeline.stepIndex, 17);
+  assert.equal(card21Action.state.public.timeline.stageId, "stage_intro");
+  assert.equal(card21Action.state.public.timeline.screenId, "S2");
+  assert.equal(card21Action.state.public.timeline.canAdvance, false);
+  assert.equal(card21Action.state.secret?.opening?.selectedCardId, "18");
+  const card21Flags = card21Action.state.public.flags.cards["21"] as { selected?: boolean; resolved?: boolean } | undefined;
+  assert.equal(card21Flags?.selected, true);
+  assert.equal(card21Flags?.resolved, true);
+
+  const { response: card21ReplayResponse, body: card21ReplayBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.card.21"
+  );
+  assert.equal(card21ReplayResponse.status, 400);
+  const card21ReplayErrorBody = card21ReplayBody as { error: string };
+  assert.match(card21ReplayErrorBody.error, /guard failed/);
+
+  const { response: replaySessionResponse, body: replaySession } = await requestJson<SessionResponse>(
+    `/sessions/${created.sessionId}`
+  );
+  assert.equal(replaySessionResponse.status, 200);
+  assert.equal(replaySession.state.public.timeline.stepIndex, 17);
+  assert.equal(replaySession.state.public.timeline.stageId, "stage_intro");
+  assert.equal(replaySession.state.public.timeline.screenId, "S2");
+
+  const { response: card22Response, body: card22Body } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.card.22"
+  );
+  assert.equal(card22Response.status, 200);
+  const card22Action = card22Body as ActionResponse;
+  assert.equal(card22Action.state.public.timeline.stepIndex, 17);
+  assert.equal(card22Action.state.public.timeline.stageId, "stage_intro");
+  assert.equal(card22Action.state.public.timeline.screenId, "S2");
+  assert.equal(card22Action.state.public.timeline.canAdvance, true);
+  assert.equal(card22Action.state.secret?.opening?.selectedCardId, "22");
+
+  const { response: card22AdvanceResponse, body: card22AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.card.22.advance"
+  );
+  assert.equal(card22AdvanceResponse.status, 200);
+  const card22AdvanceAction = card22AdvanceBody as ActionResponse;
+  assert.equal(card22AdvanceAction.state.public.timeline.stepIndex, 18);
+  assert.equal(card22AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(card22AdvanceAction.state.public.timeline.screenId, "S1");
+  assert.equal(card22AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(card22AdvanceAction.state.secret?.opening?.selectedCardId, "22");
 });
 
 test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {

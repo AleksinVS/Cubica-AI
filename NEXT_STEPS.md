@@ -44,7 +44,7 @@
 - После `opening.card.9` теперь есть explicit progression path: `opening.card.9.advance` переводит в info-block `i8` (`stepIndex=12`, `screenId=S1`), а `opening.info.i8.advance` переводит на третий board `13..18` (`stepIndex=13`, `screenId=S2`).
 - Третий board `13..18` теперь покрыт manifest-driven actions; non-go cards `13/14/15/16/17` сохраняют `selectedCardId = "9"` и `canAdvance = false`, а `opening.card.18` является текущей go-card для этого board и фиксирует `selectedCardId = "18"` вместе с `timeline.canAdvance = true`.
 - Добавлен следующий boundary slice после `opening.card.18`: `opening.card.18.advance` ведёт к info block `i9`, а `opening.info.i9.advance` доводит сессию до step `15`, still `stage_intro`, с bounded team-selection mechanic уже в manifest.
-- Следующий slice после этого boundary теперь находится после confirm-перехода на `stepIndex = 16` (`i10`), а не на самой step-15 границе.
+- Следующий slice после этого boundary теперь закрывает post-confirm path `stepIndex = 16 -> 17 -> 18`: `opening.info.i10.advance` открывает board `19..24`, cards `22/23` are go-cards, and matching advance actions land on `i11` at `stepIndex = 18`.
 
 ## Приоритет 1. Complete the Antarctica Truth Model
 
@@ -62,7 +62,7 @@
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/GameFull.html`.
 4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `GameFull.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
-5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15` уже покрыт на manifest boundary level. Следующая естественная точка входа - post-confirm boundary после `ADR-020` team selection, starting at `stepIndex = 16`.
+5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11` уже покрыт на manifest boundary level. Следующая естественная точка входа - boundary после `stepIndex = 18`, which leads to the unreached board at `stepIndex = 19`.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
 8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
@@ -84,7 +84,7 @@
 ## Приоритет 5. Manifest and Capability Evolution
 
 1. Ввести capability-first схему вместо игры-специфичных ad hoc расширений.
-2. Для Antarctica maintain the bounded manifest-driven team-selection slice from `ADR-020`; next boundary is the post-confirm step `16`, and public shape remains `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
+2. Для Antarctica maintain the bounded manifest-driven slices from `ADR-020`; the post-confirm path through `stepIndex = 18` is implemented, and the next boundary is the unreached board at `stepIndex = 19`. Public shape remains `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
 3. Подготовить `schemas/core`, `schemas/capabilities`, `schemas/api`.
 4. Добавить validator/compiler tooling.
 5. Зафиксировать policy для custom extensions.
