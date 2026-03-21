@@ -7,11 +7,11 @@
 - `games/antarctica/game.manifest.json` — канонический source of truth для исполнимой логики игры.
 - `games/antarctica/` — канонический content layer и рабочая заготовка игры.
 - `games/antarctica/design/mockups/` — source of truth для UI mockups и экранного намерения.
-- `draft/Antarctica/Game.html` — текущий фактический источник для извлечения сценария и игровой механики `Antarctica` в ходе миграции. Это не архитектурное решение, а констатация текущего состояния до завершения переноса логики в manifest.
-- `draft/Antarctica/README.md` — reference по устройству legacy HTML-прототипа и guide по его структуре; использовать вместе со script-based анализом `Game.html`, а не как целевую архитектуру.
+- `draft/Antarctica/GameFull.html` — текущий фактический источник для извлечения сценария и игровой механики `Antarctica` в ходе миграции. Это текущее состояние миграции, а не архитектурное решение, до завершения переноса логики в manifest.
+- `draft/Antarctica/README.md` — reference по устройству legacy HTML-прототипа и guide по его структуре; использовать вместе со script-based анализом `GameFull.html`, а не как целевую архитектуру.
 - `draft/antarctica-nextjs-player/` — UI prototype/reference for visual ideas only, не source of truth для кода, структуры, архитектуры или логики.
 
-Архитектурное правило по-прежнему закреплено в `ADR-018`: исполнимая логика должна заканчиваться в JSON manifest. `Game.html` используется только как текущий migration/source artifact для извлечения этой логики.
+Архитектурное правило по-прежнему закреплено в `ADR-018`: исполнимая логика должна заканчиваться в JSON manifest. `GameFull.html` используется только как текущий migration/source artifact для извлечения этой логики.
 
 Следующий канонический boundary step закреплён в `ADR-019`: `services/runtime-api` должен владеть загрузкой игрового контента и отдавать player-facing content DTO/API, а `apps/player-web` должен перестать читать repo files напрямую.
 
@@ -45,18 +45,18 @@
 
 1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.
 2. Заполнить `packages/contracts/manifest` типами manifest bundle, action definitions, content metadata и design references.
-3. Явно описать в `games/antarctica/game.manifest.json` основные сущности игры `Antarctica`, извлекая их из `draft/Antarctica/Game.html`, `draft/Antarctica/README.md` и текущей заготовки в `games/antarctica/`.
+3. Явно описать в `games/antarctica/game.manifest.json` основные сущности игры `Antarctica`, извлекая их из `draft/Antarctica/GameFull.html`, `draft/Antarctica/README.md` и текущей заготовки в `games/antarctica/`.
 4. Ввести schema validation для `game.manifest.json`.
-5. Для анализа `draft/Antarctica/Game.html` использовать scripts и targeted extraction, а не чтение всего legacy HTML-файла как prose-источника.
-6. Для opening-flow extraction использовать `npm run antarctica:extract-opening` и проверку `npm run verify:antarctica-extraction`; не выполнять ручной разбор всего `draft/Antarctica/Game.html`.
+5. Для анализа `draft/Antarctica/GameFull.html` использовать scripts и targeted extraction, а не чтение всего legacy HTML-файла как prose-источника.
+6. Для opening-flow extraction использовать `npm run antarctica:extract-opening` и проверку `npm run verify:antarctica-extraction`; не выполнять ручной разбор всего `draft/Antarctica/GameFull.html`.
 7. Для анализа конкретного timeline step использовать targeted CLI: `npm run antarctica:extract-step -- --line <lineIndex> --step <stepIndex>`. Команда возвращает selected block, referenced entries и compact context (`previousStep` / `nextStep`).
 
 ## Приоритет 2. Harden Runtime API
 
 1. Сделать `runtime-api` единственным владельцем загрузки `games/*` для runtime и player-facing delivery, как зафиксировано в `ADR-019`.
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
-3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/Game.html`.
-4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `Game.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
+3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/GameFull.html`.
+4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `GameFull.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
 5. Переход `first board -> i7 -> second board 7..12` уже покрыт, как и сами second-board cards. Следующая естественная точка входа - progression через `i8` к board `13..18`.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.

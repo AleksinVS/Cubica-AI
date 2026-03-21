@@ -12,7 +12,7 @@
 - `games/antarctica/` содержит текущую рабочую заготовку игры и должен стать каноническим content layer;
 - `games/antarctica/design/mockups/` содержит актуальные мокапы экранов и является источником UI-намерения;
 - `draft/Antarctica/README.md` описывает структуру и поведение старого HTML-прототипа;
-- `draft/Antarctica/Game.html` на текущем migration-этапе остаётся фактическим источником для извлечения ещё не перенесённой механики;
+- `draft/Antarctica/GameFull.html` на текущем migration-этапе остаётся фактическим источником для извлечения ещё не перенесённой механики;
 - narrative markdown может существовать как вспомогательный authoring/reference artifact, но не предполагается обязательной частью game bundle.
 
 Ранее в архитектурных обсуждениях допускалась модель, при которой source of truth для логики игры может находиться в markdown-сценарии, а затем интерпретироваться или переноситься в исполнимую форму. Для AI-first и Code-first подхода это создаёт проблему:
@@ -38,7 +38,7 @@
 6. **Вопрос о том, как именно заполняется JSON-манифест, не фиксируется этим ADR.**
    - это может быть ручное редактирование, tooling, генерация, AI-assisted authoring, импорт из draft-источников или иная pipeline-модель;
    - но на выходе source of truth обязан быть JSON-манифест.
-7. **Текущий факт, что часть механики `Antarctica` извлекается из `draft/Antarctica/Game.html`, не является отдельным архитектурным решением.**
+7. **Текущий факт, что часть механики `Antarctica` извлекается из `draft/Antarctica/GameFull.html`, не является отдельным архитектурным решением.**
    - это лишь констатация текущего состояния миграции;
    - после завершения переноса логики этот legacy artifact перестанет участвовать в canonical flow.
 
@@ -53,14 +53,14 @@
 
 Ограничения и trade-offs:
 
-- потребуется явно извлечь логику `Antarctica` из `draft/Antarctica/Game.html` и связанных legacy-источников и нормализовать её в манифест;
+- потребуется явно извлечь логику `Antarctica` из `draft/Antarctica/GameFull.html` и связанных legacy-источников и нормализовать её в манифест;
 - narrative markdown может оставаться полезным, но не считается обязательным артефактом content bundle;
 - для сложных игр может понадобиться richer manifest model и tooling, чтобы JSON оставался поддерживаемым.
 
 ## План внедрения
 
 1. Обновить план миграции и agent-facing документы под новую truth model.
-2. Зафиксировать роли артефактов `games/antarctica/`, `games/antarctica/design/mockups/`, `draft/Antarctica/README.md`, `draft/Antarctica/Game.html`.
+2. Зафиксировать роли артефактов `games/antarctica/`, `games/antarctica/design/mockups/`, `draft/Antarctica/README.md`, `draft/Antarctica/GameFull.html`.
 3. Развить `packages/contracts/manifest` и manifest validation под реальную модель `Antarctica`.
 4. Извлечь игровую логику из draft-источников в `games/antarctica/game.manifest.json`.
 5. Подключить runtime и player к манифесту как к единому исполнимому source of truth.
@@ -69,6 +69,6 @@
 
 - `games/antarctica/game.manifest.json`
 - `games/antarctica/design/mockups/`
-- `draft/Antarctica/Game.html`
+- `draft/Antarctica/GameFull.html`
 - `draft/Antarctica/README.md`
 - `docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md`

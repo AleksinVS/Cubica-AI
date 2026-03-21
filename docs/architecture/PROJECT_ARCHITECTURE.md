@@ -15,7 +15,7 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
-- `draft/Antarctica/Game.html` - текущий factual extraction source для Antarctica mechanics migration; это не canonical runtime source of truth и не новое архитектурное решение.
+- `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
 - `packages/contracts/*` - общий contracts layer.
@@ -103,7 +103,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 - `apps/player-web/` — current canonical web-player scaffold.
   - Должен опираться на `runtime-api` как на session/action boundary и player-facing content boundary.
 - `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
-- `draft/Antarctica/` — legacy mechanics reference. На текущем migration этапе `draft/Antarctica/Game.html` остаётся фактическим extraction source для ещё не перенесённой gameplay-логики, но не считается canonical runtime truth.
+- `draft/Antarctica/` — legacy mechanics reference. На текущем migration этапе `draft/Antarctica/GameFull.html` остаётся фактическим extraction source для ещё не перенесённой gameplay-логики, но не считается canonical runtime truth.
 
 ### 2.3. Данные и игровые манифесты (current canonical model + historical lineage)
 
@@ -114,7 +114,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 - **game manifest** содержит метаданные игры, конфигурацию, `content` references, конфигурацию движка, начальное состояние (`state`) и реестр действий (`actions`);
 - **UI manifests** продолжают существовать как отдельный delivery layer для каналов (`games/<id>/ui/<channel>/ui.manifest.json`), но не являются источником истины для runtime-логики;
 - `games/antarctica/design/mockups/` остаётся источником UI intent;
-- `draft/Antarctica/Game.html` на текущем этапе является только фактическим extraction source для ещё не перенесённой механики. Это не новое архитектурное решение и не canonical runtime truth.
+- `draft/Antarctica/GameFull.html` на текущем этапе является только фактическим extraction source для ещё не перенесённой механики. Это текущее состояние миграции, а не новое архитектурное решение, и не canonical runtime truth.
 
 **Дизайн-артефакты для ИИ-агентов (ADR-016):**
 

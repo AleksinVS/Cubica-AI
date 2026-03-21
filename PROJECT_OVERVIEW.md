@@ -30,7 +30,7 @@
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
 - `apps/player-web/` - канонический web delivery слой для `Antarctica`.
 - `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI.
-- `draft/Antarctica/Game.html` - текущий factual extraction source для сценария и механики `Antarctica` на время миграции; анализировать его нужно через scripts и targeted extraction, а не читать целиком как основной документ.
+- `draft/Antarctica/GameFull.html` - текущий factual extraction source для сценария и механики `Antarctica` на время миграции; это состояние миграции, а не новое архитектурное решение; анализировать его нужно через scripts и targeted extraction, а не читать целиком как основной документ.
 - `draft/antarctica-nextjs-player/`, `apps/portal-nextjs/` и `services/portal-backend/` - draft-артефакты и прототипы, не целевая архитектура.
 
 ### Основные сценарии использования

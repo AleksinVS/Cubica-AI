@@ -73,8 +73,8 @@ Before planning anything, use these entry points:
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [repo-manifest.json](/home/abc/projects/Cubica-AI/repo-manifest.json) - machine-readable index of canonical, draft, and target artifacts.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
-- [draft/Antarctica/README.md](/home/abc/projects/Cubica-AI/draft/Antarctica/README.md) - explains the structure of the legacy `Game.html` prototype used for current Antarctica mechanics extraction.
-- `draft/Antarctica/Game.html` - current factual source for Antarctica scenario/mechanics extraction during migration; do not read it whole in-chat, inspect it via scripts and targeted queries only.
+- [draft/Antarctica/README.md](/home/abc/projects/Cubica-AI/draft/Antarctica/README.md) - explains the structure of the legacy `GameFull.html` prototype used for current Antarctica mechanics extraction.
+- `draft/Antarctica/GameFull.html` - current factual source for Antarctica scenario/mechanics extraction during migration; do not read it whole in-chat, inspect it via scripts and targeted queries only.
 - [docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md](/home/abc/projects/Cubica-AI/docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md) - backend transition rulebook for the modular monolith phase.
 - [docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md](/home/abc/projects/Cubica-AI/docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md) - current rule for where game logic truth lives.
 - [services/runtime-api/HANDOFF.md](/home/abc/projects/Cubica-AI/services/runtime-api/HANDOFF.md) - practical runtime-api state, behavior, and next steps.

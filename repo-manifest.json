@@ -215,12 +215,12 @@
     {
       "id": "draft.antarctica.game-html",
       "kind": "legacy-prototype",
-      "path": "draft/Antarctica/Game.html",
+      "path": "draft/Antarctica/GameFull.html",
       "status": "draft",
       "owner": "content",
       "source_of_truth": false,
       "current_role": "factual-extraction-source",
-      "note": "Current Antarctica mechanics/scenario extraction source during migration. Analyze via scripts and targeted queries, not whole-file prose reading."
+      "note": "Current Antarctica mechanics/scenario extraction source during migration. This is a migration-state artifact, not a new architectural decision. Analyze via scripts and targeted queries, not whole-file prose reading."
     },
     {
       "id": "draft.antarctica.readme",

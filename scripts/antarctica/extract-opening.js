@@ -2,7 +2,7 @@
 /**
  * Antarctica opening extractor.
  *
- * Reads `draft/Antarctica/Game.html`, extracts only:
+ * Reads `draft/Antarctica/GameFull.html`, extracts only:
  * - `var cardsObj = { ... };`
  * - `game = { ... };`
  *
@@ -18,7 +18,7 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 
-const DEFAULT_INPUT = path.resolve(__dirname, '../../draft/Antarctica/Game.html');
+const DEFAULT_INPUT = path.resolve(__dirname, '../../draft/Antarctica/GameFull.html');
 const METRIC_KEYS = ['pro', 'rep', 'lid', 'man', 'stat', 'cont', 'constr', 'time'];
 const REQUIRED_BOARD_IDS = ['1', '2', '3', '4', '5', '6'];
 
