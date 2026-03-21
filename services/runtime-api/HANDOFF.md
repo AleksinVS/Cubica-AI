@@ -37,6 +37,13 @@
 - runtime metadata и `public.log` фиксируют фактический dispatch;
 - сессии пока хранятся in-memory.
 
+## Обновление по bounded first-half slice (`opening.card.3`)
+
+- Manifest/data половина первого реального gameplay slice для Antarctica уже подготовлена: в `games/antarctica/game.manifest.json` добавлен `actions["opening.card.3"]` с deterministic metadata из legacy card `3` («Поговорить с Аленой»).
+- Контракт manifest action расширен небольшим typed-блоком deterministic metadata (provenance, guard, metric deltas, log metadata, state-update metadata).
+- Валидация manifest теперь валидирует этот deterministic блок и минимальные state scaffolding-поля (`timeline.canAdvance`, `secret.opening.selectedCardId`, card flags scaffolding) до старта runtime.
+- Runtime wiring намеренно отложен на следующий commit, чтобы этот шаг остался чисто data/contracts/validation slice без изменения текущего execution behavior.
+
 ## Как запускать локально
 
 ```bash
@@ -74,7 +81,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Расширять capability-based runtime только когда появятся новые concrete game mechanics.
+3. Подключить runtime wiring для deterministic metadata `opening.card.3` (чтение guard/deltas/log/stateUpdate из manifest и применение в runtime transition).
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

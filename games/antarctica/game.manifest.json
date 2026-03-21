@@ -116,21 +116,99 @@
         "line": "main",
         "stepIndex": 0,
         "stageId": "stage_intro",
-        "screenId": "S1"
+        "screenId": "S1",
+        "canAdvance": false
       },
       "log": [],
       "flags": {
-        "cards": {}
+        "cards": {
+          "3": {
+            "selected": false,
+            "resolved": false
+          }
+        }
       }
     },
     "secret": {
       "stagePicks": {
         "stage_intro": 0,
         "stage_mid": 0
-      }
+      },
+      "opening": {}
     }
   },
   "actions": {
+    "opening.card.3": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.3",
+      "displayName": "Opening card 3 - Поговорить с Аленой",
+      "description": "Deterministic payload extracted from legacy opening card 3; runtime wiring follows in the next commit.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "3",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          },
+          "card": {
+            "id": "3",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 1
+          },
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "lid",
+            "delta": 1
+          },
+          {
+            "metricId": "stat",
+            "delta": 1
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "3",
+          "summary": "Алена, как обычно, схватывает на лету. Убедившись, что проблема серьезная, она тут же заручается поддержкой Вожака. Леонид готов действовать. Нужны дальнейшие шаги!"
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "3",
+          "cardFlags": {
+            "cardId": "3",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
     "requestServer": {
       "handlerType": "script",
       "capabilityFamily": "runtime.server",

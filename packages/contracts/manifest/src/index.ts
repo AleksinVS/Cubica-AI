@@ -94,6 +94,67 @@ export interface GameManifestState<TPublicState = Record<string, unknown>, TSecr
   secret?: TSecretState;
 }
 
+/**
+ * Links deterministic metadata back to the exact legacy artifact used for extraction.
+ */
+export interface GameManifestDeterministicSourceRef {
+  sourceKind: "legacy-opening-card" | string;
+  sourceFile: GameManifestPath;
+  legacyCardId: string;
+  lineIndex?: number;
+  stepIndex?: number;
+}
+
+/**
+ * Minimal guard shape for the first Antarctica opening-card slice.
+ */
+export interface GameManifestDeterministicGuard {
+  timeline?: {
+    line?: string;
+    stepIndex?: number;
+    canAdvance?: boolean;
+  };
+  opening?: {
+    selectedCardIdAbsent?: boolean;
+    selectedCardIdEquals?: string;
+  };
+  card?: {
+    id: string;
+    selected?: boolean;
+    resolved?: boolean;
+  };
+}
+
+export interface GameManifestDeterministicMetricDelta {
+  metricId: string;
+  delta: number;
+}
+
+export interface GameManifestDeterministicLogMetadata {
+  kind: string;
+  summary: string;
+  stageId?: string;
+  cardId?: string;
+}
+
+export interface GameManifestDeterministicStateUpdate {
+  timelineCanAdvance?: boolean;
+  selectedCardId?: string;
+  cardFlags?: {
+    cardId: string;
+    selected?: boolean;
+    resolved?: boolean;
+  };
+}
+
+export interface GameManifestDeterministicActionMetadata {
+  provenance: Array<GameManifestDeterministicSourceRef>;
+  guard: GameManifestDeterministicGuard;
+  metricDeltas: Array<GameManifestDeterministicMetricDelta>;
+  log: GameManifestDeterministicLogMetadata;
+  stateUpdate: GameManifestDeterministicStateUpdate;
+}
+
 export interface GameManifestActionDefinition {
   handlerType: "script" | "ui" | "ai" | "system" | "unknown" | string;
   capabilityFamily?: string;
@@ -103,6 +164,7 @@ export interface GameManifestActionDefinition {
   description?: string;
   tags?: Array<string>;
   payloadSchema?: Record<string, unknown>;
+  deterministic?: GameManifestDeterministicActionMetadata;
   raw?: Record<string, unknown>;
 }
 

@@ -26,6 +26,13 @@
 
 Оставшаяся работа теперь относится к фазе расширения, а не к базовому переходу.
 
+### Обновление по первому gameplay slice (opening card 3)
+
+- В `games/antarctica/game.manifest.json` добавлен первый реальный deterministic data slice для `opening.card.3` (legacy card `3`, «Поговорить с Аленой»): provenance, guard, metric deltas, log metadata и state-update metadata теперь лежат в manifest.
+- В initial state добавлены минимальные scaffolding-поля под этот slice: `state.public.timeline.canAdvance`, `state.public.flags.cards["3"]`, `state.secret.opening.selectedCardId` (через `state.secret.opening`).
+- В `services/runtime-api/src/modules/content/manifestValidation.ts` добавлена ранняя валидация deterministic metadata и новых state-полей.
+- Следующий commit должен подключить runtime wiring для чтения и применения этих metadata; текущий commit intentionally не меняет runtime execution behavior.
+
 ## Приоритет 1. Complete the Antarctica Truth Model
 
 1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.
