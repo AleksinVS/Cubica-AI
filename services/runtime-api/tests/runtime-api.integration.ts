@@ -2367,14 +2367,44 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(Array.isArray(body.antarctica.boards));
   assert.ok(Array.isArray(body.antarctica.cards));
   const infoI0 = body.antarctica.infos.find((entry) => entry.id === "i0");
+  const infoI8 = body.antarctica.infos.find((entry) => entry.id === "i8");
   assert.ok(infoI0);
+  assert.ok(infoI8);
   assert.equal(infoI0.stepIndex, 0);
   assert.equal(infoI0.screenId, "S1");
   assert.equal(infoI0.advanceActionId, "opening.info.i0.advance");
+  assert.equal(infoI8.stepIndex, 12);
+  assert.equal(infoI8.screenId, "S1");
+  assert.equal(infoI8.title, "Что скажет народ?");
+  assert.equal(infoI8.advanceActionId, "opening.info.i8.advance");
   const board = body.antarctica.boards.find((entry) => entry.id === "opening.board.1_6");
+  const secondBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.7_12");
   assert.ok(board);
+  assert.ok(secondBoard);
   assert.equal(board.stepIndex, 9);
   assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
+  assert.equal(secondBoard.stepIndex, 11);
+  assert.equal(secondBoard.screenId, "S2");
+  assert.deepEqual(secondBoard.cardIds, ["7", "8", "9", "10", "11", "12"]);
+  const card7 = body.antarctica.cards.find((entry) => entry.cardId === "7");
+  const card9 = body.antarctica.cards.find((entry) => entry.cardId === "9");
+  const card12 = body.antarctica.cards.find((entry) => entry.cardId === "12");
+  assert.ok(card7);
+  assert.ok(card9);
+  assert.ok(card12);
+  assert.equal(
+    card7.summary,
+    "Алена хочет выступить сама на Совете. Участники Совета доверяют ей. То, что она уже участник Совета, поможет сэкономить время на организации такого выступления."
+  );
+  assert.equal(
+    card9.summary,
+    "Для презентации на Совете Федор смастерил модель айсберга в масштабе 1:5000. Было долго, ведь у пингвинов нет рук. Зато очень наглядно: здесь – полость с водой, здесь – треснет…"
+  );
+  assert.equal(card9.advanceActionId, "opening.card.9.advance");
+  assert.equal(
+    card12.summary,
+    "Федор достал из сумки свой дневник наблюдений и подготовил симпатичную презентацию на основе своих данных. Таблицы и графики не могут не быть убедительными!"
+  );
   const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
   assert.ok(card3);
   assert.equal(card3.selectActionId, "opening.card.3");
