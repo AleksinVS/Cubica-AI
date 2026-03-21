@@ -169,6 +169,30 @@
           "12": {
             "selected": false,
             "resolved": false
+          },
+          "13": {
+            "selected": false,
+            "resolved": false
+          },
+          "14": {
+            "selected": false,
+            "resolved": false
+          },
+          "15": {
+            "selected": false,
+            "resolved": false
+          },
+          "16": {
+            "selected": false,
+            "resolved": false
+          },
+          "17": {
+            "selected": false,
+            "resolved": false
+          },
+          "18": {
+            "selected": false,
+            "resolved": false
           }
         }
       }
@@ -1192,6 +1216,94 @@
         }
       }
     },
+    "opening.card.9.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.9.advance",
+      "displayName": "Opening card 9 - advance to info i8",
+      "description": "Deterministic transition from resolved second opening board to info block i8.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "9",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "9",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "9",
+          "summary": "Переход после второго экрана карточек к инфо-блоку i8."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 12,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i8.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i8.advance",
+      "displayName": "Opening info i8 - advance to third board",
+      "description": "Deterministic transition from legacy info block i8 to the third opening board.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i8",
+            "lineIndex": 0,
+            "stepIndex": 12
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 12,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i8 завершено, переход к третьему экрану выбора карточек."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 13,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
     "opening.card.10": {
       "handlerType": "manifest-data",
       "capabilityFamily": "antarctica.opening",
@@ -1364,6 +1476,363 @@
           "timelineCanAdvance": false,
           "cardFlags": {
             "cardId": "12",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.13": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.13",
+      "displayName": "Opening card 13 - Дозировать информацию перед собранием",
+      "description": "Deterministic payload extracted from legacy opening card 13.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "13",
+            "lineIndex": 0,
+            "stepIndex": 13
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 13,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "13",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -5
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "13",
+          "summary": "Дозирование информации выглядит осторожным, но оно же усиливает слухи и недоверие."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "13",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.14": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.14",
+      "displayName": "Opening card 14 - Заранее вовлечь лояльных пингвинов",
+      "description": "Deterministic payload extracted from legacy opening card 14.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "14",
+            "lineIndex": 0,
+            "stepIndex": 13
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 13,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "14",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "14",
+          "summary": "Лояльных и активных пингвинов вовлекли заранее, чтобы подготовить общее собрание."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "14",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.15": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.15",
+      "displayName": "Opening card 15 - Поработать с тревожными пингвинами",
+      "description": "Deterministic payload extracted from legacy opening card 15.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "15",
+            "lineIndex": 0,
+            "stepIndex": 13
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 13,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "15",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -1
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "15",
+          "summary": "Работа с тревожными пингвинами помогает, но слухи расходятся еще быстрее."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "15",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.16": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.16",
+      "displayName": "Opening card 16 - Подготовить скептиков заранее",
+      "description": "Deterministic payload extracted from legacy opening card 16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "16",
+            "lineIndex": 0,
+            "stepIndex": 13
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 13,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "16",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 1
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "16",
+          "summary": "Скептиков и авторитетных пингвинов подготовили заранее, чтобы снизить риск провала."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "16",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.17": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.17",
+      "displayName": "Opening card 17 - Подготовить решение и план Советом",
+      "description": "Deterministic payload extracted from legacy opening card 17.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "17",
+            "lineIndex": 0,
+            "stepIndex": 13
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 13,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "17",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 2
+          },
+          {
+            "metricId": "rep",
+            "delta": -2
+          },
+          {
+            "metricId": "time",
+            "delta": 5
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "17",
+          "summary": "Совет пытался подготовить решение и план, но простого ответа так и не нашел."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "17",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.18": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.18",
+      "displayName": "Opening card 18 - Создать штаб на общем собрании",
+      "description": "Deterministic payload extracted from legacy opening card 18.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "18",
+            "lineIndex": 0,
+            "stepIndex": 13
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 13,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "9"
+          },
+          "card": {
+            "id": "18",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 2
+          },
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "18",
+          "summary": "На общем собрании стало ясно, что нужно биться дальше и создавать штаб."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "18",
+          "cardFlags": {
+            "cardId": "18",
             "selected": true,
             "resolved": true
           }

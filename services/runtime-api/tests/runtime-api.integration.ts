@@ -497,6 +497,158 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card9LogEntry.cardId, "9");
 });
 
+test("POST /actions advances from opening.card.9 to board 13..18 and rejects non-go replay", async () => {
+  const created = await createSession({ playerId: "third-board-path" });
+  const introActions = [
+    "opening.info.i0.advance",
+    "opening.info.i02.advance",
+    "opening.info.i03.advance",
+    "opening.info.i1.advance",
+    "opening.info.i2.advance",
+    "opening.info.i3.advance",
+    "opening.info.i4.advance",
+    "opening.info.i5.advance",
+    "opening.info.i6.advance",
+    "opening.card.3",
+    "opening.card.3.advance",
+    "opening.info.i7.advance"
+  ];
+
+  for (const actionId of introActions) {
+    const { response } = await dispatchAction(created.sessionId, "third-board-path", actionId);
+    assert.equal(response.status, 200);
+  }
+
+  const { response: card9Response, body: card9Body } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.card.9"
+  );
+  assert.equal(card9Response.status, 200);
+  const card9Action = card9Body as ActionResponse;
+  const card9State = (card9Action.state.public.flags.cards["9"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card9LogEntry = card9Action.state.public.log[card9Action.state.public.log.length - 1] ?? {};
+
+  assert.equal(card9Action.state.public.timeline.stepIndex, 11);
+  assert.equal(card9Action.state.public.timeline.step_index, 11);
+  assert.equal(card9Action.state.public.timeline.canAdvance, true);
+  assert.equal(card9Action.state.secret?.opening?.selectedCardId, "9");
+  assert.equal(card9Action.state.public.metrics?.pro, 2);
+  assert.equal(card9Action.state.public.metrics?.rep, 4);
+  assert.equal(card9Action.state.public.metrics?.time, 3);
+  assert.equal(card9Action.state.public.metrics?.score, 57);
+  assert.equal(card9State.selected, true);
+  assert.equal(card9State.resolved, true);
+  assert.equal(card9LogEntry.actionId, "opening.card.9");
+  assert.equal(card9LogEntry.kind, "opening-card-resolution");
+  assert.equal(card9LogEntry.cardId, "9");
+
+  const { response: card9AdvanceResponse, body: card9AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.card.9.advance"
+  );
+  assert.equal(card9AdvanceResponse.status, 200);
+  const card9AdvanceAction = card9AdvanceBody as ActionResponse;
+  const card9AdvanceLogEntry =
+    card9AdvanceAction.state.public.log[card9AdvanceAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(card9AdvanceAction.state.public.timeline.stepIndex, 12);
+  assert.equal(card9AdvanceAction.state.public.timeline.step_index, 12);
+  assert.equal(card9AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(card9AdvanceAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(card9AdvanceAction.state.public.timeline.screenId, "S1");
+  assert.equal(card9AdvanceAction.state.public.timeline.screen_id, "S1");
+  assert.equal(card9AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(card9AdvanceAction.state.secret?.opening?.selectedCardId, "9");
+  assert.equal(card9AdvanceLogEntry.actionId, "opening.card.9.advance");
+  assert.equal(card9AdvanceLogEntry.kind, "opening-card-advance");
+  assert.equal(card9AdvanceLogEntry.cardId, "9");
+
+  const { response: i8AdvanceResponse, body: i8AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.info.i8.advance"
+  );
+  assert.equal(i8AdvanceResponse.status, 200);
+  const i8AdvanceAction = i8AdvanceBody as ActionResponse;
+  const i8AdvanceLogEntry = i8AdvanceAction.state.public.log[i8AdvanceAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(i8AdvanceAction.state.public.timeline.stepIndex, 13);
+  assert.equal(i8AdvanceAction.state.public.timeline.step_index, 13);
+  assert.equal(i8AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(i8AdvanceAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(i8AdvanceAction.state.public.timeline.screenId, "S2");
+  assert.equal(i8AdvanceAction.state.public.timeline.screen_id, "S2");
+  assert.equal(i8AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(i8AdvanceAction.state.secret?.opening?.selectedCardId, "9");
+  assert.equal(i8AdvanceLogEntry.actionId, "opening.info.i8.advance");
+  assert.equal(i8AdvanceLogEntry.kind, "opening-info-advance");
+
+  const { response: card13Response, body: card13Body } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.card.13"
+  );
+  assert.equal(card13Response.status, 200);
+  const card13Action = card13Body as ActionResponse;
+  const card13State = (card13Action.state.public.flags.cards["13"] ?? {}) as {
+    selected?: boolean;
+    resolved?: boolean;
+  };
+  const card13LogEntry = card13Action.state.public.log[card13Action.state.public.log.length - 1] ?? {};
+
+  assert.equal(card13Action.state.public.timeline.stepIndex, 13);
+  assert.equal(card13Action.state.public.timeline.step_index, 13);
+  assert.equal(card13Action.state.public.timeline.canAdvance, false);
+  assert.equal(card13Action.state.secret?.opening?.selectedCardId, "9");
+  assert.equal(card13Action.state.public.metrics?.pro, 2);
+  assert.equal(card13Action.state.public.metrics?.rep, -1);
+  assert.equal(card13Action.state.public.metrics?.time, 6);
+  assert.equal(card13Action.state.public.metrics?.score, 54);
+  assert.equal(card13State.selected, true);
+  assert.equal(card13State.resolved, true);
+  assert.equal(card13LogEntry.actionId, "opening.card.13");
+  assert.equal(card13LogEntry.kind, "opening-card-resolution");
+  assert.equal(card13LogEntry.cardId, "13");
+
+  const { response: replayCard13Response, body: replayCard13Body } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.card.13"
+  );
+  assert.equal(replayCard13Response.status, 400);
+  const replayCard13Error = replayCard13Body as { error: string };
+  assert.match(replayCard13Error.error, /guard failed/);
+
+  const { response: card18Response, body: card18Body } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.card.18"
+  );
+  assert.equal(card18Response.status, 200);
+  const card18Action = card18Body as ActionResponse;
+  const card18State = (card18Action.state.public.flags.cards["18"] ?? {}) as {
+    selected?: boolean;
+    resolved?: boolean;
+  };
+  const card18LogEntry = card18Action.state.public.log[card18Action.state.public.log.length - 1] ?? {};
+
+  assert.equal(card18Action.state.public.timeline.stepIndex, 13);
+  assert.equal(card18Action.state.public.timeline.step_index, 13);
+  assert.equal(card18Action.state.public.timeline.canAdvance, true);
+  assert.equal(card18Action.state.secret?.opening?.selectedCardId, "18");
+  assert.equal(card18Action.state.public.metrics?.pro, 4);
+  assert.equal(card18Action.state.public.metrics?.rep, 1);
+  assert.equal(card18Action.state.public.metrics?.time, 7);
+  assert.equal(card18Action.state.public.metrics?.score, 53);
+  assert.equal(card18State.selected, true);
+  assert.equal(card18State.resolved, true);
+  assert.equal(card18LogEntry.actionId, "opening.card.18");
+  assert.equal(card18LogEntry.kind, "opening-card-resolution");
+  assert.equal(card18LogEntry.cardId, "18");
+});
+
 test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {
   const created = await createSession({ playerId: "card-replay" });
   const introActions = [
