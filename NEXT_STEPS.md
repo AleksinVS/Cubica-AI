@@ -28,6 +28,14 @@
 
 Оставшаяся работа теперь относится к фазе расширения, а не к базовому переходу.
 
+### Обновление по bounded player-facing content slice
+
+- `games/antarctica/game.manifest.json` теперь содержит канонический `content.antarctica` block для bounded player-facing delivery slice: info scenes `i0` и `i7`, board `opening.board.1_6`, а также card catalog `1..6` с явными `selectActionId` и `advanceActionId` для go-card `3`.
+- `packages/contracts/manifest` и `services/runtime-api/src/modules/content/manifestValidation.ts` расширены typed/validated shape для этого Antarctica-specific player content, не вводя новый platform-wide endpoint или DSL.
+- `GET /games/antarctica/player-content` теперь отдаёт не только общий catalog `actions/mockups`, но и structured `antarctica` DTO из manifest.
+- `apps/player-web` начал использовать existing session snapshot (`timeline`, `activeInfoId`, `selectedCardId`, card flags) для current-step rendering: стартовый info `i0`, первый board `1..6` и info `i7` больше не требуют global action catalog как основной UX.
+- Для немоделированных шагов player по-прежнему безопасно откатывается к fallback catalog, поэтому slice остаётся bounded и не требует синхронной миграции всего opening flow.
+
 ### Обновление по первому gameplay slice (opening card 3)
 
 - В `games/antarctica/game.manifest.json` добавлен первый реальный deterministic data slice для `opening.card.3` (legacy card `3`, «Поговорить с Аленой»): provenance, guard, metric deltas, log metadata и state-update metadata теперь лежат в manifest.
@@ -68,7 +76,7 @@
 1. Сделать `runtime-api` единственным владельцем загрузки `games/*` для runtime и player-facing delivery, как зафиксировано в `ADR-019`.
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/GameFull.html`.
-4. Следующий этап после закрытия `GSR-029` должен сместиться с migration mechanics на player-facing delivery: `runtime-api` уже знает, какой info/card branch активен, теперь `apps/player-web` должен начать использовать `timeline.activeInfoId`, card flags и player-facing content DTO вместо чистого mockup-driven scaffold.
+4. Первый bounded player-facing delivery slice уже закрыт для `i0 -> board 1..6 -> i7`; следующий этап должен расширить current-step rendering дальше по opening flow, сохраняя manifest-driven content projection и fallback для ещё не перенесённых step-ов.
 5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12 -> board 31..36 -> i13 -> board 37..42 -> i14 -> i14_2 -> board 43..48 -> i15 -> board 49..54 -> i16 -> board 55..60 -> i17 -> board 61..66 -> i18 -> board 67..68 -> i19/i19_1 -> board 69..70 -> i20 -> i21` уже покрыт на manifest boundary level, включая bounded line switch на loss line `i34 -> i34_2 -> i21`, locked/unlocked go-card `39`, entry-time alt `3902`, explicit public-communication board progression, trusted-messengers board progression, acceleration board progression, scout-dispatch progression и terminal aftermath ending.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.

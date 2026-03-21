@@ -215,6 +215,63 @@ select {
   gap: 10px;
 }
 
+.scene-card {
+  display: grid;
+  gap: 14px;
+}
+
+.scene-title {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.scene-body,
+.scene-body p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.scene-body p + p {
+  margin-top: 10px;
+}
+
+.board-card-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.board-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.board-card-selected {
+  border-color: rgba(157, 227, 255, 0.45);
+  background: rgba(67, 182, 231, 0.12);
+}
+
+.board-card-locked {
+  opacity: 0.72;
+}
+
+.board-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.board-card-summary {
+  margin: 0 0 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
 .action-button {
   border: 1px solid rgba(157, 227, 255, 0.18);
   background: linear-gradient(180deg, rgba(157, 227, 255, 0.15), rgba(67, 182, 231, 0.08));

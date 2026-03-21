@@ -77,6 +77,7 @@ export interface GameManifestContent {
     participants?: GameManifestDocumentRef;
     facilitators?: GameManifestDocumentRef;
   };
+  antarctica?: AntarcticaPlayerContent;
 }
 
 export interface GameManifestEngineConfig {
@@ -309,6 +310,41 @@ export interface PlayerFacingMockup {
   imagePath: string;
 }
 
+export interface AntarcticaPlayerInfoEntry {
+  id: string;
+  stepIndex: number;
+  screenId: string;
+  title: string;
+  body: string;
+  advanceActionId: string;
+  advanceLabel?: string;
+}
+
+export interface AntarcticaPlayerBoardCard {
+  cardId: string;
+  title: string;
+  summary: string;
+  selectActionId: string;
+  selectLabel?: string;
+  advanceActionId?: string;
+  advanceLabel?: string;
+}
+
+export interface AntarcticaPlayerBoard {
+  id: string;
+  title?: string;
+  body?: string;
+  stepIndex: number;
+  screenId: string;
+  cardIds: Array<string>;
+}
+
+export interface AntarcticaPlayerContent {
+  infos: Array<AntarcticaPlayerInfoEntry>;
+  boards: Array<AntarcticaPlayerBoard>;
+  cards: Array<AntarcticaPlayerBoardCard>;
+}
+
 export interface PlayerFacingContent {
   gameId: GameManifestId;
   version: GameManifestVersion;
@@ -319,4 +355,5 @@ export interface PlayerFacingContent {
   training?: GameManifestTraining;
   actions: Array<PlayerFacingAction>;
   mockups: Array<PlayerFacingMockup>;
+  antarctica?: AntarcticaPlayerContent;
 }

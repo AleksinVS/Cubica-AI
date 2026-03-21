@@ -1,9 +1,5 @@
 import { AntarcticaPlayer } from "@/components/antarctica-player";
-import {
-  getActionEntries,
-  getRuntimeApiUrl,
-  loadAntarcticaPlayerContent
-} from "@/lib/antarctica";
+import { getRuntimeApiUrl, loadAntarcticaPlayerContent } from "@/lib/antarctica";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +10,6 @@ export default async function Page() {
     <AntarcticaPlayer
       runtimeApiUrl={getRuntimeApiUrl()}
       content={content}
-      actions={getActionEntries(content)}
       mockups={content.mockups}
     />
   );

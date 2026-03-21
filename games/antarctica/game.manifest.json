@@ -29,14 +29,14 @@
     },
     "references": [
       {
-        "path": "draft/Antarctica/Game.html",
+        "path": "draft/Antarctica/GameFull.html",
         "kind": "legacy-prototype",
-        "note": "Current factual source for Antarctica mechanics extraction during migration; not runtime source of truth."
+        "note": "Current factual source for Antarctica opening-flow extraction during migration; not runtime source of truth."
       },
       {
         "path": "draft/Antarctica/README.md",
         "kind": "legacy-prototype-notes",
-        "note": "Reference material describing the legacy Game.html structure for targeted mechanics extraction."
+        "note": "Reference material describing the legacy GameFull.html structure for targeted mechanics extraction."
       }
     ]
   },
@@ -90,6 +90,84 @@
         "path": "docs/tasks/features/F_00023_antarctica_training_metadata_and_methodology.md",
         "kind": "methodology-doc"
       }
+    },
+    "antarctica": {
+      "infos": [
+        {
+          "id": "i0",
+          "stepIndex": 0,
+          "screenId": "S1",
+          "title": "Корпорация \"Антарктика\"",
+          "body": "бизнес-квест (основан на идеях Джона Коттера)",
+          "advanceActionId": "opening.info.i0.advance",
+          "advanceLabel": "Продолжить"
+        },
+        {
+          "id": "i7",
+          "stepIndex": 10,
+          "screenId": "S1",
+          "title": "Отнеситесь к этому серьезно!",
+          "body": "Мнение Алены важно для Вожака. Еще более важно то, что он любит опираться на множество авторитетных мнений, чтобы не принять поспешных и необдуманных решений.\n\nТеперь, когда Леонид готов дать «делу ход», первоочередная задача – убедить участников Совета отнестись к проблеме серьезно, чтобы можно было единым фронтом выступить и найти какое-то решение. Ну, или убедиться, что проблема не так уж страшна.",
+          "advanceActionId": "opening.info.i7.advance",
+          "advanceLabel": "Продолжить"
+        }
+      ],
+      "boards": [
+        {
+          "id": "opening.board.1_6",
+          "title": "Выберите первый шаг",
+          "body": "Начальный совет и ближайшее окружение реагируют по-разному. Выберите, с какого разговора начать.",
+          "stepIndex": 9,
+          "screenId": "S2",
+          "cardIds": ["1", "2", "3", "4", "5", "6"]
+        }
+      ],
+      "cards": [
+        {
+          "cardId": "1",
+          "title": "Создать клуб изучения айсберга",
+          "summary": "Есть идея! Создать клуб изучения айсберга! Совместно с другими любопытными проводить наблюдения снаружи и внутри айсберга, обсуждать закономерности и прогнозы.",
+          "selectActionId": "opening.card.1",
+          "selectLabel": "Выбрать"
+        },
+        {
+          "cardId": "2",
+          "title": "Рассказать как можно большему количеству пингвинов",
+          "summary": "Рассказать как можно большему количеству пингвинов. Начать с близких друзей, затем – друзьям друзей и далее… Вероятно, о проблеме узнают все и дело пойдет!",
+          "selectActionId": "opening.card.2",
+          "selectLabel": "Выбрать"
+        },
+        {
+          "cardId": "3",
+          "title": "Поговорить с Аленой",
+          "summary": "Поговорить с Аленой. Алена входит в Совет, ориентирована на достижения, всегда добивается результата. Быстро схватывает новые идеи. Быстро и остывает, если не видит скорой и явной отдачи.",
+          "selectActionId": "opening.card.3",
+          "selectLabel": "Выбрать",
+          "advanceActionId": "opening.card.3.advance",
+          "advanceLabel": "Продолжить"
+        },
+        {
+          "cardId": "4",
+          "title": "Зайти к Георгию",
+          "summary": "Можно зайти к Георгию. Он входит в Совет, очень умен и авторитетен, недаром его зовут Профессор. Он любит изучать проблемы, любит искать решения. Возможно, он видел Федора в Департаменте погоды...",
+          "selectActionId": "opening.card.4",
+          "selectLabel": "Выбрать"
+        },
+        {
+          "cardId": "5",
+          "title": "Обратиться к Вожаку Леониду",
+          "summary": "Обратиться сразу к Вожаку всех пингвинов – Леониду. Он, конечно, очень занят всякими важными делами, поэтому нужно заранее записаться на прием, но если он поддержит!..",
+          "selectActionId": "opening.card.5",
+          "selectLabel": "Выбрать"
+        },
+        {
+          "cardId": "6",
+          "title": "Встретиться с Василием",
+          "summary": "Встретиться с Василием. Он общительный и всегда готов обсудить что угодно. Еще Василий входит в Совет. Любит все свести в шутку и частенько опаздывает.",
+          "selectActionId": "opening.card.6",
+          "selectLabel": "Выбрать"
+        }
+      ]
     }
   },
   "engine": {
@@ -117,6 +195,7 @@
         "stepIndex": 0,
         "stageId": "stage_intro",
         "screenId": "S1",
+        "activeInfoId": "i0",
         "canAdvance": false
       },
       "log": [],

@@ -18,7 +18,7 @@
 - `games/antarctica/game.manifest.json` уже покрывает bounded gameplay slice records до terminal `i21`; архитектурное правило для этих механик закреплено в ADR-024, а step-specific delivery details вынесены в `docs/architecture/gameplay-slices/`.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
-- `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
+- `apps/player-web/` - канонический web delivery layer, который потребляет player-facing content API/DTO и уже рендерит первый bounded Antarctica current-step slice (`i0 -> board 1..6 -> i7`) из session snapshot + manifest content projection, а не из repo files напрямую (ADR-019).
 - `packages/contracts/*` - общий contracts layer.
 - `draft/*` и импортированные portal/player drafts - reference only, а не canonical runtime/architecture sources.
 

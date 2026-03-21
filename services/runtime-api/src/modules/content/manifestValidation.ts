@@ -49,6 +49,50 @@ const assertStringArray = (value: unknown, path: string) => {
   value.forEach((item, index) => assertString(item, `${path}[${index}]`));
 };
 
+const validateAntarcticaInfoEntry = (entry: unknown, path: string) => {
+  assertObjectRecord(entry, path);
+  assertString(entry.id, `${path}.id`);
+  assertNumber(entry.stepIndex, `${path}.stepIndex`);
+  assertString(entry.screenId, `${path}.screenId`);
+  assertString(entry.title, `${path}.title`);
+  assertString(entry.body, `${path}.body`);
+  assertString(entry.advanceActionId, `${path}.advanceActionId`);
+  if (entry.advanceLabel !== undefined) {
+    assertString(entry.advanceLabel, `${path}.advanceLabel`);
+  }
+};
+
+const validateAntarcticaBoard = (board: unknown, path: string) => {
+  assertObjectRecord(board, path);
+  assertString(board.id, `${path}.id`);
+  if (board.title !== undefined) {
+    assertString(board.title, `${path}.title`);
+  }
+  if (board.body !== undefined) {
+    assertString(board.body, `${path}.body`);
+  }
+  assertNumber(board.stepIndex, `${path}.stepIndex`);
+  assertString(board.screenId, `${path}.screenId`);
+  assertStringArray(board.cardIds, `${path}.cardIds`);
+};
+
+const validateAntarcticaBoardCard = (card: unknown, path: string) => {
+  assertObjectRecord(card, path);
+  assertString(card.cardId, `${path}.cardId`);
+  assertString(card.title, `${path}.title`);
+  assertString(card.summary, `${path}.summary`);
+  assertString(card.selectActionId, `${path}.selectActionId`);
+  if (card.selectLabel !== undefined) {
+    assertString(card.selectLabel, `${path}.selectLabel`);
+  }
+  if (card.advanceActionId !== undefined) {
+    assertString(card.advanceActionId, `${path}.advanceActionId`);
+  }
+  if (card.advanceLabel !== undefined) {
+    assertString(card.advanceLabel, `${path}.advanceLabel`);
+  }
+};
+
 const assertMetricComparisonOperator = (value: unknown, path: string) => {
   if (value !== ">" && value !== "<" && value !== "==") {
     throw new ManifestValidationError(`Manifest field "${path}" must be one of ">", "<", "=="`);
@@ -137,6 +181,28 @@ const validateContent = (content: unknown): GameManifestContent | undefined => {
 
   if (content.methodology !== undefined) {
     assertObjectRecord(content.methodology, "content.methodology");
+  }
+
+  if (content.antarctica !== undefined) {
+    assertObjectRecord(content.antarctica, "content.antarctica");
+    if (content.antarctica.infos !== undefined) {
+      assertArray(content.antarctica.infos, "content.antarctica.infos");
+      content.antarctica.infos.forEach((entry, index) =>
+        validateAntarcticaInfoEntry(entry, `content.antarctica.infos[${index}]`)
+      );
+    }
+    if (content.antarctica.boards !== undefined) {
+      assertArray(content.antarctica.boards, "content.antarctica.boards");
+      content.antarctica.boards.forEach((board, index) =>
+        validateAntarcticaBoard(board, `content.antarctica.boards[${index}]`)
+      );
+    }
+    if (content.antarctica.cards !== undefined) {
+      assertArray(content.antarctica.cards, "content.antarctica.cards");
+      content.antarctica.cards.forEach((card, index) =>
+        validateAntarcticaBoardCard(card, `content.antarctica.cards[${index}]`)
+      );
+    }
   }
 
   return content as unknown as GameManifestContent;

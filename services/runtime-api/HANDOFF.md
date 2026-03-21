@@ -66,6 +66,7 @@
 - `GSR-028` is implemented now: explicit actions `opening.card.61` ... `opening.card.66` cover the scout-dispatch board at `stepIndex = 32`, bounded `conditionalCardBonuses` model time bonuses from the status of cards `57` and `62`, and locked go-card `66` is opened through the existing board-local unlock hook on `62/63`; go-card continuation remains explicit via `opening.card.61/66.advance` to `i18` plus `opening.info.i18.advance` to the next mainline boundary at `stepIndex = 34`.
 - `GSR-029` is implemented now: explicit actions `opening.card.67` ... `opening.card.70` cover the final aftermath/second-relocation tail, `timeline.activeInfoId` exposes the active info block, `opening.card.68.advance` resolves bounded `i19/i19_1` entry variants and a direct high-time loss jump to `i34_2`, and the main-line ending remains explicit via `opening.info.i19.advance`, `opening.card.69.advance`, and `opening.info.i20.advance` to terminal `i21`.
 - Integration coverage now proves the normal mainline path to `i13`, one post-base conditional bonus (`opening.card.31` from `cont = 10` to `cont = 11`), the low-stat card-34 loss branch to `loss` step `0` with explicit continuation to `i21`, the low-pro step-23 path where `39` starts locked and unlocks on the third resolved board card, the high-pro step-23 path where `3902` is exposed immediately and preserves `selectedCardId = "3902"`, the step-26 public communication board with both a non-go path (`opening.card.44`) and a conditional go path (`opening.card.48 -> i15 -> step 28`), the step-28 trusted-messengers board with a conditional go path (`opening.card.49 -> i16 -> step 30`), the step-30 acceleration board with both a non-go path (`opening.card.56`) and a conditional go path (`opening.card.60 -> i17 -> step 32`), the step-32 scout-dispatch board with both an unlock path (`opening.card.62 -> unlock 66`) and a bounded go path (`opening.card.66 -> i18 -> step 34`), and the final step-34 aftermath slice with fast-variant `i19_1`, default `i19`, and high-time loss jump to `i34_2`.
+- Bounded player-facing delivery is no longer only a generic action catalog: `game.manifest.json` now includes `content.antarctica` for intro info `i0`, board `1..6`, and info `i7`, the content endpoint projects it directly, and `player-web` resolves those scenes from the current session snapshot with a safe fallback for unmigrated steps.
 
 ## Как запускать локально
 
@@ -96,7 +97,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` are implemented, and the post-confirm mainline path now reaches terminal `i21`; the next engineering gap is player-facing delivery of the now-complete opening flow rather than another unreached opening board;
+- team-selection mechanics for step `15` are implemented, and the post-confirm mainline path now reaches terminal `i21`; the next engineering gap is extending the new player-facing delivery beyond the first bounded current-step slice rather than another unreached opening board;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -106,11 +107,12 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica slice должен сместиться с migration mechanics на player-facing delivery: `runtime-api` уже вычисляет `timeline.activeInfoId`, `selectedCardId`, card flags и line switches, теперь `player-web` должен начать использовать эти данные для реального current-step rendering.
-4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
-5. Добавлять persistence только после появления реального operational need.
-6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
-7. Для ближайших Antarctica gameplay slices извлекать механику из `draft/Antarctica/GameFull.html` через scripts и переносить её в `games/antarctica/game.manifest.json` как в конечный исполнимый source of truth.
+3. Первый bounded Antarctica player-facing delivery slice уже реализован: `player-web` рендерит `i0`, board `1..6` и `i7` из `content.antarctica` и существующего session snapshot.
+4. Следующий Antarctica slice должен расширить current-step rendering дальше по opening flow, не ломая fallback path для ещё не смоделированных step-ов.
+5. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
+6. Добавлять persistence только после появления реального operational need.
+7. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
+8. Для ближайших Antarctica gameplay slices извлекать механику из `draft/Antarctica/GameFull.html` через scripts и переносить её в `games/antarctica/game.manifest.json` как в конечный исполнимый source of truth.
 
 ## Важные замечания
 

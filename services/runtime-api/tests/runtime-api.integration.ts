@@ -2313,6 +2313,31 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     training?: { format: string };
     actions: Array<{ actionId: string; displayName: string; capabilityFamily: string | null; capability: string | null }>;
     mockups: Array<{ id: string; name: string; description: string; type: string; imagePath: string }>;
+    antarctica?: {
+      infos: Array<{
+        id: string;
+        stepIndex: number;
+        screenId: string;
+        title: string;
+        body: string;
+        advanceActionId: string;
+      }>;
+      boards: Array<{
+        id: string;
+        stepIndex: number;
+        screenId: string;
+        title: string;
+        body?: string;
+        cardIds: Array<string>;
+      }>;
+      cards: Array<{
+        cardId: string;
+        title: string;
+        summary: string;
+        selectActionId: string;
+        advanceActionId?: string;
+      }>;
+    };
   }>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
@@ -2337,6 +2362,23 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(typeof firstMockup.description, "string");
   assert.equal(typeof firstMockup.type, "string");
   assert.equal(typeof firstMockup.imagePath, "string");
+  assert.ok(body.antarctica);
+  assert.ok(Array.isArray(body.antarctica.infos));
+  assert.ok(Array.isArray(body.antarctica.boards));
+  assert.ok(Array.isArray(body.antarctica.cards));
+  const infoI0 = body.antarctica.infos.find((entry) => entry.id === "i0");
+  assert.ok(infoI0);
+  assert.equal(infoI0.stepIndex, 0);
+  assert.equal(infoI0.screenId, "S1");
+  assert.equal(infoI0.advanceActionId, "opening.info.i0.advance");
+  const board = body.antarctica.boards.find((entry) => entry.id === "opening.board.1_6");
+  assert.ok(board);
+  assert.equal(board.stepIndex, 9);
+  assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
+  const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
+  assert.ok(card3);
+  assert.equal(card3.selectActionId, "opening.card.3");
+  assert.equal(card3.advanceActionId, "opening.card.3.advance");
 });
 
 test("GET /games/:gameId/player-content returns 404 for non-existent game", async () => {

@@ -3,20 +3,22 @@
 import { useEffect, useState, useTransition } from "react";
 import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
 import type { ActionSnapshot, SessionSnapshot } from "@/lib/antarctica";
+import {
+  getFallbackActionEntries,
+  readCanAdvance,
+  readCardFlags,
+  readSelectedCardId,
+  resolveAntarcticaContent,
+  resolveBoardCards,
+  resolveCurrentBoard,
+  resolveCurrentInfoEntry
+} from "@/lib/antarctica";
 
 export type { PlayerFacingMockup as AntarcticaMockup };
-
-type AntarcticaAction = {
-  actionId: string;
-  displayName: string;
-  capabilityFamily: string | null;
-  capability: string | null;
-};
 
 type AntarcticaPlayerProps = {
   runtimeApiUrl: string;
   content: PlayerFacingContent;
-  actions: Array<AntarcticaAction>;
   mockups: Array<PlayerFacingMockup>;
 };
 
@@ -49,7 +51,26 @@ const formatValue = (value: unknown) => {
   return String(value);
 };
 
-export function AntarcticaPlayer({ runtimeApiUrl, content, actions, mockups }: AntarcticaPlayerProps) {
+type RichTextProps = {
+  html: string;
+  className?: string;
+};
+
+function RichText({ html, className }: RichTextProps) {
+  const normalized = html.trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.includes("<")) {
+    return <div className={className} dangerouslySetInnerHTML={{ __html: normalized }} />;
+  }
+
+  return <p className={className}>{normalized}</p>;
+}
+
+export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: AntarcticaPlayerProps) {
   const [session, setSession] = useState<AntarcticaSession | null>(null);
   const [booting, setBooting] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -146,6 +167,19 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, actions, mockups }: A
   const timeline = (publicState?.timeline as Record<string, unknown> | undefined) ?? {};
   const log = Array.isArray(publicState?.log) ? (publicState?.log as Array<RuntimeLogEntry>) : [];
 
+  const antarctica = resolveAntarcticaContent(content);
+  const currentInfo = resolveCurrentInfoEntry(antarctica, publicState as Record<string, unknown>);
+  const currentBoard = resolveCurrentBoard(antarctica, publicState as Record<string, unknown>);
+  const boardCards = resolveBoardCards(antarctica, currentBoard);
+  const selectedCardId = readSelectedCardId(session);
+  const cardFlags = readCardFlags(session);
+  const canAdvance = readCanAdvance(session);
+  const fallbackActions = getFallbackActionEntries(content);
+  const selectedCard =
+    selectedCardId && boardCards.length > 0
+      ? boardCards.find((card) => card.cardId === selectedCardId) ?? null
+      : null;
+
   return (
     <main className="shell">
       <div className="frame">
@@ -174,11 +208,11 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, actions, mockups }: A
               <div className="metrics">
                 <div className="metric">
                   <label>score</label>
-                  <strong>{readNumber((metrics as Record<string, unknown>).score, 60)}</strong>
+                  <strong>{readNumber(metrics.score, 60)}</strong>
                 </div>
                 <div className="metric">
                   <label>time</label>
-                  <strong>{readNumber((metrics as Record<string, unknown>).time, 0)}</strong>
+                  <strong>{readNumber(metrics.time, 0)}</strong>
                 </div>
                 <div className="metric">
                   <label>stage</label>
@@ -192,20 +226,110 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, actions, mockups }: A
 
               <div className="content-grid">
                 <section className="actions">
-                  <div className="section-title">Action controls</div>
-                  <div className="action-grid">
-                    {actions.map((action) => (
-                      <button
-                        key={action.actionId}
-                        className="action-button"
-                        type="button"
-                        onClick={() => dispatchAction(action.actionId)}
-                        aria-disabled={isPending || !session ? "true" : "false"}
-                      >
-                        {action.displayName}
-                      </button>
-                    ))}
-                  </div>
+                  <div className="section-title">Current scene</div>
+
+                  {currentInfo ? (
+                    <div className="scene-card">
+                      <h3 className="scene-title">{currentInfo.title}</h3>
+                      <RichText className="scene-body" html={currentInfo.body} />
+                      <div className="status-row" style={{ marginTop: 16 }}>
+                        <span className="chip">info: {currentInfo.id}</span>
+                        <span className="chip">step: {currentInfo.stepIndex}</span>
+                      </div>
+                      <div className="action-grid" style={{ marginTop: 14 }}>
+                        <button
+                          className="action-button"
+                          type="button"
+                          onClick={() => dispatchAction(currentInfo.advanceActionId)}
+                          aria-disabled={isPending || !session ? "true" : "false"}
+                        >
+                          {currentInfo.advanceLabel ?? "Продолжить"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {!currentInfo && currentBoard ? (
+                    <div className="scene-card">
+                      <h3 className="scene-title">{currentBoard.title}</h3>
+                      <RichText className="scene-body" html={currentBoard.body ?? ""} />
+                      <div className="status-row" style={{ marginTop: 16 }}>
+                        <span className="chip">board: {currentBoard.id}</span>
+                        <span className="chip">step: {currentBoard.stepIndex}</span>
+                        {selectedCardId ? <span className="chip">selected: {selectedCardId}</span> : null}
+                      </div>
+
+                      <div className="board-card-list">
+                        {boardCards.map((card) => {
+                          const flags = cardFlags[card.cardId] ?? {};
+                          const isLocked = flags.locked === true;
+                          const isSelected = flags.selected === true || selectedCardId === card.cardId;
+                          const isResolved = flags.resolved === true;
+
+                          return (
+                            <article
+                              key={card.cardId}
+                              className={`board-card${isSelected ? " board-card-selected" : ""}${isLocked ? " board-card-locked" : ""}`}
+                            >
+                              <div className="board-card-header">
+                                <strong>{card.title}</strong>
+                                <span className="chip">#{card.cardId}</span>
+                              </div>
+                              <p className="board-card-summary">{card.summary}</p>
+                              <div className="status-row">
+                                {isSelected ? <span className="chip">selected</span> : null}
+                                {isResolved ? <span className="chip">resolved</span> : null}
+                                {isLocked ? <span className="chip">locked</span> : null}
+                              </div>
+                              <div className="action-grid">
+                                <button
+                                  className="action-button"
+                                  type="button"
+                                  onClick={() => dispatchAction(card.selectActionId)}
+                                  aria-disabled={isPending || !session || isLocked ? "true" : "false"}
+                                >
+                                  {card.selectLabel ?? "Выбрать"}
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+
+                      {selectedCard && selectedCard.advanceActionId && canAdvance ? (
+                        <div className="action-grid" style={{ marginTop: 16 }}>
+                          <button
+                            className="action-button"
+                            type="button"
+                            onClick={() => dispatchAction(selectedCard.advanceActionId!)}
+                            aria-disabled={isPending || !session ? "true" : "false"}
+                          >
+                            {selectedCard.advanceLabel ?? "Продолжить"}
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  {!currentInfo && !currentBoard ? (
+                    <>
+                      <div className="section-title" style={{ marginTop: 0 }}>Fallback action catalog</div>
+                      <div className="action-grid">
+                        {fallbackActions.map((action) => (
+                          <button
+                            key={action.actionId}
+                            className="action-button"
+                            type="button"
+                            onClick={() => dispatchAction(action.actionId)}
+                            aria-disabled={isPending || !session ? "true" : "false"}
+                          >
+                            {action.displayName}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
+
                   <div className="status-row" style={{ marginTop: 14 }}>
                     <span className="chip">runtime: {runtimeApiUrl}</span>
                     <span className="chip">players: {content.playerConfig.min}-{content.playerConfig.max}</span>
@@ -247,7 +371,14 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, actions, mockups }: A
                   <article key={mockup.id} className="mockup-card">
                     <strong>{mockup.name}</strong>
                     <p>{mockup.description}</p>
-                    <p style={{ marginTop: 10, color: "var(--accent)", fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: 12 }}>
+                    <p
+                      style={{
+                        marginTop: 10,
+                        color: "var(--accent)",
+                        fontFamily: "var(--font-ibm-plex-mono), monospace",
+                        fontSize: 12
+                      }}
+                    >
                       {mockup.type} · {mockup.imagePath || "no image path"}
                     </p>
                   </article>

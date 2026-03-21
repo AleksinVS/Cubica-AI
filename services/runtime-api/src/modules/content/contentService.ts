@@ -81,6 +81,15 @@ const loadMockupsForGame = async (gameId: string): Promise<Array<PlayerFacingMoc
   return mockups;
 };
 
+const projectAntarcticaContent = (bundle: GameBundle): PlayerFacingContent["antarctica"] => {
+  const antarctica = bundle.manifest.content?.antarctica;
+  if (!antarctica) {
+    return undefined;
+  }
+
+  return structuredClone(antarctica);
+};
+
 const projectManifestToPlayerContent = (bundle: GameBundle): PlayerFacingContent => {
   const { manifest } = bundle;
 
@@ -102,7 +111,8 @@ const projectManifestToPlayerContent = (bundle: GameBundle): PlayerFacingContent
     playerConfig: manifest.config.players,
     training: manifest.meta.training,
     actions,
-    mockups: []
+    mockups: [],
+    antarctica: projectAntarcticaContent(bundle)
   };
 };
 
