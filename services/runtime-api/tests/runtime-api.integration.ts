@@ -2386,11 +2386,13 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const infoI8 = body.antarctica.infos.find((entry) => entry.id === "i8");
   const infoI9 = body.antarctica.infos.find((entry) => entry.id === "i9");
   const infoI10 = body.antarctica.infos.find((entry) => entry.id === "i10");
+  const infoI11 = body.antarctica.infos.find((entry) => entry.id === "i11");
   const teamSelection = body.antarctica.teamSelections.find((entry) => entry.stepIndex === 15);
   assert.ok(infoI0);
   assert.ok(infoI8);
   assert.ok(infoI9);
   assert.ok(infoI10);
+  assert.ok(infoI11);
   assert.ok(teamSelection);
   assert.equal(infoI0.stepIndex, 0);
   assert.equal(infoI0.screenId, "S1");
@@ -2407,6 +2409,14 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(infoI10.screenId, "S1");
   assert.equal(infoI10.title, "Работаем «в одной упряжке»");
   assert.equal(infoI10.advanceActionId, "opening.info.i10.advance");
+  assert.equal(infoI11.stepIndex, 18);
+  assert.equal(infoI11.screenId, "S1");
+  assert.equal(infoI11.title, "Первые шаги");
+  assert.equal(
+    infoI11.body,
+    "<p>Теперь, когда команда почувствовала в себе силы для свершений, нужно все-таки что-то сделать. Это желание вместе со странным параличом, сковавшим мысли, привели к тому, что команда просидела молча несколько часов.</p><p>«Ну, хватит! Кальмары уже переварились, пора задать жару!» Несмотря на то, что никакого смысла в этой фразе не было, она произвела волшебный эффект. Все вскочили и как будто бы стало ясно, что нужно делать.</p>"
+  );
+  assert.equal(infoI11.advanceActionId, "opening.info.i11.advance");
   assert.equal(teamSelection.id, "opening.team.selection");
   assert.equal(teamSelection.screenId, "S2");
   assert.equal(teamSelection.requiredPickCount, 5);
@@ -2418,9 +2428,11 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const board = body.antarctica.boards.find((entry) => entry.id === "opening.board.1_6");
   const secondBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.7_12");
   const thirdBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.13_18");
+  const fourthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.19_24");
   assert.ok(board);
   assert.ok(secondBoard);
   assert.ok(thirdBoard);
+  assert.ok(fourthBoard);
   assert.equal(board.stepIndex, 9);
   assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
   assert.equal(secondBoard.stepIndex, 11);
@@ -2429,16 +2441,28 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(thirdBoard.stepIndex, 13);
   assert.equal(thirdBoard.screenId, "S2");
   assert.deepEqual(thirdBoard.cardIds, ["13", "14", "15", "16", "17", "18"]);
+  assert.equal(fourthBoard.stepIndex, 17);
+  assert.equal(fourthBoard.screenId, "S2");
+  assert.equal(fourthBoard.title, "Выберите четвертый шаг");
+  assert.deepEqual(fourthBoard.cardIds, ["19", "20", "21", "22", "23", "24"]);
   const card7 = body.antarctica.cards.find((entry) => entry.cardId === "7");
   const card9 = body.antarctica.cards.find((entry) => entry.cardId === "9");
   const card12 = body.antarctica.cards.find((entry) => entry.cardId === "12");
   const card13 = body.antarctica.cards.find((entry) => entry.cardId === "13");
   const card18 = body.antarctica.cards.find((entry) => entry.cardId === "18");
+  const card19 = body.antarctica.cards.find((entry) => entry.cardId === "19");
+  const card22 = body.antarctica.cards.find((entry) => entry.cardId === "22");
+  const card23 = body.antarctica.cards.find((entry) => entry.cardId === "23");
+  const card24 = body.antarctica.cards.find((entry) => entry.cardId === "24");
   assert.ok(card7);
   assert.ok(card9);
   assert.ok(card12);
   assert.ok(card13);
   assert.ok(card18);
+  assert.ok(card19);
+  assert.ok(card22);
+  assert.ok(card23);
+  assert.ok(card24);
   assert.equal(
     card7.summary,
     "Алена хочет выступить сама на Совете. Участники Совета доверяют ей. То, что она уже участник Совета, поможет сэкономить время на организации такого выступления."
@@ -2457,6 +2481,16 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     "Сразу выдать всю информацию на собрании для всех? Это опасно и не дальновидно. Тимофей предлагает определить уровни доступа и спустить порциями сверху вниз."
   );
   assert.equal(card18.advanceActionId, "opening.card.18.advance");
+  assert.equal(
+    card19.summary,
+    "Глава штаба дает всем участникам задание провести разъяснительную работу среди населения. Для эффективности каждый собирает группу пингвинов для обсуждения."
+  );
+  assert.equal(card22.advanceActionId, "opening.card.22.advance");
+  assert.equal(card23.advanceActionId, "opening.card.23.advance");
+  assert.equal(
+    card24.summary,
+    "Предводитель команды назначает график дежурства, по которому все участники по очереди становятся во главе команды, ставят цели и распределяют задачи."
+  );
   const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
   assert.ok(card3);
   assert.equal(card3.selectActionId, "opening.card.3");
