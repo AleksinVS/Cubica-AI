@@ -193,7 +193,8 @@ export function resolveCurrentTeamSelectionScene(
 
 export function resolveBoardCards(
   antarctica: AntarcticaPlayerContent | null,
-  board: AntarcticaPlayerBoard | null
+  board: AntarcticaPlayerBoard | null,
+  cardFlags?: Record<string, CardFlagState>
 ): Array<AntarcticaPlayerBoardCard> {
   if (!antarctica || !board) {
     return [];
@@ -202,7 +203,15 @@ export function resolveBoardCards(
   const cardsById = new Map(antarctica.cards.map((card) => [card.cardId, card]));
   return board.cardIds
     .map((cardId) => cardsById.get(cardId))
-    .filter((card): card is AntarcticaPlayerBoardCard => Boolean(card));
+    .filter((card): card is AntarcticaPlayerBoardCard => {
+      if (!card) {
+        return false;
+      }
+
+      const contentAvailable = (card as AntarcticaPlayerBoardCard & { available?: boolean }).available;
+      const cardState = cardFlags?.[card.cardId];
+      return contentAvailable !== false && cardState?.available !== false;
+    });
 }
 
 export function readSelectedCardId(session: SessionSnapshot | null): string | null {

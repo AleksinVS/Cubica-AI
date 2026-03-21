@@ -174,9 +174,9 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
   const currentInfo = resolveCurrentInfoEntry(antarctica, publicState as Record<string, unknown>);
   const currentBoard = resolveCurrentBoard(antarctica, publicState as Record<string, unknown>);
   const currentTeamSelection = resolveCurrentTeamSelectionScene(antarctica, publicState as Record<string, unknown>);
-  const boardCards = resolveBoardCards(antarctica, currentBoard);
   const selectedCardId = readSelectedCardId(session);
   const cardFlags = readCardFlags(session);
+  const boardCards = resolveBoardCards(antarctica, currentBoard, cardFlags);
   const teamFlags = readTeamFlags(session);
   const teamSelectionState = readTeamSelection(session);
   const canAdvance = readCanAdvance(session);
