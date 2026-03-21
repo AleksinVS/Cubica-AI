@@ -2368,8 +2368,10 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(Array.isArray(body.antarctica.cards));
   const infoI0 = body.antarctica.infos.find((entry) => entry.id === "i0");
   const infoI8 = body.antarctica.infos.find((entry) => entry.id === "i8");
+  const infoI9 = body.antarctica.infos.find((entry) => entry.id === "i9");
   assert.ok(infoI0);
   assert.ok(infoI8);
+  assert.ok(infoI9);
   assert.equal(infoI0.stepIndex, 0);
   assert.equal(infoI0.screenId, "S1");
   assert.equal(infoI0.advanceActionId, "opening.info.i0.advance");
@@ -2377,21 +2379,34 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(infoI8.screenId, "S1");
   assert.equal(infoI8.title, "Что скажет народ?");
   assert.equal(infoI8.advanceActionId, "opening.info.i8.advance");
+  assert.equal(infoI9.stepIndex, 14);
+  assert.equal(infoI9.screenId, "S1");
+  assert.equal(infoI9.title, "Создание «штаба»");
+  assert.equal(infoI9.advanceActionId, "opening.info.i9.advance");
   const board = body.antarctica.boards.find((entry) => entry.id === "opening.board.1_6");
   const secondBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.7_12");
+  const thirdBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.13_18");
   assert.ok(board);
   assert.ok(secondBoard);
+  assert.ok(thirdBoard);
   assert.equal(board.stepIndex, 9);
   assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
   assert.equal(secondBoard.stepIndex, 11);
   assert.equal(secondBoard.screenId, "S2");
   assert.deepEqual(secondBoard.cardIds, ["7", "8", "9", "10", "11", "12"]);
+  assert.equal(thirdBoard.stepIndex, 13);
+  assert.equal(thirdBoard.screenId, "S2");
+  assert.deepEqual(thirdBoard.cardIds, ["13", "14", "15", "16", "17", "18"]);
   const card7 = body.antarctica.cards.find((entry) => entry.cardId === "7");
   const card9 = body.antarctica.cards.find((entry) => entry.cardId === "9");
   const card12 = body.antarctica.cards.find((entry) => entry.cardId === "12");
+  const card13 = body.antarctica.cards.find((entry) => entry.cardId === "13");
+  const card18 = body.antarctica.cards.find((entry) => entry.cardId === "18");
   assert.ok(card7);
   assert.ok(card9);
   assert.ok(card12);
+  assert.ok(card13);
+  assert.ok(card18);
   assert.equal(
     card7.summary,
     "Алена хочет выступить сама на Совете. Участники Совета доверяют ей. То, что она уже участник Совета, поможет сэкономить время на организации такого выступления."
@@ -2405,6 +2420,11 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     card12.summary,
     "Федор достал из сумки свой дневник наблюдений и подготовил симпатичную презентацию на основе своих данных. Таблицы и графики не могут не быть убедительными!"
   );
+  assert.equal(
+    card13.summary,
+    "Сразу выдать всю информацию на собрании для всех? Это опасно и не дальновидно. Тимофей предлагает определить уровни доступа и спустить порциями сверху вниз."
+  );
+  assert.equal(card18.advanceActionId, "opening.card.18.advance");
   const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
   assert.ok(card3);
   assert.equal(card3.selectActionId, "opening.card.3");
