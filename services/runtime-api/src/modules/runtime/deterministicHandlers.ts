@@ -201,6 +201,34 @@ const readCardState = (state: RuntimeState, cardId: string) => {
   return ensureObject(cards[cardId]);
 };
 
+const evaluateCardCondition = (
+  state: RuntimeState,
+  condition: {
+    cardId: string;
+    selected?: boolean;
+    resolved?: boolean;
+    locked?: boolean;
+    available?: boolean;
+  }
+) => {
+  const cardState = readCardState(state, condition.cardId);
+
+  if (condition.selected !== undefined && cardState.selected !== condition.selected) {
+    return false;
+  }
+  if (condition.resolved !== undefined && cardState.resolved !== condition.resolved) {
+    return false;
+  }
+  if (condition.locked !== undefined && cardState.locked !== condition.locked) {
+    return false;
+  }
+  if (condition.available !== undefined && cardState.available !== condition.available) {
+    return false;
+  }
+
+  return true;
+};
+
 const writeCardState = (cards: RuntimeState, cardId: string, nextCardState: RuntimeState) => {
   cards[cardId] = nextCardState;
 };
@@ -380,6 +408,12 @@ const applyManifestMetricDeltas = (
 
   for (const bonus of metadata.conditionalMetricBonuses ?? []) {
     if (evaluateMetricCondition(state, bonus.when)) {
+      applyMetricDeltas(state, bonus.metricDeltas);
+    }
+  }
+
+  for (const bonus of metadata.conditionalCardBonuses ?? []) {
+    if (evaluateCardCondition(state, bonus.whenCard)) {
       applyMetricDeltas(state, bonus.metricDeltas);
     }
   }

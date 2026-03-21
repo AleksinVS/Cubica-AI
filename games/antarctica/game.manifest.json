@@ -364,6 +364,32 @@
             "selected": false,
             "resolved": false
           },
+          "61": {
+            "selected": false,
+            "resolved": false
+          },
+          "62": {
+            "selected": false,
+            "resolved": false
+          },
+          "63": {
+            "selected": false,
+            "resolved": false
+          },
+          "64": {
+            "selected": false,
+            "resolved": false
+          },
+          "65": {
+            "selected": false,
+            "resolved": false
+          },
+          "66": {
+            "selected": false,
+            "resolved": false,
+            "locked": true,
+            "available": false
+          },
           "3902": {
             "selected": false,
             "resolved": false,
@@ -6532,6 +6558,610 @@
         "stateUpdate": {
           "timelineCanAdvance": false,
           "timelineStepIndex": 32,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
+    "opening.card.61": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.61",
+      "displayName": "Opening card 61 - Отправить элитную группу сразу",
+      "description": "Deterministic payload extracted from legacy opening card 61 for the step-32 scout dispatch board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "61",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "61",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 7
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "pro",
+              "operator": "<",
+              "threshold": 60
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 2
+              }
+            ]
+          },
+          {
+            "when": {
+              "metricId": "pro",
+              "operator": "<",
+              "threshold": 45
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 3
+              }
+            ]
+          }
+        ],
+        "conditionalCardBonuses": [
+          {
+            "whenCard": {
+              "cardId": "57",
+              "resolved": false
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 5
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "61",
+          "summary": "Элитная разведгруппа вернулась почти вовремя и вызвала мощный подъём в колонии."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "61",
+          "cardFlags": {
+            "cardId": "61",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.61.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.61.advance",
+      "displayName": "Opening card 61 - advance to info i18",
+      "description": "Deterministic transition from legacy opening card 61 to info block i18.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "61",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "61"
+          },
+          "card": {
+            "id": "61",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "61",
+          "summary": "Карточка 61 завершена, переход к i18."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 33,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.62": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.62",
+      "displayName": "Opening card 62 - Добрать всех желающих",
+      "description": "Deterministic payload extracted from legacy opening card 62 for the step-32 scout dispatch board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "62",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "62",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "62",
+          "summary": "Группа быстро наполнилась желающими, и это сразу разблокировало полноценный вариант экспедиции."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "62",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["62", "63"],
+            "resolvedCountAtLeast": 1,
+            "unlockCardId": "66"
+          }
+        }
+      }
+    },
+    "opening.card.63": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.63",
+      "displayName": "Opening card 63 - Доукомплектовать лучшими",
+      "description": "Deterministic payload extracted from legacy opening card 63 for the step-32 scout dispatch board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "63",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "63",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "63",
+          "summary": "Доукомплектование лучшими заняло больше времени, но тоже открыло полноценный вариант экспедиции."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "63",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["62", "63"],
+            "resolvedCountAtLeast": 1,
+            "unlockCardId": "66"
+          }
+        }
+      }
+    },
+    "opening.card.64": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.64",
+      "displayName": "Opening card 64 - Жёстко пресечь борьбу за влияние",
+      "description": "Deterministic payload extracted from legacy opening card 64 for the step-32 scout dispatch board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "64",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "64",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 3
+          },
+          {
+            "metricId": "man",
+            "delta": 5
+          },
+          {
+            "metricId": "constr",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 0
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "stat",
+              "operator": "<",
+              "threshold": 25
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 1
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "64",
+          "summary": "Жёсткое вмешательство быстро снизило внутреннюю борьбу и освободило ресурсы."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "64",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.65": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.65",
+      "displayName": "Opening card 65 - Аккуратно развести конфликт",
+      "description": "Deterministic payload extracted from legacy opening card 65 for the step-32 scout dispatch board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "65",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "65",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 4
+          },
+          {
+            "metricId": "man",
+            "delta": 5
+          },
+          {
+            "metricId": "constr",
+            "delta": 7
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "stat",
+              "operator": "<",
+              "threshold": 25
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 1
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "65",
+          "summary": "Аккуратное разведение конфликта потребовало больше времени, но принесло лучший организационный результат."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "65",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.66": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.66",
+      "displayName": "Opening card 66 - Отправить полностью готовую группу",
+      "description": "Deterministic payload extracted from legacy opening card 66 as the bounded locked go-card for step 32.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "66",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "66",
+            "selected": false,
+            "resolved": false,
+            "locked": false,
+            "available": true
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 6
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "pro",
+              "operator": "<",
+              "threshold": 60
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 2
+              }
+            ]
+          },
+          {
+            "when": {
+              "metricId": "pro",
+              "operator": "<",
+              "threshold": 45
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 3
+              }
+            ]
+          }
+        ],
+        "conditionalCardBonuses": [
+          {
+            "whenCard": {
+              "cardId": "62",
+              "resolved": true
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 5
+              }
+            ]
+          },
+          {
+            "whenCard": {
+              "cardId": "57",
+              "resolved": false
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 5
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "66",
+          "summary": "Полностью подготовленная группа вернулась с сильным результатом и большим подъёмом в колонии."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "66",
+          "cardFlags": {
+            "cardId": "66",
+            "selected": true,
+            "resolved": true,
+            "locked": false,
+            "available": true
+          }
+        }
+      }
+    },
+    "opening.card.66.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.66.advance",
+      "displayName": "Opening card 66 - advance to info i18",
+      "description": "Deterministic transition from legacy opening card 66 to info block i18.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "scout-dispatch", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "66",
+            "lineIndex": 0,
+            "stepIndex": 32
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 32,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "66"
+          },
+          "card": {
+            "id": "66",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "66",
+          "summary": "Карточка 66 завершена, переход к i18."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 33,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i18.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i18.advance",
+      "displayName": "Opening info i18 - advance to cards 67..68",
+      "description": "Deterministic transition from legacy info block i18 to the next mainline boundary with cards 67..68.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i18",
+            "lineIndex": 0,
+            "stepIndex": 33
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 33,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i18 завершено, достигнута следующая mainline boundary."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 34,
           "timelineStageId": "stage_intro",
           "timelineScreenId": "S2"
         }

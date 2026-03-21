@@ -164,6 +164,20 @@ export interface GameManifestDeterministicConditionalMetricBonus {
 }
 
 /**
+ * Local bonus gated by previously known card state.
+ */
+export interface GameManifestDeterministicConditionalCardBonus {
+  whenCard: {
+    cardId: string;
+    selected?: boolean;
+    resolved?: boolean;
+    locked?: boolean;
+    available?: boolean;
+  };
+  metricDeltas: Array<GameManifestDeterministicMetricDelta>;
+}
+
+/**
  * Local pre-base line switch for explicit deterministic cards.
  */
 export interface GameManifestDeterministicConditionalLineSwitch {
@@ -226,6 +240,7 @@ export interface GameManifestDeterministicActionMetadata {
   guard: GameManifestDeterministicGuard;
   metricDeltas: Array<GameManifestDeterministicMetricDelta>;
   conditionalMetricBonuses?: Array<GameManifestDeterministicConditionalMetricBonus>;
+  conditionalCardBonuses?: Array<GameManifestDeterministicConditionalCardBonus>;
   conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
   log: GameManifestDeterministicLogMetadata;
   stateUpdate: GameManifestDeterministicStateUpdate;

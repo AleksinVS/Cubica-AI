@@ -356,6 +356,41 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     });
   }
 
+  if (deterministic.conditionalCardBonuses !== undefined) {
+    assertArray(
+      deterministic.conditionalCardBonuses,
+      `${actionPath}.deterministic.conditionalCardBonuses`
+    );
+    if (deterministic.conditionalCardBonuses.length === 0) {
+      throw new ManifestValidationError(
+        `Manifest field "${actionPath}.deterministic.conditionalCardBonuses" must not be empty`
+      );
+    }
+
+    deterministic.conditionalCardBonuses.forEach((bonus, index) => {
+      const bonusPath = `${actionPath}.deterministic.conditionalCardBonuses[${index}]`;
+      assertObjectRecord(bonus, bonusPath);
+      assertObjectRecord(bonus.whenCard, `${bonusPath}.whenCard`);
+      assertString(bonus.whenCard.cardId, `${bonusPath}.whenCard.cardId`);
+      if (bonus.whenCard.selected !== undefined) {
+        assertBoolean(bonus.whenCard.selected, `${bonusPath}.whenCard.selected`);
+      }
+      if (bonus.whenCard.resolved !== undefined) {
+        assertBoolean(bonus.whenCard.resolved, `${bonusPath}.whenCard.resolved`);
+      }
+      if (bonus.whenCard.locked !== undefined) {
+        assertBoolean(bonus.whenCard.locked, `${bonusPath}.whenCard.locked`);
+      }
+      if (bonus.whenCard.available !== undefined) {
+        assertBoolean(bonus.whenCard.available, `${bonusPath}.whenCard.available`);
+      }
+      const bonusMetricDeltas = validateMetricDeltaList(bonus.metricDeltas, `${bonusPath}.metricDeltas`);
+      if (bonusMetricDeltas.length === 0) {
+        throw new ManifestValidationError(`Manifest field "${bonusPath}.metricDeltas" must not be empty`);
+      }
+    });
+  }
+
   if (deterministic.conditionalLineSwitch !== undefined) {
     assertObjectRecord(deterministic.conditionalLineSwitch, `${actionPath}.deterministic.conditionalLineSwitch`);
     validateMetricCondition(

@@ -15,7 +15,7 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
-- `games/antarctica/game.manifest.json` уже покрывает bounded gameplay slice records до boundary `stepIndex = 32`; архитектурное правило для этих механик закреплено в ADR-024, а step-specific delivery details вынесены в `docs/architecture/gameplay-slices/`.
+- `games/antarctica/game.manifest.json` уже покрывает bounded gameplay slice records до boundary `stepIndex = 34`; архитектурное правило для этих механик закреплено в ADR-024, а step-specific delivery details вынесены в `docs/architecture/gameplay-slices/`.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
@@ -253,7 +253,7 @@ Execution Model определяет, как платформа обрабаты
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
-- В этом canonical slice bounded gameplay records `GSR-020`..`GSR-027` уже реализованы и доводят mainline до boundary `stepIndex = 32`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
+- В этом canonical slice bounded gameplay records `GSR-020`..`GSR-028` уже реализованы и доводят mainline до boundary `stepIndex = 34`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
 - `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.
