@@ -33,6 +33,7 @@
 3. Явно описать в `games/antarctica/game.manifest.json` основные сущности игры `Antarctica`, извлекая их из `draft/Antarctica/Game.html`, `draft/Antarctica/README.md` и текущей заготовки в `games/antarctica/`.
 4. Ввести schema validation для `game.manifest.json`.
 5. Для анализа `draft/Antarctica/Game.html` использовать scripts и targeted extraction, а не чтение всего legacy HTML-файла как prose-источника.
+6. Для opening-flow extraction использовать `npm run antarctica:extract-opening` и проверку `npm run verify:antarctica-extraction`; не выполнять ручной разбор всего `draft/Antarctica/Game.html`.
 
 ## Приоритет 2. Harden Runtime API
 

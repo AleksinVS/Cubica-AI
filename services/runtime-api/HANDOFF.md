@@ -68,6 +68,7 @@ npm run smoke --workspace services/runtime-api
 - capability handlers пока покрывают только текущие `Antarctica` actions;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/Game.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `Game.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
+- для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
 
 ## Следующие шаги по приоритету
 

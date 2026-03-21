@@ -20,7 +20,9 @@
     "typecheck": "npm run typecheck --workspace services/runtime-api",
     "verify:runtime-api": "npm run typecheck --workspace services/runtime-api && npm test --workspace services/runtime-api && npm run smoke --workspace services/runtime-api",
     "verify:player-web": "npm run typecheck --workspace @cubica/player-web && npm run build --workspace @cubica/player-web",
-    "verify:canonical": "npm run verify:runtime-api && npm run verify:player-web"
+    "verify:canonical": "npm run verify:runtime-api && npm run verify:player-web",
+    "antarctica:extract-opening": "node scripts/antarctica/extract-opening.js",
+    "verify:antarctica-extraction": "node scripts/antarctica/verify-extraction.js"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
