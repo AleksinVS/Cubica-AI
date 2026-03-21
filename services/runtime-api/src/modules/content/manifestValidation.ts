@@ -229,10 +229,6 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
   }
 
   assertArray(deterministic.metricDeltas, `${actionPath}.deterministic.metricDeltas`);
-  if (deterministic.metricDeltas.length === 0) {
-    throw new ManifestValidationError(`Manifest field "${actionPath}.deterministic.metricDeltas" must not be empty`);
-  }
-
   deterministic.metricDeltas.forEach((delta, index) => {
     const path = `${actionPath}.deterministic.metricDeltas[${index}]`;
     assertObjectRecord(delta, path);
@@ -253,6 +249,15 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
   assertObjectRecord(deterministic.stateUpdate, `${actionPath}.deterministic.stateUpdate`);
   if (deterministic.stateUpdate.timelineCanAdvance !== undefined) {
     assertBoolean(deterministic.stateUpdate.timelineCanAdvance, `${actionPath}.deterministic.stateUpdate.timelineCanAdvance`);
+  }
+  if (deterministic.stateUpdate.timelineStepIndex !== undefined) {
+    assertNumber(deterministic.stateUpdate.timelineStepIndex, `${actionPath}.deterministic.stateUpdate.timelineStepIndex`);
+  }
+  if (deterministic.stateUpdate.timelineStageId !== undefined) {
+    assertString(deterministic.stateUpdate.timelineStageId, `${actionPath}.deterministic.stateUpdate.timelineStageId`);
+  }
+  if (deterministic.stateUpdate.timelineScreenId !== undefined) {
+    assertString(deterministic.stateUpdate.timelineScreenId, `${actionPath}.deterministic.stateUpdate.timelineScreenId`);
   }
   if (deterministic.stateUpdate.selectedCardId !== undefined) {
     assertString(deterministic.stateUpdate.selectedCardId, `${actionPath}.deterministic.stateUpdate.selectedCardId`);

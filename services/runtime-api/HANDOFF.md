@@ -40,8 +40,9 @@
 ## Обновление по bounded first-half slice (`opening.card.3`)
 
 - Manifest/data половина первого реального gameplay slice для Antarctica уже подготовлена: в `games/antarctica/game.manifest.json` добавлен `actions["opening.card.3"]` с deterministic metadata из legacy card `3` («Поговорить с Аленой»).
+- Для устранения gap по достижимости board при старте с `stepIndex: 0` в manifest добавлен explicit intro reachability path: `opening.info.i0.advance` ... `opening.info.i6.advance` (детерминированные переходы по info-блокам `i0/i02/i03/i1/i2/i3/i4/i5/i6` до `stepIndex: 9`).
 - Контракт manifest action расширен небольшим typed-блоком deterministic metadata (provenance, guard, metric deltas, log metadata, state-update metadata).
-- Валидация manifest теперь валидирует этот deterministic блок и минимальные state scaffolding-поля (`timeline.canAdvance`, `secret.opening.selectedCardId`, card flags scaffolding) до старта runtime.
+- Валидация manifest теперь допускает пустые `metricDeltas` для intro advance actions и валидирует новые timeline-поля state-update (`timelineStepIndex`, `timelineStageId`, `timelineScreenId`) вместе с существующими deterministic полями.
 - Runtime wiring намеренно отложен на следующий commit, чтобы этот шаг остался чисто data/contracts/validation slice без изменения текущего execution behavior.
 
 ## Как запускать локально
@@ -81,7 +82,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Подключить runtime wiring для deterministic metadata `opening.card.3` (чтение guard/deltas/log/stateUpdate из manifest и применение в runtime transition).
+3. Подключить runtime wiring и тесты для deterministic metadata intro-path (`opening.info.i0.advance` ... `opening.info.i6.advance`) и `opening.card.3` (чтение guard/deltas/log/stateUpdate из manifest и применение в runtime transition).
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

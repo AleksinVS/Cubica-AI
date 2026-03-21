@@ -139,6 +139,10 @@ export interface GameManifestDeterministicLogMetadata {
 
 export interface GameManifestDeterministicStateUpdate {
   timelineCanAdvance?: boolean;
+  // Explicit timeline coordinates for deterministic transitions (for example intro info step -> next screen).
+  timelineStepIndex?: number;
+  timelineStageId?: string;
+  timelineScreenId?: string;
   selectedCardId?: string;
   cardFlags?: {
     cardId: string;

@@ -138,6 +138,375 @@
     }
   },
   "actions": {
+    "opening.info.i0.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i0.advance",
+      "displayName": "Opening info i0 - advance to i02",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i0.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i0",
+            "lineIndex": 0,
+            "stepIndex": 0
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 0,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i0 завершено, переход к i02."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 1,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i02.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i02.advance",
+      "displayName": "Opening info i02 - advance to i03",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i02.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i02",
+            "lineIndex": 0,
+            "stepIndex": 1
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 1,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i02 завершено, переход к i03."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 2,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i03.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i03.advance",
+      "displayName": "Opening info i03 - advance to i1",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i03.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i03",
+            "lineIndex": 0,
+            "stepIndex": 2
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 2,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i03 завершено, переход к i1."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 3,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i1.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i1.advance",
+      "displayName": "Opening info i1 - advance to i2",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i1.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i1",
+            "lineIndex": 0,
+            "stepIndex": 3
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 3,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i1 завершено, переход к i2."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 4,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i2.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i2.advance",
+      "displayName": "Opening info i2 - advance to i3",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i2.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i2",
+            "lineIndex": 0,
+            "stepIndex": 4
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 4,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i2 завершено, переход к i3."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 5,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i3.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i3.advance",
+      "displayName": "Opening info i3 - advance to i4",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i3.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i3",
+            "lineIndex": 0,
+            "stepIndex": 5
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 5,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i3 завершено, переход к i4."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 6,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i4.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i4.advance",
+      "displayName": "Opening info i4 - advance to i5",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i4.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i4",
+            "lineIndex": 0,
+            "stepIndex": 6
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 6,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i4 завершено, переход к i5."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 7,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i5.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i5.advance",
+      "displayName": "Opening info i5 - advance to i6",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i5.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i5",
+            "lineIndex": 0,
+            "stepIndex": 7
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 7,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i5 завершено, переход к i6."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 8,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i6.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i6.advance",
+      "displayName": "Opening info i6 - advance to first board",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i6.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i6",
+            "lineIndex": 0,
+            "stepIndex": 8
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 8,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdAbsent": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i6 завершено, переход к первому экрану выбора карточек."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 9,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
     "opening.card.3": {
       "handlerType": "manifest-data",
       "capabilityFamily": "antarctica.opening",
