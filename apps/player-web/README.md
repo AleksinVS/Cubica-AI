@@ -40,6 +40,8 @@ The current bounded Antarctica delivery slice uses structured `content.antarctic
 - info `i10`
 - fourth board `19..24`
 - info `i11`
+- fifth board `25..30`
+- info `i12`
 
 `player-web` combines that static player-facing content with the live session snapshot (`timeline`, `selectedCardId`, card flags, team flags, and teamSelection state) to render the current scene. For steps that are not modeled yet in `content.antarctica`, the player falls back to the global action catalog instead of guessing missing content.
 

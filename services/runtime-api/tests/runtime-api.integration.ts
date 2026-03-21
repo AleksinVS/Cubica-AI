@@ -2387,12 +2387,14 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const infoI9 = body.antarctica.infos.find((entry) => entry.id === "i9");
   const infoI10 = body.antarctica.infos.find((entry) => entry.id === "i10");
   const infoI11 = body.antarctica.infos.find((entry) => entry.id === "i11");
+  const infoI12 = body.antarctica.infos.find((entry) => entry.id === "i12");
   const teamSelection = body.antarctica.teamSelections.find((entry) => entry.stepIndex === 15);
   assert.ok(infoI0);
   assert.ok(infoI8);
   assert.ok(infoI9);
   assert.ok(infoI10);
   assert.ok(infoI11);
+  assert.ok(infoI12);
   assert.ok(teamSelection);
   assert.equal(infoI0.stepIndex, 0);
   assert.equal(infoI0.screenId, "S1");
@@ -2417,6 +2419,14 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     "<p>Теперь, когда команда почувствовала в себе силы для свершений, нужно все-таки что-то сделать. Это желание вместе со странным параличом, сковавшим мысли, привели к тому, что команда просидела молча несколько часов.</p><p>«Ну, хватит! Кальмары уже переварились, пора задать жару!» Несмотря на то, что никакого смысла в этой фразе не было, она произвела волшебный эффект. Все вскочили и как будто бы стало ясно, что нужно делать.</p>"
   );
   assert.equal(infoI11.advanceActionId, "opening.info.i11.advance");
+  assert.equal(infoI12.stepIndex, 20);
+  assert.equal(infoI12.screenId, "S1");
+  assert.equal(infoI12.title, "Разброд и шатание");
+  assert.equal(
+    infoI12.body,
+    "<p>С одной стороны, жизнь пингвинов осталась прежней. С другой – коренным образом изменилась. Ощущение надвигающейся угрозы давило незаметно, но зато каждый день и каждый час. Кто-то пытался игнорировать это, кто-то, наоборот, позволял этом чувству взять верх, а кто-то даже наслаждался им.</p><p>От первого шока пингвины были как бы в состоянии легкой анестезии, которая быстро кончалась. Пока в штабе продумывали решения, в стае с каждым днем становилось тревожнее. Появились радикально настроенные формирования, слухи о грядущем конце света. Даже у Григория возникли свои последователи, которые все отрицали. Некоторые отрицали даже авторитет руководства, а некоторые - отрицали саму идею отрицания перспектив жизни на айсберге. В литературе пингвинов стали отчетливо видны признаки пост-модернизма и декадентства.</p><p>В общем, нужно было спешить, пока не грянул гром… Нужно ли тратить время на борьбу с паникой?</p>"
+  );
+  assert.equal(infoI12.advanceActionId, "opening.info.i12.advance");
   assert.equal(teamSelection.id, "opening.team.selection");
   assert.equal(teamSelection.screenId, "S2");
   assert.equal(teamSelection.requiredPickCount, 5);
@@ -2429,10 +2439,12 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const secondBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.7_12");
   const thirdBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.13_18");
   const fourthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.19_24");
+  const fifthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.25_30");
   assert.ok(board);
   assert.ok(secondBoard);
   assert.ok(thirdBoard);
   assert.ok(fourthBoard);
+  assert.ok(fifthBoard);
   assert.equal(board.stepIndex, 9);
   assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
   assert.equal(secondBoard.stepIndex, 11);
@@ -2445,6 +2457,16 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(fourthBoard.screenId, "S2");
   assert.equal(fourthBoard.title, "Выберите четвертый шаг");
   assert.deepEqual(fourthBoard.cardIds, ["19", "20", "21", "22", "23", "24"]);
+  assert.equal(fifthBoard.stepIndex, 19);
+  assert.equal(fifthBoard.screenId, "S2");
+  assert.equal(fifthBoard.title, "Выберите пятый шаг");
+  assert.deepEqual(fifthBoard.cardIds, ["25", "26", "27", "28", "29", "30"]);
+  const card25 = body.antarctica.cards.find((entry) => entry.cardId === "25");
+  const card26 = body.antarctica.cards.find((entry) => entry.cardId === "26");
+  const card27 = body.antarctica.cards.find((entry) => entry.cardId === "27");
+  const card28 = body.antarctica.cards.find((entry) => entry.cardId === "28");
+  const card29 = body.antarctica.cards.find((entry) => entry.cardId === "29");
+  const card30 = body.antarctica.cards.find((entry) => entry.cardId === "30");
   const card7 = body.antarctica.cards.find((entry) => entry.cardId === "7");
   const card9 = body.antarctica.cards.find((entry) => entry.cardId === "9");
   const card12 = body.antarctica.cards.find((entry) => entry.cardId === "12");
@@ -2459,6 +2481,12 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(card12);
   assert.ok(card13);
   assert.ok(card18);
+  assert.ok(card25);
+  assert.ok(card26);
+  assert.ok(card27);
+  assert.ok(card28);
+  assert.ok(card29);
+  assert.ok(card30);
   assert.ok(card19);
   assert.ok(card22);
   assert.ok(card23);
@@ -2490,6 +2518,32 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(
     card24.summary,
     "Предводитель команды назначает график дежурства, по которому все участники по очереди становятся во главе команды, ставят цели и распределяют задачи."
+  );
+  assert.equal(card25.selectActionId, "opening.card.25");
+  assert.equal(
+    card25.summary,
+    "Профессор изучает статистику климатических изменений и проводит мета-анализ всех доступных работ, связанных с жизненным циклом айсбергов."
+  );
+  assert.equal(
+    card26.summary,
+    "Команда организует работы со всеми пингвинами по сбору идей: как убедиться, что угроза реальна, как можно было бы решить проблему, если она реальна?"
+  );
+  assert.equal(
+    card27.summary,
+    "Организуется работа команды с теми пингвинами, которые в прошлом зарекомендовали себя отличными решателями проблем. Все обсуждения тщательно фиксируются."
+  );
+  assert.equal(
+    card28.summary,
+    "Команда прорабатывает возможные варианты укрепления айсберга с помощью системы стяжек, также изучается возможность сделать стоки для воды в полостях айсберга."
+  );
+  assert.equal(
+    card29.summary,
+    "Формируются группы для проведения консультаций с соседними колониями пингвинов для выявления лучших практик борьбы с расколом айсбергов."
+  );
+  assert.equal(card30.selectActionId, "opening.card.30");
+  assert.equal(
+    card30.summary,
+    "Штаб решает погрузиться в серию специально организованных мозговых штурмов. Задача: получить как можно больше вариантов действий для спасения айсберга."
   );
   const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
   assert.ok(card3);
