@@ -131,6 +131,10 @@ export interface GameManifestDeterministicGuard {
     memberId: string;
     selected?: boolean;
   };
+  board?: {
+    cardIds: Array<string>;
+    resolvedCountAtLeast?: number;
+  };
 }
 
 export interface GameManifestDeterministicMetricDelta {
@@ -152,6 +156,11 @@ export interface GameManifestDeterministicStateUpdate {
   timelineStageId?: string;
   timelineScreenId?: string;
   selectedCardId?: string;
+  boardThreshold?: {
+    cardIds: Array<string>;
+    resolvedCountAtLeast: number;
+    timelineCanAdvance?: boolean;
+  };
   cardFlags?: {
     cardId: string;
     selected?: boolean;

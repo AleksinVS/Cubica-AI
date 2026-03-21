@@ -197,6 +197,19 @@ const readCardState = (state: RuntimeState, cardId: string) => {
   return ensureObject(cards[cardId]);
 };
 
+const countResolvedCards = (state: RuntimeState, cardIds: Array<string>) => {
+  let resolvedCount = 0;
+
+  for (const cardId of cardIds) {
+    const cardState = readCardState(state, cardId);
+    if (cardState.resolved === true) {
+      resolvedCount += 1;
+    }
+  }
+
+  return resolvedCount;
+};
+
 const readTeamMemberState = (state: RuntimeState, memberId: string) => {
   const publicState = ensureObject(state.public);
   const flags = ensureObject(publicState.flags);
@@ -278,6 +291,19 @@ const evaluateManifestGuard = (
 
     if (guard.team.selected !== undefined && teamMemberState.selected !== guard.team.selected) {
       failures.push(`public.flags.team["${guard.team.memberId}"].selected expected ${String(guard.team.selected)}`);
+    }
+  }
+
+  if (guard.board) {
+    const resolvedCount = countResolvedCards(state, guard.board.cardIds);
+
+    if (
+      guard.board.resolvedCountAtLeast !== undefined &&
+      resolvedCount < guard.board.resolvedCountAtLeast
+    ) {
+      failures.push(
+        `public.flags.cards resolved count for board [${guard.board.cardIds.join(", ")}] expected >= ${guard.board.resolvedCountAtLeast} (got ${resolvedCount})`
+      );
     }
   }
 
@@ -382,6 +408,14 @@ const applyManifestStateUpdate = (
 
     flagsTeam[memberId] = teamMemberState;
     flags.team = flagsTeam;
+  }
+
+  if (stateUpdate.boardThreshold) {
+    const resolvedCount = countResolvedCards(state, stateUpdate.boardThreshold.cardIds);
+
+    if (resolvedCount >= stateUpdate.boardThreshold.resolvedCountAtLeast) {
+      timeline.canAdvance = stateUpdate.boardThreshold.timelineCanAdvance ?? true;
+    }
   }
 
   flags.cards = cards;

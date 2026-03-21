@@ -277,6 +277,25 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     }
   }
 
+  if (deterministic.guard.board !== undefined) {
+    assertObjectRecord(deterministic.guard.board, `${actionPath}.deterministic.guard.board`);
+    assertArray(deterministic.guard.board.cardIds, `${actionPath}.deterministic.guard.board.cardIds`);
+    if (deterministic.guard.board.cardIds.length === 0) {
+      throw new ManifestValidationError(
+        `Manifest field "${actionPath}.deterministic.guard.board.cardIds" must not be empty`
+      );
+    }
+    deterministic.guard.board.cardIds.forEach((cardId, index) => {
+      assertString(cardId, `${actionPath}.deterministic.guard.board.cardIds[${index}]`);
+    });
+    if (deterministic.guard.board.resolvedCountAtLeast !== undefined) {
+      assertNumber(
+        deterministic.guard.board.resolvedCountAtLeast,
+        `${actionPath}.deterministic.guard.board.resolvedCountAtLeast`
+      );
+    }
+  }
+
   assertArray(deterministic.metricDeltas, `${actionPath}.deterministic.metricDeltas`);
   deterministic.metricDeltas.forEach((delta, index) => {
     const path = `${actionPath}.deterministic.metricDeltas[${index}]`;
@@ -310,6 +329,31 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
   }
   if (deterministic.stateUpdate.selectedCardId !== undefined) {
     assertString(deterministic.stateUpdate.selectedCardId, `${actionPath}.deterministic.stateUpdate.selectedCardId`);
+  }
+  if (deterministic.stateUpdate.boardThreshold !== undefined) {
+    assertObjectRecord(deterministic.stateUpdate.boardThreshold, `${actionPath}.deterministic.stateUpdate.boardThreshold`);
+    assertArray(
+      deterministic.stateUpdate.boardThreshold.cardIds,
+      `${actionPath}.deterministic.stateUpdate.boardThreshold.cardIds`
+    );
+    if (deterministic.stateUpdate.boardThreshold.cardIds.length === 0) {
+      throw new ManifestValidationError(
+        `Manifest field "${actionPath}.deterministic.stateUpdate.boardThreshold.cardIds" must not be empty`
+      );
+    }
+    deterministic.stateUpdate.boardThreshold.cardIds.forEach((cardId, index) => {
+      assertString(cardId, `${actionPath}.deterministic.stateUpdate.boardThreshold.cardIds[${index}]`);
+    });
+    assertNumber(
+      deterministic.stateUpdate.boardThreshold.resolvedCountAtLeast,
+      `${actionPath}.deterministic.stateUpdate.boardThreshold.resolvedCountAtLeast`
+    );
+    if (deterministic.stateUpdate.boardThreshold.timelineCanAdvance !== undefined) {
+      assertBoolean(
+        deterministic.stateUpdate.boardThreshold.timelineCanAdvance,
+        `${actionPath}.deterministic.stateUpdate.boardThreshold.timelineCanAdvance`
+      );
+    }
   }
   if (deterministic.stateUpdate.cardFlags !== undefined) {
     assertObjectRecord(deterministic.stateUpdate.cardFlags, `${actionPath}.deterministic.stateUpdate.cardFlags`);

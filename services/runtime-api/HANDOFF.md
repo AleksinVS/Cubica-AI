@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Следующий gameplay boundary зафиксирован в `ADR-021`: после реализованного ADR-020 team-selection path и post-confirm path через `stepIndex = 18` следующий открытый boundary начинается на `stepIndex = 19` и использует bounded threshold-based board progression на board `25..30`. Intended mechanism: explicit card actions plus separate advance action после threshold по resolved cards на текущем board, без generic workflow engine.
+Следующий gameplay boundary зафиксирован в `ADR-021`: bounded threshold-based board progression на board `25..30` и переход к `i12` уже закрыты, а следующий открытый boundary теперь начинается на `stepIndex = 21`. Intended mechanism for the remaining slice: conditional metric gates / line switching, without generic workflow engine.
 
 ## Что уже работает
 
@@ -58,7 +58,7 @@
 - Третий board `13..18` теперь покрыт manifest-driven actions. Non-go cards `13/14/15/16/17` сохраняют `selectedCardId = "9"` и `canAdvance = false`, а `opening.card.18` является текущей go-card для этого board и фиксирует `selectedCardId = "18"` вместе с `timeline.canAdvance = true`.
 - Boundary after `opening.card.18` is now explicit too: `opening.card.18.advance` lands on legacy info block `i9` (`stepIndex=14`), and `opening.info.i9.advance` reaches the team-selection boundary at `stepIndex=15` while keeping `stage_intro` and `selectedCardId = "18"`.
 - The team-selection slice from ADR-020 is implemented now: explicit member-selection actions, separate confirm action, visible public flags, and per-stage pick count tracking. Do not introduce a generic selector engine or payload-driven DSL for this slice. The field-level hooks should be `guard` and `stateUpdate` on each action definition.
-- The next Antarctica slice is ADR-021: bounded threshold-based board progression for step `19` on board `25..30`. Keep card actions explicit, keep the board advance action separate, and gate advancement by explicit resolved-card count on the current board. Do not pull in the later conditional/branching mechanics from step `21`.
+- The next Antarctica slice after ADR-021 is the unreached step `21`. Keep the remaining work bounded: conditional metric gates / line switching only, no generic workflow engine.
 
 ## Как запускать локально
 
@@ -89,7 +89,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` are implemented, and the post-confirm path through step `18` is complete; the next slice starts at the unreached board on step `19` and is covered by ADR-021, not a generic workflow engine;
+- team-selection mechanics for step `15` are implemented, and the post-confirm path through step `20` is complete; the next slice starts at the unreached step `21` and is limited to conditional metric gates / line switching, not a generic workflow engine;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -99,7 +99,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice starts at the unreached board after the implemented ADR-020 team-selection and post-confirm slices, beginning at `stepIndex = 19` and governed by ADR-021 threshold-based board progression.
+3. Следующий Antarctica gameplay slice starts at the unreached step `21` after the implemented ADR-020 and ADR-021 slices; conditional metric gates / line switching are still pending.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
