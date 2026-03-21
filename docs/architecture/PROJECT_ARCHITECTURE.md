@@ -15,7 +15,7 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
-- `games/antarctica/game.manifest.json` уже дошёл до boundary `stepIndex = 15`; post-confirm path через `stepIndex = 18` тоже реализован, а следующий bounded slice описан в ADR-021.
+- `games/antarctica/game.manifest.json` уже покрывает bounded gameplay slice records до boundary `stepIndex = 26`; архитектурное правило для этих механик закреплено в ADR-024, а step-specific delivery details вынесены в `docs/architecture/gameplay-slices/`.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
@@ -171,19 +171,11 @@ Execution Model определяет, как платформа обрабаты
 - **Engine Extensions** предоставляют нативные функции, которые могут быть вызваны из скриптов (Bridge), обеспечивая доступ к тяжелым вычислениям или внешним системам.
 - Такое разделение ("Слоеный пирог") обеспечивает баланс между безопасностью контента и мощностью движка.
 
-**Antarctica team-selection boundary** (ADR-020):
-- Для step `15` в Antarctica применяется bounded manifest-driven team selection, а не generic workflow engine.
-- Manifest должен задавать explicit member-selection actions и separate confirm action после выбора ровно 5 members.
-- `state.public.flags.team[memberId].selected` показывает выбор конкретного member.
-- `state.public.teamSelection.pickCount` хранит число выбранных members на текущем stage; при расширении на другие stages допускается `state.public.teamSelection.byStage[stageId].pickCount`.
-- `state.public.teamSelection.selectedMemberIds` хранит список выбранных members для UI и confirm gating.
-- На этом этапе не вводится payload-driven selector abstraction и broad DSL.
-
-**Antarctica threshold-based board progression** (ADR-021):
-- Для step `19` в Antarctica применяется bounded threshold-based board progression для board `25..30`.
-- Card actions остаются explicit manifest actions, а отдельный board advance action открывается только после threshold по resolved cards на текущем board.
-- Threshold evaluation использует explicit board card ids / resolved-card count, а не generic selector engine или implicit pattern matching.
-- Этот ADR не покрывает conditional metric gates, line switching и branching mechanics из later step `21`.
+**Antarctica bounded manifest-driven gameplay mechanics** (ADR-024):
+- Antarctica gameplay migration uses explicit manifest actions, explicit follow-up paths, and deterministic bounded state instead of a generic workflow engine.
+- Threshold progression, metric-gated outcomes, bounded line switching, locked-card unlock, and entry-time alt-card swap are allowed as local manifest mechanics without introducing a platform-wide DSL.
+- Player-visible availability and progress must stay auditable through explicit deterministic state, typically in `state.public`.
+- Delivery-specific step-, board-, and card-level rules live in Gameplay Slice Records under `docs/architecture/gameplay-slices/`, not in ADRs.
 
 **Протокол взаимодействия с View** (ADR‑002, `docs/architecture/protocols/mvp-interaction.md`):
 - Presenter общается с клиентом через абстрактный шлюз команд (`ViewCommand` / `ViewResponse`), не завися от конкретного UI‑фреймворка.
@@ -225,8 +217,7 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-017 (Modular Monolith Transition):** Ближайшая backend‑фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
 - **ADR-018 (JSON Manifest Truth Model):** Исполнимая логика игры закрепляется в `games/<id>/game.manifest.json`, а narrative и draft-артефакты не считаются runtime source of truth.
 - **ADR-019 (Runtime-Owned Player Content Boundary):** `runtime-api` владеет загрузкой game content и проекцией player-facing content DTO/API; `player-web` не должен читать `games/*` напрямую.
-- **ADR-020 (Bounded Manifest-Driven Team Selection):** Для Antarctica step 15 вводятся explicit member-selection actions, отдельный confirm action после выбора ровно 5 members, visible selection flags в `state.public` и per-stage pick count без generic workflow engine.
-- **ADR-021 (Bounded Threshold-Based Board Progression):** Для Antarctica step 19 вводятся explicit board card actions, separate board advance action после threshold по resolved cards на текущем board и board-scoped threshold evaluation без generic workflow engine.
+- **ADR-024 (Bounded Manifest-Driven Gameplay Mechanics):** Cubica моделирует bounded gameplay mechanics через explicit manifest actions, explicit follow-up paths и auditable deterministic state; generic workflow/rule/selector engine откладывается до подтверждённого повторного use case, а delivery-specific slice specs выносятся в Gameplay Slice Records.
 
 
 ---
@@ -255,14 +246,14 @@ Execution Model определяет, как платформа обрабаты
 - `SDK/*` — SDK‑пакеты и вспомогательные библиотеки для клиентских приложений.
 - `draft/*` — прототипы и экспериментальные реализации (портал, плеер, legacy‑игра).
 - `data/fixtures/` и `data/mocks/` — игровые данные и моки внешних интеграций (LLM, Router).
-- `docs/architecture/*` — архитектурные артефакты (ADR, схемы, SQL, поиск, протоколы).
+- `docs/architecture/*` — архитектурные артефакты (ADR, gameplay slice records, схемы, SQL, поиск, протоколы).
 
 ### 4.2. Текущее состояние реализации
 
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
-- В этом canonical slice step `15` и post-confirm path до `stepIndex = 18` уже реализованы, а следующий bounded slice зафиксирован на step `19` и описан в ADR-021: bounded threshold-based board progression вместо generic selector engine.
+- В этом canonical slice bounded gameplay records `GSR-020`..`GSR-023` уже реализованы и доводят mainline до boundary `stepIndex = 26`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
 - `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.

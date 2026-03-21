@@ -10,11 +10,11 @@
       "PROJECT_OVERVIEW.md",
       "PROJECT_STRUCTURE.md",
       "docs/architecture/PROJECT_ARCHITECTURE.md",
+      "docs/architecture/gameplay-slices/README.md",
       "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
       "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md",
       "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
-      "docs/architecture/adrs/020-bounded-manifest-driven-team-selection.md",
-      "docs/architecture/adrs/021-bounded-threshold-based-board-progression.md"
+      "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md"
     ]
   },
   "artifacts": [
@@ -41,6 +41,13 @@
       "owner": "platform"
     },
     {
+      "id": "adr.018.game-logic-source-of-truth",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
       "id": "adr.019.runtime-owned-player-content",
       "kind": "adr",
       "path": "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
@@ -51,13 +58,41 @@
       "id": "adr.020.bounded-manifest-driven-team-selection",
       "kind": "adr",
       "path": "docs/architecture/adrs/020-bounded-manifest-driven-team-selection.md",
-      "status": "actual",
+      "status": "superseded",
       "owner": "platform"
     },
     {
       "id": "adr.021.bounded-threshold-based-board-progression",
       "kind": "adr",
       "path": "docs/architecture/adrs/021-bounded-threshold-based-board-progression.md",
+      "status": "superseded",
+      "owner": "platform"
+    },
+    {
+      "id": "adr.022.bounded-conditional-line-switching",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/022-bounded-conditional-metric-gated-line-switching-for-antarctica-step-21.md",
+      "status": "superseded",
+      "owner": "platform"
+    },
+    {
+      "id": "adr.023.bounded-locked-go-card-unlock",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/023-bounded-locked-go-card-unlock-and-entry-time-alt-card-swap-for-antarctica-step-23.md",
+      "status": "superseded",
+      "owner": "platform"
+    },
+    {
+      "id": "adr.024.bounded-manifest-driven-gameplay-mechanics",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
+      "id": "docs.gameplay-slices",
+      "kind": "architecture-document",
+      "path": "docs/architecture/gameplay-slices/README.md",
       "status": "actual",
       "owner": "platform"
     },
@@ -70,8 +105,7 @@
       "adr_refs": [
         "ADR-017",
         "ADR-019",
-        "ADR-020",
-        "ADR-021"
+        "ADR-024"
       ],
       "depends_on": [
         "contracts.session",
@@ -96,8 +130,7 @@
       "source_of_truth": false,
       "adr_refs": [
         "ADR-019",
-        "ADR-020",
-        "ADR-021"
+        "ADR-024"
       ],
       "depends_on": [
         "backend.runtime-api",

@@ -55,6 +55,9 @@ Agents must always:
 
 8. **Write ADR for any architecture changes**
    - All architectural solutions must be reflected in the ADR.
+   - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
+   - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
+   - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`.
 9. **Keep architectural authority and final review with the main agent**
    - Built-in Codex subagents may support architecture work only as analysts: they may gather facts, compare options, and analyze bounded areas.
    - Built-in Codex subagents must not be treated as the final decision-maker for architectural choices.
@@ -71,6 +74,7 @@ Before planning anything, use these entry points:
 - [PROJECT_OVERVIEW.md](/home/abc/projects/Cubica-AI/PROJECT_OVERVIEW.md) - high-level product and platform context.
 - [PROJECT_STRUCTURE.md](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.md) - current repository layout and workspace map.
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
+- [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
 - [repo-manifest.json](/home/abc/projects/Cubica-AI/repo-manifest.json) - machine-readable index of canonical, draft, and target artifacts.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
 - [draft/Antarctica/README.md](/home/abc/projects/Cubica-AI/draft/Antarctica/README.md) - explains the structure of the legacy `GameFull.html` prototype used for current Antarctica mechanics extraction.
