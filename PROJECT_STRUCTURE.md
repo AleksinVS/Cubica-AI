@@ -140,7 +140,7 @@ draft/
 
 ```text
 games/
-├── antarctica/               # Пакет игры «Antarctica»: game manifest, UI manifests, сценарий (источник истины)
+├── antarctica/               # Пакет игры «Antarctica»: game manifest, UI manifests, design/mockups и runtime-facing assets
 ├── .../scripts/              # Пользовательские скрипты (Runtime Content Logic, Sandbox)
 └── .../extensions/           # Локальные пакеты расширений (Build-time Capabilities, Native)
 ```

@@ -105,14 +105,16 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 - `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
 - `draft/Antarctica/` — legacy mechanics reference. На текущем migration этапе `draft/Antarctica/Game.html` остаётся фактическим extraction source для ещё не перенесённой gameplay-логики, но не считается canonical runtime truth.
 
-### 2.3. Данные и игровые манифесты (current conventions + target model)
+### 2.3. Данные и игровые манифесты (current canonical model + historical lineage)
 
-Игровые манифесты описывают сценарий игры как данные: сущности, переменные, действия, поток экранов и правила формирования контекста для LLM. Они являются источником истины для движка и редактора.
+Игровые манифесты описывают игру как данные: метаданные, состояние, действия, design references и runtime-facing content. Для current canonical slice `Antarctica` источником истины для исполнимой логики является `games/antarctica/game.manifest.json`, а не narrative markdown.
 
-В актуальной архитектуре слой манифестов разделён на два уровня (см. ADR‑001 и ADR‑013):
+Практически это означает:
 
-- **логический манифест** описывает метаданные игры, ссылку на текстовые ассеты (`assets.rules`, `assets.scenario`, `assets.methodology.*`), конфигурацию движка, начальное состояние (`state`) и реестр действий (`actions`). Все смысловые тексты хранятся в Markdown/HTML‑файлах, а в манифесте представлены через ссылки `source_ref` (указание файла и якоря) и, при необходимости, кэш‑поле `resolved`;
-- **UI‑манифесты** описывают экраны и компоненты (Hybrid SDUI), привязку UI‑событий к действиям из логического манифеста, а также макеты (изображения + JSON‑описания дизайна), которые служат мостом между дизайнерами и разработчиками. Для одной и той же игры может существовать несколько UI‑манифестов под разные каналы и темы (например, Web и Telegram).
+- **game manifest** содержит метаданные игры, конфигурацию, `content` references, конфигурацию движка, начальное состояние (`state`) и реестр действий (`actions`);
+- **UI manifests** продолжают существовать как отдельный delivery layer для каналов (`games/<id>/ui/<channel>/ui.manifest.json`), но не являются источником истины для runtime-логики;
+- `games/antarctica/design/mockups/` остаётся источником UI intent;
+- `draft/Antarctica/Game.html` на текущем этапе является только фактическим extraction source для ещё не перенесённой механики. Это не новое архитектурное решение и не canonical runtime truth.
 
 **Дизайн-артефакты для ИИ-агентов (ADR-016):**
 
@@ -123,13 +125,13 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 
 Это позволяет ИИ-агентам понимать структуру макетов, генерировать UI-код по описаниям и отслеживать эволюцию дизайна от концепта до финального asset.
 
-Текстовое содержимое (правила, сценарий, методические материалы) хранится в отдельных файлах и помечается **якорями** (`<!-- anchor: ... -->` или Markdown‑ID у заголовков). Логический манифест ссылается на эти якоря через `source_ref`, что позволяет автоматически регенерировать кэш‑тексты и держать JSON синхронизированным с естественно‑языковыми описаниями.
+Текстовые источники и якоря из более ранней manifest-lineage остаются историческим направлением (см. ADR-013), но не считаются текущей канонической truth model для `Antarctica`. В текущем срезе narrative/extraction artifacts могут существовать как reference material или migration input, но не как runtime source of truth.
 
 - `games/antarctica/` — эталонный пакет игры (манифесты + ассеты).
 - **Схемы и форматы:**
-  - `docs/architecture/schemas/manifest-structure.md` — концептуальное описание структуры манифеста.
+  - `docs/architecture/schemas/manifest-structure.md` — описание исторической/расширенной manifest-lineage; для текущего исполнимого shape `Antarctica` ориентироваться в первую очередь на `packages/contracts/manifest` и `services/runtime-api/src/modules/content/manifestValidation.ts`.
     - `docs/architecture/schemas/ui-schema-concept.md` — концепция гибридной схемы интерфейса (Hybrid SDUI).
-    - `docs/architecture/schemas/game-manifest.schema.json` — формальная JSON Schema логического манифеста.
+    - `docs/architecture/schemas/game-manifest.schema.json` — legacy schema lineage document, не являющийся текущим canonical validator для `runtime-api`.
     - `docs/architecture/schemas/ui-manifest.schema.json` — формальная JSON Schema UI‑манифеста (экраны, компоненты, макеты).
     - `docs/architecture/schemas/examples/*.json` — примеры валидных манифестов.
   
@@ -142,7 +144,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
   **Обучающие метаданные и методические материалы:**
   
   - В секции `meta.training` манифеста описываются тренируемые компетенции (список компетенций с идентификаторами и описаниями), формат игры (`single`, `single_team`, `multi`) и рекомендуемая продолжительность сессии (минимум/максимум в минутах).
-  - В секции `assets.methodology` задаются пути к markdown‑файлам с методическими материалами:
+  - В текущем manifest shape методические материалы живут в `content.methodology`:
     - `participants` — материалы для участников (правила, описания сущностей, рекомендации, подсказки, чек‑листы);
     - `facilitators` — материалы для ведущих (интерпретации, вопросы, подсказки, критерии оценки и индикаторы паттернов поведения).
   - Эти поля формализуют обучение поверх игрового сценария и позволяют каталогу/редактору и LLM‑движку учитывать обучательные цели при работе с играми.

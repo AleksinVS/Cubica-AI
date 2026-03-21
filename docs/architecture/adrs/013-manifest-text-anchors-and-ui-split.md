@@ -1,7 +1,7 @@
 # ADR-013: Текстовые якоря и разделение логического и UI-манифестов
 
 - **Дата**: 2025-12-10
-- **Статус**: Accepted
+- **Статус**: Accepted (historical lineage; truth-model parts superseded for the current canonical slice by ADR-018)
 - **Авторы**: AI Agent (Codex), владелец репозитория
 - **Компоненты**: Game Editor, Game Repository, Game Engine, SDK/core, SDK/react-sdk, игры в `games/*`
 
@@ -15,6 +15,8 @@
 - [Связанные артефакты](#связанные-артефакты)
 
 ## Контекст
+
+> **Актуальность для current canonical slice:** этот ADR остаётся полезным как историческое и возможное будущее направление для text-anchor/tooling workflows, но его truth-model часть не является текущей канонической моделью `Antarctica`. Для исполнимой логики текущего slice источником истины остаётся `games/<id>/game.manifest.json` по ADR-018, а `draft/Antarctica/Game.html` используется только как текущий extraction source during migration.
 
 Архитектура платформы Cubica (см. `PROJECT_OVERVIEW.md`, `PROJECT_ARCHITECTURE.md`, ADR-001, ADR-003, ADR-007, ADR-008, ADR-009, ADR-012) строится вокруг JSON‑манифестов игр и LLM-first подхода (LLM-first — архитектурный подход, при котором большая языковая модель рассматривается как основной игровой движок), где LLM (Large Language Model, «большая языковая модель») работает поверх структурированных данных.
 
@@ -203,4 +205,3 @@
 - `docs/tasks/features/F_00021_antarctica_json_manifest_(E_0020).md`
 - Новый Feature‑документ для реализации данного ADR: `docs/tasks/features/F_00070_manifest_text_anchors_and_ui_split.md`
 - ExecPlan для реализации: `docs/tasks/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`
-

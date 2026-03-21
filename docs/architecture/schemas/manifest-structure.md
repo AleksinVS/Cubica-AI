@@ -1,5 +1,7 @@
 # Structure of the Game Manifest
 
+> Current-status note: this document describes a broader historical/extended manifest lineage with text anchors and split logical/UI manifests. It is not the current canonical executable shape for `Antarctica`. For the active runtime truth model, use `games/antarctica/game.manifest.json`, `packages/contracts/manifest`, and `services/runtime-api/src/modules/content/manifestValidation.ts`.
+
 The **Game Manifest** is a JSON document that describes a game scenario in the Cubica platform. It adheres to the **LLM-first** architecture but supports a **Hybrid Execution Model** (ADR-007), mixing LLM logic with deterministic JS scripts stored in external files.
 
 In the current design the manifest layer is split into two cooperating documents:
