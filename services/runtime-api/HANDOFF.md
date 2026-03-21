@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Архитектурное правило для bounded manifest-driven gameplay mechanics теперь закреплено в `ADR-024`, а delivery-specific Antarctica slices `020..023` вынесены в `docs/architecture/gameplay-slices/`. Canonical runtime уже покрывает эти records до mainline boundary `stepIndex = 26`, включая step `21` loss-line switch и step `23` locked go-card `39` с bounded alt swap `3902`. Следующий открытый mainline boundary теперь - `stepIndex = 26` с cards `43..48`.
+Архитектурное правило для bounded manifest-driven gameplay mechanics теперь закреплено в `ADR-024`, а delivery-specific Antarctica slices `020..025` вынесены в `docs/architecture/gameplay-slices/`. Canonical runtime уже покрывает эти records до mainline boundary `stepIndex = 28`, включая step `21` loss-line switch, step `23` locked go-card `39` с bounded alt swap `3902` и step `26` public communication board `43..48` с explicit `i15` follow-up. Следующий открытый mainline boundary теперь - `stepIndex = 28` с cards `49..54`.
 
 ## Что уже работает
 
@@ -60,7 +60,8 @@
 - The team-selection slice from `GSR-020` is implemented now: explicit member-selection actions, separate confirm action, visible public flags, and per-stage pick count tracking. Do not introduce a generic selector engine or payload-driven DSL for this slice. The field-level hooks should be `guard` and `stateUpdate` on each action definition.
 - `GSR-022` is implemented now: `opening.info.i12.advance` reaches step `21`, explicit actions `opening.card.31` ... `opening.card.36` cover the full board, `opening.card.31/32/33/35/36` use bounded post-base conditional metric bonuses, and `opening.card.34` can switch to canonical line id `loss` when pre-action `stat < 25` while still applying its own base metric deltas.
 - Mainline continuation after step `21` is explicit too under `GSR-023`: `opening.card.31/32/33/35/36.advance` lead to `i13`, `opening.info.i13.advance` opens board `37..42`, step `23` now implements the bounded locked/unlocked `39` and entry-time alt `3902` behavior, and explicit `opening.card.39.advance` / `opening.card.3902.advance` plus `opening.info.i14.advance` / `opening.info.i14_2.advance` reach the next mainline boundary at `stepIndex = 26`. The loss line continues through explicit `opening.info.i34.advance` and `opening.info.i34_2.advance` until `i21`.
-- Integration coverage now proves the normal mainline path to `i13`, one post-base conditional bonus (`opening.card.31` from `cont = 10` to `cont = 11`), the low-stat card-34 loss branch to `loss` step `0` with explicit continuation to `i21`, the low-pro step-23 path where `39` starts locked and unlocks on the third resolved board card, and the high-pro step-23 path where `3902` is exposed immediately and preserves `selectedCardId = "3902"`.
+- `GSR-025` is implemented now: explicit actions `opening.card.43` ... `opening.card.48` cover the public-communication board at `stepIndex = 26`, card-local bounded metric hooks reuse the existing conditional bonus mechanism, and go-card continuation remains explicit via `opening.card.43/45/47/48.advance` to `i15` plus `opening.info.i15.advance` to the next mainline boundary at `stepIndex = 28`.
+- Integration coverage now proves the normal mainline path to `i13`, one post-base conditional bonus (`opening.card.31` from `cont = 10` to `cont = 11`), the low-stat card-34 loss branch to `loss` step `0` with explicit continuation to `i21`, the low-pro step-23 path where `39` starts locked and unlocks on the third resolved board card, the high-pro step-23 path where `3902` is exposed immediately and preserves `selectedCardId = "3902"`, and the step-26 public communication board with both a non-go path (`opening.card.44`) and a conditional go path (`opening.card.45 -> i15 -> step 28`).
 
 ## Как запускать локально
 
@@ -91,7 +92,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` are implemented, and the post-confirm mainline path now reaches `stepIndex = 26`; cards `43..48` and later gameplay slices are still unreached in canonical runtime;
+- team-selection mechanics for step `15` are implemented, and the post-confirm mainline path now reaches `stepIndex = 28`; cards `49..54` and later gameplay slices are still unreached in canonical runtime;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -101,7 +102,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice - mainline `stepIndex = 26` с cards `43..48` после уже внедрённых `GSR-020`, `GSR-021`, `GSR-022` и `GSR-023` под архитектурными ограничениями `ADR-024`.
+3. Следующий Antarctica gameplay slice - mainline `stepIndex = 28` с cards `49..54` после уже внедрённых `GSR-020`, `GSR-021`, `GSR-022`, `GSR-023` и `GSR-025` под архитектурными ограничениями `ADR-024`.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

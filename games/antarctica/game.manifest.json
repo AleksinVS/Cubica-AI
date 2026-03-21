@@ -292,6 +292,30 @@
             "selected": false,
             "resolved": false
           },
+          "43": {
+            "selected": false,
+            "resolved": false
+          },
+          "44": {
+            "selected": false,
+            "resolved": false
+          },
+          "45": {
+            "selected": false,
+            "resolved": false
+          },
+          "46": {
+            "selected": false,
+            "resolved": false
+          },
+          "47": {
+            "selected": false,
+            "resolved": false
+          },
+          "48": {
+            "selected": false,
+            "resolved": false
+          },
           "3902": {
             "selected": false,
             "resolved": false,
@@ -4371,6 +4395,626 @@
         "stateUpdate": {
           "timelineCanAdvance": false,
           "timelineStepIndex": 26,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
+    "opening.card.43": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.43",
+      "displayName": "Opening card 43 - Общее собрание с призывом Леонида",
+      "description": "Deterministic payload extracted from legacy opening card 43 for the step-26 public communication board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "43",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "43",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -2
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "rep",
+              "operator": "<",
+              "threshold": 15
+            },
+            "metricDeltas": [
+              {
+                "metricId": "rep",
+                "delta": -3
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "43",
+          "summary": "Призыв Леонида к сплочению убедил многих, но оставил часть колонии в тревоге."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "43",
+          "cardFlags": {
+            "cardId": "43",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.43.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.43.advance",
+      "displayName": "Opening card 43 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 43 to info block i15.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "43",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "43"
+          },
+          "card": {
+            "id": "43",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "43",
+          "summary": "Карточка 43 завершена, переход к i15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 27,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.44": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.44",
+      "displayName": "Opening card 44 - Собрание со слайдами Профессора",
+      "description": "Deterministic payload extracted from legacy opening card 44 for the step-26 public communication board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "44",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "44",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -3
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "rep",
+              "operator": "<",
+              "threshold": 15
+            },
+            "metricDeltas": [
+              {
+                "metricId": "rep",
+                "delta": -5
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "44",
+          "summary": "Подробная презентация оказалась рациональной, но не помогла разогнать смятение."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "44",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.45": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.45",
+      "displayName": "Opening card 45 - Эмоциональный рассказ о встрече с чайкой",
+      "description": "Deterministic payload extracted from legacy opening card 45 for the step-26 public communication board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "45",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "45",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 3
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "cont",
+              "operator": ">",
+              "threshold": 10
+            },
+            "metricDeltas": [
+              {
+                "metricId": "cont",
+                "delta": 10
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "45",
+          "summary": "Эмоциональный рассказ вдохновил колонию и заметно усилил поддержку."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "45",
+          "cardFlags": {
+            "cardId": "45",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.45.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.45.advance",
+      "displayName": "Opening card 45 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 45 to info block i15.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "45",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "45"
+          },
+          "card": {
+            "id": "45",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "45",
+          "summary": "Карточка 45 завершена, переход к i15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 27,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.46": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.46",
+      "displayName": "Opening card 46 - Профессор выступает на собрании",
+      "description": "Deterministic payload extracted from legacy opening card 46 for the step-26 public communication board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "46",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "46",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -5
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "46",
+          "summary": "Рациональное выступление Профессора усилило панику вместо уверенности."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "46",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.47": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.47",
+      "displayName": "Opening card 47 - Серия малых групп",
+      "description": "Deterministic payload extracted from legacy opening card 47 for the step-26 public communication board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "47",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "47",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 1
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "47",
+          "summary": "Серия малых групп помогла донести идею, хотя и не без потерь по времени."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "47",
+          "cardFlags": {
+            "cardId": "47",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.47.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.47.advance",
+      "displayName": "Opening card 47 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 47 to info block i15.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "47",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "47"
+          },
+          "card": {
+            "id": "47",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "47",
+          "summary": "Карточка 47 завершена, переход к i15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 27,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.48": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.48",
+      "displayName": "Opening card 48 - Персональные письма",
+      "description": "Deterministic payload extracted from legacy opening card 48 for the step-26 public communication board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "48",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "48",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "cont",
+            "delta": -5
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "rep",
+              "operator": "<",
+              "threshold": 15
+            },
+            "metricDeltas": [
+              {
+                "metricId": "rep",
+                "delta": -5
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "48",
+          "summary": "Личные письма дошли до многих, но подчеркнули дистанцию между властью и колонией."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "48",
+          "cardFlags": {
+            "cardId": "48",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.48.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.48.advance",
+      "displayName": "Opening card 48 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 48 to info block i15.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "public-communication"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "48",
+            "lineIndex": 0,
+            "stepIndex": 26
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 26,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "48"
+          },
+          "card": {
+            "id": "48",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "48",
+          "summary": "Карточка 48 завершена, переход к i15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 27,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i15.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i15.advance",
+      "displayName": "Opening info i15 - advance to cards 49..54",
+      "description": "Deterministic transition from legacy info block i15 to the next mainline boundary with cards 49..54.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i15",
+            "lineIndex": 0,
+            "stepIndex": 27
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 27,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i15 завершено, достигнута следующая mainline boundary."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 28,
           "timelineStageId": "stage_intro",
           "timelineScreenId": "S2"
         }

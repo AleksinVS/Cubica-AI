@@ -28,3 +28,4 @@ They complement ADRs instead of replacing them.
 - `GSR-021` - Antarctica step `19` threshold-based board progression.
 - `GSR-022` - Antarctica step `21` metric-gated board outcomes and line switch.
 - `GSR-023` - Antarctica step `23` locked go-card unlock and entry-time alt-card swap.
+- `GSR-025` - Antarctica step `26` public communication board and explicit `i15` follow-up.
