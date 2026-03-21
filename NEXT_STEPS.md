@@ -15,7 +15,7 @@
 
 Следующий канонический boundary step по delivery закреплён в `ADR-019`: `services/runtime-api` должен владеть загрузкой игрового контента и отдавать player-facing content DTO/API, а `apps/player-web` должен перестать читать repo files напрямую.
 
-`ADR-022` теперь реализован: после уже закрытых bounded threshold-based progression для board `25..30` и info block `i12` step `21` тоже переведён в canonical manifest/runtime как explicit `i12.advance`, cards `31..36`, bounded conditional metric gates, bounded card-34 line switch и explicit losing line `loss -> i34 -> i34_2 -> i21`. Следующим открытым mainline boundary теперь является `stepIndex = 23` с cards `37..42`. Generic rule/workflow engine для этого slice по-прежнему не вводился.
+`ADR-022` теперь реализован: после уже закрытых bounded threshold-based progression для board `25..30` и info block `i12` step `21` тоже переведён в canonical manifest/runtime как explicit `i12.advance`, cards `31..36`, bounded conditional metric gates, bounded card-34 line switch и explicit losing line `loss -> i34 -> i34_2 -> i21`. Следующий открытый gameplay boundary теперь зафиксирован в `ADR-023`: mainline `stepIndex = 23` с explicit board `37..42`, locked go-card `39`, bounded unlock after three resolved cards, entry-time alt swap `39 -> 3902` при `pro > 40` и explicit follow-up `i14 -> i14_2`. Generic workflow/rule engine и generic selector DSL для этого slice по-прежнему не вводятся. После реализации `ADR-023` следующим открытым mainline boundary станет `stepIndex = 26` с cards `43..48`.
 
 ## Текущая фаза
 
@@ -46,7 +46,7 @@
 - Добавлен следующий boundary slice после `opening.card.18`: `opening.card.18.advance` ведёт к info block `i9`, а `opening.info.i9.advance` доводит сессию до step `15`, still `stage_intro`, с bounded team-selection mechanic уже в manifest.
 - Следующий slice после этого boundary теперь закрывает post-confirm path `stepIndex = 16 -> 17 -> 18`: `opening.info.i10.advance` открывает board `19..24`, cards `22/23` are go-cards, and matching advance actions land on `i11` at `stepIndex = 18`.
 - `ADR-022` теперь тоже закрыт: `opening.info.i12.advance` доводит до step `21`, explicit actions `opening.card.31` ... `opening.card.36` покрывают весь board, card-local conditional bonuses для `31/32/33/35/36` исполняются после base metric deltas, а card `34` может bounded-переключить timeline на canonical line id `loss` по pre-action gate `stat < 25`, сохраняя свои base deltas.
-- Mainline после step `21` теперь тоже явный: `opening.card.31/32/33/35/36.advance` ведут к `i13`, `opening.info.i13.advance` доводит до следующей открытой boundary на `stepIndex = 23`, а losing line продолжен отдельными explicit actions `opening.info.i34.advance` и `opening.info.i34_2.advance` до `i21`.
+- Mainline после step `21` теперь тоже явный: `opening.card.31/32/33/35/36.advance` ведут к `i13`, `opening.info.i13.advance` доводит до boundary, который теперь формализован в `ADR-023` на `stepIndex = 23`, а losing line продолжен отдельными explicit actions `opening.info.i34.advance` и `opening.info.i34_2.advance` до `i21`.
 
 ## Приоритет 1. Complete the Antarctica Truth Model
 
@@ -63,8 +63,8 @@
 1. Сделать `runtime-api` единственным владельцем загрузки `games/*` для runtime и player-facing delivery, как зафиксировано в `ADR-019`.
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/GameFull.html`.
-4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `GameFull.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
-5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12 -> board 31..36 -> i13` уже покрыт на manifest boundary level, включая bounded line switch на loss line `i34 -> i34_2 -> i21`. Следующая естественная точка входа - step `23` с cards `37..42`, а не возврат к уже покрытому `ADR-022`.
+4. Продолжать manifest-driven migration небольшими bounded slices: ближайший открытый slice теперь описан в `ADR-023`, а не требует нового discovery по уже известному step `23`.
+5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12 -> board 31..36 -> i13` уже покрыт на manifest boundary level, включая bounded line switch на loss line `i34 -> i34_2 -> i21`. Следующая естественная точка входа теперь - реализация `ADR-023` для step `23` с cards `37..42`; после неё следующим открытым mainline boundary станет step `26` с cards `43..48`.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
 8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
@@ -86,7 +86,7 @@
 ## Приоритет 5. Manifest and Capability Evolution
 
 1. Ввести capability-first схему вместо игры-специфичных ad hoc расширений.
-2. Для Antarctica maintain the bounded manifest-driven slices from `ADR-020`, `ADR-021` and `ADR-022`; post-confirm progression now reaches `stepIndex = 23`, step `21` is implemented with explicit `i12.advance`, explicit cards `31..36`, post-base conditional metric gates, bounded card-34 line switch, and explicit loss-line continuation `i34 -> i34_2 -> i21`. Следующим открытым mainline boundary остаётся step `23` с cards `37..42`. Public shape for the team-selection slice remains `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
+2. Для Antarctica maintain the bounded manifest-driven slices from `ADR-020`, `ADR-021`, `ADR-022` and next `ADR-023`; post-confirm progression now reaches `stepIndex = 23`, step `21` is implemented with explicit `i12.advance`, explicit cards `31..36`, post-base conditional metric gates, bounded card-34 line switch, and explicit loss-line continuation `i34 -> i34_2 -> i21`. Следующий открытый gameplay boundary - реализация `ADR-023` для step `23` с cards `37..42`, locked go-card `39`, bounded unlock39-style threshold и entry-time alt swap `39 -> 3902`; после него следующим открытым mainline boundary станет step `26` с cards `43..48`. Public shape for the team-selection slice remains `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
 3. Подготовить `schemas/core`, `schemas/capabilities`, `schemas/api`.
 4. Добавить validator/compiler tooling.
 5. Зафиксировать policy для custom extensions.
