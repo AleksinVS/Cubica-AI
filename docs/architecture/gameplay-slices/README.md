@@ -30,3 +30,4 @@ They complement ADRs instead of replacing them.
 - `GSR-023` - Antarctica step `23` locked go-card unlock and entry-time alt-card swap.
 - `GSR-025` - Antarctica step `26` public communication board and explicit `i15` follow-up.
 - `GSR-026` - Antarctica step `28` trusted messengers board and explicit `i16` follow-up.
+- `GSR-027` - Antarctica step `30` acceleration board and explicit `i17` follow-up.
