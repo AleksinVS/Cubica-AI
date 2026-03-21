@@ -15,7 +15,7 @@
 
 Следующий канонический boundary step по delivery закреплён в `ADR-019`: `services/runtime-api` должен владеть загрузкой игрового контента и отдавать player-facing content DTO/API, а `apps/player-web` должен перестать читать repo files напрямую.
 
-Следующий gameplay boundary закреплён в `ADR-021`: step `19` board `25..30` и step `20` i12 уже закрыты bounded threshold-based progression, а следующий открытый boundary теперь на `stepIndex = 21`, где останутся pending conditional metric gates / line switching. Threshold evaluation использует explicit board card ids / resolved-card count и не превращается в generic workflow engine.
+Следующий gameplay boundary теперь зафиксирован в `ADR-022`: step `19` board `25..30` и step `20` `i12` уже закрыты bounded threshold-based progression из `ADR-021`, а следующий открытый boundary - реализация step `21` с explicit `i12.advance`, cards `31..36`, bounded conditional metric gates и bounded line switch для card `34`. После реализации `ADR-022` следующим открытым mainline boundary станет `stepIndex = 23`. Generic rule/workflow engine для этого slice по-прежнему не вводится.
 
 ## Текущая фаза
 
@@ -62,7 +62,7 @@
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/GameFull.html`.
 4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `GameFull.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
-5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12` уже покрыт на manifest boundary level. Следующая естественная точка входа - boundary after `stepIndex = 20`, which leads to the unreached step `21` and is governed by the remaining conditional metric gates / line switching slice.
+5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12` уже покрыт на manifest boundary level. Следующая естественная точка входа - реализация `ADR-022` для step `21`: `i12.advance`, explicit cards `31..36`, bounded conditional metric gates и bounded line switch для card `34`. После этого следующим открытым mainline boundary станет step `23` с cards `37..42`.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
 8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
@@ -84,7 +84,7 @@
 ## Приоритет 5. Manifest and Capability Evolution
 
 1. Ввести capability-first схему вместо игры-специфичных ad hoc расширений.
-2. Для Antarctica maintain the bounded manifest-driven slices from `ADR-020` and `ADR-021`; the post-confirm path through `stepIndex = 20` is implemented, and the next boundary is the unreached step `21` with conditional metric gates / line switching still pending. Public shape for the team-selection slice remains `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
+2. Для Antarctica maintain the bounded manifest-driven slices from `ADR-020`, `ADR-021` and `ADR-022`; the post-confirm path through `stepIndex = 20` is implemented, and the next delivery boundary is step `21` from `ADR-022` (`i12.advance`, explicit cards `31..36`, bounded conditional metric gates, bounded line switch for card `34`). После реализации `ADR-022` следующим открытым mainline boundary станет step `23`. Public shape for the team-selection slice remains `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
 3. Подготовить `schemas/core`, `schemas/capabilities`, `schemas/api`.
 4. Добавить validator/compiler tooling.
 5. Зафиксировать policy для custom extensions.
