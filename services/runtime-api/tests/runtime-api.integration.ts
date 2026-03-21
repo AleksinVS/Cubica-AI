@@ -10,10 +10,16 @@ type SessionVersion = {
 };
 
 type PublicState = {
+  metrics?: {
+    score?: number;
+    time?: number;
+    [key: string]: unknown;
+  };
   timeline: {
     stepIndex?: number;
     stageId?: string;
     screenId?: string;
+    canAdvance?: boolean;
     stage_id: string;
     step_index?: number;
     screen_id?: string;
@@ -34,6 +40,9 @@ type PublicState = {
 type SecretState = {
   stagePicks?: Record<string, unknown>;
   stage_picks?: Record<string, unknown>;
+  opening?: {
+    selectedCardId?: string;
+  };
 };
 
 type RuntimeState = {
@@ -107,6 +116,22 @@ const createSession = async (body: Record<string, unknown> = {}) => {
   return session;
 };
 
+const dispatchAction = async (
+  sessionId: string,
+  playerId: string,
+  actionId: string,
+  payload?: unknown
+) =>
+  requestJson<ActionResponse | { error: string }>("/actions", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId,
+      playerId,
+      actionId,
+      payload
+    })
+  });
+
 before(async () => {
   await runtimeApi.start();
   baseUrl = `http://127.0.0.1:${runtimeApi.port}`;
@@ -123,6 +148,8 @@ test("POST /sessions creates an antarctica session", async () => {
   assert.equal(session.version.lastEventSequence, 0);
   assert.equal(session.state.public.timeline.stageId, "stage_intro");
   assert.equal(session.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(session.state.public.timeline.stepIndex, 0);
+  assert.equal(session.state.public.timeline.canAdvance, false);
   assert.deepEqual(session.state.public.log, []);
 });
 
@@ -205,6 +232,97 @@ test("POST /actions routes different Antarctica actions through manifest capabil
   assert.equal(action.state.runtime?.lastCapability, "ui.screen.left-sidebar");
   assert.equal(action.state.public.ui?.activeScreen, "left-sidebar");
   assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
+});
+
+test("POST /actions applies deterministic intro advances to board step 9 and resolves opening.card.3", async () => {
+  const created = await createSession({ playerId: "intro-flow" });
+  const introActions = [
+    "opening.info.i0.advance",
+    "opening.info.i02.advance",
+    "opening.info.i03.advance",
+    "opening.info.i1.advance",
+    "opening.info.i2.advance",
+    "opening.info.i3.advance",
+    "opening.info.i4.advance",
+    "opening.info.i5.advance",
+    "opening.info.i6.advance"
+  ];
+
+  let currentStepIndex = 0;
+  for (const actionId of introActions) {
+    const { response, body } = await dispatchAction(created.sessionId, "intro-flow", actionId);
+    assert.equal(response.status, 200);
+    const action = body as ActionResponse;
+    currentStepIndex += 1;
+    assert.equal(action.state.public.timeline.stepIndex, currentStepIndex);
+    assert.equal(action.state.public.timeline.step_index, currentStepIndex);
+    assert.equal(action.state.public.timeline.stageId, "stage_intro");
+    assert.equal(action.state.public.timeline.stage_id, "stage_intro");
+    assert.equal(action.state.public.timeline.screenId, currentStepIndex === 9 ? "S2" : "S1");
+    assert.equal(action.state.public.timeline.screen_id, currentStepIndex === 9 ? "S2" : "S1");
+    assert.equal(action.state.public.timeline.canAdvance, false);
+  }
+
+  const { response: cardResponse, body: cardBody } = await dispatchAction(
+    created.sessionId,
+    "intro-flow",
+    "opening.card.3"
+  );
+
+  assert.equal(cardResponse.status, 200);
+  const cardAction = cardBody as ActionResponse;
+  const cardState = (cardAction.state.public.flags.cards["3"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const lastLogEntry = cardAction.state.public.log[cardAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(cardAction.state.public.timeline.stepIndex, 9);
+  assert.equal(cardAction.state.public.timeline.step_index, 9);
+  assert.equal(cardAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(cardAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(cardAction.state.public.timeline.screenId, "S2");
+  assert.equal(cardAction.state.public.timeline.screen_id, "S2");
+  assert.equal(cardAction.state.public.timeline.canAdvance, true);
+  assert.equal(cardState.selected, true);
+  assert.equal(cardState.resolved, true);
+  assert.equal(cardAction.state.secret?.opening?.selectedCardId, "3");
+  assert.equal(cardAction.state.public.metrics?.time, 1);
+  assert.equal(cardAction.state.public.metrics?.score, 59);
+  assert.equal(lastLogEntry.actionId, "opening.card.3");
+  assert.equal(lastLogEntry.kind, "opening-card-resolution");
+  assert.equal(lastLogEntry.cardId, "3");
+});
+
+test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {
+  const created = await createSession({ playerId: "card-replay" });
+  const introActions = [
+    "opening.info.i0.advance",
+    "opening.info.i02.advance",
+    "opening.info.i03.advance",
+    "opening.info.i1.advance",
+    "opening.info.i2.advance",
+    "opening.info.i3.advance",
+    "opening.info.i4.advance",
+    "opening.info.i5.advance",
+    "opening.info.i6.advance",
+    "opening.card.3"
+  ];
+
+  for (const actionId of introActions) {
+    const { response } = await dispatchAction(created.sessionId, "card-replay", actionId);
+    assert.equal(response.status, 200);
+  }
+
+  const { response, body } = await dispatchAction(created.sessionId, "card-replay", "opening.card.3");
+  assert.equal(response.status, 400);
+  const errorBody = body as { error: string };
+  assert.match(errorBody.error, /guard failed/);
+});
+
+test("POST /actions rejects opening.card.3 before intro reaches step 9 with HTTP 400", async () => {
+  const created = await createSession({ playerId: "card-early" });
+  const { response, body } = await dispatchAction(created.sessionId, "card-early", "opening.card.3");
+  assert.equal(response.status, 400);
+  const errorBody = body as { error: string };
+  assert.match(errorBody.error, /public\.timeline\.stepIndex expected 9/);
 });
 
 test("POST /actions rejects invalid request bodies", async () => {

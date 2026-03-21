@@ -9,6 +9,11 @@ import { NotFoundError, RequestValidationError } from "../errors.ts";
 import { createRuntimeActionRegistry, getRegisteredActionDefinition } from "./actionRegistry.ts";
 
 type RuntimeState = Record<string, unknown>;
+const RUNTIME_VALIDATION_ERROR_CODES = new Set([
+  "RUNTIME_ACTION_GUARD_FAILED",
+  "RUNTIME_ACTION_METADATA_MISSING",
+  "RUNTIME_ACTION_MANIFEST_UNSUPPORTED"
+]);
 
 const createNextVersion = (current: SessionRecord<RuntimeState>) => ({
   sessionId: current.sessionId,
@@ -64,7 +69,15 @@ export async function dispatchRuntimeAction(
     manifestAction: definition
   });
 
-  if (!result.ok || !result.delta?.state) {
+  if (!result.ok) {
+    const message = result.error?.message ?? `Action "${options.input.actionId}" did not produce a state transition`;
+    if (result.error && RUNTIME_VALIDATION_ERROR_CODES.has(result.error.code)) {
+      throw new RequestValidationError(message);
+    }
+    throw new Error(message);
+  }
+
+  if (!result.delta?.state) {
     const message = result.error?.message ?? `Action "${options.input.actionId}" did not produce a state transition`;
     throw new Error(message);
   }

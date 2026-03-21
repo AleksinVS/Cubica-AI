@@ -43,7 +43,10 @@
 - Для устранения gap по достижимости board при старте с `stepIndex: 0` в manifest добавлен explicit intro reachability path: `opening.info.i0.advance` ... `opening.info.i6.advance` (детерминированные переходы по info-блокам `i0/i02/i03/i1/i2/i3/i4/i5/i6` до `stepIndex: 9`).
 - Контракт manifest action расширен небольшим typed-блоком deterministic metadata (provenance, guard, metric deltas, log metadata, state-update metadata).
 - Валидация manifest теперь допускает пустые `metricDeltas` для intro advance actions и валидирует новые timeline-поля state-update (`timelineStepIndex`, `timelineStageId`, `timelineScreenId`) вместе с существующими deterministic полями.
-- Runtime wiring намеренно отложен на следующий commit, чтобы этот шаг остался чисто data/contracts/validation slice без изменения текущего execution behavior.
+- Runtime wiring теперь подключён: `POST /actions` исполняет explicit intro path `opening.info.i0.advance` ... `opening.info.i6.advance` и `opening.card.3` через manifest deterministic metadata.
+- Runtime synchronizes both canonical and legacy timeline fields (`stepIndex/step_index`, `stageId/stage_id`, `screenId/screen_id`) so the session state stays internally consistent during migration.
+- Guard failures, missing deterministic metadata, and unsupported manifest-action runtime paths now map to `400` request-validation errors instead of surfacing as generic `500`.
+- Integration tests cover the public path from intro step `0` to board step `9`, successful `opening.card.3`, replay rejection, and early-invocation rejection.
 
 ## Как запускать локально
 
@@ -82,11 +85,11 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Подключить runtime wiring и тесты для deterministic metadata intro-path (`opening.info.i0.advance` ... `opening.info.i6.advance`) и `opening.card.3` (чтение guard/deltas/log/stateUpdate из manifest и применение в runtime transition).
+3. Следующий Antarctica gameplay slice брать как ещё один небольшой manifest-driven fragment из `draft/Antarctica/Game.html` через scripts: например, соседние opening-card actions после `opening.card.3`.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
-7. Для ближайшего Antarctica gameplay slice извлекать механику из `draft/Antarctica/Game.html` через scripts и переносить её в `games/antarctica/game.manifest.json` как в конечный исполнимый source of truth.
+7. Для ближайших Antarctica gameplay slices извлекать механику из `draft/Antarctica/Game.html` через scripts и переносить её в `games/antarctica/game.manifest.json` как в конечный исполнимый source of truth.
 
 ## Важные замечания
 
