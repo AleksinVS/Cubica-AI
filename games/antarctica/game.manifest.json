@@ -145,6 +145,30 @@
           "6": {
             "selected": false,
             "resolved": false
+          },
+          "7": {
+            "selected": false,
+            "resolved": false
+          },
+          "8": {
+            "selected": false,
+            "resolved": false
+          },
+          "9": {
+            "selected": false,
+            "resolved": false
+          },
+          "10": {
+            "selected": false,
+            "resolved": false
+          },
+          "11": {
+            "selected": false,
+            "resolved": false
+          },
+          "12": {
+            "selected": false,
+            "resolved": false
           }
         }
       }
@@ -986,6 +1010,363 @@
           "timelineStepIndex": 11,
           "timelineStageId": "stage_intro",
           "timelineScreenId": "S2"
+        }
+      }
+    },
+    "opening.card.7": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.7",
+      "displayName": "Opening card 7 - Выступление Алены на Совете",
+      "description": "Deterministic payload extracted from legacy opening card 7.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "7",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "7",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 0
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "7",
+          "summary": "Алена отлично выступила – живо, логично. Никто не решился выступить против. Однако Алена не ответила на несколько вопросов по существу. Взяли тайм-аут."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "7",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.8": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.8",
+      "displayName": "Opening card 8 - Обсуждения через поддержку Вожака",
+      "description": "Deterministic payload extracted from legacy opening card 8.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "8",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "8",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -4
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "8",
+          "summary": "Обсуждения без санкции Совета оказалось плохой идеей. Некоторые участники Совета очень недовольны. Вожаку приходится сдать назад. Пара дней уйдет, чтобы улеглось."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "8",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.9": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.9",
+      "displayName": "Opening card 9 - Модель айсберга для Совета",
+      "description": "Deterministic payload extracted from legacy opening card 9.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "9",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "9",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 1
+          },
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "9",
+          "summary": "Кто-то спросил, почему не треснула модель? Но всем сразу стало понятно, что проблема реальна и нужно что-то делать. Григорий возражал, но неубедительно."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "9",
+          "cardFlags": {
+            "cardId": "9",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.10": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.10",
+      "displayName": "Opening card 10 - Предварительные разговоры с Советом",
+      "description": "Deterministic payload extracted from legacy opening card 10.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "10",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "10",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 0
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "10",
+          "summary": "Скепсис оказался гораздо большим, чем ожидалось. Изучать факты, да еще и в глубине айсберга, никому не захотелось. Все ждали, что кто-то сделает это за них. Никто не сделал."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "10",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.11": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.11",
+      "displayName": "Opening card 11 - Презентация через страх катастрофы",
+      "description": "Deterministic payload extracted from legacy opening card 11.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "11",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "11",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -2
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "11",
+          "summary": "Цель достигнута. Но лишь частично. Сначала все испугались. Кто-то сказал не надо нас запугивать, кто-то сказал это просто громкие слова. Взяли тайм-аут – остыть."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "11",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.12": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.12",
+      "displayName": "Opening card 12 - Презентация дневника наблюдений",
+      "description": "Deterministic payload extracted from legacy opening card 12.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "12",
+            "lineIndex": 0,
+            "stepIndex": 11
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 11,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "12",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 1
+          },
+          {
+            "metricId": "rep",
+            "delta": -1
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "12",
+          "summary": "С цифрами сложно спорить. Все переглянулись и, казалось, победа! Но данные одно, а интерпретация – другое. Григорий показал другие выводы из данных. Взяли тайм-аут."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "12",
+            "selected": true,
+            "resolved": true
+          }
         }
       }
     },

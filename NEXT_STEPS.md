@@ -38,6 +38,7 @@
 - Первый opening board больше не ограничен одной живой картой: deterministic manifest-actions добавлены для `opening.card.1`, `opening.card.2`, `opening.card.4`, `opening.card.5`, `opening.card.6`, а runtime уже умеет исполнять их без отдельного нового DSL.
 - Integration tests теперь покрывают и multi-card path: non-go card на первом board сохраняет `canAdvance=false`, обновляет метрики, блокирует replay только для себя и не мешает затем выбрать `opening.card.3` как go-card.
 - Timeline progression после first board тоже стал исполнимым: explicit actions `opening.card.3.advance` и `opening.info.i7.advance` теперь доводят сессию от first board к info-block `i7` и дальше ко второму board `7..12`.
+- Второй board `7..12` тоже теперь покрыт manifest-driven actions; non-go cards работают без перехода вперёд, а `opening.card.9` стал следующей go-card на шаге `11`.
 - Следующий slice должен расширять предметную механику `Antarctica` дальше по manifest, а не возвращаться к capability-only plumbing.
 
 ## Приоритет 1. Complete the Antarctica Truth Model
@@ -56,7 +57,7 @@
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/Game.html`.
 4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `Game.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
-5. Переход `first board -> i7 -> second board 7..12` уже покрыт. Следующая естественная точка входа - сами second-board cards `7/8/9/10/11/12`, где по extraction уже видно, что `9` является новой go-card.
+5. Переход `first board -> i7 -> second board 7..12` уже покрыт, как и сами second-board cards. Следующая естественная точка входа - progression через `i8` к board `13..18`.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
 8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.

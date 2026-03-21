@@ -51,6 +51,7 @@
 - Non-go cards `1/2/4/5/6` применяют свои metric deltas, выставляют только per-card flags и оставляют `timeline.canAdvance = false`, так что player может продолжить выбирать другие card actions на том же board.
 - `opening.card.3` остаётся текущей go-card для этого board: после non-go cards она всё ещё доступна, включает `timeline.canAdvance = true` и фиксирует `secret.opening.selectedCardId = "3"`.
 - После `opening.card.3` теперь есть explicit progression path: `opening.card.3.advance` переводит в info-block `i7` (`stepIndex=10`, `screenId=S1`), а `opening.info.i7.advance` переводит на второй board `7..12` (`stepIndex=11`, `screenId=S2`).
+- Второй board `7..12` теперь тоже покрыт явными deterministic actions. Non-go cards `7/8/10/11/12` сохраняют `selectedCardId = "3"` и `canAdvance = false`, а `opening.card.9` является текущей go-card для этого board и переводит `selectedCardId` в `"9"` вместе с `timeline.canAdvance = true`.
 
 ## Как запускать локально
 
@@ -90,7 +91,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice брать как ещё один небольшой manifest-driven fragment из `draft/Antarctica/Game.html` через scripts: после уже покрытого перехода к second board логичный следующий кандидат - cards `7/8/9/10/11/12`.
+3. Следующий Antarctica gameplay slice брать как ещё один небольшой manifest-driven fragment из `draft/Antarctica/Game.html` через scripts: после уже покрытого second board логичный следующий кандидат - progression через `i8` и board `13/14/15/16/17/18`.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

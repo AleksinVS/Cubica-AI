@@ -28,7 +28,13 @@ const SUPPORTED_MANIFEST_DATA_ACTIONS = new Set([
   "opening.card.4",
   "opening.card.5",
   "opening.card.6",
-  "opening.info.i7.advance"
+  "opening.info.i7.advance",
+  "opening.card.7",
+  "opening.card.8",
+  "opening.card.9",
+  "opening.card.10",
+  "opening.card.11",
+  "opening.card.12"
 ]);
 
 const createRegistryMap = (bundle: GameBundle) => {
