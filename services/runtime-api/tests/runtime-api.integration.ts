@@ -2394,6 +2394,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const infoI13 = body.antarctica.infos.find((entry) => entry.id === "i13");
   const infoI14 = body.antarctica.infos.find((entry) => entry.id === "i14");
   const infoI14_2 = body.antarctica.infos.find((entry) => entry.id === "i14_2");
+  const infoI15 = body.antarctica.infos.find((entry) => entry.id === "i15");
   const teamSelection = body.antarctica.teamSelections.find((entry) => entry.stepIndex === 15);
   assert.ok(infoI0);
   assert.ok(infoI8);
@@ -2404,6 +2405,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(infoI13);
   assert.ok(infoI14);
   assert.ok(infoI14_2);
+  assert.ok(infoI15);
   assert.ok(teamSelection);
   assert.equal(infoI0.stepIndex, 0);
   assert.equal(infoI0.screenId, "S1");
@@ -2459,6 +2461,14 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(infoI14_2.body.includes("Мы все живем в наших собственных легендах"));
   assert.ok(infoI14_2.body.includes("Ну, за работу!"));
   assert.equal(infoI14_2.advanceActionId, "opening.info.i14_2.advance");
+  assert.equal(infoI15.stepIndex, 27);
+  assert.equal(infoI15.screenId, "S1");
+  assert.equal(infoI15.title, "Для тех, кто не в курсе…");
+  assert.equal(
+    infoI15.body,
+    "<p>Пожалуй, решение подоспело вовремя. Кажется, что по айсбергу пошла небольшая трещина. Хотя, это может быть, просто игра света из-за низкого, уже почти зимнего, солнца…</p><p>После того, как решение было найдено появился определенный оптимизм. Массовый оптимизм. Однако уже на собрании стало ясно, что некоторые пингвины не вполне поняли, что их ждет, некоторые отнеслись скептически. Естественно, была небольшая часть пингвинов, посчитавших происходящие абсурдом и противной самой сути пингвинов ересью.</p><p>Теперь, после собрания, когда одни задачи вроде бы уже решены, добавились новые. На месте одной решенной - по три новых. \"Какая-то гидра многозадачная...\" - растерянно пробормотала Алена, но тут же взяла себя в руки и предложила \"окутать всех пингвинов нежной, но плотной шкурой пропаганды\". Она объяснила, что пингвинам не стоит здесь оставлять возможность для лишних сомнений, тем более, что кто-то что-то не понял, а кого-то, возможно и не было на собрании. </p><p>Может быть, так и надо сделать? Может быть, надо, но совсем чуть-чуть? Или она перегибает льдину?..</p>"
+  );
+  assert.equal(infoI15.advanceActionId, "opening.info.i15.advance");
   assert.equal(teamSelection.id, "opening.team.selection");
   assert.equal(teamSelection.screenId, "S2");
   assert.equal(teamSelection.requiredPickCount, 5);
@@ -2474,6 +2484,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const fifthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.25_30");
   const sixthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.31_36");
   const seventhBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.37_42");
+  const eighthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.43_48");
   assert.ok(board);
   assert.ok(secondBoard);
   assert.ok(thirdBoard);
@@ -2481,6 +2492,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(fifthBoard);
   assert.ok(sixthBoard);
   assert.ok(seventhBoard);
+  assert.ok(eighthBoard);
   assert.equal(board.stepIndex, 9);
   assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
   assert.equal(secondBoard.stepIndex, 11);
@@ -2505,6 +2517,10 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(seventhBoard.screenId, "S2");
   assert.equal(seventhBoard.title, "Выберите седьмой шаг");
   assert.deepEqual(seventhBoard.cardIds, ["37", "38", "39", "3902", "40", "41", "42"]);
+  assert.equal(eighthBoard.stepIndex, 26);
+  assert.equal(eighthBoard.screenId, "S2");
+  assert.equal(eighthBoard.title, "Выберите восьмой шаг");
+  assert.deepEqual(eighthBoard.cardIds, ["43", "44", "45", "46", "47", "48"]);
   const card25 = body.antarctica.cards.find((entry) => entry.cardId === "25");
   const card26 = body.antarctica.cards.find((entry) => entry.cardId === "26");
   const card27 = body.antarctica.cards.find((entry) => entry.cardId === "27");
@@ -2533,6 +2549,12 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   const card40 = body.antarctica.cards.find((entry) => entry.cardId === "40");
   const card41 = body.antarctica.cards.find((entry) => entry.cardId === "41");
   const card42 = body.antarctica.cards.find((entry) => entry.cardId === "42");
+  const card43 = body.antarctica.cards.find((entry) => entry.cardId === "43");
+  const card44 = body.antarctica.cards.find((entry) => entry.cardId === "44");
+  const card45 = body.antarctica.cards.find((entry) => entry.cardId === "45");
+  const card46 = body.antarctica.cards.find((entry) => entry.cardId === "46");
+  const card47 = body.antarctica.cards.find((entry) => entry.cardId === "47");
+  const card48 = body.antarctica.cards.find((entry) => entry.cardId === "48");
   assert.ok(card7);
   assert.ok(card9);
   assert.ok(card12);
@@ -2561,6 +2583,12 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(card40);
   assert.ok(card41);
   assert.ok(card42);
+  assert.ok(card43);
+  assert.ok(card44);
+  assert.ok(card45);
+  assert.ok(card46);
+  assert.ok(card47);
+  assert.ok(card48);
   assert.equal(
     card7.summary,
     "Алена хочет выступить сама на Совете. Участники Совета доверяют ей. То, что она уже участник Совета, поможет сэкономить время на организации такого выступления."
@@ -2710,6 +2738,46 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     card42.title,
     "Все яснее, что айсберг не спасти. Может быть, вопрос в том, как спасти пингвинов? Нужно разработать спасательные льдины и план экстренной эвакуации."
   );
+  assert.equal(
+    card43.title,
+    "Леонид собирает общее собрание и выступает с призывом сплотиться и преодолеть многовековую оседлость пингвинов, стать отважными переселенцами. Как истинный лидер - он убедителен."
+  );
+  assert.equal(card43.selectActionId, "opening.card.43");
+  assert.equal(card43.advanceActionId, "opening.card.43.advance");
+  assert.equal(
+    card43.summary,
+    "Конечно, пингвины в шоке… Это уже новая беда или все еще старая? Конечно, Вожак был убедителен и заразил своей уверенностью многих. Тем не менее, Григорий, стоящий в толпе чувствовал, как растет его авторитет."
+  );
+  assert.equal(
+    card44.title,
+    "Леонид собирает общее собрание и выступает с презентацией на основе слайдов Профессора, подробно рассказывает о логике принимаемого решения, о плане реализации."
+  );
+  assert.equal(card44.selectActionId, "opening.card.44");
+  assert.equal(card44.advanceActionId, undefined);
+  assert.equal(
+    card45.title,
+    "Леонид собирает общее собрание, дает слово Евгению и Алене, которые в ярких красках рассказывают о встрече с чайкой и о прекрасном будущем. В резюме Леонид верит в подвиг пингвинов."
+  );
+  assert.equal(card45.selectActionId, "opening.card.45");
+  assert.equal(card45.advanceActionId, "opening.card.45.advance");
+  assert.equal(
+    card46.title,
+    "Совет собирает общее собрание, на котором выступает Профессор. Он подробно рассказывает о логике принимаемого решения, о плане реализации. "
+  );
+  assert.equal(card46.selectActionId, "opening.card.46");
+  assert.equal(card46.advanceActionId, undefined);
+  assert.equal(
+    card47.title,
+    "Совет принимает решение донести информацию через серию собраний. Все члены Совета и Команды изменений соберут по несколько малых групп и расскажут про чайку и возможность смены айсберга."
+  );
+  assert.equal(card47.selectActionId, "opening.card.47");
+  assert.equal(card47.advanceActionId, "opening.card.47.advance");
+  assert.equal(
+    card48.title,
+    "Совет решает распространить решение через персональные письма. В письмах сочетаются сухие факты и эмоциональные призывы к действию, надежда на подвиг пингвинов, а также история чайки-разведчика."
+  );
+  assert.equal(card48.selectActionId, "opening.card.48");
+  assert.equal(card48.advanceActionId, "opening.card.48.advance");
   const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
   assert.ok(card3);
   assert.equal(card3.selectActionId, "opening.card.3");
