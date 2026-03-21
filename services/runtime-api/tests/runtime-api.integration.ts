@@ -497,7 +497,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card9LogEntry.cardId, "9");
 });
 
-test("POST /actions advances from opening.card.9 to board 13..18 and rejects non-go replay", async () => {
+test("POST /actions advances from opening.card.9 to the team-selection boundary and rejects non-go replay", async () => {
   const created = await createSession({ playerId: "third-board-path" });
   const introActions = [
     "opening.info.i0.advance",
@@ -647,6 +647,48 @@ test("POST /actions advances from opening.card.9 to board 13..18 and rejects non
   assert.equal(card18LogEntry.actionId, "opening.card.18");
   assert.equal(card18LogEntry.kind, "opening-card-resolution");
   assert.equal(card18LogEntry.cardId, "18");
+
+  const { response: card18AdvanceResponse, body: card18AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.card.18.advance"
+  );
+  assert.equal(card18AdvanceResponse.status, 200);
+  const card18AdvanceAction = card18AdvanceBody as ActionResponse;
+  const card18AdvanceLogEntry =
+    card18AdvanceAction.state.public.log[card18AdvanceAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(card18AdvanceAction.state.public.timeline.stepIndex, 14);
+  assert.equal(card18AdvanceAction.state.public.timeline.step_index, 14);
+  assert.equal(card18AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(card18AdvanceAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(card18AdvanceAction.state.public.timeline.screenId, "S1");
+  assert.equal(card18AdvanceAction.state.public.timeline.screen_id, "S1");
+  assert.equal(card18AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(card18AdvanceAction.state.secret?.opening?.selectedCardId, "18");
+  assert.equal(card18AdvanceLogEntry.actionId, "opening.card.18.advance");
+  assert.equal(card18AdvanceLogEntry.kind, "opening-card-advance");
+  assert.equal(card18AdvanceLogEntry.cardId, "18");
+
+  const { response: i9AdvanceResponse, body: i9AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "third-board-path",
+    "opening.info.i9.advance"
+  );
+  assert.equal(i9AdvanceResponse.status, 200);
+  const i9AdvanceAction = i9AdvanceBody as ActionResponse;
+  const i9AdvanceLogEntry = i9AdvanceAction.state.public.log[i9AdvanceAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(i9AdvanceAction.state.public.timeline.stepIndex, 15);
+  assert.equal(i9AdvanceAction.state.public.timeline.step_index, 15);
+  assert.equal(i9AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(i9AdvanceAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(i9AdvanceAction.state.public.timeline.screenId, "S2");
+  assert.equal(i9AdvanceAction.state.public.timeline.screen_id, "S2");
+  assert.equal(i9AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(i9AdvanceAction.state.secret?.opening?.selectedCardId, "18");
+  assert.equal(i9AdvanceLogEntry.actionId, "opening.info.i9.advance");
+  assert.equal(i9AdvanceLogEntry.kind, "opening-info-advance");
 });
 
 test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {
