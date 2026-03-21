@@ -15,6 +15,7 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
+- `games/antarctica/game.manifest.json` уже дошёл до boundary `stepIndex = 15`; следующий bounded slice описан в ADR-020.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
@@ -164,11 +165,19 @@ Execution Model определяет, как платформа обрабаты
 - Подгружает markdown‑ассеты (правила, лор, описания) по ссылкам из манифеста и подставляет их в системный промпт.
 - Собирает финальный запрос к LLM с учётом настроек контекста (`include`, размер окна истории и т.п.).
 
-**Hybrid Execution Model** (ADR‑007, ADR-015):
+**Hybrid Execution Model** (ADR-007, ADR-015):
 - Действия в манифесте могут обрабатываться LLM (`llm`) или скриптом (`script`), что позволяет совмещать творческую и детерминированную логику.
 - **User Scripts** выполняются в защищённой JS‑песочнице (`isolated-vm`) (см. ADR‑010), имеют доступ только к разрешенным API, например, получают копию состояния и аргументы действия и возвращают дельту состояния.
 - **Engine Extensions** предоставляют нативные функции, которые могут быть вызваны из скриптов (Bridge), обеспечивая доступ к тяжелым вычислениям или внешним системам.
 - Такое разделение ("Слоеный пирог") обеспечивает баланс между безопасностью контента и мощностью движка.
+
+**Antarctica team-selection boundary** (ADR-020):
+- Для step `15` в Antarctica применяется bounded manifest-driven team selection, а не generic workflow engine.
+- Manifest должен задавать explicit member-selection actions и separate confirm action после выбора ровно 5 members.
+- `state.public.flags.team[memberId].selected` показывает выбор конкретного member.
+- `state.public.teamSelection.pickCount` хранит число выбранных members на текущем stage; при расширении на другие stages допускается `state.public.teamSelection.byStage[stageId].pickCount`.
+- `state.public.teamSelection.selectedMemberIds` хранит список выбранных members для UI и confirm gating.
+- На этом этапе не вводится payload-driven selector abstraction и broad DSL.
 
 **Протокол взаимодействия с View** (ADR‑002, `docs/architecture/protocols/mvp-interaction.md`):
 - Presenter общается с клиентом через абстрактный шлюз команд (`ViewCommand` / `ViewResponse`), не завися от конкретного UI‑фреймворка.
@@ -207,9 +216,10 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-013 (Text Anchors & Manifest Split):** Текстовые якоря для синхронизации с источниками и разделение логического и UI-манифестов.
 - **ADR-015 (Extension Packs):** Архитектура пакетов расширений и гибридная модель движка (Engine Extensions + User Scripts).
 - **ADR-016 (Design Artifacts):** Дизайн-артефакты для ИИ-агентов в UI-манифесте — JSON-описания изображений с семантической разметкой и дизайн-токенами.
-- **ADR-017 (Modular Monolith Transition):** Ближайшая backend-фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
+- **ADR-017 (Modular Monolith Transition):** Ближайшая backend‑фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
 - **ADR-018 (JSON Manifest Truth Model):** Исполнимая логика игры закрепляется в `games/<id>/game.manifest.json`, а narrative и draft-артефакты не считаются runtime source of truth.
 - **ADR-019 (Runtime-Owned Player Content Boundary):** `runtime-api` владеет загрузкой game content и проекцией player-facing content DTO/API; `player-web` не должен читать `games/*` напрямую.
+- **ADR-020 (Bounded Manifest-Driven Team Selection):** Для Antarctica step 15 вводятся explicit member-selection actions, отдельный confirm action после выбора ровно 5 members, visible selection flags в `state.public` и per-stage pick count без generic workflow engine.
 
 
 ---
@@ -245,6 +255,7 @@ Execution Model определяет, как платформа обрабаты
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
+- В этом canonical slice следующий bounded slice уже зафиксирован на step `15` и описан в ADR-020: bounded manifest-driven team selection вместо generic selector engine.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
 - `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.

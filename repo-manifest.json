@@ -12,7 +12,8 @@
       "docs/architecture/PROJECT_ARCHITECTURE.md",
       "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
       "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md",
-      "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md"
+      "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
+      "docs/architecture/adrs/020-bounded-manifest-driven-team-selection.md"
     ]
   },
   "artifacts": [
@@ -46,6 +47,13 @@
       "owner": "platform"
     },
     {
+      "id": "adr.020.bounded-manifest-driven-team-selection",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/020-bounded-manifest-driven-team-selection.md",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
       "id": "backend.runtime-api",
       "kind": "deployable-service",
       "path": "services/runtime-api",
@@ -53,7 +61,8 @@
       "owner": "backend",
       "adr_refs": [
         "ADR-017",
-        "ADR-019"
+        "ADR-019",
+        "ADR-020"
       ],
       "depends_on": [
         "contracts.session",
@@ -77,7 +86,8 @@
       "owner": "frontend-platform",
       "source_of_truth": false,
       "adr_refs": [
-        "ADR-019"
+        "ADR-019",
+        "ADR-020"
       ],
       "depends_on": [
         "backend.runtime-api",
