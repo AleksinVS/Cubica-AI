@@ -83,12 +83,13 @@ npm run smoke --workspace services/runtime-api
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/Game.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `Game.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
+- extraction tooling теперь поддерживает targeted mode: `npm run antarctica:extract-step -- --line <lineIndex> --step <stepIndex>`, чтобы смотреть конкретный timeline block вместе с `previousStep` / `nextStep`.
 
 ## Следующие шаги по приоритету
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice брать как ещё один небольшой manifest-driven fragment из `draft/Antarctica/Game.html` через scripts: например, следующий board/progression fragment после уже покрытых opening cards `1/2/3/4/5/6`.
+3. Следующий Antarctica gameplay slice брать как ещё один небольшой manifest-driven fragment из `draft/Antarctica/Game.html` через scripts: targeted extractor уже показывает, что после первого board (`line 0 step 9`) следующим идёт info-block `i7` на `line 0 step 10`.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

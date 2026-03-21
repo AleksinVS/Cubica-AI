@@ -37,11 +37,36 @@ const STUB_FUNCTION_NAMES = ['goTo', 'swap', 'unlock', 'f34', 'f25_30', 'unlock3
 
 function parseArgs() {
   const args = process.argv.slice(2);
-  const opts = { input: DEFAULT_INPUT };
+  const opts = {
+    input: DEFAULT_INPUT,
+    lineIndex: null,
+    stepIndex: null
+  };
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--input' && args[i + 1]) {
       opts.input = args[++i];
+      continue;
     }
+    if (args[i] === '--line' && args[i + 1]) {
+      opts.lineIndex = Number.parseInt(args[++i], 10);
+      continue;
+    }
+    if (args[i] === '--step' && args[i + 1]) {
+      opts.stepIndex = Number.parseInt(args[++i], 10);
+      continue;
+    }
+  }
+
+  const hasLine = opts.lineIndex !== null;
+  const hasStep = opts.stepIndex !== null;
+  if (hasLine !== hasStep) {
+    throw new Error('Both --line and --step must be provided together');
+  }
+  if (hasLine && (!Number.isInteger(opts.lineIndex) || opts.lineIndex < 0)) {
+    throw new Error('--line must be a non-negative integer');
+  }
+  if (hasStep && (!Number.isInteger(opts.stepIndex) || opts.stepIndex < 0)) {
+    throw new Error('--step must be a non-negative integer');
   }
   return opts;
 }
@@ -238,6 +263,36 @@ function idsIncludeAll(ids, requiredIds) {
   return requiredIds.every((id) => set.has(id));
 }
 
+function buildStepMetadata(cardsObj, rawStep, lineIndex, stepIndex) {
+  if (!Array.isArray(rawStep)) {
+    return null;
+  }
+  const ids = rawStep.map((id) => String(id));
+  if (ids.length === 0) {
+    return null;
+  }
+
+  const firstCard = cardsObj[ids[0]];
+  const blockType = firstCard && typeof firstCard.type === 'string'
+    ? firstCard.type
+    : 'unknown';
+
+  const block = {
+    lineIndex,
+    stepIndex,
+    blockType,
+    ids
+  };
+
+  if (blockType === 'info') {
+    block.title = firstCard && typeof firstCard.title === 'string'
+      ? firstCard.title
+      : '';
+  }
+
+  return block;
+}
+
 function collectOpeningBlocks(cardsObj, game) {
   if (!Array.isArray(game.timeline) || !Array.isArray(game.timeline[0])) {
     throw new Error('game.timeline[0] is missing or invalid');
@@ -248,41 +303,17 @@ function collectOpeningBlocks(cardsObj, game) {
   let firstBoardBlock = null;
 
   for (let stepIndex = 0; stepIndex < mainLine.length; stepIndex++) {
-    const rawStep = mainLine[stepIndex];
-    if (!Array.isArray(rawStep)) {
+    const block = buildStepMetadata(cardsObj, mainLine[stepIndex], 0, stepIndex);
+    if (!block) {
       continue;
     }
-
-    const ids = rawStep.map((id) => String(id));
-    if (ids.length === 0) {
-      continue;
-    }
-
-    const firstCard = cardsObj[ids[0]];
-    const blockType = firstCard && typeof firstCard.type === 'string'
-      ? firstCard.type
-      : 'unknown';
-
-    const block = {
-      lineIndex: 0,
-      stepIndex,
-      blockType,
-      ids
-    };
-
-    if (blockType === 'info') {
-      block.title = firstCard && typeof firstCard.title === 'string'
-        ? firstCard.title
-        : '';
-    }
-
     openingBlocks.push(block);
 
-    if (!firstBoardBlock && idsIncludeAll(ids, REQUIRED_BOARD_IDS)) {
+    if (!firstBoardBlock && idsIncludeAll(block.ids, REQUIRED_BOARD_IDS)) {
       firstBoardBlock = {
         lineIndex: 0,
         stepIndex,
-        ids
+        ids: block.ids
       };
       break;
     }
@@ -362,7 +393,7 @@ function buildSummary(openingBlocks, firstBoardBlock, referencedEntries) {
   };
 }
 
-function extractData(html, sourcePath) {
+function extractObjects(html) {
   const cardsLiteral = extractObjectLiteralByAssignment(
     html,
     /var\s+cardsObj\s*=\s*/m,
@@ -387,6 +418,10 @@ function extractData(html, sourcePath) {
     throw new Error('game literal did not evaluate to an object');
   }
 
+  return { cardsObj, gameObj };
+}
+
+function extractOpeningData(cardsObj, gameObj, sourcePath) {
   const { openingBlocks, firstBoardBlock } = collectOpeningBlocks(cardsObj, gameObj);
   const referencedEntries = collectReferencedMetadata(cardsObj, openingBlocks);
   const initialMetrics = extractInitialMetrics(gameObj);
@@ -402,8 +437,65 @@ function extractData(html, sourcePath) {
   };
 }
 
+function extractTargetedStepData(cardsObj, gameObj, sourcePath, lineIndex, stepIndex) {
+  if (!Array.isArray(gameObj.timeline)) {
+    throw new Error('game.timeline is missing or invalid');
+  }
+  const line = gameObj.timeline[lineIndex];
+  if (!Array.isArray(line)) {
+    throw new Error(`game.timeline[${lineIndex}] is missing or invalid`);
+  }
+  if (stepIndex >= line.length) {
+    throw new Error(`game.timeline[${lineIndex}][${stepIndex}] is out of range`);
+  }
+
+  const selectedBlock = buildStepMetadata(cardsObj, line[stepIndex], lineIndex, stepIndex);
+  if (!selectedBlock) {
+    throw new Error(`Selected step at line ${lineIndex}, step ${stepIndex} is empty or invalid`);
+  }
+
+  const previousStep = stepIndex > 0
+    ? buildStepMetadata(cardsObj, line[stepIndex - 1], lineIndex, stepIndex - 1)
+    : null;
+  const nextStep = stepIndex < line.length - 1
+    ? buildStepMetadata(cardsObj, line[stepIndex + 1], lineIndex, stepIndex + 1)
+    : null;
+  const referencedEntries = collectReferencedMetadata(cardsObj, [selectedBlock]);
+
+  return {
+    sourceFile: sourcePath,
+    selectedBlock,
+    referencedEntries,
+    context: {
+      previousStep,
+      nextStep
+    },
+    summary: {
+      lineIndex,
+      stepIndex,
+      lineStepCount: line.length,
+      referencedEntryCount: Object.keys(referencedEntries).length
+    }
+  };
+}
+
+function extractData(html, sourcePath, opts) {
+  const { cardsObj, gameObj } = extractObjects(html);
+
+  if (opts.lineIndex !== null && opts.stepIndex !== null) {
+    return extractTargetedStepData(cardsObj, gameObj, sourcePath, opts.lineIndex, opts.stepIndex);
+  }
+  return extractOpeningData(cardsObj, gameObj, sourcePath);
+}
+
 function main() {
-  const opts = parseArgs();
+  let opts;
+  try {
+    opts = parseArgs();
+  } catch (error) {
+    console.error(`Invalid arguments: ${error.message}`);
+    process.exit(1);
+  }
 
   if (!fs.existsSync(opts.input)) {
     console.error(`Input file not found: ${opts.input}`);
@@ -420,7 +512,7 @@ function main() {
 
   let result;
   try {
-    result = extractData(html, opts.input);
+    result = extractData(html, opts.input, opts);
   } catch (error) {
     console.error(`Extraction failed: ${error.message}`);
     process.exit(1);

@@ -47,6 +47,7 @@
 4. Ввести schema validation для `game.manifest.json`.
 5. Для анализа `draft/Antarctica/Game.html` использовать scripts и targeted extraction, а не чтение всего legacy HTML-файла как prose-источника.
 6. Для opening-flow extraction использовать `npm run antarctica:extract-opening` и проверку `npm run verify:antarctica-extraction`; не выполнять ручной разбор всего `draft/Antarctica/Game.html`.
+7. Для анализа конкретного timeline step использовать targeted CLI: `npm run antarctica:extract-step -- --line <lineIndex> --step <stepIndex>`. Команда возвращает selected block, referenced entries и compact context (`previousStep` / `nextStep`).
 
 ## Приоритет 2. Harden Runtime API
 
@@ -54,9 +55,10 @@
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/Game.html`.
 4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `Game.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
-5. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
-6. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
-7. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
+5. Новый targeted extractor уже показывает, что после first board (`line 0 step 9`) следующим шагом идёт `line 0 step 10` с info-block `i7` («Отнеситесь к этому серьезно!»); это естественная точка входа для следующего runtime/data slice.
+6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
+7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
+8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
 
 ## Приоритет 3. Introduce Full Contracts Layer
 
