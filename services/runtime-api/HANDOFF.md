@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Архитектурное правило для bounded manifest-driven gameplay mechanics теперь закреплено в `ADR-024`, а delivery-specific Antarctica slices `020..029` вынесены в `docs/architecture/gameplay-slices/`. Canonical runtime уже покрывает весь opening flow до terminal `i21`, включая step `19` board `25..30` с explicit `i12` follow-up, step `21` loss-line switch, step `23` locked go-card `39` с bounded alt swap `3902`, step `26` public communication board `43..48` с explicit `i15` follow-up, step `28` trusted messengers board `49..54` с explicit `i16` follow-up, step `30` acceleration board `55..60` с explicit `i17` follow-up, step `32` scout dispatch board `61..66` с locked go-card `66` и explicit `i18` follow-up, а также step `34` aftermath slice `67..70` с `i19/i19_1` routing и terminal `i21`.
+Архитектурное правило для bounded manifest-driven gameplay mechanics теперь закреплено в `ADR-024`, а delivery-specific Antarctica slices `020..029` вынесены в `docs/architecture/gameplay-slices/`. Canonical runtime уже покрывает весь opening flow до terminal `i21`, включая step `19` board `25..30` с explicit `i12` follow-up, step `21` board `31..36` с explicit `i13` follow-up, step `23` loss-line switch, step `23` locked go-card `39` с bounded alt swap `3902`, step `26` public communication board `43..48` с explicit `i15` follow-up, step `28` trusted messengers board `49..54` с explicit `i16` follow-up, step `30` acceleration board `55..60` с explicit `i17` follow-up, step `32` scout dispatch board `61..66` с locked go-card `66` и explicit `i18` follow-up, а также step `34` aftermath slice `67..70` с `i19/i19_1` routing и terminal `i21`.
 
 ## Что уже работает
 
@@ -97,7 +97,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` and the immediate `i10` follow-up are implemented, and the post-confirm mainline path now reaches terminal `i21`; the current player-facing delivery slice now also reaches board `25..30` and `i12`, so the next engineering gap is extending beyond this bounded slice rather than another unreached opening board;
+- team-selection mechanics for step `15` and the immediate `i10` follow-up are implemented, and the post-confirm mainline path now reaches terminal `i21`; the current player-facing delivery slice now also reaches board `31..36` and `i13`, so the next engineering gap is extending beyond this bounded slice rather than another unreached opening board;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -107,7 +107,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Первый bounded Antarctica player-facing delivery slice уже реализован: `player-web` рендерит `i0`, board `1..6`, `i7`, board `7..12`, `i8`, team-selection step `15`, `i10`, board `19..24`, `i11`, board `25..30` и `i12` из `content.antarctica` и существующего session snapshot.
+3. Первый bounded Antarctica player-facing delivery slice уже реализован: `player-web` рендерит `i0`, board `1..6`, `i7`, board `7..12`, `i8`, team-selection step `15`, `i10`, board `19..24`, `i11`, board `25..30`, `i12`, board `31..36` и `i13` из `content.antarctica` и существующего session snapshot.
 4. Следующий Antarctica slice должен расширить current-step rendering дальше по opening flow, не ломая fallback path для ещё не смоделированных step-ов.
 5. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 6. Добавлять persistence только после появления реального operational need.
