@@ -265,6 +265,38 @@
           "36": {
             "selected": false,
             "resolved": false
+          },
+          "37": {
+            "selected": false,
+            "resolved": false
+          },
+          "38": {
+            "selected": false,
+            "resolved": false
+          },
+          "39": {
+            "selected": false,
+            "resolved": false,
+            "locked": true,
+            "available": false
+          },
+          "40": {
+            "selected": false,
+            "resolved": false
+          },
+          "41": {
+            "selected": false,
+            "resolved": false
+          },
+          "42": {
+            "selected": false,
+            "resolved": false
+          },
+          "3902": {
+            "selected": false,
+            "resolved": false,
+            "locked": false,
+            "available": false
           }
         },
         "team": {
@@ -3744,6 +3776,601 @@
         "stateUpdate": {
           "timelineCanAdvance": false,
           "timelineStepIndex": 23,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2",
+          "boardEntryAltCardSwap": {
+            "when": {
+              "metricId": "pro",
+              "operator": ">",
+              "threshold": 40
+            },
+            "baseCardId": "39",
+            "altCardId": "3902"
+          }
+        }
+      }
+    },
+    "opening.card.37": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.37",
+      "displayName": "Opening card 37 - Каталог идей",
+      "description": "Deterministic payload extracted from legacy opening card 37 with the bounded unlock39 threshold hook.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "37",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "37",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -3
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "37",
+          "summary": "Каталогизация идей вымотала команду и не дала нового решения."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "37",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["37", "38", "39", "40", "41", "42"],
+            "resolvedCountAtLeast": 3,
+            "unlockCardId": "39"
+          }
+        }
+      }
+    },
+    "opening.card.38": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.38",
+      "displayName": "Opening card 38 - Второе дыхание",
+      "description": "Deterministic payload extracted from legacy opening card 38 with the bounded unlock39 threshold hook.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "38",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "38",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": -3
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "38",
+          "summary": "Подготовленное собрание не дало новых идей и только усилило напряжение."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "38",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["37", "38", "39", "40", "41", "42"],
+            "resolvedCountAtLeast": 3,
+            "unlockCardId": "39"
+          }
+        }
+      }
+    },
+    "opening.card.39": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.39",
+      "displayName": "Opening card 39 - Наблюдать за колонией",
+      "description": "Deterministic payload extracted from legacy opening card 39 as the bounded locked go-card for step 23.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "39",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "39",
+            "selected": false,
+            "resolved": false,
+            "locked": false,
+            "available": true
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "39",
+          "summary": "Наблюдение за колонией вывело пингвинов к неожиданной встрече с чайкой."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "39",
+          "cardFlags": {
+            "cardId": "39",
+            "selected": true,
+            "resolved": true,
+            "locked": false,
+            "available": true
+          }
+        }
+      }
+    },
+    "opening.card.3902": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.3902",
+      "displayName": "Opening card 3902 - Наблюдать за колонией (alt)",
+      "description": "Bounded entry-time alt variant of legacy opening card 39 for step 23 when pro is already above 40.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "alt-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "3902",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "3902",
+            "selected": false,
+            "resolved": false,
+            "locked": false,
+            "available": true
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "3902",
+          "summary": "Высокий прогресс открыл альтернативный выход к тому же чайчиному открытию."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "3902",
+          "cardFlags": {
+            "cardId": "3902",
+            "selected": true,
+            "resolved": true,
+            "locked": false,
+            "available": true
+          }
+        }
+      }
+    },
+    "opening.card.39.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.39.advance",
+      "displayName": "Opening card 39 - advance to info i14",
+      "description": "Deterministic transition from legacy opening card 39 to info block i14.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "39",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "39"
+          },
+          "card": {
+            "id": "39",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "39",
+          "summary": "Карточка 39 завершена, переход к i14."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 24,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.3902.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.3902.advance",
+      "displayName": "Opening card 3902 - advance to info i14",
+      "description": "Deterministic transition from alt opening card 3902 to info block i14.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "alt-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "3902",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "3902"
+          },
+          "card": {
+            "id": "3902",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "3902",
+          "summary": "Карточка 3902 завершена, переход к i14."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 24,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.40": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.40",
+      "displayName": "Opening card 40 - Встречи по группам",
+      "description": "Deterministic payload extracted from legacy opening card 40 with the bounded unlock39 threshold hook.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "40",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "40",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 4
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "40",
+          "summary": "Групповые встречи заняли время, но усилили сплоченность и поддержку."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "40",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["37", "38", "39", "40", "41", "42"],
+            "resolvedCountAtLeast": 3,
+            "unlockCardId": "39"
+          }
+        }
+      }
+    },
+    "opening.card.41": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.41",
+      "displayName": "Opening card 41 - Работа со случайными группами",
+      "description": "Deterministic payload extracted from legacy opening card 41 with the bounded unlock39 threshold hook.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "41",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "41",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 4
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "41",
+          "summary": "Разъяснения в нескольких группах снизили тревогу и укрепили уверенность."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "41",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["37", "38", "39", "40", "41", "42"],
+            "resolvedCountAtLeast": 3,
+            "unlockCardId": "39"
+          }
+        }
+      }
+    },
+    "opening.card.42": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.42",
+      "displayName": "Opening card 42 - План эвакуации",
+      "description": "Deterministic payload extracted from legacy opening card 42 with the bounded unlock39 threshold hook.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "locked-go-card"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "42",
+            "lineIndex": 0,
+            "stepIndex": 23
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 23,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "42",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 1
+          },
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "42",
+          "summary": "Проработка эвакуации зашла в тупик, но дала немного нового прогресса."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "42",
+            "selected": true,
+            "resolved": true
+          },
+          "boardCardUnlock": {
+            "cardIds": ["37", "38", "39", "40", "41", "42"],
+            "resolvedCountAtLeast": 3,
+            "unlockCardId": "39"
+          }
+        }
+      }
+    },
+    "opening.info.i14.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i14.advance",
+      "displayName": "Opening info i14 - advance to info i14_2",
+      "description": "Deterministic transition from legacy info block i14 to i14_2.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i14",
+            "lineIndex": 0,
+            "stepIndex": 24
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 24,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i14 завершено, переход к i14_2."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 25,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i14_2.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i14_2.advance",
+      "displayName": "Opening info i14_2 - advance to cards 43..48",
+      "description": "Deterministic transition from legacy info block i14_2 to the next mainline boundary with cards 43..48.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i14_2",
+            "lineIndex": 0,
+            "stepIndex": 25
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 25,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i14_2 завершено, достигнута следующая mainline boundary."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 26,
           "timelineStageId": "stage_intro",
           "timelineScreenId": "S2"
         }

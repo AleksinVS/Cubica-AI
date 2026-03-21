@@ -201,6 +201,10 @@ const readCardState = (state: RuntimeState, cardId: string) => {
   return ensureObject(cards[cardId]);
 };
 
+const writeCardState = (cards: RuntimeState, cardId: string, nextCardState: RuntimeState) => {
+  cards[cardId] = nextCardState;
+};
+
 const countResolvedCards = (state: RuntimeState, cardIds: Array<string>) => {
   let resolvedCount = 0;
 
@@ -291,6 +295,14 @@ const evaluateManifestGuard = (
 
     if (guard.card.resolved !== undefined && cardState.resolved !== guard.card.resolved) {
       failures.push(`public.flags.cards["${guard.card.id}"].resolved expected ${String(guard.card.resolved)}`);
+    }
+
+    if (guard.card.locked !== undefined && cardState.locked !== guard.card.locked) {
+      failures.push(`public.flags.cards["${guard.card.id}"].locked expected ${String(guard.card.locked)}`);
+    }
+
+    if (guard.card.available !== undefined && cardState.available !== guard.card.available) {
+      failures.push(`public.flags.cards["${guard.card.id}"].available expected ${String(guard.card.available)}`);
     }
   }
 
@@ -453,7 +465,15 @@ const applyManifestStateUpdate = (
       cardState.resolved = stateUpdate.cardFlags.resolved;
     }
 
-    cards[cardId] = cardState;
+    if (stateUpdate.cardFlags.locked !== undefined) {
+      cardState.locked = stateUpdate.cardFlags.locked;
+    }
+
+    if (stateUpdate.cardFlags.available !== undefined) {
+      cardState.available = stateUpdate.cardFlags.available;
+    }
+
+    writeCardState(cards, cardId, cardState);
   }
 
   if (stateUpdate.teamFlags) {
@@ -467,6 +487,40 @@ const applyManifestStateUpdate = (
 
     flagsTeam[memberId] = teamMemberState;
     flags.team = flagsTeam;
+  }
+
+  if (stateUpdate.boardCardUnlock) {
+    const resolvedCount = countResolvedCards(state, stateUpdate.boardCardUnlock.cardIds);
+
+    // GSR-023 keeps the entry-time 39 -> 3902 swap as a board-local snapshot
+    // under the bounded-manifest architecture from ADR-024.
+    // Once 3902 is exposed, the later unlock threshold must not re-enable base card 39.
+    const alt3902State =
+      stateUpdate.boardCardUnlock.unlockCardId === "39" ? readCardState(state, "3902") : null;
+
+    if (
+      resolvedCount >= stateUpdate.boardCardUnlock.resolvedCountAtLeast &&
+      alt3902State?.available !== true
+    ) {
+      const unlockCardState = ensureObject(cards[stateUpdate.boardCardUnlock.unlockCardId]);
+      unlockCardState.locked = false;
+      unlockCardState.available = true;
+      writeCardState(cards, stateUpdate.boardCardUnlock.unlockCardId, unlockCardState);
+    }
+  }
+
+  if (
+    stateUpdate.boardEntryAltCardSwap &&
+    evaluateMetricCondition(state, stateUpdate.boardEntryAltCardSwap.when)
+  ) {
+    const baseCardState = ensureObject(cards[stateUpdate.boardEntryAltCardSwap.baseCardId]);
+    baseCardState.available = false;
+    writeCardState(cards, stateUpdate.boardEntryAltCardSwap.baseCardId, baseCardState);
+
+    const altCardState = ensureObject(cards[stateUpdate.boardEntryAltCardSwap.altCardId]);
+    altCardState.locked = false;
+    altCardState.available = true;
+    writeCardState(cards, stateUpdate.boardEntryAltCardSwap.altCardId, altCardState);
   }
 
   if (stateUpdate.boardThreshold) {

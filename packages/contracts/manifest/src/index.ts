@@ -122,6 +122,8 @@ export interface GameManifestDeterministicGuard {
     id: string;
     selected?: boolean;
     resolved?: boolean;
+    locked?: boolean;
+    available?: boolean;
   };
   teamSelection?: {
     pickCountLessThan?: number;
@@ -196,6 +198,18 @@ export interface GameManifestDeterministicStateUpdate {
     cardId: string;
     selected?: boolean;
     resolved?: boolean;
+    locked?: boolean;
+    available?: boolean;
+  };
+  boardCardUnlock?: {
+    cardIds: Array<string>;
+    resolvedCountAtLeast: number;
+    unlockCardId: string;
+  };
+  boardEntryAltCardSwap?: {
+    when: GameManifestDeterministicMetricCondition;
+    baseCardId: string;
+    altCardId: string;
   };
   teamFlags?: {
     memberId: string;

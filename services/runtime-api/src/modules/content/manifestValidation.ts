@@ -179,6 +179,12 @@ const validateState = (state: unknown): GameManifestState => {
     if (cardState.resolved !== undefined) {
       assertBoolean(cardState.resolved, `state.public.flags.cards.${cardId}.resolved`);
     }
+    if (cardState.locked !== undefined) {
+      assertBoolean(cardState.locked, `state.public.flags.cards.${cardId}.locked`);
+    }
+    if (cardState.available !== undefined) {
+      assertBoolean(cardState.available, `state.public.flags.cards.${cardId}.available`);
+    }
   }
 
   if (state.public.flags.team !== undefined) {
@@ -274,6 +280,12 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     }
     if (deterministic.guard.card.resolved !== undefined) {
       assertBoolean(deterministic.guard.card.resolved, `${actionPath}.deterministic.guard.card.resolved`);
+    }
+    if (deterministic.guard.card.locked !== undefined) {
+      assertBoolean(deterministic.guard.card.locked, `${actionPath}.deterministic.guard.card.locked`);
+    }
+    if (deterministic.guard.card.available !== undefined) {
+      assertBoolean(deterministic.guard.card.available, `${actionPath}.deterministic.guard.card.available`);
     }
   }
 
@@ -438,6 +450,55 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     if (deterministic.stateUpdate.cardFlags.resolved !== undefined) {
       assertBoolean(deterministic.stateUpdate.cardFlags.resolved, `${actionPath}.deterministic.stateUpdate.cardFlags.resolved`);
     }
+    if (deterministic.stateUpdate.cardFlags.locked !== undefined) {
+      assertBoolean(deterministic.stateUpdate.cardFlags.locked, `${actionPath}.deterministic.stateUpdate.cardFlags.locked`);
+    }
+    if (deterministic.stateUpdate.cardFlags.available !== undefined) {
+      assertBoolean(deterministic.stateUpdate.cardFlags.available, `${actionPath}.deterministic.stateUpdate.cardFlags.available`);
+    }
+  }
+
+  if (deterministic.stateUpdate.boardCardUnlock !== undefined) {
+    assertObjectRecord(deterministic.stateUpdate.boardCardUnlock, `${actionPath}.deterministic.stateUpdate.boardCardUnlock`);
+    assertArray(
+      deterministic.stateUpdate.boardCardUnlock.cardIds,
+      `${actionPath}.deterministic.stateUpdate.boardCardUnlock.cardIds`
+    );
+    if (deterministic.stateUpdate.boardCardUnlock.cardIds.length === 0) {
+      throw new ManifestValidationError(
+        `Manifest field "${actionPath}.deterministic.stateUpdate.boardCardUnlock.cardIds" must not be empty`
+      );
+    }
+    deterministic.stateUpdate.boardCardUnlock.cardIds.forEach((cardId, index) => {
+      assertString(cardId, `${actionPath}.deterministic.stateUpdate.boardCardUnlock.cardIds[${index}]`);
+    });
+    assertNumber(
+      deterministic.stateUpdate.boardCardUnlock.resolvedCountAtLeast,
+      `${actionPath}.deterministic.stateUpdate.boardCardUnlock.resolvedCountAtLeast`
+    );
+    assertString(
+      deterministic.stateUpdate.boardCardUnlock.unlockCardId,
+      `${actionPath}.deterministic.stateUpdate.boardCardUnlock.unlockCardId`
+    );
+  }
+
+  if (deterministic.stateUpdate.boardEntryAltCardSwap !== undefined) {
+    assertObjectRecord(
+      deterministic.stateUpdate.boardEntryAltCardSwap,
+      `${actionPath}.deterministic.stateUpdate.boardEntryAltCardSwap`
+    );
+    validateMetricCondition(
+      deterministic.stateUpdate.boardEntryAltCardSwap.when,
+      `${actionPath}.deterministic.stateUpdate.boardEntryAltCardSwap.when`
+    );
+    assertString(
+      deterministic.stateUpdate.boardEntryAltCardSwap.baseCardId,
+      `${actionPath}.deterministic.stateUpdate.boardEntryAltCardSwap.baseCardId`
+    );
+    assertString(
+      deterministic.stateUpdate.boardEntryAltCardSwap.altCardId,
+      `${actionPath}.deterministic.stateUpdate.boardEntryAltCardSwap.altCardId`
+    );
   }
 
   if (deterministic.stateUpdate.teamFlags !== undefined) {
