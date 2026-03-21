@@ -291,6 +291,81 @@ test("POST /actions applies deterministic intro advances to board step 9 and res
   assert.equal(lastLogEntry.cardId, "3");
 });
 
+test("POST /actions allows non-go opening card before opening.card.3 and rejects non-go replay", async () => {
+  const created = await createSession({ playerId: "multi-card-path" });
+  const introActions = [
+    "opening.info.i0.advance",
+    "opening.info.i02.advance",
+    "opening.info.i03.advance",
+    "opening.info.i1.advance",
+    "opening.info.i2.advance",
+    "opening.info.i3.advance",
+    "opening.info.i4.advance",
+    "opening.info.i5.advance",
+    "opening.info.i6.advance"
+  ];
+
+  for (const actionId of introActions) {
+    const { response } = await dispatchAction(created.sessionId, "multi-card-path", actionId);
+    assert.equal(response.status, 200);
+  }
+
+  const { response: card4Response, body: card4Body } = await dispatchAction(
+    created.sessionId,
+    "multi-card-path",
+    "opening.card.4"
+  );
+  assert.equal(card4Response.status, 200);
+  const card4Action = card4Body as ActionResponse;
+  const card4State = (card4Action.state.public.flags.cards["4"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const lastCard4LogEntry = card4Action.state.public.log[card4Action.state.public.log.length - 1] ?? {};
+
+  assert.equal(card4Action.state.public.timeline.stepIndex, 9);
+  assert.equal(card4Action.state.public.timeline.step_index, 9);
+  assert.equal(card4Action.state.public.timeline.canAdvance, false);
+  assert.equal(card4Action.state.secret?.opening?.selectedCardId, undefined);
+  assert.equal(card4Action.state.public.metrics?.pro, 2);
+  assert.equal(card4Action.state.public.metrics?.rep, 0);
+  assert.equal(card4Action.state.public.metrics?.time, 3);
+  assert.equal(card4Action.state.public.metrics?.score, 57);
+  assert.equal(card4State.selected, true);
+  assert.equal(card4State.resolved, true);
+  assert.equal(lastCard4LogEntry.actionId, "opening.card.4");
+  assert.equal(lastCard4LogEntry.kind, "opening-card-resolution");
+  assert.equal(lastCard4LogEntry.cardId, "4");
+
+  const { response: replayResponse, body: replayBody } = await dispatchAction(
+    created.sessionId,
+    "multi-card-path",
+    "opening.card.4"
+  );
+  assert.equal(replayResponse.status, 400);
+  const replayErrorBody = replayBody as { error: string };
+  assert.match(replayErrorBody.error, /guard failed/);
+
+  const { response: card3Response, body: card3Body } = await dispatchAction(
+    created.sessionId,
+    "multi-card-path",
+    "opening.card.3"
+  );
+  assert.equal(card3Response.status, 200);
+  const card3Action = card3Body as ActionResponse;
+  const card3State = (card3Action.state.public.flags.cards["3"] ?? {}) as { selected?: boolean; resolved?: boolean };
+
+  assert.equal(card3Action.state.public.timeline.stepIndex, 9);
+  assert.equal(card3Action.state.public.timeline.step_index, 9);
+  assert.equal(card3Action.state.public.timeline.canAdvance, true);
+  assert.equal(card3Action.state.secret?.opening?.selectedCardId, "3");
+  assert.equal(card3Action.state.public.metrics?.pro, 3);
+  assert.equal(card3Action.state.public.metrics?.rep, 2);
+  assert.equal(card3Action.state.public.metrics?.lid, 1);
+  assert.equal(card3Action.state.public.metrics?.stat, 1);
+  assert.equal(card3Action.state.public.metrics?.time, 4);
+  assert.equal(card3Action.state.public.metrics?.score, 56);
+  assert.equal(card3State.selected, true);
+  assert.equal(card3State.resolved, true);
+});
+
 test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {
   const created = await createSession({ playerId: "card-replay" });
   const introActions = [

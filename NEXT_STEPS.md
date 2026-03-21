@@ -35,6 +35,8 @@
 - В `services/runtime-api/src/modules/content/manifestValidation.ts` добавлена ранняя валидация deterministic metadata и новых state-полей.
 - В `services/runtime-api` manifest-driven runtime wiring уже подключён: explicit intro actions и `opening.card.3` исполняются через `POST /actions`, timeline aliases (`stepIndex/step_index`, `stageId/stage_id`, `screenId/screen_id`) синхронизируются, а guard failures теперь возвращаются как `400`, а не `500`.
 - Integration tests покрывают полный bounded path: старт на intro step `0`, последовательный переход к board step `9`, успешное применение `opening.card.3`, отказ на replay и отказ на ранний вызов card action до достижения board.
+- Первый opening board больше не ограничен одной живой картой: deterministic manifest-actions добавлены для `opening.card.1`, `opening.card.2`, `opening.card.4`, `opening.card.5`, `opening.card.6`, а runtime уже умеет исполнять их без отдельного нового DSL.
+- Integration tests теперь покрывают и multi-card path: non-go card на первом board сохраняет `canAdvance=false`, обновляет метрики, блокирует replay только для себя и не мешает затем выбрать `opening.card.3` как go-card.
 - Следующий slice должен расширять предметную механику `Antarctica` дальше по manifest, а не возвращаться к capability-only plumbing.
 
 ## Приоритет 1. Complete the Antarctica Truth Model
@@ -51,7 +53,7 @@
 1. Сделать `runtime-api` единственным владельцем загрузки `games/*` для runtime и player-facing delivery, как зафиксировано в `ADR-019`.
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/Game.html`.
-4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - соседние opening-card actions и их последствия по metric/state model.
+4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `Game.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
 5. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 6. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
 7. Подготовить persistence, когда in-memory session store перестанет быть достаточным.

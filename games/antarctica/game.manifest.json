@@ -122,7 +122,27 @@
       "log": [],
       "flags": {
         "cards": {
+          "1": {
+            "selected": false,
+            "resolved": false
+          },
+          "2": {
+            "selected": false,
+            "resolved": false
+          },
           "3": {
+            "selected": false,
+            "resolved": false
+          },
+          "4": {
+            "selected": false,
+            "resolved": false
+          },
+          "5": {
+            "selected": false,
+            "resolved": false
+          },
+          "6": {
             "selected": false,
             "resolved": false
           }
@@ -507,12 +527,138 @@
         }
       }
     },
+    "opening.card.1": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.1",
+      "displayName": "Opening card 1 - Создать клуб изучения айсберга",
+      "description": "Deterministic payload extracted from legacy opening card 1.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "1",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "1",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 8
+          },
+          {
+            "metricId": "rep",
+            "delta": -1
+          },
+          {
+            "metricId": "man",
+            "delta": 1
+          },
+          {
+            "metricId": "cont",
+            "delta": 1
+          },
+          {
+            "metricId": "time",
+            "delta": 5
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "1",
+          "summary": "Некоторым понравились пещеры, кого-то напугали полости внутри айсберга. Возникло много разных идей и теорий, часть - интересные. Клуб заработал. О нем пошли слухи…"
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "1",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.2": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.2",
+      "displayName": "Opening card 2 - Рассказать как можно большему количеству пингвинов",
+      "description": "Deterministic payload extracted from legacy opening card 2.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "2",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "2",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 0
+          },
+          {
+            "metricId": "rep",
+            "delta": -2
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "2",
+          "summary": "Сколько пингвинов, столько и мнений. Кто-то испугался, кто-то возмутился, что его отвлекают. Кто-то поддержал, мол, надо смотреть в будущее! Кто-то уже думал об этом."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "2",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
     "opening.card.3": {
       "handlerType": "manifest-data",
       "capabilityFamily": "antarctica.opening",
       "capability": "antarctica.opening.card.3",
       "displayName": "Opening card 3 - Поговорить с Аленой",
-      "description": "Deterministic payload extracted from legacy opening card 3; runtime wiring follows in the next commit.",
+      "description": "Deterministic payload extracted from legacy opening card 3.",
       "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
       "deterministic": {
         "provenance": [
@@ -572,6 +718,183 @@
           "selectedCardId": "3",
           "cardFlags": {
             "cardId": "3",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.4": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.4",
+      "displayName": "Opening card 4 - Поговорить с Георгием",
+      "description": "Deterministic payload extracted from legacy opening card 4.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "4",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "4",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 2
+          },
+          {
+            "metricId": "rep",
+            "delta": 0
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "4",
+          "summary": "Георгия этот вопрос заинтересовал. Он изучил полость внутри айсберга. Много думал. Попросил собрать дополнительные данные для анализа. Обещал поддержку."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "4",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.5": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.5",
+      "displayName": "Opening card 5 - Обратиться сразу к Вожаку Леониду",
+      "description": "Deterministic payload extracted from legacy opening card 5.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "5",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "5",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 1
+          },
+          {
+            "metricId": "rep",
+            "delta": 1
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "5",
+          "summary": "После некоторого ожидания, Леонид уделил немного времени. Выслушал внимательно, спросил за и против этой гипотезы. Попросил поговорить с Георгием и Аленой."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "5",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.6": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.6",
+      "displayName": "Opening card 6 - Встретиться с Василием",
+      "description": "Deterministic payload extracted from legacy opening card 6.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "6",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "6",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 0
+          },
+          {
+            "metricId": "rep",
+            "delta": -1
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "6",
+          "summary": "Василий тут же предложил снять фильм про то, как можно прыгать с айсберга на айсберг, ведь их станет два. Пожалуй, стоит поговорить с кем-то еще. Может, с Вожаком?"
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "cardFlags": {
+            "cardId": "6",
             "selected": true,
             "resolved": true
           }
