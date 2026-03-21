@@ -15,7 +15,7 @@
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
-- `games/antarctica/game.manifest.json` уже дошёл до boundary `stepIndex = 15`; следующий bounded slice описан в ADR-020.
+- `games/antarctica/game.manifest.json` уже дошёл до boundary `stepIndex = 15`; post-confirm path через `stepIndex = 18` тоже реализован, а следующий bounded slice описан в ADR-021.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который должен потреблять player-facing content API/DTO, а не читать repo files напрямую (ADR-019).
@@ -179,6 +179,12 @@ Execution Model определяет, как платформа обрабаты
 - `state.public.teamSelection.selectedMemberIds` хранит список выбранных members для UI и confirm gating.
 - На этом этапе не вводится payload-driven selector abstraction и broad DSL.
 
+**Antarctica threshold-based board progression** (ADR-021):
+- Для step `19` в Antarctica применяется bounded threshold-based board progression для board `25..30`.
+- Card actions остаются explicit manifest actions, а отдельный board advance action открывается только после threshold по resolved cards на текущем board.
+- Threshold evaluation использует explicit board card ids / resolved-card count, а не generic selector engine или implicit pattern matching.
+- Этот ADR не покрывает conditional metric gates, line switching и branching mechanics из later step `21`.
+
 **Протокол взаимодействия с View** (ADR‑002, `docs/architecture/protocols/mvp-interaction.md`):
 - Presenter общается с клиентом через абстрактный шлюз команд (`ViewCommand` / `ViewResponse`), не завися от конкретного UI‑фреймворка.
 - Это позволяет подключать разные каналы (Web, Telegram и др.) через View Adapters без изменения игровой логики.
@@ -220,6 +226,7 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-018 (JSON Manifest Truth Model):** Исполнимая логика игры закрепляется в `games/<id>/game.manifest.json`, а narrative и draft-артефакты не считаются runtime source of truth.
 - **ADR-019 (Runtime-Owned Player Content Boundary):** `runtime-api` владеет загрузкой game content и проекцией player-facing content DTO/API; `player-web` не должен читать `games/*` напрямую.
 - **ADR-020 (Bounded Manifest-Driven Team Selection):** Для Antarctica step 15 вводятся explicit member-selection actions, отдельный confirm action после выбора ровно 5 members, visible selection flags в `state.public` и per-stage pick count без generic workflow engine.
+- **ADR-021 (Bounded Threshold-Based Board Progression):** Для Antarctica step 19 вводятся explicit board card actions, separate board advance action после threshold по resolved cards на текущем board и board-scoped threshold evaluation без generic workflow engine.
 
 
 ---
@@ -255,7 +262,7 @@ Execution Model определяет, как платформа обрабаты
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
-- В этом canonical slice следующий bounded slice уже зафиксирован на step `15` и описан в ADR-020: bounded manifest-driven team selection вместо generic selector engine.
+- В этом canonical slice step `15` и post-confirm path до `stepIndex = 18` уже реализованы, а следующий bounded slice зафиксирован на step `19` и описан в ADR-021: bounded threshold-based board progression вместо generic selector engine.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
 - `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.
