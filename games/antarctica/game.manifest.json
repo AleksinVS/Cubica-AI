@@ -901,6 +901,94 @@
         }
       }
     },
+    "opening.card.3.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.3.advance",
+      "displayName": "Opening card 3 - advance to info i7",
+      "description": "Deterministic transition from resolved first opening board to info block i7.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "3",
+            "lineIndex": 0,
+            "stepIndex": 9
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 9,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          },
+          "card": {
+            "id": "3",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "3",
+          "summary": "Переход после первого экрана карточек к инфо-блоку i7."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 10,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i7.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i7.advance",
+      "displayName": "Opening info i7 - advance to second board",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i7.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/Game.html",
+            "legacyCardId": "i7",
+            "lineIndex": 0,
+            "stepIndex": 10
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 10,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "3"
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i7 завершено, переход ко второму экрану выбора карточек."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 11,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
     "requestServer": {
       "handlerType": "script",
       "capabilityFamily": "runtime.server",

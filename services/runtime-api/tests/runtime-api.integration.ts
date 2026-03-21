@@ -234,7 +234,7 @@ test("POST /actions routes different Antarctica actions through manifest capabil
   assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
 });
 
-test("POST /actions applies deterministic intro advances to board step 9 and resolves opening.card.3", async () => {
+test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {
   const created = await createSession({ playerId: "intro-flow" });
   const introActions = [
     "opening.info.i0.advance",
@@ -289,6 +289,57 @@ test("POST /actions applies deterministic intro advances to board step 9 and res
   assert.equal(lastLogEntry.actionId, "opening.card.3");
   assert.equal(lastLogEntry.kind, "opening-card-resolution");
   assert.equal(lastLogEntry.cardId, "3");
+
+  const { response: boardAdvanceResponse, body: boardAdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "intro-flow",
+    "opening.card.3.advance"
+  );
+  assert.equal(boardAdvanceResponse.status, 200);
+  const boardAdvanceAction = boardAdvanceBody as ActionResponse;
+  const boardAdvanceLogEntry =
+    boardAdvanceAction.state.public.log[boardAdvanceAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(boardAdvanceAction.state.public.timeline.stepIndex, 10);
+  assert.equal(boardAdvanceAction.state.public.timeline.step_index, 10);
+  assert.equal(boardAdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(boardAdvanceAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(boardAdvanceAction.state.public.timeline.screenId, "S1");
+  assert.equal(boardAdvanceAction.state.public.timeline.screen_id, "S1");
+  assert.equal(boardAdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(boardAdvanceAction.state.secret?.opening?.selectedCardId, "3");
+  assert.equal(boardAdvanceLogEntry.actionId, "opening.card.3.advance");
+  assert.equal(boardAdvanceLogEntry.kind, "opening-card-advance");
+  assert.equal(boardAdvanceLogEntry.cardId, "3");
+
+  const { response: i7AdvanceResponse, body: i7AdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "intro-flow",
+    "opening.info.i7.advance"
+  );
+  assert.equal(i7AdvanceResponse.status, 200);
+  const i7AdvanceAction = i7AdvanceBody as ActionResponse;
+  const i7AdvanceLogEntry = i7AdvanceAction.state.public.log[i7AdvanceAction.state.public.log.length - 1] ?? {};
+
+  assert.equal(i7AdvanceAction.state.public.timeline.stepIndex, 11);
+  assert.equal(i7AdvanceAction.state.public.timeline.step_index, 11);
+  assert.equal(i7AdvanceAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(i7AdvanceAction.state.public.timeline.stage_id, "stage_intro");
+  assert.equal(i7AdvanceAction.state.public.timeline.screenId, "S2");
+  assert.equal(i7AdvanceAction.state.public.timeline.screen_id, "S2");
+  assert.equal(i7AdvanceAction.state.public.timeline.canAdvance, false);
+  assert.equal(i7AdvanceAction.state.secret?.opening?.selectedCardId, "3");
+  assert.equal(i7AdvanceLogEntry.actionId, "opening.info.i7.advance");
+  assert.equal(i7AdvanceLogEntry.kind, "opening-info-advance");
+
+  const { response: replayAdvanceResponse, body: replayAdvanceBody } = await dispatchAction(
+    created.sessionId,
+    "intro-flow",
+    "opening.card.3.advance"
+  );
+  assert.equal(replayAdvanceResponse.status, 400);
+  const replayAdvanceErrorBody = replayAdvanceBody as { error: string };
+  assert.match(replayAdvanceErrorBody.error, /guard failed/);
 });
 
 test("POST /actions allows non-go opening card before opening.card.3 and rejects non-go replay", async () => {

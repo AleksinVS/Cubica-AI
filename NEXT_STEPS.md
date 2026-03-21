@@ -37,6 +37,7 @@
 - Integration tests покрывают полный bounded path: старт на intro step `0`, последовательный переход к board step `9`, успешное применение `opening.card.3`, отказ на replay и отказ на ранний вызов card action до достижения board.
 - Первый opening board больше не ограничен одной живой картой: deterministic manifest-actions добавлены для `opening.card.1`, `opening.card.2`, `opening.card.4`, `opening.card.5`, `opening.card.6`, а runtime уже умеет исполнять их без отдельного нового DSL.
 - Integration tests теперь покрывают и multi-card path: non-go card на первом board сохраняет `canAdvance=false`, обновляет метрики, блокирует replay только для себя и не мешает затем выбрать `opening.card.3` как go-card.
+- Timeline progression после first board тоже стал исполнимым: explicit actions `opening.card.3.advance` и `opening.info.i7.advance` теперь доводят сессию от first board к info-block `i7` и дальше ко второму board `7..12`.
 - Следующий slice должен расширять предметную механику `Antarctica` дальше по manifest, а не возвращаться к capability-only plumbing.
 
 ## Приоритет 1. Complete the Antarctica Truth Model
@@ -55,7 +56,7 @@
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/Game.html`.
 4. Продолжать manifest-driven migration небольшими bounded slices: следующий кандидат - cross-board progression после первого opening board или следующий gameplay fragment из `Game.html`, а не возврат к уже покрытым card `1/2/3/4/5/6`.
-5. Новый targeted extractor уже показывает, что после first board (`line 0 step 9`) следующим шагом идёт `line 0 step 10` с info-block `i7` («Отнеситесь к этому серьезно!»); это естественная точка входа для следующего runtime/data slice.
+5. Переход `first board -> i7 -> second board 7..12` уже покрыт. Следующая естественная точка входа - сами second-board cards `7/8/9/10/11/12`, где по extraction уже видно, что `9` является новой go-card.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. Добавить `readiness` и runtime health signals, если появится отдельный deploy/runtime boundary.
 8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
