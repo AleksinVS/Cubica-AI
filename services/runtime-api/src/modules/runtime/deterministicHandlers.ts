@@ -4,7 +4,11 @@ import type {
   RuntimeActionHandler,
   RuntimeActionResult
 } from "@cubica/contracts-runtime";
-import type { GameManifestDeterministicActionMetadata } from "@cubica/contracts-manifest";
+import type {
+  GameManifestDeterministicActionMetadata,
+  GameManifestDeterministicMetricCondition,
+  GameManifestDeterministicMetricDelta
+} from "@cubica/contracts-manifest";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -222,6 +226,29 @@ const readTeamSelectionState = (state: RuntimeState) => {
   return ensureObject(publicState.teamSelection);
 };
 
+const readMetricValue = (state: RuntimeState, metricId: string) => {
+  const publicState = ensureObject(state.public);
+  const metrics = ensureObject(publicState.metrics);
+  return typeof metrics[metricId] === "number" ? (metrics[metricId] as number) : 0;
+};
+
+const evaluateMetricCondition = (
+  state: RuntimeState,
+  condition: GameManifestDeterministicMetricCondition
+) => {
+  const metricValue = readMetricValue(state, condition.metricId);
+
+  if (condition.operator === ">") {
+    return metricValue > condition.threshold;
+  }
+
+  if (condition.operator === "<") {
+    return metricValue < condition.threshold;
+  }
+
+  return metricValue === condition.threshold;
+};
+
 const evaluateManifestGuard = (
   state: RuntimeState,
   metadata: GameManifestDeterministicActionMetadata
@@ -310,23 +337,54 @@ const evaluateManifestGuard = (
   return failures;
 };
 
-const applyManifestMetricDeltas = (
-  state: RuntimeState,
-  metadata: GameManifestDeterministicActionMetadata
-) => {
+const applyMetricDeltas = (state: RuntimeState, deltas: Array<GameManifestDeterministicMetricDelta>) => {
   const publicState = ensureObject(state.public);
   const metrics = ensureObject(publicState.metrics);
 
-  for (const delta of metadata.metricDeltas) {
+  for (const delta of deltas) {
     const current = typeof metrics[delta.metricId] === "number" ? (metrics[delta.metricId] as number) : 0;
     const nextValue = current + delta.delta;
     metrics[delta.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
   }
 
+  publicState.metrics = metrics;
+  state.public = publicState;
+};
+
+const recalculateDerivedMetrics = (state: RuntimeState) => {
+  const publicState = ensureObject(state.public);
+  const metrics = ensureObject(publicState.metrics);
   const time = typeof metrics.time === "number" ? metrics.time : 0;
   metrics.score = 60 - time;
   publicState.metrics = metrics;
   state.public = publicState;
+};
+
+const applyManifestMetricDeltas = (
+  state: RuntimeState,
+  metadata: GameManifestDeterministicActionMetadata
+) => {
+  applyMetricDeltas(state, metadata.metricDeltas);
+
+  for (const bonus of metadata.conditionalMetricBonuses ?? []) {
+    if (evaluateMetricCondition(state, bonus.when)) {
+      applyMetricDeltas(state, bonus.metricDeltas);
+    }
+  }
+
+  recalculateDerivedMetrics(state);
+};
+
+const resolveConditionalLineSwitch = (
+  state: RuntimeState,
+  metadata: GameManifestDeterministicActionMetadata
+) => {
+  const lineSwitch = metadata.conditionalLineSwitch;
+  if (!lineSwitch) {
+    return null;
+  }
+
+  return evaluateMetricCondition(state, lineSwitch.when) ? lineSwitch : null;
 };
 
 const appendManifestLogEntry = (
@@ -358,7 +416,8 @@ const appendManifestLogEntry = (
 
 const applyManifestStateUpdate = (
   state: RuntimeState,
-  metadata: GameManifestDeterministicActionMetadata
+  metadata: GameManifestDeterministicActionMetadata,
+  conditionalLineSwitch: GameManifestDeterministicActionMetadata["conditionalLineSwitch"] | null = null
 ) => {
   const publicState = ensureObject(state.public);
   const timeline = ensureObject(publicState.timeline);
@@ -454,6 +513,26 @@ const applyManifestStateUpdate = (
     secretState.opening = opening;
     state.secret = secretState;
   }
+
+  if (conditionalLineSwitch) {
+    timeline.line = conditionalLineSwitch.targetLine;
+    timeline.stepIndex = conditionalLineSwitch.targetStepIndex;
+    timeline.step_index = conditionalLineSwitch.targetStepIndex;
+
+    if (conditionalLineSwitch.targetStageId !== undefined) {
+      timeline.stageId = conditionalLineSwitch.targetStageId;
+      timeline.stage_id = conditionalLineSwitch.targetStageId;
+    }
+
+    if (conditionalLineSwitch.targetScreenId !== undefined) {
+      timeline.screenId = conditionalLineSwitch.targetScreenId;
+      timeline.screen_id = conditionalLineSwitch.targetScreenId;
+    }
+
+    if (conditionalLineSwitch.timelineCanAdvance !== undefined) {
+      timeline.canAdvance = conditionalLineSwitch.timelineCanAdvance;
+    }
+  }
 };
 
 const buildManifestActionTransition = (
@@ -494,9 +573,10 @@ const buildManifestActionTransition = (
   }
 
   const nextState = cloneState(context.state);
+  const conditionalLineSwitch = resolveConditionalLineSwitch(context.state, metadata);
   applyManifestMetricDeltas(nextState, metadata);
   const logEntry = appendManifestLogEntry(nextState, context, metadata);
-  applyManifestStateUpdate(nextState, metadata);
+  applyManifestStateUpdate(nextState, metadata, conditionalLineSwitch);
 
   const effect: RuntimeActionEffect = {
     kind: "runtime",

@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Следующий gameplay boundary теперь зафиксирован в `ADR-022`: bounded threshold-based board progression на board `25..30` и переход к `i12` уже закрыты `ADR-021`, а следующий открытый boundary - это реализация step `21` с explicit `i12.advance`, cards `31..36`, bounded conditional metric gates и bounded line switch для card `34`. После реализации `ADR-022` следующим открытым mainline boundary станет `stepIndex = 23`. Generic workflow engine для этого slice не вводится.
+`ADR-022` теперь реализован: bounded threshold-based board progression на board `25..30` и переход к `i12` из `ADR-021` расширены explicit step-21 slice с `i12.advance`, cards `31..36`, bounded conditional metric gates, bounded card-34 line switch и explicit losing line `loss -> i34 -> i34_2 -> i21`. Следующим открытым mainline boundary теперь является `stepIndex = 23` с cards `37..42`. Generic workflow engine для этого slice не вводился.
 
 ## Что уже работает
 
@@ -58,7 +58,9 @@
 - Третий board `13..18` теперь покрыт manifest-driven actions. Non-go cards `13/14/15/16/17` сохраняют `selectedCardId = "9"` и `canAdvance = false`, а `opening.card.18` является текущей go-card для этого board и фиксирует `selectedCardId = "18"` вместе с `timeline.canAdvance = true`.
 - Boundary after `opening.card.18` is now explicit too: `opening.card.18.advance` lands on legacy info block `i9` (`stepIndex=14`), and `opening.info.i9.advance` reaches the team-selection boundary at `stepIndex=15` while keeping `stage_intro` and `selectedCardId = "18"`.
 - The team-selection slice from ADR-020 is implemented now: explicit member-selection actions, separate confirm action, visible public flags, and per-stage pick count tracking. Do not introduce a generic selector engine or payload-driven DSL for this slice. The field-level hooks should be `guard` and `stateUpdate` on each action definition.
-- The next Antarctica slice is now ADR-022 at the unreached step `21`. Keep the work bounded: explicit `i12.advance`, explicit cards `31..36`, bounded conditional metric gates, bounded line switch for card `34`, normal follow-up to `i13`, and losing-line continuation `i34 -> i34_2 -> i21`. After ADR-022, the next open mainline boundary is step `23`. No generic workflow engine.
+- `ADR-022` is implemented now: `opening.info.i12.advance` reaches step `21`, explicit actions `opening.card.31` ... `opening.card.36` cover the full board, `opening.card.31/32/33/35/36` use bounded post-base conditional metric bonuses, and `opening.card.34` can switch to canonical line id `loss` when pre-action `stat < 25` while still applying its own base metric deltas.
+- Mainline continuation after step `21` is explicit too: `opening.card.31/32/33/35/36.advance` lead to `i13`, `opening.info.i13.advance` reaches the next open boundary at `stepIndex = 23`, and the loss line continues through explicit `opening.info.i34.advance` and `opening.info.i34_2.advance` until `i21`.
+- Integration coverage now proves the normal mainline path to `i13` and the step-23 boundary, one post-base conditional bonus (`opening.card.31` from `cont = 10` to `cont = 11`), and the low-stat card-34 loss branch to `loss` step `0` with explicit continuation to `i21`.
 
 ## Как запускать локально
 
@@ -89,7 +91,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` are implemented, and the post-confirm path through step `20` is complete; the next slice is ADR-022 at the unreached step `21`, limited to explicit `i12.advance`, explicit cards `31..36`, bounded conditional metric gates, bounded line switch for card `34`, and explicit losing-line continuation `i34 -> i34_2 -> i21`, not a generic workflow engine;
+- team-selection mechanics for step `15` are implemented, and the post-confirm path now reaches the next open boundary at `stepIndex = 23`; cards `37..42` and later gameplay slices are still unreached in canonical runtime;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -99,7 +101,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice - реализация `ADR-022` на unreached step `21` после уже внедрённых `ADR-020` и `ADR-021`: explicit `i12.advance`, explicit cards `31..36`, bounded conditional metric gates, bounded line switch for card `34`, explicit normal follow-up to `i13`, and explicit losing-line continuation `i34 -> i34_2 -> i21`. После этого следующим открытым mainline boundary станет step `23`.
+3. Следующий Antarctica gameplay slice - mainline `stepIndex = 23` с cards `37..42` после уже внедрённых `ADR-020`, `ADR-021` и `ADR-022`. Step `21` и loss-line continuation `i34 -> i34_2 -> i21` уже закрыты как bounded canonical runtime slice.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

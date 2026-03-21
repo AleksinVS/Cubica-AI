@@ -49,6 +49,30 @@ const assertStringArray = (value: unknown, path: string) => {
   value.forEach((item, index) => assertString(item, `${path}[${index}]`));
 };
 
+const assertMetricComparisonOperator = (value: unknown, path: string) => {
+  if (value !== ">" && value !== "<" && value !== "==") {
+    throw new ManifestValidationError(`Manifest field "${path}" must be one of ">", "<", "=="`);
+  }
+};
+
+const validateMetricCondition = (condition: unknown, path: string) => {
+  assertObjectRecord(condition, path);
+  assertString(condition.metricId, `${path}.metricId`);
+  assertMetricComparisonOperator(condition.operator, `${path}.operator`);
+  assertNumber(condition.threshold, `${path}.threshold`);
+};
+
+const validateMetricDeltaList = (value: unknown, path: string): Array<RecordLike> => {
+  assertArray(value, path);
+  value.forEach((delta, index) => {
+    const deltaPath = `${path}[${index}]`;
+    assertObjectRecord(delta, deltaPath);
+    assertString(delta.metricId, `${deltaPath}.metricId`);
+    assertNumber(delta.delta, `${deltaPath}.delta`);
+  });
+  return value as Array<RecordLike>;
+};
+
 const validateMeta = (meta: unknown): GameManifestMeta => {
   assertObjectRecord(meta, "meta");
   assertString(meta.id, "meta.id");
@@ -296,13 +320,63 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     }
   }
 
-  assertArray(deterministic.metricDeltas, `${actionPath}.deterministic.metricDeltas`);
-  deterministic.metricDeltas.forEach((delta, index) => {
-    const path = `${actionPath}.deterministic.metricDeltas[${index}]`;
-    assertObjectRecord(delta, path);
-    assertString(delta.metricId, `${path}.metricId`);
-    assertNumber(delta.delta, `${path}.delta`);
-  });
+  validateMetricDeltaList(deterministic.metricDeltas, `${actionPath}.deterministic.metricDeltas`);
+
+  if (deterministic.conditionalMetricBonuses !== undefined) {
+    assertArray(
+      deterministic.conditionalMetricBonuses,
+      `${actionPath}.deterministic.conditionalMetricBonuses`
+    );
+    if (deterministic.conditionalMetricBonuses.length === 0) {
+      throw new ManifestValidationError(
+        `Manifest field "${actionPath}.deterministic.conditionalMetricBonuses" must not be empty`
+      );
+    }
+
+    deterministic.conditionalMetricBonuses.forEach((bonus, index) => {
+      const bonusPath = `${actionPath}.deterministic.conditionalMetricBonuses[${index}]`;
+      assertObjectRecord(bonus, bonusPath);
+      validateMetricCondition(bonus.when, `${bonusPath}.when`);
+      const bonusMetricDeltas = validateMetricDeltaList(bonus.metricDeltas, `${bonusPath}.metricDeltas`);
+      if (bonusMetricDeltas.length === 0) {
+        throw new ManifestValidationError(`Manifest field "${bonusPath}.metricDeltas" must not be empty`);
+      }
+    });
+  }
+
+  if (deterministic.conditionalLineSwitch !== undefined) {
+    assertObjectRecord(deterministic.conditionalLineSwitch, `${actionPath}.deterministic.conditionalLineSwitch`);
+    validateMetricCondition(
+      deterministic.conditionalLineSwitch.when,
+      `${actionPath}.deterministic.conditionalLineSwitch.when`
+    );
+    assertString(
+      deterministic.conditionalLineSwitch.targetLine,
+      `${actionPath}.deterministic.conditionalLineSwitch.targetLine`
+    );
+    assertNumber(
+      deterministic.conditionalLineSwitch.targetStepIndex,
+      `${actionPath}.deterministic.conditionalLineSwitch.targetStepIndex`
+    );
+    if (deterministic.conditionalLineSwitch.targetStageId !== undefined) {
+      assertString(
+        deterministic.conditionalLineSwitch.targetStageId,
+        `${actionPath}.deterministic.conditionalLineSwitch.targetStageId`
+      );
+    }
+    if (deterministic.conditionalLineSwitch.targetScreenId !== undefined) {
+      assertString(
+        deterministic.conditionalLineSwitch.targetScreenId,
+        `${actionPath}.deterministic.conditionalLineSwitch.targetScreenId`
+      );
+    }
+    if (deterministic.conditionalLineSwitch.timelineCanAdvance !== undefined) {
+      assertBoolean(
+        deterministic.conditionalLineSwitch.timelineCanAdvance,
+        `${actionPath}.deterministic.conditionalLineSwitch.timelineCanAdvance`
+      );
+    }
+  }
 
   assertObjectRecord(deterministic.log, `${actionPath}.deterministic.log`);
   assertString(deterministic.log.kind, `${actionPath}.deterministic.log.kind`);

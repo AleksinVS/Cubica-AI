@@ -142,6 +142,37 @@ export interface GameManifestDeterministicMetricDelta {
   delta: number;
 }
 
+export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
+
+/**
+ * Bounded metric comparison used by explicit Antarctica card-local hooks.
+ */
+export interface GameManifestDeterministicMetricCondition {
+  metricId: string;
+  operator: GameManifestDeterministicMetricOperator;
+  threshold: number;
+}
+
+/**
+ * Local post-base metric bonus for explicit deterministic cards.
+ */
+export interface GameManifestDeterministicConditionalMetricBonus {
+  when: GameManifestDeterministicMetricCondition;
+  metricDeltas: Array<GameManifestDeterministicMetricDelta>;
+}
+
+/**
+ * Local pre-base line switch for explicit deterministic cards.
+ */
+export interface GameManifestDeterministicConditionalLineSwitch {
+  when: GameManifestDeterministicMetricCondition;
+  targetLine: string;
+  targetStepIndex: number;
+  targetStageId?: string;
+  targetScreenId?: string;
+  timelineCanAdvance?: boolean;
+}
+
 export interface GameManifestDeterministicLogMetadata {
   kind: string;
   summary: string;
@@ -180,6 +211,8 @@ export interface GameManifestDeterministicActionMetadata {
   provenance: Array<GameManifestDeterministicSourceRef>;
   guard: GameManifestDeterministicGuard;
   metricDeltas: Array<GameManifestDeterministicMetricDelta>;
+  conditionalMetricBonuses?: Array<GameManifestDeterministicConditionalMetricBonus>;
+  conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
   log: GameManifestDeterministicLogMetadata;
   stateUpdate: GameManifestDeterministicStateUpdate;
 }
