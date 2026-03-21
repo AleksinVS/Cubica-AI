@@ -2322,6 +2322,21 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
         body: string;
         advanceActionId: string;
       }>;
+      teamSelections: Array<{
+        id: string;
+        stepIndex: number;
+        screenId: string;
+        title: string;
+        body: string;
+        requiredPickCount: number;
+        confirmActionId: string;
+        members: Array<{
+          memberId: string;
+          name: string;
+          summary: string;
+          selectActionId: string;
+        }>;
+      }>;
       boards: Array<{
         id: string;
         stepIndex: number;
@@ -2364,14 +2379,19 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(typeof firstMockup.imagePath, "string");
   assert.ok(body.antarctica);
   assert.ok(Array.isArray(body.antarctica.infos));
+  assert.ok(Array.isArray(body.antarctica.teamSelections));
   assert.ok(Array.isArray(body.antarctica.boards));
   assert.ok(Array.isArray(body.antarctica.cards));
   const infoI0 = body.antarctica.infos.find((entry) => entry.id === "i0");
   const infoI8 = body.antarctica.infos.find((entry) => entry.id === "i8");
   const infoI9 = body.antarctica.infos.find((entry) => entry.id === "i9");
+  const infoI10 = body.antarctica.infos.find((entry) => entry.id === "i10");
+  const teamSelection = body.antarctica.teamSelections.find((entry) => entry.stepIndex === 15);
   assert.ok(infoI0);
   assert.ok(infoI8);
   assert.ok(infoI9);
+  assert.ok(infoI10);
+  assert.ok(teamSelection);
   assert.equal(infoI0.stepIndex, 0);
   assert.equal(infoI0.screenId, "S1");
   assert.equal(infoI0.advanceActionId, "opening.info.i0.advance");
@@ -2383,6 +2403,18 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(infoI9.screenId, "S1");
   assert.equal(infoI9.title, "Создание «штаба»");
   assert.equal(infoI9.advanceActionId, "opening.info.i9.advance");
+  assert.equal(infoI10.stepIndex, 16);
+  assert.equal(infoI10.screenId, "S1");
+  assert.equal(infoI10.title, "Работаем «в одной упряжке»");
+  assert.equal(infoI10.advanceActionId, "opening.info.i10.advance");
+  assert.equal(teamSelection.id, "opening.team.selection");
+  assert.equal(teamSelection.screenId, "S2");
+  assert.equal(teamSelection.requiredPickCount, 5);
+  assert.equal(teamSelection.confirmActionId, "opening.team.confirm");
+  assert.equal(teamSelection.members.length, 10);
+  assert.equal(teamSelection.members[0].memberId, "fedya");
+  assert.equal(teamSelection.members[0].name, "Федор");
+  assert.equal(teamSelection.members[0].selectActionId, "opening.team.select.fedya");
   const board = body.antarctica.boards.find((entry) => entry.id === "opening.board.1_6");
   const secondBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.7_12");
   const thirdBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.13_18");

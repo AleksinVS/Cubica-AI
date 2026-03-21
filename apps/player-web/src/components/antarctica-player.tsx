@@ -8,10 +8,13 @@ import {
   readCanAdvance,
   readCardFlags,
   readSelectedCardId,
+  readTeamFlags,
+  readTeamSelection,
   resolveAntarcticaContent,
   resolveBoardCards,
   resolveCurrentBoard,
-  resolveCurrentInfoEntry
+  resolveCurrentInfoEntry,
+  resolveCurrentTeamSelectionScene
 } from "@/lib/antarctica";
 
 export type { PlayerFacingMockup as AntarcticaMockup };
@@ -170,11 +173,18 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
   const antarctica = resolveAntarcticaContent(content);
   const currentInfo = resolveCurrentInfoEntry(antarctica, publicState as Record<string, unknown>);
   const currentBoard = resolveCurrentBoard(antarctica, publicState as Record<string, unknown>);
+  const currentTeamSelection = resolveCurrentTeamSelectionScene(antarctica, publicState as Record<string, unknown>);
   const boardCards = resolveBoardCards(antarctica, currentBoard);
   const selectedCardId = readSelectedCardId(session);
   const cardFlags = readCardFlags(session);
+  const teamFlags = readTeamFlags(session);
+  const teamSelectionState = readTeamSelection(session);
   const canAdvance = readCanAdvance(session);
   const fallbackActions = getFallbackActionEntries(content);
+  const selectedMemberIds = teamSelectionState.selectedMemberIds ?? [];
+  const pickCount = teamSelectionState.pickCount ?? 0;
+  const selectedTeamMemberIds =
+    selectedMemberIds.length > 0 ? selectedMemberIds : Object.keys(teamFlags).filter((memberId) => teamFlags[memberId]?.selected);
   const selectedCard =
     selectedCardId && boardCards.length > 0
       ? boardCards.find((card) => card.cardId === selectedCardId) ?? null
@@ -241,7 +251,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
                           className="action-button"
                           type="button"
                           onClick={() => dispatchAction(currentInfo.advanceActionId)}
-                          aria-disabled={isPending || !session ? "true" : "false"}
+                          disabled={isPending || !session}
                         >
                           {currentInfo.advanceLabel ?? "Продолжить"}
                         </button>
@@ -286,7 +296,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
                                   className="action-button"
                                   type="button"
                                   onClick={() => dispatchAction(card.selectActionId)}
-                                  aria-disabled={isPending || !session || isLocked ? "true" : "false"}
+                                  disabled={isPending || !session || isLocked || isSelected}
                                 >
                                   {card.selectLabel ?? "Выбрать"}
                                 </button>
@@ -296,13 +306,13 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
                         })}
                       </div>
 
-                      {selectedCard && selectedCard.advanceActionId && canAdvance ? (
+                  {selectedCard && selectedCard.advanceActionId && canAdvance ? (
                         <div className="action-grid" style={{ marginTop: 16 }}>
                           <button
                             className="action-button"
                             type="button"
                             onClick={() => dispatchAction(selectedCard.advanceActionId!)}
-                            aria-disabled={isPending || !session ? "true" : "false"}
+                            disabled={isPending || !session}
                           >
                             {selectedCard.advanceLabel ?? "Продолжить"}
                           </button>
@@ -311,7 +321,77 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
                     </div>
                   ) : null}
 
-                  {!currentInfo && !currentBoard ? (
+                  {!currentInfo && !currentBoard && currentTeamSelection ? (
+                    <div className="scene-card">
+                      <h3 className="scene-title">{currentTeamSelection.title}</h3>
+                      <RichText className="scene-body" html={currentTeamSelection.body} />
+                      <div className="status-row" style={{ marginTop: 16 }}>
+                        <span className="chip">team-selection: {currentTeamSelection.id}</span>
+                        <span className="chip">step: {currentTeamSelection.stepIndex}</span>
+                        <span className="chip">
+                          picked: {pickCount}/{currentTeamSelection.requiredPickCount}
+                        </span>
+                      </div>
+
+                      {selectedTeamMemberIds.length > 0 ? (
+                        <div className="status-row" style={{ marginTop: 10 }}>
+                          {selectedTeamMemberIds.map((memberId) => (
+                            <span key={memberId} className="chip">
+                              selected: {memberId}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      <div className="team-member-list">
+                        {currentTeamSelection.members.map((member) => {
+                          const flags = teamFlags[member.memberId] ?? {};
+                          const isSelected = flags.selected === true || selectedMemberIds.includes(member.memberId);
+                          const isPickLimitReached = pickCount >= currentTeamSelection.requiredPickCount;
+
+                          return (
+                            <article
+                              key={member.memberId}
+                              className={`team-member-card${isSelected ? " team-member-card-selected" : ""}`}
+                            >
+                              <div className="team-member-header">
+                                <strong>{member.name}</strong>
+                                <span className="chip">#{member.memberId}</span>
+                              </div>
+                              <p className="board-card-summary">{member.summary}</p>
+                              <div className="status-row">
+                                {isSelected ? <span className="chip">selected</span> : null}
+                                {isPickLimitReached && !isSelected ? <span className="chip">limit reached</span> : null}
+                              </div>
+                              <div className="action-grid">
+                                <button
+                                  className="action-button"
+                                  type="button"
+                                  onClick={() => dispatchAction(member.selectActionId)}
+                                  disabled={isPending || !session || isSelected || isPickLimitReached}
+                                >
+                                  {member.selectLabel ?? "Выбрать"}
+                                </button>
+                              </div>
+                            </article>
+                          );
+                        })}
+                      </div>
+
+                      <div className="action-grid" style={{ marginTop: 16 }}>
+                        <button
+                          className="action-button"
+                          type="button"
+                          onClick={() => dispatchAction(currentTeamSelection.confirmActionId)}
+                          disabled={isPending || !session || pickCount !== currentTeamSelection.requiredPickCount}
+                        >
+                          {currentTeamSelection.confirmLabel ?? "Подтвердить"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {!currentInfo && !currentBoard && !currentTeamSelection ? (
                     <>
                       <div className="section-title" style={{ marginTop: 0 }}>Fallback action catalog</div>
                       <div className="action-grid">
@@ -321,7 +401,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
                             className="action-button"
                             type="button"
                             onClick={() => dispatchAction(action.actionId)}
-                            aria-disabled={isPending || !session ? "true" : "false"}
+                            disabled={isPending || !session}
                           >
                             {action.displayName}
                           </button>

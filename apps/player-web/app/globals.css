@@ -242,6 +242,12 @@ select {
   margin-top: 16px;
 }
 
+.team-member-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
 .board-card {
   padding: 14px;
   border-radius: 18px;
@@ -258,7 +264,27 @@ select {
   opacity: 0.72;
 }
 
+.team-member-card {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.team-member-card-selected {
+  border-color: rgba(87, 214, 177, 0.45);
+  background: rgba(87, 214, 177, 0.1);
+}
+
 .board-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.team-member-header {
   display: flex;
   justify-content: space-between;
   gap: 10px;
@@ -292,6 +318,11 @@ select {
 .action-button[aria-disabled="true"] {
   opacity: 0.65;
   cursor: progress;
+}
+
+.action-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 .status-row {

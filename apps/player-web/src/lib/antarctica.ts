@@ -3,6 +3,7 @@ import type {
   AntarcticaPlayerBoardCard,
   AntarcticaPlayerContent,
   AntarcticaPlayerInfoEntry,
+  AntarcticaPlayerTeamSelectionScene,
   PlayerFacingContent,
   PlayerFacingMockup
 } from "@cubica/contracts-manifest";
@@ -41,11 +42,22 @@ type CardFlagState = {
   available?: boolean;
 };
 
+type TeamFlagState = {
+  selected?: boolean;
+};
+
+type TeamSelectionState = {
+  pickCount?: number;
+  selectedMemberIds?: Array<string>;
+};
+
 type PublicState = {
   timeline?: TimelineState;
   flags?: {
     cards?: Record<string, CardFlagState>;
+    team?: Record<string, TeamFlagState>;
   };
+  teamSelection?: TeamSelectionState;
 };
 
 type SecretState = {
@@ -158,6 +170,27 @@ export function resolveCurrentBoard(
   return antarctica.boards.find((board) => board.stepIndex === stepIndex && board.screenId === screenId) ?? null;
 }
 
+export function resolveCurrentTeamSelectionScene(
+  antarctica: AntarcticaPlayerContent | null,
+  publicState: PublicState | undefined
+): AntarcticaPlayerTeamSelectionScene | null {
+  if (!antarctica?.teamSelections) {
+    return null;
+  }
+
+  const timeline = publicState?.timeline;
+  const stepIndex = readStepIndex(timeline);
+  const screenId = readScreenId(timeline);
+
+  if (stepIndex === null || !screenId) {
+    return null;
+  }
+
+  return (
+    antarctica.teamSelections.find((scene) => scene.stepIndex === stepIndex && scene.screenId === screenId) ?? null
+  );
+}
+
 export function resolveBoardCards(
   antarctica: AntarcticaPlayerContent | null,
   board: AntarcticaPlayerBoard | null
@@ -180,6 +213,16 @@ export function readSelectedCardId(session: SessionSnapshot | null): string | nu
 export function readCardFlags(session: SessionSnapshot | null): Record<string, CardFlagState> {
   const publicState = session?.state?.public as PublicState | undefined;
   return publicState?.flags?.cards ?? {};
+}
+
+export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
+  const publicState = session?.state?.public as PublicState | undefined;
+  return publicState?.flags?.team ?? {};
+}
+
+export function readTeamSelection(session: SessionSnapshot | null): TeamSelectionState {
+  const publicState = session?.state?.public as PublicState | undefined;
+  return publicState?.teamSelection ?? {};
 }
 
 export function readCanAdvance(session: SessionSnapshot | null): boolean {

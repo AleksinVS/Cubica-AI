@@ -62,6 +62,35 @@ const validateAntarcticaInfoEntry = (entry: unknown, path: string) => {
   }
 };
 
+const validateAntarcticaTeamSelectionMember = (member: unknown, path: string) => {
+  assertObjectRecord(member, path);
+  assertString(member.memberId, `${path}.memberId`);
+  assertString(member.name, `${path}.name`);
+  assertString(member.summary, `${path}.summary`);
+  assertString(member.selectActionId, `${path}.selectActionId`);
+  if (member.selectLabel !== undefined) {
+    assertString(member.selectLabel, `${path}.selectLabel`);
+  }
+};
+
+const validateAntarcticaTeamSelectionScene = (scene: unknown, path: string) => {
+  assertObjectRecord(scene, path);
+  assertString(scene.id, `${path}.id`);
+  assertNumber(scene.stepIndex, `${path}.stepIndex`);
+  assertString(scene.screenId, `${path}.screenId`);
+  assertString(scene.title, `${path}.title`);
+  assertString(scene.body, `${path}.body`);
+  assertNumber(scene.requiredPickCount, `${path}.requiredPickCount`);
+  assertString(scene.confirmActionId, `${path}.confirmActionId`);
+  if (scene.confirmLabel !== undefined) {
+    assertString(scene.confirmLabel, `${path}.confirmLabel`);
+  }
+  assertArray(scene.members, `${path}.members`);
+  scene.members.forEach((member, index) =>
+    validateAntarcticaTeamSelectionMember(member, `${path}.members[${index}]`)
+  );
+};
+
 const validateAntarcticaBoard = (board: unknown, path: string) => {
   assertObjectRecord(board, path);
   assertString(board.id, `${path}.id`);
@@ -195,6 +224,12 @@ const validateContent = (content: unknown): GameManifestContent | undefined => {
       assertArray(content.antarctica.boards, "content.antarctica.boards");
       content.antarctica.boards.forEach((board, index) =>
         validateAntarcticaBoard(board, `content.antarctica.boards[${index}]`)
+      );
+    }
+    if (content.antarctica.teamSelections !== undefined) {
+      assertArray(content.antarctica.teamSelections, "content.antarctica.teamSelections");
+      content.antarctica.teamSelections.forEach((scene, index) =>
+        validateAntarcticaTeamSelectionScene(scene, `content.antarctica.teamSelections[${index}]`)
       );
     }
     if (content.antarctica.cards !== undefined) {

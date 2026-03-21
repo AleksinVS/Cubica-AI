@@ -320,6 +320,26 @@ export interface AntarcticaPlayerInfoEntry {
   advanceLabel?: string;
 }
 
+export interface AntarcticaPlayerTeamSelectionMember {
+  memberId: string;
+  name: string;
+  summary: string;
+  selectActionId: string;
+  selectLabel?: string;
+}
+
+export interface AntarcticaPlayerTeamSelectionScene {
+  id: string;
+  stepIndex: number;
+  screenId: string;
+  title: string;
+  body: string;
+  requiredPickCount: number;
+  confirmActionId: string;
+  confirmLabel?: string;
+  members: Array<AntarcticaPlayerTeamSelectionMember>;
+}
+
 export interface AntarcticaPlayerBoardCard {
   cardId: string;
   title: string;
@@ -342,6 +362,7 @@ export interface AntarcticaPlayerBoard {
 export interface AntarcticaPlayerContent {
   infos: Array<AntarcticaPlayerInfoEntry>;
   boards: Array<AntarcticaPlayerBoard>;
+  teamSelections?: Array<AntarcticaPlayerTeamSelectionScene>;
   cards: Array<AntarcticaPlayerBoardCard>;
 }
 

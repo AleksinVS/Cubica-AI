@@ -36,7 +36,9 @@ The current bounded Antarctica delivery slice uses structured `content.antarctic
 - info `i8`
 - third board `13..18`
 - info `i9`
+- team-selection scene at step `15`
+- info `i10`
 
-`player-web` combines that static player-facing content with the live session snapshot (`timeline`, `selectedCardId`, card flags) to render the current scene. For steps that are not modeled yet in `content.antarctica`, the player falls back to the global action catalog instead of guessing missing content.
+`player-web` combines that static player-facing content with the live session snapshot (`timeline`, `selectedCardId`, card flags, team flags, and teamSelection state) to render the current scene. For steps that are not modeled yet in `content.antarctica`, the player falls back to the global action catalog instead of guessing missing content.
 
 It intentionally does not reuse the imported portal drafts as architecture reference.
