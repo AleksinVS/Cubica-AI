@@ -316,6 +316,30 @@
             "selected": false,
             "resolved": false
           },
+          "49": {
+            "selected": false,
+            "resolved": false
+          },
+          "50": {
+            "selected": false,
+            "resolved": false
+          },
+          "51": {
+            "selected": false,
+            "resolved": false
+          },
+          "52": {
+            "selected": false,
+            "resolved": false
+          },
+          "53": {
+            "selected": false,
+            "resolved": false
+          },
+          "54": {
+            "selected": false,
+            "resolved": false
+          },
           "3902": {
             "selected": false,
             "resolved": false,
@@ -5015,6 +5039,704 @@
         "stateUpdate": {
           "timelineCanAdvance": false,
           "timelineStepIndex": 28,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S2"
+        }
+      }
+    },
+    "opening.card.49": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.49",
+      "displayName": "Opening card 49 - Работа с лидерами мнений",
+      "description": "Deterministic payload extracted from legacy opening card 49 for the step-28 trusted messengers board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "49",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "49",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "constr",
+            "delta": 1
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "cont",
+              "operator": "<",
+              "threshold": 10
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 2
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "49",
+          "summary": "Работа через лидеров мнений дала эффект, но потребовала больше времени, чем ожидалось."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "49",
+          "cardFlags": {
+            "cardId": "49",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.49.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.49.advance",
+      "displayName": "Opening card 49 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 49 to info block i16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "49",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "49"
+          },
+          "card": {
+            "id": "49",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "49",
+          "summary": "Карточка 49 завершена, переход к i16."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 29,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.50": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.50",
+      "displayName": "Opening card 50 - Совещания по месту работы",
+      "description": "Deterministic payload extracted from legacy opening card 50 for the step-28 trusted messengers board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "50",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "50",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 4
+          },
+          {
+            "metricId": "constr",
+            "delta": 3
+          },
+          {
+            "metricId": "time",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "50",
+          "summary": "Открытые совещания по месту работы укрепили доверие и уверенность."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "50",
+          "cardFlags": {
+            "cardId": "50",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.50.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.50.advance",
+      "displayName": "Opening card 50 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 50 to info block i16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "50",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "50"
+          },
+          "card": {
+            "id": "50",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "50",
+          "summary": "Карточка 50 завершена, переход к i16."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 29,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.51": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.51",
+      "displayName": "Opening card 51 - Семейные ужины",
+      "description": "Deterministic payload extracted from legacy opening card 51 for the step-28 trusted messengers board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "51",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "51",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 3
+          },
+          {
+            "metricId": "constr",
+            "delta": 3
+          },
+          {
+            "metricId": "time",
+            "delta": 3
+          }
+        ],
+        "conditionalMetricBonuses": [
+          {
+            "when": {
+              "metricId": "cont",
+              "operator": "<",
+              "threshold": 20
+            },
+            "metricDeltas": [
+              {
+                "metricId": "time",
+                "delta": 1
+              }
+            ]
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "51",
+          "summary": "Семейные ужины помогли снять тревогу, хотя и потребовали дополнительного времени."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "51",
+          "cardFlags": {
+            "cardId": "51",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.51.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.51.advance",
+      "displayName": "Opening card 51 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 51 to info block i16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "51",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "51"
+          },
+          "card": {
+            "id": "51",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "51",
+          "summary": "Карточка 51 завершена, переход к i16."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 29,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.52": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.52",
+      "displayName": "Opening card 52 - Семинары для детей",
+      "description": "Deterministic payload extracted from legacy opening card 52 for the step-28 trusted messengers board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "52",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "52",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 4
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "52",
+          "summary": "Истории для детей помогли вовлечь семьи и снизили часть страха."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "52",
+          "cardFlags": {
+            "cardId": "52",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.52.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.52.advance",
+      "displayName": "Opening card 52 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 52 to info block i16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "52",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "52"
+          },
+          "card": {
+            "id": "52",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "52",
+          "summary": "Карточка 52 завершена, переход к i16."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 29,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.53": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.53",
+      "displayName": "Opening card 53 - Видео для Айсберг-ТВ",
+      "description": "Deterministic payload extracted from legacy opening card 53 for the step-28 trusted messengers board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "53",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "53",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "time",
+            "delta": 5
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "53",
+          "summary": "Видео для Айсберг-ТВ понравилось колонии, но потребовало много времени на подготовку."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "53",
+          "cardFlags": {
+            "cardId": "53",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.53.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.53.advance",
+      "displayName": "Opening card 53 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 53 to info block i16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "53",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "53"
+          },
+          "card": {
+            "id": "53",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "53",
+          "summary": "Карточка 53 завершена, переход к i16."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 29,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.card.54": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.54",
+      "displayName": "Opening card 54 - Постеры о будущем айсберге",
+      "description": "Deterministic payload extracted from legacy opening card 54 for the step-28 trusted messengers board.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "54",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": false
+          },
+          "card": {
+            "id": "54",
+            "selected": false,
+            "resolved": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "rep",
+            "delta": 2
+          },
+          {
+            "metricId": "time",
+            "delta": 2
+          }
+        ],
+        "log": {
+          "kind": "opening-card-resolution",
+          "stageId": "stage_intro",
+          "cardId": "54",
+          "summary": "Постеры сработали широко и добавили колонии оптимизма."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": true,
+          "selectedCardId": "54",
+          "cardFlags": {
+            "cardId": "54",
+            "selected": true,
+            "resolved": true
+          }
+        }
+      }
+    },
+    "opening.card.54.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.54.advance",
+      "displayName": "Opening card 54 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 54 to info block i16.",
+      "tags": ["antarctica", "opening", "legacy-card", "deterministic", "trusted-messengers"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-card",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "54",
+            "lineIndex": 0,
+            "stepIndex": 28
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 28,
+            "canAdvance": true
+          },
+          "opening": {
+            "selectedCardIdEquals": "54"
+          },
+          "card": {
+            "id": "54",
+            "selected": true,
+            "resolved": true
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-card-advance",
+          "stageId": "stage_intro",
+          "cardId": "54",
+          "summary": "Карточка 54 завершена, переход к i16."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 29,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
+        }
+      }
+    },
+    "opening.info.i16.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.info.i16.advance",
+      "displayName": "Opening info i16 - advance to cards 55..60",
+      "description": "Deterministic transition from legacy info block i16 to the next mainline boundary with cards 55..60.",
+      "tags": ["antarctica", "opening", "legacy-info", "deterministic", "intro"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-info",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i16",
+            "lineIndex": 0,
+            "stepIndex": 29
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 29,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-info-advance",
+          "stageId": "stage_intro",
+          "summary": "Интро i16 завершено, достигнута следующая mainline boundary."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 30,
           "timelineStageId": "stage_intro",
           "timelineScreenId": "S2"
         }
