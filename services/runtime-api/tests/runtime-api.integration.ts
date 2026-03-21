@@ -26,6 +26,11 @@ type PublicState = {
   };
   flags: {
     cards: Record<string, unknown>;
+    team?: Record<string, { selected?: boolean }>;
+  };
+  teamSelection?: {
+    pickCount?: number;
+    selectedMemberIds?: Array<string>;
   };
   ui?: {
     lastCapabilityFamily?: string;
@@ -143,6 +148,18 @@ after(async () => {
 
 test("POST /sessions creates an antarctica session", async () => {
   const session = await createSession();
+  const expectedTeamMemberIds = [
+    "fedya",
+    "aliona",
+    "leo",
+    "grisha",
+    "liza",
+    "zenya",
+    "zora",
+    "arkadii",
+    "vasya",
+    "tima"
+  ];
 
   assert.equal(session.version.stateVersion, 0);
   assert.equal(session.version.lastEventSequence, 0);
@@ -150,6 +167,11 @@ test("POST /sessions creates an antarctica session", async () => {
   assert.equal(session.state.public.timeline.stage_id, "stage_intro");
   assert.equal(session.state.public.timeline.stepIndex, 0);
   assert.equal(session.state.public.timeline.canAdvance, false);
+  assert.equal(session.state.public.teamSelection?.pickCount, 0);
+  assert.deepEqual(session.state.public.teamSelection?.selectedMemberIds, []);
+  for (const memberId of expectedTeamMemberIds) {
+    assert.equal(session.state.public.flags.team?.[memberId]?.selected, false);
+  }
   assert.deepEqual(session.state.public.log, []);
 });
 
@@ -689,6 +711,181 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(i9AdvanceAction.state.secret?.opening?.selectedCardId, "18");
   assert.equal(i9AdvanceLogEntry.actionId, "opening.info.i9.advance");
   assert.equal(i9AdvanceLogEntry.kind, "opening-info-advance");
+});
+
+test("POST /actions applies bounded team selection at step 15 and confirms at five picks", async () => {
+  const created = await createSession({ playerId: "team-selection-path" });
+  const introActions = [
+    "opening.info.i0.advance",
+    "opening.info.i02.advance",
+    "opening.info.i03.advance",
+    "opening.info.i1.advance",
+    "opening.info.i2.advance",
+    "opening.info.i3.advance",
+    "opening.info.i4.advance",
+    "opening.info.i5.advance",
+    "opening.info.i6.advance",
+    "opening.card.3",
+    "opening.card.3.advance",
+    "opening.info.i7.advance",
+    "opening.card.9",
+    "opening.card.9.advance",
+    "opening.info.i8.advance",
+    "opening.card.13",
+    "opening.card.18",
+    "opening.card.18.advance",
+    "opening.info.i9.advance"
+  ];
+
+  let boundaryAction: ActionResponse | null = null;
+  for (const actionId of introActions) {
+    const { response, body } = await dispatchAction(created.sessionId, "team-selection-path", actionId);
+    assert.equal(response.status, 200);
+    boundaryAction = body as ActionResponse;
+  }
+
+  assert.ok(boundaryAction);
+  const boundaryMetrics = boundaryAction.state.public.metrics ?? {};
+  const baselineTime = typeof boundaryMetrics.time === "number" ? boundaryMetrics.time : 0;
+  const baselineMetrics = {
+    pro: typeof boundaryMetrics.pro === "number" ? boundaryMetrics.pro : 0,
+    man: typeof boundaryMetrics.man === "number" ? boundaryMetrics.man : 0,
+    lid: typeof boundaryMetrics.lid === "number" ? boundaryMetrics.lid : 0,
+    stat: typeof boundaryMetrics.stat === "number" ? boundaryMetrics.stat : 0,
+    constr: typeof boundaryMetrics.constr === "number" ? boundaryMetrics.constr : 0,
+    cont: typeof boundaryMetrics.cont === "number" ? boundaryMetrics.cont : 0
+  };
+
+  assert.equal(boundaryAction.state.public.timeline.stepIndex, 15);
+  assert.equal(boundaryAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(boundaryAction.state.public.timeline.screenId, "S2");
+  assert.equal(boundaryAction.state.public.teamSelection?.pickCount, 0);
+  assert.deepEqual(boundaryAction.state.public.teamSelection?.selectedMemberIds, []);
+
+  const teamPicks = [
+    {
+      actionId: "opening.team.select.fedya",
+      memberId: "fedya",
+      deltas: { pro: 10, man: 5, constr: 5, time: 0.4 }
+    },
+    {
+      actionId: "opening.team.select.aliona",
+      memberId: "aliona",
+      deltas: { lid: 10, man: 10, stat: 10, constr: 5, time: 0.4 }
+    },
+    {
+      actionId: "opening.team.select.leo",
+      memberId: "leo",
+      deltas: { lid: 15, man: 5, stat: 10, constr: 10, time: 0.4 }
+    },
+    {
+      actionId: "opening.team.select.grisha",
+      memberId: "grisha",
+      deltas: { pro: 5, stat: 10, constr: -25, time: 0.4 }
+    },
+    {
+      actionId: "opening.team.select.liza",
+      memberId: "liza",
+      deltas: { man: 5, stat: 5, cont: 10, constr: 10, time: 0.4 }
+    }
+  ] as const;
+
+  const expectedMetrics: Record<string, number> = { ...baselineMetrics, time: baselineTime };
+  const roundMetric = (value: number) => Math.round(value * 1_000_000) / 1_000_000;
+
+  for (const [index, pick] of teamPicks.slice(0, 4).entries()) {
+    const { response, body } = await dispatchAction(created.sessionId, "team-selection-path", pick.actionId);
+    assert.equal(response.status, 200);
+    const pickAction = body as ActionResponse;
+    const expectedPickCount = index + 1;
+
+    expectedMetrics.time = roundMetric(expectedMetrics.time + pick.deltas.time);
+    for (const [metricId, delta] of Object.entries(pick.deltas)) {
+      if (metricId === "time") {
+        continue;
+      }
+      expectedMetrics[metricId] = (expectedMetrics[metricId] ?? 0) + delta;
+    }
+    expectedMetrics.score = roundMetric(60 - expectedMetrics.time);
+
+    assert.equal(pickAction.state.public.teamSelection?.pickCount, expectedPickCount);
+    assert.deepEqual(pickAction.state.public.teamSelection?.selectedMemberIds, teamPicks.slice(0, expectedPickCount).map((item) => item.memberId));
+    assert.equal(
+      (pickAction.state.public.flags.team?.[pick.memberId] ?? {}).selected,
+      true
+    );
+
+    for (const [metricId, metricValue] of Object.entries(expectedMetrics)) {
+      assert.equal(pickAction.state.public.metrics?.[metricId], metricValue);
+    }
+  }
+
+  const { response: replayResponse, body: replayBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.team.select.fedya"
+  );
+  assert.equal(replayResponse.status, 400);
+  const replayErrorBody = replayBody as { error: string };
+  assert.match(replayErrorBody.error, /guard failed/);
+
+  const { response: confirmBeforeFifthResponse, body: confirmBeforeFifthBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.team.confirm"
+  );
+  assert.equal(confirmBeforeFifthResponse.status, 400);
+  const confirmBeforeFifthErrorBody = confirmBeforeFifthBody as { error: string };
+  assert.match(confirmBeforeFifthErrorBody.error, /guard failed/);
+
+  const fifthPick = teamPicks[4];
+  const { response: fifthResponse, body: fifthBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    fifthPick.actionId
+  );
+  assert.equal(fifthResponse.status, 200);
+  const fifthAction = fifthBody as ActionResponse;
+  expectedMetrics.time = roundMetric(expectedMetrics.time + fifthPick.deltas.time);
+  for (const [metricId, delta] of Object.entries(fifthPick.deltas)) {
+    if (metricId === "time") {
+      continue;
+    }
+    expectedMetrics[metricId] = (expectedMetrics[metricId] ?? 0) + delta;
+  }
+  expectedMetrics.score = roundMetric(60 - expectedMetrics.time);
+
+  assert.equal(fifthAction.state.public.teamSelection?.pickCount, 5);
+  assert.deepEqual(
+    fifthAction.state.public.teamSelection?.selectedMemberIds,
+    teamPicks.map((item) => item.memberId)
+  );
+  assert.equal((fifthAction.state.public.flags.team?.[fifthPick.memberId] ?? {}).selected, true);
+  for (const [metricId, metricValue] of Object.entries(expectedMetrics)) {
+    assert.equal(fifthAction.state.public.metrics?.[metricId], metricValue);
+  }
+
+  const { response: sixthResponse, body: sixthBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.team.select.zenya"
+  );
+  assert.equal(sixthResponse.status, 400);
+  const sixthErrorBody = sixthBody as { error: string };
+  assert.match(sixthErrorBody.error, /guard failed/);
+
+  const { response: confirmResponse, body: confirmBody } = await dispatchAction(
+    created.sessionId,
+    "team-selection-path",
+    "opening.team.confirm"
+  );
+  assert.equal(confirmResponse.status, 200);
+  const confirmAction = confirmBody as ActionResponse;
+  assert.equal(confirmAction.state.public.timeline.stepIndex, 16);
+  assert.equal(confirmAction.state.public.timeline.stageId, "stage_intro");
+  assert.equal(confirmAction.state.public.timeline.screenId, "S1");
+  assert.equal(confirmAction.state.public.teamSelection?.pickCount, 5);
+  assert.deepEqual(confirmAction.state.public.teamSelection?.selectedMemberIds, teamPicks.map((item) => item.memberId));
 });
 
 test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () => {

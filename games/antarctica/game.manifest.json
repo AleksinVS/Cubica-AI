@@ -194,7 +194,43 @@
             "selected": false,
             "resolved": false
           }
+        },
+        "team": {
+          "fedya": {
+            "selected": false
+          },
+          "aliona": {
+            "selected": false
+          },
+          "leo": {
+            "selected": false
+          },
+          "grisha": {
+            "selected": false
+          },
+          "liza": {
+            "selected": false
+          },
+          "zenya": {
+            "selected": false
+          },
+          "zora": {
+            "selected": false
+          },
+          "arkadii": {
+            "selected": false
+          },
+          "vasya": {
+            "selected": false
+          },
+          "tima": {
+            "selected": false
+          }
         }
+      },
+      "teamSelection": {
+        "pickCount": 0,
+        "selectedMemberIds": []
       }
     },
     "secret": {
@@ -1924,6 +1960,746 @@
           "timelineStepIndex": 15,
           "timelineStageId": "stage_intro",
           "timelineScreenId": "S2"
+        }
+      }
+    },
+    "opening.team.select.fedya": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.fedya",
+      "displayName": "Opening team select - Fedya",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Fedya.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "fedya",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "fedya",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 10
+          },
+          {
+            "metricId": "man",
+            "delta": 5
+          },
+          {
+            "metricId": "constr",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Федор выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "fedya",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "fedya"
+          }
+        }
+      }
+    },
+    "opening.team.select.aliona": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.aliona",
+      "displayName": "Opening team select - Aliona",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Aliona.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "aliona",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "aliona",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "lid",
+            "delta": 10
+          },
+          {
+            "metricId": "man",
+            "delta": 10
+          },
+          {
+            "metricId": "stat",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Алена выбрана в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "aliona",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "aliona"
+          }
+        }
+      }
+    },
+    "opening.team.select.leo": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.leo",
+      "displayName": "Opening team select - Leo",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Leo.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "leo",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "leo",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "lid",
+            "delta": 15
+          },
+          {
+            "metricId": "man",
+            "delta": 5
+          },
+          {
+            "metricId": "stat",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": 10
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Леонид выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "leo",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "leo"
+          }
+        }
+      }
+    },
+    "opening.team.select.grisha": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.grisha",
+      "displayName": "Opening team select - Grisha",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Grisha.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "grisha",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "grisha",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 5
+          },
+          {
+            "metricId": "stat",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": -25
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Григорий выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "grisha",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "grisha"
+          }
+        }
+      }
+    },
+    "opening.team.select.liza": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.liza",
+      "displayName": "Opening team select - Liza",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Liza.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "liza",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "liza",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "man",
+            "delta": 5
+          },
+          {
+            "metricId": "stat",
+            "delta": 5
+          },
+          {
+            "metricId": "cont",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": 10
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Елизавета выбрана в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "liza",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "liza"
+          }
+        }
+      }
+    },
+    "opening.team.select.zenya": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.zenya",
+      "displayName": "Opening team select - Zenya",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Zenya.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "zenya",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "zenya",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "cont",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Евгений выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "zenya",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "zenya"
+          }
+        }
+      }
+    },
+    "opening.team.select.zora": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.zora",
+      "displayName": "Opening team select - Zora",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Zora.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "zora",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "zora",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "pro",
+            "delta": 15
+          },
+          {
+            "metricId": "stat",
+            "delta": 10
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Георгий выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "zora",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "zora"
+          }
+        }
+      }
+    },
+    "opening.team.select.arkadii": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.arkadii",
+      "displayName": "Opening team select - Arkadii",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Arkadii.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "arkadii",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "arkadii",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "cont",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Аркадий выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "arkadii",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "arkadii"
+          }
+        }
+      }
+    },
+    "opening.team.select.vasya": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.vasya",
+      "displayName": "Opening team select - Vasya",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Vasya.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "vasya",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "vasya",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "cont",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": 5
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Василий выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "vasya",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "vasya"
+          }
+        }
+      }
+    },
+    "opening.team.select.tima": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.select.tima",
+      "displayName": "Opening team select - Tima",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Tima.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-member",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "tima",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountLessThan": 5
+          },
+          "team": {
+            "memberId": "tima",
+            "selected": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "man",
+            "delta": 10
+          },
+          {
+            "metricId": "stat",
+            "delta": 10
+          },
+          {
+            "metricId": "constr",
+            "delta": -5
+          },
+          {
+            "metricId": "time",
+            "delta": 0.4
+          }
+        ],
+        "log": {
+          "kind": "opening-team-selection",
+          "stageId": "stage_intro",
+          "summary": "Тимофей выбран в команду на шаге 15."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "teamFlags": {
+            "memberId": "tima",
+            "selected": true
+          },
+          "teamSelection": {
+            "pickCountDelta": 1,
+            "selectedMemberIdsAppend": "tima"
+          }
+        }
+      }
+    },
+    "opening.team.confirm": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.team.confirm",
+      "displayName": "Opening team confirm",
+      "description": "Deterministic transition that confirms the selected team after exactly five members.",
+      "tags": ["antarctica", "opening", "legacy-team", "deterministic", "team-selection"],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-team-confirm",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "i10",
+            "lineIndex": 0,
+            "stepIndex": 15
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 15,
+            "canAdvance": false
+          },
+          "opening": {
+            "selectedCardIdEquals": "18"
+          },
+          "teamSelection": {
+            "pickCountEquals": 5
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-team-confirm",
+          "stageId": "stage_intro",
+          "summary": "Команда подтверждена после выбора пяти членов."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 16,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
         }
       }
     },

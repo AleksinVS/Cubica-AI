@@ -106,7 +106,7 @@ export interface GameManifestDeterministicSourceRef {
 }
 
 /**
- * Minimal guard shape for the first Antarctica opening-card slice.
+ * Minimal guard shape for the first Antarctica opening-card and team-selection slices.
  */
 export interface GameManifestDeterministicGuard {
   timeline?: {
@@ -122,6 +122,14 @@ export interface GameManifestDeterministicGuard {
     id: string;
     selected?: boolean;
     resolved?: boolean;
+  };
+  teamSelection?: {
+    pickCountLessThan?: number;
+    pickCountEquals?: number;
+  };
+  team?: {
+    memberId: string;
+    selected?: boolean;
   };
 }
 
@@ -148,6 +156,14 @@ export interface GameManifestDeterministicStateUpdate {
     cardId: string;
     selected?: boolean;
     resolved?: boolean;
+  };
+  teamFlags?: {
+    memberId: string;
+    selected?: boolean;
+  };
+  teamSelection?: {
+    pickCountDelta?: number;
+    selectedMemberIdsAppend?: string;
   };
 }
 

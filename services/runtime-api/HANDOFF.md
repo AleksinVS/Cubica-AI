@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Следующий gameplay boundary зафиксирован в `ADR-020`: после `stepIndex = 15` Antarctica должна перейти к bounded manifest-driven team selection с explicit member-selection actions, visible public state и отдельным confirm action после выбора ровно 5 членов. Intended public shape: `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
+Следующий gameplay boundary зафиксирован в `ADR-020`: bounded manifest-driven team selection на step `15` уже реализован, а следующий открытый boundary теперь начинается после confirm-перехода на `stepIndex = 16`. Intended public shape: `state.public.flags.team[memberId].selected`, `state.public.teamSelection.pickCount`, `state.public.teamSelection.selectedMemberIds`.
 
 ## Что уже работает
 
@@ -57,7 +57,7 @@
 - После `opening.card.9` теперь есть explicit progression path: `opening.card.9.advance` переводит в info-block `i8` (`stepIndex=12`, `screenId=S1`), а `opening.info.i8.advance` переводит на третий board `13..18` (`stepIndex=13`, `screenId=S2`).
 - Третий board `13..18` теперь покрыт manifest-driven actions. Non-go cards `13/14/15/16/17` сохраняют `selectedCardId = "9"` и `canAdvance = false`, а `opening.card.18` является текущей go-card для этого board и фиксирует `selectedCardId = "18"` вместе с `timeline.canAdvance = true`.
 - Boundary after `opening.card.18` is now explicit too: `opening.card.18.advance` lands on legacy info block `i9` (`stepIndex=14`), and `opening.info.i9.advance` reaches the team-selection boundary at `stepIndex=15` while keeping `stage_intro` and `selectedCardId = "18"`.
-- The next implementation slice is ADR-020 team selection: explicit member-selection actions, separate confirm action, visible public flags, and per-stage pick count tracking. Do not introduce a generic selector engine or payload-driven DSL for this slice. The field-level hooks should be `guard` and `stateUpdate` on each action definition.
+- The team-selection slice from ADR-020 is implemented now: explicit member-selection actions, separate confirm action, visible public flags, and per-stage pick count tracking. Do not introduce a generic selector engine or payload-driven DSL for this slice. The field-level hooks should be `guard` and `stateUpdate` on each action definition.
 
 ## Как запускать локально
 
@@ -88,7 +88,7 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет readiness endpoint;
 - capability handlers пока покрывают только текущие `Antarctica` actions;
-- team-selection mechanics for step `15` are not implemented yet; the next slice is ADR-020 bounded manifest-driven selection, not a generic workflow engine;
+- team-selection mechanics for step `15` are implemented; the next slice is the post-confirm boundary at step `16`, not a generic workflow engine;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -98,7 +98,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Следующий Antarctica gameplay slice already defined by ADR-020: bounded manifest-driven team selection with explicit member-selection actions, separate confirm action after exactly 5 members, visible public state, and per-stage pick count tracking via `state.public.teamSelection.pickCount`.
+3. Следующий Antarctica gameplay slice is the post-confirm boundary after the implemented ADR-020 team-selection step, starting at `stepIndex = 16`.
 4. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 5. Добавлять persistence только после появления реального operational need.
 6. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.

@@ -197,6 +197,18 @@ const readCardState = (state: RuntimeState, cardId: string) => {
   return ensureObject(cards[cardId]);
 };
 
+const readTeamMemberState = (state: RuntimeState, memberId: string) => {
+  const publicState = ensureObject(state.public);
+  const flags = ensureObject(publicState.flags);
+  const team = ensureObject(flags.team);
+  return ensureObject(team[memberId]);
+};
+
+const readTeamSelectionState = (state: RuntimeState) => {
+  const publicState = ensureObject(state.public);
+  return ensureObject(publicState.teamSelection);
+};
+
 const evaluateManifestGuard = (
   state: RuntimeState,
   metadata: GameManifestDeterministicActionMetadata
@@ -242,6 +254,33 @@ const evaluateManifestGuard = (
     }
   }
 
+  if (guard.teamSelection) {
+    const teamSelection = readTeamSelectionState(state);
+    const pickCount = typeof teamSelection.pickCount === "number" ? teamSelection.pickCount : 0;
+
+    if (
+      guard.teamSelection.pickCountLessThan !== undefined &&
+      !(pickCount < guard.teamSelection.pickCountLessThan)
+    ) {
+      failures.push(`public.teamSelection.pickCount expected < ${guard.teamSelection.pickCountLessThan}`);
+    }
+
+    if (
+      guard.teamSelection.pickCountEquals !== undefined &&
+      pickCount !== guard.teamSelection.pickCountEquals
+    ) {
+      failures.push(`public.teamSelection.pickCount expected ${guard.teamSelection.pickCountEquals}`);
+    }
+  }
+
+  if (guard.team) {
+    const teamMemberState = readTeamMemberState(state, guard.team.memberId);
+
+    if (guard.team.selected !== undefined && teamMemberState.selected !== guard.team.selected) {
+      failures.push(`public.flags.team["${guard.team.memberId}"].selected expected ${String(guard.team.selected)}`);
+    }
+  }
+
   return failures;
 };
 
@@ -254,7 +293,8 @@ const applyManifestMetricDeltas = (
 
   for (const delta of metadata.metricDeltas) {
     const current = typeof metrics[delta.metricId] === "number" ? (metrics[delta.metricId] as number) : 0;
-    metrics[delta.metricId] = current + delta.delta;
+    const nextValue = current + delta.delta;
+    metrics[delta.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
   }
 
   const time = typeof metrics.time === "number" ? metrics.time : 0;
@@ -331,9 +371,46 @@ const applyManifestStateUpdate = (
     cards[cardId] = cardState;
   }
 
+  if (stateUpdate.teamFlags) {
+    const memberId = stateUpdate.teamFlags.memberId;
+    const flagsTeam = ensureObject(flags.team);
+    const teamMemberState = ensureObject(flagsTeam[memberId]);
+
+    if (stateUpdate.teamFlags.selected !== undefined) {
+      teamMemberState.selected = stateUpdate.teamFlags.selected;
+    }
+
+    flagsTeam[memberId] = teamMemberState;
+    flags.team = flagsTeam;
+  }
+
   flags.cards = cards;
   publicState.flags = flags;
   publicState.timeline = timeline;
+
+  if (stateUpdate.teamSelection) {
+    const teamSelection = ensureObject(publicState.teamSelection);
+    const currentPickCount = typeof teamSelection.pickCount === "number" ? teamSelection.pickCount : 0;
+
+    if (
+      stateUpdate.teamSelection.pickCountDelta !== undefined &&
+      stateUpdate.teamSelection.selectedMemberIdsAppend === undefined
+    ) {
+      teamSelection.pickCount = currentPickCount + stateUpdate.teamSelection.pickCountDelta;
+    }
+
+    if (stateUpdate.teamSelection.selectedMemberIdsAppend !== undefined) {
+      const selectedMemberIds = Array.isArray(teamSelection.selectedMemberIds)
+        ? [...teamSelection.selectedMemberIds]
+        : [];
+      selectedMemberIds.push(stateUpdate.teamSelection.selectedMemberIdsAppend);
+      teamSelection.selectedMemberIds = selectedMemberIds;
+      teamSelection.pickCount = currentPickCount + (stateUpdate.teamSelection.pickCountDelta ?? 1);
+    }
+
+    publicState.teamSelection = teamSelection;
+  }
+
   state.public = publicState;
 
   if (stateUpdate.selectedCardId !== undefined) {

@@ -44,7 +44,18 @@ const SUPPORTED_MANIFEST_DATA_ACTIONS = new Set([
   "opening.card.17",
   "opening.card.18",
   "opening.card.18.advance",
-  "opening.info.i9.advance"
+  "opening.info.i9.advance",
+  "opening.team.select.fedya",
+  "opening.team.select.aliona",
+  "opening.team.select.leo",
+  "opening.team.select.grisha",
+  "opening.team.select.liza",
+  "opening.team.select.zenya",
+  "opening.team.select.zora",
+  "opening.team.select.arkadii",
+  "opening.team.select.vasya",
+  "opening.team.select.tima",
+  "opening.team.confirm"
 ]);
 
 const createRegistryMap = (bundle: GameBundle) => {

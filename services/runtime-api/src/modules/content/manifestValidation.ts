@@ -44,6 +44,11 @@ const assertArray: (value: unknown, path: string) => asserts value is Array<unkn
   }
 };
 
+const assertStringArray = (value: unknown, path: string) => {
+  assertArray(value, path);
+  value.forEach((item, index) => assertString(item, `${path}[${index}]`));
+};
+
 const validateMeta = (meta: unknown): GameManifestMeta => {
   assertObjectRecord(meta, "meta");
   assertString(meta.id, "meta.id");
@@ -152,6 +157,26 @@ const validateState = (state: unknown): GameManifestState => {
     }
   }
 
+  if (state.public.flags.team !== undefined) {
+    assertObjectRecord(state.public.flags.team, "state.public.flags.team");
+    for (const [memberId, memberState] of Object.entries(state.public.flags.team)) {
+      assertObjectRecord(memberState, `state.public.flags.team.${memberId}`);
+      if (memberState.selected !== undefined) {
+        assertBoolean(memberState.selected, `state.public.flags.team.${memberId}.selected`);
+      }
+    }
+  }
+
+  if (state.public.teamSelection !== undefined) {
+    assertObjectRecord(state.public.teamSelection, "state.public.teamSelection");
+    if (state.public.teamSelection.pickCount !== undefined) {
+      assertNumber(state.public.teamSelection.pickCount, "state.public.teamSelection.pickCount");
+    }
+    if (state.public.teamSelection.selectedMemberIds !== undefined) {
+      assertStringArray(state.public.teamSelection.selectedMemberIds, "state.public.teamSelection.selectedMemberIds");
+    }
+  }
+
   if (state.secret !== undefined) {
     assertObjectRecord(state.secret, "state.secret");
     if (state.secret.opening !== undefined) {
@@ -228,6 +253,30 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     }
   }
 
+  if (deterministic.guard.teamSelection !== undefined) {
+    assertObjectRecord(deterministic.guard.teamSelection, `${actionPath}.deterministic.guard.teamSelection`);
+    if (deterministic.guard.teamSelection.pickCountLessThan !== undefined) {
+      assertNumber(
+        deterministic.guard.teamSelection.pickCountLessThan,
+        `${actionPath}.deterministic.guard.teamSelection.pickCountLessThan`
+      );
+    }
+    if (deterministic.guard.teamSelection.pickCountEquals !== undefined) {
+      assertNumber(
+        deterministic.guard.teamSelection.pickCountEquals,
+        `${actionPath}.deterministic.guard.teamSelection.pickCountEquals`
+      );
+    }
+  }
+
+  if (deterministic.guard.team !== undefined) {
+    assertObjectRecord(deterministic.guard.team, `${actionPath}.deterministic.guard.team`);
+    assertString(deterministic.guard.team.memberId, `${actionPath}.deterministic.guard.team.memberId`);
+    if (deterministic.guard.team.selected !== undefined) {
+      assertBoolean(deterministic.guard.team.selected, `${actionPath}.deterministic.guard.team.selected`);
+    }
+  }
+
   assertArray(deterministic.metricDeltas, `${actionPath}.deterministic.metricDeltas`);
   deterministic.metricDeltas.forEach((delta, index) => {
     const path = `${actionPath}.deterministic.metricDeltas[${index}]`;
@@ -270,6 +319,33 @@ const validateDeterministicActionMetadata = (deterministic: unknown, actionPath:
     }
     if (deterministic.stateUpdate.cardFlags.resolved !== undefined) {
       assertBoolean(deterministic.stateUpdate.cardFlags.resolved, `${actionPath}.deterministic.stateUpdate.cardFlags.resolved`);
+    }
+  }
+
+  if (deterministic.stateUpdate.teamFlags !== undefined) {
+    assertObjectRecord(deterministic.stateUpdate.teamFlags, `${actionPath}.deterministic.stateUpdate.teamFlags`);
+    assertString(deterministic.stateUpdate.teamFlags.memberId, `${actionPath}.deterministic.stateUpdate.teamFlags.memberId`);
+    if (deterministic.stateUpdate.teamFlags.selected !== undefined) {
+      assertBoolean(
+        deterministic.stateUpdate.teamFlags.selected,
+        `${actionPath}.deterministic.stateUpdate.teamFlags.selected`
+      );
+    }
+  }
+
+  if (deterministic.stateUpdate.teamSelection !== undefined) {
+    assertObjectRecord(deterministic.stateUpdate.teamSelection, `${actionPath}.deterministic.stateUpdate.teamSelection`);
+    if (deterministic.stateUpdate.teamSelection.pickCountDelta !== undefined) {
+      assertNumber(
+        deterministic.stateUpdate.teamSelection.pickCountDelta,
+        `${actionPath}.deterministic.stateUpdate.teamSelection.pickCountDelta`
+      );
+    }
+    if (deterministic.stateUpdate.teamSelection.selectedMemberIdsAppend !== undefined) {
+      assertString(
+        deterministic.stateUpdate.teamSelection.selectedMemberIdsAppend,
+        `${actionPath}.deterministic.stateUpdate.teamSelection.selectedMemberIdsAppend`
+      );
     }
   }
 };
