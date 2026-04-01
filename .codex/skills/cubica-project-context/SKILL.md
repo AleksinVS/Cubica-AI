@@ -43,7 +43,7 @@ Look for project-local workflow settings in `PROJECT_WORKFLOW_CONFIG.json` first
 
 If a needed setting is absent there, fall back to these local Cubica references and then to the shared workflow references.
 
-For an active block, explicit `ARCHITECT_PLAN.json`, `SLICE_TASK/*.json`, and task-level overrides are stronger than project-local defaults.
+For an active block, explicit `ARCHITECT_PLAN.json`, `task-packets/*.json`, and task-level overrides are stronger than project-local defaults.
 
 ## Startup Read Order
 
@@ -117,8 +117,8 @@ Preferred pattern:
 
 Rules:
 
-- `SLICE_TASK` files are temporary and should not be committed;
-- after PM acceptance, accepted `SLICE_TASK` files should be removed;
+- task packets (`task-packets/*.json`) are temporary and should not be committed;
+- after PM acceptance, accepted task packets should be removed;
 - the Architect should define the exact temp locations before the Orchestrator starts dispatching work;
 - if those locations are not defined, the Orchestrator should escalate back to Architect instead of inventing them.
 

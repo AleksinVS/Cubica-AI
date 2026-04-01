@@ -15,7 +15,11 @@
 6. web-аналитик (opencode GLM-4.7 medium) - выполняет поиск в интернете, предварительный анализ поисковой выборки и подготовку результатов в соответствии с контрактами.
 
 # Общий план
-ARCHITECT_PLAN.json → PM review → Architect decision → SLICE_EXPORT_SPEC.json / materialize_slice_tasks → SLICE_TASK → исполнители → PM_DECISION_PACKET.
+ARCHITECT_PLAN.json → PM plan_review → Architect decision → SLICE_EXPORT_SPEC.json → materialize task packets → `task-packets/{task_id}.json` → исполнители → PM_DECISION_PACKET.
+
+Примечание по методике `Contract-first / schema-first`:
+
+- до финального `PM_DECISION_PACKET` по блоку обычно требуется `CONFORMANCE_REPORT.md` (проверка соответствия реализации контракту).
 - Архитектор готовит один большой json-план для всех исполнителей;
 - Оркестратор запускает для каждой части плана нужных исполнителей, при этом делает это "механически" ничего в плане не дописывая и не меняя; 
 - PM проверяет результат, делает ревью тестов (при необходимости дописывает недостающие тесты) и сам их запускает, PM либо принимает выполненный блок, либо отдает на доработку исполнителю;
