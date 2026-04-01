@@ -19,7 +19,8 @@ Agents must always load and follow the nearest `AGENTS.md` before working in tha
 ## 2. General rules for agents
 
 Agents must always:
-1. **For any work in Cubica, use `$cubica` as the Codex wrapper; when working in another runtime, follow the same repo-local Cubica process contract in this file.**
+1. **For any work in Cubica, use `$cubica` as the Codex wrapper.**
+   - If the user explicitly invokes a workflow role skill (`wf-architect`, `wf-orchestrator`, `wf-executor*`, `wf-pm*`), treat that as an explicit routing decision and follow the invoked `wf-*` skill contract for that work.
 2. **When planning, configuring, and developing, always use Context7 MCP to get up-to-date documentation and best practices.**
 3. **Use reasoning effort deliberately**
    - Use built-in **Codex subagents** with **high reasoning effort** for architecture work, decomposition of large tasks, and review of risky diffs.
@@ -29,7 +30,7 @@ Agents must always:
    - Use **low reasoning effort** only for simple mechanical follow-up edits.
 4. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
-   - For Cubica work, re-read the `$cubica` skill file.
+   - Re-read the active workflow wrapper/role skill that governs the current work (for example: `$cubica`, `wf-architect`, `wf-orchestrator`).
    - Treat this reload as mandatory before continuing implementation, review, or planning after a compaction boundary.
 5. **Maintain documentation**
    - Create and update documentation wherever it is needed:
@@ -63,7 +64,16 @@ Agents must always:
    - Built-in Codex subagents must not be treated as the final decision-maker for architectural choices.
    - `opencode` high-review workers may perform additional focused or intermediate review for risky or non-trivial slices, but they must not replace the final review by the main agent before commit.
    - `opencode` subagents with model `minimax-coding-plan/MiniMax-M2.7` are the preferred implementation workers for code-writing slices when available; otherwise use built-in Codex subagents for the same slice.
+
 ---
+
+## 2.1 Workflow role compatibility (`wf-*`)
+
+When using the `wf-*` workflow skills, follow their role boundaries in addition to these global rules:
+
+- Architect (`wf-architect`) owns block selection, methodology choice, and architecture decisions (and records durable decisions in ADRs).
+- Orchestrator (`wf-orchestrator`) routes work mechanically and must not rewrite the architect plan.
+- Executor owns `task_acceptance`; PM owns `block_acceptance` (per the `wf-*` contracts).
 
 ## 3. Key project documents to read first
 
@@ -72,7 +82,7 @@ Before planning anything, use these entry points:
 ---
 
 - [PROJECT_OVERVIEW.md](/home/abc/projects/Cubica-AI/PROJECT_OVERVIEW.md) - high-level product and platform context.
-- [PROJECT_STRUCTURE.md](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.md) - current repository layout and workspace map.
+- [PROJECT_STRUCTURE.json](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.json) - current repository layout and workspace map.
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
 - [repo-manifest.json](/home/abc/projects/Cubica-AI/repo-manifest.json) - machine-readable index of canonical, draft, and target artifacts.

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Cubica Project Context"
+  short_description: "Adds Cubica-specific repository rules"
+  default_prompt: "Use $cubica-project-context together with a workflow role skill to apply Cubica-specific truth-model and documentation rules, read PROJECT_WORKFLOW_CONFIG.json first for project-local settings, always use Context7 MCP when you need planning, library/API documentation, code generation, setup or configuration steps to get up-to-date documentation and best practices, produce a user-facing BLOCK_BRIEF.md before ARCHITECT_PLAN.json, then reuse the local Cubica architect-plan and slice-export examples when bootstrapping a block."
+
+policy:
+  allow_implicit_invocation: true

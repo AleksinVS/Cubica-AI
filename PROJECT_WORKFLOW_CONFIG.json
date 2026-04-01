@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.0",
+  "project_id": "cubica-ai",
+  "config_version": "v1",
+  "paths": {
+    "workflow_root": ".tmp/agent-workflow",
+    "canonical_latest_root": ".codex/workflow",
+    "block_workspace": ".tmp/agent-workflow/{block_id}",
+    "block_workspace_template": ".tmp/agent-workflow/{block_id}",
+    "block_brief_path": ".tmp/agent-workflow/{block_id}/BLOCK_BRIEF.md",
+    "block_brief_path_template": ".tmp/agent-workflow/{block_id}/BLOCK_BRIEF.md",
+    "architect_plan_path": ".tmp/agent-workflow/{block_id}/ARCHITECT_PLAN.json",
+    "slice_export_spec_path": ".tmp/agent-workflow/{block_id}/SLICE_EXPORT_SPEC.json",
+    "canonical_latest_architect_plan_path": ".codex/workflow/ARCHITECT_PLAN.json",
+    "canonical_latest_slice_export_spec_path": ".codex/workflow/SLICE_EXPORT_SPEC.json",
+    "slice_task_path_template": ".tmp/agent-workflow/{block_id}/slice-tasks/{task_id}.json",
+    "task_packet_path_template": ".tmp/agent-workflow/{block_id}/task-packets/{task_id}.json",
+    "task_acceptance_path": ".tmp/agent-workflow/{block_id}/TASK_ACCEPTANCE.md",
+    "pm_decision_packet_path": ".tmp/agent-workflow/{block_id}/PM_DECISION_PACKET.md",
+    "executor_report_path": ".tmp/agent-workflow/{block_id}/EXECUTOR_REPORT.md",
+    "review_feedback_packet_path": ".tmp/agent-workflow/{block_id}/REVIEW_FEEDBACK_PACKET.md",
+    "contract_index_path": ".tmp/agent-workflow/{block_id}/CONTRACT_INDEX.md",
+    "conformance_report_path": ".tmp/agent-workflow/{block_id}/CONFORMANCE_REPORT.md",
+    "test_design_notes_path": ".tmp/agent-workflow/{block_id}/TEST_DESIGN_NOTES.md",
+    "tdd_cycle_report_path": ".tmp/agent-workflow/{block_id}/TDD_CYCLE_REPORT.md",
+    "workflow_health_path": ".tmp/agent-workflow/{block_id}/WORKFLOW_HEALTH.md",
+    "workflow_health_path_template": ".tmp/agent-workflow/{block_id}/WORKFLOW_HEALTH.md",
+    "orchestrator_retrospective_path": ".tmp/agent-workflow/{block_id}/ORCHESTRATOR_RETROSPECTIVE.md",
+    "orchestrator_retrospective_path_template": ".tmp/agent-workflow/{block_id}/ORCHESTRATOR_RETROSPECTIVE.md",
+    "run_log_path_template": ".tmp/agent-workflow/{block_id}/ORCHESTRATOR_RUN_LOG.jsonl",
+    "temp_root": ".tmp/agent-workflow"
+  },
+  "method_role_runtime_bindings": {},
+  "role_runtime_bindings": [
+    {
+      "role": "architect",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": [
+        {
+          "launcher": "gemini-cli",
+          "provider": "google",
+          "model": "gemini-3-flash-preview",
+          "tier": "high",
+          "reasoning_effort": "high"
+        }
+      ]
+    },
+    {
+      "role": "orchestrator",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "tier": "medium",
+      "reasoning_effort": "medium",
+      "fallbacks": []
+    },
+    {
+      "role": "pm",
+      "launcher": "gemini-cli",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": []
+    },
+    {
+      "role": "executor",
+      "launcher": "droid",
+      "provider": "minimax",
+      "model": "MiniMax-M2.7",
+      "tier": "medium",
+      "reasoning_effort": "high",
+      "fallbacks": []
+    }
+  ]
+}

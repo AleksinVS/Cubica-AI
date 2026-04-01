@@ -1,0 +1,356 @@
+{
+  "schema_version": "1.0",
+  "workflow_version": "v2",
+  "project_kind": "cubica-manifest-driven-game-delivery",
+  "block_id": "cubica-antarctica-player-content-extension-example",
+  "block_goal": "Extend the canonical Antarctica player-facing content slice beyond i16 using runtime-owned DTOs and bounded player-web rendering without reintroducing direct games/* reads from player-web.",
+  "architect_instructions_for_orchestrator": [
+    "Run PM plan review before any task materialization.",
+    "Use the declared role runtime bindings and do not invent launcher, model, or tier values.",
+    "Materialize temporary task packets under .tmp/agent-workflow/cubica-antarctica-player-content-extension-example/ and remove accepted task files after PM acceptance.",
+    "Preserve the runtime-first dependency order: runtime/contracts before player-web rendering."
+  ],
+  "slice_task_path_template": ".tmp/agent-workflow/{block_id}/slice-tasks/{task_id}.json",
+  "role_runtime_bindings": [
+    {
+      "role": "architect",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": [
+        {
+          "launcher": "codex-subagent",
+          "provider": "openai",
+          "model": "gpt-5.4-mini",
+          "tier": "medium",
+          "reasoning_effort": "medium"
+        }
+      ]
+    },
+    {
+      "role": "orchestrator",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "tier": "medium",
+      "reasoning_effort": "medium",
+      "fallbacks": []
+    },
+    {
+      "role": "pm",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": []
+    },
+    {
+      "role": "executor",
+      "launcher": "droid",
+      "provider": "minimax",
+      "model": "minimax-coding-plan/MiniMax-M2.7",
+      "tier": "medium",
+      "reasoning_effort": "medium",
+      "fallbacks": [
+        {
+          "launcher": "gemini-cli",
+          "provider": "google",
+          "model": "gemini-2.5-pro",
+          "tier": "medium",
+          "reasoning_effort": "medium"
+        },
+        {
+          "launcher": "codex-subagent",
+          "provider": "openai",
+          "model": "gpt-5.4-mini",
+          "tier": "medium",
+          "reasoning_effort": "medium"
+        }
+      ]
+    },
+    {
+      "role": "reviewer",
+      "launcher": "droid",
+      "provider": "glm",
+      "model": "glm-4.6",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": [
+        {
+          "launcher": "codex-subagent",
+          "provider": "openai",
+          "model": "gpt-5.4",
+          "tier": "high",
+          "reasoning_effort": "high"
+        }
+      ]
+    },
+    {
+      "role": "web-analyst",
+      "launcher": "gemini-cli",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "tier": "cheap",
+      "reasoning_effort": "low",
+      "fallbacks": [
+        {
+          "launcher": "codex-subagent",
+          "provider": "openai",
+          "model": "gpt-5.4-mini",
+          "tier": "cheap",
+          "reasoning_effort": "low"
+        }
+      ]
+    }
+  ],
+  "global_rules": [
+    "Use Context7 when current library or framework behavior matters.",
+    "Do not introduce a generic engine, DSL, selector system, or reusable abstraction without a proven repeat use case.",
+    "Do not let apps/player-web read games/* directly as runtime truth.",
+    "Update PROJECT_STRUCTURE.json and repo-manifest.json for structural changes.",
+    "Update delivery-specific migration details in Gameplay Slice Records instead of ADRs.",
+    "If draft/Antarctica/GameFull.html must be consulted, use targeted scripts and extraction commands instead of whole-file prose reading."
+  ],
+  "global_acceptance": [
+    "runtime-api remains the sole owner of game content loading for the delivered slice.",
+    "player-web renders the extended slice from runtime-owned DTOs or keeps the existing safe fallback.",
+    "Required verification commands pass for runtime-api, player-web, and the canonical slice.",
+    "Code, tests, and project documentation do not contradict each other."
+  ],
+  "global_invariants": [
+    "Executable game logic ends in games/antarctica/game.manifest.json.",
+    "services/runtime-api plus apps/player-web remain the canonical runnable slice.",
+    "Delivery-specific bounded mechanics are documented in docs/architecture/gameplay-slices/, not in ADRs.",
+    "Architect owns plan truth, Orchestrator routes mechanically, PM owns acceptance for the block."
+  ],
+  "risk_policy": {
+    "R0": "mechanical local change without behavior expansion",
+    "R1": "bounded behavior or DTO extension inside the canonical slice",
+    "R2": "cross-boundary contract or reusable architecture change"
+  },
+  "escalation_matrix": {
+    "scope_growth": "architect",
+    "missing_acceptance_mapping": "pm",
+    "new_platform_abstraction_needed": "architect",
+    "legacy_html_needs_whole_file_reading": "architect",
+    "task_binding_unavailable": "architect"
+  },
+  "slices": [
+    {
+      "slice_id": "slice-runtime-content-projection",
+      "title": "Extend runtime-owned Antarctica content projection",
+      "goal": "Expose the next bounded Antarctica opening slice through contracts and runtime content projection without introducing a new platform-wide API shape.",
+      "risk_class": "R1",
+      "depends_on": [],
+      "read_files": [
+        "AGENTS.md",
+        "NEXT_STEPS.md",
+        "services/runtime-api/HANDOFF.md",
+        "games/antarctica/game.manifest.json",
+        "packages/contracts/manifest/**",
+        "services/runtime-api/src/modules/content/**",
+        "services/runtime-api/src/modules/player-api/**"
+      ],
+      "allowed_files": [
+        "games/antarctica/game.manifest.json",
+        "packages/contracts/manifest/**",
+        "services/runtime-api/src/modules/content/**",
+        "services/runtime-api/src/modules/player-api/**",
+        "services/runtime-api/src/modules/runtime/**",
+        "services/runtime-api/test/**",
+        "services/runtime-api/HANDOFF.md",
+        "NEXT_STEPS.md",
+        "docs/architecture/gameplay-slices/GSR-030-player-facing-content-extension-to-i21.md"
+      ],
+      "forbidden_moves": [
+        "Do not create a new generic player-content DSL or generic engine layer.",
+        "Do not move content ownership out of services/runtime-api.",
+        "Do not describe a stable architecture change in a gameplay slice record or delivery tracker."
+      ],
+      "required_docs": [
+        "services/runtime-api/HANDOFF.md",
+        "NEXT_STEPS.md",
+        "docs/architecture/gameplay-slices/GSR-030-player-facing-content-extension-to-i21.md"
+      ],
+      "required_checks": [
+        "npm run verify:runtime-api",
+        "npm run verify:canonical"
+      ],
+      "control_points": [
+        "The DTO extension remains bounded to the current Antarctica slice and does not become a platform-wide abstraction.",
+        "Every new acceptance criterion maps to a runtime test, verification command, or explicit manual note for PM."
+      ],
+      "mandatory_tests": [
+        "Add or update runtime-api integration coverage for the newly projected steps.",
+        "Keep manifest validation coverage aligned with the delivered content shape."
+      ],
+      "acceptance_criteria": [
+        "GET /games/antarctica/player-content exposes the next bounded content slice needed by player-web.",
+        "Runtime validation and tests prove the new DTO shape is accepted and stable for the delivered slice.",
+        "Handoff and next-steps documentation describe the newly delivered boundary accurately."
+      ],
+      "executor_mode": "senior",
+      "tasks": [
+        {
+          "task_id": "task-runtime-content-projection",
+          "executor_level": "senior",
+          "goal": "Extend manifest contracts and runtime-owned content projection for the next bounded Antarctica slice beyond i16.",
+          "inputs": [
+            "games/antarctica/game.manifest.json",
+            "Current contracts in packages/contracts/manifest",
+            "Current runtime content projection",
+            "Current runtime handoff and next-step priorities"
+          ],
+          "read_files": [
+            "games/antarctica/game.manifest.json",
+            "packages/contracts/manifest/**",
+            "services/runtime-api/src/modules/content/**",
+            "services/runtime-api/src/modules/player-api/**",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md"
+          ],
+          "write_files": [
+            "games/antarctica/game.manifest.json",
+            "packages/contracts/manifest/**",
+            "services/runtime-api/src/modules/content/**",
+            "services/runtime-api/src/modules/player-api/**",
+            "services/runtime-api/test/**",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md",
+            "docs/architecture/gameplay-slices/GSR-030-player-facing-content-extension-to-i21.md"
+          ],
+          "implementation_notes": [
+            "Keep the shape capability-first and bounded to the delivered Antarctica slice.",
+            "Prefer extending current DTO and validation paths over introducing new transport layers.",
+            "If legacy HTML must be consulted, use npm run antarctica:extract-step or other targeted extraction commands."
+          ],
+          "tests_to_write": [
+            "Runtime integration tests for the next player-facing content DTO slice",
+            "Manifest validation tests for any newly required bounded shape"
+          ],
+          "tests_to_run": [
+            "npm run verify:runtime-api",
+            "npm run verify:canonical"
+          ],
+          "deliverables": [
+            "Updated manifest/contracts/runtime content projection",
+            "Updated runtime tests",
+            "Updated runtime handoff",
+            "Updated next steps",
+            "Gameplay slice record for the delivered boundary",
+            "EXECUTOR_REPORT.md"
+          ],
+          "escalate_if": [
+            "A reusable platform abstraction seems required",
+            "The DTO must break existing public contracts",
+            "The write scope must expand outside the canonical runtime slice"
+          ],
+          "runtime_override": {}
+        }
+      ]
+    },
+    {
+      "slice_id": "slice-player-web-rendering-extension",
+      "title": "Extend player-web rendering from runtime-owned content",
+      "goal": "Render the newly exposed Antarctica slice in apps/player-web using runtime-owned DTOs while preserving the existing fallback for unmigrated steps.",
+      "risk_class": "R1",
+      "depends_on": [
+        "slice-runtime-content-projection"
+      ],
+      "read_files": [
+        "AGENTS.md",
+        "NEXT_STEPS.md",
+        "services/runtime-api/HANDOFF.md",
+        "apps/player-web/**",
+        "packages/contracts/manifest/**",
+        "packages/contracts/runtime/**"
+      ],
+      "allowed_files": [
+        "apps/player-web/**",
+        "packages/contracts/manifest/**",
+        "packages/contracts/runtime/**",
+        "apps/player-web/test/**",
+        "NEXT_STEPS.md",
+        "docs/architecture/gameplay-slices/GSR-030-player-facing-content-extension-to-i21.md"
+      ],
+      "forbidden_moves": [
+        "Do not make apps/player-web read games/* directly.",
+        "Do not couple UI state to draft/antarctica-nextjs-player structures.",
+        "Do not broaden the feature into a generic multi-game rendering engine."
+      ],
+      "required_docs": [
+        "NEXT_STEPS.md",
+        "docs/architecture/gameplay-slices/GSR-030-player-facing-content-extension-to-i21.md"
+      ],
+      "required_checks": [
+        "npm run verify:player-web",
+        "npm run verify:canonical"
+      ],
+      "control_points": [
+        "Player-web consumes runtime-owned DTOs only.",
+        "The fallback path for not-yet-modeled steps remains safe."
+      ],
+      "mandatory_tests": [
+        "Add or update player-web tests for the newly rendered current-step path."
+      ],
+      "acceptance_criteria": [
+        "Player-web renders the newly delivered bounded Antarctica slice from the runtime DTO.",
+        "The existing fallback remains intact for steps outside the delivered slice.",
+        "Verification proves the canonical runtime plus web slice still works end to end."
+      ],
+      "executor_mode": "senior",
+      "tasks": [
+        {
+          "task_id": "task-player-web-rendering-extension",
+          "executor_level": "senior",
+          "goal": "Extend the canonical player-web renderer to use the runtime-owned DTO for the next bounded Antarctica slice.",
+          "inputs": [
+            "Updated runtime DTO shape",
+            "Current player-web current-step renderer",
+            "Gameplay slice record and next-step priorities"
+          ],
+          "read_files": [
+            "apps/player-web/**",
+            "packages/contracts/manifest/**",
+            "packages/contracts/runtime/**",
+            "NEXT_STEPS.md"
+          ],
+          "write_files": [
+            "apps/player-web/**",
+            "apps/player-web/test/**",
+            "NEXT_STEPS.md",
+            "docs/architecture/gameplay-slices/GSR-030-player-facing-content-extension-to-i21.md"
+          ],
+          "implementation_notes": [
+            "Prefer local rendering extension over introducing cross-game UI abstractions.",
+            "Keep current-step state derived from runtime DTOs and session snapshot, not from direct repository file reads.",
+            "Retain a safe fallback for any step that is still outside the delivered slice."
+          ],
+          "tests_to_write": [
+            "Player-web tests covering the newly rendered bounded path and fallback behavior"
+          ],
+          "tests_to_run": [
+            "npm run verify:player-web",
+            "npm run verify:canonical"
+          ],
+          "deliverables": [
+            "Updated player-web renderer",
+            "Updated player-web tests",
+            "Updated next steps if the visible slice boundary moved",
+            "Updated gameplay slice record",
+            "EXECUTOR_REPORT.md"
+          ],
+          "escalate_if": [
+            "The task requires direct games/* reads from player-web",
+            "The UI change needs a new reusable engine or selector system",
+            "The write scope must grow outside apps/player-web and the declared docs"
+          ],
+          "runtime_override": {}
+        }
+      ]
+    }
+  ]
+}

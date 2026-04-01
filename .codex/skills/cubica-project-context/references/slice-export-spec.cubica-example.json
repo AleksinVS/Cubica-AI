@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "block_id": "cubica-antarctica-player-content-extension-example",
+  "source_plan": "architect-plan.cubica-example.json",
+  "source_plan_hash": "replace-with-real-plan-hash",
+  "output_root": ".tmp/agent-workflow/cubica-antarctica-player-content-extension-example/slice-tasks",
+  "task_file_template": "{task_id}.json",
+  "tasks": [
+    {
+      "slice_id": "slice-runtime-content-projection",
+      "task_id": "task-runtime-content-projection",
+      "output_path": ".tmp/agent-workflow/cubica-antarctica-player-content-extension-example/slice-tasks/task-runtime-content-projection.json",
+      "copy_from": [
+        "block_id",
+        "slices[slice-runtime-content-projection].risk_class",
+        "slices[slice-runtime-content-projection].forbidden_moves",
+        "slices[slice-runtime-content-projection].required_docs",
+        "slices[slice-runtime-content-projection].required_checks",
+        "slices[slice-runtime-content-projection].mandatory_tests",
+        "slices[slice-runtime-content-projection].tasks[task-runtime-content-projection].goal",
+        "slices[slice-runtime-content-projection].tasks[task-runtime-content-projection].read_files",
+        "slices[slice-runtime-content-projection].tasks[task-runtime-content-projection].write_files",
+        "slices[slice-runtime-content-projection].tasks[task-runtime-content-projection].deliverables",
+        "slices[slice-runtime-content-projection].tasks[task-runtime-content-projection].runtime_override"
+      ],
+      "inject_fields": {
+        "block_id": "cubica-antarctica-player-content-extension-example",
+        "slice_id": "slice-runtime-content-projection",
+        "task_id": "task-runtime-content-projection",
+        "source_plan": "architect-plan.cubica-example.json",
+        "source_plan_hash": "replace-with-real-plan-hash",
+        "generated_at": "2026-03-30T00:00:00Z"
+      }
+    },
+    {
+      "slice_id": "slice-player-web-rendering-extension",
+      "task_id": "task-player-web-rendering-extension",
+      "output_path": ".tmp/agent-workflow/cubica-antarctica-player-content-extension-example/slice-tasks/task-player-web-rendering-extension.json",
+      "copy_from": [
+        "block_id",
+        "slices[slice-player-web-rendering-extension].risk_class",
+        "slices[slice-player-web-rendering-extension].forbidden_moves",
+        "slices[slice-player-web-rendering-extension].required_docs",
+        "slices[slice-player-web-rendering-extension].required_checks",
+        "slices[slice-player-web-rendering-extension].mandatory_tests",
+        "slices[slice-player-web-rendering-extension].tasks[task-player-web-rendering-extension].goal",
+        "slices[slice-player-web-rendering-extension].tasks[task-player-web-rendering-extension].read_files",
+        "slices[slice-player-web-rendering-extension].tasks[task-player-web-rendering-extension].write_files",
+        "slices[slice-player-web-rendering-extension].tasks[task-player-web-rendering-extension].deliverables",
+        "slices[slice-player-web-rendering-extension].tasks[task-player-web-rendering-extension].runtime_override"
+      ],
+      "inject_fields": {
+        "block_id": "cubica-antarctica-player-content-extension-example",
+        "slice_id": "slice-player-web-rendering-extension",
+        "task_id": "task-player-web-rendering-extension",
+        "source_plan": "architect-plan.cubica-example.json",
+        "source_plan_hash": "replace-with-real-plan-hash",
+        "generated_at": "2026-03-30T00:00:00Z"
+      }
+    }
+  ]
+}
