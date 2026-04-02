@@ -34,6 +34,110 @@ const validManifest = {
   }
 };
 
+// Antarctica player-facing content entries for boards 55-60, 61-66, 67-70 and infos i17-i21
+const openingTailAntarcticaContent = {
+  infos: [
+    {
+      id: "i17",
+      stepIndex: 31,
+      screenId: "S1",
+      title: "Ускорение процесса",
+      body: "Настало время ускорить процесс переезда.",
+      advanceActionId: "opening.info.i17.advance",
+      advanceLabel: "Продолжить"
+    },
+    {
+      id: "i18",
+      stepIndex: 33,
+      screenId: "S1",
+      title: "Отправка разведчиков",
+      body: "Разведчики готовы к отправке.",
+      advanceActionId: "opening.info.i18.advance",
+      advanceLabel: "Продолжить"
+    },
+    {
+      id: "i19",
+      stepIndex: 35,
+      screenId: "S1",
+      title: "Последствия переезда",
+      body: "После переезда началась работа над укреплением позиций.",
+      advanceActionId: "opening.info.i19.advance",
+      advanceLabel: "Продолжить"
+    },
+    {
+      id: "i19_1",
+      stepIndex: 35,
+      screenId: "S1",
+      title: "Быстрый переезд",
+      body: "Переезд был осуществлен быстро.",
+      advanceActionId: "opening.info.i19.advance",
+      advanceLabel: "Продолжить"
+    },
+    {
+      id: "i20",
+      stepIndex: 37,
+      screenId: "S1",
+      title: "Второй переезд",
+      body: "Готовим второй переезд.",
+      advanceActionId: "opening.info.i20.advance",
+      advanceLabel: "Продолжить"
+    },
+    {
+      id: "i21",
+      stepIndex: 38,
+      screenId: "S1",
+      title: "Финальный экран",
+      body: "История завершена.",
+      advanceActionId: "opening.info.i21.advance",
+      advanceLabel: "Завершить"
+    }
+  ],
+  boards: [
+    {
+      id: "opening.board.55_60",
+      title: "Выберите десятый шаг",
+      body: "Теперь у вас есть еще несколько способов продолжить работу штаба.",
+      stepIndex: 30,
+      screenId: "S2",
+      cardIds: ["55", "56", "57", "58", "59", "60"]
+    },
+    {
+      id: "opening.board.61_66",
+      title: "Выберите одинадцатый шаг",
+      body: "Отправка разведчиков требует особого подхода.",
+      stepIndex: 32,
+      screenId: "S2",
+      cardIds: ["61", "62", "63", "64", "65", "66"]
+    },
+    {
+      id: "opening.board.67_70",
+      title: "Выберите двенадцатый шаг",
+      body: "После переезда нужно укрепить позиции.",
+      stepIndex: 34,
+      screenId: "S2",
+      cardIds: ["67", "68", "69", "70"]
+    }
+  ],
+  cards: [
+    { cardId: "55", title: "Привлечь скептиков", summary: "Детали переезда убедят скептиков.", selectActionId: "opening.card.55", selectLabel: "Выбрать", advanceActionId: "opening.card.55.advance", advanceLabel: "Продолжить" },
+    { cardId: "56", title: "Нейтрализовать Григория", summary: "Помощник Григория поможет.", selectActionId: "opening.card.56", selectLabel: "Выбрать" },
+    { cardId: "57", title: "Поговорить с детьми", summary: "Дети - наша надежда.", selectActionId: "opening.card.57", selectLabel: "Выбрать", advanceActionId: "opening.card.57.advance", advanceLabel: "Продолжить" },
+    { cardId: "58", title: "Семейные ужины", summary: "Ужины укрепляют семью.", selectActionId: "opening.card.58", selectLabel: "Выбрать", advanceActionId: "opening.card.58.advance", advanceLabel: "Продолжить" },
+    { cardId: "59", title: "Усилить участие", summary: "Команда изменений усиливает позиции.", selectActionId: "opening.card.59", selectLabel: "Выбрать" },
+    { cardId: "60", title: "Школа разведчика", summary: "Обучение разведчиков.", selectActionId: "opening.card.60", selectLabel: "Выбрать", advanceActionId: "opening.card.60.advance", advanceLabel: "Продолжить" },
+    { cardId: "61", title: "Отправить элитную группу", summary: "Элитная группа отправляется.", selectActionId: "opening.card.61", selectLabel: "Выбрать", advanceActionId: "opening.card.61.advance", advanceLabel: "Продолжить" },
+    { cardId: "62", title: "Добрать желающих", summary: "Добор добровольцев.", selectActionId: "opening.card.62", selectLabel: "Выбрать" },
+    { cardId: "63", title: "Доукомплектовать лучшими", summary: "Лучшие идут в группу.", selectActionId: "opening.card.63", selectLabel: "Выбрать" },
+    { cardId: "64", title: "Пресечь борьбу", summary: "Борьба за влияние пресечена.", selectActionId: "opening.card.64", selectLabel: "Выбрать" },
+    { cardId: "65", title: "Развести конфликт", summary: "Конфликт разведен.", selectActionId: "opening.card.65", selectLabel: "Выбрать" },
+    { cardId: "66", title: "Отправить готовую группу", summary: "Группа полностью готова.", selectActionId: "opening.card.66", selectLabel: "Выбрать", advanceActionId: "opening.card.66.advance", advanceLabel: "Продолжить" },
+    { cardId: "67", title: "Кабинетный анализ", summary: "Профессор проводит анализ.", selectActionId: "opening.card.67", selectLabel: "Выбрать" },
+    { cardId: "68", title: "Отправить экспертную группу", summary: "Эксперты отправлены.", selectActionId: "opening.card.68", selectLabel: "Выбрать", advanceActionId: "opening.card.68.advance", advanceLabel: "Продолжить" },
+    { cardId: "69", title: "Готовить второй переезд", summary: "Второй переезд начинается.", selectActionId: "opening.card.69", selectLabel: "Выбрать", advanceActionId: "opening.card.69.advance", advanceLabel: "Продолжить" },
+    { cardId: "70", title: "Взять паузу", summary: "Пауза перед изменениями.", selectActionId: "opening.card.70", selectLabel: "Выбрать" }
+  ]
+};
+
 test("validateGameManifest accepts a well-formed manifest", () => {
   const manifest = validateGameManifest(validManifest) as typeof validManifest;
 
@@ -64,6 +168,143 @@ test("validateGameManifest rejects actions without capability metadata", () => {
           showHint: {
             handlerType: "script",
             function: "showHint"
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest accepts Antarctica opening-tail info entries (i17-i21)", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    content: {
+      antarctica: {
+        infos: openingTailAntarcticaContent.infos,
+        boards: [],
+        cards: []
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const antarctica = manifest.content as { antarctica?: { infos: unknown[] } };
+  assert.equal(antarctica?.antarctica?.infos.length, 6);
+});
+
+test("validateGameManifest accepts Antarctica opening-tail board entries (55-60, 61-66, 67-70)", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    content: {
+      antarctica: {
+        infos: [],
+        boards: openingTailAntarcticaContent.boards,
+        cards: []
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const antarctica = manifest.content as { antarctica?: { boards: unknown[] } };
+  assert.equal(antarctica?.antarctica?.boards.length, 3);
+});
+
+test("validateGameManifest accepts Antarctica opening-tail card entries (55-70)", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    content: {
+      antarctica: {
+        infos: [],
+        boards: [],
+        cards: openingTailAntarcticaContent.cards
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const antarctica = manifest.content as { antarctica?: { cards: unknown[] } };
+  assert.equal(antarctica?.antarctica?.cards.length, 16);
+});
+
+test("validateGameManifest accepts complete Antarctica opening-tail content (boards 55-70, infos i17-i21)", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    content: {
+      antarctica: openingTailAntarcticaContent
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const antarctica = manifest.content as { antarctica?: { infos: unknown[]; boards: unknown[]; cards: unknown[] } };
+  assert.equal(antarctica?.antarctica?.infos.length, 6);
+  assert.equal(antarctica?.antarctica?.boards.length, 3);
+  assert.equal(antarctica?.antarctica?.cards.length, 16);
+});
+
+test("validateGameManifest rejects board with missing required cardIds array", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        content: {
+          antarctica: {
+            infos: [],
+            boards: [
+              {
+                id: "opening.board.55_60",
+                title: "Test board",
+                stepIndex: 30,
+                screenId: "S2"
+                // missing cardIds
+              }
+            ],
+            cards: []
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects info entry with missing advanceActionId", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        content: {
+          antarctica: {
+            infos: [
+              {
+                id: "i17",
+                stepIndex: 31,
+                screenId: "S1",
+                title: "Test info",
+                body: "Test body"
+                // missing advanceActionId
+              }
+            ],
+            boards: [],
+            cards: []
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects card entry with missing selectActionId", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        content: {
+          antarctica: {
+            infos: [],
+            boards: [],
+            cards: [
+              {
+                cardId: "55",
+                title: "Test card",
+                summary: "Test summary"
+                // missing selectActionId
+              }
+            ]
           }
         }
       }),

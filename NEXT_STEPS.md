@@ -61,6 +61,18 @@
 - `GSR-028` теперь тоже закрыт: explicit actions `opening.card.61` ... `opening.card.66` покрывают scout-dispatch board `61..66`, bounded `conditionalCardBonuses` моделируют локальные time bonuses от статуса карточек `57` и `62`, `opening.card.66` стартует заблокированной и открывается через уже существующий bounded unlock hook на `opening.card.62/63`, а go-card follow-up остаётся explicit через `opening.card.61/66.advance` к `i18` и `opening.info.i18.advance` к следующему boundary на `stepIndex = 34`.
 - `GSR-029` теперь тоже закрыт: explicit actions `opening.card.67` ... `opening.card.70` покрывают финальный aftermath/second-relocation tail, `opening.card.68.advance` использует bounded `activeInfoId` + conditional info variant для `i19/i19_1` и explicit loss jump к `i34_2`, а mainline ending остаётся explicit через `opening.info.i19.advance`, `opening.card.69.advance` и `opening.info.i20.advance` к terminal `i21`.
 
+### Contract Freeze: Opening-Tail Player-Content (Boards 55-70, Infos i17-i21)
+
+Контракт opening-tail player-content **заморожен и подтверждён конформным** (2026-04-02):
+
+- **Boards:** `opening.board.55_60` (stepIndex 30), `opening.board.61_66` (stepIndex 32), `opening.board.67_70` (stepIndex 34)
+- **Infos:** `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21` (terminal)
+- **Cards:** 55-70 с корректными `selectActionId` и go-card `advanceActionId`
+- **Status конформности:** ✅ 40/40 runtime-api тестов проходят
+- **Runtime projection:** `GET /games/antarctica/player-content` отдаёт полный DTO через `structuredClone(antarctica)`
+
+Runtime проецирует `content.antarctica` напрямую в player-facing DTO без раскрытия internal-полей (`deterministic.provenance`, `deterministic.guard`, `deterministic.metricDeltas`, `deterministic.stateUpdate`).
+
 ## Приоритет 1. Complete the Antarctica Truth Model
 
 1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.
