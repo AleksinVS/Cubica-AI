@@ -1,196 +1,246 @@
 # ROADMAP
 
-Назначение: high‑level список планируемых задач для платформы Cubica на уровне Milestone/Epic/Feature/ExecPlan.
-Правило: названия невыполненных задач в этом файле отмечаются жирным шрифтом (`**Название задачи**`), выполненные задачи пишутся обычным шрифтом.
-Подробные правила ведения roadmap описаны в `docs/tasks/README.md`.
+Назначение документа: стратегический план работ по Cubica.
 
-Префиксы: M (Milestone), E (Epic), F (Feature), CP (ExecPlan).
-Рекомендуемые правила имени файла: `<ПРЕФИКС>-<ГОД ГГ>-<Счётчик>-kebab-title.md`.
-ExecPlan: `CP-YY-XXXXR-<kebab-title родителя-фичи*>.yaml` 
-Последняя цифра счетчика (`R`) резервируется для дополнительных задач и планов.
-Номер и заголовок ExecPlan отличается от номера родительской задачи только префиксом.
-Если нужен ExecPlan без родительской задачи, то используются резервная цифра счетчика.
-`YY` - последние две цифры года в котором была создана задача.
+Этот файл отвечает на три вопроса:
 
-Пример оформления дерева задач:
-```
-- [ ] **Название вехи 1**
-      [M-23-010](milestones/M-23-010-alpha.md)
+- куда движется проект;
+- в какой последовательности мы идём;
+- какие блоки нужно делать следующими.
 
-      - [ ] **Название эпика 1**
+Подробные задачи, чек-листы и рабочая декомпозиция должны жить в отдельных файлах под `docs/tasks/`, а не в этом документе.
 
-            - [ ] **Формат JSON-манифеста игр и схем**
-                  [F-23-00010](features/F-23-00010-game-manifest-format-and-schema.md)
-                        [CP-23-00010](content-packs/CP-23-00010-antarctica-json-manifest.yaml)
-            - [x] Пример завершенной фичи
-                  [F-23-00011](features/F-23-00011-finished-feature.md)
+## North Star
 
-      - [ ] **Название эпика 2**
-            [E-23-0020](epics/E-23-0020-nextjs-game-player.md)
+Cubica должна стать платформой, в которой:
 
-            - [ ] **Название фичи 1**
-                  [F-23-00021](features/F-23-00021-json-manifest-(E-23-0020).md)
-                  [CP-23-00020](content-packs/CP-23-00020-antarctica-json-manifest.yaml)
+- игру можно описать как данные в `games/<id>/game.manifest.json`;
+- runtime стабильно исполняет эту игру через `services/runtime-api/`;
+- игрок получает понятный интерфейс через `apps/player-web/` и будущие каналы доставки;
+- команда может постепенно добавлять новые игры, не ломая уже работающий сценарий;
+- позже поверх этого ядра можно безопасно добавить редактор, каталог, аналитику и LLM-помощников.
 
-- [ ] **MVP**
-- [x] Пример завершенной вехи
-```
-## План реализации (последовательность выполнения ближайших фич, оценка сроков)
+## Current State
 
-### Делаем
+Текущая каноническая архитектура (каноническая = та, которую считаем источником истины и на которую должны опираться новые изменения) уже определена:
 
-### Стоп-лист
-**Рефакторинг game-player-nextjs под SDK и целевую архитектуру** [F_00024]
-**JSON-манифест сценария «Antarctica» для Next.js-плеера** [F_00021] 
-**Antarctica — обучающие метаданные и методические материалы** [F_00023]
+- `games/antarctica/game.manifest.json` — источник истины для исполнимой логики `Antarctica`;
+- `games/antarctica/design/mockups/` — источник истины для UI-намерения;
+- `services/runtime-api/` — канонический backend runtime;
+- `apps/player-web/` — канонический web delivery слой;
+- `packages/contracts/*` — общий слой контрактов между частями системы;
+- `draft/Antarctica/GameFull.html` — только factual extraction source (файл, из которого мы извлекаем legacy-механику во время миграции), но не runtime source of truth.
 
+Что уже достигнуто:
 
-## Дерево задач
+- opening flow `Antarctica` доведён в manifest-driven runtime до terminal `i21`;
+- player-facing content boundary для opening-tail (`boards 55..70`, `infos i17..i21`) уже заморожен и подтверждён;
+- `runtime-api` уже владеет player-facing content projection для текущего канонического среза.
 
-- [ ] **Alpha-этап игрового плеера**
-      [M_010](milestones/M_010_game_player_alpha.md)
+Главный смысл текущей фазы: мы уже не строим базовую архитектуру с нуля. Мы расширяем работающий канонический срез до полноценного продукта.
 
-    - [ ] **Architecture Review & Consolidation**
-          [E_00001](epics/E_00001_architecture_review_consolidation.md)
+## Strategic Phases
 
-        - [x] ADR Consolidation & Legacy Cleanup (Sprint 1)
-              [F_00001](features/F_00001_adr_consolidation_sprint1_(E_00001).md)
+### Phase 1. Finish Canonical Antarctica Delivery
 
-        - [x] Manifest Schemas Enhancement (Sprint 2-3)
-              [F_00002](features/F_00002_manifest_schemas_enhancement_(E_00001).md)
-              [CP_00002](content-packs/CP_00002_manifest_schemas_enhancement.yaml)
+Результат:
 
-        - [x] Reference Examples for Manifests (Sprint 2-3)
-              [F_00003](features/F_00003_reference_examples_for_manifests_(E_00001).md)
-              [CP_00003](content-packs/CP_00003_reference_examples_for_manifests.yaml)
+- весь важный пользовательский путь `Antarctica` работает через канонический manifest + runtime + player-web;
+- `apps/player-web` больше не зависит от чтения repo files как от runtime-источника;
+- команда может уверенно развивать игру без возврата к legacy-логике.
 
-        - [x] Manifest Structure Consolidation (Sprint 2-3)
-              [F_00004](features/F_00004_manifest_sync_automation_(E_00001).md)
-              [CP_00004](content-packs/CP_00004_manifest_sync_automation.yaml)
+Успех выглядит так:
 
-        - [ ] **SDK Viewers Web Base** (Phase 1)
-              [F_00005](features/F_00005_sdk_viewers_web_base_(E_00001).md)
-              [CP_00005](content-packs/CP_00005_sdk_viewers_web_base.yaml)
+- player-web рендерит весь ближайший целевой путь из runtime-owned DTO;
+- новые bounded gameplay slices (ограниченные игровые блоки миграции) добавляются без ломки уже работающих шагов;
+- fallback path остаётся безопасным для ещё не перенесённых частей.
 
-        - [ ] **Security Documentation** (Phase 1)
-              [F_00006](features/F_00006_security_documentation_(E_00001).md)
-              [CP_00006](content-packs/CP_00006_security_documentation.yaml)
+Главные зависимости и риски:
 
-        - [ ] **Training Metadata Guide** (Phase 1)
-              [F_00007](features/F_00007_training_metadata_guide_(E_00001).md)
-              [CP_00007](content-packs/CP_00007_training_metadata_guide.yaml)
+- качество извлечения механик из legacy `GameFull.html`;
+- риск случайно смешать public DTO и runtime-internal поля;
+- риск вернуть прямое чтение `games/*` в delivery-слой.
 
-        - [ ] **ADR Documentation Completion** (Phase 1)
-              [F_00008](features/F_00008_adr_documentation_completion_(E_00001).md)
-              [CP_00008](content-packs/CP_00008_adr_documentation_completion.yaml)
+### Phase 2. Harden Runtime And Contracts
 
-    - [ ] **Observability & Quality Assurance** (Post-MVP)
-          [E_0050](epics/E_0050_observability_and_quality.md)
+Результат:
 
-        - [ ] **Testing Strategy for LLM Games**
-              [F_00050](features/F_00050_testing_strategy.md)
-        - [ ] **Observability Framework**
-              [F_00051](features/F_00051_observability_framework.md)
-        - [ ] **Rate Limiting & Budget Control**
-              [F_00052](features/F_00052_rate_limiting.md)
-        
+- runtime становится надёжной платформенной опорой, а не только рабочим prototype backend;
+- contracts layer описывает реальные потребности runtime, player и следующих каналов доставки;
+- проверки становятся более строгими и лучше защищают от архитектурного дрейфа.
 
-    - [ ] **Архитектура JSON-манифестов игр и LLM-first плеера**
-          [E_0010](epics/E_0010_game_manifest_architecture.md)
-        
-        - [x] Архитектура библиотеки viewers (плееров) для игр Cubica
-              [F_00071](features/F_00071_viewers_library_architecture_(E_0010).md)
-              [CP_00071](content-packs/CP_00071_viewers_library_architecture.yaml)
-        - [x] Архитектура пакетов расширений (Extension Packs) и Гибридная модель Engine
-              [F_00073](features/F_00073_extension_packs_architecture_(E_0010).md)
+Успех выглядит так:
 
-        - [x] Manifest Versioning Strategy
-              [F_00040](features/F_00040_manifest_versioning.md)
-              
-        - [x] Базовый формат JSON-манифеста игр и схем
-              [F_00010](features/F_00010_game_manifest_format_and_schema_(E_25_0001).md)
-                  [CP_00010](content-packs/CP_00010_game_manifest_format.yaml)
-        - [x] Определение схемы UI (Hybrid SDUI)
-              [F_00020](features/F_00020_ui_schema_definition.md)
-        - [x] Текстовые якоря и разделение логического и UI-манифестов
-              [F_00070](features/F_00070_manifest_text_anchors_and_ui_split.md)
-                  [CP_00070](content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml)
-        - [x] Дизайн-артефакты для ИИ-агентов в UI-манифесте
-              [F_00074](features/F_00074_design_artifacts_for_ai_agents_(E_0010).md)
-                  [CP_00074](content-packs/CP_00074_design_artifacts_for_ai_agents.yaml)
-        - [x] Протокол взаимодействия Model-View-Presenter
-              [F_00011](features/F_00011_mvp_interaction_protocol_(E_0010).md)
-                  [CP_00011](content-packs/CP_00011_mvp_interaction_protocol.yaml)
-        - [x] Абстрактный протокол представления (Abstract View Protocol)
-              [F_00012](features/F_00012_abstract_view_protocol.md)
+- есть понятные DTO и runtime boundaries;
+- есть readiness/health/persistence roadmap с минимальными architectural surprises;
+- новые изменения проходят через проверяемые contracts и validation rules.
 
-    - [ ] **Game Engine & Backend Architecture Design**
-          [E_0030](epics/E_0030_backend_architecture_design.md)
-          
-      
-        - [ ] **Redis Integration**
-              [F_00062](features/F_00062_redis_integration.md)
-        - [x] Multiplayer Architecture
-              [F_00060](features/F_00060_multiplayer_architecture.md)
-        - [ ] **Укрепление очереди событий мультиплеера (ADR-011)**
-              [F_00063](features/F_00063_multiplayer_queue_hardening.md)
-        - [x] JS Sandbox Security Specification
-              [F_00041](features/F_00041_js_sandbox_security.md)
-        - [ ] **Session Recovery Mechanism**
-              [F_00042](features/F_00042_session_recovery.md)
+Главные зависимости и риски:
 
-        - [x] LLM Context Pipeline Architecture
-              [F_00030](features/F_00030_llm_context_pipeline.md)
-        - [x] Session State Persistence Strategy
-              [F_00031](features/F_00031_session_state_persistence.md)
-        - [x] View Adapters Deployment Architecture
-              [F_00032](features/F_00032_view_adapters_architecture.md)
-        - [x] Hybrid Game Engine & Scripting Architecture
-              [F_00033](features/F_00033_hybrid_game_engine.md)
+- нельзя переусложнить слой контрактов раньше времени;
+- нельзя вводить generic engine/DSL без подтверждённого повторного use case;
+- operational hardening не должно тормозить ближайший product delivery.
 
-    - [ ] **Game Editor Development (MVP)**
-          [E_00021](epics/E_00021_game_editor_development.md)
+### Phase 3. Build A Stable Multi-Game Delivery Foundation
 
-        - [ ] **Game Editor — Architecture**
-              [F_00064](features/F_00064_game_editor_architecture_(E_00021).md)
+Результат:
 
-        - [ ] **Game Editor Intelligence**
-              [F_00061](features/F_00061_game_editor_intelligence.md)
+- архитектура готова не только для `Antarctica`, но и для следующих игр;
+- delivery contracts и runtime capabilities можно переиспользовать;
+- новые каналы доставки можно подключать без архитектурного развала.
 
-        - [ ] **Game Editor — Preparatory Dialog** (Этап A)
-              [F_00013](features/F_00013_game_editor_preparatory_dialog_(E_00021).md)
+Успех выглядит так:
 
-        - [ ] **Game Editor — Scenario & Rules Editor** (Этап B)
-              [F_00025](features/F_00025_game_editor_scenario_rules_(E_00021).md)
+- новые игры могут идти через тот же truth model;
+- viewer/runtime contracts не завязаны только на один сценарий;
+- повторное использование пакетов и DTO реально работает.
 
-        - [ ] **Game Editor — Mockup Editor** (Этап C)
-              [F_00034](features/F_00034_game_editor_mockup_editor_(E_00021).md)
+Главные зависимости и риски:
 
-        - [ ] **Game Editor — Prototype Builder** (Этап D)
-              [F_00043](features/F_00043_game_editor_prototype_builder_(E_00021).md)
+- преждевременное обобщение;
+- смешение game-specific и platform-wide решений;
+- потеря прозрачности source-of-truth правил.
 
-        - [ ] **Game Editor — Debug Mode** (Этап E)
-              [F_00053](features/F_00053_game_editor_debug_mode_(E_00021).md)
+### Phase 4. Launch Authoring And Editorial Workflows
 
-    - [ ] **Antarctica на Next.js game player**
-          [E_0020](epics/E_0020_antarctica_nextjs_game_player.md)
+Результат:
 
-        - [ ] **Рефакторинг game-player-nextjs под SDK и целевую архитектуру** (in_progress)
-                  [F_00024](features/F_00024_game_player_nextjs_refactor_(E_0020).md)
-                  [CP_00024](content-packs/CP_00024_antarctica_nextjs_refactor.yaml)
+- появляется реальный путь от создания игры к публикации;
+- редактор, методические материалы и authoring-помощники строятся уже на стабильном ядре;
+- команда перестаёт зависеть только от ручного редактирования manifest-файлов.
 
-        - [x] Antarctica — разделение game/ui манифестов, протокол command/payload и пакет игры в games/
-              [F_00072](features/F_00072_antarctica_ui_manifest_actions_and_game_package_(E_0020).md)
-                  [CP_00072](content-packs/CP_00072_antarctica_ui_manifest_and_actions.yaml)
+Успех выглядит так:
 
-        - [ ] **JSON-манифест сценария «Antarctica» для Next.js-плеера**
-              [F_00021](features/F_00021_antarctica_json_manifest_(E_0020).md)
-                  [CP_00020](content-packs/CP_00020_antarctica_json_manifest.yaml)
+- есть MVP game editor;
+- структура authoring flow опирается на канонические contracts;
+- редактирование не ломает runtime truth model.
 
-        - [ ] **Antarctica — локальная загрузка манифеста и рендер**
-              [F_00022](features/F_00022_antarctica_local_loader_and_renderer.md)
-                  [CP_00022](content-packs/CP_00022_antarctica_local_loader.yaml)
-                  
-        - [ ] **Antarctica — обучающие метаданные и методические материалы**
-              [F_00023](features/F_00023_antarctica_training_metadata_and_methodology.md)
-                  [CP_00023](content-packs/CP_00023_antarctica_methodology.yaml)
+Главные зависимости и риски:
+
+- editor нельзя строить поверх draft-архитектуры;
+- authoring UX не должен диктовать runtime-модель в обход архитектурных правил.
+
+### Phase 5. Prepare Platform Operations And Business Scale
+
+Результат:
+
+- каталог, лицензирование, аналитика, наблюдаемость и мультиканальность переходят из target-идей в реальные workstreams;
+- платформа готовится к нескольким играм, нескольким клиентским каналам и рабочей операционной модели.
+
+Успех выглядит так:
+
+- roadmap к catalog / analytics / multiplayer hardening привязан к уже работающему ядру;
+- платформа масштабируется без переписывания canonical slice.
+
+Главные зависимости и риски:
+
+- нельзя идти в platform-scale до стабилизации canonical runtime path;
+- аналитика и operations не должны появляться как несвязанные подсистемы.
+
+## Milestones
+
+- **M1. Canonical Antarctica Opening Complete** — manifest + runtime + player content закрывают opening path до `i21`.
+- **M2. Antarctica Player-Web Complete** — ближайший пользовательский путь полностью рендерится из runtime-owned content DTO.
+- **M3. Runtime Hardening Baseline** — contracts, validation, health/readiness и session evolution имеют устойчивую базу.
+- **M4. Multi-Game Foundation** — архитектура готова к следующей игре без переписывания Antarctica-specific основы.
+- **M5. Authoring MVP** — редактор и authoring workflows опираются на канонический truth model.
+- **M6. Platform Expansion** — каталог, аналитика и масштабирование строятся поверх уже проверенного ядра.
+
+## Near-Term Execution
+
+Ниже — ближайшие блоки (block = ограниченный рабочий блок, который можно выполнить и проверить отдельно).
+
+Примечание: если имя блока помечено как `proposed`, это значит, что это roadmap-level формулировка, синтезированная из текущих приоритетов в `NEXT_STEPS.md`, а не буквальное имя уже зафиксированного workflow-блока.
+
+### 1. `antarctica-opening-tail-player-slice`
+
+Recommended `development_method`: `Vertical slices`
+
+Цель:
+
+- довести `apps/player-web` до полного current-step rendering opening tail через `runtime-api` и session snapshot.
+
+Почему подходит этот метод:
+
+- ценность блока видна пользователю end-to-end, а не только внутри одного слоя;
+- contract freeze для opening-tail уже сделан, теперь надо довести наблюдаемый delivery path;
+- удобно проверять результат по реальному player flow, а не только по внутренним артефактам.
+
+### 2. `antarctica-post-opening-manifest-extraction`
+
+Recommended `development_method`: `Review-driven loop`
+
+Цель:
+
+- выбрать первый bounded post-opening slice после `i21` и перенести его из legacy source в `games/antarctica/game.manifest.json`.
+
+Почему подходит этот метод:
+
+- legacy extraction даёт неоднозначности, поэтому нужен цикл `extract → review → correct`;
+- главный риск здесь — fidelity migration, а не UI delivery;
+- полезно быстро возвращать slice на точечную доработку без полной перепланировки.
+
+### 3. `runtime-session-hardening-baseline` (`proposed`)
+
+Recommended `development_method`: `Spec -> scaffold -> harden`
+
+Цель:
+
+- подготовить следующий устойчивый шаг для runtime: health/readiness, session evolution priorities и минимальный operational hardening plan.
+
+Почему подходит этот метод:
+
+- сначала нужно зафиксировать scope и boundaries hardening-работ;
+- после этого удобно отдельно сделать scaffold и затем harden без смешения с gameplay delivery;
+- это снижает риск расползания инфраструктурных задач в продуктовые блоки.
+
+### 4. `player-web-contract-safe-polish` (`proposed`)
+
+Recommended `development_method`: `TDD`
+
+Цель:
+
+- закрыть ближайшие contract-safe UI gaps в `apps/player-web`, не ломая уже зафиксированный runtime-owned boundary.
+
+Почему подходит этот метод:
+
+- для локальных UI/DTO edge cases полезно сначала зафиксировать regression tests;
+- это помогает держать delivery безопасным, пока растёт coverage;
+- метод хорошо подходит для bounded correctness work после vertical slice.
+
+## Governance And Workflow
+
+Рабочий цикл проекта на высоком уровне:
+
+1. Architect определяет следующий блок и методику.
+2. PM делает `plan_review`.
+3. Architect принимает решение по замечаниям и утверждает старт.
+4. Orchestrator материализует task packets и маршрутизирует исполнителей.
+5. Executor делает bounded implementation и task-level acceptance.
+6. PM делает block acceptance.
+7. Architect закрывает блок или запускает следующую итерацию.
+
+Смысл этого процесса: архитектура не должна плыть во время выполнения, а каждое изменение должно проходить через короткий и проверяемый цикл.
+
+Техническая заметка по startup docs: в текущем репозитории есть naming mismatch (несовпадение имён документов) между ожидаемым `PROJECT_STRUCTURE.json` и реально используемым `PROJECT_STRUCTURE.md`. Это пока не исправляется в этом roadmap-pass, но будущим сессиям нужно учитывать это расхождение при стартовом чтении проекта.
+
+## Non-Goals And Constraints
+
+- Мы **не** строим сейчас generic engine, DSL или универсальный selector framework.
+- Мы **не** переводим draft-артефакты в source of truth.
+- Мы **не** строим editor, catalog и platform-scale возможности раньше стабилизации canonical runtime slice.
+- Мы **не** позволяем `apps/player-web` снова читать `games/*` как runtime truth.
+- Мы **не** превращаем `ROADMAP.md` в список мелких ежедневных задач.
+
+## Existing Workstreams
+
+Для continuity и навигации сохраняем связь с уже существующими task-файлами:
+
+- Milestone: `docs/tasks/milestones/M_010_game_player_alpha.md`
+- Architecture / manifest foundation: `docs/tasks/epics/E_00001_architecture_review_consolidation.md`
+- Backend direction: `docs/tasks/epics/E_0030_backend_architecture_design.md`
+- Editor direction: `docs/tasks/epics/E_00021_game_editor_development.md`
+- Antarctica delivery line: `docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md`
+- Quality / observability: `docs/tasks/epics/E_0050_observability_and_quality.md`
+
+Эти файлы остаются местом для детальной декомпозиции. Этот `ROADMAP.md` фиксирует только стратегический курс.
