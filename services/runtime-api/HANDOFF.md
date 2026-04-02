@@ -107,8 +107,8 @@ npm run smoke --workspace services/runtime-api
 ## Что ещё НЕ сделано
 
 - нет persistence, locks, recovery;
-- нет readiness endpoint;
-- capability handlers пока покрывают только текущие `Antarctica` actions;
+- нет distributed locking, multi-instance coordination;
+- нет recovery worker;
 - team-selection mechanics for step `15` and the immediate `i10` follow-up are implemented, and the post-confirm mainline path now reaches terminal `i21`; the current player-facing delivery slice now also reaches board `31..36`, `i13`, board `37..42`, `i14`, `i14_2`, board `43..48`, `i15`, board `49..54` and `i16`, so the next engineering gap is extending beyond this bounded slice rather than another unreached opening board;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.

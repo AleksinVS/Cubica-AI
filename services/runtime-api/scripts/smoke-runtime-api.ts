@@ -20,6 +20,31 @@ const main = async () => {
 
   try {
     const baseUrl = `http://127.0.0.1:${runtimeApi.port}`;
+
+    // Smoke 3a: Add health check before session creation
+    const healthResponse = await fetch(`${baseUrl}/health`);
+    assert(healthResponse.status === 200, `Expected 200 from GET /health, got ${healthResponse.status}`);
+    const healthBody = (await healthResponse.json()) as { status?: string };
+    assert(healthBody.status === "ok", `Expected status "ok" from GET /health, got "${healthBody.status}"`);
+
+    // Smoke 3b: Add readiness check after health check
+    const readinessResponse = await fetch(`${baseUrl}/readiness`);
+    assert(readinessResponse.status === 200, `Expected 200 from GET /readiness, got ${readinessResponse.status}`);
+    const readinessBody = (await readinessResponse.json()) as {
+      ready?: boolean;
+      dependencies?: {
+        sessionStore?: { mode?: string };
+      };
+    };
+    assert(readinessBody.ready === true, `Expected ready=true from GET /readiness, got "${readinessBody.ready}"`);
+
+    // Smoke 3c: Verify session store mode in readiness response
+    assert(
+      readinessBody.dependencies?.sessionStore?.mode === "in-memory",
+      `Expected sessionStore.mode "in-memory" from GET /readiness, got "${readinessBody.dependencies?.sessionStore?.mode}"`
+    );
+
+    // Continue with session/action path
     const sessionResponse = await fetch(`${baseUrl}/sessions`, {
       method: "POST",
       headers: {

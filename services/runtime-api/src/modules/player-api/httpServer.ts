@@ -4,6 +4,7 @@ import { HttpError } from "../errors.ts";
 import { SessionService } from "../session/session.service.ts";
 import { RuntimeService } from "../runtime/runtime.service.ts";
 import { loadPlayerFacingContent } from "../content/contentService.ts";
+import { buildReadinessResponse } from "../admin/health.ts";
 import { parseCreateSessionRequest, parseDispatchActionRequest } from "./requestValidation.ts";
 
 interface RuntimeApiServerOptions {
@@ -45,6 +46,13 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
     try {
       if (request.method === "GET" && request.url === "/health") {
         sendJson(response, 200, { status: "ok", service: "runtime-api" });
+        return;
+      }
+
+      if (request.method === "GET" && request.url === "/readiness") {
+        const readinessResponse = await buildReadinessResponse(sessionService.getSessionStore());
+        const statusCode = readinessResponse.ready ? 200 : 503;
+        sendJson(response, statusCode, readinessResponse);
         return;
       }
 

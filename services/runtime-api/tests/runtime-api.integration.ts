@@ -375,6 +375,71 @@ after(async () => {
   await new Promise<void>((resolve) => runtimeApi.server.close(() => resolve()));
 });
 
+// ============================================================
+// Health and Readiness Tests
+// ============================================================
+
+test("GET /health returns 200 with correct payload", async () => {
+  const response = await fetch(`${baseUrl}/health`);
+  assert.equal(response.status, 200);
+
+  const body = await readJson<{ status: string; service: string }>(response);
+  assert.equal(body.status, "ok");
+  assert.equal(body.service, "runtime-api");
+});
+
+test("GET /health is fast (< 5ms under normal conditions)", async () => {
+  const start = performance.now();
+  const response = await fetch(`${baseUrl}/health`);
+  const elapsed = performance.now() - start;
+
+  assert.equal(response.status, 200);
+  // Allow some headroom for CI environments, but ensure it's fast
+  assert.ok(elapsed < 50, `Expected health check to be fast, took ${elapsed}ms`);
+});
+
+test("GET /readiness returns 200 with correct payload when runtime is healthy", async () => {
+  const response = await fetch(`${baseUrl}/readiness`);
+  assert.equal(response.status, 200);
+
+  const body = await readJson<{
+    ready: boolean;
+    service: string;
+    dependencies: {
+      content: { status: string; gameId: string };
+      sessionStore: { status: string; mode: string };
+    };
+  }>(response);
+
+  assert.equal(body.ready, true);
+  assert.equal(body.service, "runtime-api");
+  assert.equal(body.dependencies.content.status, "ok");
+  assert.equal(body.dependencies.content.gameId, "antarctica");
+  assert.equal(body.dependencies.sessionStore.status, "ok");
+  assert.equal(body.dependencies.sessionStore.mode, "in-memory");
+});
+
+test("GET /readiness is reachable without authentication", async () => {
+  const response = await fetch(`${baseUrl}/readiness`);
+  // Should succeed without any auth headers
+  assert.equal(response.status, 200);
+});
+
+test("GET /readiness has machine-readable payload", async () => {
+  const response = await fetch(`${baseUrl}/readiness`);
+  assert.equal(response.status, 200);
+
+  const text = await response.text();
+  const body = JSON.parse(text); // Should be valid JSON
+
+  // Verify all required fields exist
+  assert.equal(typeof body.ready, "boolean");
+  assert.equal(body.service, "runtime-api");
+  assert.equal(typeof body.dependencies, "object");
+  assert.equal(typeof body.dependencies.content, "object");
+  assert.equal(typeof body.dependencies.sessionStore, "object");
+});
+
 test("POST /sessions creates an antarctica session", async () => {
   const session = await createSession();
   const expectedTeamMemberIds = [
