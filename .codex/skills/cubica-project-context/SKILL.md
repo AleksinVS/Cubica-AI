@@ -96,6 +96,11 @@ These defaults should match (not fight) the active `role_runtime_bindings` from 
 - Use an extra high-review worker only for genuinely risky or non-trivial bounded diffs; final review stays with the main agent.
 - Use `medium` reasoning effort for normal bounded implementation; use `low` only for small mechanical follow-ups.
 
+## External CLI Notes (Droid / Gemini)
+
+- **Droid model id:** Use the exact model names that `droid` reports as available (for example `MiniMax-M2.7`). Do not assume registry-style prefixes like `minimax-coding-plan/...` are accepted by the CLI.
+- **Gemini approval mode:** If Gemini must write workflow artifacts into `.tmp/agent-workflow/...`, `--approval-mode plan` may restrict writes to `~/.gemini/tmp/.../plans`. Prefer `auto_edit` while keeping prompts explicitly “do not edit code files”, or have Orchestrator copy artifacts from the plans directory when plan-mode is required.
+
 ## Verification Shortcuts
 
 Use the smallest safe check loop first, then escalate to broader verification as needed:
