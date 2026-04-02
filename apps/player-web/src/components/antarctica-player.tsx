@@ -79,6 +79,56 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
+  /**
+   * Creates a new session via POST and stores the sessionId in localStorage.
+   * Returns the new session data.
+   */
+  const createNewSession = async (): Promise<SessionSnapshot> => {
+    const base = "/api/runtime/sessions";
+    const response = await fetch(base, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        gameId: "antarctica",
+        playerId: "player-web"
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create session: ${response.status}`);
+    }
+
+    const data = (await response.json()) as SessionSnapshot;
+    window.localStorage.setItem(storageKey, data.sessionId);
+    return data;
+  };
+
+  /**
+   * Resets the game: clears localStorage session and creates a new session.
+   * Used both for stale session recovery and for the "Новая игра" button.
+   */
+  const resetGame = async () => {
+    setBooting(true);
+    setError(null);
+
+    try {
+      // Clear any stale session from localStorage
+      window.localStorage.removeItem(storageKey);
+
+      // Create fresh session
+      const data = await createNewSession();
+
+      setSession(data);
+      setError(null);
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : "Failed to reset player");
+    } finally {
+      setBooting(false);
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
 
@@ -86,18 +136,36 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
       try {
         const storedSessionId = window.localStorage.getItem(storageKey);
         const base = "/api/runtime/sessions";
-        const response = storedSessionId
-          ? await fetch(`${base}/${storedSessionId}`)
-          : await fetch(base, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                gameId: "antarctica",
-                playerId: "player-web"
-              })
-            });
+
+        let response: Response;
+
+        if (storedSessionId) {
+          // Try to resume existing session
+          response = await fetch(`${base}/${storedSessionId}`);
+
+          // If session is stale (e.g., runtime restarted), fall back to creating new session
+          if (!response.ok) {
+            console.warn(`Stale session detected (${storedSessionId}), creating new session`);
+            const newSession = await createNewSession();
+            if (!cancelled) {
+              setSession(newSession);
+              setError(null);
+            }
+            return;
+          }
+        } else {
+          // No stored session, create new one
+          response = await fetch(base, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              gameId: "antarctica",
+              playerId: "player-web"
+            })
+          });
+        }
 
         if (!response.ok) {
           throw new Error(`Failed to initialize session: ${response.status}`);
@@ -209,9 +277,20 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups }: Antarctica
                     {session ? session.sessionId : "Preparing Antarctica session"}
                   </h2>
                 </div>
-                <div className="status">
-                  <span className="dot" />
-                  {booting ? "booting" : session ? "live" : "idle"}
+                <div className="session-controls">
+                  <div className="status">
+                    <span className="dot" />
+                    {booting ? "booting" : session ? "live" : "idle"}
+                  </div>
+                  <button
+                    className="action-button secondary"
+                    type="button"
+                    onClick={resetGame}
+                    disabled={isPending || booting || !session}
+                    style={{ marginLeft: 12 }}
+                  >
+                    Новая игра
+                  </button>
                 </div>
               </div>
 

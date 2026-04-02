@@ -4,7 +4,25 @@ Canonical web player scaffold for `Antarctica`.
 
 ## Run
 
-1. Start `runtime-api` at `http://127.0.0.1:3001`.
+### One-command local play (recommended)
+
+From repo root:
+
+```bash
+npm run antarctica:play
+```
+
+This starts both `runtime-api` (port 3001) and `player-web` (port 3000) together.
+Open `http://127.0.0.1:3000` in your browser.
+
+Press `Ctrl+C` to stop both services.
+
+### Manual start
+
+1. Start `runtime-api` at `http://127.0.0.1:3001`:
+   ```bash
+   npm run dev --workspace services/runtime-api
+   ```
 2. From repo root run:
    ```bash
    npm install

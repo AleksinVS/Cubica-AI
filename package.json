@@ -23,7 +23,8 @@
     "verify:canonical": "npm run verify:runtime-api && npm run verify:player-web",
     "antarctica:extract-opening": "node scripts/antarctica/extract-opening.js",
     "antarctica:extract-step": "node scripts/antarctica/extract-opening.js",
-    "verify:antarctica-extraction": "node scripts/antarctica/verify-extraction.js"
+    "verify:antarctica-extraction": "node scripts/antarctica/verify-extraction.js",
+    "antarctica:play": "node scripts/antarctica/run-local-play.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
