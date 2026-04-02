@@ -1,0 +1,19 @@
+# Gemini CLI ignore list (repo-local).
+#
+# Purpose: keep Gemini context and file tool access fast and predictable, while
+# still allowing workflow artifacts under `.tmp/agent-workflow/`.
+#
+# NOTE: We intentionally do NOT ignore `.tmp/` here because workflow artifacts
+# live under `.tmp/agent-workflow/` and are required for plan/acceptance work.
+
+node_modules/
+dist/
+build/
+.out/
+.next/
+coverage/
+.cache/
+.DS_Store
+*.log
+.env
+.env.*

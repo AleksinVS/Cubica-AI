@@ -51,6 +51,14 @@ The current bounded Antarctica delivery slice uses structured `content.antarctic
 - info `i15`
 - ninth board `49..54`
 - info `i16`
+- tenth board `55..60`
+- info `i17`
+- eleventh board `61..66`
+- info `i18`
+- twelfth board `67..70`
+- info `i19` / `i19_1` (variant routing based on runtime activeInfoId)
+- info `i20`
+- info `i21` (terminal ending)
 
 `player-web` combines that static player-facing content with the live session snapshot (`timeline`, `selectedCardId`, card flags, team flags, and teamSelection state) to render the current scene. Board card rendering respects `flags.cards[cardId].available === false`, so locked or alt-swap cards stay hidden until runtime exposes them. For steps that are not modeled yet in `content.antarctica`, the player falls back to the global action catalog instead of guessing missing content.
 

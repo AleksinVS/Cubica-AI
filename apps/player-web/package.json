@@ -7,7 +7,9 @@
     "build": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next build",
     "start": "next start",
     "lint": "echo \"TODO: add player-web lint\"",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@cubica/contracts-manifest": "file:../../packages/contracts/manifest",
@@ -18,7 +20,11 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.0.0",
     "@types/react": "^19.0.14",
-    "@types/react-dom": "^19.0.7"
+    "@types/react-dom": "^19.0.7",
+    "@vitejs/plugin-react": "^4.3.0",
+    "happy-dom": "^15.0.0",
+    "vitest": "^2.1.0"
   }
 }
