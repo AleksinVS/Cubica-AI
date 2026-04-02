@@ -16,13 +16,13 @@
     "@cubica/contracts-session": "file:../../packages/contracts/session",
     "@next/swc-linux-x64-gnu": "15.1.6",
     "next": "15.1.6",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
     "@testing-library/react": "^16.0.0",
-    "@types/react": "^19.0.14",
-    "@types/react-dom": "^19.0.7",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.3.0",
     "happy-dom": "^15.0.0",
     "vitest": "^2.1.0"
