@@ -16,7 +16,6 @@
  */
 
 import { spawn } from "node:child_process";
-import { availableParallelism } from "node:os";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -99,8 +98,8 @@ function startRuntimeApi() {
   log("runtime-api", `Starting on port ${runtimeApiPort}...`);
 
   runtimeApiProcess = spawnProcess(
-    "node",
-    ["--experimental-strip-types", "--enable-source-maps", "src/bootstrap.ts"],
+    "npm",
+    ["run", "dev", "--workspace", "services/runtime-api"],
     {
       PORT: runtimeApiPort
     },
@@ -117,21 +116,13 @@ function startPlayerWeb() {
   log("player-web", `Starting on port ${playerWebPort}...`);
   log("player-web", `Using RUNTIME_API_URL=${runtimeApiUrl}`);
 
-  // Calculate optimal parallelism for Next.js
-  const maxOldSpaceSize = Math.max(1, availableParallelism() - 1);
-
   playerWebProcess = spawnProcess(
-    "node",
-    [
-      "node_modules/.bin/next",
-      "dev",
-      "-p",
-      playerWebPort,
-      "--experimental-strip-types"
-    ],
+    "npm",
+    ["run", "dev", "--workspace", "@cubica/player-web"],
     {
       RUNTIME_API_URL: runtimeApiUrl,
-      NODE_OPTIONS: `--max-old-space-size=${maxOldSpaceSize}`
+      PORT: playerWebPort,
+      NEXT_IGNORE_INCORRECT_LOCKFILE: "1"
     },
     "player-web"
   );
