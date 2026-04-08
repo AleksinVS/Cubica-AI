@@ -1,0 +1,44 @@
+{
+  "schema_version": "1.0",
+  "block_id": "antarctica-local-play-2026-04-02",
+  "source_plan": ".tmp/agent-workflow/antarctica-local-play-2026-04-02/ARCHITECT_PLAN.json",
+  "source_plan_hash": "50e59cfc72e928e5e4f69e5ed227ce3a53593432d9c8c8ba73fa46d739a2d3a2",
+  "output_root": ".tmp/agent-workflow/antarctica-local-play-2026-04-02/task-packets",
+  "task_file_template": "{task_id}.json",
+  "tasks": [
+    {
+      "slice_id": "slice-antarctica-local-play",
+      "task_id": "task-rework-antarctica-one-command-runner-path-resolution",
+      "output_path": ".tmp/agent-workflow/antarctica-local-play-2026-04-02/task-packets/task-rework-antarctica-one-command-runner-path-resolution.json",
+      "copy_from": [
+        "block_id",
+        "development_method",
+        "slices[slice-antarctica-local-play].risk_class",
+        "slices[slice-antarctica-local-play].forbidden_moves",
+        "slices[slice-antarctica-local-play].required_docs",
+        "slices[slice-antarctica-local-play].required_checks",
+        "slices[slice-antarctica-local-play].mandatory_tests",
+        "slices[slice-antarctica-local-play].acceptance_criteria",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].goal",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].inputs",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].read_files",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].write_files",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].implementation_notes",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].tests_to_write",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].tests_to_run",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].deliverables",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].escalate_if",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].runtime_binding",
+        "slices[slice-antarctica-local-play].tasks[task-rework-antarctica-one-command-runner-path-resolution].runtime_override"
+      ],
+      "inject_fields": {
+        "block_id": "antarctica-local-play-2026-04-02",
+        "slice_id": "slice-antarctica-local-play",
+        "task_id": "task-rework-antarctica-one-command-runner-path-resolution",
+        "source_plan": ".tmp/agent-workflow/antarctica-local-play-2026-04-02/ARCHITECT_PLAN.json",
+        "source_plan_hash": "50e59cfc72e928e5e4f69e5ed227ce3a53593432d9c8c8ba73fa46d739a2d3a2",
+        "generated_at": "2026-04-02T18:46:22Z"
+      }
+    }
+  ]
+}

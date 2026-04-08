@@ -1,0 +1,345 @@
+{
+  "schema_version": "1.0",
+  "workflow_version": "v2",
+  "project_kind": "cubica-manifest-driven-game-delivery",
+  "block_id": "antarctica-local-play-2026-04-02",
+  "block_goal": "Дать возможность локально запустить и играть в «Антарктику» через канонические `services/runtime-api` + `apps/player-web` без портала/редактора: один удобный запуск из корня репозитория + устойчивый UX при рестарте runtime (in-memory sessions).",
+  "plan_status": {
+    "review_required": false,
+    "execution_ready": true
+  },
+  "development_method": "Spec -> scaffold -> harden",
+  "method_selection_rationale": "Нужен bounded путь “запустил и играю”: фиксируем минимальные DX/UX критерии local play, делаем небольшой runner + UX reset/resilience, затем хардним проверками и тестами.",
+  "acceptance_model": {
+    "plan_review": "Optional (архитектурное ревью без утверждения плана).",
+    "task_acceptance": "Executor owns task-level acceptance (TASK_ACCEPTANCE + EXECUTOR_REPORT).",
+    "block_acceptance": "PM owns block acceptance after checks pass."
+  },
+  "architect_instructions_for_orchestrator": [
+    "Выполняй задачи строго по порядку и не расширяй блок.",
+    "Loopback: материализуй и диспатчь только rework задачу `task-rework-antarctica-one-command-runner-path-resolution` (не перезапускай уже принятые задачи без явной команды пользователя).",
+    "Сохраняй ADR-019 boundary: player-web получает контент только через runtime API/DTO.",
+    "Не трогай gameplay/manifest/контракты: это не про перенос механики, а про local play DX/UX.",
+    "После задач запроси PM block_acceptance.",
+    "Блок закрывается коммитом; если блокер — эскалация пользователю и пауза."
+  ],
+  "task_packet_path_template": ".tmp/agent-workflow/antarctica-local-play-2026-04-02/task-packets/{task_id}.json",
+  "role_runtime_bindings": [
+    {
+      "role": "architect",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": [
+        {
+          "launcher": "gemini-cli",
+          "provider": "google",
+          "model": "gemini-3-flash-preview",
+          "tier": "high",
+          "reasoning_effort": "high"
+        }
+      ]
+    },
+    {
+      "role": "orchestrator",
+      "launcher": "codex-subagent",
+      "provider": "openai",
+      "model": "gpt-5.4-mini",
+      "tier": "medium",
+      "reasoning_effort": "medium",
+      "fallbacks": []
+    },
+    {
+      "role": "pm",
+      "launcher": "gemini-cli",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
+      "tier": "high",
+      "reasoning_effort": "high",
+      "fallbacks": []
+    },
+    {
+      "role": "executor",
+      "launcher": "droid",
+      "provider": "minimax",
+      "model": "custom:MiniMax-M2.7",
+      "tier": "medium",
+      "reasoning_effort": "high",
+      "fallbacks": []
+    }
+  ],
+  "method_role_runtime_bindings": {},
+  "global_rules": [
+    "Цель блока — local play DX/UX, не перенос механики.",
+    "Не подключать портал/редактор и не тянуть их зависимости в путь запуска.",
+    "Не менять `games/antarctica/game.manifest.json` и runtime gameplay routing/контракты.",
+    "Runner делать без новых npm-зависимостей (Node child_process)."
+  ],
+  "global_acceptance": [
+    "Есть один root-level запуск Antarctica (например `npm run antarctica:play`), который поднимает runtime-api и player-web, и он запускается корректно (без path-resolution бага в runner).",
+    "В player-web есть явная кнопка reset/new game, которая создаёт новую сессию.",
+    "После рестарта runtime player-web сам восстанавливается (очищает stale sessionId и создаёт новую сессию).",
+    "`npm run verify:canonical` проходит."
+  ],
+  "global_invariants": [
+    "ADR-019: player-web не читает `games/*` напрямую.",
+    "Не расширять блок на persistence и интеграции.",
+    "Правки только в разрешённых файлах; иначе — эскалация."
+  ],
+  "risk_policy": {
+    "R0": "docs + runner scripts only",
+    "R1": "player-web UX boot/reset changes + runner",
+    "R2": "any manifest/runtime/contracts change"
+  },
+  "escalation_matrix": {
+    "runner_needs_new_dependency": "architect",
+    "needs_manifest_or_runtime_change": "architect",
+    "verify_canonical_fails": "architect"
+  },
+  "method_workflow": [
+    "Spec: зафиксировать DX/UX критерии local play.",
+    "Scaffold: runner и root script.",
+    "Harden: UX resilience + тесты + verify:canonical."
+  ],
+  "method_phases": [
+    {
+      "phase_id": "scaffold",
+      "description": "Runner: runtime-api + player-web одной командой."
+    },
+    {
+      "phase_id": "harden",
+      "description": "Session resilience + кнопка reset/new game + тесты."
+    }
+  ],
+  "method_controls": [
+    "Жёсткие completion criteria включать сразу в first-pass executor prompt.",
+    "Блок завершать коммитом; блокер — эскалация пользователю."
+  ],
+  "method_artifacts": [
+    "TASK_ACCEPTANCE.md",
+    "EXECUTOR_REPORT.md",
+    "AGENT_CORRECTION_LOG.executor.{scope_id}.md",
+    "PM_DECISION_PACKET.md"
+  ],
+  "method_iteration_limit": 1,
+  "technology_stack": [
+    "Node.js/npm workspaces",
+    "services/runtime-api",
+    "apps/player-web (Next.js)"
+  ],
+  "technology_rules": [
+    "Runner реализовать как `scripts/antarctica/run-local-play.mjs` без новых зависимостей.",
+    "runtime-api порт по умолчанию 3001 (или `PORT` env).",
+    "player-web использует proxy routes `/api/runtime/*` и `RUNTIME_API_URL`."
+  ],
+  "adr_requirements": [
+    "ADR не требуется, пока изменения остаются в DX/UX и не меняют архитектурные границы.",
+    "Если потребуется менять boundary или контракты — остановиться и эскалировать."
+  ],
+  "slices": [
+    {
+      "slice_id": "slice-antarctica-local-play",
+      "title": "Antarctica local play",
+      "goal": "Одна команда запуска + устойчивый UX reset/resume при рестарте runtime.",
+      "risk_class": "R1",
+      "depends_on": [],
+      "read_files": [
+        "NEXT_STEPS.md",
+        "docs/architecture/PROJECT_ARCHITECTURE.md",
+        "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
+        "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md",
+        "services/runtime-api/HANDOFF.md",
+        "services/runtime-api/src/modules/player-api/httpServer.ts",
+        "apps/player-web/README.md",
+        "apps/player-web/src/components/antarctica-player.tsx",
+        "apps/player-web/src/components/antarctica-player.test.tsx"
+      ],
+      "allowed_files": [
+        "package.json",
+        "scripts/antarctica/run-local-play.mjs",
+        "apps/player-web/README.md",
+        "apps/player-web/src/components/antarctica-player.tsx",
+        "apps/player-web/src/components/antarctica-player.test.tsx"
+      ],
+      "forbidden_moves": [
+        "Не менять `games/antarctica/game.manifest.json` и runtime gameplay routing.",
+        "Не добавлять портал/редактор и persistence.",
+        "Не добавлять новые npm-зависимости ради runner."
+      ],
+      "required_docs": [
+        "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
+        "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md"
+      ],
+      "required_checks": [
+        "npm run verify:canonical"
+      ],
+      "control_points": [
+        "Root-level `npm run antarctica:play` запускает runtime-api + player-web.",
+        "UI: кнопка reset/new game создаёт новую сессию.",
+        "Resilience: stale sessionId после рестарта runtime приводит к авто-созданию новой сессии."
+      ],
+      "mandatory_tests": [
+        "player-web: stale session fallback + reset/new game"
+      ],
+      "acceptance_criteria": [
+        "Одна команда запуска из корня",
+        "Стабильный reset/resilience UX",
+        "verify:canonical проходит"
+      ],
+      "executor_mode": "senior",
+      "tasks": [
+        {
+          "task_id": "task-antarctica-one-command-runner",
+          "executor_level": "senior",
+          "goal": "Добавить root-level команду, которая поднимает `services/runtime-api` и `apps/player-web` вместе без новых зависимостей.",
+          "inputs": [
+            "workspace scripts",
+            "runtime-api default port behavior",
+            "player-web README"
+          ],
+          "read_files": [
+            "package.json",
+            "services/runtime-api/package.json",
+            "apps/player-web/package.json",
+            "services/runtime-api/src/modules/player-api/httpServer.ts",
+            "apps/player-web/README.md"
+          ],
+          "write_files": [
+            "package.json",
+            "scripts/antarctica/run-local-play.mjs",
+            "apps/player-web/README.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/EXECUTOR_REPORT.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/TASK_ACCEPTANCE.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/AGENT_CORRECTION_LOG.executor.task-antarctica-one-command-runner.md"
+          ],
+          "implementation_notes": [
+            "Runner: Node child_process spawn двух процессов; корректная остановка по SIGINT/SIGTERM.",
+            "Передавать env: runtime-api `PORT=3001`, player-web `RUNTIME_API_URL=http://127.0.0.1:3001`.",
+            "Не пытаться авто-открывать браузер."
+          ],
+          "tests_to_write": [],
+          "tests_to_run": [],
+          "deliverables": [
+            "root-level npm script `antarctica:play`",
+            "runner script `scripts/antarctica/run-local-play.mjs`",
+            "обновлённый apps/player-web/README.md"
+          ],
+          "escalate_if": [
+            "runner требует новую npm-зависимость",
+            "нужно менять runtime-api/player-web за пределами allowed_files"
+          ],
+          "runtime_override": {},
+          "runtime_binding": {
+            "role": "executor",
+            "launcher": "droid",
+            "provider": "minimax",
+            "model": "custom:MiniMax-M2.7",
+            "tier": "medium",
+            "reasoning_effort": "high",
+            "fallbacks": []
+          }
+        },
+        {
+          "task_id": "task-player-web-session-resilience",
+          "executor_level": "senior",
+          "goal": "Добавить устойчивость к stale sessionId (после рестарта runtime) и кнопку reset/new game в AntarcticaPlayer + тесты.",
+          "inputs": [
+            "AntarcticaPlayer boot logic (localStorage sessionId + GET /sessions/:id)",
+            "runtime-api sessions in-memory (restart clears sessions)"
+          ],
+          "read_files": [
+            "apps/player-web/src/components/antarctica-player.tsx",
+            "apps/player-web/src/components/antarctica-player.test.tsx"
+          ],
+          "write_files": [
+            "apps/player-web/src/components/antarctica-player.tsx",
+            "apps/player-web/src/components/antarctica-player.test.tsx",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/EXECUTOR_REPORT.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/TASK_ACCEPTANCE.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/AGENT_CORRECTION_LOG.executor.task-player-web-session-resilience.md"
+          ],
+          "implementation_notes": [
+            "Если GET /api/runtime/sessions/:id не ok — очистить localStorage и выполнить POST /api/runtime/sessions для новой сессии.",
+            "Добавить кнопку “Новая игра”: очистка localStorage + создание новой сессии.",
+            "Добавить тест: stored id -> GET fail -> POST create -> session установлен.",
+            "В конце прогнать `npm run test --workspace @cubica/player-web` и `npm run verify:canonical`."
+          ],
+          "tests_to_write": [
+            "apps/player-web/src/components/antarctica-player.test.tsx: stale session fallback + reset"
+          ],
+          "tests_to_run": [
+            "npm run test --workspace @cubica/player-web",
+            "npm run verify:canonical"
+          ],
+          "deliverables": [
+            "устойчивый boot/reset UX",
+            "тесты на boot/reset",
+            "verify:canonical зелёный"
+          ],
+          "escalate_if": [
+            "для устойчивости требуется менять runtime-api или manifest",
+            "правки выходят за allowed_files"
+          ],
+          "runtime_override": {},
+          "runtime_binding": {
+            "role": "executor",
+            "launcher": "droid",
+            "provider": "minimax",
+            "model": "custom:MiniMax-M2.7",
+            "tier": "medium",
+            "reasoning_effort": "high",
+            "fallbacks": []
+          }
+        },
+        {
+          "task_id": "task-rework-antarctica-one-command-runner-path-resolution",
+          "executor_level": "senior",
+          "goal": "Исправить path-resolution bug в `scripts/antarctica/run-local-play.mjs`, из-за которого `npm run antarctica:play` может запускаться не из корня репозитория (ошибочный `REPO_ROOT`).",
+          "inputs": [
+            "PM packet с описанием бага (REPO_ROOT resolve)",
+            "Текущий `scripts/antarctica/run-local-play.mjs`"
+          ],
+          "read_files": [
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/PM_DECISION_PACKET.antarctica-local-play-2026-04-02.md",
+            "scripts/antarctica/run-local-play.mjs",
+            "package.json"
+          ],
+          "write_files": [
+            "scripts/antarctica/run-local-play.mjs",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/EXECUTOR_REPORT.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/TASK_ACCEPTANCE.md",
+            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/AGENT_CORRECTION_LOG.executor.task-rework-antarctica-one-command-runner-path-resolution.md"
+          ],
+          "implementation_notes": [
+            "Сделать минимальную правку: вычислять `REPO_ROOT` как корень репозитория (для файла `scripts/antarctica/run-local-play.mjs` это `resolve(__dirname, \"../..\")`).",
+            "Проверить, что `cwd` у spawn реально указывает на корень репозитория (где лежит root `package.json`).",
+            "Не добавлять новые зависимости.",
+            "Сделать короткую ручную проверку запуска: `npm run antarctica:play` стартует оба процесса и печатает URL; затем корректно завершается по Ctrl+C."
+          ],
+          "tests_to_write": [],
+          "tests_to_run": [],
+          "deliverables": [
+            "Исправленный runner без path-resolution бага",
+            "Executor report + acceptance artifacts"
+          ],
+          "escalate_if": [
+            "Фикс требует изменений вне `scripts/antarctica/run-local-play.mjs`",
+            "Фикс требует новых npm-зависимостей"
+          ],
+          "runtime_override": {},
+          "runtime_binding": {
+            "role": "executor",
+            "launcher": "droid",
+            "provider": "minimax",
+            "model": "custom:MiniMax-M2.7",
+            "tier": "medium",
+            "reasoning_effort": "high",
+            "fallbacks": []
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -108,6 +108,69 @@ Runtime проецирует `content.antarctica` напрямую в player-fac
 3. Подключать новые UI-паттерны только через canonical content/model layer, а не через draft-player структуру.
 4. Если появятся новые платформы или каналы, сначала выделять shared viewer/runtime contracts, а потом уже отдельные apps.
 
+### Ближайшая цель: привести UI Antarctica к UI-манифесту и мокапу
+
+Сейчас `apps/player-web` технически умеет играть opening flow через `services/runtime-api`, но визуально и структурно экран очень далёк от целевого дизайна и UI-манифеста.
+
+Целевые источники истины для UI:
+
+1. Мокап целевого экрана (намерение и композиция): `games/antarctica/design/mockups/left-sidebar-6-cards.jpg`.
+2. Design artifact JSON (структура regions + tokens): `games/antarctica/design/mockups/left-sidebar-6-cards.design.json`.
+3. UI-манифест web-канала (описание экранов/компонентов в JSON): `games/antarctica/ui/web/ui.manifest.json`.
+
+Проблема текущего состояния:
+
+- UI сейчас хардкодит dashboard-подобный layout в `apps/player-web/src/components/antarctica-player.tsx` и не следует layout/компонентам из `ui.manifest.json`.
+- В манифесте есть design registry и screen description, но player-web не использует их как контракт рендера.
+
+Задача (что нужно сделать):
+
+Сделать так, чтобы opening экран Antarctica в `apps/player-web` соответствовал композиции мокапа “левый сайдбар + 6 карточек + нижние controls + правый декор” и при этом рендерился через UI-манифест (то есть UI описан данными, а не размазан по JSX).
+
+Ожидаемый минимальный MVP результата:
+
+- Экран `S1` (web) визуально узнаваем как мокап: левый вертикальный сайдбар с метриками, основная область с 6 карточками (grid `3x2`), снизу кнопки `журнал ходов` и `подсказка` плюс навигационные стрелки, фон в арктической теме и декоративная правая зона.
+- Значения в сайдбаре берутся из текущего session snapshot (`game.state.public.metrics.*`), как описано в `ui.manifest.json`.
+- Действия на нижней панели и клики по карточкам работают через текущий `runtime-api` action dispatch (без обхода и без моков).
+
+Технические ограничения (что важно не сломать):
+
+- Не возвращаться к чтению `games/*` напрямую из `apps/player-web` как к долговременному решению.
+- Не “рисовать UI на глаз” в JSX, если у нас уже есть JSON-описание экрана.
+- Не вводить новый UI DSL без необходимости: сначала поддержать минимальный subset `screenComponent/areaComponent/gameVariableComponent/cardComponent/buttonComponent` из `ui.manifest.json`.
+
+План работ (высокоуровнево):
+
+1. Ввести минимальный manifest-driven renderer для web-канала:
+   - загрузка `ui.manifest.json` для `antarctica` (источник загрузки должен быть каноническим: либо через runtime-api endpoint, либо через player-facing content DTO расширение);
+   - маппинг `screenComponent/areaComponent/gameVariableComponent/cardComponent/buttonComponent` в React-компоненты;
+   - простая data-binding под `{{game.state.public.metrics.*}}` и нужные runtime поля (без “магического” eval).
+2. Привязать реальный opening экран player-web к экрану `S1` из UI-манифеста вместо текущего dashboard layout.
+3. Привести CSS под композицию мокапа:
+   - левый сайдбар как отдельная колонка;
+   - `cards-grid` как `3x2` с gap `24` (как в design artifact);
+   - нижняя панель controls;
+   - фон и правая декоративная зона (минимум: background image + контейнер под декор).
+4. Разобраться с ассетами, на которые ссылается манифест (`/images/...`):
+   - либо синхронизировать нужные изображения в `apps/player-web/public/images/...`,
+   - либо добавить канонический static assets serving policy через runtime-api.
+5. Добавить минимальные тесты на “контракт экрана”:
+   - snapshot/DOM-тест на наличие ключевых областей (sidebar, grid 6 cards, bottom controls);
+   - тест на binding метрик в UI при заданном session state.
+
+Критерии готовности (completion criteria):
+
+- Запуск `npm run antarctica:play` поднимает runtime + player-web, и в браузере рендерится `S1` в композиции мокапа `left-sidebar-6-cards`.
+- UI берётся из `ui.manifest.json` (по факту: есть код-путь, который читает screen definition и собирает UI из него, а не из вручную написанной layout-разметки).
+- Кнопки `журнал ходов` и `подсказка` кликабельны и проходят через стандартный action dispatch путь.
+- `npm run verify:canonical` проходит.
+
+Out of scope (явно не делаем в этой задаче):
+
+- Полную реализацию всех экранов и всех component types из UI-манифеста.
+- Portal/editor интеграцию.
+- Новую дизайн-систему или перенос в отдельный UI-kit, если это не блокирует мокап.
+
 ## Приоритет 5. Manifest and Capability Evolution
 
 1. Ввести capability-first схему вместо игры-специфичных ad hoc расширений.
