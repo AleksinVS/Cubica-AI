@@ -28,7 +28,7 @@
 
 Оставшаяся работа теперь относится к фазе расширения, а не к базовому переходу.
 
-### Обновление по S1 UI Manifest & Mockup Alignment (2026-04-08)
+## Обновление по S1 UI Manifest & Mockup Alignment (2026-04-08)
 
 **Статус: ✅ Completed**
 
@@ -46,7 +46,22 @@
   - Обновлены и исправлены интеграционные тесты в `src/components/antarctica-player-dom.test.tsx`.
   - `npm run verify:canonical` проходит успешно.
 
-**Результат:** Opening экран `S1` теперь является полностью управляемым данными (data-driven) и визуально соответствует целевому дизайну. Следующие шаги могут быть направлены на расширение поддержки других типов компонентов или экранов по мере необходимости.
+**Результат:** Opening экран `S1` теперь является полностью управляемым данными (data-driven) и визуально соответствует целевому дизайну.
+
+### Обновление по Multi-Screen UI Manifest (2026-04-09)
+
+**Статус: ✅ Delivered**
+
+Bounded multi-screen UI boundary для Antarctica теперь реализован:
+
+- **Multi-Screen UI Contract:** `packages/contracts/manifest` теперь поддерживает `AntarcticaPlayerUiContent` с `screens` map для множественных UI-экранов, additive относительно S1-only контракта.
+- **Opening-Tail Screens:** `runtime-api` проецирует S2 board screens (55..60, 61..66, 67..70) и S1 info variants (i17, i18, i19, i19_1, i20, i21) через `GET /games/antarctica/player-content`.
+- **Manifest-Driven Rendering:** `apps/player-web` рендерит in-scope tail screens по runtime snapshot (`stepIndex` для S2 boards, `activeInfoId` для S1 info variants) без UI-side heuristics.
+- **Screen Selection Contract:**
+  - S2 boards: `stepIndex` → `boardKey` mapping (30→"55..60", 32→"61..66", 34→"67..70")
+  - S1 info variants: `activeInfoId` для disambiguation (i19 vs i19_1)
+  - Fallback: action catalog resolver для screens вне scope
+- **Verification:** `npm run verify:canonical` проходит (61 runtime-api + 81 player-web тестов).
 
 ## Приоритет 1. Complete the Antarctica Truth Model
 
@@ -63,8 +78,8 @@
 1. Сделать `runtime-api` единственным владельцем загрузки `games/*` для runtime и player-facing delivery, как зафиксировано в `ADR-019`.
 2. Добавить player-facing content DTO (объект передачи данных) и API для `Antarctica`, чтобы `player-web` получал manifest/design projection через backend boundary.
 3. Расширять deterministic handler layer от текущего capability routing к предметным handlers для реальной механики `Antarctica`, извлечённой из `draft/Antarctica/GameFull.html`.
-4. Первый bounded player-facing delivery slice уже закрыт для `i0 -> board 1..6 -> i7`, а последующие bounded extensions добавили `board 7..12 -> i8`, `board 13..18 -> i9`, `step 15 team-selection`, `i10`, `board 19..24`, `i11`, `board 25..30`, `i12`, `board 31..36`, `i13`, `board 37..42`, `i14`, `i14_2`, `board 43..48`, `i15`, `board 49..54` и `i16`; следующий этап должен расширить current-step rendering дальше по opening flow, сохраняя manifest-driven content projection и fallback для ещё не перенесённых step-ов.
-5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12 -> board 31..36 -> i13 -> board 37..42 -> i14 -> i14_2 -> board 43..48 -> i15 -> board 49..54 -> i16 -> board 55..60 -> i17 -> board 61..66 -> i18 -> board 67..68 -> i19/i19_1 -> board 69..70 -> i20 -> i21` уже покрыт на manifest boundary level, включая bounded line switch на loss line `i34 -> i34_2 -> i21`, locked/unlocked go-card `39`, entry-time alt `3902`, explicit public-communication board progression, trusted-messengers board progression, acceleration board progression, scout-dispatch progression и terminal aftermath ending.
+4. Bounded player-facing delivery slice полностью покрывает opening flow: `i0 -> board 1..6 -> i7 -> board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 team-selection -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12 -> board 31..36 -> i13 -> board 37..42 -> i14 -> i14_2 -> board 43..48 -> i15 -> board 49..54 -> i16 -> board 55..60 -> i17 -> board 61..66 -> i18 -> board 67..70 -> i19/i19_1 -> i20 -> i21`, включая bounded line switch на loss line `i34 -> i34_2 -> i21`, locked/unlocked go-card `39`, entry-time alt `3902`, explicit public-communication board progression, trusted-messengers board progression, acceleration board progression, scout-dispatch progression и terminal aftermath ending. UI boundary уже расширен до opening tail (i17..i21 / boards 55..70) и находится в delivered state; следующий этап может расширить boundary за пределы opening tail, сохраняя manifest-driven content projection и fallback для ещё не покрытых step-ов.
+5. Переход `first board -> i7 -> second board 7..12 -> i8 -> board 13..18 -> i9 -> step 15 -> i10 -> board 19..24 -> i11 -> board 25..30 -> i12 -> board 31..36 -> i13 -> board 37..42 -> i14 -> i14_2 -> board 43..48 -> i15 -> board 49..54 -> i16 -> board 55..60 -> i17 -> board 61..66 -> i18 -> board 67..70 -> i19/i19_1 -> i20 -> i21` уже покрыт на manifest boundary level, включая bounded line switch на loss line `i34 -> i34_2 -> i21`, locked/unlocked go-card `39`, entry-time alt `3902`, explicit public-communication board progression, trusted-messengers board progression, acceleration board progression, scout-dispatch progression и terminal aftermath ending.
 6. Довести manifest validation до более строгих семантических правил, когда это станет нужно для новых игр.
 7. `readiness` endpoint добавлен в scaffold phase (проверяет in-process content subsystem и session store mode). Расширять на внешние зависимости не требуется до появления реального distributed deployment.
 8. Подготовить persistence, когда in-memory session store перестанет быть достаточным.
