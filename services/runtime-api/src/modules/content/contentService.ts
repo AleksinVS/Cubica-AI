@@ -6,7 +6,8 @@ import type {
   PlayerFacingContent,
   PlayerFacingMockup,
   GameManifestActionDefinition,
-  AntarcticaPlayerS1UiContent
+  AntarcticaPlayerUiContent,
+  AntarcticaUiScreenDefinition
 } from "@cubica/contracts-manifest";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
@@ -148,19 +149,48 @@ const loadAntarcticaUiManifest = async (gameId: string): Promise<RawUiManifest |
 };
 
 /**
- * Projects the bounded S1 UI content from the raw UI manifest.
- * Returns only the S1 screen definition needed for manifest-driven opening screen rendering.
- * Asset references (image paths) are preserved as data strings, not resolved URLs.
+ * Transforms a raw UI manifest screen object (with snake_case fields) into a typed
+ * AntarcticaUiScreenDefinition (with camelCase fields).
  */
-const projectAntarcticaS1UiContent = (
+const transformScreen = (
+  rawScreen: Record<string, unknown>
+): AntarcticaUiScreenDefinition => {
+  return {
+    type: "screen",
+    title: typeof rawScreen.title === "string" ? rawScreen.title : "Antarctica",
+    layoutId: typeof rawScreen.layout_id === "string" ? rawScreen.layout_id : undefined,
+    // Deep clone the root component tree, preserving all children and props.
+    root: structuredClone(rawScreen.root) as AntarcticaUiScreenDefinition["root"]
+  };
+};
+
+/**
+ * Projects all available UI screens from the raw UI manifest into a multi-screen
+ * AntarcticaPlayerUiContent structure.
+ * Asset references (image paths) are preserved as data strings, not resolved URLs.
+ *
+ * Screen selection contract:
+ * - Runtime snapshot field `timeline.screenId` selects the current screen from `screens`.
+ * - Runtime snapshot field `timeline.activeInfoId` disambiguates variant info screens (e.g., i19 vs i19_1).
+ * - When `timeline.screenId` is not in `screens`, the player falls back to the action catalog.
+ * - The `entryPoint` field holds the canonical entry screen id ("S1" for Antarctica web).
+ *
+ * Bounded screens covered:
+ * - S1: opening entry screen
+ * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..70 (stepIndex 34) — board screens
+ * - Info screens i17, i18, i19, i19_1, i20, i21 — variant info screens
+ *
+ * Selection is driven by runtime snapshot fields, not by UI-side heuristics.
+ */
+const projectAntarcticaUiContent = (
   rawManifest: RawUiManifest
-): AntarcticaPlayerS1UiContent | undefined => {
+): AntarcticaPlayerUiContent | undefined => {
   const meta = rawManifest.meta ?? {};
   const entryPoint = rawManifest.entry_point ?? "S1";
-  const screen = rawManifest.screens?.[entryPoint];
+  const rawScreens = rawManifest.screens;
 
-  if (!screen || typeof screen !== "object") {
-    // No S1 screen defined in the UI manifest.
+  if (!rawScreens || typeof rawScreens !== "object") {
+    // No screens defined in the UI manifest.
     return undefined;
   }
 
@@ -179,24 +209,25 @@ const projectAntarcticaS1UiContent = (
     }
   }
 
-  // Transform snake_case fields to camelCase for the typed screen definition.
-  // The raw ui.manifest.json uses snake_case (layout_id, entry_point), but the
-  // typed interface uses camelCase (layoutId, entryPoint).
-  const rawScreen = screen as Record<string, unknown>;
-  const transformedScreen: AntarcticaPlayerS1UiContent["screen"] = {
-    type: "screen",
-    title: typeof rawScreen.title === "string" ? rawScreen.title : "Antarctica",
-    layoutId: typeof rawScreen.layout_id === "string" ? rawScreen.layout_id : undefined,
-    // Deep clone the root component tree, preserving all children and props.
-    root: structuredClone(rawScreen.root) as AntarcticaPlayerS1UiContent["screen"]["root"]
-  };
+  // Project all available screens, not just the entry point.
+  const screens: Record<string, AntarcticaUiScreenDefinition> = {};
+  for (const [screenId, rawScreen] of Object.entries(rawScreens)) {
+    if (rawScreen && typeof rawScreen === "object") {
+      screens[screenId] = transformScreen(rawScreen as Record<string, unknown>);
+    }
+  }
+
+  if (Object.keys(screens).length === 0) {
+    // No valid screens found.
+    return undefined;
+  }
 
   return {
     id: typeof meta.id === "string" ? meta.id : "antarctica.ui.web",
     version: typeof meta.version === "string" ? meta.version : "1.0.0",
     gameId: typeof meta.game_id === "string" ? meta.game_id : "antarctica",
     entryPoint,
-    screen: transformedScreen,
+    screens,
     designArtifacts: Object.keys(designArtifacts).length > 0 ? designArtifacts : undefined
   };
 };
@@ -284,11 +315,11 @@ export class ContentService {
     }
     const mockups = await loadMockupsForGame(options.gameId);
 
-    // Load and project the bounded S1 UI manifest for Antarctica.
+    // Load and project the bounded multi-screen UI manifest for Antarctica.
     // This is additive: if the UI manifest is missing or malformed, we still return
     // the gameplay content (antarctica) without breaking the API contract.
     const rawUiManifest = await loadAntarcticaUiManifest(options.gameId);
-    const antarcticaUi = rawUiManifest ? projectAntarcticaS1UiContent(rawUiManifest) : undefined;
+    const antarcticaUi = rawUiManifest ? projectAntarcticaUiContent(rawUiManifest) : undefined;
 
     const content = projectManifestToPlayerContent(bundle);
     content.mockups = mockups;

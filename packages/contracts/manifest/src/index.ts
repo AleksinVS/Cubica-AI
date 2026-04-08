@@ -1,9 +1,9 @@
 /**
  * Cubica Manifest Contracts
- * Version: 1.1.0
+ * Version: 1.2.0
  *
  * Bounded contract surface for game manifest structures, player-facing content projections,
- * and S1 UI component types used by runtime-api and player-web consumers.
+ * and UI component types used by runtime-api and player-web consumers.
  *
  * Versioning policy:
  * - Additive changes only (new types, new optional fields) — non-breaking for current consumers
@@ -12,8 +12,8 @@
  *
  * Consumer mapping:
  * - `runtime-api` content module: uses `GameManifest`, `ManifestBundle`, `GameManifestActionDefinition`
- * - `runtime-api` player-content API: uses `PlayerFacingContent`, `AntarcticaPlayerS1UiContent`
- * - `player-web` renderer: uses `AntarcticaPlayerS1UiContent`, `AntarcticaUiComponent` types
+ * - `runtime-api` player-content API: uses `PlayerFacingContent`, `AntarcticaPlayerUiContent`
+ * - `player-web` renderer: uses `AntarcticaPlayerUiContent`, `AntarcticaPlayerS1UiContent` (deprecated), `AntarcticaUiComponent` types
  */
 
 export type GameManifestId = string;
@@ -475,14 +475,15 @@ export interface AntarcticaUiComponent<
 }
 
 /**
- * Screen definition for the Antarctica S1 entry screen.
+ * Screen definition for the Antarctica UI manifest entry.
+ * Each screen has a root component tree and a screenId key for runtime selection.
  * This is the bounded UI shape served through the runtime-owned player-content boundary.
  */
 export interface AntarcticaUiScreenDefinition {
   type: "screen";
   title: string;
   layoutId?: string;
-  /** The root screenComponent of the S1 screen. */
+  /** The root screenComponent of the screen. */
   root: AntarcticaUiComponent;
 }
 
@@ -498,49 +499,55 @@ export interface AntarcticaUiDesignArtifactRef {
 }
 
 /**
- * Bounded S1 UI content served through the player-facing content API.
- * Contains only the S1 screen definition needed for the opening screen renderer.
+ * Bounded multi-screen UI content served through the player-facing content API.
+ * Contains S1 entry screen and bounded opening-tail screens for manifest-driven rendering.
  * Asset references (image paths) are served as data, not embedded constants.
+ *
+ * Screen selection contract:
+ * - Runtime snapshot field `timeline.screenId` selects the current screen from `screens`.
+ * - Runtime snapshot field `timeline.activeInfoId` disambiguates variant info screens (e.g., i19 vs i19_1).
+ * - When `timeline.screenId` is not in `screens`, the player falls back to the action catalog.
+ * - The `entryPoint` field holds the canonical entry screen id ("S1" for Antarctica web).
  */
-export interface AntarcticaPlayerS1UiContent {
+export interface AntarcticaPlayerUiContent {
   /** UI manifest identifier. */
   id: string;
   /** UI manifest version. */
   version: string;
   /** The game id this UI is for. */
   gameId: string;
-  /** The canonical entry-point screen id (always "S1" for Antarctica web). */
+  /**
+   * Canonical entry-point screen id for the opening flow (always "S1" for Antarctica web).
+   * Used when no runtime snapshot is available yet (initial load).
+   */
   entryPoint: string;
-  /** S1 screen definition with full component tree. */
-  screen: AntarcticaUiScreenDefinition;
+  /**
+   * All available screen definitions keyed by screenId.
+   * Covers S1 (opening entry) and bounded opening-tail screens:
+   * - S1: opening entry screen with left-sidebar layout
+   * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..70 (stepIndex 34)
+   * - Info screens i17, i18, i19, i19_1, i20, i21
+   *
+   * Screen selection is driven by runtime snapshot field `timeline.screenId`.
+   * Variant info screens (i19 vs i19_1) are disambiguated by `timeline.activeInfoId`.
+   */
+  screens: Record<string, AntarcticaUiScreenDefinition>;
   /** Design artifact registry from the UI manifest (for reference/metadata). */
   designArtifacts?: Record<string, AntarcticaUiDesignArtifactRef>;
 }
 
 /**
- * Extended PlayerFacingContent for Antarctica with optional S1 UI manifest data.
- * The S1 UI content enables manifest-driven rendering of the opening screen
- * without player-web reading games/* directly.
+ * @deprecated Use AntarcticaPlayerUiContent instead. Kept for S1-only consumers.
+ * Bounded S1 UI content served through the player-facing content API.
+ * Contains only the S1 screen definition needed for the opening screen renderer.
+ * Asset references (image paths) are served as data, not embedded constants.
  */
-export interface AntarcticaPlayerFacingContent extends PlayerFacingContent {
-  antarctica?: AntarcticaPlayerContent;
-  /** Bounded S1 UI manifest data for manifest-driven opening screen rendering. */
-  antarcticaUi?: AntarcticaPlayerS1UiContent;
-}
-
-export interface PlayerFacingContent {
-  gameId: GameManifestId;
-  version: GameManifestVersion;
-  name: string;
-  description: string;
-  locale: GameManifestLocale;
-  playerConfig: GameManifestPlayerConfig;
-  training?: GameManifestTraining;
-  actions: Array<PlayerFacingAction>;
-  mockups: Array<PlayerFacingMockup>;
-  antarctica?: AntarcticaPlayerContent;
-  /** Bounded S1 UI manifest data for Antarctica manifest-driven opening screen rendering. */
-  antarcticaUi?: AntarcticaPlayerS1UiContent;
+export interface AntarcticaPlayerS1UiContent extends AntarcticaPlayerUiContent {
+  /**
+   * S1 screen definition with full component tree.
+   * @deprecated Use screens["S1"] instead for multi-screen support.
+   */
+  screen: AntarcticaUiScreenDefinition;
 }
 
 /**
@@ -552,6 +559,48 @@ export interface GameContentBundleMetadata {
   manifestVersion: GameManifestVersion;
   uiManifestVersion?: string;
   loadedAt: string; // ISO timestamp
+}
+
+/**
+ * Player-facing content DTO served through the runtime-owned content API.
+ * This DTO is the public surface that `runtime-api` projects for `player-web` consumers.
+ * Contains game metadata, available actions, mockups, and optional game-specific content.
+ *
+ * For Antarctica, the `antarcticaUi` field carries manifest-driven UI screen definitions.
+ * Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.activeInfoId`),
+ * not by UI-side heuristics.
+ */
+export interface PlayerFacingContent {
+  gameId: GameManifestId;
+  version: GameManifestVersion;
+  name: string;
+  description: string;
+  locale: GameManifestLocale;
+  playerConfig: GameManifestPlayerConfig;
+  training?: GameManifestTraining;
+  actions: Array<PlayerFacingAction>;
+  mockups: Array<PlayerFacingMockup>;
+  /** Antarctica-specific gameplay content (boards, info entries, cards). */
+  antarctica?: AntarcticaPlayerContent;
+  /**
+   * Antarctica-specific multi-screen UI manifest data for manifest-driven rendering.
+   * When present, enables UI-based rendering for in-scope screens.
+   * Fallback to action catalog for screens not covered by the UI manifest.
+   */
+  antarcticaUi?: AntarcticaPlayerUiContent;
+}
+
+/**
+ * Extended PlayerFacingContent for Antarctica with full UI manifest support.
+ * This type explicitly documents the Antarctica UI contract surface.
+ *
+ * @deprecated Use `PlayerFacingContent` with `antarcticaUi` field instead.
+ */
+export interface AntarcticaPlayerFacingContent extends PlayerFacingContent {
+  /** Antarctica gameplay content projection. */
+  antarctica?: AntarcticaPlayerContent;
+  /** Multi-screen UI manifest data for manifest-driven rendering. */
+  antarcticaUi?: AntarcticaPlayerUiContent;
 }
 
 

@@ -1,7 +1,7 @@
 {
   "meta": {
     "id": "antarctica.ui.web",
-    "version": "1.0.1",
+    "version": "1.1.0",
     "game_id": "antarctica",
     "game_manifest_version": "1.0.0",
     "channel": "web",
@@ -265,6 +265,1514 @@
                       "onClick": {
                         "command": "showHint",
                         "payload": {}
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "55..60": {
+      "type": "screen",
+      "title": "Выберите десятый шаг",
+      "layout_id": "layout.web.board",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "description": "Оставшееся время в игре.",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-header"
+                },
+                "children": [
+                  {
+                    "type": "areaComponent",
+                    "props": {
+                      "cssClass": "board-title"
+                    },
+                    "children": [
+                      {
+                        "type": "cardComponent",
+                        "id": "board-title",
+                        "props": {
+                          "text": "Теперь у вас есть еще несколько способов продолжить работу штаба."
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "card-55",
+                    "props": {
+                      "text": "Привлечь скептиков"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.55"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-56",
+                    "props": {
+                      "text": "Поручить Профессору"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.56"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-57",
+                    "props": {
+                      "text": "Обсудить детали"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.57"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-58",
+                    "props": {
+                      "text": "Подготовить брифинг"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.58"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-59",
+                    "props": {
+                      "text": "Провести агитацию"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.59"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-60",
+                    "props": {
+                      "text": "Школа разведчика"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.60"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "61..66": {
+      "type": "screen",
+      "title": "Выберите одинадцатый шаг",
+      "layout_id": "layout.web.board",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "description": "Оставшееся время в игре.",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-header"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "board-title",
+                    "props": {
+                      "text": "Отправка разведчиков требует особого подхода."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "card-61",
+                    "props": {
+                      "text": "Отправить элитную группу"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.61"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-62",
+                    "props": {
+                      "text": "Организовать логистику"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.62"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-63",
+                    "props": {
+                      "text": "Подготовить снаряжение"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.63"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-64",
+                    "props": {
+                      "text": "Назначить начальника"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.64"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-65",
+                    "props": {
+                      "text": "Составить маршрут"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.65"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-66",
+                    "props": {
+                      "text": "Отправить готовую группу"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.66"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "67..70": {
+      "type": "screen",
+      "title": "Выберите двенадцатый шаг",
+      "layout_id": "layout.web.board",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "description": "Оставшееся время в игре.",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-header"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "board-title",
+                    "props": {
+                      "text": "После переезда нужно укрепить позиции."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "card-67",
+                    "props": {
+                      "text": "Кабинетный анализ"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.67"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-68",
+                    "props": {
+                      "text": "Оперативный сбор"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.68"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-69",
+                    "props": {
+                      "text": "Провести совещание"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.69"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-70",
+                    "props": {
+                      "text": "Взять паузу"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.card.70"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "i17": {
+      "type": "screen",
+      "title": "Ускорение процесса",
+      "layout_id": "layout.web.info",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "info-content"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "info-title",
+                    "props": {
+                      "text": "Ускорение процесса"
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "info-body",
+                    "props": {
+                      "text": "Настало время ускорить процесс переезда."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-advance",
+                    "props": {
+                      "caption": "Продолжить"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.info.i17.advance"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "i18": {
+      "type": "screen",
+      "title": "Отправка разведчиков",
+      "layout_id": "layout.web.info",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "info-content"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "info-title",
+                    "props": {
+                      "text": "Отправка разведчиков"
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "info-body",
+                    "props": {
+                      "text": "Разведчики готовы к отправке."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-advance",
+                    "props": {
+                      "caption": "Продолжить"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.info.i18.advance"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "i19": {
+      "type": "screen",
+      "title": "Последствия переезда",
+      "layout_id": "layout.web.info",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "info-content"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "info-title",
+                    "props": {
+                      "text": "Последствия переезда"
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "info-body",
+                    "props": {
+                      "text": "После переезда началась работа над укреплением позиций."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-advance",
+                    "props": {
+                      "caption": "Продолжить"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.info.i19.advance"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "i19_1": {
+      "type": "screen",
+      "title": "Быстрый переезд",
+      "layout_id": "layout.web.info",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "info-content"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "info-title",
+                    "props": {
+                      "text": "Быстрый переезд"
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "info-body",
+                    "props": {
+                      "text": "Переезд был осуществлен быстро."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-advance",
+                    "props": {
+                      "caption": "Продолжить"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.info.i19.advance"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "i20": {
+      "type": "screen",
+      "title": "Второй переезд",
+      "layout_id": "layout.web.info",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "info-content"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "info-title",
+                    "props": {
+                      "text": "Второй переезд"
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "info-body",
+                    "props": {
+                      "text": "Готовим второй переезд."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-advance",
+                    "props": {
+                      "caption": "Продолжить"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.info.i20.advance"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "i21": {
+      "type": "screen",
+      "title": "Финальный экран",
+      "layout_id": "layout.web.info",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "info-content"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "info-title",
+                    "props": {
+                      "text": "Финальный экран"
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "info-body",
+                    "props": {
+                      "text": "История завершена."
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-finish",
+                    "props": {
+                      "caption": "Завершить"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "opening.info.i21.advance"
+                        }
                       }
                     }
                   }

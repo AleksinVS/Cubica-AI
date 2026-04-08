@@ -559,10 +559,12 @@ test("GET /games/:id/player-content returns antarcticaUi manifest for Antarctica
   assert.ok(body.antarcticaUi);
   assert.equal(body.antarcticaUi.id, "antarctica.ui.web");
   assert.equal(body.antarcticaUi.entryPoint, "S1");
-  assert.ok(body.antarcticaUi.screen);
-  assert.equal(body.antarcticaUi.screen.type, "screen");
-  assert.ok(body.antarcticaUi.screen.root);
-  assert.equal(body.antarcticaUi.screen.root.type, "screenComponent");
+  // Multi-screen interface: screens["S1"] replaces the deprecated single-screen field
+  assert.ok(body.antarcticaUi.screens);
+  assert.ok(body.antarcticaUi.screens["S1"]);
+  assert.equal(body.antarcticaUi.screens["S1"].type, "screen");
+  assert.ok(body.antarcticaUi.screens["S1"].root);
+  assert.equal(body.antarcticaUi.screens["S1"].root.type, "screenComponent");
 });
 
 test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {
@@ -2966,12 +2968,12 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
       version: string;
       gameId: string;
       entryPoint: string;
-      screen: {
+      screens: Record<string, {
         type: string;
         title: string;
         layoutId?: string;
         root: UiComponent;
-      };
+      }>;
       designArtifacts?: Record<string, { id: string; type: string }>;
     };
   }>("/games/antarctica/player-content");
@@ -2984,27 +2986,29 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
 
   // Verify UI manifest metadata
   assert.equal(ui.id, "antarctica.ui.web");
-  assert.equal(ui.version, "1.0.1");
+  assert.equal(ui.version, "1.1.0");
   assert.equal(ui.gameId, "antarctica");
   assert.equal(ui.entryPoint, "S1");
 
-  // Verify S1 screen definition structure
-  assert.equal(ui.screen.type, "screen");
-  assert.equal(ui.screen.title, "Antarctica");
-  assert.equal(ui.screen.layoutId, "layout.web.s1");
+  // Verify S1 screen definition structure (multi-screen interface: screens["S1"])
+  const s1Screen = ui.screens["S1"];
+  assert.ok(s1Screen, "S1 screen must exist in screens map");
+  assert.equal(s1Screen.type, "screen");
+  assert.equal(s1Screen.title, "Antarctica");
+  assert.equal(s1Screen.layoutId, "layout.web.s1");
 
   // Verify screen root (screenComponent)
-  assert.equal(ui.screen.root.type, "screenComponent");
-  assert.ok(ui.screen.root.props);
-  assert.equal(ui.screen.root.props.cssClass, "main-screen");
-  assert.equal(ui.screen.root.props.backgroundImage, "/images/arctic-background.png");
+  assert.equal(s1Screen.root.type, "screenComponent");
+  assert.ok(s1Screen.root.props);
+  assert.equal(s1Screen.root.props.cssClass, "main-screen");
+  assert.equal(s1Screen.root.props.backgroundImage, "/images/arctic-background.png");
 
   // Verify children exist (areas)
-  assert.ok(Array.isArray(ui.screen.root.children));
-  assert.ok(ui.screen.root.children!.length >= 2, "S1 should have at least 2 area children");
+  assert.ok(Array.isArray(s1Screen.root.children));
+  assert.ok(s1Screen.root.children!.length >= 2, "S1 should have at least 2 area children");
 
   // Find the game-variables-container area
-  const variablesArea = ui.screen.root.children!.find(
+  const variablesArea = s1Screen.root.children!.find(
     (child) => child.type === "areaComponent" && child.props.cssClass === "game-variables-container"
   );
   assert.ok(variablesArea, "game-variables-container area must be present");
@@ -3030,7 +3034,7 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   }
 
   // Find the main-content-area
-  const mainArea = ui.screen.root.children!.find(
+  const mainArea = s1Screen.root.children!.find(
     (child) => child.type === "areaComponent" && child.props.cssClass === "main-content-area"
   );
   assert.ok(mainArea, "main-content-area area must be present");
@@ -3070,20 +3074,23 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
 test("GET /games/antarctica/player-content preserves asset references in antarcticaUi", async () => {
   const { response, body } = await requestJson<{
     antarcticaUi?: {
-      screen: {
+      screens: Record<string, {
         root: {
           type: string;
           props: Record<string, unknown>;
           children?: Array<Record<string, unknown>>;
         };
-      };
+      }>;
     };
   }>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
   assert.ok(body.antarcticaUi);
 
-  const root = body.antarcticaUi!.screen.root;
+  // Multi-screen interface: screens["S1"].root
+  const s1Screen = body.antarcticaUi!.screens["S1"];
+  assert.ok(s1Screen, "S1 screen must exist");
+  const root = s1Screen.root;
   const rootProps = root.props as { backgroundImage?: string };
   assert.equal(rootProps.backgroundImage, "/images/arctic-background.png");
 

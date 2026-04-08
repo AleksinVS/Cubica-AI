@@ -4,13 +4,15 @@ import { useEffect, useState, useTransition } from "react";
 import type {
   PlayerFacingContent,
   PlayerFacingMockup,
+  AntarcticaPlayerUiContent,
   AntarcticaPlayerS1UiContent,
   AntarcticaUiComponent,
   AntarcticaUiScreenComponentProps,
   AntarcticaUiAreaComponentProps,
   AntarcticaUiGameVariableComponentProps,
   AntarcticaUiCardComponentProps,
-  AntarcticaUiButtonComponentProps
+  AntarcticaUiButtonComponentProps,
+  AntarcticaUiScreenDefinition
 } from "@cubica/contracts-manifest";
 import type { ActionSnapshot, SessionSnapshot } from "@/lib/antarctica";
 import {
@@ -33,8 +35,13 @@ type AntarcticaPlayerProps = {
   runtimeApiUrl: string;
   content: PlayerFacingContent;
   mockups: Array<PlayerFacingMockup>;
-  /** Bounded S1 UI manifest data for manifest-driven opening screen rendering. */
-  antarcticaUi?: AntarcticaPlayerS1UiContent;
+  /**
+   * Multi-screen UI manifest data for manifest-driven rendering.
+   * Supports both the new multi-screen interface (AntarcticaPlayerUiContent)
+   * and the deprecated S1-only interface (AntarcticaPlayerS1UiContent).
+   * Screen selection is driven by runtime snapshot fields.
+   */
+  antarcticaUi?: AntarcticaPlayerUiContent;
 };
 
 type AntarcticaSession = SessionSnapshot & {
@@ -286,7 +293,7 @@ export function AntarcticaS1Renderer({
   metrics,
   onAction
 }: {
-  screenDefinition: AntarcticaPlayerS1UiContent["screen"];
+  screenDefinition: AntarcticaUiScreenDefinition;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
 }) {
@@ -501,6 +508,80 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
       ? timeline.screen_id
       : null) as string | null;
 
+  // Read stepIndex for board-to-manifest-key resolution
+  const currentStepIndex = (typeof timeline.stepIndex === "number"
+    ? timeline.stepIndex
+    : typeof timeline.step_index === "number"
+      ? timeline.step_index
+      : null) as number | null;
+
+  // Read activeInfoId for variant info screen disambiguation (i19 vs i19_1)
+  const activeInfoId = (typeof timeline.activeInfoId === "string"
+    ? timeline.activeInfoId
+    : typeof timeline.active_info_id === "string"
+      ? timeline.active_info_id
+      : null) as string | null;
+
+  /**
+   * Resolves the manifest screen key for S2 board screens.
+   * S2 boards are keyed by their card range in the manifest (e.g., "55..60", "61..66", "67..70").
+   * stepIndex 30 → "55..60", stepIndex 32 → "61..66", stepIndex 34 → "67..70".
+   */
+  const resolveBoardScreenKey = (stepIndex: number | null): string | null => {
+    if (stepIndex === null) return null;
+    if (stepIndex === 30) return "55..60";
+    if (stepIndex === 32) return "61..66";
+    if (stepIndex === 34) return "67..70";
+    return null;
+  };
+
+  /**
+   * Resolves the manifest screen key for the current timeline state.
+   *
+   * Screen selection contract (from CONTRACT_INDEX.md):
+   * - For S2 (board) screens: use stepIndex to derive the board key
+   * - For S1 (info) screens: use activeInfoId to select variant (e.g., i19 vs i19_1)
+   * - When screenId is provided but not found in screens, return null to trigger fallback
+   * - entryPoint is used only when no screenId is available (initial state)
+   */
+  const resolveScreenKey = (
+    screenId: string | null,
+    stepIndex: number | null,
+    infoId: string | null
+  ): string | null => {
+    if (screenId === "S2") {
+      // Board screens: derive manifest screen key from stepIndex
+      const boardKey = resolveBoardScreenKey(stepIndex);
+      if (boardKey && antarcticaUi?.screens[boardKey]) {
+        return boardKey;
+      }
+      // Board screen not in manifest — return null to trigger fallback
+      return null;
+    } else if (screenId === "S1") {
+      // Info screens: use activeInfoId for variant disambiguation (i19 vs i19_1)
+      if (infoId && antarcticaUi?.screens[infoId]) {
+        return infoId;
+      }
+      // activeInfoId not in manifest screens — use S1 directly if available
+      if (antarcticaUi?.screens["S1"]) {
+        return "S1";
+      }
+      // S1 not in manifest — return null to trigger fallback
+      return null;
+    }
+
+    // For other screenId values, check if it exists directly in screens
+    if (screenId && antarcticaUi?.screens[screenId]) {
+      return screenId;
+    }
+
+    // No valid screen found — return null to trigger fallback
+    return null;
+  };
+
+  const screenKey = antarcticaUi ? resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId) : null;
+  const screenDefinition = screenKey ? antarcticaUi?.screens[screenKey] : null;
+
   const antarctica = resolveAntarcticaContent(content);
   const currentInfo = resolveCurrentInfoEntry(antarctica, publicState as Record<string, unknown>);
   const currentBoard = resolveCurrentBoard(antarctica, publicState as Record<string, unknown>);
@@ -531,10 +612,10 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
         </section>
 
         <section className="grid">
-          {antarcticaUi && currentScreenId === "S1" ? (
-            /* Manifest-driven S1 rendering takes the whole grid area */
+          {screenDefinition ? (
+            /* Manifest-driven rendering for in-scope tail screens (S1 info variants and S2 boards) */
             <AntarcticaS1Renderer
-              screenDefinition={antarcticaUi.screen}
+              screenDefinition={screenDefinition}
               metrics={metrics}
               onAction={dispatchS1Action}
             />

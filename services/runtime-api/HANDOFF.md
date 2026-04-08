@@ -80,27 +80,21 @@ The runtime projects `content.antarctica` directly to the player-facing DTO with
 - Integration coverage now proves the normal mainline path to `i13`, one post-base conditional bonus (`opening.card.31` from `cont = 10` to `cont = 11`), the low-stat card-34 loss branch to `loss` step `0` with explicit continuation to `i21`, the low-pro step-23 path where `39` starts locked and unlocks on the third resolved board card, the high-pro step-23 path where `3902` is exposed immediately and preserves `selectedCardId = "3902"`, the step-26 public communication board with both a non-go path (`opening.card.44`) and a conditional go path (`opening.card.48 -> i15 -> step 28`), the step-28 trusted-messengers board with a conditional go path (`opening.card.49 -> i16 -> step 30`), the step-30 acceleration board with both a non-go path (`opening.card.56`) and a conditional go path (`opening.card.60 -> i17 -> step 32`), the step-32 scout-dispatch board with both an unlock path (`opening.card.62 -> unlock 66`) and a bounded go path (`opening.card.66 -> i18 -> step 34`), and the final step-34 aftermath slice with fast-variant `i19_1`, default `i19`, and high-time loss jump to `i34_2`.
 - Bounded player-facing delivery is no longer only a generic action catalog: `game.manifest.json` now includes `content.antarctica` for intro info `i0`, boards `1..6`, `7..12`, `13..18`, `19..24`, `25..30`, `31..36`, `37..42`, `43..48` and `49..54`, team-selection step `15`, plus infos `i7`, `i8`, `i9`, `i10`, `i11`, `i12`, `i13`, `i14`, `i14_2`, `i15` and `i16`, the content endpoint projects it directly, and `player-web` resolves those scenes from the current session snapshot with a safe fallback for unmigrated steps.
 
-### Обновление по S1 UI Manifest Delivery (2026-04-08)
+### Обновление по Multi-Screen UI Manifest Delivery (2026-04-09)
 
-**Статус: ✅ Harden phase complete**
+**Статус: ✅ Delivered**
 
-`GET /games/antarctica/player-content` теперь возвращает дополнительное поле `antarcticaUi` с S1 UI manifest данными для bounded manifest-driven рендеринга opening экрана.
+Multi-screen UI boundary для Antarctica теперь реализован:
 
-**Что реализовано:**
-
-- **Runtime delivery:** `PlayerFacingContent.antarcticaUi` содержит S1 screen definition.
-- **Player-web renderer:** `AntarcticaS1Renderer` в `apps/player-web` теперь полностью manifest-driven. Он поддерживает вложенные области (`main-content-area`, `cards-container`, `bottom-controls-container`), 6 карточек (grid 3x2), и sidebar метрики.
-- **Mockup alignment:** CSS в `globals.css` приведен в соответствие с мокапом `left-sidebar-6-cards` (sidebar 260px, decor 370px, grid gap 24).
-- **Asset policy:** Каноническая политика ассетов зафиксирована в `apps/player-web/public/images/**`. Все необходимые иконки и фоны доступны по root-relative путям.
-- **Verification:** Добавлены DOM-тесты в `apps/player-web/src/components/antarctica-player-dom.test.tsx`, покрывающие рендеринг областей, метрик, карточек и fallback поведение.
-
-**S1 screen structure (harden):**
-- `main-screen` (root)
-  - `game-variables-container` (left sidebar)
-  - `main-content-area` (center)
-    - `cards-container` (3x2 grid)
-    - `bottom-controls-container` (buttons)
-- Right decor illustration placeholder (fixed width 370px).
+- **Multi-Screen UI Contract:** `packages/contracts/manifest` поддерживает `AntarcticaPlayerUiContent` с `screens` map. Additive относительно S1-only контракта, S1 consumers сохраняют обратную совместимость через `AntarcticaPlayerS1UiContent.screen` accessor.
+- **Runtime Projection:** `GET /games/antarctica/player-content` возвращает полный `antarcticaUi` DTO с S1 entry screen и bounded opening-tail screens:
+  - S2 boards: "55..60" (stepIndex 30), "61..66" (stepIndex 32), "67..70" (stepIndex 34)
+  - S1 info variants: i17, i18, i19, i19_1, i20, i21 (terminal)
+- **Player-Web Rendering:** `apps/player-web` использует manifest-driven screen selection:
+  - S2 boards: `stepIndex → boardKey` mapping в `resolveBoardScreenKey()`
+  - S1 info variants: `activeInfoId` для disambiguation (i19 vs i19_1)
+  - Fallback к action catalog для screens вне scope
+- **Verification:** `npm run verify:canonical` проходит (61 runtime-api + 81 player-web тестов).
 
 ## Как запускать локально
 
@@ -131,7 +125,6 @@ npm run smoke --workspace services/runtime-api
 - нет persistence, locks, recovery;
 - нет distributed locking, multi-instance coordination;
 - нет recovery worker;
-- team-selection mechanics for step `15` and the immediate `i10` follow-up are implemented, and the post-confirm mainline path now reaches terminal `i21`; the current player-facing delivery slice now also reaches board `31..36`, `i13`, board `37..42`, `i14`, `i14_2`, board `43..48`, `i15`, board `49..54` and `i16`, so the next engineering gap is extending beyond this bounded slice rather than another unreached opening board;
 - нет полноценного shared viewer/runtime package между apps.
 - для `Antarctica` ещё не перенесён в manifest основной gameplay flow из `draft/Antarctica/GameFull.html`; `README.md` рядом с ним описывает структуру legacy-прототипа, а сам `GameFull.html` нужно анализировать scripts-based способом, а не читать целиком как prose-артефакт.
 - для bounded extraction opening-flow использовать root scripts `npm run antarctica:extract-opening` и `npm run verify:antarctica-extraction` вместо ручного whole-file reading.
@@ -141,8 +134,8 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Первый bounded Antarctica player-facing delivery slice уже реализован: `player-web` рендерит `i0`, board `1..6`, `i7`, board `7..12`, `i8`, team-selection step `15`, `i10`, board `19..24`, `i11`, board `25..30`, `i12`, board `31..36`, `i13`, board `37..42`, `i14`, `i14_2`, board `43..48`, `i15`, board `49..54` и `i16` из `content.antarctica` и существующего session snapshot.
-4. Следующий Antarctica slice должен расширить current-step rendering дальше по opening flow, не ломая fallback path для ещё не смоделированных step-ов.
+3. Multi-screen UI boundary реализован: `antarcticaUi` теперь поддерживает S1 entry screen и bounded opening-tail screens (S2 boards 55..60, 61..66, 67..70; S1 info variants i17, i18, i19, i19_1, i20, i21) с manifest-driven screen selection через runtime snapshot (`stepIndex`, `activeInfoId`).
+4. UI boundary уже покрывает i17–i21; следующий этап может расширить его дальше по opening flow, не ломая fallback path для ещё не смоделированных step-ов.
 5. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 6. Добавлять persistence только после появления реального operational need.
 7. Если появятся новые игры, расширять `packages/contracts/manifest` и manifest model, а не вводить ad hoc JSON shape.
