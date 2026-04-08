@@ -51,3 +51,34 @@ export interface RuntimeActionRegistry<TState = unknown> {
   has(actionId: string): boolean;
   list(): Array<string>;
 }
+
+/**
+ * Bounded effect descriptor used in RuntimeActionResult.
+ * Covers the current runtime effect surface for deterministic action dispatch.
+ */
+export interface RuntimeEffect {
+  kind: string;
+  target?: string;
+  value?: unknown;
+  data?: Record<string, unknown>;
+}
+
+/**
+ * Bounded runtime dispatch input.
+ * Covers the internal runtime-api dispatch path (not the HTTP layer).
+ */
+export interface RuntimeDispatchOptions {
+  sessionId: string;
+  playerId?: string;
+  actionId: string;
+  payload?: unknown;
+}
+
+/**
+ * Bounded runtime dispatch result including the applied effect.
+ * Used internally by runtime-api for effect projection and logging.
+ */
+export interface RuntimeDispatchResult<TState = unknown> {
+  result: RuntimeActionResult<TState>;
+  appliedEffect?: RuntimeEffect;
+}

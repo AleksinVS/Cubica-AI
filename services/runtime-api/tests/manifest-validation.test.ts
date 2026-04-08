@@ -311,3 +311,281 @@ test("validateGameManifest rejects card entry with missing selectActionId", () =
     ManifestValidationError
   );
 });
+
+test("validateGameManifest rejects manifest with missing meta.id", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        meta: {
+          version: "1.0.0",
+          name: "Test",
+          description: "Test",
+          schemaVersion: "1.1"
+          // missing id
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects manifest with empty meta.schemaVersion", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        meta: {
+          ...validManifest.meta,
+          schemaVersion: ""
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects manifest with invalid config.players.min as string", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        config: {
+          players: { min: "1", max: 1 },
+          settings: { mode: "singleplayer", locale: "ru-RU" }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects manifest with missing engine.systemPrompt", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        engine: {}
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects manifest with invalid state.public.timeline", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        state: {
+          public: {
+            timeline: {
+              line: "main"
+              // missing stepIndex, stageId, screenId
+            },
+            log: [],
+            flags: { cards: {} }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects deterministic action with empty provenance array", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "script",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
+            function: "showHint",
+            deterministic: {
+              provenance: [],
+              guard: {},
+              metricDeltas: [{ metricId: "score", delta: 10 }],
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {}
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects deterministic action with invalid metric operator", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "script",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
+            function: "showHint",
+            deterministic: {
+              provenance: [
+                { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
+              ],
+              guard: {
+                timeline: { stepIndex: 5 }
+              },
+              metricDeltas: [{ metricId: "score", delta: 10 }],
+              conditionalMetricBonuses: [
+                {
+                  when: { metricId: "score", operator: "!=", threshold: 50 },
+                  metricDeltas: [{ metricId: "score", delta: 5 }]
+                }
+              ],
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {}
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects team selection scene with missing requiredPickCount", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        content: {
+          antarctica: {
+            infos: [],
+            boards: [],
+            teamSelections: [
+              {
+                id: "opening.team.selection",
+                stepIndex: 15,
+                screenId: "S2",
+                title: "Test selection",
+                body: "Test body",
+                // missing requiredPickCount
+                confirmActionId: "opening.team.confirm",
+                members: []
+              }
+            ],
+            cards: []
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects deterministic action with invalid conditionalLineSwitch targetStepIndex", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "script",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
+            function: "showHint",
+            deterministic: {
+              provenance: [
+                { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
+              ],
+              guard: {
+                timeline: { stepIndex: 5 }
+              },
+              metricDeltas: [{ metricId: "score", delta: 10 }],
+              conditionalLineSwitch: {
+                when: { metricId: "score", operator: ">", threshold: 50 },
+                targetLine: "main",
+                targetStepIndex: "not-a-number",
+                targetScreenId: "S1"
+              },
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {}
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects deterministic action with malformed guard.board.cardIds", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "script",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
+            function: "showHint",
+            deterministic: {
+              provenance: [
+                { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
+              ],
+              guard: {
+                board: {
+                  cardIds: ["1", 2, "3"]
+                }
+              },
+              metricDeltas: [{ metricId: "score", delta: 10 }],
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {}
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects deterministic action with boardThreshold resolvedCountAtLeast as string", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "script",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
+            function: "showHint",
+            deterministic: {
+              provenance: [
+                { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
+              ],
+              guard: {},
+              metricDeltas: [{ metricId: "score", delta: 10 }],
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {
+                boardThreshold: {
+                  cardIds: ["1", "2", "3"],
+                  resolvedCountAtLeast: "2"
+                }
+              }
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects malformed content.scenario reference", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        content: {
+          scenario: {
+            path: ["invalid", "path"]
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});

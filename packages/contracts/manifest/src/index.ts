@@ -1,3 +1,21 @@
+/**
+ * Cubica Manifest Contracts
+ * Version: 1.1.0
+ *
+ * Bounded contract surface for game manifest structures, player-facing content projections,
+ * and S1 UI component types used by runtime-api and player-web consumers.
+ *
+ * Versioning policy:
+ * - Additive changes only (new types, new optional fields) — non-breaking for current consumers
+ * - No removal or renaming of existing exported types without Architect escalation
+ * - All breaking changes require a new ADR
+ *
+ * Consumer mapping:
+ * - `runtime-api` content module: uses `GameManifest`, `ManifestBundle`, `GameManifestActionDefinition`
+ * - `runtime-api` player-content API: uses `PlayerFacingContent`, `AntarcticaPlayerS1UiContent`
+ * - `player-web` renderer: uses `AntarcticaPlayerS1UiContent`, `AntarcticaUiComponent` types
+ */
+
 export type GameManifestId = string;
 export type GameManifestVersion = string;
 export type GameManifestLocale = string;
@@ -524,3 +542,16 @@ export interface PlayerFacingContent {
   /** Bounded S1 UI manifest data for Antarctica manifest-driven opening screen rendering. */
   antarcticaUi?: AntarcticaPlayerS1UiContent;
 }
+
+/**
+ * Metadata for a loaded content bundle served through the player-facing content API.
+ * Includes version information for both the game manifest and UI manifest.
+ */
+export interface GameContentBundleMetadata {
+  gameId: GameManifestId;
+  manifestVersion: GameManifestVersion;
+  uiManifestVersion?: string;
+  loadedAt: string; // ISO timestamp
+}
+
+

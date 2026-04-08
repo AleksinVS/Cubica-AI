@@ -2,28 +2,33 @@
   "schema_version": "1.0",
   "workflow_version": "v2",
   "project_kind": "cubica-manifest-driven-game-delivery",
-  "block_id": "antarctica-local-play-2026-04-02",
-  "block_goal": "Дать возможность локально запустить и играть в «Антарктику» через канонические `services/runtime-api` + `apps/player-web` без портала/редактора: один удобный запуск из корня репозитория + устойчивый UX при рестарте runtime (in-memory sessions).",
+  "block_id": "antarctica-truth-model-contracts-2026-04-08",
+  "block_goal": "Закрыть следующий приоритетный gap из `NEXT_STEPS.md`: стабилизировать Antarctica truth model через bounded completion contracts layer (`session`/`runtime`/`manifest`), явное моделирование core entities в `games/antarctica/game.manifest.json` и каноническую schema validation без возврата к manual legacy parsing или ad hoc contract drift.",
+  "expected_execution_time": {
+    "estimate": "4-6 hours",
+    "confidence": "medium",
+    "notes": "Основное время уйдёт на bounded contract freeze, extraction-backed entity modeling и negative validation coverage. Поллинг Оркестратора должен учитывать, что task `task-populate-antarctica-core-entities` может идти дольше остальных из-за extraction/verification loop."
+  },
   "plan_status": {
     "review_required": false,
     "execution_ready": true
   },
-  "development_method": "Spec -> scaffold -> harden",
-  "method_selection_rationale": "Нужен bounded путь “запустил и играю”: фиксируем минимальные DX/UX критерии local play, делаем небольшой runner + UX reset/resilience, затем хардним проверками и тестами.",
+  "development_method": "Contract-first / schema-first",
+  "method_selection_rationale": "Это следующий приоритет из `NEXT_STEPS.md`, и он касается shared contracts + manifest validation boundary. До дальнейшего расширения player-web или новых runtime slices полезнее сначала стабилизировать договорённый contract surface и validation path, чтобы исключить semantic drift между `packages/contracts/*`, `games/antarctica/game.manifest.json` и `services/runtime-api`. Дополнительная mixed-method complexity здесь не нужна.",
   "acceptance_model": {
-    "plan_review": "Optional (архитектурное ревью без утверждения плана).",
-    "task_acceptance": "Executor owns task-level acceptance (TASK_ACCEPTANCE + EXECUTOR_REPORT).",
-    "block_acceptance": "PM owns block acceptance after checks pass."
+    "plan_review": "Optional: отдельный PM plan review не требуется, пока блок остаётся внутри уже принятых ADR-018/019/024 и не вводит новый reusable engine/schema platform.",
+    "task_acceptance": "Executor owns task-level acceptance through `TASK_ACCEPTANCE.md`, `EXECUTOR_REPORT.md`, `CONTRACT_INDEX.md` updates during freeze, and compact correction logs.",
+    "block_acceptance": "PM owns block acceptance after contract freeze is explicit, manifest schema validation is proven by checks, and PM can issue `CONFORMANCE_REPORT.md` plus `PM_DECISION_PACKET.md`."
   },
   "architect_instructions_for_orchestrator": [
-    "Выполняй задачи строго по порядку и не расширяй блок.",
-    "Loopback: материализуй и диспатчь только rework задачу `task-rework-antarctica-one-command-runner-path-resolution` (не перезапускай уже принятые задачи без явной команды пользователя).",
-    "Сохраняй ADR-019 boundary: player-web получает контент только через runtime API/DTO.",
-    "Не трогай gameplay/manifest/контракты: это не про перенос механики, а про local play DX/UX.",
-    "После задач запроси PM block_acceptance.",
-    "Блок закрывается коммитом; если блокер — эскалация пользователю и пауза."
+    "Материализуй task-packets только из этого плана и не переписывай требования своими словами.",
+    "Держи порядок строго таким: `task-freeze-session-runtime-dtos` -> `task-freeze-manifest-contract-types` -> `task-populate-antarctica-core-entities` -> `task-add-manifest-schema-validation`.",
+    "Не диспатчь implement/conformance tasks, пока в block workspace не обновлён `CONTRACT_INDEX.md` после двух freeze-задач.",
+    "Перед dispatch последующих задач прогоняй `detect_contract_drift.py` по проектному workflow path; если он показывает drift, останавливайся и эскалируй к Architect.",
+    "Для polling cadence опирайся на `expected_execution_time` блока и `expected_duration` каждой задачи: extraction/validation tasks допускают более длинный idle window, чем чистый contract freeze.",
+    "После завершения всех задач запроси у PM `CONFORMANCE_REPORT.md` и `PM_DECISION_PACKET.md`; так как slice имеет `risk_class = R2`, после `status = accepted` обязан появиться `ARCHITECT_FINAL_ACCEPTANCE.json` перед полным закрытием блока."
   ],
-  "task_packet_path_template": ".tmp/agent-workflow/antarctica-local-play-2026-04-02/task-packets/{task_id}.json",
+  "task_packet_path_template": ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/task-packets/{task_id}.json",
   "role_runtime_bindings": [
     {
       "role": "architect",
@@ -46,7 +51,7 @@
       "role": "orchestrator",
       "launcher": "codex-subagent",
       "provider": "openai",
-      "model": "gpt-5.4-mini",
+      "model": "gpt-5.2",
       "tier": "medium",
       "reasoning_effort": "medium",
       "fallbacks": []
@@ -64,276 +69,475 @@
       "role": "executor",
       "launcher": "droid",
       "provider": "minimax",
-      "model": "custom:MiniMax-M2.7",
+      "model": "MiniMax-M2.7",
       "tier": "medium",
       "reasoning_effort": "high",
       "fallbacks": []
     }
   ],
   "method_role_runtime_bindings": {},
+  "block_methodology_mode": "single-method",
+  "methods_used": [
+    "Contract-first / schema-first"
+  ],
   "global_rules": [
-    "Цель блока — local play DX/UX, не перенос механики.",
-    "Не подключать портал/редактор и не тянуть их зависимости в путь запуска.",
-    "Не менять `games/antarctica/game.manifest.json` и runtime gameplay routing/контракты.",
-    "Runner делать без новых npm-зависимостей (Node child_process)."
+    "Использовать Context7, когда нужно подтвердить актуальные best practices для schema/versioning/contract validation; для этого блока ориентир — JSON Schema guidance: явный schema dialect (`$schema`), versioned contract surface и отделение schema concerns от instance data.",
+    "Сохранять ADR-018 truth model: исполнимая логика заканчивается в `games/antarctica/game.manifest.json`.",
+    "Сохранять ADR-019 ownership boundary: `runtime-api` остаётся owner загрузки игрового контента и player-facing projection; этот блок не возвращает direct reads из `player-web`.",
+    "Не вводить generic gameplay engine, selector system, reusable DSL или новый cross-game schema platform без подтверждённого повторного use case и новой architect escalation.",
+    "Для legacy Antarctica source использовать только scripts-based extraction и targeted CLI; whole-file manual prose reading `draft/Antarctica/GameFull.html` запрещён."
   ],
   "global_acceptance": [
-    "Есть один root-level запуск Antarctica (например `npm run antarctica:play`), который поднимает runtime-api и player-web, и он запускается корректно (без path-resolution бага в runner).",
-    "В player-web есть явная кнопка reset/new game, которая создаёт новую сессию.",
-    "После рестарта runtime player-web сам восстанавливается (очищает stale sessionId и создаёт новую сессию).",
-    "`npm run verify:canonical` проходит."
+    "`packages/contracts/session`, `packages/contracts/runtime` и `packages/contracts/manifest` покрывают bounded current consumer surface без скрытых ad hoc shapes.",
+    "`games/antarctica/game.manifest.json` содержит явные core entities, подтверждённые extraction-driven evidence path.",
+    "Canonical manifest validation rejects invalid shape and accepts the canonical Antarctica manifest.",
+    "`npm run verify:runtime-api`, `npm run verify:antarctica-extraction` и `npm run verify:canonical` подтверждают delivered boundary.",
+    "Docs/handoff не противоречат обновлённой truth-model и validation boundary."
   ],
   "global_invariants": [
-    "ADR-019: player-web не читает `games/*` напрямую.",
-    "Не расширять блок на persistence и интеграции.",
-    "Правки только в разрешённых файлах; иначе — эскалация."
+    "Исполнимая gameplay logic остаётся в `games/antarctica/game.manifest.json`.",
+    "Legacy HTML остаётся factual extraction source, но не source of truth.",
+    "`services/runtime-api` + `apps/player-web` остаются каноническим runnable slice.",
+    "`packages/contracts/ai` не расширяется в этом блоке.",
+    "Никакой новый ADR не появляется, если блок остаётся внутри существующих architecture decisions ADR-018/019/024."
   ],
   "risk_policy": {
-    "R0": "docs + runner scripts only",
-    "R1": "player-web UX boot/reset changes + runner",
-    "R2": "any manifest/runtime/contracts change"
+    "R0": "локальная docs/mechanical cleanup без изменения contract or validation behavior",
+    "R1": "bounded truth-model extension внутри существующего manifest/runtime model без изменения reusable public contract ownership",
+    "R2": "shared contract surface change, schema validation boundary change, reusable abstraction attempt, or ownership drift across packages/runtime"
   },
   "escalation_matrix": {
-    "runner_needs_new_dependency": "architect",
-    "needs_manifest_or_runtime_change": "architect",
-    "verify_canonical_fails": "architect"
+    "needs_breaking_player_or_runtime_contract": "architect",
+    "needs_new_generic_schema_platform": "architect",
+    "extraction_requires_manual_whole_file_reading": "architect",
+    "contract_drift_detected_after_freeze": "architect",
+    "verify_canonical_fails_due_to_unrelated_existing_issue": "architect",
+    "runtime_binding_unavailable": "architect"
   },
   "method_workflow": [
-    "Spec: зафиксировать DX/UX критерии local play.",
-    "Scaffold: runner и root script.",
-    "Harden: UX resilience + тесты + verify:canonical."
+    "Freeze: зафиксировать bounded session/runtime/manifest contracts и свести их в `CONTRACT_INDEX.md`.",
+    "Implement: описать core Antarctica entities в canonical manifest, используя только scripts-based extraction path.",
+    "Conformance: включить schema validation и negative/positive checks against frozen contract surface.",
+    "Accept: PM подтверждает conformance, после чего Architect делает final acceptance, потому что это R2 block."
   ],
   "method_phases": [
     {
-      "phase_id": "scaffold",
-      "description": "Runner: runtime-api + player-web одной командой."
+      "phase_id": "freeze",
+      "description": "Bounded contract freeze для `session`, `runtime`, `manifest` и explicit contract index."
     },
     {
-      "phase_id": "harden",
-      "description": "Session resilience + кнопка reset/new game + тесты."
+      "phase_id": "implement",
+      "description": "Manifest truth-model sync with extraction-backed Antarctica core entities."
+    },
+    {
+      "phase_id": "conformance",
+      "description": "Canonical schema validation and proof that implementation matches the frozen contract."
     }
   ],
   "method_controls": [
-    "Жёсткие completion criteria включать сразу в first-pass executor prompt.",
-    "Блок завершать коммитом; блокер — эскалация пользователю."
+    "Никакая implementation task не стартует, пока freeze-phase contracts не сведены в `CONTRACT_INDEX.md`.",
+    "После freeze phase Orchestrator обязан убедиться, что `detect_contract_drift.py` не сигнализирует drift перед следующими dispatch steps.",
+    "PM не делает block acceptance, пока не существует `CONFORMANCE_REPORT.md` и не пройдены required checks.",
+    "Если `PM_DECISION_PACKET.status != accepted`, Architect final acceptance не создаётся."
   ],
   "method_artifacts": [
+    "CONTRACT_INDEX.md",
+    "CONFORMANCE_REPORT.md",
     "TASK_ACCEPTANCE.md",
     "EXECUTOR_REPORT.md",
     "AGENT_CORRECTION_LOG.executor.{scope_id}.md",
-    "PM_DECISION_PACKET.md"
+    "PM_DECISION_PACKET.md",
+    "ARCHITECT_FINAL_ACCEPTANCE.json"
   ],
   "method_iteration_limit": 1,
+  "method_freeze_rules": [
+    "Freeze current bounded DTO/API surface before modeling new manifest entities.",
+    "Manifest schema validation must align with the frozen manifest contract instead of introducing a second competing contract truth.",
+    "Any breaking contract rename or ownership change requires architect escalation instead of silent implementation."
+  ],
   "technology_stack": [
-    "Node.js/npm workspaces",
-    "services/runtime-api",
-    "apps/player-web (Next.js)"
+    "TypeScript workspace packages in `packages/contracts/*`",
+    "Node-based `services/runtime-api` modular monolith",
+    "Antarctica manifest/content bundle in `games/antarctica/`",
+    "Root extraction scripts in `scripts/antarctica/`",
+    "Root verify scripts in `package.json`"
   ],
   "technology_rules": [
-    "Runner реализовать как `scripts/antarctica/run-local-play.mjs` без новых зависимостей.",
-    "runtime-api порт по умолчанию 3001 (или `PORT` env).",
-    "player-web использует proxy routes `/api/runtime/*` и `RUNTIME_API_URL`."
+    "Предпочитать additive contract extension текущих package exports вместо breaking rename, если это не ухудшает ясность.",
+    "Держать canonical runtime validation в `services/runtime-api/src/modules/content/manifestValidation.ts` или рядом с ним; не разводить parallel validator truth в unrelated folders.",
+    "Если появляется schema file, он должен быть явно привязан к текущему manifest contract and versioning story.",
+    "Не добавлять новые third-party libraries, если текущий bounded validation path может покрыть задачу штатными средствами проекта.",
+    "Extraction tooling использовать как evidence generator, а не как источник новой reusable platform abstraction."
   ],
   "adr_requirements": [
-    "ADR не требуется, пока изменения остаются в DX/UX и не меняют архитектурные границы.",
-    "Если потребуется менять boundary или контракты — остановиться и эскалировать."
+    "Новый ADR не требуется, пока блок остаётся bounded implementation of existing ADR-018, ADR-019, and ADR-024.",
+    "Если schema validation внезапно требует нового reusable platform-wide rule engine или ownership shift, остановиться и эскалировать вместо тихого расширения блока.",
+    "Если меняется practical handoff about runtime-owned validation boundary, синхронизировать `services/runtime-api/HANDOFF.md` и `NEXT_STEPS.md`."
   ],
   "slices": [
     {
-      "slice_id": "slice-antarctica-local-play",
-      "title": "Antarctica local play",
-      "goal": "Одна команда запуска + устойчивый UX reset/resume при рестарте runtime.",
-      "risk_class": "R1",
+      "slice_id": "slice-antarctica-truth-model-contracts",
+      "title": "Antarctica truth model contracts and schema",
+      "goal": "Стабилизировать следующий приоритетный truth-model boundary: shared contracts, explicit Antarctica core entities и canonical schema validation для `game.manifest.json`.",
+      "risk_class": "R2",
       "depends_on": [],
       "read_files": [
-        "NEXT_STEPS.md",
+        "AGENTS.md",
+        "PROJECT_OVERVIEW.md",
+        "PROJECT_STRUCTURE.md",
         "docs/architecture/PROJECT_ARCHITECTURE.md",
+        "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md",
+        "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
+        "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md",
+        "docs/architecture/gameplay-slices/README.md",
+        "repo-manifest.json",
+        "NEXT_STEPS.md",
+        "services/runtime-api/HANDOFF.md",
+        "package.json",
+        "packages/contracts/session/src/index.ts",
+        "packages/contracts/runtime/src/index.ts",
+        "packages/contracts/manifest/src/index.ts",
+        "services/runtime-api/src/modules/content/manifestLoader.ts",
+        "services/runtime-api/src/modules/content/manifestValidation.ts",
+        "services/runtime-api/src/modules/content/contentService.ts",
+        "services/runtime-api/src/modules/player-api/httpServer.ts",
+        "services/runtime-api/tests/runtime-api.integration.ts",
+        "games/antarctica/game.manifest.json",
+        "draft/Antarctica/README.md",
+        "scripts/antarctica/extract-opening.js",
+        "scripts/antarctica/verify-extraction.js"
+      ],
+      "allowed_files": [
+        "packages/contracts/session/**",
+        "packages/contracts/runtime/**",
+        "packages/contracts/manifest/**",
+        "services/runtime-api/src/modules/content/**",
+        "services/runtime-api/src/modules/player-api/**",
+        "services/runtime-api/src/modules/session/**",
+        "services/runtime-api/tests/**",
+        "games/antarctica/game.manifest.json",
+        "scripts/antarctica/**",
+        "docs/architecture/schemas/**",
+        "services/runtime-api/HANDOFF.md",
+        "NEXT_STEPS.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/CONTRACT_INDEX.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/EXECUTOR_REPORT.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/TASK_ACCEPTANCE.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/AGENT_CORRECTION_LOG.executor.task-freeze-session-runtime-dtos.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/AGENT_CORRECTION_LOG.executor.task-freeze-manifest-contract-types.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/AGENT_CORRECTION_LOG.executor.task-populate-antarctica-core-entities.md",
+        ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/AGENT_CORRECTION_LOG.executor.task-add-manifest-schema-validation.md"
+      ],
+      "forbidden_moves": [
+        "Не читать `draft/Antarctica/GameFull.html` целиком вручную как prose source.",
+        "Не вводить generic gameplay engine, selector system, contract DSL или reusable schema platform.",
+        "Не менять ownership boundary из ADR-019 и не возвращать direct `games/*` reads в `player-web`.",
+        "Не расширять `packages/contracts/ai` или unrelated platform surfaces.",
+        "Не создавать второй конкурирующий source of truth для manifest shape вне frozen contracts + canonical validator path."
+      ],
+      "required_docs": [
+        "docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md",
         "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
         "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md",
         "services/runtime-api/HANDOFF.md",
-        "services/runtime-api/src/modules/player-api/httpServer.ts",
-        "apps/player-web/README.md",
-        "apps/player-web/src/components/antarctica-player.tsx",
-        "apps/player-web/src/components/antarctica-player.test.tsx"
-      ],
-      "allowed_files": [
-        "package.json",
-        "scripts/antarctica/run-local-play.mjs",
-        "apps/player-web/README.md",
-        "apps/player-web/src/components/antarctica-player.tsx",
-        "apps/player-web/src/components/antarctica-player.test.tsx"
-      ],
-      "forbidden_moves": [
-        "Не менять `games/antarctica/game.manifest.json` и runtime gameplay routing.",
-        "Не добавлять портал/редактор и persistence.",
-        "Не добавлять новые npm-зависимости ради runner."
-      ],
-      "required_docs": [
-        "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
-        "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md"
+        "NEXT_STEPS.md",
+        "draft/Antarctica/README.md"
       ],
       "required_checks": [
+        "npm run verify:runtime-api",
+        "npm run verify:antarctica-extraction",
         "npm run verify:canonical"
       ],
       "control_points": [
-        "Root-level `npm run antarctica:play` запускает runtime-api + player-web.",
-        "UI: кнопка reset/new game создаёт новую сессию.",
-        "Resilience: stale sessionId после рестарта runtime приводит к авто-созданию новой сессии."
+        "`CONTRACT_INDEX.md` explicitly names the frozen session/runtime/manifest contract surfaces before later tasks continue.",
+        "Antarctica entity modeling is backed by extraction commands, not manual legacy prose interpretation.",
+        "Schema validation is wired into the canonical runtime-owned validation path, not left as docs-only guidance.",
+        "Public/runtime contract evolution remains additive and auditable."
       ],
       "mandatory_tests": [
-        "player-web: stale session fallback + reset/new game"
+        "runtime-api contract tests for DTO and validation boundaries",
+        "negative validation tests for malformed manifest/action/content/design shapes",
+        "extraction verification proving script-based Antarctica evidence path",
+        "canonical verification across runtime-api and player-web consumers"
       ],
       "acceptance_criteria": [
-        "Одна команда запуска из корня",
-        "Стабильный reset/resilience UX",
-        "verify:canonical проходит"
+        "Bounded DTO coverage exists in `packages/contracts/session`, `packages/contracts/runtime`, and `packages/contracts/manifest` for current consumers.",
+        "`games/antarctica/game.manifest.json` includes explicit core entities aligned with extracted Antarctica source facts.",
+        "Canonical validation accepts the real Antarctica manifest and rejects invalid shapes.",
+        "Required verification commands pass and docs/handoff accurately describe the delivered truth-model boundary."
       ],
       "executor_mode": "senior",
       "tasks": [
         {
-          "task_id": "task-antarctica-one-command-runner",
+          "task_id": "task-freeze-session-runtime-dtos",
           "executor_level": "senior",
-          "goal": "Добавить root-level команду, которая поднимает `services/runtime-api` и `apps/player-web` вместе без новых зависимостей.",
+          "goal": "Довести `packages/contracts/session` и `packages/contracts/runtime` до полного bounded набора DTO для session/action/result, который уже нужен текущим consumer-ам `runtime-api` и `player-web`.",
+          "expected_duration": "45-90 minutes",
           "inputs": [
-            "workspace scripts",
-            "runtime-api default port behavior",
-            "player-web README"
+            "Priority 1 and Priority 3 items for `packages/contracts/session` and `packages/contracts/runtime` from `NEXT_STEPS.md`.",
+            "Current HTTP/session boundaries in `services/runtime-api`.",
+            "Current player-facing DTO usage in `apps/player-web` and `services/runtime-api`."
           ],
           "read_files": [
-            "package.json",
-            "services/runtime-api/package.json",
-            "apps/player-web/package.json",
+            "packages/contracts/session/src/index.ts",
+            "packages/contracts/runtime/src/index.ts",
             "services/runtime-api/src/modules/player-api/httpServer.ts",
-            "apps/player-web/README.md"
+            "services/runtime-api/src/modules/session/inMemorySessionStore.ts",
+            "services/runtime-api/src/bootstrap.ts",
+            "services/runtime-api/tests/runtime-api.integration.ts",
+            "apps/player-web/src/lib/antarctica.ts",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md"
           ],
           "write_files": [
-            "package.json",
-            "scripts/antarctica/run-local-play.mjs",
-            "apps/player-web/README.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/EXECUTOR_REPORT.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/TASK_ACCEPTANCE.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/AGENT_CORRECTION_LOG.executor.task-antarctica-one-command-runner.md"
+            "packages/contracts/session/src/index.ts",
+            "packages/contracts/runtime/src/index.ts",
+            "services/runtime-api/src/modules/player-api/httpServer.ts",
+            "services/runtime-api/src/modules/session/**",
+            "services/runtime-api/tests/**",
+            ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/CONTRACT_INDEX.md"
           ],
           "implementation_notes": [
-            "Runner: Node child_process spawn двух процессов; корректная остановка по SIGINT/SIGTERM.",
-            "Передавать env: runtime-api `PORT=3001`, player-web `RUNTIME_API_URL=http://127.0.0.1:3001`.",
-            "Не пытаться авто-открывать браузер."
-          ],
-          "tests_to_write": [],
-          "tests_to_run": [],
-          "deliverables": [
-            "root-level npm script `antarctica:play`",
-            "runner script `scripts/antarctica/run-local-play.mjs`",
-            "обновлённый apps/player-web/README.md"
-          ],
-          "escalate_if": [
-            "runner требует новую npm-зависимость",
-            "нужно менять runtime-api/player-web за пределами allowed_files"
-          ],
-          "runtime_override": {},
-          "runtime_binding": {
-            "role": "executor",
-            "launcher": "droid",
-            "provider": "minimax",
-            "model": "custom:MiniMax-M2.7",
-            "tier": "medium",
-            "reasoning_effort": "high",
-            "fallbacks": []
-          }
-        },
-        {
-          "task_id": "task-player-web-session-resilience",
-          "executor_level": "senior",
-          "goal": "Добавить устойчивость к stale sessionId (после рестарта runtime) и кнопку reset/new game в AntarcticaPlayer + тесты.",
-          "inputs": [
-            "AntarcticaPlayer boot logic (localStorage sessionId + GET /sessions/:id)",
-            "runtime-api sessions in-memory (restart clears sessions)"
-          ],
-          "read_files": [
-            "apps/player-web/src/components/antarctica-player.tsx",
-            "apps/player-web/src/components/antarctica-player.test.tsx"
-          ],
-          "write_files": [
-            "apps/player-web/src/components/antarctica-player.tsx",
-            "apps/player-web/src/components/antarctica-player.test.tsx",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/EXECUTOR_REPORT.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/TASK_ACCEPTANCE.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/AGENT_CORRECTION_LOG.executor.task-player-web-session-resilience.md"
-          ],
-          "implementation_notes": [
-            "Если GET /api/runtime/sessions/:id не ok — очистить localStorage и выполнить POST /api/runtime/sessions для новой сессии.",
-            "Добавить кнопку “Новая игра”: очистка localStorage + создание новой сессии.",
-            "Добавить тест: stored id -> GET fail -> POST create -> session установлен.",
-            "В конце прогнать `npm run test --workspace @cubica/player-web` и `npm run verify:canonical`."
+            "Keep the change additive and bounded to current session/action/result consumers; do not introduce `packages/contracts/ai` work in this block.",
+            "Use clear DTO names that match current runtime semantics instead of inventing a generic platform-wide abstraction.",
+            "Document the frozen contract surface in `CONTRACT_INDEX.md` so later tasks and PM conformance work can refer to one canonical contract index."
           ],
           "tests_to_write": [
-            "apps/player-web/src/components/antarctica-player.test.tsx: stale session fallback + reset"
+            "Contract or integration coverage for session/action/result DTO serialization/deserialization where current runtime tests are missing.",
+            "Negative coverage for malformed action/result payloads if the current suite does not already prove rejection."
           ],
           "tests_to_run": [
-            "npm run test --workspace @cubica/player-web",
+            "npm run verify:runtime-api",
             "npm run verify:canonical"
           ],
           "deliverables": [
-            "устойчивый boot/reset UX",
-            "тесты на boot/reset",
-            "verify:canonical зелёный"
+            "Completed bounded DTO exports in `packages/contracts/session` and `packages/contracts/runtime`.",
+            "Consumer sync in `services/runtime-api` for the frozen DTO names/shapes.",
+            "Updated `CONTRACT_INDEX.md` with the session/runtime contract surface."
           ],
           "escalate_if": [
-            "для устойчивости требуется менять runtime-api или manifest",
-            "правки выходят за allowed_files"
+            "a required DTO change would break the existing `runtime-api` HTTP boundary instead of extending it safely",
+            "the block starts to require `packages/contracts/ai` or a new cross-game contract family",
+            "current consumers disagree on a fundamental session/action/result ownership boundary"
+          ],
+          "development_method": "Contract-first / schema-first",
+          "method_phase": "freeze",
+          "method_step_id": "freeze-session-runtime-dtos",
+          "artifact_expectations": [
+            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
+            "Update `CONTRACT_INDEX.md` with the frozen DTO surface before implementation moves to later tasks."
           ],
           "runtime_override": {},
           "runtime_binding": {
             "role": "executor",
             "launcher": "droid",
             "provider": "minimax",
-            "model": "custom:MiniMax-M2.7",
+            "model": "MiniMax-M2.7",
             "tier": "medium",
             "reasoning_effort": "high",
             "fallbacks": []
           }
         },
         {
-          "task_id": "task-rework-antarctica-one-command-runner-path-resolution",
+          "task_id": "task-freeze-manifest-contract-types",
           "executor_level": "senior",
-          "goal": "Исправить path-resolution bug в `scripts/antarctica/run-local-play.mjs`, из-за которого `npm run antarctica:play` может запускаться не из корня репозитория (ошибочный `REPO_ROOT`).",
+          "goal": "Заполнить `packages/contracts/manifest` типами manifest bundle, action definitions, content metadata и design references, чтобы manifest boundary был явным и version-ready.",
+          "expected_duration": "45-90 minutes",
           "inputs": [
-            "PM packet с описанием бага (REPO_ROOT resolve)",
-            "Текущий `scripts/antarctica/run-local-play.mjs`"
+            "Priority 1 / Priority 3 / Priority 5 manifest-contract items from `NEXT_STEPS.md`.",
+            "Current Antarctica manifest shape and runtime content projection.",
+            "Current design artifact references under `games/antarctica/design/mockups/`."
           ],
           "read_files": [
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/PM_DECISION_PACKET.antarctica-local-play-2026-04-02.md",
-            "scripts/antarctica/run-local-play.mjs",
-            "package.json"
+            "packages/contracts/manifest/src/index.ts",
+            "games/antarctica/game.manifest.json",
+            "games/antarctica/ui/web/ui.manifest.json",
+            "games/antarctica/design/mockups/left-sidebar-6-cards.design.json",
+            "services/runtime-api/src/modules/content/contentService.ts",
+            "services/runtime-api/src/modules/content/manifestValidation.ts",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md"
           ],
           "write_files": [
-            "scripts/antarctica/run-local-play.mjs",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/EXECUTOR_REPORT.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/TASK_ACCEPTANCE.md",
-            ".tmp/agent-workflow/antarctica-local-play-2026-04-02/AGENT_CORRECTION_LOG.executor.task-rework-antarctica-one-command-runner-path-resolution.md"
+            "packages/contracts/manifest/src/index.ts",
+            "services/runtime-api/src/modules/content/**",
+            "services/runtime-api/tests/**",
+            ".tmp/agent-workflow/antarctica-truth-model-contracts-2026-04-08/CONTRACT_INDEX.md"
           ],
           "implementation_notes": [
-            "Сделать минимальную правку: вычислять `REPO_ROOT` как корень репозитория (для файла `scripts/antarctica/run-local-play.mjs` это `resolve(__dirname, \"../..\")`).",
-            "Проверить, что `cwd` у spawn реально указывает на корень репозитория (где лежит root `package.json`).",
-            "Не добавлять новые зависимости.",
-            "Сделать короткую ручную проверку запуска: `npm run antarctica:play` стартует оба процесса и печатает URL; затем корректно завершается по Ctrl+C."
+            "Freeze the manifest contract as a bounded Antarctica-ready contract surface, not as a new generic gameplay DSL or reusable engine layer.",
+            "Keep design references explicit and typed so runtime-owned content projection stays auditable.",
+            "Update the same `CONTRACT_INDEX.md` rather than splitting contract truth across multiple temporary notes."
           ],
-          "tests_to_write": [],
-          "tests_to_run": [],
+          "tests_to_write": [
+            "Contract-level tests or type assertions that prove manifest bundle/action/content/design reference fields are accepted and projected as intended.",
+            "Negative validation coverage for missing or malformed manifest contract fields when not already covered."
+          ],
+          "tests_to_run": [
+            "npm run verify:runtime-api",
+            "npm run verify:canonical"
+          ],
           "deliverables": [
-            "Исправленный runner без path-resolution бага",
-            "Executor report + acceptance artifacts"
+            "Expanded `packages/contracts/manifest` exports for bundle/actions/content/design references.",
+            "Runtime consumer sync for the frozen manifest contract surface.",
+            "Updated `CONTRACT_INDEX.md` covering manifest contract ownership and versioning expectations."
           ],
           "escalate_if": [
-            "Фикс требует изменений вне `scripts/antarctica/run-local-play.mjs`",
-            "Фикс требует новых npm-зависимостей"
+            "the contract work would require a new reusable gameplay engine, selector system, or capability DSL",
+            "a required manifest field cannot be represented additively inside the current ADR-018 truth model",
+            "typed design references require a new ownership boundary beyond ADR-019"
+          ],
+          "development_method": "Contract-first / schema-first",
+          "method_phase": "freeze",
+          "method_step_id": "freeze-manifest-contract-types",
+          "artifact_expectations": [
+            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
+            "Ensure `CONTRACT_INDEX.md` clearly separates manifest contract fields from runtime instance data."
           ],
           "runtime_override": {},
           "runtime_binding": {
             "role": "executor",
             "launcher": "droid",
             "provider": "minimax",
-            "model": "custom:MiniMax-M2.7",
+            "model": "MiniMax-M2.7",
+            "tier": "medium",
+            "reasoning_effort": "high",
+            "fallbacks": []
+          }
+        },
+        {
+          "task_id": "task-populate-antarctica-core-entities",
+          "executor_level": "senior",
+          "goal": "Явно описать в `games/antarctica/game.manifest.json` основные сущности `Antarctica`, используя extraction scripts и targeted CLI вместо ручного whole-file reading legacy HTML.",
+          "expected_duration": "1-2 hours",
+          "inputs": [
+            "Priority 1 truth-model item for explicit Antarctica entities in `game.manifest.json`.",
+            "Extraction rules and current legacy-structure reference from `draft/Antarctica/README.md`.",
+            "Current extraction scripts and the current bounded opening-flow manifest state."
+          ],
+          "read_files": [
+            "games/antarctica/game.manifest.json",
+            "draft/Antarctica/README.md",
+            "scripts/antarctica/extract-opening.js",
+            "scripts/antarctica/verify-extraction.js",
+            "package.json",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md"
+          ],
+          "write_files": [
+            "games/antarctica/game.manifest.json",
+            "services/runtime-api/tests/**",
+            "scripts/antarctica/**",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md"
+          ],
+          "implementation_notes": [
+            "Use `npm run antarctica:extract-opening`, `npm run verify:antarctica-extraction`, and targeted `npm run antarctica:extract-step -- --line <lineIndex> --step <stepIndex>` when detailed evidence is needed.",
+            "Do not manually read `draft/Antarctica/GameFull.html` end-to-end as prose; treat it only as a factual extraction source through scripts.",
+            "Model only explicit Antarctica entities that are needed by the canonical truth model; do not introduce a generic engine-level abstraction."
+          ],
+          "tests_to_write": [
+            "Evidence-driven manifest tests or fixtures proving the new core entities map to extracted Antarctica source facts.",
+            "Negative coverage for entity omissions or malformed references if the extraction/validation suite does not already fail on them."
+          ],
+          "tests_to_run": [
+            "npm run antarctica:extract-opening",
+            "npm run verify:antarctica-extraction",
+            "npm run verify:runtime-api"
+          ],
+          "deliverables": [
+            "Updated `games/antarctica/game.manifest.json` with explicit core entity descriptions aligned to the current truth model.",
+            "Extraction evidence and/or verification updates that prove the entities come from script-based extraction, not manual prose reading.",
+            "Handoff/docs sync if the entity surface changes the practical truth-model explanation."
+          ],
+          "escalate_if": [
+            "the next entity step would require manual whole-file interpretation of `GameFull.html`",
+            "the modeled entities imply a new reusable engine abstraction instead of bounded Antarctica data",
+            "extraction scripts do not expose enough targeted evidence to continue safely"
+          ],
+          "development_method": "Contract-first / schema-first",
+          "method_phase": "implement",
+          "method_step_id": "implement-antarctica-core-entities",
+          "artifact_expectations": [
+            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
+            "Reference the exact extraction commands used so PM can reproduce the evidence path."
+          ],
+          "runtime_override": {},
+          "runtime_binding": {
+            "role": "executor",
+            "launcher": "droid",
+            "provider": "minimax",
+            "model": "MiniMax-M2.7",
+            "tier": "medium",
+            "reasoning_effort": "high",
+            "fallbacks": []
+          }
+        },
+        {
+          "task_id": "task-add-manifest-schema-validation",
+          "executor_level": "senior",
+          "goal": "Ввести schema validation для `games/antarctica/game.manifest.json` и встроить её в канонический runtime validation/tooling path без ad hoc drift.",
+          "expected_duration": "45-90 minutes",
+          "inputs": [
+            "Priority 1 item for `game.manifest.json` schema validation.",
+            "Frozen session/runtime/manifest contract surface from earlier tasks.",
+            "Current runtime validator in `services/runtime-api/src/modules/content/manifestValidation.ts`."
+          ],
+          "read_files": [
+            "services/runtime-api/src/modules/content/manifestValidation.ts",
+            "services/runtime-api/src/modules/content/manifestLoader.ts",
+            "services/runtime-api/tests/runtime-api.integration.ts",
+            "packages/contracts/manifest/src/index.ts",
+            "games/antarctica/game.manifest.json",
+            "docs/architecture/schemas/manifest-structure.md",
+            "package.json",
+            "NEXT_STEPS.md"
+          ],
+          "write_files": [
+            "services/runtime-api/src/modules/content/manifestValidation.ts",
+            "services/runtime-api/src/modules/content/**",
+            "services/runtime-api/tests/**",
+            "docs/architecture/schemas/**",
+            "services/runtime-api/HANDOFF.md",
+            "NEXT_STEPS.md"
+          ],
+          "implementation_notes": [
+            "Keep validation separate from instance data and prefer a stable versioned schema boundary; current Context7 guidance for JSON Schema planning is to declare the schema dialect explicitly via `$schema` and keep schema concerns distinct from validated instance documents.",
+            "Prefer additive validation aligned with the frozen manifest contract instead of a second independent schema truth source.",
+            "Do not introduce a new external validation platform or generic compiler tool unless the current bounded validator path is provably insufficient."
+          ],
+          "tests_to_write": [
+            "Negative validation tests for missing required fields, malformed action definitions, and invalid content/design references.",
+            "Positive validation coverage for the canonical Antarctica manifest after entity modeling."
+          ],
+          "tests_to_run": [
+            "npm run verify:runtime-api",
+            "npm run verify:antarctica-extraction",
+            "npm run verify:canonical"
+          ],
+          "deliverables": [
+            "Canonical manifest schema validation wired into `runtime-api` validation/tooling.",
+            "A test suite that proves both acceptance of the canonical manifest and rejection of invalid shapes.",
+            "Docs/handoff sync describing the practical validation boundary."
+          ],
+          "escalate_if": [
+            "validation requires a new public endpoint family or a new reusable schema platform decision",
+            "the canonical manifest cannot be validated without contradicting the frozen contract surface",
+            "the work would require a new ADR for cross-module ownership change"
+          ],
+          "development_method": "Contract-first / schema-first",
+          "method_phase": "conformance",
+          "method_step_id": "conformance-manifest-schema-validation",
+          "artifact_expectations": [
+            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
+            "Leave `CONFORMANCE_REPORT.md` to PM, but provide enough facts and negative-case evidence for PM to write it."
+          ],
+          "runtime_override": {},
+          "runtime_binding": {
+            "role": "executor",
+            "launcher": "droid",
+            "provider": "minimax",
+            "model": "MiniMax-M2.7",
             "tier": "medium",
             "reasoning_effort": "high",
             "fallbacks": []

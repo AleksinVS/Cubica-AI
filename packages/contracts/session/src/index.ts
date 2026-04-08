@@ -91,3 +91,24 @@ export interface SessionStorePort<TState = unknown> {
 export type SessionSnapshot<TState = unknown> = SessionRecord<TState>;
 export type CreateSessionCommand<TState = unknown> = CreateSessionInput<TState>;
 export type DispatchActionCommand = DispatchActionInput;
+
+/**
+ * Bounded HTTP response shape for session creation and retrieval.
+ * Covers current `POST /sessions` and `GET /sessions/:id` consumer surface.
+ */
+export interface SessionResponse<TState = unknown> {
+  sessionId: SessionId;
+  gameId: string;
+  version: SessionStateVersion;
+  state: TState;
+}
+
+/**
+ * Bounded HTTP response shape for action dispatch.
+ * Covers current `POST /actions` consumer surface.
+ */
+export interface ActionResponse<TState = unknown> {
+  sessionId: SessionId;
+  version: SessionStateVersion;
+  state: TState;
+}

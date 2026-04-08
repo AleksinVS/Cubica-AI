@@ -1,4 +1,5 @@
 export type {
+  ActionResponse,
   CreateSessionCommand,
   CreateSessionInput,
   CreateSessionRequest,
@@ -15,6 +16,7 @@ export type {
   SessionLockStatus,
   SessionRecord,
   SessionRecoveryResult,
+  SessionResponse,
   SessionSnapshot,
   SessionStateVersion,
   SessionStorePort
