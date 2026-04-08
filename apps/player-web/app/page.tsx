@@ -11,6 +11,7 @@ export default async function Page() {
       runtimeApiUrl={getRuntimeApiUrl()}
       content={content}
       mockups={content.mockups}
+      antarcticaUi={content.antarcticaUi}
     />
   );
 }

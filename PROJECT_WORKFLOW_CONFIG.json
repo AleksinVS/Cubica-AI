@@ -53,7 +53,7 @@
       "role": "orchestrator",
       "launcher": "codex-subagent",
       "provider": "openai",
-      "model": "gpt-5.4-mini",
+      "model": "gpt-5.2",
       "tier": "medium",
       "reasoning_effort": "medium",
       "fallbacks": []

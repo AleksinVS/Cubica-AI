@@ -3,7 +3,7 @@
     "id": "cubica-monorepo",
     "name": "Cubica",
     "status": "actual",
-    "last_verified_at": "2026-03-21",
+    "last_verified_at": "2026-04-08",
     "source_of_truth": [
       "NEXT_STEPS.md",
       "services/runtime-api/HANDOFF.md",
@@ -138,6 +138,14 @@
         "contracts.manifest",
         "contracts.session"
       ]
+    },
+    {
+      "id": "app.player-web.assets",
+      "kind": "asset-bundle",
+      "path": "apps/player-web/public/images",
+      "status": "actual",
+      "owner": "frontend-platform",
+      "note": "Canonical Antarctica UI assets used by the manifest-driven renderer."
     },
     {
       "id": "repo.next-steps",

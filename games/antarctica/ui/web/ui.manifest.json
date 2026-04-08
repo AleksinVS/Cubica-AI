@@ -147,62 +147,128 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "cards-container"
+              "cssClass": "main-content-area"
             },
             "children": [
               {
-                "type": "cardComponent",
-                "id": "card-requestServer",
+                "type": "areaComponent",
                 "props": {
-                  "text": "Отправить команду requestServer (remote) или просто кликнуть (local)."
+                  "cssClass": "cards-container"
                 },
-                "actions": {
-                  "onClick": {
-                    "command": "requestServer",
-                    "payload": {}
-                  }
-                }
-              },
-              {
-                "type": "buttonComponent",
-                "id": "btn-hint",
-                "props": {
-                  "caption": "Подсказка"
-                },
-                "actions": {
-                  "onClick": {
-                    "command": "showHint",
-                    "payload": {}
-                  }
-                }
-              },
-              {
-                "type": "buttonComponent",
-                "id": "btn-journal",
-                "props": {
-                  "caption": "Журнал"
-                },
-                "actions": {
-                  "onClick": {
-                    "command": "showHistory",
-                    "payload": {}
-                  }
-                }
-              },
-              {
-                "type": "buttonComponent",
-                "id": "btn-left",
-                "props": {
-                  "caption": "Левый сайдбар"
-                },
-                "actions": {
-                  "onClick": {
-                    "command": "showScreenWithLeftSideBar",
-                    "payload": {
-                      "fixtureKey": "leftsidebar"
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "card-1",
+                    "props": {
+                      "text": "Антарктика — это огромный мир, скрытый под толщей льда. Мы живем здесь тысячелетиями, но мир меняется."
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-2",
+                    "props": {
+                      "text": "Наши предки оставили нам легенды об устойчивости айсберга, но Федор заметил неладное. Трещина растет."
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-3",
+                    "props": {
+                      "text": "Совет пингвинов пока спорит, но время уходит. Нужно действовать быстро, пока лед не тронулся."
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-4",
+                    "props": {
+                      "text": "Мы можем попытаться укрепить наш дом, но Профессор считает, что это лишь отсрочит неизбежное."
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-5",
+                    "props": {
+                      "text": "Слухи о чайках и новых землях кажутся сказкой, но что если это наш единственный шанс на спасение?"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-6",
+                    "props": {
+                      "text": "Каждый пингвин должен сделать выбор. Остаться и верить в чудо, или отправиться в неизвестность."
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
                     }
                   }
-                }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-hint",
+                    "props": {
+                      "caption": "Подсказка"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHint",
+                        "payload": {}
+                      }
+                    }
+                  }
+                ]
               }
             ]
           }

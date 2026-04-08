@@ -41,43 +41,23 @@ The app does not talk to `runtime-api` directly from the browser. It proxies req
 
 Those routes forward to `RUNTIME_API_URL` or `http://127.0.0.1:3001` by default.
 
-## Content loading
+## Content loading & Rendering
 
 The app loads game content through the player-facing content API (`GET /api/runtime/player-content/:gameId`) which proxies to `runtime-api`'s `GET /games/:gameId/player-content` endpoint. This follows ADR-019: `runtime-api` is the sole owner of loading `games/*` content, and `player-web` consumes it through a typed DTO contract.
 
-The current bounded Antarctica delivery slice uses structured `content.antarctica` from `games/antarctica/game.manifest.json` for:
+The player-web supports two rendering paths for Antarctica:
+1. **Manifest-Driven S1 Renderer**: For the opening screen (`S1`), the UI is rendered dynamically from a bounded UI manifest provided by the `runtime-api` (see `antarcticaUi` in the DTO). This follows the `left-sidebar-6-cards` mockup design with manifest-driven layout, metric bindings, and action dispatch.
+2. **Specialized Resolver Renderer**: For other scenes (boards `1..70`, infos `i0..i21`, team-selection), the player uses a structured resolver logic (`src/lib/antarctica.ts`) to map session state to structured UI components.
 
-- intro info `i0`
-- first board `1..6`
-- info `i7`
-- second board `7..12`
-- info `i8`
-- third board `13..18`
-- info `i9`
-- team-selection scene at step `15`
-- info `i10`
-- fourth board `19..24`
-- info `i11`
-- fifth board `25..30`
-- info `i12`
-- sixth board `31..36`
-- info `i13`
-- seventh board `37..42`
-- info `i14`
-- info `i14_2`
-- eighth board `43..48`
-- info `i15`
-- ninth board `49..54`
-- info `i16`
-- tenth board `55..60`
-- info `i17`
-- eleventh board `61..66`
-- info `i18`
-- twelfth board `67..70`
-- info `i19` / `i19_1` (variant routing based on runtime activeInfoId)
-- info `i20`
-- info `i21` (terminal ending)
+`player-web` combines that player-facing content with the live session snapshot (`timeline`, `selectedCardId`, metrics, card flags, etc.) to render the current scene. Board card rendering respects `flags.cards[cardId].available === false`, so locked or alt-swap cards stay hidden until runtime exposes them. For steps that are not modeled yet in the content DTO, the player falls back to the global action catalog.
 
-`player-web` combines that static player-facing content with the live session snapshot (`timeline`, `selectedCardId`, card flags, team flags, and teamSelection state) to render the current scene. Board card rendering respects `flags.cards[cardId].available === false`, so locked or alt-swap cards stay hidden until runtime exposes them. For steps that are not modeled yet in `content.antarctica`, the player falls back to the global action catalog instead of guessing missing content.
+### Asset Policy
+Static assets (images) are located in `public/images/`. The UI manifest uses root-relative paths (e.g., `/images/arctic-background.png`) which are resolved by the browser.
+
+### Testing
+Run `npm test` to execute Vitest suites:
+- `src/components/antarctica-s1-renderer.test.tsx`: DOM/Snapshot tests for the manifest-driven renderer.
+- `src/components/antarctica-player-dom.test.tsx`: Integration tests for the full AntarcticaPlayer component.
+- `src/components/antarctica-player.test.tsx`: Logic and resolver tests.
 
 It intentionally does not reuse the imported portal drafts as architecture reference.

@@ -67,6 +67,10 @@ Cubica/
 ```text
 apps/
 ├── player-web/             # Канонический web player scaffold для Antarctica
+│   ├── app/                # Next.js App Router (pages and layouts)
+│   ├── public/             # Static assets
+│   │   └── images/         # Canonical Antarctica UI assets (manifest-driven icons and backgrounds)
+│   └── src/                # Player components and logic
 └── portal-nextjs/          # Импортированный набросок портала на Next.js из внешнего репозитория; пока не является канонической архитектурой frontend-слоя
 ```
 

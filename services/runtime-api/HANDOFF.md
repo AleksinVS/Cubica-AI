@@ -80,6 +80,28 @@ The runtime projects `content.antarctica` directly to the player-facing DTO with
 - Integration coverage now proves the normal mainline path to `i13`, one post-base conditional bonus (`opening.card.31` from `cont = 10` to `cont = 11`), the low-stat card-34 loss branch to `loss` step `0` with explicit continuation to `i21`, the low-pro step-23 path where `39` starts locked and unlocks on the third resolved board card, the high-pro step-23 path where `3902` is exposed immediately and preserves `selectedCardId = "3902"`, the step-26 public communication board with both a non-go path (`opening.card.44`) and a conditional go path (`opening.card.48 -> i15 -> step 28`), the step-28 trusted-messengers board with a conditional go path (`opening.card.49 -> i16 -> step 30`), the step-30 acceleration board with both a non-go path (`opening.card.56`) and a conditional go path (`opening.card.60 -> i17 -> step 32`), the step-32 scout-dispatch board with both an unlock path (`opening.card.62 -> unlock 66`) and a bounded go path (`opening.card.66 -> i18 -> step 34`), and the final step-34 aftermath slice with fast-variant `i19_1`, default `i19`, and high-time loss jump to `i34_2`.
 - Bounded player-facing delivery is no longer only a generic action catalog: `game.manifest.json` now includes `content.antarctica` for intro info `i0`, boards `1..6`, `7..12`, `13..18`, `19..24`, `25..30`, `31..36`, `37..42`, `43..48` and `49..54`, team-selection step `15`, plus infos `i7`, `i8`, `i9`, `i10`, `i11`, `i12`, `i13`, `i14`, `i14_2`, `i15` and `i16`, the content endpoint projects it directly, and `player-web` resolves those scenes from the current session snapshot with a safe fallback for unmigrated steps.
 
+### Обновление по S1 UI Manifest Delivery (2026-04-08)
+
+**Статус: ✅ Harden phase complete**
+
+`GET /games/antarctica/player-content` теперь возвращает дополнительное поле `antarcticaUi` с S1 UI manifest данными для bounded manifest-driven рендеринга opening экрана.
+
+**Что реализовано:**
+
+- **Runtime delivery:** `PlayerFacingContent.antarcticaUi` содержит S1 screen definition.
+- **Player-web renderer:** `AntarcticaS1Renderer` в `apps/player-web` теперь полностью manifest-driven. Он поддерживает вложенные области (`main-content-area`, `cards-container`, `bottom-controls-container`), 6 карточек (grid 3x2), и sidebar метрики.
+- **Mockup alignment:** CSS в `globals.css` приведен в соответствие с мокапом `left-sidebar-6-cards` (sidebar 260px, decor 370px, grid gap 24).
+- **Asset policy:** Каноническая политика ассетов зафиксирована в `apps/player-web/public/images/**`. Все необходимые иконки и фоны доступны по root-relative путям.
+- **Verification:** Добавлены DOM-тесты в `apps/player-web/src/components/antarctica-player-dom.test.tsx`, покрывающие рендеринг областей, метрик, карточек и fallback поведение.
+
+**S1 screen structure (harden):**
+- `main-screen` (root)
+  - `game-variables-container` (left sidebar)
+  - `main-content-area` (center)
+    - `cards-container` (3x2 grid)
+    - `bottom-controls-container` (buttons)
+- Right decor illustration placeholder (fixed width 370px).
+
 ## Как запускать локально
 
 ```bash

@@ -402,23 +402,380 @@ select {
   color: var(--muted);
 }
 
+/* ===========================================================================
+   S1 Manifest-Driven Renderer Styles
+   Bounded to: screenComponent, areaComponent, gameVariableComponent,
+   cardComponent, buttonComponent
+
+   Mockup alignment: left-sidebar-6-cards.design.json
+   - sidebar-left: 260px wide, full height (900px)
+   - cards-grid: 900px wide, 3x2 grid with gap 24
+   - bottom-controls: 900px wide, below cards
+   - right-illustration: 370px wide, full height (900px)
+   - gaps: 40px between sidebar/cards, 30px between cards/illustration
+   =========================================================================== */
+
+/* S1 renderer root - horizontal layout with sidebar, main area, and decor illustration */
+.s1-renderer {
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  width: 1600px; /* Mockup width */
+  height: 900px; /* Mockup height */
+  background: #0b4f7a; /* Design token: background */
+  border-radius: 12px; /* Design token: border_radius */
+  overflow: hidden;
+  border: 1px solid rgba(230, 242, 250, 0.2);
+  box-shadow: 0 32px 64px rgba(0, 0, 0, 0.4);
+  position: relative;
+  color: #ffffff; /* Design token: text */
+  margin: 0 auto;
+}
+
+/* S1 screen container */
+.s1-screen {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Main content area (cards + bottom controls) - 970px wide (40 gap + 900 content + 30 gap) */
+.main-content-area {
+  display: flex;
+  flex-direction: column;
+  width: 970px;
+  height: 100%;
+  padding-left: 40px; /* Gap between sidebar and cards */
+  padding-right: 30px; /* Gap between cards and illustration */
+  box-sizing: border-box;
+  z-index: 2;
+  position: relative;
+}
+
+/* S1 area - generic class for manifest areas */
+.s1-area {
+  display: flex;
+}
+
+/* Left sidebar game variables container - 260px wide per mockup */
+.game-variables-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 20px;
+  background: rgba(11, 79, 122, 0.95); /* Adjusted design background */
+  border-right: 1px solid rgba(170, 227, 255, 0.16);
+  width: 260px;
+  height: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  z-index: 3;
+}
+
+/* Cards container (3x2 grid with gap 24) - target 900px width, 650px height */
+.cards-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 24px; /* Design token: spacing.gap */
+  padding-top: 80px; /* Design mockup y: 80 */
+  padding-bottom: 30px; /* Gap between grid and bottom controls */
+  width: 900px;
+  height: 650px; /* Design mockup height: 650 */
+  box-sizing: border-box;
+}
+
+/* Bottom controls container - below cards, 100px height */
+.bottom-controls-container {
+  display: flex;
+  flex-direction: row;
+  gap: 24px;
+  width: 900px;
+  height: 100px; /* Design mockup height: 100 */
+  align-items: center;
+  box-sizing: border-box;
+}
+
+/* Right illustration container - 370px wide per mockup */
+.right-illustration-container {
+  width: 370px;
+  height: 100%;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0b6fa4 0%, #0a5c8a 100%); /* Design tokens: primary -> secondary */
+  border-left: 1px solid rgba(170, 227, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.right-illustration-container::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("/images/ledyanoy-fon.png");
+  background-size: cover;
+  background-position: center;
+  opacity: 0.3;
+  mix-blend-mode: overlay;
+}
+
+/* Individual game variable (metric display in sidebar) */
+.game-variable {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 12px; /* Design token: border_radius */
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(230, 242, 250, 0.2);
+  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(4px);
+}
+
+.game-variable:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(230, 242, 250, 0.6); /* Design token: accent */
+  transform: translateX(4px);
+  box-shadow: 0 6px 20px rgba(157, 227, 255, 0.2);
+}
+
+.game-variable-image {
+  width: 44px;
+  height: 44px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(157, 227, 255, 0.5));
+}
+
+.game-variable-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.game-variable-caption {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: #e6f2fa; /* Design token: accent */
+  font-family: var(--font-ibm-plex-mono), monospace;
+  font-weight: 500;
+  text-shadow: 0 0 8px rgba(157, 227, 255, 0.3);
+}
+
+.game-variable-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+/* S1 card component - using design tokens */
+.s1-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px; /* Design token: spacing.padding_card */
+  border-radius: 12px; /* Design token: border_radius */
+  background: linear-gradient(135deg, #2f7fb3 0%, #266a96 100%); /* Design token: card + gradient */
+  border: 1px solid rgba(230, 242, 250, 0.25);
+  transition: all 240ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+.s1-card::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.s1-card:hover {
+  background: linear-gradient(135deg, #3c8dc2 0%, #2f7fb3 100%);
+  border-color: rgba(230, 242, 250, 0.5);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.s1-card-text {
+  margin: 0;
+  font-size: 1rem; /* Design token: body_size */
+  line-height: 1.6;
+  color: #ffffff;
+  font-weight: 400;
+}
+
+/* S1 button component */
+.s1-button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: rgba(230, 242, 250, 0.1); /* Design token: accent base */
+  border: 1px solid rgba(230, 242, 250, 0.2);
+  border-radius: 12px; /* Design token: border_radius */
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 200ms ease;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.s1-button:hover:not(:disabled) {
+  background: rgba(230, 242, 250, 0.2);
+  border-color: rgba(230, 242, 250, 0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(157, 227, 255, 0.2);
+}
+
+.s1-button::before {
+  content: "";
+  width: 24px;
+  height: 24px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.95;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+}
+
+#btn-journal::before { background-image: url("/images/jurnal-hodov.png"); }
+#btn-hint::before { background-image: url("/images/podskazka.png"); }
+
+/* Right decor illustration placeholder - whales & icebergs style */
+.right-illustration-placeholder {
+  width: 320px;
+  height: 540px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+  backdrop-filter: blur(16px);
+  border-radius: 20px;
+  border: 1px solid rgba(230, 242, 250, 0.15);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #e6f2fa;
+  font-size: 15px;
+  text-align: center;
+  padding: 40px;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add CSS iceberg */
+.right-illustration-placeholder::before {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 40%;
+  background: linear-gradient(180deg, #ffffff 0%, #e6f2fa 100%);
+  clip-path: polygon(0% 100%, 15% 40%, 35% 85%, 55% 20%, 80% 90%, 100% 45%, 100% 100%);
+  opacity: 0.2;
+}
+
+.right-illustration-placeholder::after {
+  content: "🐋";
+  font-size: 110px;
+  margin-top: 30px;
+  filter: drop-shadow(0 0 40px rgba(157, 227, 255, 0.8));
+  animation: float-whale 8s ease-in-out infinite;
+  z-index: 2;
+}
+
+@keyframes float-whale {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@media (max-width: 1640px) {
+  .s1-renderer {
+    transform: scale(0.9);
+    transform-origin: top center;
+  }
+}
+
+@media (max-width: 1440px) {
+  .s1-renderer {
+    transform: scale(0.8);
+  }
+}
+
+@media (max-width: 1280px) {
+  .s1-renderer {
+    transform: scale(0.7);
+  }
+}
+
 @media (max-width: 1080px) {
-  .grid,
-  .content-grid {
-    grid-template-columns: 1fr;
+  .s1-renderer {
+    flex-direction: column;
+    width: 100%;
+    height: auto;
+    transform: none;
   }
 
-  .metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .game-variables-container {
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 20px;
+  }
+
+  .main-content-area {
+    width: 100%;
+    padding: 20px;
+  }
+
+  .cards-container {
+    width: 100%;
+    height: auto;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
+    padding-top: 20px;
+  }
+
+  .bottom-controls-container {
+    width: 100%;
+    padding: 20px 0;
+  }
+
+  .right-illustration-container {
+    display: none;
   }
 }
 
 @media (max-width: 640px) {
-  .frame {
-    padding: 16px 12px 24px;
+  .cards-container {
+    grid-template-columns: 1fr;
   }
 
-  .metrics {
-    grid-template-columns: 1fr;
+  .game-variable {
+    width: 100%;
   }
 }

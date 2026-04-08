@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
+import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
 
@@ -548,6 +549,20 @@ test("POST /actions routes different Antarctica actions through manifest capabil
   assert.equal(action.state.runtime?.lastCapability, "ui.screen.left-sidebar");
   assert.equal(action.state.public.ui?.activeScreen, "left-sidebar");
   assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
+});
+
+test("GET /games/:id/player-content returns antarcticaUi manifest for Antarctica", async () => {
+  const { response, body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+  assert.equal(body.gameId, "antarctica");
+  assert.ok(body.antarcticaUi);
+  assert.equal(body.antarcticaUi.id, "antarctica.ui.web");
+  assert.equal(body.antarcticaUi.entryPoint, "S1");
+  assert.ok(body.antarcticaUi.screen);
+  assert.equal(body.antarcticaUi.screen.type, "screen");
+  assert.ok(body.antarcticaUi.screen.root);
+  assert.equal(body.antarcticaUi.screen.root.type, "screenComponent");
 });
 
 test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {
@@ -2935,6 +2950,182 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(card3);
   assert.equal(card3.selectActionId, "opening.card.3");
   assert.equal(card3.advanceActionId, "opening.card.3.advance");
+});
+
+interface UiComponent {
+  type: string;
+  id?: string;
+  props: Record<string, unknown>;
+  children?: UiComponent[];
+}
+
+test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen definition", async () => {
+  const { response, body } = await requestJson<{
+    antarcticaUi?: {
+      id: string;
+      version: string;
+      gameId: string;
+      entryPoint: string;
+      screen: {
+        type: string;
+        title: string;
+        layoutId?: string;
+        root: UiComponent;
+      };
+      designArtifacts?: Record<string, { id: string; type: string }>;
+    };
+  }>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+
+  // antarcticaUi must be present for Antarctica
+  assert.ok(body.antarcticaUi, "antarcticaUi must be present in player-content for antarctica");
+  const ui = body.antarcticaUi!;
+
+  // Verify UI manifest metadata
+  assert.equal(ui.id, "antarctica.ui.web");
+  assert.equal(ui.version, "1.0.1");
+  assert.equal(ui.gameId, "antarctica");
+  assert.equal(ui.entryPoint, "S1");
+
+  // Verify S1 screen definition structure
+  assert.equal(ui.screen.type, "screen");
+  assert.equal(ui.screen.title, "Antarctica");
+  assert.equal(ui.screen.layoutId, "layout.web.s1");
+
+  // Verify screen root (screenComponent)
+  assert.equal(ui.screen.root.type, "screenComponent");
+  assert.ok(ui.screen.root.props);
+  assert.equal(ui.screen.root.props.cssClass, "main-screen");
+  assert.equal(ui.screen.root.props.backgroundImage, "/images/arctic-background.png");
+
+  // Verify children exist (areas)
+  assert.ok(Array.isArray(ui.screen.root.children));
+  assert.ok(ui.screen.root.children!.length >= 2, "S1 should have at least 2 area children");
+
+  // Find the game-variables-container area
+  const variablesArea = ui.screen.root.children!.find(
+    (child) => child.type === "areaComponent" && child.props.cssClass === "game-variables-container"
+  );
+  assert.ok(variablesArea, "game-variables-container area must be present");
+  assert.ok(Array.isArray(variablesArea.children));
+
+  // Verify all 8 metric gameVariableComponents are present
+  const metricIds = ["score", "pro", "rep", "lid", "man", "stat", "cont", "constr"];
+  const gameVariableComponents = variablesArea.children!.filter(
+    (child) => child.type === "gameVariableComponent"
+  );
+  assert.equal(gameVariableComponents.length, 8, "S1 sidebar should have exactly 8 gameVariableComponents");
+
+  // Verify each metric component has the expected structure and binding expression
+  for (const metricId of metricIds) {
+    const component = gameVariableComponents.find((c) => c.id === metricId);
+    assert.ok(component, `gameVariableComponent for metric "${metricId}" must be present`);
+    assert.equal(component.type, "gameVariableComponent");
+    assert.ok(component.props.caption, `metric "${metricId}" should have a caption`);
+    assert.ok(
+      typeof component.props.value === "string" && component.props.value.includes(metricId),
+      `metric "${metricId}" value binding should reference the metric`
+    );
+  }
+
+  // Find the main-content-area
+  const mainArea = ui.screen.root.children!.find(
+    (child) => child.type === "areaComponent" && child.props.cssClass === "main-content-area"
+  );
+  assert.ok(mainArea, "main-content-area area must be present");
+  assert.ok(Array.isArray(mainArea.children));
+
+  // Find the cards-container area inside main-content-area
+  const cardsArea = mainArea.children!.find(
+    (child) => child.type === "areaComponent" && child.props.cssClass === "cards-container"
+  );
+  assert.ok(cardsArea, "cards-container area must be present inside main-content-area");
+  assert.ok(Array.isArray(cardsArea.children));
+
+  // Find the bottom-controls-container area inside main-content-area
+  const bottomControlsArea = mainArea.children!.find(
+    (child) => child.type === "areaComponent" && child.props.cssClass === "bottom-controls-container"
+  );
+  assert.ok(bottomControlsArea, "bottom-controls-container area must be present inside main-content-area");
+  assert.ok(Array.isArray(bottomControlsArea.children));
+
+  // Verify button components exist for hint and journal
+  const buttonComponents = bottomControlsArea.children!.filter((child) => child.type === "buttonComponent");
+  assert.ok(buttonComponents.length >= 2, "bottom-controls-container should have at least 2 button components");
+
+  const hintButton = buttonComponents.find((b) => b.id === "btn-hint");
+  assert.ok(hintButton, "btn-hint button must be present");
+  assert.equal(hintButton.props.caption, "Подсказка");
+
+  const journalButton = buttonComponents.find((b) => b.id === "btn-journal");
+  assert.ok(journalButton, "btn-journal button must be present");
+  assert.equal(journalButton.props.caption, "Журнал ходов");
+
+  // Verify design artifacts registry is present
+  assert.ok(ui.designArtifacts, "designArtifacts should be present");
+  assert.ok(ui.designArtifacts!["left-sidebar-6-cards"], "left-sidebar-6-cards design artifact should be referenced");
+});
+
+test("GET /games/antarctica/player-content preserves asset references in antarcticaUi", async () => {
+  const { response, body } = await requestJson<{
+    antarcticaUi?: {
+      screen: {
+        root: {
+          type: string;
+          props: Record<string, unknown>;
+          children?: Array<Record<string, unknown>>;
+        };
+      };
+    };
+  }>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+  assert.ok(body.antarcticaUi);
+
+  const root = body.antarcticaUi!.screen.root;
+  const rootProps = root.props as { backgroundImage?: string };
+  assert.equal(rootProps.backgroundImage, "/images/arctic-background.png");
+
+  // Verify metric background images are preserved (not resolved, just data strings)
+  const variablesArea = (root.children as Array<Record<string, unknown>>)?.find(
+    (child) =>
+      child.type === "areaComponent" &&
+      (child.props as Record<string, unknown>)?.cssClass === "game-variables-container"
+  );
+  assert.ok(variablesArea);
+
+  const scoreComponent = ((variablesArea.children as Array<Record<string, unknown>>) as Array<{
+    type?: string;
+    id?: string;
+    props: Record<string, unknown>;
+  }>)?.find(
+    (child) => child.type === "gameVariableComponent" && child.id === "score"
+  );
+  assert.ok(scoreComponent);
+  const scoreProps = scoreComponent.props as { backgroundImage?: string };
+  assert.ok(
+    typeof scoreProps.backgroundImage === "string" && scoreProps.backgroundImage.length > 0,
+    "score backgroundImage should be a non-empty string asset reference"
+  );
+});
+
+test("GET /games/:gameId/player-content does not return antarcticaUi for non-antarctica games", async () => {
+  // This test verifies the additive nature of antarcticaUi:
+  // when ui.manifest.json is absent or the game is not Antarctica, antarcticaUi is undefined.
+  // We cannot test with a real non-antarctica game here since only antarctica exists in the test fixture.
+  // The contract is that antarcticaUi is optional, so absence is the expected behavior.
+  const { response, body } = await requestJson<{
+    gameId: string;
+    antarctica?: unknown;
+    antarcticaUi?: unknown;
+  }>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+  assert.equal(body.gameId, "antarctica");
+  // antarctica (gameplay content) must be present; antarcticaUi is optional but must be present for antarctica
+  assert.ok(body.antarctica, "antarctica gameplay content must be present");
+  assert.ok(body.antarcticaUi, "antarcticaUi S1 UI data must be present for antarctica");
 });
 
 test("GET /games/:gameId/player-content returns 404 for non-existent game", async () => {

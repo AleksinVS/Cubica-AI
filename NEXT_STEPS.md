@@ -28,50 +28,25 @@
 
 Оставшаяся работа теперь относится к фазе расширения, а не к базовому переходу.
 
-### Обновление по bounded player-facing content slice
+### Обновление по S1 UI Manifest & Mockup Alignment (2026-04-08)
 
-- `games/antarctica/game.manifest.json` теперь содержит канонический `content.antarctica` block для bounded player-facing delivery slice: info scenes `i0`, `i7`, `i8`, `i9`, `i10`, `i11`, `i12`, `i13`, `i14`, `i14_2`, `i15` и `i16`, boards `opening.board.1_6`, `opening.board.7_12`, `opening.board.13_18`, `opening.board.19_24`, `opening.board.25_30`, `opening.board.31_36`, `opening.board.37_42`, `opening.board.43_48` и `opening.board.49_54`, team-selection step `15`, а также card catalog `1..54` plus alt-card `3902` с явными `selectActionId` и `advanceActionId` для go-card `3`, `9`, `18`, `22`, `23`, `31`, `32`, `33`, `35`, `36`, `39`, `3902`, `43`, `45`, `47`, `48`, `49`, `50`, `51`, `52`, `53` и `54`.
-- `packages/contracts/manifest` и `services/runtime-api/src/modules/content/manifestValidation.ts` расширены typed/validated shape для этого Antarctica-specific player content, не вводя новый platform-wide endpoint или DSL.
-- `GET /games/antarctica/player-content` теперь отдаёт не только общий catalog `actions/mockups`, но и structured `antarctica` DTO из manifest.
-- `apps/player-web` начал использовать existing session snapshot (`timeline`, `activeInfoId`, `selectedCardId`, card flags, team flags, teamSelection state) для current-step rendering: стартовый info `i0`, boards `1..6`, `7..12`, `13..18`, `19..24`, `25..30`, `31..36`, `37..42`, `43..48` и `49..54`, team-selection step `15`, а также info `i7`, `i8`, `i9`, `i10`, `i11`, `i12`, `i13`, `i14`, `i14_2`, `i15` и `i16` больше не требуют global action catalog как основной UX.
-- Для немоделированных шагов player по-прежнему безопасно откатывается к fallback catalog, поэтому slice остаётся bounded и не требует синхронной миграции всего opening flow.
+**Статус: ✅ Completed**
 
-### Обновление по первому gameplay slice (opening card 3)
+Цель по приведению UI Antarctica к UI-манифесту и мокапу `left-sidebar-6-cards` полностью достигнута:
 
-- В `games/antarctica/game.manifest.json` добавлен первый реальный deterministic data slice для `opening.card.3` (legacy card `3`, «Поговорить с Аленой»): provenance, guard, metric deltas, log metadata и state-update metadata теперь лежат в manifest.
-- В `games/antarctica/game.manifest.json` добавлен минимальный explicit reachability path до первого board-экрана: отдельные deterministic intro actions `opening.info.i0.advance` ... `opening.info.i6.advance`, которые последовательно ведут `stepIndex` `0..8 -> 9`.
-- Для этих intro actions deterministic metadata хранится только в manifest (legacy provenance по `i0/i02/i03/i1/i2/i3/i4/i5/i6`, guard по `line/step/canAdvance`, `metricDeltas: []`, log metadata, `stateUpdate` c `timelineStepIndex/timelineStageId/timelineScreenId` и `timelineCanAdvance: false`).
-- В initial state добавлены минимальные scaffolding-поля под этот slice: `state.public.timeline.canAdvance`, `state.public.flags.cards["3"]`, `state.secret.opening.selectedCardId` (через `state.secret.opening`).
-- В `services/runtime-api/src/modules/content/manifestValidation.ts` добавлена ранняя валидация deterministic metadata и новых state-полей.
-- В `services/runtime-api` manifest-driven runtime wiring уже подключён: explicit intro actions и `opening.card.3` исполняются через `POST /actions`, timeline aliases (`stepIndex/step_index`, `stageId/stage_id`, `screenId/screen_id`) синхронизируются, а guard failures теперь возвращаются как `400`, а не `500`.
-- Integration tests покрывают полный bounded path: старт на intro step `0`, последовательный переход к board step `9`, успешное применение `opening.card.3`, отказ на replay и отказ на ранний вызов card action до достижения board.
-- Первый opening board больше не ограничен одной живой картой: deterministic manifest-actions добавлены для `opening.card.1`, `opening.card.2`, `opening.card.4`, `opening.card.5`, `opening.card.6`, а runtime уже умеет исполнять их без отдельного нового DSL.
-- Integration tests теперь покрывают и multi-card path: non-go card на первом board сохраняет `canAdvance=false`, обновляет метрики, блокирует replay только для себя и не мешает затем выбрать `opening.card.3` как go-card.
-- Timeline progression после first board тоже стал исполнимым: explicit actions `opening.card.3.advance` и `opening.info.i7.advance` теперь доводят сессию от first board к info-block `i7` и дальше ко второму board `7..12`.
-- Второй board `7..12` тоже теперь покрыт manifest-driven actions; non-go cards работают без перехода вперёд, а `opening.card.9` стал следующей go-card на шаге `11`.
-- После `opening.card.9` теперь есть explicit progression path: `opening.card.9.advance` переводит в info-block `i8` (`stepIndex=12`, `screenId=S1`), а `opening.info.i8.advance` переводит на третий board `13..18` (`stepIndex=13`, `screenId=S2`).
-- Третий board `13..18` теперь покрыт manifest-driven actions; non-go cards `13/14/15/16/17` сохраняют `selectedCardId = "9"` и `canAdvance = false`, а `opening.card.18` является текущей go-card для этого board и фиксирует `selectedCardId = "18"` вместе с `timeline.canAdvance = true`.
-- Добавлен следующий boundary slice после `opening.card.18`: `opening.card.18.advance` ведёт к info block `i9`, а `opening.info.i9.advance` доводит сессию до step `15`, still `stage_intro`, с bounded team-selection mechanic уже в manifest.
-- Следующий slice после этого boundary теперь закрывает post-confirm path `stepIndex = 16 -> 17 -> 18`: `opening.info.i10.advance` открывает board `19..24`, cards `22/23` are go-cards, and matching advance actions land on `i11` at `stepIndex = 18`.
-- `GSR-022` теперь тоже закрыт: `opening.info.i12.advance` доводит до step `21`, explicit actions `opening.card.31` ... `opening.card.36` покрывают весь board, card-local conditional bonuses для `31/32/33/35/36` исполняются после base metric deltas, а card `34` может bounded-переключить timeline на canonical line id `loss` по pre-action gate `stat < 25`, сохраняя свои base deltas.
-- Mainline после step `21` теперь тоже явный по `GSR-023`: `opening.card.31/32/33/35/36.advance` ведут к `i13`, `opening.info.i13.advance` открывает board `37..42`, bounded step-23 mechanics now cover locked/unlocked `39` plus entry-time alt `3902`, а explicit `opening.card.39.advance` / `opening.card.3902.advance` вместе с `opening.info.i14.advance` и `opening.info.i14_2.advance` доводят mainline до следующего boundary на `stepIndex = 26`. Losing line продолжен отдельными explicit actions `opening.info.i34.advance` и `opening.info.i34_2.advance` до `i21`.
-- `GSR-025` теперь тоже закрыт: explicit actions `opening.card.43` ... `opening.card.48` покрывают board `43..48`, bounded card-local hooks используют только уже существующие metric bonuses, а go-card follow-up остаётся explicit через `opening.card.43/45/47/48.advance` к `i15` и `opening.info.i15.advance` к следующему boundary на `stepIndex = 28`.
-- `GSR-026` теперь тоже закрыт: explicit actions `opening.card.49` ... `opening.card.54` покрывают trusted messengers board `49..54`, bounded card-local hooks для `49` и `51` используют только уже существующие conditional metric bonuses, а go-card follow-up остаётся explicit через `opening.card.49/50/51/52/53/54.advance` к `i16` и `opening.info.i16.advance` к следующему boundary на `stepIndex = 30`.
-- `GSR-027` теперь тоже закрыт: explicit actions `opening.card.55` ... `opening.card.60` покрывают acceleration board `55..60`, bounded card-local hooks используют только уже существующие conditional metric bonuses, а go-card follow-up остаётся explicit через `opening.card.55/57/58/60.advance` к `i17` и `opening.info.i17.advance` к следующему boundary на `stepIndex = 32`.
-- `GSR-028` теперь тоже закрыт: explicit actions `opening.card.61` ... `opening.card.66` покрывают scout-dispatch board `61..66`, bounded `conditionalCardBonuses` моделируют локальные time bonuses от статуса карточек `57` и `62`, `opening.card.66` стартует заблокированной и открывается через уже существующий bounded unlock hook на `opening.card.62/63`, а go-card follow-up остаётся explicit через `opening.card.61/66.advance` к `i18` и `opening.info.i18.advance` к следующему boundary на `stepIndex = 34`.
-- `GSR-029` теперь тоже закрыт: explicit actions `opening.card.67` ... `opening.card.70` покрывают финальный aftermath/second-relocation tail, `opening.card.68.advance` использует bounded `activeInfoId` + conditional info variant для `i19/i19_1` и explicit loss jump к `i34_2`, а mainline ending остаётся explicit через `opening.info.i19.advance`, `opening.card.69.advance` и `opening.info.i20.advance` к terminal `i21`.
+- **Manifest-Driven Renderer:** `apps/player-web` теперь использует `AntarcticaS1Renderer`, который динамически строит UI из `antarcticaUi` (получаемого через `runtime-api`). Поддерживаются вложенные области (`main-content-area`, `cards-container`, `bottom-controls-container`), 6 карточек (grid 3x2), и sidebar метрики.
+- **Mockup Alignment:** CSS в `globals.css` полностью соответствует композиции мокапа:
+  - Левый сайдбар (260px) с метриками и иконками.
+  - Основная область (900px) с сеткой карточек 3x2 (gap 24).
+  - Нижняя панель управления с кнопками «Подсказка» и «Журнал ходов».
+  - Правая декоративная зона (370px) с арктическим фоном и плейсхолдером.
+- **Asset Policy:** Каноническая политика ассетов реализована через `apps/player-web/public/images/**`. Все иконки метрик, фоны и кнопки доступны по root-relative путям, прописанным в манифесте.
+- **Testing & Verification:** 
+  - Добавлены DOM/Snapshot тесты в `src/components/antarctica-s1-renderer.test.tsx`.
+  - Обновлены и исправлены интеграционные тесты в `src/components/antarctica-player-dom.test.tsx`.
+  - `npm run verify:canonical` проходит успешно.
 
-### Contract Freeze: Opening-Tail Player-Content (Boards 55-70, Infos i17-i21)
-
-Контракт opening-tail player-content **заморожен и подтверждён конформным** (2026-04-02):
-
-- **Boards:** `opening.board.55_60` (stepIndex 30), `opening.board.61_66` (stepIndex 32), `opening.board.67_70` (stepIndex 34)
-- **Infos:** `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21` (terminal)
-- **Cards:** 55-70 с корректными `selectActionId` и go-card `advanceActionId`
-- **Status конформности:** ✅ 40/40 runtime-api тестов проходят
-- **Runtime projection:** `GET /games/antarctica/player-content` отдаёт полный DTO через `structuredClone(antarctica)`
-
-Runtime проецирует `content.antarctica` напрямую в player-facing DTO без раскрытия internal-полей (`deterministic.provenance`, `deterministic.guard`, `deterministic.metricDeltas`, `deterministic.stateUpdate`).
+**Результат:** Opening экран `S1` теперь является полностью управляемым данными (data-driven) и визуально соответствует целевому дизайну. Следующие шаги могут быть направлены на расширение поддержки других типов компонентов или экранов по мере необходимости.
 
 ## Приоритет 1. Complete the Antarctica Truth Model
 
@@ -107,69 +82,6 @@ Runtime проецирует `content.antarctica` напрямую в player-fac
 2. Перевести `apps/player-web` на player-facing content API/DTO из `runtime-api` и считать прямое чтение `games/*` временным состоянием до миграции.
 3. Подключать новые UI-паттерны только через canonical content/model layer, а не через draft-player структуру.
 4. Если появятся новые платформы или каналы, сначала выделять shared viewer/runtime contracts, а потом уже отдельные apps.
-
-### Ближайшая цель: привести UI Antarctica к UI-манифесту и мокапу
-
-Сейчас `apps/player-web` технически умеет играть opening flow через `services/runtime-api`, но визуально и структурно экран очень далёк от целевого дизайна и UI-манифеста.
-
-Целевые источники истины для UI:
-
-1. Мокап целевого экрана (намерение и композиция): `games/antarctica/design/mockups/left-sidebar-6-cards.jpg`.
-2. Design artifact JSON (структура regions + tokens): `games/antarctica/design/mockups/left-sidebar-6-cards.design.json`.
-3. UI-манифест web-канала (описание экранов/компонентов в JSON): `games/antarctica/ui/web/ui.manifest.json`.
-
-Проблема текущего состояния:
-
-- UI сейчас хардкодит dashboard-подобный layout в `apps/player-web/src/components/antarctica-player.tsx` и не следует layout/компонентам из `ui.manifest.json`.
-- В манифесте есть design registry и screen description, но player-web не использует их как контракт рендера.
-
-Задача (что нужно сделать):
-
-Сделать так, чтобы opening экран Antarctica в `apps/player-web` соответствовал композиции мокапа “левый сайдбар + 6 карточек + нижние controls + правый декор” и при этом рендерился через UI-манифест (то есть UI описан данными, а не размазан по JSX).
-
-Ожидаемый минимальный MVP результата:
-
-- Экран `S1` (web) визуально узнаваем как мокап: левый вертикальный сайдбар с метриками, основная область с 6 карточками (grid `3x2`), снизу кнопки `журнал ходов` и `подсказка` плюс навигационные стрелки, фон в арктической теме и декоративная правая зона.
-- Значения в сайдбаре берутся из текущего session snapshot (`game.state.public.metrics.*`), как описано в `ui.manifest.json`.
-- Действия на нижней панели и клики по карточкам работают через текущий `runtime-api` action dispatch (без обхода и без моков).
-
-Технические ограничения (что важно не сломать):
-
-- Не возвращаться к чтению `games/*` напрямую из `apps/player-web` как к долговременному решению.
-- Не “рисовать UI на глаз” в JSX, если у нас уже есть JSON-описание экрана.
-- Не вводить новый UI DSL без необходимости: сначала поддержать минимальный subset `screenComponent/areaComponent/gameVariableComponent/cardComponent/buttonComponent` из `ui.manifest.json`.
-
-План работ (высокоуровнево):
-
-1. Ввести минимальный manifest-driven renderer для web-канала:
-   - загрузка `ui.manifest.json` для `antarctica` (источник загрузки должен быть каноническим: либо через runtime-api endpoint, либо через player-facing content DTO расширение);
-   - маппинг `screenComponent/areaComponent/gameVariableComponent/cardComponent/buttonComponent` в React-компоненты;
-   - простая data-binding под `{{game.state.public.metrics.*}}` и нужные runtime поля (без “магического” eval).
-2. Привязать реальный opening экран player-web к экрану `S1` из UI-манифеста вместо текущего dashboard layout.
-3. Привести CSS под композицию мокапа:
-   - левый сайдбар как отдельная колонка;
-   - `cards-grid` как `3x2` с gap `24` (как в design artifact);
-   - нижняя панель controls;
-   - фон и правая декоративная зона (минимум: background image + контейнер под декор).
-4. Разобраться с ассетами, на которые ссылается манифест (`/images/...`):
-   - либо синхронизировать нужные изображения в `apps/player-web/public/images/...`,
-   - либо добавить канонический static assets serving policy через runtime-api.
-5. Добавить минимальные тесты на “контракт экрана”:
-   - snapshot/DOM-тест на наличие ключевых областей (sidebar, grid 6 cards, bottom controls);
-   - тест на binding метрик в UI при заданном session state.
-
-Критерии готовности (completion criteria):
-
-- Запуск `npm run antarctica:play` поднимает runtime + player-web, и в браузере рендерится `S1` в композиции мокапа `left-sidebar-6-cards`.
-- UI берётся из `ui.manifest.json` (по факту: есть код-путь, который читает screen definition и собирает UI из него, а не из вручную написанной layout-разметки).
-- Кнопки `журнал ходов` и `подсказка` кликабельны и проходят через стандартный action dispatch путь.
-- `npm run verify:canonical` проходит.
-
-Out of scope (явно не делаем в этой задаче):
-
-- Полную реализацию всех экранов и всех component types из UI-манифеста.
-- Portal/editor интеграцию.
-- Новую дизайн-систему или перенос в отдельный UI-kit, если это не блокирует мокап.
 
 ## Приоритет 5. Manifest and Capability Evolution
 

@@ -5,7 +5,8 @@ import type {
   PlayerFacingAction,
   PlayerFacingContent,
   PlayerFacingMockup,
-  GameManifestActionDefinition
+  GameManifestActionDefinition,
+  AntarcticaPlayerS1UiContent
 } from "@cubica/contracts-manifest";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
@@ -14,6 +15,9 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../
 
 const resolveGameMockupsDir = (gameId: string) =>
   path.resolve(repoRoot, "games", gameId, "design", "mockups");
+
+const resolveGameUiManifestPath = (gameId: string) =>
+  path.resolve(repoRoot, "games", gameId, "ui", "web", "ui.manifest.json");
 
 interface RawMockupDesign {
   id?: string;
@@ -88,6 +92,113 @@ const projectAntarcticaContent = (bundle: GameBundle): PlayerFacingContent["anta
   }
 
   return structuredClone(antarctica);
+};
+
+interface RawUiManifest {
+  meta?: {
+    id?: string;
+    version?: string;
+    game_id?: string;
+    [key: string]: unknown;
+  };
+  entry_point?: string;
+  screens?: Record<string, unknown>;
+  design_artifacts?: {
+    registry?: Record<string, { type?: string; source_ref?: { file?: string } }>;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+/**
+ * Loads the Antarctica UI manifest (ui.manifest.json) for the bounded S1 screen.
+ * Returns undefined if the file does not exist or cannot be parsed.
+ * This is an additive read-only projection; no manifest validation is performed here.
+ */
+const loadAntarcticaUiManifest = async (gameId: string): Promise<RawUiManifest | undefined> => {
+  if (gameId !== "antarctica") {
+    // S1 UI manifest is currently Antarctica-specific; return undefined for other games.
+    return undefined;
+  }
+
+  const manifestPath = resolveGameUiManifestPath(gameId);
+
+  let raw: string;
+  try {
+    raw = await readFile(manifestPath, "utf-8");
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: string }).code === "ENOENT"
+    ) {
+      // UI manifest does not exist for this game; this is non-fatal for the content API.
+      return undefined;
+    }
+    throw error;
+  }
+
+  try {
+    return JSON.parse(raw) as RawUiManifest;
+  } catch {
+    // Malformed UI manifest; return undefined to avoid breaking the content API.
+    return undefined;
+  }
+};
+
+/**
+ * Projects the bounded S1 UI content from the raw UI manifest.
+ * Returns only the S1 screen definition needed for manifest-driven opening screen rendering.
+ * Asset references (image paths) are preserved as data strings, not resolved URLs.
+ */
+const projectAntarcticaS1UiContent = (
+  rawManifest: RawUiManifest
+): AntarcticaPlayerS1UiContent | undefined => {
+  const meta = rawManifest.meta ?? {};
+  const entryPoint = rawManifest.entry_point ?? "S1";
+  const screen = rawManifest.screens?.[entryPoint];
+
+  if (!screen || typeof screen !== "object") {
+    // No S1 screen defined in the UI manifest.
+    return undefined;
+  }
+
+  // Project design artifact registry for reference/metadata purposes.
+  const designArtifacts: Record<string, { id: string; type: string; sourceRef?: { file?: string } }> = {};
+  const registry = rawManifest.design_artifacts?.registry;
+  if (registry && typeof registry === "object") {
+    for (const [key, value] of Object.entries(registry)) {
+      if (value && typeof value === "object") {
+        designArtifacts[key] = {
+          id: key,
+          type: (value as { type?: string }).type ?? "unknown",
+          sourceRef: (value as { source_ref?: { file?: string } }).source_ref
+        };
+      }
+    }
+  }
+
+  // Transform snake_case fields to camelCase for the typed screen definition.
+  // The raw ui.manifest.json uses snake_case (layout_id, entry_point), but the
+  // typed interface uses camelCase (layoutId, entryPoint).
+  const rawScreen = screen as Record<string, unknown>;
+  const transformedScreen: AntarcticaPlayerS1UiContent["screen"] = {
+    type: "screen",
+    title: typeof rawScreen.title === "string" ? rawScreen.title : "Antarctica",
+    layoutId: typeof rawScreen.layout_id === "string" ? rawScreen.layout_id : undefined,
+    // Deep clone the root component tree, preserving all children and props.
+    root: structuredClone(rawScreen.root) as AntarcticaPlayerS1UiContent["screen"]["root"]
+  };
+
+  return {
+    id: typeof meta.id === "string" ? meta.id : "antarctica.ui.web",
+    version: typeof meta.version === "string" ? meta.version : "1.0.0",
+    gameId: typeof meta.game_id === "string" ? meta.game_id : "antarctica",
+    entryPoint,
+    screen: transformedScreen,
+    designArtifacts: Object.keys(designArtifacts).length > 0 ? designArtifacts : undefined
+  };
 };
 
 const projectManifestToPlayerContent = (bundle: GameBundle): PlayerFacingContent => {
@@ -173,8 +284,15 @@ export class ContentService {
     }
     const mockups = await loadMockupsForGame(options.gameId);
 
+    // Load and project the bounded S1 UI manifest for Antarctica.
+    // This is additive: if the UI manifest is missing or malformed, we still return
+    // the gameplay content (antarctica) without breaking the API contract.
+    const rawUiManifest = await loadAntarcticaUiManifest(options.gameId);
+    const antarcticaUi = rawUiManifest ? projectAntarcticaS1UiContent(rawUiManifest) : undefined;
+
     const content = projectManifestToPlayerContent(bundle);
     content.mockups = mockups;
+    content.antarcticaUi = antarcticaUi;
 
     return { content };
   }
