@@ -48,7 +48,7 @@ The app loads game content through the player-facing content API (`GET /api/runt
 The player-web supports two rendering paths for Antarctica:
 1. **Manifest-Driven Multi-Screen Renderer**: The UI is rendered dynamically from a bounded UI manifest provided by the `runtime-api` (see `antarcticaUi` in the DTO). This covers:
    - **S1 entry screen** (`screenId: "S1"` at `stepIndex: 0`): Opening screen with left-sidebar-6-cards layout, 8 metric components, 6 narrative cards, bottom controls.
-   - **S2 board screens** (`screenId: "S2"`): Board screens keyed by stepIndex (55..60 at stepIndex 30, 61..66 at stepIndex 32, 67..70 at stepIndex 34) with card selection UI.
+   - **S2 board screens** (`screenId: "S2"`): Board screens keyed by stepIndex (55..60 at stepIndex 30, 61..66 at stepIndex 32, 67..70 at stepIndex 34) with top-sidebar-6-cards layout, horizontal metrics bar, board header, and 6-card selection grid.
    - **S1 info variant screens** (`screenId: "S1"` with `activeInfoId`): Info screens i17, i18, i19, i19_1, i20, i21 where `activeInfoId` disambiguates between variants (e.g., i19 vs i19_1 at the same stepIndex 35).
    
    Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId`) following the contract in `CONTRACT_INDEX.md`. When a screen is not in the manifest, the player falls back to the action catalog resolver.

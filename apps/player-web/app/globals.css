@@ -437,6 +437,11 @@ select {
   height: 1080px;
 }
 
+.s1-renderer:has(.topbar-screen-shell) {
+  width: 1920px;
+  height: 1080px;
+}
+
 /* S1 screen container */
 .s1-screen {
   display: flex;
@@ -447,6 +452,11 @@ select {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.topbar-screen-shell {
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(15, 76, 117, 0.16) 0%, rgba(6, 24, 38, 0.28) 100%);
 }
 
 /* Left sidebar game variables container - 260px wide per mockup S1, 400px for info */
@@ -471,6 +481,21 @@ select {
   background: #0f4c75; /* Design token: sidebar_bg for infocard */
 }
 
+.topbar-variables-container {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 14px;
+  width: 100%;
+  height: 120px;
+  padding: 20px 28px;
+  background: linear-gradient(180deg, rgba(15, 76, 117, 0.98) 0%, rgba(12, 67, 105, 0.98) 100%);
+  border-right: none;
+  border-bottom: 1px solid rgba(170, 227, 255, 0.18);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
 /* Main content area (cards + bottom controls) - 970px wide (40 gap + 900 content + 30 gap) */
 .main-content-area {
   display: flex;
@@ -492,6 +517,13 @@ select {
   padding-right: 60px;
 }
 
+.topbar-main-content {
+  width: 100%;
+  flex: 1;
+  padding: 28px 40px 40px;
+  background: linear-gradient(180deg, rgba(27, 38, 44, 0.92) 0%, rgba(17, 28, 35, 0.96) 100%);
+}
+
 /* S1 area - generic class for manifest areas */
 .s1-area {
   display: flex;
@@ -511,6 +543,17 @@ select {
   align-content: stretch;
 }
 
+.topbar-cards-container {
+  width: 100%;
+  max-width: 1400px;
+  height: auto;
+  min-height: 640px;
+  padding-top: 0;
+  padding-bottom: 0;
+  gap: 20px;
+  align-self: center;
+}
+
 /* Bottom controls container - below cards, 100px height */
 .bottom-controls-container {
   display: flex;
@@ -523,14 +566,39 @@ select {
   padding-bottom: 12px;
 }
 
-.info-screen-shell .info-content {
-  width: 1400px; /* Centered large card area */
-  min-height: 800px;
+.topbar-board-header {
+  width: 100%;
+  max-width: 1400px;
+  align-self: center;
+  margin-bottom: 28px;
 }
 
-.info-screen-shell .info-event-card {
-  width: 1200px;
-  min-height: 750px;
+.topbar-board-title {
+  width: 100%;
+}
+
+.topbar-board-title .s1-card,
+.topbar-board-header > .s1-card {
+  padding: 24px 28px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
+  border: 1px solid rgba(184, 225, 250, 0.22);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.topbar-board-title .s1-card:hover,
+.topbar-board-header > .s1-card:hover {
+  transform: none;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
+  border-color: rgba(184, 225, 250, 0.28);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.topbar-board-title .s1-card-text,
+.topbar-board-header > .s1-card .s1-card-text {
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: #f3fbff;
 }
 
 .info-event-illustration {
@@ -560,6 +628,79 @@ select {
 .info-bottom-controls {
   width: 1400px;
   padding-bottom: 40px;
+}
+
+/* ===========================================================================
+   Info screen card overrides
+   Info screens (i17..i21) use cardComponent for title/body text, but they
+   should NOT have s1-card blue gradient styling — they are plain text content.
+   Override s1-card styling specifically for info-event-text context.
+   =========================================================================== */
+
+/* Override card styling for info title and body text - no blue gradient, just text */
+.info-screen-shell .info-event-text .s1-card {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  transform: none !important;
+  transition: none !important;
+  gap: 12px;
+}
+
+.info-screen-shell .info-event-text .s1-card:hover {
+  background: transparent !important;
+  border: none !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Info title styling - bold, larger text */
+.info-screen-shell .info-event-text .s1-card .s1-card-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #ffffff;
+}
+
+/* Info body styling - regular body text */
+.info-event-text .s1-card .s1-card-text {
+  font-size: 1.05rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: #e6f2fa;
+}
+
+/* Info illustration area - enhanced background per leftsidebar-infocard mockup */
+.info-event-illustration {
+  background:
+    linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
+    url("/images/arctic-background.png");
+  background-size: cover;
+  background-position: center;
+}
+
+/* Info event card - improved sizing and centering */
+.info-screen-shell .info-event-card {
+  width: 1200px;
+  min-height: 680px;
+  background: linear-gradient(180deg, rgba(16, 60, 93, 0.95) 0%, rgba(12, 47, 74, 0.98) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(184, 225, 250, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Info content area - better alignment */
+.info-screen-shell .info-content {
+  width: 1400px;
+  min-height: 800px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 40px;
 }
 
 /* Right illustration container - 370px wide per mockup S1 */
@@ -631,6 +772,46 @@ select {
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
+.topbar-variables-container .game-variable {
+  min-height: 78px;
+  margin: 0;
+  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+.topbar-variables-container .game-variable--score {
+  width: 180px;
+  min-width: 180px;
+  height: 78px;
+  min-height: 78px;
+  margin: 0;
+  border-radius: 18px !important;
+  border: 1px solid rgba(255, 222, 125, 0.4) !important;
+  background: linear-gradient(135deg, rgba(243, 194, 82, 0.92) 0%, rgba(224, 159, 47, 0.96) 100%) !important;
+  box-shadow: 0 12px 28px rgba(17, 40, 58, 0.28) !important;
+  flex-direction: row !important;
+  justify-content: center;
+  clip-path: none;
+}
+
+.topbar-variables-container .game-variable--score .game-variable-content {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 20px;
+}
+
+.topbar-variables-container .game-variable--score .game-variable-caption {
+  color: rgba(25, 57, 82, 0.95);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.topbar-variables-container .game-variable--score .game-variable-value {
+  font-size: 2rem;
+  color: #173a55;
+  text-shadow: none;
+}
+
 /* Ice shard style for other variables per mockups */
 .game-variable:not(.game-variable--score) {
   background: linear-gradient(135deg, rgba(47, 127, 179, 0.8) 0%, rgba(38, 106, 150, 0.9) 100%) !important;
@@ -644,6 +825,17 @@ select {
   transform: translateX(4px) skewX(-2deg);
   background: rgba(47, 127, 179, 1) !important;
   border-color: rgba(184, 225, 250, 0.6) !important;
+}
+
+.topbar-variables-container .game-variable:not(.game-variable--score) {
+  flex: 0 0 145px;
+  min-width: 145px;
+  padding-left: 10px;
+  background: linear-gradient(135deg, rgba(64, 152, 201, 0.9) 0%, rgba(36, 101, 144, 0.95) 100%) !important;
+}
+
+.topbar-variables-container .game-variable:not(.game-variable--score):hover {
+  transform: translateY(-2px);
 }
 
 .game-variable-image {
@@ -670,6 +862,14 @@ select {
   z-index: 1;
 }
 
+.topbar-variables-container .game-variable-content {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px 14px 10px 16px;
+}
+
 .game-variable-caption {
   font-size: 11px;
   text-transform: uppercase;
@@ -683,6 +883,16 @@ select {
   font-size: 1.4rem;
   font-weight: 700;
   color: #ffffff;
+}
+
+.topbar-variables-container .game-variable-caption {
+  font-size: 0.72rem;
+  color: #d8f2ff;
+}
+
+.topbar-variables-container .game-variable-value {
+  font-size: 1.55rem;
+  line-height: 1.1;
 }
 
 .game-variable-description {
@@ -708,6 +918,24 @@ select {
   border-color: rgba(184, 225, 250, 0.5);
   transform: translateY(-8px);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
+}
+
+.topbar-screen-shell .s1-card {
+  min-height: 300px;
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(52, 138, 184, 0.98) 0%, rgba(34, 102, 145, 0.98) 100%);
+  border: 1px solid rgba(184, 225, 250, 0.26);
+}
+
+.topbar-screen-shell .s1-card:hover {
+  transform: translateY(-6px);
+  background: linear-gradient(180deg, rgba(64, 154, 203, 0.98) 0%, rgba(38, 112, 158, 0.98) 100%);
+}
+
+.topbar-screen-shell .topbar-board-title .s1-card,
+.topbar-screen-shell .topbar-board-header > .s1-card {
+  min-height: auto;
 }
 
 .s1-card-text {
@@ -773,6 +1001,10 @@ select {
   font-size: 80px;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
   animation: penguin-float 4s ease-in-out infinite;
+}
+
+.topbar-decoration {
+  display: none;
 }
 
 @keyframes penguin-float {
@@ -899,8 +1131,16 @@ select {
     padding: 20px;
   }
 
+  .topbar-variables-container {
+    justify-content: flex-start;
+  }
+
   .main-content-area {
     width: 100%;
+    padding: 20px;
+  }
+
+  .topbar-main-content {
     padding: 20px;
   }
 
@@ -910,6 +1150,11 @@ select {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: auto;
     padding-top: 20px;
+  }
+
+  .topbar-cards-container {
+    max-width: none;
+    padding-top: 0;
   }
 
   .bottom-controls-container {

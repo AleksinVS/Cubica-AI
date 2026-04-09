@@ -100,6 +100,29 @@ function RichText({ html, className }: RichTextProps) {
 
 type MetricsSnapshot = Record<string, unknown>;
 
+const TOPBAR_SCREEN_KEYS = new Set(["55..60", "61..66", "67..70"]);
+
+function appendClassName(existing: string | undefined, className: string): string {
+  const classes = new Set((existing ?? "").split(/\s+/).filter(Boolean));
+  classes.add(className);
+  return Array.from(classes).join(" ");
+}
+
+function resolveAreaCssClass(cssClass: string | undefined, screenKey?: string): string {
+  if (!screenKey || !TOPBAR_SCREEN_KEYS.has(screenKey)) {
+    return cssClass ?? "";
+  }
+
+  let next = cssClass ?? "";
+  if (next.includes("game-variables-container")) next = appendClassName(next, "topbar-variables-container");
+  if (next.includes("main-content-area")) next = appendClassName(next, "topbar-main-content");
+  if (next.includes("cards-container")) next = appendClassName(next, "topbar-cards-container");
+  if (next.includes("board-header")) next = appendClassName(next, "topbar-board-header");
+  if (next.includes("board-title")) next = appendClassName(next, "topbar-board-title");
+  if (next.includes("sidebar-decoration")) next = appendClassName(next, "topbar-decoration");
+  return next;
+}
+
 /**
  * Resolves a binding expression like "{{game.state.public.metrics.score}}"
  * against the session snapshot.
@@ -209,24 +232,30 @@ export function ButtonComponent({
 export function UiComponentNode({
   component,
   metrics,
-  onAction
+  onAction,
+  screenKey
 }: {
   component: AntarcticaUiComponent;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
+  screenKey?: string;
 }) {
   const children = component.children ?? [];
 
   switch (component.type) {
     case "screenComponent": {
       const props = component.props as AntarcticaUiScreenComponentProps;
+      const cssClass =
+        screenKey && TOPBAR_SCREEN_KEYS.has(screenKey)
+          ? appendClassName(props.cssClass, "topbar-screen-shell")
+          : props.cssClass ?? "";
       return (
         <div
-          className={`s1-screen ${props.cssClass ?? ""}`}
+          className={`s1-screen ${cssClass}`}
           style={props.backgroundImage ? { backgroundImage: `url(${props.backgroundImage})` } : undefined}
         >
           {children.map((child, index) => (
-            <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} />
+            <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} screenKey={screenKey} />
           ))}
         </div>
       );
@@ -235,12 +264,9 @@ export function UiComponentNode({
     case "areaComponent": {
       const props = component.props as AntarcticaUiAreaComponentProps;
       return (
-        <div
-          className={`s1-area ${props.cssClass ?? ""}`}
-          style={props.backgroundImage ? { backgroundImage: `url(${props.backgroundImage})` } : undefined}
-        >
+        <div className={`s1-area ${resolveAreaCssClass(props.cssClass, screenKey)}`}>
           {children.map((child, index) => (
-            <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} />
+            <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} screenKey={screenKey} />
           ))}
         </div>
       );
@@ -295,16 +321,18 @@ export function UiComponentNode({
 export function AntarcticaS1Renderer({
   screenDefinition,
   metrics,
-  onAction
+  onAction,
+  screenKey
 }: {
   screenDefinition: AntarcticaUiScreenDefinition;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
+  screenKey?: string;
 }) {
   return (
     <div className="s1-renderer">
       {/* Left/center: manifest-driven screen content */}
-      <UiComponentNode component={screenDefinition.root} metrics={metrics} onAction={onAction} />
+      <UiComponentNode component={screenDefinition.root} metrics={metrics} onAction={onAction} screenKey={screenKey} />
       {/* Right decor: placeholder for arctic illustration (per mockup) */}
       <div className="right-illustration-container">
         <div className="right-illustration-placeholder">
@@ -622,6 +650,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
               screenDefinition={screenDefinition}
               metrics={metrics}
               onAction={dispatchS1Action}
+              screenKey={screenKey ?? undefined}
             />
           ) : (
             <>

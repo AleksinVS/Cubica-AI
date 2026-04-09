@@ -432,11 +432,11 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
         title: "Выберите десятый шаг",
         root: {
           type: "screenComponent",
-          props: { cssClass: "main-screen" },
+          props: { cssClass: "main-screen topbar-screen-shell" },
           children: [
             {
               type: "areaComponent",
-              props: { cssClass: "game-variables-container" },
+              props: { cssClass: "game-variables-container topbar-variables-container" },
               children: [
                 {
                   type: "gameVariableComponent",
@@ -450,11 +450,28 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
             },
             {
               type: "areaComponent",
-              props: { cssClass: "main-content-area" },
+              props: { cssClass: "main-content-area topbar-main-content" },
               children: [
                 {
                   type: "areaComponent",
-                  props: { cssClass: "cards-container" },
+                  props: { cssClass: "board-header topbar-board-header" },
+                  children: [
+                    {
+                      type: "areaComponent",
+                      props: { cssClass: "board-title topbar-board-title" },
+                      children: [
+                        {
+                          type: "cardComponent",
+                          id: "board-title",
+                          props: { text: "Теперь у вас есть еще несколько способов продолжить работу штаба." }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  type: "areaComponent",
+                  props: { cssClass: "cards-container topbar-cards-container" },
                   children: [
                     {
                       type: "cardComponent",
@@ -480,11 +497,11 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
         title: "Выберите одинадцатый шаг",
         root: {
           type: "screenComponent",
-          props: { cssClass: "main-screen" },
+          props: { cssClass: "main-screen topbar-screen-shell" },
           children: [
             {
               type: "areaComponent",
-              props: { cssClass: "game-variables-container" },
+              props: { cssClass: "game-variables-container topbar-variables-container" },
               children: [
                 {
                   type: "gameVariableComponent",
@@ -498,11 +515,22 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
             },
             {
               type: "areaComponent",
-              props: { cssClass: "main-content-area" },
+              props: { cssClass: "main-content-area topbar-main-content" },
               children: [
                 {
                   type: "areaComponent",
-                  props: { cssClass: "cards-container" },
+                  props: { cssClass: "board-header topbar-board-header" },
+                  children: [
+                    {
+                      type: "cardComponent",
+                      id: "board-title",
+                      props: { text: "Отправка разведчиков требует особого подхода." }
+                    }
+                  ]
+                },
+                {
+                  type: "areaComponent",
+                  props: { cssClass: "cards-container topbar-cards-container" },
                   children: [
                     {
                       type: "cardComponent",
@@ -522,11 +550,11 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
         title: "Выберите двенадцатый шаг",
         root: {
           type: "screenComponent",
-          props: { cssClass: "main-screen" },
+          props: { cssClass: "main-screen topbar-screen-shell" },
           children: [
             {
               type: "areaComponent",
-              props: { cssClass: "game-variables-container" },
+              props: { cssClass: "game-variables-container topbar-variables-container" },
               children: [
                 {
                   type: "gameVariableComponent",
@@ -540,11 +568,22 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
             },
             {
               type: "areaComponent",
-              props: { cssClass: "main-content-area" },
+              props: { cssClass: "main-content-area topbar-main-content" },
               children: [
                 {
                   type: "areaComponent",
-                  props: { cssClass: "cards-container" },
+                  props: { cssClass: "board-header topbar-board-header" },
+                  children: [
+                    {
+                      type: "cardComponent",
+                      id: "board-title",
+                      props: { text: "После переезда нужно укрепить позиции." }
+                    }
+                  ]
+                },
+                {
+                  type: "areaComponent",
+                  props: { cssClass: "cards-container topbar-cards-container" },
                   children: [
                     {
                       type: "cardComponent",
@@ -603,6 +642,11 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
       // Should render the manifest-driven board screen
       const renderer = document.querySelector(".s1-renderer");
       expect(renderer).toBeDefined();
+      expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
+      expect(document.querySelector(".topbar-variables-container")).toBeDefined();
+      expect(document.querySelector(".topbar-board-header")).toBeDefined();
+      expect(document.querySelector(".topbar-cards-container")).toBeDefined();
+      expect(screen.getByText("Теперь у вас есть еще несколько способов продолжить работу штаба.")).toBeDefined();
       // Board cards from manifest
       expect(screen.getByText("Привлечь скептиков")).toBeDefined();
       expect(screen.getByText("Школа разведчика")).toBeDefined();
@@ -643,6 +687,9 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
     await waitFor(() => {
       const renderer = document.querySelector(".s1-renderer");
       expect(renderer).toBeDefined();
+      expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
+      expect(document.querySelector(".topbar-variables-container")).toBeDefined();
+      expect(screen.getByText("Отправка разведчиков требует особого подхода.")).toBeDefined();
       // Board cards from manifest
       expect(screen.getByText("Отправить элитную группу")).toBeDefined();
     });
@@ -682,6 +729,9 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
     await waitFor(() => {
       const renderer = document.querySelector(".s1-renderer");
       expect(renderer).toBeDefined();
+      expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
+      expect(document.querySelector(".topbar-variables-container")).toBeDefined();
+      expect(screen.getByText("После переезда нужно укрепить позиции.")).toBeDefined();
       // Board cards from manifest
       expect(screen.getByText("Кабинетный анализ")).toBeDefined();
       expect(screen.getByText("Оперативный сбор")).toBeDefined();

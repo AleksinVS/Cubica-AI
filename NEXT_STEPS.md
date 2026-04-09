@@ -63,6 +63,16 @@ Bounded multi-screen UI boundary для Antarctica теперь реализов
   - Fallback: action catalog resolver для screens вне scope
 - **Verification:** `npm run verify:canonical` проходит (61 runtime-api + 81 player-web тестов).
 
+### Обновление по Top-Sidebar Board Visual Parity (2026-04-09)
+
+**Статус: ✅ Delivered**
+
+Delivered S2 board screens теперь визуально выровнены под канонический mockup `top-sidebar-6-cards` без изменения runtime/content contracts:
+
+- **Topbar Layout:** экраны `55..60`, `61..66`, `67..70` используют верхнюю горизонтальную панель метрик вместо левого сайдбара, сохраняя тот же manifest-driven screen selection (`screenId: "S2"` + `stepIndex` mapping).
+- **Board Presentation:** board header и 6-card grid приведены к top-sidebar композиции, а left-sidebar family (`S1`, `i17..i21`) не меняет routing или ownership boundary.
+- **Architecture Boundary:** `runtime-api`, `packages/contracts/*`, session snapshot shape и `src/lib/antarctica.ts` screen-resolution rules не изменялись.
+
 ## Приоритет 1. Complete the Antarctica Truth Model
 
 1. Довести `packages/contracts/session` и `packages/contracts/runtime` до полного набора DTO для session/action/result.

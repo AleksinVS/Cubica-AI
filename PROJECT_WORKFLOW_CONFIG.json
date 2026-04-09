@@ -59,6 +59,23 @@
       "fallbacks": []
     },
     {
+      "role": "junior_orchestrator",
+      "launcher": "gemini-cli",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "tier": "cheap",
+      "reasoning_effort": "low",
+      "fallbacks": [
+        {
+          "launcher": "droid",
+      	  "provider": "minimax",
+       	  "model": "MiniMax-M2.7",
+      	  "tier": "low",
+      	  "reasoning_effort": "low"
+        }
+      ]
+    },
+    {
       "role": "pm",
       "launcher": "gemini-cli",
       "provider": "google",
