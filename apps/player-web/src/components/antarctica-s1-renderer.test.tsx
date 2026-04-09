@@ -22,7 +22,7 @@ describe("AntarcticaS1Renderer", () => {
               props: {
                 caption: "Остаток дней",
                 value: "{{game.state.public.metrics.score}}",
-                backgroundImage: "/images/days.png"
+                backgroundImage: "/images/left-sidebar/days.png"
               }
             }
           ]
@@ -52,6 +52,16 @@ describe("AntarcticaS1Renderer", () => {
                   id: "btn-journal",
                   props: { caption: "Журнал" },
                   actions: { onClick: { command: "showHistory", payload: {} } }
+                },
+                {
+                  type: "buttonComponent",
+                  id: "nav-left",
+                  props: { caption: "Назад" }
+                },
+                {
+                  type: "buttonComponent",
+                  id: "nav-right",
+                  props: { caption: "Вперед" }
                 }
               ]
             }
@@ -79,6 +89,8 @@ describe("AntarcticaS1Renderer", () => {
 
     expect(screen.getByText("Остаток дней")).toBeDefined();
     expect(screen.getByText("45")).toBeDefined();
+    const metricBadge = document.querySelector<HTMLElement>(".game-variable-image");
+    expect(metricBadge?.style.backgroundImage).toContain("/images/left-sidebar/days.png");
   });
 
   it("renders cards with correct text", () => {
@@ -121,6 +133,8 @@ describe("AntarcticaS1Renderer", () => {
     fireEvent.click(button);
 
     expect(mockOnAction).toHaveBeenCalledWith("showHistory", {});
+    expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("renders the right illustration placeholder", () => {

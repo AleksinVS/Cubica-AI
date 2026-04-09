@@ -466,9 +466,10 @@ select {
 .game-variables-container {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 32px 20px;
-  background: rgba(11, 79, 122, 0.95); /* Adjusted design background */
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 18px;
+  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
   border-right: 1px solid rgba(170, 227, 255, 0.16);
   width: 260px;
   height: 100%;
@@ -488,6 +489,7 @@ select {
   width: 900px;
   height: 650px; /* Design mockup height: 650 */
   box-sizing: border-box;
+  align-content: stretch;
 }
 
 /* Bottom controls container - below cards, 100px height */
@@ -499,6 +501,178 @@ select {
   height: 100px; /* Design mockup height: 100 */
   align-items: center;
   box-sizing: border-box;
+  padding-bottom: 12px;
+}
+
+.info-screen-shell .main-content-area {
+  width: 970px;
+  padding-left: 28px;
+  padding-right: 20px;
+}
+
+.info-content {
+  display: flex;
+  align-items: center;
+  width: 900px;
+  min-height: 680px;
+  padding-top: 48px;
+  padding-bottom: 24px;
+  box-sizing: border-box;
+}
+
+.info-event-card {
+  display: flex;
+  flex-direction: column;
+  width: 900px;
+  min-height: 620px;
+  border-radius: 22px;
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(15, 76, 117, 0.97) 0%, rgba(14, 56, 88, 0.98) 100%);
+  border: 1px solid rgba(184, 225, 250, 0.18);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.28);
+  position: relative;
+}
+
+.info-event-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 26%),
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.22) 0%, transparent 20%);
+  pointer-events: none;
+}
+
+.info-event-illustration {
+  position: relative;
+  height: 372px;
+  border-bottom: 1px solid rgba(184, 225, 250, 0.18);
+  background:
+    linear-gradient(180deg, rgba(24, 99, 148, 0.12) 0%, rgba(7, 28, 47, 0.22) 100%),
+    url("/images/arctic-background.png");
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.info-event-illustration::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border-radius: 24px;
+  border: 1px solid rgba(230, 242, 250, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.03) 100%),
+    linear-gradient(180deg, rgba(11, 79, 122, 0.04) 0%, rgba(11, 79, 122, 0.26) 100%);
+}
+
+.info-event-illustration::after {
+  content: "АНТАРКТИКА";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -35%) rotate(-8deg);
+  padding: 14px 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #113d60;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.22);
+  z-index: 1;
+}
+
+.info-event-text {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 26px 34px 34px;
+  background: linear-gradient(180deg, rgba(16, 60, 93, 0.98) 0%, rgba(12, 47, 74, 0.98) 100%);
+}
+
+.info-event-text .s1-card {
+  padding: 0;
+  gap: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.info-event-text .s1-card::after {
+  display: none;
+}
+
+.info-event-text .s1-card:hover {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  transform: none;
+}
+
+.info-event-text .s1-card:first-child .s1-card-text {
+  font-size: 1.95rem;
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.info-event-text .s1-card:not(:first-child) .s1-card-text {
+  font-size: 1.22rem;
+  line-height: 1.45;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.info-bottom-controls {
+  align-items: center;
+  padding-bottom: 0;
+}
+
+.info-bottom-controls #btn-advance,
+.info-bottom-controls #btn-finish {
+  min-width: 220px;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(184, 225, 250, 0.22), rgba(103, 180, 224, 0.18));
+  border-color: rgba(184, 225, 250, 0.34);
+  box-shadow: 0 12px 24px rgba(7, 35, 55, 0.24);
+}
+
+.info-bottom-controls #nav-left {
+  margin-left: 0;
+}
+
+.info-bottom-controls #btn-journal {
+  margin-left: auto;
+  background: transparent;
+  border-color: rgba(184, 225, 250, 0.14);
+  box-shadow: none;
+}
+
+.s1-renderer:has(.info-screen-shell) .right-illustration-container {
+  width: 250px;
+  background: linear-gradient(180deg, #0c527e 0%, #0a4164 100%);
+}
+
+.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder {
+  width: 170px;
+  height: 730px;
+  border-radius: 999px;
+  padding: 28px 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.01) 100%);
+}
+
+.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder p:first-child {
+  font-size: 0.95rem;
+}
+
+.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder::before {
+  height: 26%;
+}
+
+.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder::after {
+  font-size: 86px;
 }
 
 /* Right illustration container - 370px wide per mockup */
@@ -531,55 +705,66 @@ select {
 .game-variable {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px 16px;
+  position: relative;
+  min-height: 76px;
+  padding: 0;
   border-radius: 12px; /* Design token: border_radius */
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(230, 242, 250, 0.2);
-  transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(4px);
+  background: transparent;
+  border: none;
+  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), filter 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  overflow: hidden;
 }
 
 .game-variable:hover {
-  background: rgba(255, 255, 255, 0.15);
-  border-color: rgba(230, 242, 250, 0.6); /* Design token: accent */
   transform: translateX(4px);
-  box-shadow: 0 6px 20px rgba(157, 227, 255, 0.2);
+  filter: brightness(1.08);
 }
 
 .game-variable-image {
-  width: 44px;
-  height: 44px;
-  background-size: contain;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
-  flex-shrink: 0;
-  filter: drop-shadow(0 0 8px rgba(157, 227, 255, 0.5));
+  filter: drop-shadow(0 8px 18px rgba(0, 12, 26, 0.28));
+  opacity: 0.98;
 }
 
 .game-variable-content {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
   min-width: 0;
+  padding: 0 18px 0 22px;
+  position: relative;
+  z-index: 1;
 }
 
 .game-variable-caption {
-  font-size: 10px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   color: #e6f2fa; /* Design token: accent */
   font-family: var(--font-ibm-plex-mono), monospace;
-  font-weight: 500;
-  text-shadow: 0 0 8px rgba(157, 227, 255, 0.3);
+  font-weight: 600;
+  text-shadow: 0 0 10px rgba(157, 227, 255, 0.2);
 }
 
 .game-variable-value {
-  font-size: 1.5rem;
+  font-size: 1.85rem;
   font-weight: 700;
   color: #ffffff;
   line-height: 1.1;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
+}
+
+.game-variable-description {
+  display: none;
 }
 
 /* S1 card component - using design tokens */
@@ -629,7 +814,8 @@ select {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 28px;
+  padding: 14px 24px;
+  min-height: 56px;
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
@@ -665,14 +851,48 @@ select {
 #btn-journal::before { background-image: url("/images/jurnal-hodov.png"); }
 #btn-hint::before { background-image: url("/images/podskazka.png"); }
 
+#nav-left {
+  margin-left: auto;
+}
+
+#nav-left, #nav-right {
+  width: 56px;
+  min-width: 56px;
+  height: 56px;
+  padding: 0;
+  justify-content: center;
+  border-radius: 16px;
+  font-size: 0;
+}
+
+#nav-left::before, #nav-right::before {
+  width: 29px;
+  height: 36px;
+  filter: none;
+}
+
+#nav-left::before {
+  background-image: url("/images/arrow-left.png");
+}
+
+#nav-right::before {
+  background-image: url("/images/arrow-right.png");
+}
+
+#nav-left:disabled, #nav-right:disabled {
+  opacity: 0.58;
+  background: rgba(230, 242, 250, 0.08);
+  border-color: rgba(230, 242, 250, 0.14);
+}
+
 /* Right decor illustration placeholder - whales & icebergs style */
 .right-illustration-placeholder {
-  width: 320px;
-  height: 540px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
-  backdrop-filter: blur(16px);
-  border-radius: 20px;
-  border: 1px solid rgba(230, 242, 250, 0.15);
+  width: 290px;
+  height: 620px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
+  backdrop-filter: blur(14px);
+  border-radius: 28px;
+  border: 1px solid rgba(230, 242, 250, 0.12);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -692,15 +912,15 @@ select {
   position: absolute;
   bottom: 0;
   width: 100%;
-  height: 40%;
-  background: linear-gradient(180deg, #ffffff 0%, #e6f2fa 100%);
+  height: 44%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, #e6f2fa 100%);
   clip-path: polygon(0% 100%, 15% 40%, 35% 85%, 55% 20%, 80% 90%, 100% 45%, 100% 100%);
-  opacity: 0.2;
+  opacity: 0.24;
 }
 
 .right-illustration-placeholder::after {
   content: "🐋";
-  font-size: 110px;
+  font-size: 116px;
   margin-top: 30px;
   filter: drop-shadow(0 0 40px rgba(157, 227, 255, 0.8));
   animation: float-whale 8s ease-in-out infinite;

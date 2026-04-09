@@ -62,8 +62,18 @@ const mockS1Ui: AntarcticaPlayerUiContent = {
                 props: {
                   caption: "Остаток дней",
                   description: "Время",
-                  backgroundImage: "/images/top-sidebar/days-top.png",
+                  backgroundImage: "/images/left-sidebar/days.png",
                   value: "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                type: "gameVariableComponent",
+                id: "pro",
+                props: {
+                  caption: "Знания",
+                  description: "Опыт",
+                  backgroundImage: "/images/left-sidebar/znania.png",
+                  value: "{{game.state.public.metrics.pro}}"
                 }
               }
             ]
@@ -120,9 +130,25 @@ const mockS1Ui: AntarcticaPlayerUiContent = {
                 children: [
                   {
                     type: "buttonComponent",
+                    id: "btn-journal",
+                    props: { caption: "Журнал ходов" },
+                    actions: { onClick: { command: "showHistory", payload: {} } }
+                  },
+                  {
+                    type: "buttonComponent",
                     id: "btn-hint",
                     props: { caption: "Подсказка" },
                     actions: { onClick: { command: "showHint", payload: {} } }
+                  },
+                  {
+                    type: "buttonComponent",
+                    id: "nav-left",
+                    props: { caption: "Назад" }
+                  },
+                  {
+                    type: "buttonComponent",
+                    id: "nav-right",
+                    props: { caption: "Вперед" }
                   }
                 ]
               }
@@ -194,6 +220,10 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
     const bottomControls = document.querySelector(".bottom-controls-container");
     expect(bottomControls).toBeDefined();
+    expect(screen.getByRole("button", { name: /Журнал ходов/i })).toBeDefined();
+    expect(screen.getByRole("button", { name: /Подсказка/i })).toBeDefined();
+    expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
 
     const rightDecor = document.querySelector(".right-illustration-container");
     expect(rightDecor).toBeDefined();
@@ -212,8 +242,15 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
     await waitFor(() => {
       const hintButton = document.getElementById("btn-hint");
+      const journalButton = document.getElementById("btn-journal");
+      const leftArrowButton = document.getElementById("nav-left");
+      const rightArrowButton = document.getElementById("nav-right");
       expect(hintButton).toBeDefined();
+      expect(journalButton).toBeDefined();
+      expect(leftArrowButton).toBeDefined();
+      expect(rightArrowButton).toBeDefined();
       expect(hintButton?.textContent).toBe("Подсказка");
+      expect(journalButton?.textContent).toBe("Журнал ходов");
     });
   });
 
@@ -232,6 +269,10 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
       const scoreElements = screen.getAllByText("45");
       expect(scoreElements.length).toBeGreaterThanOrEqual(1);
     });
+
+    const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
+    expect(metricImages.length).toBe(2);
+    expect(metricImages.every((node) => node.style.backgroundImage.includes("/images/left-sidebar/"))).toBe(true);
   });
 
   it("renders 6 cards and handles click with payload", async () => {
@@ -286,16 +327,20 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     );
 
     await waitFor(() => {
+      expect(screen.getByText("Журнал ходов")).toBeDefined();
       expect(screen.getByText("Подсказка")).toBeDefined();
     });
 
+    const journalButton = screen.getByRole("button", { name: /Журнал ходов/i });
     const hintButton = screen.getByRole("button", { name: /Подсказка/i });
+    const leftArrowButton = screen.getByRole("button", { name: /Назад/i });
+    const rightArrowButton = screen.getByRole("button", { name: /Вперед/i });
     
     // Mock the action dispatch fetch
     (global.fetch as any).mockImplementation((url: string, options: any) => {
       if (url === "/api/runtime/actions") {
         const body = JSON.parse(options.body);
-        expect(body.actionId).toBe("showHint");
+        expect(["showHint", "showHistory"]).toContain(body.actionId);
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: "showHint" } } })
@@ -303,12 +348,20 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
     });
+    (global.fetch as any).mockClear();
 
+    fireEvent.click(journalButton);
     fireEvent.click(hintButton);
+    fireEvent.click(leftArrowButton);
+    fireEvent.click(rightArrowButton);
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
+      expect(global.fetch).toHaveBeenCalledTimes(2);
     });
+
+    expect((leftArrowButton as HTMLButtonElement).disabled).toBe(true);
+    expect((rightArrowButton as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("falls back to action catalog when antarcticaUi is missing", async () => {
@@ -677,6 +730,126 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
 });
 
 describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
+  const buildInfoMetrics = () => ([
+    {
+      type: "gameVariableComponent" as const,
+      id: "score",
+      props: {
+        caption: "Остаток дней",
+        backgroundImage: "/images/left-sidebar/days.png",
+        value: "{{game.state.public.metrics.score}}"
+      }
+    },
+    {
+      type: "gameVariableComponent" as const,
+      id: "pro",
+      props: {
+        caption: "Знания",
+        backgroundImage: "/images/left-sidebar/znania.png",
+        value: "{{game.state.public.metrics.pro}}"
+      }
+    }
+  ]);
+
+  const buildInfoVariantScreen = ({
+    screenKey,
+    title,
+    body,
+    actionId,
+    buttonId = "btn-advance",
+    buttonCaption = "Продолжить"
+  }: {
+    screenKey: string;
+    title: string;
+    body: string;
+    actionId: string;
+    buttonId?: string;
+    buttonCaption?: string;
+  }) => ({
+    type: "screen" as const,
+    title,
+    root: {
+      type: "screenComponent" as const,
+      props: {
+        cssClass: "main-screen info-screen-shell",
+        backgroundImage: "/images/arctic-background.png"
+      },
+      children: [
+        {
+          type: "areaComponent" as const,
+          props: { cssClass: "game-variables-container" },
+          children: buildInfoMetrics()
+        },
+        {
+          type: "areaComponent" as const,
+          props: { cssClass: "main-content-area" },
+          children: [
+            {
+              type: "areaComponent" as const,
+              props: { cssClass: `info-content info-content--${screenKey}` },
+              children: [
+                {
+                  type: "areaComponent" as const,
+                  props: { cssClass: `info-event-card info-event-card--${screenKey}` },
+                  children: [
+                    {
+                      type: "areaComponent" as const,
+                      props: { cssClass: `info-event-illustration info-event-illustration--${screenKey}` }
+                    },
+                    {
+                      type: "areaComponent" as const,
+                      props: { cssClass: `info-event-text info-event-text--${screenKey}` },
+                      children: [
+                        {
+                          type: "cardComponent" as const,
+                          id: "info-title",
+                          props: { text: title }
+                        },
+                        {
+                          type: "cardComponent" as const,
+                          id: "info-body",
+                          props: { text: body }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              type: "areaComponent" as const,
+              props: { cssClass: "bottom-controls-container info-bottom-controls" },
+              children: [
+                {
+                  type: "buttonComponent" as const,
+                  id: buttonId,
+                  props: { caption: buttonCaption },
+                  actions: { onClick: { command: "requestServer", payload: { actionId } } }
+                },
+                {
+                  type: "buttonComponent" as const,
+                  id: "nav-left",
+                  props: { caption: "Назад" }
+                },
+                {
+                  type: "buttonComponent" as const,
+                  id: "nav-right",
+                  props: { caption: "Вперед" }
+                },
+                {
+                  type: "buttonComponent" as const,
+                  id: "btn-journal",
+                  props: { caption: "Журнал ходов" },
+                  actions: { onClick: { command: "showHistory", payload: {} } }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  });
+
   // UI manifest with info variant screens for testing info screen selection
   const mockUiWithInfoVariants: AntarcticaPlayerUiContent = {
     id: "antarctica.ui.web",
@@ -685,188 +858,44 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     entryPoint: "S1",
     screens: {
       S1: mockS1Ui.screens.S1,
-      i17: {
-        type: "screen",
+      i17: buildInfoVariantScreen({
+        screenKey: "i17",
         title: "Ускорение процесса",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "score",
-                  props: { caption: "Остаток дней", value: "{{game.state.public.metrics.score}}" }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area" },
-              children: [
-                {
-                  type: "cardComponent",
-                  id: "info-title",
-                  props: { text: "Ускорение процесса" }
-                },
-                {
-                  type: "cardComponent",
-                  id: "info-body",
-                  props: { text: "Настало время ускорить процесс переезда." }
-                },
-                {
-                  type: "buttonComponent",
-                  id: "btn-advance",
-                  props: { caption: "Продолжить" },
-                  actions: { onClick: { command: "requestServer", payload: { actionId: "opening.info.i17.advance" } } }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      i19: {
-        type: "screen",
+        body: "Настало время ускорить процесс переезда.",
+        actionId: "opening.info.i17.advance"
+      }),
+      i18: buildInfoVariantScreen({
+        screenKey: "i18",
+        title: "Отправка разведчиков",
+        body: "Разведчики готовы к отправке.",
+        actionId: "opening.info.i18.advance"
+      }),
+      i19: buildInfoVariantScreen({
+        screenKey: "i19",
         title: "Последствия переезда",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "score",
-                  props: { caption: "Остаток дней", value: "{{game.state.public.metrics.score}}" }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area" },
-              children: [
-                {
-                  type: "cardComponent",
-                  id: "info-title",
-                  props: { text: "Последствия переезда" }
-                },
-                {
-                  type: "cardComponent",
-                  id: "info-body",
-                  props: { text: "После переезда началась работа над укреплением позиций." }
-                },
-                {
-                  type: "buttonComponent",
-                  id: "btn-advance",
-                  props: { caption: "Продолжить" },
-                  actions: { onClick: { command: "requestServer", payload: { actionId: "opening.info.i19.advance" } } }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      i19_1: {
-        type: "screen",
+        body: "После переезда началась работа над укреплением позиций.",
+        actionId: "opening.info.i19.advance"
+      }),
+      i19_1: buildInfoVariantScreen({
+        screenKey: "i19_1",
         title: "Быстрый переезд",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "score",
-                  props: { caption: "Остаток дней", value: "{{game.state.public.metrics.score}}" }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area" },
-              children: [
-                {
-                  type: "cardComponent",
-                  id: "info-title",
-                  props: { text: "Быстрый переезд" }
-                },
-                {
-                  type: "cardComponent",
-                  id: "info-body",
-                  props: { text: "Переезд был осуществлен быстро." }
-                },
-                {
-                  type: "buttonComponent",
-                  id: "btn-advance",
-                  props: { caption: "Продолжить" },
-                  actions: { onClick: { command: "requestServer", payload: { actionId: "opening.info.i19.advance" } } }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      i20: {
-        type: "screen",
+        body: "Переезд был осуществлен быстро.",
+        actionId: "opening.info.i19.advance"
+      }),
+      i20: buildInfoVariantScreen({
+        screenKey: "i20",
         title: "Второй переезд",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area" },
-              children: [
-                {
-                  type: "cardComponent",
-                  id: "info-title",
-                  props: { text: "Второй переезд" }
-                },
-                {
-                  type: "buttonComponent",
-                  id: "btn-advance",
-                  props: { caption: "Завершить" },
-                  actions: { onClick: { command: "requestServer", payload: { actionId: "opening.info.i20.advance" } } }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      i21: {
-        type: "screen",
+        body: "Готовим второй переезд.",
+        actionId: "opening.info.i20.advance"
+      }),
+      i21: buildInfoVariantScreen({
+        screenKey: "i21",
         title: "Финальный экран",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area" },
-              children: [
-                {
-                  type: "cardComponent",
-                  id: "info-title",
-                  props: { text: "Финальный экран" }
-                },
-                {
-                  type: "cardComponent",
-                  id: "info-body",
-                  props: { text: "История завершена." }
-                }
-              ]
-            }
-          ]
-        }
-      }
+        body: "История завершена.",
+        actionId: "opening.info.i21.advance",
+        buttonId: "btn-finish",
+        buttonCaption: "Завершить"
+      })
     }
   };
 
@@ -905,6 +934,109 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       const renderer = document.querySelector(".s1-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Ускорение процесса")).toBeDefined();
+      expect(document.querySelector(".info-event-card")).toBeDefined();
+      expect(document.querySelector(".info-event-illustration")).toBeDefined();
+      expect(document.querySelector(".info-event-text")).toBeDefined();
+      expect(document.querySelector(".info-bottom-controls")).toBeDefined();
+      expect(screen.getByRole("button", { name: /Продолжить/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: /Журнал ходов/i })).toBeDefined();
+      expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
+    expect(metricImages.length).toBe(2);
+    expect(metricImages.every((node) => node.style.backgroundImage.includes("/images/left-sidebar/"))).toBe(true);
+  });
+
+  it("keeps the primary advance action wired for i17 info screen", async () => {
+    const sessionAtI17 = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          timeline: { screenId: "S1", stepIndex: 31, activeInfoId: "i17", stageId: "opening" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string, options: any) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionAtI17)
+        });
+      }
+
+      if (url === "/api/runtime/actions") {
+        const body = JSON.parse(options.body);
+        expect(body.actionId).toBe("requestServer");
+        expect(body.payload).toEqual({ actionId: "opening.info.i17.advance" });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionAtI17)
+        });
+      }
+
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockUiWithInfoVariants}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Продолжить/i })).toBeDefined();
+    });
+
+    (global.fetch as any).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Продолжить/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
+    });
+  });
+
+  it("renders i18 info screen when screenId=S1 and activeInfoId=i18", async () => {
+    const sessionAtI18 = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          timeline: { screenId: "S1", stepIndex: 33, activeInfoId: "i18", stageId: "opening" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionAtI18)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockUiWithInfoVariants}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Отправка разведчиков")).toBeDefined();
+      expect(screen.getByText("Разведчики готовы к отправке.")).toBeDefined();
     });
   });
 
@@ -1021,7 +1153,7 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       const renderer = document.querySelector(".s1-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Второй переезд")).toBeDefined();
-      expect(screen.getByText("Завершить")).toBeDefined();
+      expect(screen.getByText("Продолжить")).toBeDefined();
     });
   });
 
@@ -1061,6 +1193,7 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       expect(renderer).toBeDefined();
       expect(screen.getByText("Финальный экран")).toBeDefined();
       expect(screen.getByText("История завершена.")).toBeDefined();
+      expect(screen.getByText("Завершить")).toBeDefined();
     });
   });
 

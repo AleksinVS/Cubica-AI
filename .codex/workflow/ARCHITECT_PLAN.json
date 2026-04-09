@@ -2,38 +2,38 @@
   "schema_version": "1.0",
   "workflow_version": "v2",
   "project_kind": "cubica-manifest-driven-game-delivery",
-  "block_id": "antarctica-ui-manifest-opening-tail-2026-04-08",
-  "block_goal": "Закрыть следующий реальный delivery gap после коммита 7dfe717: расширить bounded Antarctica UI boundary от S1-only `antarcticaUi` до manifest-driven opening-tail screens (`55..60`, `61..66`, `67..70`, `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21`) так, чтобы `runtime-api` продолжал владеть content loading/projection, а `apps/player-web` рендерил in-scope сцены из player-content DTO без direct repo reads и без UI-side routing heuristics.",
+  "block_id": "antarctica-ui-left-sidebar-mockup-alignment-2026-04-09",
+  "block_goal": "Привести Antarctica left-sidebar screens в `apps/player-web` к целевым мокапам `left-sidebar-6-cards` и `leftsidebar-infocard`: обновить `ui.manifest.json`, выровнять renderer/CSS и закрепить DOM tests, не меняя `runtime-api`.",
   "expected_execution_time": {
-    "estimate": "4-6 hours",
+    "estimate": "3-6 hours",
     "confidence": "medium",
-    "notes": "Сначала нужен additive contract freeze для `antarcticaUi`, затем bounded runtime projection и player-web render/test loop. Оркестратор должен делать более короткий polling для freeze-задачи и более длинный — для render/DOM verification loop."
+    "notes": [
+      "Основная неопределённость — насколько текущие info screens уже близки к `leftsidebar-infocard` и сколько CSS/manifest polishing потребуется без расширения component subset.",
+      "Верхняя граница зависит от стабилизации DOM/snapshot tests и от того, пройдёт ли `verify:player-web` без дополнительных unrelated fixes."
+    ]
   },
   "plan_status": {
     "review_required": false,
     "execution_ready": true
   },
-  "architect_decision_notes": "PM plan review returned `no_findings`, execution proceeded, and Architect final review found one remaining stale handoff statement. This replan adds a final micro-task so Orchestrator can dispatch the exact HANDOFF-only closeout without inventing additional work.",
-  "development_method": "Mixed: Contract-first / schema-first + Vertical slices",
-  "method_selection_rationale": "Текущее состояние после `7dfe717`: truth-model/contracts уже заморожены, `runtime-api` уже владеет player-content boundary, а `apps/player-web` уже использует runtime-owned DTO. Следующий bounded gap теперь не в gameplay truth, а в UI delivery: `antarcticaUi` и manifest-driven renderer ограничены S1, тогда как opening-tail сцены уже существуют как canonical runtime/content slice. Поэтому сначала нужно явно заморозить additive multi-screen UI contract, а затем доставить видимый tail slice end-to-end как вертикальный срез, не ломая fallback для непокрытых сцен.",
+  "development_method": "Vertical slices",
+  "method_selection_rationale": "Работа раскладывается на два явных user-visible increment: opening `S1` с сеткой из шести карточек и info screens с большой информационной карточкой. Оба increment проходят через один ownership boundary (`apps/player-web` + `ui.manifest.json`) и не требуют layer-by-layer contract work.",
   "acceptance_model": {
-    "plan_review": "Required: PM должен проверить план до materialization, потому что блок меняет public player-facing UI DTO boundary и смешивает contract-first freeze с user-visible delivery slices.",
-    "task_acceptance": "Executor owns task-level acceptance. Freeze-задача обязана обновить `CONTRACT_INDEX.md`; каждая задача обязана выдать `TASK_ACCEPTANCE.md`, `EXECUTOR_REPORT.md` и task-specific correction log.",
-    "block_acceptance": "PM owns block acceptance после runtime/player-web verification и docs/handoff sync. Architect final acceptance требуется только если `PM_DECISION_PACKET.status = accepted` и в блоке остаётся хотя бы один delivered slice с `risk_class = R2`."
+    "plan_review": "Отдельный PM review плана не нужен: блок остаётся внутри текущей player-web архитектуры и не меняет runtime boundary.",
+    "task_acceptance": "Executor закрывает каждый slice через `TASK_ACCEPTANCE.md`, `EXECUTOR_REPORT.md` и task-specific correction log.",
+    "block_acceptance": "PM делает block acceptance после завершения обоих slices, синхронизации `apps/player-web/README.md` при необходимости и прохождения обязательных player-web checks.",
+    "architect_final_acceptance": "Не требуется по умолчанию: максимальный плановый риск блока — `R1`. Если в ходе исполнения появится `R2` (например, runtime-api change или новый reusable renderer contract), Orchestrator должен остановиться и вернуть блок Architect на перепланирование."
   },
   "architect_instructions_for_orchestrator": [
-    "Сначала отправь план на PM review; task-packets не материализуй до завершения review loop.",
-    "После plan review материализуй task-packets только из этого плана и matching `SLICE_EXPORT_SPEC.json`.",
-    "Держи порядок строго таким: `task-freeze-multiscreen-ui-contract` -> `task-project-opening-tail-ui-screens` -> `task-render-opening-tail-manifest-ui`.",
-    "Не стартуй projection/render задачи, пока в block workspace не появился обновлённый `CONTRACT_INDEX.md` после freeze-задачи.",
-    "Для polling cadence используй `expected_execution_time` блока и `expected_duration` задач: freeze-задачу проверяй чаще, render/DOM-test loop — реже.",
-    "Если во время исполнения понадобится breaking rename `antarcticaUi`, generic UI platform abstraction или ownership shift за пределы ADR-019, остановись и эскалируй к Architect.",
-    "После завершения всех задач запроси у PM `CONFORMANCE_REPORT.md` и `PM_DECISION_PACKET.md`; если `status != accepted`, Architect final acceptance не запрашивается.",
-    "Так как блок содержит R2 freeze slice, при `PM_DECISION_PACKET.status = accepted` обязан появиться `ARCHITECT_FINAL_ACCEPTANCE.json` перед полным закрытием блока.",
-    "Following returned architect acceptance, materialize only `task-sync-contract-and-closeout-docs` as the remaining open rework task; previous implementation tasks stay closed unless Architect replans otherwise.",
-    "Following the second returned architect acceptance, materialize only `task-fix-handoff-stale-bullet` as the remaining open rework task; all other implementation and doc-sync tasks stay closed unless Architect replans otherwise."
+    "Материализуй task-packets только из этого плана и не переписывай требования своими словами.",
+    "Запускай slices строго по порядку: сначала `task-align-s1-left-sidebar-cards`, затем `task-align-left-sidebar-info-screens`.",
+    "Не разрешай выход за scope: только `apps/player-web/**`, `games/antarctica/ui/web/ui.manifest.json` и block artifacts.",
+    "Block-local executor binding временно переключён на `gemini-cli`, потому что `droid` не выполняет exec без `FACTORY_API_KEY`; если `gemini-cli` недоступен, используй fallback `codex-subagent`.",
+    "Не допускай изменений `services/runtime-api`, contracts packages или gameplay manifests; при такой необходимости останавливайся и эскалируй Architect.",
+    "Если во втором slice исполнитель хочет добавить новый component type или новое поле UI contract, считай это `R2` и не продолжай без нового architect decision.",
+    "После второго slice запроси PM block acceptance; без `PM_DECISION_PACKET.md` блок не считается закрытым."
   ],
-  "task_packet_path_template": ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/task-packets/{task_id}.json",
+  "task_packet_path_template": ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/task-packets/{task_id}.json",
   "role_runtime_bindings": [
     {
       "role": "architect",
@@ -72,730 +72,387 @@
     },
     {
       "role": "executor",
-      "launcher": "droid",
-      "provider": "minimax",
-      "model": "MiniMax-M2.7",
+      "launcher": "gemini-cli",
+      "provider": "google",
+      "model": "gemini-3-flash-preview",
       "tier": "medium",
-      "reasoning_effort": "high",
-      "fallbacks": []
+      "reasoning_effort": "medium",
+      "fallbacks": [
+        {
+          "launcher": "codex-subagent",
+          "provider": "openai",
+          "model": "gpt-5.2",
+          "tier": "medium",
+          "reasoning_effort": "medium"
+        }
+      ]
     }
   ],
   "method_role_runtime_bindings": {},
-  "block_methodology_mode": "mixed-method",
+  "block_methodology_mode": "single-method",
   "methods_used": [
-    "Contract-first / schema-first",
     "Vertical slices"
   ],
-  "strategic_alignment": [
-    "Продвигает следующий реальный приоритет после `Complete the Antarctica Truth Model`: укрепляет canonical player-web delivery layer из Priority 2 и Priority 4 без возврата к repo-file coupling.",
-    "Сохраняет ADR-018 (gameplay truth в `game.manifest.json`), ADR-019 (runtime-api owns content loading/player-content API) и ADR-024 (bounded manifest-driven gameplay mechanics).",
-    "Убирает следующий заметный delivery gap: manifest-driven UI остаётся S1-only, хотя opening-tail runtime/content slice уже доведён до terminal `i21`."
-  ],
   "global_rules": [
-    "Использовать Context7 для актуальных Next.js / React best practices; текущее правило для этого блока — data fetching остаётся на server/page boundary, а в client component передаются уже загруженные typed props.",
-    "Сохранять additive compatibility: текущий S1 consumer не должен ломаться из-за расширения `antarcticaUi`.",
-    "Сохранять ADR-019 ownership boundary: browser и `apps/player-web` не читают `games/*` напрямую и не становятся вторым content loader.",
-    "Использовать `games/antarctica/ui/web/ui.manifest.json` только как delivery-layer UI data; gameplay truth остаётся в `games/antarctica/game.manifest.json`.",
-    "Не вводить generic SDUI engine, screen router platform, reusable component factory или новый cross-game UI abstraction layer без нового architect decision.",
-    "UI selection для info/board tail screens должна опираться на runtime snapshot (`stepIndex`, `screenId`, `activeInfoId`) и frozen mapping contract, а не на guessed client heuristics."
+    "Подтверждать framework-sensitive решения через актуальные источники: Next.js App Router client boundary и static assets в `public/`, а также Vitest guidance для user-visible DOM tests.",
+    "Сохранять текущую runtime-owned boundary: `player-web` не читает `games/*` напрямую в runtime, даже если сам блок меняет `games/antarctica/ui/web/ui.manifest.json` как source artifact.",
+    "Не расширять компонентный набор beyond `screenComponent`, `areaComponent`, `gameVariableComponent`, `cardComponent`, `buttonComponent`.",
+    "Предпочитать existing player-web asset policy: root-relative paths из `public/images/**` без ad hoc URL builder logic.",
+    "Документацию внутри scope (`apps/player-web/README.md`) обновлять, только если delivered layout/testing behavior перестаёт совпадать с текущим описанием."
   ],
   "global_acceptance": [
-    "`GET /games/antarctica/player-content` возвращает additive `antarcticaUi` surface, который покрывает S1 opening screen и bounded opening-tail screens без breaking change для текущего S1 consumer-а.",
-    "`apps/player-web` рендерит in-scope tail scenes (`55..60`, `61..66`, `67..70`, `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21`) из `antarcticaUi` + session snapshot, а fallback остаётся только для внешних сцен.",
-    "Выбор между `i19` и `i19_1` зависит только от runtime state (`activeInfoId`), а не от UI-side branch logic.",
-    "`npm run verify:runtime-api`, `npm run verify:player-web` и `npm run verify:canonical` подтверждают delivered boundary.",
-    "`apps/player-web/README.md`, `services/runtime-api/HANDOFF.md` и `NEXT_STEPS.md` не противоречат доставленному multi-screen UI boundary."
+    "`S1` визуально следует композиции `left-sidebar-6-cards`: левый sidebar, grid `3x2`, bottom controls с nav arrows и правая декоративная область.",
+    "Info screens `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21` визуально следуют композиции `leftsidebar-infocard`: left sidebar, большая info-card/event-card, footer controls в нижней зоне.",
+    "Metric badges используют left-sidebar asset refs и продолжают показывать live values из session snapshot.",
+    "DOM tests покрывают S1 shell и info-screen shell так, чтобы регрессии layout structure были видны без pixel-diff tooling.",
+    "`npm test --workspace @cubica/player-web` и `npm run verify:player-web` проходят."
   ],
   "global_invariants": [
-    "`services/runtime-api` остаётся sole owner загрузки `games/*` и player-facing projection.",
-    "Gameplay logic и deterministic routing не мигрируют в UI manifest или player-web.",
-    "Текущий S1 manifest-driven renderer остаётся рабочим во время и после расширения.",
-    "В блоке не появляются новые generic gameplay/UI platforms, selectors, or DSLs.",
-    "Если обнаружится реальный contract/runtime defect, его нужно эскалировать, а не маскировать UI workaround-ом."
+    "`services/runtime-api` и contracts packages не меняются в рамках этого блока.",
+    "Screen selection по `timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId` остаётся прежней.",
+    "Interactive controls продолжают использовать текущий `/api/runtime/actions` dispatch path.",
+    "Новый ADR не создаётся, пока блок остаётся внутри bounded UI polish scope."
   ],
   "risk_policy": {
-    "R0": "docs-only sync, narrow test-only update, or local non-behavioral cleanup",
-    "R1": "bounded UI manifest projection or player-web rendering change внутри уже frozen ownership boundary и additive contract surface",
-    "R2": "public `antarcticaUi` DTO change, reusable UI abstraction attempt, ownership change, or ADR-affecting architecture shift"
+    "R0": "локальный CSS/test/docs polish без изменения проявляемого renderer shape",
+    "R1": "bounded player-web renderer + `ui.manifest.json` alignment внутри текущего canonical Antarctica player slice",
+    "R2": "любая попытка менять runtime-api/contracts, добавить новый reusable component contract или сдвинуть ownership boundary"
   },
   "escalation_matrix": {
-    "needs_breaking_antarctica_ui_contract": "architect",
-    "needs_new_generic_ui_platform": "architect",
-    "runtime_snapshot_not_sufficient_for_screen_selection": "architect",
-    "ui_manifest_requires_new_global_schema_family": "architect",
+    "needs_runtime_api_or_contract_change": "architect",
+    "needs_new_component_type_or_new_ui_contract_field": "architect",
+    "mockup_alignment_breaks_existing_action_semantics": "architect",
     "verify_player_web_fails_due_to_unrelated_existing_issue": "architect",
-    "runtime_binding_unavailable": "architect"
+    "scope_expands_beyond_player_web_and_ui_manifest": "architect"
   },
   "method_workflow": [
-    "Freeze: зафиксировать additive multi-screen `antarcticaUi` contract и current-step selection rules в `CONTRACT_INDEX.md`.",
-    "Project: расширить bounded Antarctica web UI manifest и runtime projection для opening-tail boards/info screens.",
-    "Deliver: перевести `apps/player-web` на manifest-driven current-step rendering для in-scope tail scenes, сохранив resolver/fallback только вне scope.",
-    "Accept: PM подтверждает conformance; после `status = accepted` Architect делает final acceptance, потому что блок включает R2 freeze slice.",
-    "Closeout rework: sync `CONTRACT_INDEX.md`, `NEXT_STEPS.md`, and `services/runtime-api/HANDOFF.md` with the delivered multi-screen UI boundary before requesting renewed PM/Architect closure.",
-    "Final micro-closeout: remove the one remaining stale bullet from `services/runtime-api/HANDOFF.md`, then reroute through PM re-check and Architect final acceptance."
+    "Slice 1: довести opening `S1` до left-sidebar-6-cards с manifest asset retargeting, footer arrows и S1 DOM coverage.",
+    "Slice 2: довести info screens до leftsidebar-infocard, сохранив activeInfoId routing, primary advance behavior и стабильные DOM tests.",
+    "После обоих slices отдать блок на PM block acceptance."
   ],
   "method_phases": [
     {
-      "phase_id": "freeze",
-      "description": "Freeze additive Antarctica UI DTO and current-step selection contract."
+      "phase_id": "slice-1",
+      "description": "Opening `S1` cards-screen alignment to `left-sidebar-6-cards`."
     },
     {
-      "phase_id": "project",
-      "description": "Project bounded opening-tail S1/S2 UI screens through runtime-owned player-content."
-    },
-    {
-      "phase_id": "deliver",
-      "description": "Render opening-tail screens in player-web from antarcticaUi and sync docs/handoff."
-    },
-    {
-      "phase_id": "closeout",
-      "description": "Doc and contract synchronization after returned architect final acceptance."
-    },
-    {
-      "phase_id": "final-closeout",
-      "description": "Final HANDOFF-only stale-bullet cleanup after second returned architect acceptance."
+      "phase_id": "slice-2",
+      "description": "Info-screen alignment to `leftsidebar-infocard`."
     }
   ],
   "method_controls": [
-    "Не параллелизовать задачи: projection и render зависят от freeze-контракта.",
-    "Не выполнять player-web render задачу, пока `CONTRACT_INDEX.md` не зафиксировал additive UI contract и mapping contract.",
-    "Если `PM_DECISION_PACKET.status != accepted`, Architect final acceptance не создаётся.",
-    "Если для tail screens нужны новые global UI schema primitives или generic routing abstractions, остановиться и эскалировать вместо тихого расширения блока.",
-    "Docs sync допускается только как минимальное удаление противоречий после delivered behavior, а не как самостоятельный docs-only scope creep.",
-    "After `task-sync-contract-and-closeout-docs`, reroute the block through a quick PM conformance re-check and then request Architect final acceptance again.",
-    "Do not reopen `CONTRACT_INDEX.md` or `NEXT_STEPS.md` in the final micro-rework unless Architect explicitly replans; the remaining blocker is isolated to `services/runtime-api/HANDOFF.md`."
+    "Не запускать второй slice, пока не зафиксированы ids/classes и footer-arrow pattern из первого slice.",
+    "Каждый slice должен оставлять `apps/player-web` в runnable и testable состоянии.",
+    "PM block acceptance запускается только после завершения обоих visible slices и прохождения обязательных checks.",
+    "Если mockup alignment потребует больше, чем bounded CSS/manifest/renderer work, остановиться и эскалировать вместо тихого расширения плана."
   ],
   "method_artifacts": [
-    "CONTRACT_INDEX.md",
-    "CONFORMANCE_REPORT.md",
     "TASK_ACCEPTANCE.md",
     "EXECUTOR_REPORT.md",
     "AGENT_CORRECTION_LOG.executor.{scope_id}.md",
-    "PM_DECISION_PACKET.md",
-    "ARCHITECT_FINAL_ACCEPTANCE.json"
+    "PM_DECISION_PACKET.md"
   ],
-  "method_iteration_limit": 2,
+  "method_iteration_limit": 1,
+  "method_freeze_rules": [
+    "Freeze runtime boundary: этот блок не получает права трогать `runtime-api`.",
+    "Freeze component subset: nav arrows должны быть выражены через существующий `buttonComponent` + manifest/CSS agreement.",
+    "Freeze mockup scope: только `left-sidebar-6-cards` и `leftsidebar-infocard`."
+  ],
   "technology_stack": [
     "Next.js 15 App Router (`apps/player-web`)",
-    "React 19 client component rendering",
-    "TypeScript workspace packages in `packages/contracts/*`",
-    "Node-based `services/runtime-api` modular monolith",
-    "`games/antarctica/ui/web/ui.manifest.json` as bounded delivery-layer UI data",
-    "Vitest-based runtime-api and player-web verification"
+    "React 18 client components for session state and action dispatch",
+    "Vitest + Testing Library for DOM regression coverage",
+    "Antarctica UI manifest (`games/antarctica/ui/web/ui.manifest.json`)",
+    "Antarctica design mockups (`games/antarctica/design/mockups/*`)"
   ],
   "technology_rules": [
-    "Предпочитать additive extension текущего `antarcticaUi` contract вместо breaking rename/removal.",
-    "Предпочитать расширение текущего Antarctica player component / renderer helpers вместо нового rendering subsystem.",
-    "Держать content fetch на page/server boundary и передавать typed content/session props в client component; не переносить data loading в browser-only layer.",
-    "Использовать существующие bounded UI component primitives там, где возможно; не расширять schema ради cosmetic variety без подтверждённой необходимости.",
-    "Сохранять root-relative asset references и canonical static asset policy."
+    "Следовать Next.js App Router composition pattern: page-level data loading остаётся на server side, interactive renderer — внутри existing `use client` boundary.",
+    "Статические изображения и иконки обслуживать через `public/` и root-relative paths.",
+    "Vitest DOM tests строить вокруг user-visible structure и поведения; snapshots держать маленькими и focused вместо больших golden dumps.",
+    "Не добавлять pixel-diff, browser E2E или новый test harness в этот блок."
   ],
   "adr_requirements": [
-    "Новый ADR не требуется, пока блок остаётся bounded extension внутри ADR-018, ADR-019, ADR-024 и текущего UI-manifest delivery boundary.",
-    "Если additive multi-screen UI contract требует нового cross-game UI platform rule, reusable router abstraction или ownership shift, остановиться и эскалировать на ADR review.",
-    "Если меняется практический handoff по runtime-owned UI projection boundary, синхронизировать `services/runtime-api/HANDOFF.md` и `NEXT_STEPS.md`."
+    "Новый ADR не требуется: блок остаётся в рамках уже принятой player-web/runtime ownership модели.",
+    "Если в ходе выполнения всплывает необходимость архитектурного решения для reusable cross-game left-sidebar pattern, остановиться и вернуть блок Architect вместо скрытого ADR drift."
   ],
   "slices": [
     {
-      "slice_id": "slice-ui-contract-freeze",
-      "title": "Freeze additive Antarctica multi-screen UI contract",
-      "goal": "Явно зафиксировать additive `antarcticaUi` contract и правила current-step screen selection для S1 + opening-tail screens, не ломая текущий S1 consumer.",
-      "risk_class": "R2",
+      "slice_id": "slice-s1-left-sidebar-cards",
+      "title": "Opening S1 left-sidebar cards screen",
+      "goal": "Выровнять opening screen `S1` под `left-sidebar-6-cards` с left-sidebar metric assets, bottom nav arrows и стабильной DOM coverage.",
+      "risk_class": "R1",
       "depends_on": [],
       "read_files": [
         "AGENTS.md",
         "PROJECT_OVERVIEW.md",
         "docs/architecture/PROJECT_ARCHITECTURE.md",
-        "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
-        "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md",
         "NEXT_STEPS.md",
-        "services/runtime-api/HANDOFF.md",
-        "packages/contracts/manifest/src/index.ts",
-        "services/runtime-api/src/modules/content/contentService.ts",
-        "services/runtime-api/tests/runtime-api.integration.ts",
-        "apps/player-web/src/components/antarctica-player.tsx",
-        "apps/player-web/README.md"
-      ],
-      "allowed_files": [
-        "packages/contracts/manifest/**",
-        "services/runtime-api/src/modules/content/**",
-        "services/runtime-api/tests/**",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md"
-      ],
-      "forbidden_moves": [
-        "Не делать breaking rename/remove текущего S1-поля без additive compatibility path.",
-        "Не вводить generic cross-game UI platform, renderer framework или reusable screen router.",
-        "Не переносить gameplay truth или deterministic routing в UI manifest contract.",
-        "Не возвращать direct `games/*` reads в `apps/player-web`."
-      ],
-      "required_docs": [
-        "docs/architecture/adrs/019-runtime-api-owns-content-loading-and-player-facing-content-api.md",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md",
-        "apps/player-web/README.md"
-      ],
-      "required_checks": [
-        "npm run verify:runtime-api",
-        "npm run verify:canonical"
-      ],
-      "control_points": [
-        "Frozen contract сохраняет работающий S1 path и добавляет явный способ адресовать bounded tail screens.",
-        "Selection contract использует runtime snapshot fields (`stepIndex`, `screenId`, `activeInfoId`) вместо client-side guessed routing.",
-        "Contract ownership остаётся у `packages/contracts/manifest` + `runtime-api` content projection."
-      ],
-      "mandatory_tests": [
-        "Runtime-api contract coverage proving additive `antarcticaUi` shape and backward-compatible S1 projection.",
-        "Negative coverage for malformed or missing screen-registry mapping when the frozen contract requires it."
-      ],
-      "acceptance_criteria": [
-        "`packages/contracts/manifest` явно описывает additive multi-screen UI boundary для Antarctica.",
-        "`CONTRACT_INDEX.md` фиксирует contract ownership, compatibility story и current-step selection rules.",
-        "Runtime-api tests доказывают, что S1 projection не ломается после contract freeze."
-      ],
-      "executor_mode": "senior",
-      "tasks": [
-        {
-          "task_id": "task-freeze-multiscreen-ui-contract",
-          "executor_level": "senior",
-          "goal": "Зафиксировать additive multi-screen `antarcticaUi` DTO и mapping contract для S1 + bounded opening-tail scenes без breaking change для текущего S1 consumer-а.",
-          "expected_duration": "45-90 minutes",
-          "inputs": [
-            "Priority 2 / Priority 4 current delivery goals from `NEXT_STEPS.md`.",
-            "Current S1-only `antarcticaUi` contract and renderer usage.",
-            "Current runtime content projection behavior for `GET /games/:gameId/player-content`."
-          ],
-          "read_files": [
-            "packages/contracts/manifest/src/index.ts",
-            "services/runtime-api/src/modules/content/contentService.ts",
-            "services/runtime-api/tests/runtime-api.integration.ts",
-            "apps/player-web/src/components/antarctica-player.tsx",
-            "apps/player-web/README.md",
-            "services/runtime-api/HANDOFF.md",
-            "NEXT_STEPS.md"
-          ],
-          "write_files": [
-            "packages/contracts/manifest/src/index.ts",
-            "services/runtime-api/src/modules/content/**",
-            "services/runtime-api/tests/**",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md"
-          ],
-          "implementation_notes": [
-            "Держать расширение additive: существующий S1 renderer должен остаться совместимым без forced rename/remove.",
-            "Freeze explicit mapping contract для S1 info/screens и S2 board screens вместо неявных UI heuristics.",
-            "Document the frozen UI surface and compatibility notes in `CONTRACT_INDEX.md` before later tasks continue."
-          ],
-          "tests_to_write": [
-            "Runtime-api contract tests proving additive `antarcticaUi` projection and S1 backward compatibility.",
-            "Negative coverage for invalid/missing bounded screen mapping if not already covered."
-          ],
-          "tests_to_run": [
-            "npm run verify:runtime-api",
-            "npm run verify:canonical"
-          ],
-          "deliverables": [
-            "Frozen additive `antarcticaUi` contract in `packages/contracts/manifest`.",
-            "Updated `CONTRACT_INDEX.md` with UI contract ownership, compatibility, and mapping rules.",
-            "Runtime-api contract assertions aligned with the frozen UI boundary."
-          ],
-          "escalate_if": [
-            "a required change would break the existing S1 consumer instead of extending it safely",
-            "the work starts to require a new generic UI platform or routing abstraction",
-            "current runtime snapshot fields are insufficient to define a deterministic mapping contract"
-          ],
-          "development_method": "Contract-first / schema-first",
-          "method_phase": "freeze",
-          "method_step_id": "freeze-multiscreen-ui-contract",
-          "artifact_expectations": [
-            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
-            "Update `CONTRACT_INDEX.md` before any projection/render work proceeds."
-          ],
-          "runtime_override": {},
-          "runtime_binding": {
-            "role": "executor",
-            "launcher": "droid",
-            "provider": "minimax",
-            "model": "MiniMax-M2.7",
-            "tier": "medium",
-            "reasoning_effort": "high",
-            "fallbacks": []
-          }
-        }
-      ]
-    },
-    {
-      "slice_id": "slice-tail-ui-projection",
-      "title": "Project opening-tail UI screens through runtime",
-      "goal": "Расширить bounded Antarctica web UI manifest и runtime projection так, чтобы player-content DTO содержал manifest-driven screens для opening tail (`55..60`, `61..66`, `67..70`, `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21`).",
-      "risk_class": "R1",
-      "depends_on": [
-        "slice-ui-contract-freeze"
-      ],
-      "read_files": [
-        "docs/architecture/gameplay-slices/027-antarctica-step-30-acceleration-board.md",
-        "docs/architecture/gameplay-slices/028-antarctica-step-32-scout-dispatch-board.md",
-        "docs/architecture/gameplay-slices/029-antarctica-step-34-relocation-aftermath-and-ending.md",
-        "docs/architecture/schemas/ui-manifest.schema.json",
-        "games/antarctica/ui/web/ui.manifest.json",
-        "games/antarctica/design/mockups/left-sidebar-6-cards.design.json",
-        "services/runtime-api/src/modules/content/contentService.ts",
-        "services/runtime-api/tests/runtime-api.integration.ts",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
-        "services/runtime-api/HANDOFF.md"
-      ],
-      "allowed_files": [
-        "games/antarctica/ui/web/**",
-        "services/runtime-api/src/modules/content/**",
-        "services/runtime-api/tests/**",
-        "services/runtime-api/HANDOFF.md"
-      ],
-      "forbidden_moves": [
-        "Не менять gameplay logic в `games/antarctica/game.manifest.json` как часть UI projection блока.",
-        "Не расширять UI schema новым глобальным семейством primitives без architect escalation.",
-        "Не менять `apps/player-web` в этой задаче; slice owner здесь — runtime/UI manifest boundary."
-      ],
-      "required_docs": [
-        "docs/architecture/gameplay-slices/027-antarctica-step-30-acceleration-board.md",
-        "docs/architecture/gameplay-slices/028-antarctica-step-32-scout-dispatch-board.md",
-        "docs/architecture/gameplay-slices/029-antarctica-step-34-relocation-aftermath-and-ending.md",
-        "services/runtime-api/HANDOFF.md"
-      ],
-      "required_checks": [
-        "npm run verify:runtime-api",
-        "npm run verify:canonical"
-      ],
-      "control_points": [
-        "UI manifest/projection покрывают только bounded tail scenes, already supported by runtime gameplay flow.",
-        "S1 entry screen and asset policy остаются валидными после projection expansion.",
-        "DTO отсутствует безопасно вне scope: projection не притворяется полной заменой fallback path для всех сцен."
-      ],
-      "mandatory_tests": [
-        "Runtime-api endpoint tests proving `GET /games/antarctica/player-content` returns tail UI screens and preserves existing S1 data.",
-        "Negative coverage for malformed bounded tail screen data if current validator/projection path needs it."
-      ],
-      "acceptance_criteria": [
-        "Player-content DTO содержит bounded tail UI screens for the in-scope opening-tail scenes.",
-        "Runtime projection остаётся additive и сохраняет S1 entry behavior.",
-        "Required runtime verification commands pass."
-      ],
-      "executor_mode": "senior",
-      "tasks": [
-        {
-          "task_id": "task-project-opening-tail-ui-screens",
-          "executor_level": "senior",
-          "goal": "Добавить bounded opening-tail screen definitions в Antarctica web UI manifest и спроецировать их через runtime-owned player-content API.",
-          "expected_duration": "1-2 hours",
-          "inputs": [
-            "Frozen additive UI contract from `CONTRACT_INDEX.md`.",
-            "GSR-027 / GSR-028 / GSR-029 as the factual tail-slice behavior reference.",
-            "Current Antarctica web UI manifest and runtime content projection."
-          ],
-          "read_files": [
-            "games/antarctica/ui/web/ui.manifest.json",
-            "services/runtime-api/src/modules/content/contentService.ts",
-            "services/runtime-api/tests/runtime-api.integration.ts",
-            "docs/architecture/gameplay-slices/027-antarctica-step-30-acceleration-board.md",
-            "docs/architecture/gameplay-slices/028-antarctica-step-32-scout-dispatch-board.md",
-            "docs/architecture/gameplay-slices/029-antarctica-step-34-relocation-aftermath-and-ending.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
-            "services/runtime-api/HANDOFF.md"
-          ],
-          "write_files": [
-            "games/antarctica/ui/web/ui.manifest.json",
-            "services/runtime-api/src/modules/content/**",
-            "services/runtime-api/tests/**",
-            "services/runtime-api/HANDOFF.md"
-          ],
-          "implementation_notes": [
-            "Model only the bounded tail scenes already supported by runtime gameplay state; do not widen into post-opening extraction.",
-            "Prefer composition with existing component primitives before any schema growth.",
-            "Keep projection additive and tolerant of partial coverage outside the in-scope scenes."
-          ],
-          "tests_to_write": [
-            "Runtime-api integration tests for player-content tail UI projection.",
-            "If needed, narrow validator/projection coverage for malformed bounded tail screen definitions."
-          ],
-          "tests_to_run": [
-            "npm run verify:runtime-api",
-            "npm run verify:canonical"
-          ],
-          "deliverables": [
-            "Updated `games/antarctica/ui/web/ui.manifest.json` with bounded tail screen definitions.",
-            "Runtime-owned player-content projection for the in-scope tail screens.",
-            "Handoff sync describing the new practical UI projection boundary."
-          ],
-          "escalate_if": [
-            "a required tail screen cannot be represented with the frozen bounded UI contract",
-            "projection starts to require gameplay inference that belongs to runtime/game manifest instead of delivery data",
-            "a screen needs a new global UI primitive family rather than bounded composition"
-          ],
-          "development_method": "Vertical slices",
-          "method_phase": "project",
-          "method_step_id": "project-opening-tail-ui-screens",
-          "artifact_expectations": [
-            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
-            "Reference the exact bounded scenes covered by projection so PM can verify scope."
-          ],
-          "runtime_override": {},
-          "runtime_binding": {
-            "role": "executor",
-            "launcher": "droid",
-            "provider": "minimax",
-            "model": "MiniMax-M2.7",
-            "tier": "medium",
-            "reasoning_effort": "high",
-            "fallbacks": []
-          }
-        }
-      ]
-    },
-    {
-      "slice_id": "slice-player-web-tail-render",
-      "title": "Render opening-tail screens in player-web",
-      "goal": "Перевести `apps/player-web` на manifest-driven current-step rendering для in-scope opening-tail scenes, сохранив resolver/fallback path только для сцен вне scope.",
-      "risk_class": "R1",
-      "depends_on": [
-        "slice-tail-ui-projection"
-      ],
-      "read_files": [
         "apps/player-web/README.md",
-        "apps/player-web/app/page.tsx",
+        "apps/player-web/app/globals.css",
         "apps/player-web/src/components/antarctica-player.tsx",
         "apps/player-web/src/components/antarctica-player-dom.test.tsx",
-        "apps/player-web/src/components/antarctica-player.test.tsx",
-        "apps/player-web/src/lib/antarctica.ts",
-        "apps/player-web/src/test/antarctica-opening-tail-fixtures.ts",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md"
+        "apps/player-web/src/components/antarctica-s1-renderer.test.tsx",
+        "games/antarctica/ui/web/ui.manifest.json",
+        "games/antarctica/design/mockups/left-sidebar-6-cards.design.json",
+        "games/antarctica/design/mockups/left-sidebar-6-cards.jpg"
       ],
       "allowed_files": [
-        "apps/player-web/**",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md"
+        "games/antarctica/ui/web/ui.manifest.json",
+        "apps/player-web/app/**",
+        "apps/player-web/src/**",
+        "apps/player-web/README.md",
+        ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/EXECUTOR_REPORT.md",
+        ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/TASK_ACCEPTANCE.md",
+        ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/AGENT_CORRECTION_LOG.executor.task-align-s1-left-sidebar-cards.md"
       ],
       "forbidden_moves": [
-        "Не добавлять direct `games/*` reads или browser-side content loading.",
-        "Не придумывать UI-side branch logic для `i19` vs `i19_1`; использовать только runtime state.",
-        "Не вводить новый generic rendering subsystem или platform-wide router."
+        "Не менять `services/runtime-api`, contracts packages или gameplay manifests.",
+        "Не добавлять новый component type, generic renderer registry или новый UI contract field ради nav arrows.",
+        "Не ломать существующий session/action boundary и fallback behavior.",
+        "Не расширять блок до top-sidebar или других mockup families."
       ],
       "required_docs": [
-        "apps/player-web/README.md",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md"
+        "apps/player-web/README.md"
       ],
       "required_checks": [
-        "npm run verify:player-web",
-        "npm run verify:canonical"
+        "npm test --workspace @cubica/player-web",
+        "npm run verify:player-web"
       ],
       "control_points": [
-        "In-scope tail scenes выбираются по frozen mapping contract и runtime snapshot, а не по implicit component assumptions.",
-        "Current S1 manifest-driven path остаётся рабочим после generalization.",
-        "Fallback action catalog/resolver остаётся только для сцен вне frozen multi-screen UI scope."
+        "S1 остаётся manifest-driven и не переписывается в hardcoded layout.",
+        "Metric art для S1 переключена на `/images/left-sidebar/*` refs.",
+        "Bottom-controls содержат journal/hint area и nav arrow buttons без нового transport path."
       ],
       "mandatory_tests": [
-        "Player-web DOM/integration coverage for at least one S2 tail board, one variant info path (`i19`/`i19_1`), terminal `i21`, and one outside-scope fallback scene.",
-        "Regression coverage proving existing S1 manifest-driven rendering still works."
+        "DOM test for S1 sidebar + six-card grid + footer arrows structure",
+        "metric binding assertion for left-sidebar S1 metrics",
+        "focused snapshot or equivalent stable shell assertion for S1 renderer"
       ],
       "acceptance_criteria": [
-        "`apps/player-web` рендерит in-scope tail scenes from `antarcticaUi` instead of relying on the legacy resolver/fallback path.",
-        "Variant and terminal scenes follow runtime snapshot fields exactly.",
-        "Docs describe the delivered multi-screen UI boundary without contradicting the code."
+        "Opening `S1` visually соответствует left-sidebar mockup по layout hierarchy, spacing intent и token family.",
+        "Bottom nav arrows присутствуют в footer structure и не ломают существующие actions для journal/hint/cards.",
+        "Player-web checks проходят без runtime-api изменений."
       ],
       "executor_mode": "senior",
       "tasks": [
         {
-          "task_id": "task-render-opening-tail-manifest-ui",
+          "task_id": "task-align-s1-left-sidebar-cards",
           "executor_level": "senior",
-          "goal": "Обновить `apps/player-web`, чтобы tail scenes рендерились из `antarcticaUi` + session snapshot, и синхронизировать docs с delivered boundary.",
+          "goal": "Обновить `S1` screen definition в `ui.manifest.json` и соответствующий renderer/CSS/tests в `apps/player-web`, чтобы opening screen соответствовал `left-sidebar-6-cards` и использовал left-sidebar assets + footer nav arrows.",
           "expected_duration": "1-2 hours",
           "inputs": [
-            "Frozen UI contract from `CONTRACT_INDEX.md`.",
-            "Runtime-projected tail UI screens from player-content DTO.",
-            "Current Antarctica player component, helpers, and tail test fixtures."
+            "Current S1 screen in `games/antarctica/ui/web/ui.manifest.json`",
+            "Current `apps/player-web` manifest-driven renderer/CSS/tests",
+            "`left-sidebar-6-cards.design.json` and `.jpg` as visual source of truth"
           ],
           "read_files": [
-            "apps/player-web/app/page.tsx",
+            "apps/player-web/app/globals.css",
             "apps/player-web/src/components/antarctica-player.tsx",
             "apps/player-web/src/components/antarctica-player-dom.test.tsx",
-            "apps/player-web/src/components/antarctica-player.test.tsx",
-            "apps/player-web/src/lib/antarctica.ts",
-            "apps/player-web/src/test/antarctica-opening-tail-fixtures.ts",
+            "apps/player-web/src/components/antarctica-s1-renderer.test.tsx",
             "apps/player-web/README.md",
-            "services/runtime-api/HANDOFF.md",
-            "NEXT_STEPS.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md"
+            "games/antarctica/ui/web/ui.manifest.json",
+            "games/antarctica/design/mockups/left-sidebar-6-cards.design.json",
+            "games/antarctica/design/mockups/left-sidebar-6-cards.jpg",
+            "packages/contracts/manifest/src/index.ts"
           ],
           "write_files": [
-            "apps/player-web/app/page.tsx",
-            "apps/player-web/src/components/antarctica-player.tsx",
-            "apps/player-web/src/components/antarctica-player-dom.test.tsx",
-            "apps/player-web/src/components/antarctica-player.test.tsx",
-            "apps/player-web/src/lib/antarctica.ts",
-            "apps/player-web/src/test/antarctica-opening-tail-fixtures.ts",
+            "games/antarctica/ui/web/ui.manifest.json",
+            "apps/player-web/app/globals.css",
+            "apps/player-web/src/components/**",
             "apps/player-web/README.md",
-            "services/runtime-api/HANDOFF.md",
-            "NEXT_STEPS.md"
+            ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/EXECUTOR_REPORT.md",
+            ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/TASK_ACCEPTANCE.md",
+            ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/AGENT_CORRECTION_LOG.executor.task-align-s1-left-sidebar-cards.md"
           ],
           "implementation_notes": [
-            "Сохранять data loading на page/server boundary и передавать loaded typed props в client component; не переносить fetch logic в browser path.",
-            "Generalize existing Antarctica renderer incrementally: preserve S1 behavior while adding in-scope tail screen selection.",
-            "Docs sync делать только там, где текущие документы начинают противоречить delivered multi-screen UI boundary."
+            "Переключить S1 metric badges на уже существующие `public/images/left-sidebar/*` paths, а не на `top-sidebar` assets.",
+            "Nav arrows выразить через текущий `buttonComponent` contract и CSS/id conventions; не добавлять новый component type и не менять contracts.",
+            "Сохранить существующий action dispatch path (`/api/runtime/actions`) для journal, hint, card selection и любых footer interactions.",
+            "DOM/snapshot coverage держать focused: проверять layout shell и user-visible DOM, а не внутреннюю реализацию."
           ],
           "tests_to_write": [
-            "Player-web DOM/integration tests for tail S2 board rendering, variant info routing, terminal i21, and outside-scope fallback preservation.",
-            "Regression test for existing S1 manifest-driven rendering if current suite does not already lock it well enough."
+            "update S1 DOM tests for left-sidebar assets and footer-arrow structure",
+            "update S1 renderer snapshot/assertions to match the new bounded shell"
           ],
           "tests_to_run": [
-            "npm run verify:player-web",
-            "npm run verify:canonical"
+            "npm test --workspace @cubica/player-web",
+            "npm run verify:player-web"
           ],
           "deliverables": [
-            "Manifest-driven tail rendering in `apps/player-web`.",
-            "Updated player-web tests/fixtures covering in-scope tail scenes and fallback preservation.",
-            "Synced `apps/player-web/README.md`, `services/runtime-api/HANDOFF.md`, and `NEXT_STEPS.md` for the delivered boundary."
+            "updated S1 manifest screen with left-sidebar asset refs and footer arrows",
+            "aligned S1 renderer/CSS in player-web",
+            "green S1-focused DOM coverage"
           ],
           "escalate_if": [
-            "player-web needs a new generic rendering engine instead of bounded renderer extension",
-            "runtime snapshot fields are not sufficient to select the correct in-scope tail screen deterministically",
-            "verify:player-web fails due to an unrelated existing issue outside the slice boundary"
+            "nav arrows cannot be represented within the current button contract",
+            "S1 alignment requires runtime-api or contract changes",
+            "mockup match would break existing journal/hint/card interaction semantics"
           ],
           "development_method": "Vertical slices",
-          "method_phase": "deliver",
-          "method_step_id": "deliver-opening-tail-manifest-ui",
+          "method_phase": "slice",
+          "method_step_id": "slice-s1-left-sidebar-cards",
           "artifact_expectations": [
-            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log.",
-            "Call out any doc deltas explicitly so PM can verify the repo no longer contradicts the delivered UI boundary."
+            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md` and the task-specific correction log with exact files/tests changed.",
+            "Keep the report explicit about any remaining gaps for info screens so slice 2 can reuse the conventions."
           ],
           "runtime_override": {},
           "runtime_binding": {
             "role": "executor",
-            "launcher": "droid",
-            "provider": "minimax",
-            "model": "MiniMax-M2.7",
+            "launcher": "gemini-cli",
+            "provider": "google",
+            "model": "gemini-3-flash-preview",
             "tier": "medium",
-            "reasoning_effort": "high",
-            "fallbacks": []
+            "reasoning_effort": "medium",
+            "fallbacks": [
+              {
+                "launcher": "codex-subagent",
+                "provider": "openai",
+                "model": "gpt-5.2",
+                "tier": "medium",
+                "reasoning_effort": "medium"
+              }
+            ]
           }
         }
       ]
     },
     {
-      "slice_id": "slice-doc-contract-sync",
-      "title": "Sync contract and closeout docs",
-      "goal": "Снять blockers из `ARCHITECT_FINAL_ACCEPTANCE.json`: синхронизировать contract narrative и project docs с фактически доставленной multi-screen UI boundary.",
-      "risk_class": "R0",
+      "slice_id": "slice-left-sidebar-info-screens",
+      "title": "Info screens left-sidebar infocard alignment",
+      "goal": "Выровнять manifest-driven info screens `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21` под `leftsidebar-infocard`, не ломая `activeInfoId` routing и advance actions.",
+      "risk_class": "R1",
       "depends_on": [
-        "slice-player-web-tail-render"
+        "slice-s1-left-sidebar-cards"
       ],
       "read_files": [
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/ARCHITECT_FINAL_ACCEPTANCE.json",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/PM_DECISION_PACKET.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
-        "apps/player-web/src/components/antarctica-player.tsx",
+        "AGENTS.md",
+        "PROJECT_OVERVIEW.md",
+        "docs/architecture/PROJECT_ARCHITECTURE.md",
         "apps/player-web/README.md",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md"
+        "apps/player-web/app/globals.css",
+        "apps/player-web/src/components/antarctica-player.tsx",
+        "apps/player-web/src/components/antarctica-player-dom.test.tsx",
+        "games/antarctica/ui/web/ui.manifest.json",
+        "games/antarctica/design/mockups/leftsidebar-infocard.design.json",
+        "games/antarctica/design/mockups/leftsidebar-infocard.jpg"
       ],
       "allowed_files": [
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/TASK_ACCEPTANCE.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/AGENT_CORRECTION_LOG.executor.task-sync-contract-and-closeout-docs.md"
+        "games/antarctica/ui/web/ui.manifest.json",
+        "apps/player-web/app/**",
+        "apps/player-web/src/**",
+        "apps/player-web/README.md",
+        ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/EXECUTOR_REPORT.md",
+        ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/TASK_ACCEPTANCE.md",
+        ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/AGENT_CORRECTION_LOG.executor.task-align-left-sidebar-info-screens.md"
       ],
       "forbidden_moves": [
-        "Не менять project code или runtime/player-web behavior в этом rework slice.",
-        "Не переопределять delivered contract shape; синхронизировать только narrative и pointers с уже доставленной реализацией.",
-        "Не расширять scope за пределы `CONTRACT_INDEX.md`, `NEXT_STEPS.md` и `services/runtime-api/HANDOFF.md`."
+        "Не менять `activeInfoId` routing contract или source of truth в runtime.",
+        "Не превращать info-screen polish в generic cross-game infocard framework.",
+        "Не менять gameplay action ids/semantics ради визуального совпадения.",
+        "Не выходить за targeted info screens и left-sidebar mockup family."
       ],
       "required_docs": [
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/ARCHITECT_FINAL_ACCEPTANCE.json",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
-        "services/runtime-api/HANDOFF.md",
-        "NEXT_STEPS.md"
+        "apps/player-web/README.md"
       ],
-      "required_checks": [],
+      "required_checks": [
+        "npm test --workspace @cubica/player-web",
+        "npm run verify:player-web"
+      ],
       "control_points": [
-        "`CONTRACT_INDEX.md` must describe the actual selection contract: S2 boards resolve via `stepIndex -> boardKey`, S1 info variants via `activeInfoId`, and `entryPoint` is only the initial-load fallback.",
-        "`services/runtime-api/HANDOFF.md` and `NEXT_STEPS.md` must no longer describe the multi-screen UI boundary as a future gap.",
-        "The rework must stay doc-only and must not reopen implementation scope."
+        "Info-screen selection по `activeInfoId` остаётся прежней и продолжает использовать manifest-driven path.",
+        "Sidebar info-screen metrics используют ту же left-sidebar token family, что и S1.",
+        "Footer info screens остаётся совместим с existing advance behavior и включает nav arrow structure там, где это согласовано manifest/CSS."
       ],
       "mandatory_tests": [
-        "No new automated tests; verify by direct artifact-to-code consistency against `apps/player-web/src/components/antarctica-player.tsx` and current delivered docs."
+        "DOM test for info-screen shell with sidebar + event-card + footer controls",
+        "routing test showing correct manifest screen selection by `activeInfoId`",
+        "focused assertion that primary advance control remains wired to the existing action path"
       ],
       "acceptance_criteria": [
-        "`CONTRACT_INDEX.md` matches the delivered `screenKey` selection logic exactly.",
-        "`services/runtime-api/HANDOFF.md` and `NEXT_STEPS.md` describe the multi-screen `antarcticaUi` boundary as delivered state instead of future work.",
-        "Architect final review blockers from `ARCHITECT_FINAL_ACCEPTANCE.json` are fully addressed without code changes."
+        "Info screens визуально следуют `leftsidebar-infocard` по layout hierarchy и token family без потери semantic actions.",
+        "`activeInfoId`-specific screens по-прежнему выбираются корректно и отображают expected content.",
+        "Updated player-web checks pass and README remains consistent with delivered behavior."
       ],
       "executor_mode": "senior",
       "tasks": [
         {
-          "task_id": "task-sync-contract-and-closeout-docs",
+          "task_id": "task-align-left-sidebar-info-screens",
           "executor_level": "senior",
-          "goal": "Синхронизировать `CONTRACT_INDEX.md`, `NEXT_STEPS.md` и `services/runtime-api/HANDOFF.md` с фактически доставленной multi-screen UI boundary и снять blockers из architect final review.",
-          "expected_duration": "20-40 minutes",
+          "goal": "Обновить info-screen definitions в `ui.manifest.json` и `apps/player-web` renderer/CSS/tests так, чтобы targeted info screens соответствовали `leftsidebar-infocard` и использовали общий left-sidebar visual language.",
+          "expected_duration": "1-3 hours",
           "inputs": [
-            "Returned architect final acceptance with explicit blockers.",
-            "Current delivered screen-selection logic in `apps/player-web/src/components/antarctica-player.tsx`.",
-            "Current PM acceptance summary and executor reports for this block."
+            "Current info-screen definitions (`i17`, `i18`, `i19`, `i19_1`, `i20`, `i21`) in `games/antarctica/ui/web/ui.manifest.json`",
+            "Current `activeInfoId` routing in `apps/player-web`",
+            "`leftsidebar-infocard.design.json` and `.jpg` as visual source of truth",
+            "Conventions established by slice 1 for left-sidebar metrics and footer arrows"
           ],
           "read_files": [
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/ARCHITECT_FINAL_ACCEPTANCE.json",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/PM_DECISION_PACKET.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
+            "apps/player-web/app/globals.css",
             "apps/player-web/src/components/antarctica-player.tsx",
+            "apps/player-web/src/components/antarctica-player-dom.test.tsx",
             "apps/player-web/README.md",
-            "services/runtime-api/HANDOFF.md",
-            "NEXT_STEPS.md"
+            "games/antarctica/ui/web/ui.manifest.json",
+            "games/antarctica/design/mockups/leftsidebar-infocard.design.json",
+            "games/antarctica/design/mockups/leftsidebar-infocard.jpg"
           ],
           "write_files": [
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/CONTRACT_INDEX.md",
-            "services/runtime-api/HANDOFF.md",
-            "NEXT_STEPS.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/TASK_ACCEPTANCE.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/AGENT_CORRECTION_LOG.executor.task-sync-contract-and-closeout-docs.md"
+            "games/antarctica/ui/web/ui.manifest.json",
+            "apps/player-web/app/globals.css",
+            "apps/player-web/src/components/**",
+            "apps/player-web/README.md",
+            ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/EXECUTOR_REPORT.md",
+            ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/TASK_ACCEPTANCE.md",
+            ".tmp/agent-workflow/antarctica-ui-left-sidebar-mockup-alignment-2026-04-09/AGENT_CORRECTION_LOG.executor.task-align-left-sidebar-info-screens.md"
           ],
           "implementation_notes": [
-            "Keep the rework strictly documentation-only; do not touch runtime/player-web code or tests.",
-            "Update `CONTRACT_INDEX.md` so its mapping rules explicitly match the delivered renderer behavior instead of the earlier simplified pseudocode.",
-            "Update `services/runtime-api/HANDOFF.md` and `NEXT_STEPS.md` only enough to remove stale descriptions of the multi-screen UI boundary."
+            "Сохранить current `activeInfoId`-based screen selection и не переносить эту логику из существующего player-web path.",
+            "Использовать ту же left-sidebar asset/token family, что и в S1, чтобы не плодить отдельную info-only тему.",
+            "Footer/controls выровнять под mockup, но primary advance action сохранить через existing command/actionId mapping.",
+            "Если нужны snapshot checks, держать их focused на info-screen shell instead of full-page dumps."
           ],
-          "tests_to_write": [],
-          "tests_to_run": [],
+          "tests_to_write": [
+            "update info-screen DOM tests for left-sidebar infocard shell and footer controls",
+            "update or extend activeInfoId manifest-selection assertions for the targeted info screens"
+          ],
+          "tests_to_run": [
+            "npm test --workspace @cubica/player-web",
+            "npm run verify:player-web"
+          ],
           "deliverables": [
-            "Synchronized `CONTRACT_INDEX.md` describing the actual `screenKey` resolution contract.",
-            "Updated `services/runtime-api/HANDOFF.md` and `NEXT_STEPS.md` with no stale multi-screen UI gap language.",
-            "Fresh executor artifacts proving the architect final-review blockers are cleared."
+            "updated info-screen manifest definitions aligned to `leftsidebar-infocard`",
+            "player-web renderer/CSS adjustments for info-screen shell",
+            "green info-screen DOM coverage and README sync if wording changed"
           ],
           "escalate_if": [
-            "removing the documented contradictions would require changing runtime/player-web code instead of docs",
-            "the delivered implementation and PM packet disagree on the actual screen-selection contract in a way that cannot be resolved by doc sync alone",
-            "additional stale planning docs are discovered that imply a wider replan instead of this bounded closeout task"
+            "info-screen alignment needs a new component type or contract field",
+            "the mockup cannot be matched without changing advance semantics or screen routing",
+            "the scope starts to require runtime-api data changes"
           ],
-          "development_method": "Contract-first / schema-first",
-          "method_phase": "closeout",
-          "method_step_id": "closeout-doc-contract-sync",
+          "development_method": "Vertical slices",
+          "method_phase": "slice",
+          "method_step_id": "slice-left-sidebar-info-screens",
           "artifact_expectations": [
-            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and the task-specific correction log for this rework task.",
-            "Call out exactly which stale statements were corrected so PM can re-check conformance quickly."
+            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md` and the task-specific correction log with explicit notes about `activeInfoId` routing coverage.",
+            "Document any residual visual gaps clearly instead of silently broadening scope."
           ],
           "runtime_override": {},
           "runtime_binding": {
             "role": "executor",
-            "launcher": "droid",
-            "provider": "minimax",
-            "model": "MiniMax-M2.7",
+            "launcher": "gemini-cli",
+            "provider": "google",
+            "model": "gemini-3-flash-preview",
             "tier": "medium",
-            "reasoning_effort": "high",
-            "fallbacks": []
-          }
-        }
-      ]
-    },
-    {
-      "slice_id": "slice-handoff-stale-bullet-fix",
-      "title": "Fix HANDOFF stale bullet",
-      "goal": "Удалить последний architect-final-acceptance blocker: stale bullet в `services/runtime-api/HANDOFF.md`, который всё ещё описывает UI boundary как будто slice заканчивается на `i16`.",
-      "risk_class": "R0",
-      "depends_on": [
-        "slice-doc-contract-sync"
-      ],
-      "read_files": [
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/ARCHITECT_FINAL_ACCEPTANCE.json",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/PM_DECISION_PACKET.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-        "services/runtime-api/HANDOFF.md"
-      ],
-      "allowed_files": [
-        "services/runtime-api/HANDOFF.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/TASK_ACCEPTANCE.md",
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/AGENT_CORRECTION_LOG.executor.task-fix-handoff-stale-bullet.md"
-      ],
-      "forbidden_moves": [
-        "Не менять project code, tests, `CONTRACT_INDEX.md` или `NEXT_STEPS.md` в этом микро-task.",
-        "Не расширять scope beyond one stale bullet in `services/runtime-api/HANDOFF.md`.",
-        "Не переопределять delivered implementation or contract behavior; исправить только stale handoff narrative."
-      ],
-      "required_docs": [
-        ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/ARCHITECT_FINAL_ACCEPTANCE.json",
-        "services/runtime-api/HANDOFF.md"
-      ],
-      "required_checks": [],
-      "control_points": [
-        "The stale bullet under `Что ещё НЕ сделано` must no longer claim that the current player-facing slice effectively stops at `i16`.",
-        "`services/runtime-api/HANDOFF.md` must present one internally consistent current-state story after the edit.",
-        "The micro-rework must stay docs-only and isolated to the handoff plus required workflow artifacts."
-      ],
-      "mandatory_tests": [
-        "No automated tests; verify by direct reading that the contradictory `i16`-only statement is removed or rewritten consistently with the delivered multi-screen boundary."
-      ],
-      "acceptance_criteria": [
-        "`services/runtime-api/HANDOFF.md` no longer contains the stale bullet that frames post-`i16` UI delivery as the next gap.",
-        "The remaining handoff text is consistent with the delivered multi-screen `antarcticaUi` boundary and the current PM packet.",
-        "No code or non-handoff docs are changed in this micro-task."
-      ],
-      "executor_mode": "senior",
-      "tasks": [
-        {
-          "task_id": "task-fix-handoff-stale-bullet",
-          "executor_level": "senior",
-          "goal": "Исправить последний stale bullet в `services/runtime-api/HANDOFF.md` и обновить workflow artifacts, чтобы architect final acceptance больше не блокировался handoff contradiction.",
-          "expected_duration": "5-15 minutes",
-          "inputs": [
-            "Returned architect final acceptance naming the exact remaining blocker.",
-            "Current `services/runtime-api/HANDOFF.md` with one stale `i16`-only bullet.",
-            "Current PM re-check packet confirming all other blockers are closed."
-          ],
-          "read_files": [
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/ARCHITECT_FINAL_ACCEPTANCE.json",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/PM_DECISION_PACKET.md",
-            "services/runtime-api/HANDOFF.md"
-          ],
-          "write_files": [
-            "services/runtime-api/HANDOFF.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/EXECUTOR_REPORT.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/TASK_ACCEPTANCE.md",
-            ".tmp/agent-workflow/antarctica-ui-manifest-opening-tail-2026-04-08/AGENT_CORRECTION_LOG.executor.task-fix-handoff-stale-bullet.md"
-          ],
-          "implementation_notes": [
-            "Keep the edit minimal: remove or rewrite only the stale bullet in `Что ещё НЕ сделано` so it matches the already-correct later multi-screen section.",
-            "Do not modify any project code, tests, or unrelated planning documents in this micro-task.",
-            "Update the block-level executor artifacts so PM and Architect can verify that the final blocker is now closed."
-          ],
-          "tests_to_write": [],
-          "tests_to_run": [],
-          "deliverables": [
-            "A consistent `services/runtime-api/HANDOFF.md` with the stale `i16`-only bullet removed or corrected.",
-            "Updated `EXECUTOR_REPORT.md` and `TASK_ACCEPTANCE.md` documenting the micro-rework.",
-            "Task-specific correction log for `task-fix-handoff-stale-bullet`."
-          ],
-          "escalate_if": [
-            "fixing the stale handoff statement would require changing code or broader docs beyond this micro-task scope",
-            "another contradictory handoff statement is discovered that implies a larger replan instead of a one-bullet fix",
-            "PM packet and handoff cannot be reconciled with a minimal docs-only edit"
-          ],
-          "development_method": "Contract-first / schema-first",
-          "method_phase": "final-closeout",
-          "method_step_id": "final-handoff-stale-bullet-fix",
-          "artifact_expectations": [
-            "Update `EXECUTOR_REPORT.md`, `TASK_ACCEPTANCE.md`, and `AGENT_CORRECTION_LOG.executor.task-fix-handoff-stale-bullet.md`.",
-            "Explicitly quote or describe the removed stale statement so PM can re-check conformance quickly."
-          ],
-          "runtime_override": {},
-          "runtime_binding": {
-            "role": "executor",
-            "launcher": "droid",
-            "provider": "minimax",
-            "model": "MiniMax-M2.7",
-            "tier": "medium",
-            "reasoning_effort": "high",
-            "fallbacks": []
+            "reasoning_effort": "medium",
+            "fallbacks": [
+              {
+                "launcher": "codex-subagent",
+                "provider": "openai",
+                "model": "gpt-5.2",
+                "tier": "medium",
+                "reasoning_effort": "medium"
+              }
+            ]
           }
         }
       ]

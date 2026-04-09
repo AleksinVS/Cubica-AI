@@ -68,7 +68,7 @@
                 "props": {
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре. Основной параметр.",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -78,7 +78,7 @@
                 "props": {
                   "caption": "Знания",
                   "description": "Уровень знаний, который игрок может использовать для решения задач.",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -88,7 +88,7 @@
                 "props": {
                   "caption": "Доверие",
                   "description": "Уровень доверия команды и окружения к игроку.",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -98,7 +98,7 @@
                 "props": {
                   "caption": "Энергия",
                   "description": "Ресурс на действия и принятие решений.",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -108,7 +108,7 @@
                 "props": {
                   "caption": "Контроль",
                   "description": "Способность управлять ситуацией и направлением изменений.",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -118,7 +118,7 @@
                 "props": {
                   "caption": "Статус",
                   "description": "Положение игрока в системе и степень влияния.",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -128,7 +128,7 @@
                 "props": {
                   "caption": "Контакт",
                   "description": "Доступность связей и поддержки вокруг игрока.",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -138,7 +138,7 @@
                 "props": {
                   "caption": "Конструктив",
                   "description": "Нацеленность на результат без пустых конфликтов.",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -266,6 +266,20 @@
                         "command": "showHint",
                         "payload": {}
                       }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
                     }
                   }
                 ]
@@ -908,7 +922,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen info-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
@@ -923,7 +937,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -932,7 +946,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -941,7 +955,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -950,7 +964,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -959,7 +973,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -968,7 +982,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -977,7 +991,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -986,7 +1000,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -1001,29 +1015,51 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "info-content"
+                  "cssClass": "info-content info-content--i17"
                 },
                 "children": [
                   {
-                    "type": "cardComponent",
-                    "id": "info-title",
+                    "type": "areaComponent",
                     "props": {
-                      "text": "Ускорение процесса"
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "info-body",
-                    "props": {
-                      "text": "Настало время ускорить процесс переезда."
-                    }
+                      "cssClass": "info-event-card info-event-card--i17"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-illustration info-event-illustration--i17"
+                        }
+                      },
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-text info-event-text--i17"
+                        },
+                        "children": [
+                          {
+                            "type": "cardComponent",
+                            "id": "info-title",
+                            "props": {
+                              "text": "Ускорение процесса"
+                            }
+                          },
+                          {
+                            "type": "cardComponent",
+                            "id": "info-body",
+                            "props": {
+                              "text": "Настало время ускорить процесс переезда."
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "bottom-controls-container"
+                  "cssClass": "bottom-controls-container info-bottom-controls"
                 },
                 "children": [
                   {
@@ -1038,6 +1074,33 @@
                         "payload": {
                           "actionId": "opening.info.i17.advance"
                         }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
                       }
                     }
                   }
@@ -1055,7 +1118,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen info-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
@@ -1070,7 +1133,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1079,7 +1142,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1088,7 +1151,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1097,7 +1160,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1106,7 +1169,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1115,7 +1178,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1124,7 +1187,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1133,7 +1196,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -1148,29 +1211,51 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "info-content"
+                  "cssClass": "info-content info-content--i18"
                 },
                 "children": [
                   {
-                    "type": "cardComponent",
-                    "id": "info-title",
+                    "type": "areaComponent",
                     "props": {
-                      "text": "Отправка разведчиков"
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "info-body",
-                    "props": {
-                      "text": "Разведчики готовы к отправке."
-                    }
+                      "cssClass": "info-event-card info-event-card--i18"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-illustration info-event-illustration--i18"
+                        }
+                      },
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-text info-event-text--i18"
+                        },
+                        "children": [
+                          {
+                            "type": "cardComponent",
+                            "id": "info-title",
+                            "props": {
+                              "text": "Отправка разведчиков"
+                            }
+                          },
+                          {
+                            "type": "cardComponent",
+                            "id": "info-body",
+                            "props": {
+                              "text": "Разведчики готовы к отправке."
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "bottom-controls-container"
+                  "cssClass": "bottom-controls-container info-bottom-controls"
                 },
                 "children": [
                   {
@@ -1185,6 +1270,33 @@
                         "payload": {
                           "actionId": "opening.info.i18.advance"
                         }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
                       }
                     }
                   }
@@ -1202,7 +1314,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen info-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
@@ -1217,7 +1329,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1226,7 +1338,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1235,7 +1347,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1244,7 +1356,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1253,7 +1365,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1262,7 +1374,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1271,7 +1383,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1280,7 +1392,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -1295,29 +1407,51 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "info-content"
+                  "cssClass": "info-content info-content--i19"
                 },
                 "children": [
                   {
-                    "type": "cardComponent",
-                    "id": "info-title",
+                    "type": "areaComponent",
                     "props": {
-                      "text": "Последствия переезда"
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "info-body",
-                    "props": {
-                      "text": "После переезда началась работа над укреплением позиций."
-                    }
+                      "cssClass": "info-event-card info-event-card--i19"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-illustration info-event-illustration--i19"
+                        }
+                      },
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-text info-event-text--i19"
+                        },
+                        "children": [
+                          {
+                            "type": "cardComponent",
+                            "id": "info-title",
+                            "props": {
+                              "text": "Последствия переезда"
+                            }
+                          },
+                          {
+                            "type": "cardComponent",
+                            "id": "info-body",
+                            "props": {
+                              "text": "После переезда началась работа над укреплением позиций."
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "bottom-controls-container"
+                  "cssClass": "bottom-controls-container info-bottom-controls"
                 },
                 "children": [
                   {
@@ -1332,6 +1466,33 @@
                         "payload": {
                           "actionId": "opening.info.i19.advance"
                         }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
                       }
                     }
                   }
@@ -1349,7 +1510,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen info-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
@@ -1364,7 +1525,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1373,7 +1534,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1382,7 +1543,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1391,7 +1552,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1400,7 +1561,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1409,7 +1570,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1418,7 +1579,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1427,7 +1588,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -1442,29 +1603,51 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "info-content"
+                  "cssClass": "info-content info-content--i19_1"
                 },
                 "children": [
                   {
-                    "type": "cardComponent",
-                    "id": "info-title",
+                    "type": "areaComponent",
                     "props": {
-                      "text": "Быстрый переезд"
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "info-body",
-                    "props": {
-                      "text": "Переезд был осуществлен быстро."
-                    }
+                      "cssClass": "info-event-card info-event-card--i19_1"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-illustration info-event-illustration--i19_1"
+                        }
+                      },
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-text info-event-text--i19_1"
+                        },
+                        "children": [
+                          {
+                            "type": "cardComponent",
+                            "id": "info-title",
+                            "props": {
+                              "text": "Быстрый переезд"
+                            }
+                          },
+                          {
+                            "type": "cardComponent",
+                            "id": "info-body",
+                            "props": {
+                              "text": "Переезд был осуществлен быстро."
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "bottom-controls-container"
+                  "cssClass": "bottom-controls-container info-bottom-controls"
                 },
                 "children": [
                   {
@@ -1479,6 +1662,33 @@
                         "payload": {
                           "actionId": "opening.info.i19.advance"
                         }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
                       }
                     }
                   }
@@ -1496,7 +1706,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen info-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
@@ -1511,7 +1721,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1520,7 +1730,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1529,7 +1739,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1538,7 +1748,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1547,7 +1757,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1556,7 +1766,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1565,7 +1775,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1574,7 +1784,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -1589,29 +1799,51 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "info-content"
+                  "cssClass": "info-content info-content--i20"
                 },
                 "children": [
                   {
-                    "type": "cardComponent",
-                    "id": "info-title",
+                    "type": "areaComponent",
                     "props": {
-                      "text": "Второй переезд"
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "info-body",
-                    "props": {
-                      "text": "Готовим второй переезд."
-                    }
+                      "cssClass": "info-event-card info-event-card--i20"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-illustration info-event-illustration--i20"
+                        }
+                      },
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-text info-event-text--i20"
+                        },
+                        "children": [
+                          {
+                            "type": "cardComponent",
+                            "id": "info-title",
+                            "props": {
+                              "text": "Второй переезд"
+                            }
+                          },
+                          {
+                            "type": "cardComponent",
+                            "id": "info-body",
+                            "props": {
+                              "text": "Готовим второй переезд."
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "bottom-controls-container"
+                  "cssClass": "bottom-controls-container info-bottom-controls"
                 },
                 "children": [
                   {
@@ -1626,6 +1858,33 @@
                         "payload": {
                           "actionId": "opening.info.i20.advance"
                         }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
                       }
                     }
                   }
@@ -1643,7 +1902,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen info-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
@@ -1658,7 +1917,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "backgroundImage": "/images/left-sidebar/days.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1667,7 +1926,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1676,7 +1935,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1685,7 +1944,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1694,7 +1953,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1703,7 +1962,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "backgroundImage": "/images/left-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1712,7 +1971,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1721,7 +1980,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               }
@@ -1736,29 +1995,51 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "info-content"
+                  "cssClass": "info-content info-content--i21"
                 },
                 "children": [
                   {
-                    "type": "cardComponent",
-                    "id": "info-title",
+                    "type": "areaComponent",
                     "props": {
-                      "text": "Финальный экран"
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "info-body",
-                    "props": {
-                      "text": "История завершена."
-                    }
+                      "cssClass": "info-event-card info-event-card--i21"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-illustration info-event-illustration--i21"
+                        }
+                      },
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "info-event-text info-event-text--i21"
+                        },
+                        "children": [
+                          {
+                            "type": "cardComponent",
+                            "id": "info-title",
+                            "props": {
+                              "text": "Финальный экран"
+                            }
+                          },
+                          {
+                            "type": "cardComponent",
+                            "id": "info-body",
+                            "props": {
+                              "text": "История завершена."
+                            }
+                          }
+                        ]
+                      }
+                    ]
                   }
                 ]
               },
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "bottom-controls-container"
+                  "cssClass": "bottom-controls-container info-bottom-controls"
                 },
                 "children": [
                   {
@@ -1773,6 +2054,33 @@
                         "payload": {
                           "actionId": "opening.info.i21.advance"
                         }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
                       }
                     }
                   }
