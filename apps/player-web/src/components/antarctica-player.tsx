@@ -129,9 +129,10 @@ export function GameVariableComponent({
 }) {
   const { caption, description, value } = component.props;
   const resolvedValue = resolveMetricBinding(value, metrics);
+  const id = (component as AntarcticaUiComponent).id;
 
   return (
-    <div className="game-variable">
+    <div className={`game-variable ${id ? `game-variable--${id}` : ""}`}>
       {backgroundImage && (
         <div className="game-variable-image" style={{ backgroundImage: `url(${backgroundImage})` }} />
       )}
@@ -234,7 +235,10 @@ export function UiComponentNode({
     case "areaComponent": {
       const props = component.props as AntarcticaUiAreaComponentProps;
       return (
-        <div className={`s1-area ${props.cssClass ?? ""}`}>
+        <div
+          className={`s1-area ${props.cssClass ?? ""}`}
+          style={props.backgroundImage ? { backgroundImage: `url(${props.backgroundImage})` } : undefined}
+        >
           {children.map((child, index) => (
             <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} />
           ))}

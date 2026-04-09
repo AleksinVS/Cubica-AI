@@ -141,6 +141,12 @@
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -378,6 +384,12 @@
                   "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -602,6 +614,12 @@
                   "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -818,6 +836,12 @@
                   "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -1002,6 +1026,12 @@
                   "caption": "Конструктив",
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
+                }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
                 }
               }
             ]
@@ -1199,6 +1229,12 @@
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -1394,6 +1430,12 @@
                   "caption": "Конструктив",
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
+                }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
                 }
               }
             ]
@@ -1591,6 +1633,12 @@
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -1787,6 +1835,12 @@
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
               }
             ]
           },
@@ -1982,6 +2036,12 @@
                   "caption": "Конструктив",
                   "backgroundImage": "/images/left-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
+                }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
                 }
               }
             ]

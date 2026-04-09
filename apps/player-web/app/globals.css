@@ -407,12 +407,10 @@ select {
    Bounded to: screenComponent, areaComponent, gameVariableComponent,
    cardComponent, buttonComponent
 
-   Mockup alignment: left-sidebar-6-cards.design.json
-   - sidebar-left: 260px wide, full height (900px)
-   - cards-grid: 900px wide, 3x2 grid with gap 24
-   - bottom-controls: 900px wide, below cards
-   - right-illustration: 370px wide, full height (900px)
-   - gaps: 40px between sidebar/cards, 30px between cards/illustration
+   Mockup alignment: left-sidebar-6-cards.design.json & leftsidebar-infocard.design.json
+   - S1 (6-cards): sidebar 260px, main 970px, illustration 370px (Total 1600px)
+   - Info (infocard): sidebar 400px, main 1520px (Total 1920px)
+   - Design tokens: background #0b4f7a, primary #0b6fa4, card #2f7fb3
    =========================================================================== */
 
 /* S1 renderer root - horizontal layout with sidebar, main area, and decor illustration */
@@ -420,8 +418,8 @@ select {
   display: flex;
   flex-direction: row;
   gap: 0;
-  width: 1600px; /* Mockup width */
-  height: 900px; /* Mockup height */
+  width: 1600px; /* Mockup width for S1 */
+  height: 900px; /* Mockup height for S1 */
   background: #0b4f7a; /* Design token: background */
   border-radius: 12px; /* Design token: border_radius */
   overflow: hidden;
@@ -430,6 +428,13 @@ select {
   position: relative;
   color: #ffffff; /* Design token: text */
   margin: 0 auto;
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+/* Expand renderer for info screens per leftsidebar-infocard mockup (1920x1080) */
+.s1-renderer:has(.info-screen-shell) {
+  width: 1920px;
+  height: 1080px;
 }
 
 /* S1 screen container */
@@ -444,6 +449,28 @@ select {
   background-repeat: no-repeat;
 }
 
+/* Left sidebar game variables container - 260px wide per mockup S1, 400px for info */
+.game-variables-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 24px 20px;
+  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
+  border-right: 1px solid rgba(170, 227, 255, 0.16);
+  width: 260px;
+  height: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  z-index: 3;
+  transition: width 0.4s ease;
+}
+
+.info-screen-shell .game-variables-container {
+  width: 400px;
+  background: #0f4c75; /* Design token: sidebar_bg for infocard */
+}
+
 /* Main content area (cards + bottom controls) - 970px wide (40 gap + 900 content + 30 gap) */
 .main-content-area {
   display: flex;
@@ -455,27 +482,19 @@ select {
   box-sizing: border-box;
   z-index: 2;
   position: relative;
+  transition: width 0.4s ease;
+}
+
+.info-screen-shell .main-content-area {
+  width: 1520px;
+  background: #1b262c; /* Design token: main_bg for infocard */
+  padding-left: 60px;
+  padding-right: 60px;
 }
 
 /* S1 area - generic class for manifest areas */
 .s1-area {
   display: flex;
-}
-
-/* Left sidebar game variables container - 260px wide per mockup */
-.game-variables-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  padding: 18px 18px;
-  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
-  border-right: 1px solid rgba(170, 227, 255, 0.16);
-  width: 260px;
-  height: 100%;
-  flex-shrink: 0;
-  box-sizing: border-box;
-  z-index: 3;
 }
 
 /* Cards container (3x2 grid with gap 24) - target 900px width, 650px height */
@@ -504,48 +523,19 @@ select {
   padding-bottom: 12px;
 }
 
-.info-screen-shell .main-content-area {
-  width: 970px;
-  padding-left: 28px;
-  padding-right: 20px;
+.info-screen-shell .info-content {
+  width: 1400px; /* Centered large card area */
+  min-height: 800px;
 }
 
-.info-content {
-  display: flex;
-  align-items: center;
-  width: 900px;
-  min-height: 680px;
-  padding-top: 48px;
-  padding-bottom: 24px;
-  box-sizing: border-box;
-}
-
-.info-event-card {
-  display: flex;
-  flex-direction: column;
-  width: 900px;
-  min-height: 620px;
-  border-radius: 22px;
-  overflow: hidden;
-  background: linear-gradient(180deg, rgba(15, 76, 117, 0.97) 0%, rgba(14, 56, 88, 0.98) 100%);
-  border: 1px solid rgba(184, 225, 250, 0.18);
-  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.28);
-  position: relative;
-}
-
-.info-event-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 26%),
-    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.22) 0%, transparent 20%);
-  pointer-events: none;
+.info-screen-shell .info-event-card {
+  width: 1200px;
+  min-height: 750px;
 }
 
 .info-event-illustration {
   position: relative;
-  height: 372px;
+  height: 480px;
   border-bottom: 1px solid rgba(184, 225, 250, 0.18);
   background:
     linear-gradient(180deg, rgba(24, 99, 148, 0.12) 0%, rgba(7, 28, 47, 0.22) 100%),
@@ -555,127 +545,24 @@ select {
   overflow: hidden;
 }
 
-.info-event-illustration::before {
-  content: "";
-  position: absolute;
-  inset: 18px;
-  border-radius: 24px;
-  border: 1px solid rgba(230, 242, 250, 0.18);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0.03) 100%),
-    linear-gradient(180deg, rgba(11, 79, 122, 0.04) 0%, rgba(11, 79, 122, 0.26) 100%);
-}
-
-.info-event-illustration::after {
-  content: "АНТАРКТИКА";
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -35%) rotate(-8deg);
-  padding: 14px 26px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.92);
-  color: #113d60;
-  font-size: 2rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.22);
-  z-index: 1;
+.info-screen-shell .info-event-illustration {
+  height: 520px;
 }
 
 .info-event-text {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 26px 34px 34px;
+  padding: 34px 40px;
   background: linear-gradient(180deg, rgba(16, 60, 93, 0.98) 0%, rgba(12, 47, 74, 0.98) 100%);
 }
 
-.info-event-text .s1-card {
-  padding: 0;
-  gap: 0;
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  transform: none;
-}
-
-.info-event-text .s1-card::after {
-  display: none;
-}
-
-.info-event-text .s1-card:hover {
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  transform: none;
-}
-
-.info-event-text .s1-card:first-child .s1-card-text {
-  font-size: 1.95rem;
-  line-height: 1.12;
-  font-weight: 800;
-  letter-spacing: -0.02em;
-}
-
-.info-event-text .s1-card:not(:first-child) .s1-card-text {
-  font-size: 1.22rem;
-  line-height: 1.45;
-  font-weight: 600;
-  color: #ffffff;
-}
-
 .info-bottom-controls {
-  align-items: center;
-  padding-bottom: 0;
+  width: 1400px;
+  padding-bottom: 40px;
 }
 
-.info-bottom-controls #btn-advance,
-.info-bottom-controls #btn-finish {
-  min-width: 220px;
-  justify-content: center;
-  background: linear-gradient(180deg, rgba(184, 225, 250, 0.22), rgba(103, 180, 224, 0.18));
-  border-color: rgba(184, 225, 250, 0.34);
-  box-shadow: 0 12px 24px rgba(7, 35, 55, 0.24);
-}
-
-.info-bottom-controls #nav-left {
-  margin-left: 0;
-}
-
-.info-bottom-controls #btn-journal {
-  margin-left: auto;
-  background: transparent;
-  border-color: rgba(184, 225, 250, 0.14);
-  box-shadow: none;
-}
-
-.s1-renderer:has(.info-screen-shell) .right-illustration-container {
-  width: 250px;
-  background: linear-gradient(180deg, #0c527e 0%, #0a4164 100%);
-}
-
-.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder {
-  width: 170px;
-  height: 730px;
-  border-radius: 999px;
-  padding: 28px 22px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, rgba(255, 255, 255, 0.01) 100%);
-}
-
-.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder p:first-child {
-  font-size: 0.95rem;
-}
-
-.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder::before {
-  height: 26%;
-}
-
-.s1-renderer:has(.info-screen-shell) .right-illustration-placeholder::after {
-  font-size: 86px;
-}
-
-/* Right illustration container - 370px wide per mockup */
+/* Right illustration container - 370px wide per mockup S1 */
 .right-illustration-container {
   width: 370px;
   height: 100%;
@@ -690,15 +577,8 @@ select {
   z-index: 2;
 }
 
-.right-illustration-container::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: url("/images/ledyanoy-fon.png");
-  background-size: cover;
-  background-position: center;
-  opacity: 0.3;
-  mix-blend-mode: overlay;
+.info-screen-shell .right-illustration-container {
+  display: none; /* Illustration is not present in infocard mockup */
 }
 
 /* Individual game variable (metric display in sidebar) */
@@ -706,19 +586,64 @@ select {
   display: flex;
   align-items: center;
   position: relative;
-  min-height: 76px;
+  min-height: 64px;
   padding: 0;
-  border-radius: 12px; /* Design token: border_radius */
+  border-radius: 4px;
   background: transparent;
   border: none;
-  transition: transform 200ms cubic-bezier(0.4, 0, 0.2, 1), filter 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: none;
+  transition: all 200ms ease;
   overflow: hidden;
 }
 
-.game-variable:hover {
-  transform: translateX(4px);
-  filter: brightness(1.08);
+/* Circular timer style for 'score' (days remaining) */
+.game-variable--score {
+  width: 180px;
+  height: 180px;
+  min-height: 180px;
+  border-radius: 50% !important;
+  margin: 0 auto 30px auto;
+  border: 4px solid #a8d8ea !important; /* Design token: accent_ice */
+  background: radial-gradient(circle, #0b6fa4 0%, #0a5c8a 100%) !important;
+  box-shadow: 0 0 30px rgba(168, 216, 234, 0.3) !important;
+  flex-direction: column !important;
+  justify-content: center;
+  text-align: center;
+}
+
+.game-variable--score .game-variable-image {
+  display: none;
+}
+
+.game-variable--score .game-variable-content {
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.game-variable--score .game-variable-caption {
+  font-size: 10px;
+  margin-bottom: 4px;
+}
+
+.game-variable--score .game-variable-value {
+  font-size: 3rem;
+  text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+}
+
+/* Ice shard style for other variables per mockups */
+.game-variable:not(.game-variable--score) {
+  background: linear-gradient(135deg, rgba(47, 127, 179, 0.8) 0%, rgba(38, 106, 150, 0.9) 100%) !important;
+  border: 1px solid rgba(184, 225, 250, 0.3) !important;
+  margin: 2px 0;
+  clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+  padding-left: 8px;
+}
+
+.game-variable:not(.game-variable--score):hover {
+  transform: translateX(4px) skewX(-2deg);
+  background: rgba(47, 127, 179, 1) !important;
+  border-color: rgba(184, 225, 250, 0.6) !important;
 }
 
 .game-variable-image {
@@ -729,8 +654,8 @@ select {
   background-size: 100% 100%;
   background-repeat: no-repeat;
   background-position: center;
-  filter: drop-shadow(0 8px 18px rgba(0, 12, 26, 0.28));
-  opacity: 0.98;
+  opacity: 0.2; /* Subtle texture */
+  mix-blend-mode: overlay;
 }
 
 .game-variable-content {
@@ -740,7 +665,7 @@ select {
   gap: 12px;
   width: 100%;
   min-width: 0;
-  padding: 0 18px 0 22px;
+  padding: 0 18px 0 14px;
   position: relative;
   z-index: 1;
 }
@@ -748,19 +673,16 @@ select {
 .game-variable-caption {
   font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: #e6f2fa; /* Design token: accent */
+  letter-spacing: 0.08em;
+  color: #bbe1fa; /* Design token: text_secondary */
   font-family: var(--font-ibm-plex-mono), monospace;
   font-weight: 600;
-  text-shadow: 0 0 10px rgba(157, 227, 255, 0.2);
 }
 
 .game-variable-value {
-  font-size: 1.85rem;
+  font-size: 1.4rem;
   font-weight: 700;
   color: #ffffff;
-  line-height: 1.1;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.22);
 }
 
 .game-variable-description {
@@ -773,61 +695,47 @@ select {
   flex-direction: column;
   justify-content: space-between;
   gap: 20px;
-  padding: 20px; /* Design token: spacing.padding_card */
+  padding: 24px; /* Design token: spacing.padding_card */
   border-radius: 12px; /* Design token: border_radius */
-  background: linear-gradient(135deg, #2f7fb3 0%, #266a96 100%); /* Design token: card + gradient */
-  border: 1px solid rgba(230, 242, 250, 0.25);
+  background: linear-gradient(135deg, #2f7fb3 0%, #266a96 100%); /* Design token: card */
+  border: 1px solid rgba(184, 225, 250, 0.2);
   transition: all 240ms cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-  position: relative;
-  overflow: hidden;
-}
-
-.s1-card::after {
-  content: "";
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
-  pointer-events: none;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
 .s1-card:hover {
   background: linear-gradient(135deg, #3c8dc2 0%, #2f7fb3 100%);
-  border-color: rgba(230, 242, 250, 0.5);
-  transform: translateY(-6px);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+  border-color: rgba(184, 225, 250, 0.5);
+  transform: translateY(-8px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
 }
 
 .s1-card-text {
   margin: 0;
-  font-size: 1rem; /* Design token: body_size */
+  font-size: 1.05rem; /* Design token: body_size */
   line-height: 1.6;
   color: #ffffff;
-  font-weight: 400;
 }
 
-/* S1 button component */
+/* S1 button component - Frosted glass style from mockup */
 .s1-button {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px 24px;
+  padding: 14px 28px;
   min-height: 56px;
   font-size: 14px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  background: rgba(230, 242, 250, 0.1); /* Design token: accent base */
-  border: 1px solid rgba(230, 242, 250, 0.2);
-  border-radius: 12px; /* Design token: border_radius */
+  background: rgba(255, 255, 255, 0.1); /* Frosted glass */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
   color: #ffffff;
   cursor: pointer;
   transition: all 200ms ease;
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .s1-button:hover:not(:disabled) {
@@ -846,6 +754,30 @@ select {
   background-position: center;
   opacity: 0.95;
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
+}
+
+/* Sidebar decoration - penguins placeholder from mockup */
+.sidebar-decoration {
+  width: 100%;
+  height: 140px;
+  margin-top: auto;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.sidebar-decoration::after {
+  content: "🐧🐧";
+  font-size: 80px;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
+  animation: penguin-float 4s ease-in-out infinite;
+}
+
+@keyframes penguin-float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(-3deg); }
 }
 
 #btn-journal::before { background-image: url("/images/jurnal-hodov.png"); }
