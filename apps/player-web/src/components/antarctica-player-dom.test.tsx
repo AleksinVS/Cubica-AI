@@ -604,7 +604,7 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
   });
 });
 
-describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
+describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
   // UI manifest with board screens for testing S2 board rendering
   const mockUiWithBoards: AntarcticaPlayerUiContent = {
     id: "antarctica.ui.web",
@@ -731,9 +731,68 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
           ]
         }
       },
-      "67..70": {
+      "67..68": {
         type: "screen",
         title: "Выберите двенадцатый шаг",
+        root: {
+          type: "screenComponent",
+          props: { cssClass: "main-screen topbar-screen-shell" },
+          children: [
+            {
+              type: "areaComponent",
+              props: { cssClass: "game-variables-container topbar-variables-container" },
+              children: [
+                {
+                  type: "gameVariableComponent",
+                  id: "score",
+                  props: {
+                    caption: "Остаток дней",
+                    value: "{{game.state.public.metrics.score}}"
+                  }
+                }
+              ]
+            },
+            {
+              type: "areaComponent",
+              props: { cssClass: "main-content-area topbar-main-content" },
+              children: [
+                {
+                  type: "areaComponent",
+                  props: { cssClass: "board-header topbar-board-header" },
+                  children: [
+                    {
+                      type: "cardComponent",
+                      id: "board-title",
+                      props: { text: "Последняя проверка перед переездом." }
+                    }
+                  ]
+                },
+                {
+                  type: "areaComponent",
+                  props: { cssClass: "cards-container topbar-cards-container" },
+                  children: [
+                    {
+                      type: "cardComponent",
+                      id: "card-67",
+                      props: { text: "Кабинетный анализ" },
+                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.67" } } }
+                    },
+                    {
+                      type: "cardComponent",
+                      id: "card-68",
+                      props: { text: "Оперативный сбор" },
+                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.68" } } }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "69..70": {
+        type: "screen",
+        title: "Выберите тринадцатый шаг",
         root: {
           type: "screenComponent",
           props: { cssClass: "main-screen topbar-screen-shell" },
@@ -773,15 +832,15 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
                   children: [
                     {
                       type: "cardComponent",
-                      id: "card-67",
-                      props: { text: "Кабинетный анализ" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.67" } } }
+                      id: "card-69",
+                      props: { text: "Осмотр территории" },
+                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.69" } } }
                     },
                     {
                       type: "cardComponent",
-                      id: "card-68",
-                      props: { text: "Оперативный сбор" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.68" } } }
+                      id: "card-70",
+                      props: { text: "Подготовка к зиме" },
+                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.70" } } }
                     }
                   ]
                 }
@@ -881,8 +940,8 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
     });
   });
 
-  it("renders board screen 67..70 when screenId=S2 and stepIndex=34", async () => {
-    const sessionAtBoard67_70 = {
+  it("renders board screen 67..68 when screenId=S2 and stepIndex=34", async () => {
+    const sessionAtBoard67_68 = {
       ...mockSession,
       state: {
         ...mockSession.state,
@@ -897,7 +956,50 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
       if (url.includes("/api/runtime/sessions")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(sessionAtBoard67_70)
+          json: () => Promise.resolve(sessionAtBoard67_68)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockUiWithBoards}
+      />
+    );
+
+    await waitFor(() => {
+      const renderer = document.querySelector(".s1-renderer");
+      expect(renderer).toBeDefined();
+      expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
+      expect(document.querySelector(".topbar-variables-container")).toBeDefined();
+      expect(screen.getByText("Последняя проверка перед переездом.")).toBeDefined();
+      // Board cards from manifest
+      expect(screen.getByText("Кабинетный анализ")).toBeDefined();
+      expect(screen.getByText("Оперативный сбор")).toBeDefined();
+    });
+  });
+
+  it("renders board screen 69..70 when screenId=S2 and stepIndex=36", async () => {
+    const sessionAtBoard69_70 = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          timeline: { screenId: "S2", stepIndex: 36, stageId: "opening" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionAtBoard69_70)
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -918,9 +1020,8 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
       expect(screen.getByText("После переезда нужно укрепить позиции.")).toBeDefined();
-      // Board cards from manifest
-      expect(screen.getByText("Кабинетный анализ")).toBeDefined();
-      expect(screen.getByText("Оперативный сбор")).toBeDefined();
+      expect(screen.getByText("Осмотр территории")).toBeDefined();
+      expect(screen.getByText("Подготовка к зиме")).toBeDefined();
     });
   });
 

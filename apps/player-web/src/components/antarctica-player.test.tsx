@@ -441,28 +441,41 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
   });
 });
 
-describe("slice-step34-38-ending: Board 67_70, Infos i19/i19_1, i20, and Terminal i21", () => {
+describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, and Terminal i21", () => {
   describe("resolveAntarcticaContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
       const antarctica = resolveAntarcticaContent(openingTailStep34PlayerContent);
       expect(antarctica).not.toBeNull();
-      expect(antarctica?.boards).toHaveLength(1);
+      expect(antarctica?.boards).toHaveLength(2);
       expect(antarctica?.infos).toHaveLength(4);
     });
   });
 
   describe("resolveCurrentBoard (stepIndex 34, screenId S2)", () => {
-    it("resolves opening.board.67_70 at step 34 with screen S2", () => {
+    it("resolves opening.board.67_68 at step 34 with screen S2", () => {
       const antarctica = openingTailStep34AntarcticaContent;
       const publicState = openingTailStep34BoardSessionSnapshot.state.public as Record<string, unknown>;
 
       const board = resolveCurrentBoard(antarctica, publicState);
 
       expect(board).not.toBeNull();
-      expect(board?.id).toBe("opening.board.67_70");
+      expect(board?.id).toBe("opening.board.67_68");
       expect(board?.stepIndex).toBe(34);
       expect(board?.screenId).toBe("S2");
-      expect(board?.cardIds).toEqual(["67", "68", "69", "70"]);
+      expect(board?.cardIds).toEqual(["67", "68"]);
+    });
+
+    it("resolves opening.board.69_70 at step 36 with screen S2", () => {
+      const antarctica = openingTailStep34AntarcticaContent;
+      const publicState = openingTailStep36BoardSessionSnapshot.state.public as Record<string, unknown>;
+
+      const board = resolveCurrentBoard(antarctica, publicState);
+
+      expect(board).not.toBeNull();
+      expect(board?.id).toBe("opening.board.69_70");
+      expect(board?.stepIndex).toBe(36);
+      expect(board?.screenId).toBe("S2");
+      expect(board?.cardIds).toEqual(["69", "70"]);
     });
 
     it("does not resolve board at wrong stepIndex", () => {
@@ -476,32 +489,53 @@ describe("slice-step34-38-ending: Board 67_70, Infos i19/i19_1, i20, and Termina
     });
   });
 
-  describe("resolveBoardCards for opening.board.67_70", () => {
-    it("resolves all 4 cards for board 67_70", () => {
+  describe("resolveBoardCards for split final-tail boards", () => {
+    it("resolves cards 67 and 68 for board 67_68", () => {
       const antarctica = openingTailStep34AntarcticaContent;
       const board: AntarcticaPlayerBoard = {
-        id: "opening.board.67_70",
+        id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
-        cardIds: ["67", "68", "69", "70"],
+        cardIds: ["67", "68"],
       };
 
       const cards = resolveBoardCards(antarctica, board);
 
-      expect(cards).toHaveLength(4);
-      expect(cards.map((c) => c.cardId)).toEqual(["67", "68", "69", "70"]);
+      expect(cards).toHaveLength(2);
+      expect(cards.map((c) => c.cardId)).toEqual(["67", "68"]);
     });
 
-    it("identifies go-cards (68, 69) by presence of advanceActionId", () => {
+    it("resolves cards 69 and 70 for board 69_70", () => {
       const antarctica = openingTailStep34AntarcticaContent;
       const board: AntarcticaPlayerBoard = {
-        id: "opening.board.67_70",
-        stepIndex: 34,
+        id: "opening.board.69_70",
+        stepIndex: 36,
         screenId: "S2",
-        cardIds: ["67", "68", "69", "70"],
+        cardIds: ["69", "70"],
       };
 
       const cards = resolveBoardCards(antarctica, board);
+
+      expect(cards).toHaveLength(2);
+      expect(cards.map((c) => c.cardId)).toEqual(["69", "70"]);
+    });
+
+    it("identifies go-cards per split board by presence of advanceActionId", () => {
+      const antarctica = openingTailStep34AntarcticaContent;
+      const board67_68: AntarcticaPlayerBoard = {
+        id: "opening.board.67_68",
+        stepIndex: 34,
+        screenId: "S2",
+        cardIds: ["67", "68"],
+      };
+      const board69_70: AntarcticaPlayerBoard = {
+        id: "opening.board.69_70",
+        stepIndex: 36,
+        screenId: "S2",
+        cardIds: ["69", "70"],
+      };
+
+      const cards = [...resolveBoardCards(antarctica, board67_68), ...resolveBoardCards(antarctica, board69_70)];
 
       const goCards = cards.filter((c) => c.advanceActionId !== undefined);
       const nonGoCards = cards.filter((c) => c.advanceActionId === undefined);
@@ -515,10 +549,10 @@ describe("slice-step34-38-ending: Board 67_70, Infos i19/i19_1, i20, and Termina
     it("go-card 68 has advanceActionId for fast-variant routing", () => {
       const antarctica = openingTailStep34AntarcticaContent;
       const board: AntarcticaPlayerBoard = {
-        id: "opening.board.67_70",
+        id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
-        cardIds: ["67", "68", "69", "70"],
+        cardIds: ["67", "68"],
       };
 
       const cards = resolveBoardCards(antarctica, board);
@@ -532,10 +566,10 @@ describe("slice-step34-38-ending: Board 67_70, Infos i19/i19_1, i20, and Termina
     it("go-card 69 leads to i20 follow-up", () => {
       const antarctica = openingTailStep34AntarcticaContent;
       const board: AntarcticaPlayerBoard = {
-        id: "opening.board.67_70",
-        stepIndex: 34,
+        id: "opening.board.69_70",
+        stepIndex: 36,
         screenId: "S2",
-        cardIds: ["67", "68", "69", "70"],
+        cardIds: ["69", "70"],
       };
 
       const cards = resolveBoardCards(antarctica, board);
@@ -630,14 +664,14 @@ describe("slice-step34-38-ending: Board 67_70, Infos i19/i19_1, i20, and Termina
     });
   });
 
-  describe("go-card advance flows: board 67_70 -> i19/i19_1 -> i20 -> i21 (terminal)", () => {
-    it("at step 34, board 67_70 go-card 68 leads to i19/i19_1", () => {
+  describe("go-card advance flows: board 67_68 -> i19/i19_1 -> board 69_70 -> i20 -> i21 (terminal)", () => {
+    it("at step 34, board 67_68 go-card 68 leads to i19/i19_1", () => {
       const antarctica = openingTailStep34AntarcticaContent;
       const board: AntarcticaPlayerBoard = {
-        id: "opening.board.67_70",
+        id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
-        cardIds: ["67", "68", "69", "70"],
+        cardIds: ["67", "68"],
       };
 
       const cards = resolveBoardCards(antarctica, board);

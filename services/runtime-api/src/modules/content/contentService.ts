@@ -177,7 +177,7 @@ const transformScreen = (
  *
  * Bounded screens covered:
  * - S1: opening entry screen
- * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..70 (stepIndex 34) — board screens
+ * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..68 (stepIndex 34), 69..70 (stepIndex 36) — board screens
  * - Info screens i17, i18, i19, i19_1, i20, i21 — variant info screens
  *
  * Selection is driven by runtime snapshot fields, not by UI-side heuristics.

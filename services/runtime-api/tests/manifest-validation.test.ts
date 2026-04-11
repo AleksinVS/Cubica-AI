@@ -110,12 +110,20 @@ const openingTailAntarcticaContent = {
       cardIds: ["61", "62", "63", "64", "65", "66"]
     },
     {
-      id: "opening.board.67_70",
+      id: "opening.board.67_68",
       title: "Выберите двенадцатый шаг",
-      body: "После переезда нужно укрепить позиции.",
+      body: "Последняя проверка перед переездом.",
       stepIndex: 34,
       screenId: "S2",
-      cardIds: ["67", "68", "69", "70"]
+      cardIds: ["67", "68"]
+    },
+    {
+      id: "opening.board.69_70",
+      title: "Выберите тринадцатый шаг",
+      body: "После переезда нужно укрепить позиции.",
+      stepIndex: 36,
+      screenId: "S2",
+      cardIds: ["69", "70"]
     }
   ],
   cards: [
@@ -191,7 +199,7 @@ test("validateGameManifest accepts Antarctica opening-tail info entries (i17-i21
   assert.equal(antarctica?.antarctica?.infos.length, 6);
 });
 
-test("validateGameManifest accepts Antarctica opening-tail board entries (55-60, 61-66, 67-70)", () => {
+test("validateGameManifest accepts Antarctica opening-tail board entries (55-60, 61-66, 67-68, 69-70)", () => {
   const manifest = validateGameManifest({
     ...validManifest,
     content: {
@@ -204,7 +212,7 @@ test("validateGameManifest accepts Antarctica opening-tail board entries (55-60,
   }) as unknown as Record<string, unknown>;
 
   const antarctica = manifest.content as { antarctica?: { boards: unknown[] } };
-  assert.equal(antarctica?.antarctica?.boards.length, 3);
+  assert.equal(antarctica?.antarctica?.boards.length, 4);
 });
 
 test("validateGameManifest accepts Antarctica opening-tail card entries (55-70)", () => {
@@ -223,7 +231,7 @@ test("validateGameManifest accepts Antarctica opening-tail card entries (55-70)"
   assert.equal(antarctica?.antarctica?.cards.length, 16);
 });
 
-test("validateGameManifest accepts complete Antarctica opening-tail content (boards 55-70, infos i17-i21)", () => {
+test("validateGameManifest accepts complete Antarctica opening-tail content (split boards 55-70, infos i17-i21)", () => {
   const manifest = validateGameManifest({
     ...validManifest,
     content: {
@@ -233,7 +241,7 @@ test("validateGameManifest accepts complete Antarctica opening-tail content (boa
 
   const antarctica = manifest.content as { antarctica?: { infos: unknown[]; boards: unknown[]; cards: unknown[] } };
   assert.equal(antarctica?.antarctica?.infos.length, 6);
-  assert.equal(antarctica?.antarctica?.boards.length, 3);
+  assert.equal(antarctica?.antarctica?.boards.length, 4);
   assert.equal(antarctica?.antarctica?.cards.length, 16);
 });
 

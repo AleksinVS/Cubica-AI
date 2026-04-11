@@ -101,7 +101,7 @@ function RichText({ html, className }: RichTextProps) {
 
 type MetricsSnapshot = Record<string, unknown>;
 
-const TOPBAR_SCREEN_KEYS = new Set(["55..60", "61..66", "67..70"]);
+const TOPBAR_SCREEN_KEYS = new Set(["55..60", "61..66", "67..68", "69..70"]);
 
 function appendClassName(existing: string | undefined, className: string): string {
   const classes = new Set((existing ?? "").split(/\s+/).filter(Boolean));
@@ -1292,14 +1292,15 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
 
   /**
    * Resolves the manifest screen key for S2 board screens.
-   * S2 boards are keyed by their card range in the manifest (e.g., "55..60", "61..66", "67..70").
-   * stepIndex 30 → "55..60", stepIndex 32 → "61..66", stepIndex 34 → "67..70".
+   * S2 boards are keyed by their card range in the manifest (e.g., "55..60", "61..66", "67..68", "69..70").
+   * stepIndex 30 → "55..60", stepIndex 32 → "61..66", stepIndex 34 → "67..68", stepIndex 36 → "69..70".
    */
   const resolveBoardScreenKey = (stepIndex: number | null): string | null => {
     if (stepIndex === null) return null;
     if (stepIndex === 30) return "55..60";
     if (stepIndex === 32) return "61..66";
-    if (stepIndex === 34) return "67..70";
+    if (stepIndex === 34) return "67..68";
+    if (stepIndex === 36) return "69..70";
     return null;
   };
 

@@ -441,22 +441,23 @@ export const openingTailStep33InfoSessionSnapshot: SessionSnapshot = {
 } as unknown as SessionSnapshot;
 
 /**
- * Antarctica player-facing content for steps 34-38 (board 67_70, infos i19/i19_1, i20, i21).
+ * Antarctica player-facing content for steps 34-38 (boards 67_68 and 69_70, infos i19/i19_1, i20, i21).
  *
  * Covers:
- * - Board 67_70 (stepIndex 34) with cards 67-70
+ * - Board 67_68 (stepIndex 34) with cards 67-68
  * - Info i19 (stepIndex 35, screenId S1) - default relocation aftermath
  * - Info i19_1 (stepIndex 35, screenId S1) - fast-variant relocation aftermath
+ * - Board 69_70 (stepIndex 36) with cards 69-70
  * - Info i20 (stepIndex 37, screenId S1) - second relocation
  * - Info i21 (stepIndex 38, screenId S1) - terminal ending
  *
  * These fixtures are used by antarctica-player.test.tsx to verify
- * that the player-web correctly renders the step-34 aftermath board,
+ * that the player-web correctly renders the split final-tail boards,
  * the i19/i19_1 variant routing based on activeInfoId from runtime state,
  * the i20 follow-up, and the terminal i21 ending.
  */
 
-/** Antarctica player-facing content for steps 34-38 (board 67_70 and infos i19/i19_1, i20, i21) */
+/** Antarctica player-facing content for steps 34-38 (boards 67_68 and 69_70, infos i19/i19_1, i20, i21) */
 export const openingTailStep34AntarcticaContent: AntarcticaPlayerContent = {
   infos: [
     {
@@ -498,12 +499,20 @@ export const openingTailStep34AntarcticaContent: AntarcticaPlayerContent = {
   ],
   boards: [
     {
-      id: "opening.board.67_70",
-      title: "Выберите финальный шаг",
-      body: "Теперь вам предстоит сделать последний выбор.",
+      id: "opening.board.67_68",
+      title: "Выберите двенадцатый шаг",
+      body: "Последняя проверка перед переездом: нужно понять, достаточно ли надежен новый айсберг.",
       stepIndex: 34,
       screenId: "S2",
-      cardIds: ["67", "68", "69", "70"],
+      cardIds: ["67", "68"],
+    },
+    {
+      id: "opening.board.69_70",
+      title: "Выберите тринадцатый шаг",
+      body: "После переезда нужно укрепить позиции и решить, готовиться ли ко второму переходу.",
+      stepIndex: 36,
+      screenId: "S2",
+      cardIds: ["69", "70"],
     },
   ],
   cards: [
@@ -580,7 +589,7 @@ export const openingTailStep34PlayerContent: PlayerFacingContent = {
   antarctica: openingTailStep34AntarcticaContent,
 };
 
-/** Session snapshot at step 34 showing board 67_70 */
+/** Session snapshot at step 34 showing board 67_68 */
 export const openingTailStep34BoardSessionSnapshot: SessionSnapshot = {
   sessionId: "test-session-step34-board",
   playerId: "player-web",

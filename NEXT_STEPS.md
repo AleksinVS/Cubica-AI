@@ -28,6 +28,26 @@
 
 Оставшаяся работа теперь относится к фазе расширения, а не к базовому переходу.
 
+## Обновление по Antarctica Full Scenario Parity (2026-04-11)
+
+**Статус: Runtime parity implemented; web screen split follow-up pending**
+
+Следующий этап миграции зафиксирован в `docs/architecture/gameplay-slices/030-antarctica-full-scenario-parity-and-playthrough.md`.
+
+Цель этапа: script-based верификация переноса сценария и правил из `draft/Antarctica/GameFull.html` в `games/antarctica/game.manifest.json`, а затем автоматизированный runtime playthrough до терминального `i21`.
+
+Порядок работ:
+
+1. Сначала добавить parity report tooling в `scripts/antarctica/`, чтобы сравнивать legacy timeline, cards, info blocks, team-selection ids и initial metrics с manifest content/actions/deterministic metadata.
+2. Не читать `GameFull.html` вручную как prose-источник; legacy-файл используется только через extraction scripts и targeted checks.
+3. Зафиксировать все mismatch’и в generated report под `.tmp/agent-workflow/...`.
+4. После отчета исправлять только подтвержденные manifest/runtime gap’ы bounded slices.
+5. Добавить runtime-api playthrough tests, которые проходят main-line сценарий до `i21` и покрывают ключевые alternate/loss paths.
+
+Результат первого блока: parity report подтвердил legacy tail как `stepIndex = 34` board `67,68`, затем `stepIndex = 36` board `69,70`; manifest player-facing content был исправлен на `opening.board.67_68` и `opening.board.69_70`. После исправления generated report показывает `timelineMismatchCount = 0`, `metricMismatchCount = 0`, `actionIssueCount = 0`.
+
+Оставшийся follow-up: `apps/player-web` еще содержит старые явные screen-key предположения для `67..70`; runtime/API parity исправлен, но web-specific screen split alignment нужно провести отдельным UI/content slice.
+
 ## Обновление по S1 UI Manifest & Mockup Alignment (2026-04-08)
 
 **Статус: ✅ Completed**

@@ -18,7 +18,7 @@
 
 Архитектурное направление для следующего шага зафиксировано в `ADR-019`: `runtime-api` должен стать единственным владельцем загрузки `games/*` не только для session bootstrap, но и для player-facing content delivery.
 
-Архитектурное правило для bounded manifest-driven gameplay mechanics теперь закреплено в `ADR-024`, а delivery-specific Antarctica slices `020..029` вынесены в `docs/architecture/gameplay-slices/`. Canonical runtime уже покрывает весь opening flow до terminal `i21`, включая step `19` board `25..30` с explicit `i12` follow-up, step `21` board `31..36` с explicit `i13` follow-up, step `23` loss-line switch, step `23` locked go-card `39` с bounded alt swap `3902`, step `26` public communication board `43..48` с explicit `i15` follow-up, step `28` trusted messengers board `49..54` с explicit `i16` follow-up, step `30` acceleration board `55..60` с explicit `i17` follow-up, step `32` scout dispatch board `61..66` с locked go-card `66` и explicit `i18` follow-up, а также step `34` aftermath slice `67..70` с `i19/i19_1` routing и terminal `i21`.
+Архитектурное правило для bounded manifest-driven gameplay mechanics теперь закреплено в `ADR-024`, а delivery-specific Antarctica slices `020..030` вынесены в `docs/architecture/gameplay-slices/`. Canonical runtime уже покрывает весь opening flow до terminal `i21`, включая step `19` board `25..30` с explicit `i12` follow-up, step `21` board `31..36` с explicit `i13` follow-up, step `23` loss-line switch, step `23` locked go-card `39` с bounded alt swap `3902`, step `26` public communication board `43..48` с explicit `i15` follow-up, step `28` trusted messengers board `49..54` с explicit `i16` follow-up, step `30` acceleration board `55..60` с explicit `i17` follow-up, step `32` scout dispatch board `61..66` с locked go-card `66` и explicit `i18` follow-up, а также final-tail boards `67..68` и `69..70` с `i19/i19_1` routing и terminal `i21`.
 
 ## Что уже работает
 
@@ -70,7 +70,7 @@
 
 The opening-tail player-content contract is now **frozen and proven conformant** (2026-04-02):
 
-- **Boards:** `opening.board.55_60` (stepIndex 30), `opening.board.61_66` (stepIndex 32), `opening.board.67_70` (stepIndex 34)
+- **Boards:** `opening.board.55_60` (stepIndex 30), `opening.board.61_66` (stepIndex 32), `opening.board.67_68` (stepIndex 34), `opening.board.69_70` (stepIndex 36)
 - **Infos:** `i17`, `i18`, `i19`, `i19_1`, `i20`, `i21` (terminal)
 - **Cards:** 55-70 with correct `selectActionId` and go-card `advanceActionId`
 - **Conformance Status:** ✅ 40/40 runtime-api tests pass
@@ -88,7 +88,7 @@ Multi-screen UI boundary для Antarctica теперь реализован:
 
 - **Multi-Screen UI Contract:** `packages/contracts/manifest` поддерживает `AntarcticaPlayerUiContent` с `screens` map. Additive относительно S1-only контракта, S1 consumers сохраняют обратную совместимость через `AntarcticaPlayerS1UiContent.screen` accessor.
 - **Runtime Projection:** `GET /games/antarctica/player-content` возвращает полный `antarcticaUi` DTO с S1 entry screen и bounded opening-tail screens:
-  - S2 boards: "55..60" (stepIndex 30), "61..66" (stepIndex 32), "67..70" (stepIndex 34)
+  - S2 boards: "55..60" (stepIndex 30), "61..66" (stepIndex 32), runtime content boards "67..68" (stepIndex 34) and "69..70" (stepIndex 36)
   - S1 info variants: i17, i18, i19, i19_1, i20, i21 (terminal)
 - **Player-Web Rendering:** `apps/player-web` использует manifest-driven screen selection:
   - S2 boards: `stepIndex → boardKey` mapping в `resolveBoardScreenKey()`
@@ -134,7 +134,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Multi-screen UI boundary реализован: `antarcticaUi` теперь поддерживает S1 entry screen и bounded opening-tail screens (S2 boards 55..60, 61..66, 67..70; S1 info variants i17, i18, i19, i19_1, i20, i21) с manifest-driven screen selection через runtime snapshot (`stepIndex`, `activeInfoId`).
+3. Multi-screen UI boundary реализован: `antarcticaUi` поддерживает S1 entry screen и bounded opening-tail screens. Runtime player-facing content теперь разделяет final-tail boards на 67..68 (`stepIndex=34`) и 69..70 (`stepIndex=36`); web-specific screen key alignment for the split remains a follow-up.
 4. UI boundary уже покрывает i17–i21; следующий этап может расширить его дальше по opening flow, не ломая fallback path для ещё не смоделированных step-ов.
 5. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 6. Добавлять persistence только после появления реального operational need.

@@ -33,3 +33,4 @@ They complement ADRs instead of replacing them.
 - `GSR-027` - Antarctica step `30` acceleration board and explicit `i17` follow-up.
 - `GSR-028` - Antarctica step `32` scout dispatch board, locked card `66`, and explicit `i18` follow-up.
 - `GSR-029` - Antarctica step `34` relocation aftermath, `i19/i19_1` variant routing, and terminal `i21`.
+- `GSR-030` - Antarctica full scenario parity verification and automated playthrough migration plan.

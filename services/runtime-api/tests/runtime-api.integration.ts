@@ -3000,7 +3000,7 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   // Verify screen root (screenComponent)
   assert.equal(s1Screen.root.type, "screenComponent");
   assert.ok(s1Screen.root.props);
-  assert.equal(s1Screen.root.props.cssClass, "main-screen");
+  assert.match(String(s1Screen.root.props.cssClass), /\bmain-screen\b/);
   assert.equal(s1Screen.root.props.backgroundImage, "/images/arctic-background.png");
 
   // Verify children exist (areas)
@@ -3009,7 +3009,7 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
 
   // Find the game-variables-container area
   const variablesArea = s1Screen.root.children!.find(
-    (child) => child.type === "areaComponent" && child.props.cssClass === "game-variables-container"
+    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("game-variables-container")
   );
   assert.ok(variablesArea, "game-variables-container area must be present");
   assert.ok(Array.isArray(variablesArea.children));
@@ -3035,21 +3035,21 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
 
   // Find the main-content-area
   const mainArea = s1Screen.root.children!.find(
-    (child) => child.type === "areaComponent" && child.props.cssClass === "main-content-area"
+    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("main-content-area")
   );
   assert.ok(mainArea, "main-content-area area must be present");
   assert.ok(Array.isArray(mainArea.children));
 
   // Find the cards-container area inside main-content-area
   const cardsArea = mainArea.children!.find(
-    (child) => child.type === "areaComponent" && child.props.cssClass === "cards-container"
+    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("cards-container")
   );
   assert.ok(cardsArea, "cards-container area must be present inside main-content-area");
   assert.ok(Array.isArray(cardsArea.children));
 
   // Find the bottom-controls-container area inside main-content-area
   const bottomControlsArea = mainArea.children!.find(
-    (child) => child.type === "areaComponent" && child.props.cssClass === "bottom-controls-container"
+    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("bottom-controls-container")
   );
   assert.ok(bottomControlsArea, "bottom-controls-container area must be present inside main-content-area");
   assert.ok(Array.isArray(bottomControlsArea.children));
@@ -3098,7 +3098,7 @@ test("GET /games/antarctica/player-content preserves asset references in antarct
   const variablesArea = (root.children as Array<Record<string, unknown>>)?.find(
     (child) =>
       child.type === "areaComponent" &&
-      (child.props as Record<string, unknown>)?.cssClass === "game-variables-container"
+      String((child.props as Record<string, unknown>)?.cssClass).includes("game-variables-container")
   );
   assert.ok(variablesArea);
 

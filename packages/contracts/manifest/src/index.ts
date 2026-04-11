@@ -525,7 +525,7 @@ export interface AntarcticaPlayerUiContent {
    * All available screen definitions keyed by screenId.
    * Covers S1 (opening entry) and bounded opening-tail screens:
    * - S1: opening entry screen with left-sidebar layout
-   * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..70 (stepIndex 34)
+   * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..68 (stepIndex 34), 69..70 (stepIndex 36)
    * - Info screens i17, i18, i19, i19_1, i20, i21
    *
    * Screen selection is driven by runtime snapshot field `timeline.screenId`.
@@ -602,5 +602,4 @@ export interface AntarcticaPlayerFacingContent extends PlayerFacingContent {
   /** Multi-screen UI manifest data for manifest-driven rendering. */
   antarcticaUi?: AntarcticaPlayerUiContent;
 }
-
 
