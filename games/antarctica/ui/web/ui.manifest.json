@@ -52,14 +52,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -68,7 +68,7 @@
                 "props": {
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре. Основной параметр.",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -78,7 +78,7 @@
                 "props": {
                   "caption": "Знания",
                   "description": "Уровень знаний, который игрок может использовать для решения задач.",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -88,7 +88,7 @@
                 "props": {
                   "caption": "Доверие",
                   "description": "Уровень доверия команды и окружения к игроку.",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -98,7 +98,7 @@
                 "props": {
                   "caption": "Энергия",
                   "description": "Ресурс на действия и принятие решений.",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -108,7 +108,7 @@
                 "props": {
                   "caption": "Контроль",
                   "description": "Способность управлять ситуацией и направлением изменений.",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -118,7 +118,7 @@
                 "props": {
                   "caption": "Статус",
                   "description": "Положение игрока в системе и степень влияния.",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -128,7 +128,7 @@
                 "props": {
                   "caption": "Контакт",
                   "description": "Доступность связей и поддержки вокруг игрока.",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -138,7 +138,7 @@
                 "props": {
                   "caption": "Конструктив",
                   "description": "Нацеленность на результат без пустых конфликтов.",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -153,13 +153,13 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container"
+                  "cssClass": "cards-container topbar-cards-container"
                 },
                 "children": [
                   {
@@ -291,6 +291,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -302,14 +308,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -396,7 +402,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -425,7 +431,7 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container"
+                  "cssClass": "cards-container topbar-cards-container"
                 },
                 "children": [
                   {
@@ -521,6 +527,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -532,14 +544,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -626,7 +638,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -647,7 +659,7 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container"
+                  "cssClass": "cards-container topbar-cards-container"
                 },
                 "children": [
                   {
@@ -743,6 +755,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -754,14 +772,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen",
+          "cssClass": "main-screen topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -848,7 +866,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -869,7 +887,7 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container"
+                  "cssClass": "cards-container topbar-cards-container"
                 },
                 "children": [
                   {
@@ -935,6 +953,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -946,14 +970,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -961,7 +985,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -970,7 +994,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -979,7 +1003,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -988,7 +1012,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -997,7 +1021,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1006,7 +1030,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1015,7 +1039,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1024,7 +1048,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -1039,7 +1063,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -1137,6 +1161,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -1148,14 +1178,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -1163,7 +1193,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1172,7 +1202,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1181,7 +1211,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1190,7 +1220,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1199,7 +1229,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1208,7 +1238,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1217,7 +1247,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1226,7 +1256,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -1241,7 +1271,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -1339,6 +1369,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -1350,14 +1386,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -1365,7 +1401,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1374,7 +1410,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1383,7 +1419,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1392,7 +1428,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1401,7 +1437,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1410,7 +1446,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1419,7 +1455,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1428,7 +1464,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -1443,7 +1479,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -1541,6 +1577,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -1552,14 +1594,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -1567,7 +1609,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1576,7 +1618,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1585,7 +1627,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1594,7 +1636,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1603,7 +1645,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1612,7 +1654,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1621,7 +1663,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1630,7 +1672,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -1645,7 +1687,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -1743,6 +1785,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -1754,14 +1802,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -1769,7 +1817,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1778,7 +1826,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1787,7 +1835,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1796,7 +1844,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -1805,7 +1853,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -1814,7 +1862,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -1823,7 +1871,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -1832,7 +1880,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -1847,7 +1895,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -1945,6 +1993,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }
@@ -1956,14 +2010,14 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
           "backgroundImage": "/images/arctic-background.png"
         },
         "children": [
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container"
             },
             "children": [
               {
@@ -1971,7 +2025,7 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}"
                 }
               },
@@ -1980,7 +2034,7 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
                   "value": "{{game.state.public.metrics.pro}}"
                 }
               },
@@ -1989,7 +2043,7 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
                   "value": "{{game.state.public.metrics.rep}}"
                 }
               },
@@ -1998,7 +2052,7 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
                   "value": "{{game.state.public.metrics.lid}}"
                 }
               },
@@ -2007,7 +2061,7 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
                   "value": "{{game.state.public.metrics.man}}"
                 }
               },
@@ -2016,7 +2070,7 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "backgroundImage": "/images/top-sidebar/status.png",
                   "value": "{{game.state.public.metrics.stat}}"
                 }
               },
@@ -2025,7 +2079,7 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
                   "value": "{{game.state.public.metrics.cont}}"
                 }
               },
@@ -2034,7 +2088,7 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
                   "value": "{{game.state.public.metrics.constr}}"
                 }
               },
@@ -2049,7 +2103,7 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area topbar-main-content"
             },
             "children": [
               {
@@ -2147,6 +2201,12 @@
                 ]
               }
             ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
           }
         ]
       }

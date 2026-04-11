@@ -224,10 +224,67 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     expect(screen.getByRole("button", { name: /Подсказка/i })).toBeDefined();
     expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect(document.querySelector(".leftsidebar-screen")).toBeDefined();
+    expect(document.querySelector(".right-illustration-container")).toBeNull();
+  });
 
-    const rightDecor = document.querySelector(".right-illustration-container");
-    expect(rightDecor).toBeDefined();
-    expect(screen.getByText("Антарктическая иллюстрация")).toBeDefined();
+  it("keeps game-variables-container and main-content-area side-by-side in leftsidebar layout", async () => {
+    // Simulate a runtime state that explicitly requests left-sidebar layout
+    const sessionWithLeftSidebar = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activeScreen: "left-sidebar" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithLeftSidebar)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer 
+        runtimeApiUrl="http://localhost:8080" 
+        content={mockContent} 
+        mockups={[]} 
+        antarcticaUi={mockS1Ui} 
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Остаток дней")).toBeDefined();
+    });
+
+    const leftsidebarScreen = document.querySelector(".leftsidebar-screen");
+    expect(leftsidebarScreen).toBeDefined();
+
+    const sidebar = leftsidebarScreen!.querySelector(".game-variables-container");
+    const mainContent = leftsidebarScreen!.querySelector(".main-content-area");
+    
+    expect(sidebar).toBeDefined();
+    expect(mainContent).toBeDefined();
+
+    // Verify both elements are direct children of the grid container
+    // and not nested inside each other (which would indicate stacking)
+    const sidebarParent = sidebar!.parentElement;
+    const mainContentParent = mainContent!.parentElement;
+    
+    expect(sidebarParent).toBe(leftsidebarScreen);
+    expect(mainContentParent).toBe(leftsidebarScreen);
+    
+    // In a side-by-side grid layout, both should be immediate children of the grid container
+    // and they should not contain each other
+    expect(sidebar!.contains(mainContent!)).toBe(false);
+    expect(mainContent!.contains(sidebar!)).toBe(false);
   });
 
   it("passes component IDs to buttons", async () => {
@@ -272,7 +329,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
     expect(metricImages.length).toBe(2);
-    expect(metricImages.every((node) => node.style.backgroundImage.includes("/images/left-sidebar/"))).toBe(true);
+    expect(
+      metricImages.every(
+        (node) => node.style.backgroundImage.includes("/images/left-sidebar/") || node.style.backgroundImage.includes("/images/top-sidebar/")
+      )
+    ).toBe(true);
   });
 
   it("renders 6 cards and handles click with payload", async () => {
@@ -364,6 +425,96 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     expect((rightArrowButton as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("renders the hint panel as a dedicated visual mode", async () => {
+    const sessionWithHintPanel = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activePanel: "hint" },
+          timeline: { ...mockSession.state.public.timeline }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithHintPanel)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockS1Ui}
+      />
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".antarctica-hint-screen")).toBeDefined();
+      expect(document.querySelector(".hint-area")).toBeDefined();
+      expect(document.querySelector(".hint-text")).toBeDefined();
+      expect(screen.getByRole("button", { name: /Журнал ходов/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: /Подсказка/i })).toBeDefined();
+    });
+  });
+
+  it("renders the journal panel as a dedicated visual mode", async () => {
+    const sessionWithHistoryPanel = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activePanel: "history" },
+          log: [
+            {
+              actionId: "showHistory",
+              capabilityFamily: "ui.panel",
+              capability: "history",
+              at: "2026-04-10T12:00:00Z"
+            }
+          ],
+          timeline: { ...mockSession.state.public.timeline }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithHistoryPanel)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockS1Ui}
+      />
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".journal-screen")).toBeDefined();
+      expect(document.querySelector(".additional-background")).toBeDefined();
+      expect(document.querySelector(".journal-container")).toBeDefined();
+      expect(document.querySelector(".journal-cards-container")).toBeDefined();
+      expect(document.querySelector(".journal-variables-container")).toBeDefined();
+    });
+  });
+
   it("falls back to action catalog when antarcticaUi is missing", async () => {
     render(
       <AntarcticaPlayer 
@@ -375,7 +526,41 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
+      expect(document.querySelector(".antarctica-player-shell")).toBeDefined();
+      expect(document.querySelector(".panel")).toBeNull();
+      expect(document.querySelector(".journal-list")).toBeNull();
+      expect(document.querySelector(".mockup-list")).toBeNull();
     });
+  });
+
+  it("ensures topbar screen shell has topbar child classes when fallback renderer uses topbar mode", async () => {
+    // No antarcticaUi so it falls back to AntarcticaFallbackRenderer
+    // Initial state resolves to topbar layoutMode by default
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+      />
+    );
+
+    await waitFor(() => {
+      // Should have topbar screen shell
+      expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
+    });
+
+    // When topbar shell is present, child areas must also have topbar classes
+    const topbarShell = document.querySelector(".topbar-screen-shell");
+    expect(topbarShell).not.toBeNull();
+
+    // Verify child area classes are present
+    const variablesContainer = topbarShell!.querySelector(".topbar-variables-container");
+    const mainContent = topbarShell!.querySelector(".topbar-main-content");
+    const cardsContainer = topbarShell!.querySelector(".topbar-cards-container");
+
+    // At minimum one of these should exist when topbar mode is active
+    // This test fails if topbar-screen-shell appears without topbar child classes
+    expect(variablesContainer || mainContent || cardsContainer).toBeTruthy();
   });
 
   it("falls back to action catalog when screenId is not S1 even if antarcticaUi is present", async () => {
@@ -411,9 +596,10 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      // Should NOT render S1 renderer
-      const renderer = document.querySelector(".s1-renderer");
-      expect(renderer).toBeNull();
+      expect(document.querySelector(".antarctica-fallback-renderer")).toBeDefined();
+      expect(document.querySelector(".panel")).toBeNull();
+      expect(document.querySelector(".journal-list")).toBeNull();
+      expect(document.querySelector(".mockup-list")).toBeNull();
     });
   });
 });
@@ -773,8 +959,10 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..70)", () => {
     await waitFor(() => {
       // Should fall back since stepIndex 20 has no board screen mapping
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      const renderer = document.querySelector(".s1-renderer");
-      expect(renderer).toBeNull();
+      expect(document.querySelector(".antarctica-fallback-renderer")).toBeDefined();
+      expect(document.querySelector(".panel")).toBeNull();
+      expect(document.querySelector(".journal-list")).toBeNull();
+      expect(document.querySelector(".mockup-list")).toBeNull();
     });
   });
 });
@@ -996,7 +1184,11 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
 
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
     expect(metricImages.length).toBe(2);
-    expect(metricImages.every((node) => node.style.backgroundImage.includes("/images/left-sidebar/"))).toBe(true);
+    expect(
+      metricImages.every(
+        (node) => node.style.backgroundImage.includes("/images/left-sidebar/") || node.style.backgroundImage.includes("/images/top-sidebar/")
+      )
+    ).toBe(true);
   });
 
   it("keeps the primary advance action wired for i17 info screen", async () => {

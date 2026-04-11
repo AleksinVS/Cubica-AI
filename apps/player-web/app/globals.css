@@ -49,6 +49,10 @@ select {
   overflow: hidden;
 }
 
+.antarctica-player-root {
+  min-height: 100vh;
+}
+
 .shell::before,
 .shell::after {
   content: "";
@@ -124,6 +128,123 @@ select {
   border-radius: 28px;
   box-shadow: var(--shadow);
   backdrop-filter: blur(24px);
+}
+
+.antarctica-fallback-renderer.s1-renderer {
+  width: 100%;
+  max-width: none;
+  min-height: 100vh;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  gap: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  transform: none;
+}
+
+.antarctica-fallback-renderer .s1-screen {
+  width: 100%;
+  min-height: calc(100vh - 40px);
+  height: auto;
+}
+
+.antarctica-fallback-renderer.s1-renderer:has(.info-screen-shell),
+.antarctica-fallback-renderer.s1-renderer:has(.topbar-screen-shell) {
+  width: 100%;
+  height: auto;
+}
+
+.antarctica-player-shell {
+  min-height: 100vh;
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+}
+
+.antarctica-runtime-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 22px;
+  background: rgba(11, 31, 51, 0.5);
+  border: 1px solid rgba(170, 227, 255, 0.14);
+  backdrop-filter: blur(18px);
+}
+
+.antarctica-runtime-copy {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.antarctica-runtime-copy strong {
+  font-size: 1.02rem;
+}
+
+.antarctica-runtime-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.antarctica-inline-error {
+  margin: 0;
+}
+
+.antarctica-fallback-card {
+  gap: 14px;
+}
+
+.antarctica-fallback-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.antarctica-fallback-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.antarctica-fallback-copy {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.antarctica-fallback-summary-card {
+  width: 100%;
+  min-height: 100%;
+}
+
+.antarctica-team-cards-container,
+.antarctica-action-cards-container {
+  align-items: stretch;
+}
+
+.antarctica-team-controls {
+  width: 100%;
+  min-height: auto;
+  align-items: center;
+}
+
+.antarctica-team-controls .antarctica-fallback-summary-card {
+  flex: 1 1 auto;
+}
+
+.antarctica-team-controls .s1-button {
+  flex-shrink: 0;
 }
 
 .panel-inner {
@@ -520,7 +641,7 @@ select {
 .topbar-main-content {
   width: 100%;
   flex: 1;
-  padding: 28px 40px 40px;
+  padding: 17px 40px 40px;
   background: linear-gradient(180deg, rgba(27, 38, 44, 0.92) 0%, rgba(17, 28, 35, 0.96) 100%);
 }
 
@@ -547,9 +668,9 @@ select {
   width: 100%;
   max-width: 1400px;
   height: auto;
-  min-height: 640px;
+  min-height: 400px;
   padding-top: 0;
-  padding-bottom: 0;
+  padding-bottom: 6px;
   gap: 20px;
   align-self: center;
 }
@@ -830,8 +951,32 @@ select {
 .topbar-variables-container .game-variable:not(.game-variable--score) {
   flex: 0 0 145px;
   min-width: 145px;
-  padding-left: 10px;
-  background: linear-gradient(135deg, rgba(64, 152, 201, 0.9) 0%, rgba(36, 101, 144, 0.95) 100%) !important;
+  min-height: 78px;
+  height: 78px;
+  padding-left: 0;
+  background: transparent !important;
+  border: none !important;
+  clip-path: none;
+}
+
+/* Topbar variables use top-sidebar ice assets as visible backgrounds, not subtle overlays */
+.topbar-variables-container .game-variable-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 1;
+  mix-blend-mode: normal;
+}
+
+/* Topbar non-score variable content sits over the ice asset */
+.topbar-variables-container .game-variable:not(.game-variable--score) .game-variable-content {
+  position: relative;
+  z-index: 1;
+  padding: 8px 12px;
 }
 
 .topbar-variables-container .game-variable:not(.game-variable--score):hover {
@@ -921,7 +1066,7 @@ select {
 }
 
 .topbar-screen-shell .s1-card {
-  min-height: 300px;
+  min-height: 180px;
   padding: 28px 24px;
   border-radius: 16px;
   background: linear-gradient(180deg, rgba(52, 138, 184, 0.98) 0%, rgba(34, 102, 145, 0.98) 100%);
@@ -1174,5 +1319,891 @@ select {
 
   .game-variable {
     width: 100%;
+  }
+}
+
+/* ===========================================================================
+   Antarctica draft-parity overrides
+   Preserve the DOM contract, but switch the presentation to the four draft
+   modes: left-sidebar cards, topbar cards, journal, and info.
+   =========================================================================== */
+
+.antarctica-player-root.shell::before,
+.antarctica-player-root.shell::after {
+  content: none;
+}
+
+.antarctica-player-root {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.antarctica-inline-error {
+  margin: 0.75rem 1rem 0;
+}
+
+.antarctica-s1-renderer,
+.antarctica-fallback-renderer {
+  width: 100%;
+  min-height: 100vh;
+  display: block;
+}
+
+/* Override .s1-renderer:has() rules that set fixed dimensions for fallback renders in topbar mode */
+/* Also override responsive scale transforms from generic .s1-renderer media queries */
+.antarctica-s1-renderer.antarctica-s1-renderer--topbar {
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  transform: none;
+}
+
+.antarctica-fallback-renderer.antarctica-s1-renderer--topbar {
+  width: 100%;
+  min-height: 100vh;
+  height: auto;
+  transform: none;
+}
+
+.antarctica-s1-renderer .s1-screen,
+.antarctica-fallback-renderer .s1-screen,
+.leftsidebar-screen,
+.topbar-screen-shell,
+.antarctica-hint-screen,
+.journal-screen,
+.info-screen-shell {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.leftsidebar-screen,
+.topbar-screen-shell,
+.antarctica-hint-screen,
+.journal-screen,
+.info-screen-shell {
+  display: grid;
+}
+
+.leftsidebar-screen {
+  grid-template-columns: 20% 71% 9%;
+  grid-template-rows: 90% 10%;
+}
+
+.leftsidebar-screen .game-variables-container {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 0 16px;
+  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
+  border-right: 1px solid rgba(170, 227, 255, 0.16);
+}
+
+.leftsidebar-screen .main-content-area {
+  grid-column: 2;
+  grid-row: 1;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  padding: 0;
+  background: transparent;
+}
+
+.leftsidebar-screen .cards-container {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding-top: 2rem;
+  align-content: start;
+}
+
+.leftsidebar-screen .button-container {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.topbar-screen-shell,
+.antarctica-hint-screen {
+  grid-template-columns: 10% 80% 10%;
+  grid-template-rows: 15% 1fr auto;
+}
+
+.topbar-screen-shell .game-variables-container,
+.antarctica-hint-screen .game-variables-container {
+  grid-column: 1 / 4;
+  grid-row: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 10px 1rem 10px;
+  background: transparent;
+  border: none;
+}
+
+.topbar-screen-shell .main-content-area,
+.antarctica-hint-screen .main-content-area {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1rem;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+
+.topbar-screen-shell .cards-container,
+.antarctica-hint-screen .cards-container {
+  width: 80%;
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-content: flex-start;
+  padding: 1em;
+}
+
+.topbar-screen-shell .topbar-board-header {
+  display: none;
+}
+
+.topbar-screen-shell .cards-container > *,
+.antarctica-hint-screen .cards-container > * {
+  width: 242px !important;
+  min-width: unset;
+  max-width: unset;
+  flex: unset;
+  flex-basis: unset;
+}
+
+.topbar-screen-shell .topbar-cards-container {
+  min-height: 499px;
+  gap: 10px;
+}
+
+.topbar-screen-shell .topbar-cards-container > *,
+.topbar-screen-shell .topbar-cards-container .s1-card {
+  min-height: 234px;
+}
+
+.topbar-screen-shell .topbar-cards-container .s1-card:nth-child(n + 4):nth-child(-n + 6) {
+  min-height: 253px;
+}
+
+.topbar-screen-shell .button-container,
+.antarctica-hint-screen .button-container,
+.journal-screen .button-container,
+.info-screen-shell .button-container,
+.s1-renderer .button-container {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 2em 0;
+}
+
+.topbar-screen-shell .s1-card,
+.leftsidebar-screen .s1-card,
+.antarctica-hint-screen .s1-card,
+.journal-screen .s1-card,
+.info-screen-shell .s1-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1em;
+  border-radius: 0;
+  background: rgba(162, 217, 247, 0.5);
+  border: none;
+  box-shadow: none;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.4;
+  width: calc(33.33% - 20px);
+  position: relative;
+}
+
+/* Hide internal action buttons in topbar screen S1 cards - card itself handles interaction */
+.topbar-screen-shell .s1-card button.action-button {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Topbar S1 panel buttons - use draft helper styling with background images */
+.topbar-screen-shell .button-container.antarctica-panel-buttons {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+  width: 80%;
+  margin: 0 auto;
+}
+
+.topbar-screen-shell .button-container.antarctica-panel-buttons .button-helper {
+  all: unset;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: 0.25em 0.75em;
+  font-weight: bold;
+  outline: none;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  height: 28px;
+}
+
+.topbar-screen-shell .button-container.antarctica-panel-buttons .button-helper:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+.topbar-screen-shell .button-container.antarctica-panel-buttons .button-helper-arrow {
+  all: unset;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  width: 40px;
+  height: 40px;
+  display: inline-block;
+}
+
+/* Topbar screen bottom controls - use draft helper button styling */
+/* Bottom controls are in .topbar-main-content which is grid column 2 (80% column) */
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container {
+  width: 1024px;
+  max-width: none;
+  height: 104px;
+  padding: 0 32px 12px;
+  margin: auto auto 0;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 16px;
+  box-sizing: border-box;
+  transform: translateY(-19px);
+}
+
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container button {
+  all: unset;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  color: rgba(255, 255, 255, 0.9);
+  border: none;
+  padding: 0.25em 0.75em;
+  font-weight: bold;
+  outline: none;
+  cursor: pointer;
+  display: inline-block;
+  height: 28px;
+  box-sizing: border-box;
+}
+
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+/* Journal button */
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#btn-journal {
+  background-image: url("/images/jurnal-hodov.png");
+  width: 138px;
+  height: 28px;
+}
+
+/* Hint button */
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#btn-hint {
+  background-image: url("/images/podskazka.png");
+  width: 109px;
+  height: 28px;
+}
+
+/* Arrow buttons - must set background-image BEFORE all:unset, use !important to override all:unset */
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#nav-left {
+  all: unset;
+  background-image: url("/images/arrow-left.png") !important;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  width: 40px;
+  height: 40px;
+  display: inline-block;
+  box-sizing: border-box;
+  margin-left: auto;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#nav-right {
+  all: unset;
+  background-image: url("/images/arrow-right.png") !important;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  width: 40px;
+  height: 40px;
+  display: inline-block;
+  box-sizing: border-box;
+  color: transparent;
+  font-size: 0;
+  line-height: 0;
+}
+
+.topbar-screen-shell .topbar-main-content > .bottom-controls-container {
+  position: relative;
+  top: 0;
+}
+
+.topbar-screen-shell .bottom-controls-container .button-helper-arrow,
+.topbar-screen-shell .bottom-controls-container .action-button.button-helper-arrow {
+  all: unset;
+  cursor: pointer;
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-position: center;
+  width: 40px;
+  height: 40px;
+  display: inline-block;
+}
+
+.topbar-screen-shell .button-container.antarctica-panel-buttons {
+  position: relative;
+  top: -11px;
+}
+
+.topbar-screen-shell .s1-card:hover,
+.leftsidebar-screen .s1-card:hover,
+.antarctica-hint-screen .s1-card:hover,
+.journal-screen .s1-card:hover,
+.info-screen-shell .s1-card:hover {
+  background: rgba(162, 217, 247, 0.58);
+  transform: none;
+  box-shadow: none;
+}
+
+.game-variables-container .game-variable {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  flex: 1 1 120px;
+  min-width: 120px;
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #fff;
+  font-weight: 700;
+  text-transform: lowercase;
+  overflow: hidden;
+}
+
+.topbar-variables-container .game-variable {
+  flex: 0 0 75px;
+  min-width: 75px;
+  width: 75px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent !important;
+  overflow: visible;
+  text-align: center;
+}
+
+.topbar-variables-container .game-variable--score {
+  display: grid;
+  grid-template-columns: 75px;
+  grid-template-rows: 47px auto;
+  row-gap: 2px;
+  flex-basis: 107px;
+  width: 107px;
+  min-width: 107px;
+  min-height: 80px;
+  height: 80px;
+  padding: 1px 0 0 16px;
+  align-items: start;
+  justify-items: start;
+  justify-content: start;
+}
+
+.topbar-variables-container .game-variable-image.game-variable-visual {
+  position: static;
+  width: 75px;
+  height: 47px;
+  margin-bottom: 0;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 1;
+  mix-blend-mode: normal;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.topbar-variables-container .game-variable--score .game-variable-image.game-variable-visual {
+  width: 75px;
+  height: 47px;
+  min-width: 75px;
+  min-height: 47px;
+  align-self: flex-start;
+}
+
+.topbar-variables-container .game-variable-value {
+  font-size: 32px;
+  line-height: 1;
+  color: #1c5f91;
+  text-shadow: none;
+}
+
+.topbar-variables-container .game-variable--score .game-variable-value {
+  color: #173a55;
+}
+
+.topbar-variables-container .game-variable-caption {
+  font-size: 11.52px;
+  line-height: 1.2;
+  color: #d8f2ff;
+  text-transform: uppercase;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin-top: 2px;
+  text-align: center;
+}
+
+.topbar-variables-container .game-variable--score .game-variable-caption {
+  width: 75px;
+  margin-top: 0;
+  margin-left: 0;
+  grid-row: 2;
+}
+
+.topbar-variables-container .game-variable--score.game-variable--topbar {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  width: 107px;
+  min-width: 107px;
+  height: 80px;
+  min-height: 80px;
+  padding: 1px 0 0 16px;
+  box-sizing: border-box;
+}
+
+.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-image.game-variable-visual {
+  align-self: flex-start;
+  flex: 0 0 47px;
+}
+
+.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-caption {
+  display: block;
+  width: 75px;
+  margin: 4px 0 0;
+  text-align: center;
+  align-self: flex-start;
+}
+
+.topbar-variables-container .game-variable--score.game-variable--topbar {
+  position: relative !important;
+  display: block !important;
+  width: 107px !important;
+  min-width: 107px !important;
+  height: 80px !important;
+  min-height: 80px !important;
+  padding: 1px 0 0 16px !important;
+  box-sizing: border-box;
+}
+
+.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-image.game-variable-visual {
+  position: static !important;
+  width: 75px !important;
+  min-width: 75px !important;
+  height: 47px !important;
+  min-height: 47px !important;
+  margin: 0 !important;
+}
+
+.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-caption {
+  position: static !important;
+  display: block !important;
+  width: 107px !important;
+  margin: 6px 0 0 -16px !important;
+  text-align: center !important;
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.game-variable-image {
+  position: static;
+  width: 76px;
+  height: 76px;
+  margin-bottom: 10px;
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 1;
+  mix-blend-mode: normal;
+}
+
+.game-variable-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 0;
+}
+
+.game-variable-caption {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.game-variable-value {
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.game-variable-description {
+  display: none;
+}
+
+.button-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 2em;
+}
+
+.button-helper,
+.button-helper-arrow {
+  all: unset;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.92);
+  font-weight: 700;
+}
+
+.button-helper {
+  padding: 0.25em 0.75em;
+}
+
+.button-helper-arrow {
+  width: 40px;
+  height: 40px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.button-helper-arrow:first-of-type {
+  margin-left: auto;
+}
+
+#nav-left::before,
+#nav-right::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+#nav-left::before {
+  background-image: url("/images/arrow-left.png");
+}
+
+#nav-right::before {
+  background-image: url("/images/arrow-right.png");
+}
+
+#nav-left:disabled,
+#nav-right:disabled {
+  opacity: 0.58;
+  background: rgba(230, 242, 250, 0.08);
+  border-color: rgba(230, 242, 250, 0.14);
+}
+
+.hint-area {
+  width: 100%;
+  min-height: 90%;
+  background-color: rgba(255, 255, 255, 0.3);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hint-text {
+  color: white;
+  font-weight: bold;
+  line-height: 1.5;
+}
+
+.journal-screen {
+  grid-template-columns: 10% 80% 10%;
+  grid-template-rows: 1fr auto;
+}
+
+.additional-background {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  background-color: rgba(34, 46, 80, 0.5);
+}
+
+.journal-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem;
+  background-color: rgba(34, 46, 80, 0.8);
+}
+
+.journal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.journal-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.journal-cards-container {
+  display: flex;
+  gap: 1rem;
+}
+
+.journal-cards-container > * {
+  flex-grow: 1;
+}
+
+.journal-variables-container {
+  display: flex;
+  gap: 1em;
+  flex-wrap: wrap;
+  text-transform: lowercase;
+  font-weight: bold;
+}
+
+.journal-variables-container > * {
+  flex-grow: 1;
+}
+
+.heading-h1 {
+  color: #fff;
+  font-weight: bold;
+  font-size: 1.25rem;
+  text-align: center;
+  padding: 2rem 0;
+}
+
+.info-screen-shell {
+  grid-template-columns: 20% 71% 9%;
+  grid-template-rows: 90% 10%;
+}
+
+.info-screen-shell .game-variables-container {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 0 16px;
+  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
+  border-right: 1px solid rgba(170, 227, 255, 0.16);
+}
+
+.info-screen-shell .main-content-area {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: transparent;
+}
+
+.info-screen-shell .info-content {
+  width: 100%;
+  min-height: auto;
+  display: flex;
+  justify-content: center;
+  padding-top: 0;
+}
+
+.info-screen-shell .info-event-card {
+  width: 100%;
+  min-height: 680px;
+  background: linear-gradient(180deg, rgba(16, 60, 93, 0.95) 0%, rgba(12, 47, 74, 0.98) 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(184, 225, 250, 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-screen-shell .info-event-illustration {
+  min-height: 320px;
+  background:
+    linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
+    url("/images/arctic-background.png");
+  background-size: cover;
+  background-position: center;
+}
+
+.info-screen-shell .info-event-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.info-screen-shell .info-event-text .s1-card .s1-card-text {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.4;
+  color: #ffffff;
+}
+
+.info-screen-shell .info-bottom-controls {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 1rem 0 1.5rem;
+}
+
+.right-illustration-container,
+.right-illustration-placeholder {
+  display: none;
+}
+
+.antarctica-runtime-strip {
+  display: none;
+}
+
+.antarctica-fallback-renderer .s1-screen {
+  background-color: transparent;
+}
+
+@media (max-width: 1280px) {
+  /* leftsidebar-screen maintains side-by-side layout with adjusted column widths */
+  .leftsidebar-screen {
+    grid-template-columns: 260px 1fr 60px;
+    grid-template-rows: 1fr auto;
+  }
+
+  .leftsidebar-screen .game-variables-container {
+    grid-column: 1;
+    grid-row: 1 / 3;
+  }
+
+  .leftsidebar-screen .main-content-area {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .leftsidebar-screen .button-container {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .leftsidebar-screen .cards-container {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding-top: 1rem;
+  }
+
+  /* Keep the draft topbar desktop grid at 1280px; only narrower screens need a stacked fallback. */
+  .topbar-screen-shell,
+  .antarctica-hint-screen {
+    grid-template-columns: 10% 80% 10%;
+    grid-template-rows: 15% 1fr auto;
+  }
+
+  .topbar-screen-shell .game-variables-container,
+  .antarctica-hint-screen .game-variables-container {
+    grid-column: 1 / 4;
+    grid-row: 1;
+  }
+
+  .topbar-screen-shell .main-content-area,
+  .antarctica-hint-screen .main-content-area,
+  .topbar-screen-shell .button-container,
+  .antarctica-hint-screen .button-container {
+    grid-column: 2;
+  }
+
+  .topbar-screen-shell .main-content-area,
+  .antarctica-hint-screen .main-content-area {
+    grid-row: 2;
+  }
+
+  .topbar-screen-shell .button-container,
+  .antarctica-hint-screen .button-container {
+    grid-row: 3;
+  }
+
+  .topbar-screen-shell .cards-container,
+  .antarctica-hint-screen .cards-container {
+    grid-template-columns: none;
+  }
+
+  /* Non-topbar screen types still use the compact stacked fallback at smaller viewports. */
+  .journal-screen,
+  .info-screen-shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .info-screen-shell .game-variables-container,
+  .journal-screen .additional-background {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .info-screen-shell .main-content-area {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .journal-screen .button-container,
+  .info-screen-shell .button-container {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .journal-grid {
+    grid-template-columns: 1fr;
   }
 }

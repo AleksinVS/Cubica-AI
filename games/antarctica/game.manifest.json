@@ -1100,6 +1100,9 @@
         "canAdvance": false
       },
       "log": [],
+      "ui": {
+        "activeScreen": "topbar"
+      },
       "flags": {
         "cards": {
           "1": {

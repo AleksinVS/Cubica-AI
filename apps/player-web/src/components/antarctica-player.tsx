@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import type { CSSProperties } from "react";
 import type {
   PlayerFacingContent,
   PlayerFacingMockup,
@@ -108,8 +109,10 @@ function appendClassName(existing: string | undefined, className: string): strin
   return Array.from(classes).join(" ");
 }
 
-function resolveAreaCssClass(cssClass: string | undefined, screenKey?: string): string {
-  if (!screenKey || !TOPBAR_SCREEN_KEYS.has(screenKey)) {
+function resolveAreaCssClass(cssClass: string | undefined, screenKey?: string, layoutMode?: "leftsidebar" | "topbar"): string {
+  const isTopbarMode = layoutMode === "topbar" || (screenKey && TOPBAR_SCREEN_KEYS.has(screenKey));
+  
+  if (!isTopbarMode) {
     return cssClass ?? "";
   }
 
@@ -138,26 +141,126 @@ export function resolveMetricBinding(expression: string, metrics: MetricsSnapsho
   return formatValue(value);
 }
 
+const TOPBAR_METRIC_BACKGROUND_IMAGES: Record<string, string> = {
+  score: "/images/top-sidebar/days-top.png",
+  pro: "/images/top-sidebar/znaniya.png",
+  rep: "/images/top-sidebar/doverie.png",
+  energy: "/images/top-sidebar/energia.png",
+  lid: "/images/top-sidebar/energia.png",
+  control: "/images/top-sidebar/kontrol.png",
+  man: "/images/top-sidebar/kontrol.png",
+  status: "/images/top-sidebar/status.png",
+  stat: "/images/top-sidebar/status.png",
+  contact: "/images/top-sidebar/kontakt.png",
+  cont: "/images/top-sidebar/kontakt.png",
+  constructive: "/images/top-sidebar/konstruktiv.png",
+  constr: "/images/top-sidebar/konstruktiv.png"
+};
+
+function resolveMetricBackgroundImage(
+  id: string | undefined,
+  backgroundImage: string | undefined,
+  layoutMode?: "leftsidebar" | "topbar"
+): string | undefined {
+  if (layoutMode === "topbar" && id) {
+    return TOPBAR_METRIC_BACKGROUND_IMAGES[id] ?? backgroundImage;
+  }
+
+  return backgroundImage;
+}
+
+function resolveButtonId(caption: string, id?: string): string | undefined {
+  if (id) {
+    return id;
+  }
+
+  const normalized = caption.trim().toLowerCase();
+  if (normalized.includes("журнал")) return "btn-journal";
+  if (normalized.includes("подсказ")) return "btn-hint";
+  if (normalized.includes("назад")) return "nav-left";
+  if (normalized.includes("вперед")) return "nav-right";
+  return undefined;
+}
+
 /**
  * Renders a gameVariableComponent (metric display in the sidebar).
  */
 export function GameVariableComponent({
   component,
   metrics,
-  backgroundImage
+  backgroundImage,
+  layoutMode
 }: {
   component: AntarcticaUiComponent<AntarcticaUiGameVariableComponentProps>;
   metrics: MetricsSnapshot;
   backgroundImage?: string;
+  layoutMode?: "leftsidebar" | "topbar";
 }) {
   const { caption, description, value } = component.props;
   const resolvedValue = resolveMetricBinding(value, metrics);
   const id = (component as AntarcticaUiComponent).id;
+  const resolvedBackgroundImage = resolveMetricBackgroundImage(id, backgroundImage, layoutMode);
+
+  if (layoutMode === "topbar") {
+    const isScoreMetric = id === "score";
+    const scoreMetricStyle: CSSProperties | undefined = isScoreMetric
+      ? {
+          display: "block",
+          position: "relative",
+          width: "107px",
+          minWidth: "107px",
+          height: "80px",
+          minHeight: "80px",
+          padding: "1px 0 0 16px",
+          boxSizing: "border-box"
+        }
+      : undefined;
+    const scoreCaptionStyle: CSSProperties | undefined = isScoreMetric
+      ? {
+          display: "block",
+          width: "75px",
+          margin: "4px 0 0",
+          textAlign: "center"
+        }
+      : undefined;
+
+    return (
+      <div
+        className={`game-variable ${id ? `game-variable--${id}` : ""} game-variable--topbar`}
+        style={scoreMetricStyle}
+      >
+        {resolvedBackgroundImage && (
+          <div
+            className="game-variable-image game-variable-visual"
+            style={
+              isScoreMetric
+                ? {
+                    backgroundImage: `url(${resolvedBackgroundImage})`,
+                    width: "75px",
+                    minWidth: "75px",
+                    height: "47px",
+                    minHeight: "47px",
+                    flex: "0 0 75px",
+                    alignSelf: "flex-start"
+                  }
+                : { backgroundImage: `url(${resolvedBackgroundImage})` }
+            }
+          >
+            <strong className="game-variable-value">{resolvedValue}</strong>
+          </div>
+        )}
+        <span className="game-variable-caption" style={scoreCaptionStyle}>
+          {caption}
+        </span>
+        {description && <p className="game-variable-description">{description}</p>}
+      </div>
+    );
+  }
 
   return (
     <div className={`game-variable ${id ? `game-variable--${id}` : ""}`}>
-      {backgroundImage && (
-        <div className="game-variable-image" style={{ backgroundImage: `url(${backgroundImage})` }} />
+      {resolvedBackgroundImage && (
+        <div className="game-variable-image" style={{ backgroundImage: `url(${resolvedBackgroundImage})` }} />
       )}
       <div className="game-variable-content">
         <span className="game-variable-caption">{caption}</span>
@@ -170,6 +273,8 @@ export function GameVariableComponent({
 
 /**
  * Renders a cardComponent (interactive card in S1).
+ * Card itself is the primary interaction target for accessibility.
+ * The internal button is visually hidden but kept in DOM for testing.
  */
 export function CardComponent({
   component,
@@ -180,15 +285,38 @@ export function CardComponent({
 }) {
   const { text } = component.props;
   const command = (component as AntarcticaUiComponent).actions?.onClick?.command;
+  const actionPayload = (component as AntarcticaUiComponent).actions?.onClick?.payload ?? {};
+
+  const handleCardClick = () => {
+    if (command) {
+      onAction(command, actionPayload);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (command && (e.key === "Enter" || e.key === " ")) {
+      e.preventDefault();
+      onAction(command, actionPayload);
+    }
+  };
 
   return (
-    <article className="s1-card">
+    <article
+      className="s1-card"
+      onClick={handleCardClick}
+      onKeyDown={handleKeyDown}
+      role="button"
+      tabIndex={command ? 0 : -1}
+      aria-label={text}
+    >
       <p className="s1-card-text">{text}</p>
+      {/* Visually hidden but accessible - card itself is primary interaction target */}
       {command && (
         <button
           className="action-button"
           type="button"
-          onClick={() => onAction(command, (component as AntarcticaUiComponent).actions?.onClick?.payload ?? {})}
+          onClick={(e) => { e.stopPropagation(); onAction(command, actionPayload); }}
+          tabIndex={-1}
         >
           Выбрать
         </button>
@@ -202,24 +330,28 @@ export function CardComponent({
  */
 export function ButtonComponent({
   component,
-  onAction
+  onAction,
+  layoutMode
 }: {
   component: AntarcticaUiComponent<AntarcticaUiButtonComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
+  layoutMode?: "leftsidebar" | "topbar";
 }) {
   const { caption } = component.props;
   const command = (component as AntarcticaUiComponent).actions?.onClick?.command;
-  const id = (component as AntarcticaUiComponent).id;
+  const id = resolveButtonId(caption, (component as AntarcticaUiComponent).id);
+  const isTopbarArrow = layoutMode === "topbar" && (id === "nav-left" || id === "nav-right");
 
   return (
     <button
       id={id}
-      className="action-button s1-button"
+      className={`action-button s1-button${isTopbarArrow ? " topbar-nav-button" : ""}`}
       type="button"
       onClick={() => command && onAction(command, (component as AntarcticaUiComponent).actions?.onClick?.payload ?? {})}
       disabled={!command}
+      aria-label={caption}
     >
-      {caption}
+      {isTopbarArrow ? null : caption}
     </button>
   );
 }
@@ -233,12 +365,14 @@ export function UiComponentNode({
   component,
   metrics,
   onAction,
-  screenKey
+  screenKey,
+  layoutMode
 }: {
   component: AntarcticaUiComponent;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   screenKey?: string;
+  layoutMode?: "leftsidebar" | "topbar";
 }) {
   const children = component.children ?? [];
 
@@ -246,16 +380,25 @@ export function UiComponentNode({
     case "screenComponent": {
       const props = component.props as AntarcticaUiScreenComponentProps;
       const cssClass =
-        screenKey && TOPBAR_SCREEN_KEYS.has(screenKey)
+        layoutMode === "topbar" || (screenKey && TOPBAR_SCREEN_KEYS.has(screenKey))
           ? appendClassName(props.cssClass, "topbar-screen-shell")
-          : props.cssClass ?? "";
+          : layoutMode === "leftsidebar"
+            ? appendClassName(props.cssClass, "leftsidebar-screen")
+            : props.cssClass ?? "";
       return (
         <div
           className={`s1-screen ${cssClass}`}
           style={props.backgroundImage ? { backgroundImage: `url(${props.backgroundImage})` } : undefined}
         >
           {children.map((child, index) => (
-            <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} screenKey={screenKey} />
+            <UiComponentNode
+              key={index}
+              component={child}
+              metrics={metrics}
+              onAction={onAction}
+              screenKey={screenKey}
+              layoutMode={layoutMode}
+            />
           ))}
         </div>
       );
@@ -264,9 +407,16 @@ export function UiComponentNode({
     case "areaComponent": {
       const props = component.props as AntarcticaUiAreaComponentProps;
       return (
-        <div className={`s1-area ${resolveAreaCssClass(props.cssClass, screenKey)}`}>
+        <div className={`s1-area ${resolveAreaCssClass(props.cssClass, screenKey, layoutMode)}`}>
           {children.map((child, index) => (
-            <UiComponentNode key={index} component={child} metrics={metrics} onAction={onAction} screenKey={screenKey} />
+            <UiComponentNode
+              key={index}
+              component={child}
+              metrics={metrics}
+              onAction={onAction}
+              screenKey={screenKey}
+              layoutMode={layoutMode}
+            />
           ))}
         </div>
       );
@@ -279,6 +429,7 @@ export function UiComponentNode({
           component={component as AntarcticaUiComponent<AntarcticaUiGameVariableComponentProps>}
           metrics={metrics}
           backgroundImage={props.backgroundImage}
+          layoutMode={layoutMode}
         />
       );
     }
@@ -297,6 +448,7 @@ export function UiComponentNode({
         <ButtonComponent
           component={component as AntarcticaUiComponent<AntarcticaUiButtonComponentProps>}
           onAction={onAction}
+          layoutMode={layoutMode}
         />
       );
     }
@@ -322,23 +474,606 @@ export function AntarcticaS1Renderer({
   screenDefinition,
   metrics,
   onAction,
-  screenKey
+  screenKey,
+  layoutMode = "leftsidebar"
 }: {
   screenDefinition: AntarcticaUiScreenDefinition;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   screenKey?: string;
+  layoutMode?: "leftsidebar" | "topbar";
 }) {
   return (
-    <div className="s1-renderer">
+    <div className={`s1-renderer antarctica-s1-renderer antarctica-s1-renderer--${layoutMode}`}>
       {/* Left/center: manifest-driven screen content */}
-      <UiComponentNode component={screenDefinition.root} metrics={metrics} onAction={onAction} screenKey={screenKey} />
-      {/* Right decor: placeholder for arctic illustration (per mockup) */}
-      <div className="right-illustration-container">
-        <div className="right-illustration-placeholder">
-          <p>Антарктическая иллюстрация</p>
-          <p style={{ fontSize: "12px", opacity: 0.7 }}>(анимация: айсберги и кит)</p>
+      <UiComponentNode
+        component={screenDefinition.root}
+        metrics={metrics}
+        onAction={onAction}
+        screenKey={screenKey}
+        layoutMode={layoutMode}
+      />
+    </div>
+  );
+}
+
+type RuntimeUiState = {
+  activePanel?: string;
+  activeScreen?: string;
+  lastCapabilityFamily?: string;
+  lastCapability?: string;
+  serverRequested?: boolean;
+};
+
+function resolveAntarcticaLayoutMode(
+  screenKey: string | null,
+  runtimeUi: RuntimeUiState,
+  currentBoard: ReturnType<typeof resolveCurrentBoard>,
+  currentInfo: ReturnType<typeof resolveCurrentInfoEntry>
+): "leftsidebar" | "topbar" {
+  if (runtimeUi.activeScreen === "topbar") {
+    return "topbar";
+  }
+
+  if (runtimeUi.activeScreen === "left-sidebar") {
+    return "leftsidebar";
+  }
+
+  if (screenKey && TOPBAR_SCREEN_KEYS.has(screenKey)) {
+    return "topbar";
+  }
+
+  if (currentBoard) {
+    return "topbar";
+  }
+
+  // Only treat real info screens (i17+) as left-sidebar layout.
+  // i0 (step 0 intro screen) is the default entry and should not
+  // force left-sidebar mode - it uses topbar composition like the draft.
+  if (currentInfo && currentInfo.id !== "i0") {
+    return "leftsidebar";
+  }
+
+  // Default to topbar composition (matching draft screen_s1 initial state)
+  // Use leftsidebar only for explicitly requested left-sidebar states
+  return "topbar";
+}
+
+function AntarcticaPanelButtonRow({
+  onJournal,
+  onHint,
+  disabled = false,
+  layoutMode
+}: {
+  onJournal: () => void;
+  onHint: () => void;
+  disabled?: boolean;
+  layoutMode?: "leftsidebar" | "topbar";
+}) {
+  return (
+    <div
+      className="button-container antarctica-panel-buttons"
+      style={layoutMode === "topbar" ? { position: "relative", top: "-11px" } : undefined}
+    >
+      <button id="btn-journal" className="button-helper" type="button" onClick={onJournal} disabled={disabled}>
+        журнал ходов
+      </button>
+      <button id="btn-hint" className="button-helper" type="button" onClick={onHint} disabled={disabled}>
+        подсказка
+      </button>
+      <button id="nav-left" className="button-helper-arrow" type="button" disabled>
+        Назад
+      </button>
+      <button id="nav-right" className="button-helper-arrow" type="button" disabled>
+        Вперед
+      </button>
+    </div>
+  );
+}
+
+function AntarcticaHintRenderer({
+  content,
+  metrics,
+  log,
+  onJournal,
+  onHint
+}: {
+  content: PlayerFacingContent;
+  metrics: MetricsSnapshot;
+  log: Array<RuntimeLogEntry>;
+  onJournal: () => void;
+  onHint: () => void;
+}) {
+  const latestEntry = log[log.length - 1] ?? null;
+  const hintText =
+    (typeof latestEntry?.payload === "string" ? latestEntry.payload : null) ||
+    content.description ||
+    "Подсказка пока не загружена";
+
+  return (
+    <div className="s1-renderer">
+      <div className="s1-screen main-screen topbar-screen-shell antarctica-hint-screen">
+        <div className="s1-area game-variables-container topbar-variables-container">
+          <AntarcticaMetricCluster metrics={metrics} variant="topbar" />
         </div>
+        <div className="s1-area main-content-area topbar-main-content">
+          <div className="cards-container topbar-cards-container antarctica-hint-cards">
+            <article className="s1-card hint-card">
+              <p className="s1-card-text">Подсказка</p>
+              <div className="hint-area">
+                <p className="hint-text">{hintText}</p>
+              </div>
+            </article>
+          </div>
+          <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AntarcticaJournalRenderer({
+  metrics,
+  log,
+  onJournal,
+  onHint
+}: {
+  metrics: MetricsSnapshot;
+  log: Array<RuntimeLogEntry>;
+  onJournal: () => void;
+  onHint: () => void;
+}) {
+  const mid = Math.ceil(log.length / 2);
+  const columns = [log.slice(0, mid), log.slice(mid)];
+
+  return (
+    <div className="s1-renderer">
+      <div className="s1-screen main-screen journal-screen">
+        <div className="additional-background">
+          <div className="journal-container">
+            <h1 className="heading-h1">Журнал ходов</h1>
+            <div className="journal-grid">
+              {columns.map((column, index) => (
+                <section key={`journal-column-${index}`} className="journal-column">
+                  <div className="journal-cards-container">
+              {column.length > 0 ? (
+                      column.map((entry, entryIndex) => (
+                        <article key={`${entry.actionId}-${entryIndex}`} className="game-card journal-entry-card">
+                          <strong>{entry.actionId}</strong>
+                          <p>{entry.capability ?? entry.capabilityFamily ?? "unknown"}</p>
+                          <small>{entry.at ?? "no timestamp"}</small>
+                        </article>
+                      ))
+                    ) : (
+                      <article className="game-card journal-entry-card">
+                        <strong>Пусто</strong>
+                        <p>Записей журнала пока нет.</p>
+                      </article>
+                    )}
+                  </div>
+
+                  <div className="journal-variables-container">
+                    <AntarcticaMetricCluster metrics={metrics} variant="sidebar" />
+                  </div>
+                </section>
+              ))}
+            </div>
+            <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type AntarcticaMetricSpec = {
+  id: string;
+  caption: string;
+  description?: string;
+  aliases: Array<string>;
+  sidebarImage: string;
+  topbarImage: string;
+};
+
+const ANTARCTICA_FALLBACK_METRICS: Array<AntarcticaMetricSpec> = [
+  {
+    id: "score",
+    caption: "Остаток дней",
+    aliases: ["score", "days", "time"],
+    sidebarImage: "/images/left-sidebar/days.png",
+    topbarImage: "/images/top-sidebar/days-top.png"
+  },
+  {
+    id: "pro",
+    caption: "Знания",
+    aliases: ["pro", "knowledge"],
+    sidebarImage: "/images/left-sidebar/znania.png",
+    topbarImage: "/images/top-sidebar/znaniya.png"
+  },
+  {
+    id: "rep",
+    caption: "Доверие",
+    aliases: ["rep", "trust"],
+    sidebarImage: "/images/left-sidebar/doverie.png",
+    topbarImage: "/images/top-sidebar/doverie.png"
+  },
+  {
+    id: "energy",
+    caption: "Энергия",
+    aliases: ["energy", "lid"],
+    sidebarImage: "/images/left-sidebar/energia.png",
+    topbarImage: "/images/top-sidebar/energia.png"
+  },
+  {
+    id: "control",
+    caption: "Контроль",
+    aliases: ["control", "man"],
+    sidebarImage: "/images/left-sidebar/kontrol.png",
+    topbarImage: "/images/top-sidebar/kontrol.png"
+  },
+  {
+    id: "status",
+    caption: "Статус",
+    aliases: ["status", "stat"],
+    sidebarImage: "/images/left-sidebar/status.png",
+    topbarImage: "/images/top-sidebar/status.png"
+  },
+  {
+    id: "contact",
+    caption: "Контакт",
+    aliases: ["contact", "cont"],
+    sidebarImage: "/images/left-sidebar/kontakt.png",
+    topbarImage: "/images/top-sidebar/kontakt.png"
+  },
+  {
+    id: "constructive",
+    caption: "Конструктив",
+    aliases: ["constructive", "constr"],
+    sidebarImage: "/images/left-sidebar/konstruktiv.png",
+    topbarImage: "/images/top-sidebar/konstruktiv.png"
+  }
+];
+
+function resolveMetricValueByAliases(metrics: MetricsSnapshot, aliases: Array<string>): string {
+  for (const alias of aliases) {
+    if (alias in metrics) {
+      return formatValue(metrics[alias]);
+    }
+  }
+
+  return "—";
+}
+
+function AntarcticaMetricCluster({
+  metrics,
+  variant,
+  layoutMode
+}: {
+  metrics: MetricsSnapshot;
+  variant: "sidebar" | "topbar";
+  layoutMode?: "leftsidebar" | "topbar";
+}) {
+  return (
+    <>
+      {ANTARCTICA_FALLBACK_METRICS.map((metric) => (
+        <GameVariableComponent
+          key={`${variant}-${metric.id}`}
+          component={
+            {
+              type: "gameVariableComponent",
+              id: metric.id,
+              props: {
+                caption: metric.caption,
+                description: metric.description,
+                value: resolveMetricValueByAliases(metrics, metric.aliases)
+              }
+            } as AntarcticaUiComponent<AntarcticaUiGameVariableComponentProps>
+          }
+          metrics={metrics}
+          backgroundImage={variant === "topbar" ? metric.topbarImage : metric.sidebarImage}
+          layoutMode={layoutMode ?? (variant === "topbar" ? "topbar" : "leftsidebar")}
+        />
+      ))}
+    </>
+  );
+}
+
+function AntarcticaFallbackRenderer({
+  content,
+  runtimeApiUrl,
+  sessionId,
+  isPending,
+  metrics,
+  currentInfo,
+  currentBoard,
+  currentTeamSelection,
+  cardFlags,
+  selectedCardId,
+  selectedCard,
+  boardCards,
+  teamFlags,
+  selectedMemberIds,
+  pickCount,
+  canAdvance,
+  fallbackActions,
+  dispatchAction,
+  layoutMode
+}: {
+  content: PlayerFacingContent;
+  runtimeApiUrl: string;
+  sessionId: string | null;
+  isPending: boolean;
+  metrics: MetricsSnapshot;
+  currentInfo: ReturnType<typeof resolveCurrentInfoEntry>;
+  currentBoard: ReturnType<typeof resolveCurrentBoard>;
+  currentTeamSelection: ReturnType<typeof resolveCurrentTeamSelectionScene>;
+  cardFlags: ReturnType<typeof readCardFlags>;
+  selectedCardId: string | null;
+  selectedCard: ReturnType<typeof resolveBoardCards>[number] | null;
+  boardCards: ReturnType<typeof resolveBoardCards>;
+  teamFlags: ReturnType<typeof readTeamFlags>;
+  selectedMemberIds: Array<string>;
+  pickCount: number;
+  canAdvance: boolean;
+  fallbackActions: ReturnType<typeof getFallbackActionEntries>;
+  dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void;
+  layoutMode?: "leftsidebar" | "topbar";
+}) {
+  // Compute shell class from layoutMode, falling back to topbar for initial state
+  // (matching draft screen_s1 topbar composition by default)
+  const shellClassName = currentBoard
+    ? "s1-screen topbar-screen-shell"
+    : currentInfo
+      ? "s1-screen info-screen-shell"
+      : layoutMode === "leftsidebar"
+        ? "s1-screen leftsidebar-screen"
+        : "s1-screen topbar-screen-shell";
+
+  const rendererClassName = `s1-renderer antarctica-fallback-renderer antarctica-s1-renderer antarctica-s1-renderer--${layoutMode}`;
+
+  return (
+    <div className={rendererClassName}>
+      <div className={shellClassName} style={{ backgroundImage: "url(/images/arctic-background.png)" }}>
+          {currentBoard ? (
+            <>
+              <div className="s1-area game-variables-container topbar-variables-container">
+                <AntarcticaMetricCluster metrics={metrics} variant="topbar" />
+              </div>
+              <div className="s1-area main-content-area topbar-main-content">
+                <div className="s1-area topbar-board-header">
+                  <article className="s1-card">
+                    <p className="s1-card-text">{currentBoard.title}</p>
+                    {currentBoard.body ? <RichText className="antarctica-fallback-copy" html={currentBoard.body} /> : null}
+                  </article>
+                </div>
+
+                <div className="s1-area cards-container topbar-cards-container">
+                  {boardCards.map((card) => {
+                    const cardState = cardFlags[card.cardId] ?? {};
+                    const isLocked = cardState.locked === true;
+                    const isSelected = cardState.selected === true || selectedCardId === card.cardId;
+                    const isResolved = cardState.resolved === true;
+                    const isDisabled = isPending || !sessionId || isLocked || isSelected;
+
+                    return (
+                      <article
+                        key={card.cardId}
+                        className={`s1-card antarctica-fallback-card${isSelected ? " antarctica-fallback-card-selected" : ""}${
+                          isLocked ? " antarctica-fallback-card-locked" : ""
+                        }`}
+                        onClick={() => !isDisabled && dispatchAction(card.selectActionId)}
+                        onKeyDown={(e) => {
+                          if (!isDisabled && (e.key === "Enter" || e.key === " ")) {
+                            e.preventDefault();
+                            dispatchAction(card.selectActionId);
+                          }
+                        }}
+                        role="button"
+                        tabIndex={isDisabled ? -1 : 0}
+                        aria-disabled={isDisabled}
+                        aria-label={card.selectLabel ?? "Выбрать"}
+                      >
+                        <div className="antarctica-fallback-card-head">
+                          <strong>{card.title}</strong>
+                          <span className="chip">#{card.cardId}</span>
+                        </div>
+                        <p className="s1-card-text">{card.summary}</p>
+                        <div className="antarctica-fallback-card-meta">
+                          {isSelected ? <span className="chip">selected</span> : null}
+                          {isResolved ? <span className="chip">resolved</span> : null}
+                          {isLocked ? <span className="chip">locked</span> : null}
+                        </div>
+                        {/* Visually hidden but accessible - card itself is primary interaction target */}
+                        <button
+                          className="action-button"
+                          type="button"
+                          onClick={() => dispatchAction(card.selectActionId)}
+                          disabled={isDisabled}
+                          tabIndex={-1}
+                        >
+                          {card.selectLabel ?? "Выбрать"}
+                        </button>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {selectedCard && selectedCard.advanceActionId && canAdvance ? (
+                  <div className="s1-area info-bottom-controls">
+                    <button
+                      className="action-button s1-button"
+                      type="button"
+                      onClick={() => dispatchAction(selectedCard.advanceActionId!)}
+                      disabled={isPending || !sessionId}
+                    >
+                      {selectedCard.advanceLabel ?? "Продолжить"}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {/* Panel buttons for topbar S1 board screen - placed in grid row 3 */}
+              <div
+                className="button-container antarctica-panel-buttons"
+                style={layoutMode === "topbar" ? { position: "relative", top: "-11px" } : undefined}
+              >
+                <button id="btn-journal" className="button-helper" type="button" onClick={() => dispatchAction("showHistory")} disabled={isPending || !sessionId} style={{ backgroundImage: "url(/images/jurnal-hodov.png)", backgroundSize: "cover" }}>
+                  журнал ходов
+                </button>
+                <button id="btn-hint" className="button-helper" type="button" onClick={() => dispatchAction("showHint")} disabled={isPending || !sessionId} style={{ backgroundImage: "url(/images/podskazka.png)", backgroundSize: "cover" }}>
+                  подсказка
+                </button>
+                <button id="nav-left" className="button-helper-arrow" type="button" disabled style={{ backgroundImage: "url(/images/arrow-left.png)", backgroundSize: "contain" }}>
+                  Назад
+                </button>
+                <button id="nav-right" className="button-helper-arrow" type="button" disabled style={{ backgroundImage: "url(/images/arrow-right.png)", backgroundSize: "contain" }}>
+                  Вперед
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={`s1-area game-variables-container${layoutMode === "topbar" ? " topbar-variables-container" : ""}`}>
+                <AntarcticaMetricCluster metrics={metrics} variant={layoutMode === "topbar" ? "topbar" : "sidebar"} />
+              </div>
+              <div className={`s1-area main-content-area${layoutMode === "topbar" ? " topbar-main-content" : ""}`}>
+                {currentInfo ? (
+                  <>
+                    <div className="s1-area info-content">
+                      <article className="info-event-card">
+                        <div className="info-event-illustration" />
+                        <div className="info-event-text">
+                          <article className="s1-card">
+                            <p className="s1-card-text">{currentInfo.title}</p>
+                          </article>
+                          <RichText className="antarctica-fallback-copy" html={currentInfo.body} />
+                          <div className="antarctica-fallback-card-meta">
+                            <span className="chip">info: {currentInfo.id}</span>
+                            <span className="chip">step: {currentInfo.stepIndex}</span>
+                          </div>
+                        </div>
+                      </article>
+                    </div>
+                    <div className="s1-area bottom-controls-container info-bottom-controls">
+                      <button
+                        className="action-button s1-button"
+                        type="button"
+                        onClick={() => dispatchAction(currentInfo.advanceActionId)}
+                        disabled={isPending || !sessionId}
+                      >
+                        {currentInfo.advanceLabel ?? "Продолжить"}
+                      </button>
+                    </div>
+                  </>
+                ) : currentTeamSelection ? (
+                  <>
+                    <div className="s1-area cards-container antarctica-team-cards-container">
+                      {currentTeamSelection.members.map((member) => {
+                        const flags = teamFlags[member.memberId] ?? {};
+                        const isSelected = flags.selected === true || selectedMemberIds.includes(member.memberId);
+                        const isPickLimitReached = pickCount >= currentTeamSelection.requiredPickCount;
+
+                        return (
+                          <article
+                            key={member.memberId}
+                            className={`s1-card antarctica-fallback-card${isSelected ? " antarctica-fallback-card-selected" : ""}`}
+                          >
+                            <div className="antarctica-fallback-card-head">
+                              <strong>{member.name}</strong>
+                              <span className="chip">#{member.memberId}</span>
+                            </div>
+                            <p className="s1-card-text">{member.summary}</p>
+                            <div className="antarctica-fallback-card-meta">
+                              {isSelected ? <span className="chip">selected</span> : null}
+                              {isPickLimitReached && !isSelected ? <span className="chip">limit reached</span> : null}
+                            </div>
+                            <button
+                              className="action-button"
+                              type="button"
+                              onClick={() => dispatchAction(member.selectActionId)}
+                              disabled={isPending || !sessionId || isSelected || isPickLimitReached}
+                            >
+                              {member.selectLabel ?? "Выбрать"}
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
+                    <div className="s1-area bottom-controls-container antarctica-team-controls">
+                      <article className="s1-card antarctica-fallback-summary-card">
+                        <p className="s1-card-text">{currentTeamSelection.title}</p>
+                        <RichText className="antarctica-fallback-copy" html={currentTeamSelection.body} />
+                        <div className="antarctica-fallback-card-meta">
+                          <span className="chip">team-selection: {currentTeamSelection.id}</span>
+                          <span className="chip">
+                            picked: {pickCount}/{currentTeamSelection.requiredPickCount}
+                          </span>
+                        </div>
+                      </article>
+                      <button
+                        className="action-button s1-button"
+                        type="button"
+                        onClick={() => dispatchAction(currentTeamSelection.confirmActionId)}
+                        disabled={isPending || !sessionId || pickCount !== currentTeamSelection.requiredPickCount}
+                      >
+                        {currentTeamSelection.confirmLabel ?? "Подтвердить"}
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className={`s1-area cards-container${layoutMode === "topbar" ? " topbar-cards-container" : ""} antarctica-action-cards-container`}>
+                      {fallbackActions.length > 0 ? (
+                        fallbackActions.map((action) => (
+                          <article key={action.actionId} className="s1-card antarctica-fallback-card">
+                            <div className="antarctica-fallback-card-head">
+                              <strong>{action.displayName}</strong>
+                              <span className="chip">action</span>
+                            </div>
+                            <p className="s1-card-text">
+                              Экран еще не описан в UI manifest, поэтому доступен безопасный runtime fallback.
+                            </p>
+                            <div className="antarctica-fallback-card-meta">
+                              <span className="chip">Fallback action catalog</span>
+                              {action.capabilityFamily ? <span className="chip">{action.capabilityFamily}</span> : null}
+                            </div>
+                            <button
+                              className="action-button"
+                              type="button"
+                              onClick={() => dispatchAction(action.actionId)}
+                              disabled={isPending || !sessionId}
+                            >
+                              Открыть
+                            </button>
+                          </article>
+                        ))
+                      ) : (
+                        <article className="s1-card antarctica-fallback-summary-card">
+                          <p className="s1-card-text">Fallback action catalog</p>
+                          <p className="antarctica-fallback-copy">
+                            Экран еще не сопоставлен с manifest. Runtime state продолжает работать, но для этой сцены
+                            нет явных карточек действий.
+                          </p>
+                        </article>
+                      )}
+                    </div>
+                    <div className="s1-area bottom-controls-container antarctica-team-controls">
+                      <article className="s1-card antarctica-fallback-summary-card">
+                        <p className="s1-card-text">{content.name}</p>
+                        <p className="antarctica-fallback-copy">
+                          {content.description}
+                        </p>
+                        <div className="antarctica-fallback-card-meta">
+                          <span className="chip">runtime: {runtimeApiUrl}</span>
+                          <span className="chip">players: {content.playerConfig.min}-{content.playerConfig.max}</span>
+                          <span className="chip">locale: {content.locale}</span>
+                        </div>
+                      </article>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
       </div>
     </div>
   );
@@ -531,6 +1266,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
   const publicState = session?.state?.public as Record<string, unknown> | undefined;
   const metrics = (publicState?.metrics as Record<string, unknown> | undefined) ?? {};
   const timeline = (publicState?.timeline as Record<string, unknown> | undefined) ?? {};
+  const runtimeUi = (publicState?.ui as RuntimeUiState | undefined) ?? {};
   const log = Array.isArray(publicState?.log) ? (publicState?.log as Array<RuntimeLogEntry>) : [];
 
   // Read the current screen ID from timeline (supports both snake_case and camelCase)
@@ -633,309 +1369,59 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
     selectedCardId && boardCards.length > 0
       ? boardCards.find((card) => card.cardId === selectedCardId) ?? null
       : null;
+  const activePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;
+  const screenLayoutMode = resolveAntarcticaLayoutMode(screenKey, runtimeUi, currentBoard, currentInfo);
 
   return (
-    <main className="shell">
-      <div className="frame">
-        <section className="hero">
-          <div className="eyebrow">Cubica Player Web</div>
-          <h1 className="title">{content.name}</h1>
-          <p className="subtitle">{content.description}</p>
-        </section>
-
-        <section className="grid">
-          {screenDefinition ? (
-            /* Manifest-driven rendering for in-scope tail screens (S1 info variants and S2 boards) */
-            <AntarcticaS1Renderer
-              screenDefinition={screenDefinition}
-              metrics={metrics}
-              onAction={dispatchS1Action}
-              screenKey={screenKey ?? undefined}
-            />
-          ) : (
-            <>
-              <div className="panel">
-                <div className="panel-inner">
-                  <div className="session-header">
-                    <div>
-                      <div className="eyebrow">Session</div>
-                      <h2 style={{ margin: "8px 0 0", fontSize: "1.4rem" }}>
-                        {session ? session.sessionId : "Preparing Antarctica session"}
-                      </h2>
-                    </div>
-                    <div className="session-controls">
-                      <div className="status">
-                        <span className="dot" />
-                        {booting ? "booting" : session ? "live" : "idle"}
-                      </div>
-                      <button
-                        className="action-button secondary"
-                        type="button"
-                        onClick={resetGame}
-                        disabled={isPending || booting || !session}
-                        style={{ marginLeft: 12 }}
-                      >
-                        Новая игра
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="metrics">
-                    <div className="metric">
-                      <label>score</label>
-                      <strong>{readNumber(metrics.score, 60)}</strong>
-                    </div>
-                    <div className="metric">
-                      <label>time</label>
-                      <strong>{readNumber(metrics.time, 0)}</strong>
-                    </div>
-                    <div className="metric">
-                      <label>stage</label>
-                      <strong>{formatValue(timeline.stageId ?? timeline.stage_id)}</strong>
-                    </div>
-                    <div className="metric">
-                      <label>screen</label>
-                      <strong>{formatValue(timeline.screenId ?? timeline.screen_id)}</strong>
-                    </div>
-                  </div>
-
-                  <div className="content-grid">
-                    <section className="actions">
-                      <div className="section-title">Current scene</div>
-
-                      {currentInfo ? (
-                        <div className="scene-card">
-                          <h3 className="scene-title">{currentInfo.title}</h3>
-                          <RichText className="scene-body" html={currentInfo.body} />
-                          <div className="status-row" style={{ marginTop: 16 }}>
-                            <span className="chip">info: {currentInfo.id}</span>
-                            <span className="chip">step: {currentInfo.stepIndex}</span>
-                          </div>
-                          <div className="action-grid" style={{ marginTop: 14 }}>
-                            <button
-                              className="action-button"
-                              type="button"
-                              onClick={() => dispatchAction(currentInfo.advanceActionId)}
-                              disabled={isPending || !session}
-                            >
-                              {currentInfo.advanceLabel ?? "Продолжить"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {!currentInfo && currentBoard ? (
-                        <div className="scene-card">
-                          <h3 className="scene-title">{currentBoard.title}</h3>
-                          <RichText className="scene-body" html={currentBoard.body ?? ""} />
-                          <div className="status-row" style={{ marginTop: 16 }}>
-                            <span className="chip">board: {currentBoard.id}</span>
-                            <span className="chip">step: {currentBoard.stepIndex}</span>
-                            {selectedCardId ? <span className="chip">selected: {selectedCardId}</span> : null}
-                          </div>
-
-                          <div className="board-card-list">
-                            {boardCards.map((card) => {
-                              const flags = cardFlags[card.cardId] ?? {};
-                              const isLocked = flags.locked === true;
-                              const isSelected = flags.selected === true || selectedCardId === card.cardId;
-                              const isResolved = flags.resolved === true;
-
-                              return (
-                                <article
-                                  key={card.cardId}
-                                  className={`board-card${isSelected ? " board-card-selected" : ""}${isLocked ? " board-card-locked" : ""}`}
-                                >
-                                  <div className="board-card-header">
-                                    <strong>{card.title}</strong>
-                                    <span className="chip">#{card.cardId}</span>
-                                  </div>
-                                  <p className="board-card-summary">{card.summary}</p>
-                                  <div className="status-row">
-                                    {isSelected ? <span className="chip">selected</span> : null}
-                                    {isResolved ? <span className="chip">resolved</span> : null}
-                                    {isLocked ? <span className="chip">locked</span> : null}
-                                  </div>
-                                  <div className="action-grid">
-                                    <button
-                                      className="action-button"
-                                      type="button"
-                                      onClick={() => dispatchAction(card.selectActionId)}
-                                      disabled={isPending || !session || isLocked || isSelected}
-                                    >
-                                      {card.selectLabel ?? "Выбрать"}
-                                    </button>
-                                  </div>
-                                </article>
-                              );
-                            })}
-                          </div>
-
-                          {selectedCard && selectedCard.advanceActionId && canAdvance ? (
-                            <div className="action-grid" style={{ marginTop: 16 }}>
-                              <button
-                                className="action-button"
-                                type="button"
-                                onClick={() => dispatchAction(selectedCard.advanceActionId!)}
-                                disabled={isPending || !session}
-                              >
-                                {selectedCard.advanceLabel ?? "Продолжить"}
-                              </button>
-                            </div>
-                          ) : null}
-                        </div>
-                      ) : null}
-
-                      {!currentInfo && !currentBoard && currentTeamSelection ? (
-                        <div className="scene-card">
-                          <h3 className="scene-title">{currentTeamSelection.title}</h3>
-                          <RichText className="scene-body" html={currentTeamSelection.body} />
-                          <div className="status-row" style={{ marginTop: 16 }}>
-                            <span className="chip">team-selection: {currentTeamSelection.id}</span>
-                            <span className="chip">step: {currentTeamSelection.stepIndex}</span>
-                            <span className="chip">
-                              picked: {pickCount}/{currentTeamSelection.requiredPickCount}
-                            </span>
-                          </div>
-
-                          {selectedTeamMemberIds.length > 0 ? (
-                            <div className="status-row" style={{ marginTop: 10 }}>
-                              {selectedTeamMemberIds.map((memberId) => (
-                                <span key={memberId} className="chip">
-                                  selected: {memberId}
-                                </span>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          <div className="team-member-list">
-                            {currentTeamSelection.members.map((member) => {
-                              const flags = teamFlags[member.memberId] ?? {};
-                              const isSelected = flags.selected === true || selectedMemberIds.includes(member.memberId);
-                              const isPickLimitReached = pickCount >= currentTeamSelection.requiredPickCount;
-
-                              return (
-                                <article
-                                  key={member.memberId}
-                                  className={`team-member-card${isSelected ? " team-member-card-selected" : ""}`}
-                                >
-                                  <div className="team-member-header">
-                                    <strong>{member.name}</strong>
-                                    <span className="chip">#{member.memberId}</span>
-                                  </div>
-                                  <p className="board-card-summary">{member.summary}</p>
-                                  <div className="status-row">
-                                    {isSelected ? <span className="chip">selected</span> : null}
-                                    {isPickLimitReached && !isSelected ? <span className="chip">limit reached</span> : null}
-                                  </div>
-                                  <div className="action-grid">
-                                    <button
-                                      className="action-button"
-                                      type="button"
-                                      onClick={() => dispatchAction(member.selectActionId)}
-                                      disabled={isPending || !session || isSelected || isPickLimitReached}
-                                    >
-                                      {member.selectLabel ?? "Выбрать"}
-                                    </button>
-                                  </div>
-                                </article>
-                              );
-                            })}
-                          </div>
-
-                          <div className="action-grid" style={{ marginTop: 16 }}>
-                            <button
-                              className="action-button"
-                              type="button"
-                              onClick={() => dispatchAction(currentTeamSelection.confirmActionId)}
-                              disabled={isPending || !session || pickCount !== currentTeamSelection.requiredPickCount}
-                            >
-                              {currentTeamSelection.confirmLabel ?? "Подтвердить"}
-                            </button>
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {!currentInfo && !currentBoard && !currentTeamSelection ? (
-                        <>
-                          <div className="section-title" style={{ marginTop: 0 }}>Fallback action catalog</div>
-                          <div className="action-grid">
-                            {fallbackActions.map((action) => (
-                              <button
-                                key={action.actionId}
-                                className="action-button"
-                                type="button"
-                                onClick={() => dispatchAction(action.actionId)}
-                                disabled={isPending || !session}
-                              >
-                                {action.displayName}
-                              </button>
-                            ))}
-                          </div>
-                        </>
-                      ) : null}
-
-                      <div className="status-row" style={{ marginTop: 14 }}>
-                        <span className="chip">runtime: {runtimeApiUrl}</span>
-                        <span className="chip">players: {content.playerConfig.min}-{content.playerConfig.max}</span>
-                        <span className="chip">locale: {content.locale}</span>
-                      </div>
-                      {error ? <div className="error">{error}</div> : null}
-                    </section>
-
-                    <section className="journal">
-                      <div className="section-title">Journal</div>
-                      <ul className="journal-list">
-                        {log.length === 0 ? (
-                          <li className="journal-item">
-                            Session will surface actions here.
-                            <small>No runtime log entries yet.</small>
-                          </li>
-                        ) : (
-                          log.map((entry, index) => (
-                            <li key={`${entry.actionId}-${index}`} className="journal-item">
-                              <strong>{entry.actionId}</strong>
-                              <small>
-                                {entry.capabilityFamily ?? "unknown"} / {entry.capability ?? "unknown"}
-                              </small>
-                              <small>{entry.at ?? "no timestamp"}</small>
-                            </li>
-                          ))
-                        )}
-                      </ul>
-                    </section>
-                  </div>
-                </div>
-              </div>
-
-              <aside className="panel">
-                <div className="panel-inner">
-                  <div className="section-title">Antarctica mockups</div>
-                  <div className="mockup-list">
-                    {mockups.map((mockup) => (
-                      <article key={mockup.id} className="mockup-card">
-                        <strong>{mockup.name}</strong>
-                        <p>{mockup.description}</p>
-                        <p
-                          style={{
-                            marginTop: 10,
-                            color: "var(--accent)",
-                            fontFamily: "var(--font-ibm-plex-mono), monospace",
-                            fontSize: 12
-                          }}
-                        >
-                          {mockup.type} · {mockup.imagePath || "no image path"}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-              </aside>
-            </>
-          )}
-        </section>
-
-      </div>
+    <main className="shell antarctica-player-root">
+      {activePanel === "history" ? (
+        <AntarcticaJournalRenderer
+          metrics={metrics}
+          log={log}
+          onJournal={() => dispatchAction("showHistory")}
+          onHint={() => dispatchAction("showHint")}
+        />
+      ) : activePanel === "hint" ? (
+        <AntarcticaHintRenderer
+          content={content}
+          metrics={metrics}
+          log={log}
+          onJournal={() => dispatchAction("showHistory")}
+          onHint={() => dispatchAction("showHint")}
+        />
+      ) : screenDefinition ? (
+        /* Manifest-driven rendering for in-scope tail screens (S1 info variants and S2 boards) */
+        <AntarcticaS1Renderer
+          screenDefinition={screenDefinition}
+          metrics={metrics}
+          onAction={dispatchS1Action}
+          screenKey={screenKey ?? undefined}
+          layoutMode={screenLayoutMode}
+        />
+      ) : (
+        <AntarcticaFallbackRenderer
+          content={content}
+          runtimeApiUrl={runtimeApiUrl}
+          sessionId={session?.sessionId ?? null}
+          isPending={isPending}
+          metrics={metrics}
+          currentInfo={currentInfo}
+          currentBoard={currentBoard}
+          currentTeamSelection={currentTeamSelection}
+          cardFlags={cardFlags}
+          selectedCardId={selectedCardId}
+          selectedCard={selectedCard}
+          boardCards={boardCards}
+          teamFlags={teamFlags}
+          selectedMemberIds={selectedTeamMemberIds}
+          pickCount={pickCount}
+          canAdvance={canAdvance}
+          fallbackActions={fallbackActions}
+          dispatchAction={dispatchAction}
+          layoutMode={screenLayoutMode}
+        />
+      )}
+      {error ? <div className="error antarctica-inline-error">{error}</div> : null}
     </main>
   );
 }

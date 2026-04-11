@@ -58,6 +58,13 @@ type PublicState = {
     team?: Record<string, TeamFlagState>;
   };
   teamSelection?: TeamSelectionState;
+  ui?: {
+    activePanel?: string;
+    activeScreen?: string;
+    lastCapabilityFamily?: string;
+    lastCapability?: string;
+    serverRequested?: boolean;
+  };
 };
 
 type SecretState = {
@@ -85,13 +92,28 @@ const readScreenId = (timeline: TimelineState | undefined) =>
       ? timeline.screen_id
       : null;
 
-export async function loadAntarcticaPlayerContent(): Promise<PlayerFacingContent> {
-  const response = await fetch(`${playerWebUrl}/api/runtime/player-content/antarctica`);
-  if (!response.ok) {
-    throw new Error(`Failed to load player content: ${response.status} ${response.statusText}`);
+export async function loadAntarcticaPlayerContent(retries = 3, delay = 1000): Promise<PlayerFacingContent> {
+  let lastError: Error | null = null;
+  
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(`${playerWebUrl}/api/runtime/player-content/antarctica`);
+      if (!response.ok) {
+        throw new Error(`Failed to load player content: ${response.status} ${response.statusText}`);
+      }
+      const text = await response.text();
+      return parseJson<PlayerFacingContent>(text);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      if (i < retries - 1) {
+        // eslint-disable-next-line no-console
+        console.warn(`Attempt ${i + 1} to load player content failed, retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+    }
   }
-  const text = await response.text();
-  return parseJson<PlayerFacingContent>(text);
+  
+  throw lastError || new Error("Unknown error loading player content");
 }
 
 export function getRuntimeApiUrl() {
