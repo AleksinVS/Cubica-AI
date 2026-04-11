@@ -134,7 +134,7 @@ npm run smoke --workspace services/runtime-api
 
 1. Player-facing content DTO и endpoint (`GET /games/:gameId/player-content`) реализованы — `runtime-api` теперь sole owner загрузки `games/*`.
 2. Transport/content split поддерживается: `player-api` отдаёт HTTP boundary, `content`-модуль загружает и проецирует manifest/design data.
-3. Multi-screen UI boundary реализован: `antarcticaUi` поддерживает S1 entry screen и bounded opening-tail screens. Runtime player-facing content теперь разделяет final-tail boards на 67..68 (`stepIndex=34`) и 69..70 (`stepIndex=36`); web-specific screen key alignment for the split remains a follow-up.
+3. Multi-screen UI boundary реализован: `antarcticaUi` поддерживает S1 entry screen и bounded opening-tail screens. Runtime player-facing content теперь разделяет final-tail boards на 67..68 (`stepIndex=34`) и 69..70 (`stepIndex=36`); web-specific screen key alignment for the split is now delivered (2026-04-12).
 4. UI boundary уже покрывает i17–i21; следующий этап может расширить его дальше по opening flow, не ломая fallback path для ещё не смоделированных step-ов.
 5. Двигать `apps/player-web` как canonical delivery layer и не возвращаться к draft-player структуре.
 6. Добавлять persistence только после появления реального operational need.

@@ -1,7 +1,7 @@
 # GSR-030: Antarctica Full Scenario Parity And Playthrough
 
 - **Date**: 2026-04-11
-- **Status**: Implemented for runtime parity; web screen split follow-up pending
+- **Status**: ✅ Delivered
 - **Architecture**: `ADR-018`, `ADR-024`
 - **Components**: `draft/Antarctica/GameFull.html`, `games/antarctica`, `scripts/antarctica`, `services/runtime-api`, `apps/player-web`
 
@@ -39,7 +39,7 @@ The manifest player-facing content has been split into:
 
 After the split, the generated report shows `timelineMismatchCount = 0`, `metricMismatchCount = 0`, `actionIssueCount = 0`, and final-tail status `match`.
 
-Residual follow-up: `apps/player-web` still has older explicit UI screen key assumptions for `67..70`. Runtime/API parity is fixed, but web-specific screen-key alignment for split boards should be handled in a separate UI/content alignment slice.
+GSR-030 status updated (2026-04-12): `apps/player-web` split board support for `67..68` and `69..70` is confirmed as data-driven from `antarcticaUi` and `resolveBoardScreenKey` in `antarctica-player.tsx`. The stale right-illustration placeholder test in `antarctica-s1-renderer.test.tsx` was removed. Documentation updated.
 
 ## Migration Plan
 

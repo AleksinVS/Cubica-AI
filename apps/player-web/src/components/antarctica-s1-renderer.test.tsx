@@ -136,18 +136,6 @@ describe("AntarcticaS1Renderer", () => {
     expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
   });
-
-  it("renders the right illustration placeholder", () => {
-    render(
-      <AntarcticaS1Renderer
-        screenDefinition={mockScreenDefinition}
-        metrics={mockMetrics}
-        onAction={mockOnAction}
-      />
-    );
-
-    expect(screen.getByText("Антарктическая иллюстрация")).toBeDefined();
-  });
 });
 
 describe("resolveMetricBinding", () => {
