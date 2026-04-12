@@ -639,6 +639,7 @@ test("POST /actions progresses from first board through i7 to second board after
   assert.equal(boardAdvanceAction.state.public.timeline.stage_id, "stage_intro");
   assert.equal(boardAdvanceAction.state.public.timeline.screenId, "S1");
   assert.equal(boardAdvanceAction.state.public.timeline.screen_id, "S1");
+  assert.equal(boardAdvanceAction.state.public.timeline.activeInfoId, "i7");
   assert.equal(boardAdvanceAction.state.public.timeline.canAdvance, false);
   assert.equal(boardAdvanceAction.state.secret?.opening?.selectedCardId, "3");
   assert.equal(boardAdvanceLogEntry.actionId, "opening.card.3.advance");
@@ -2014,6 +2015,7 @@ test("POST /actions resolves opening.card.60 with bounded time gates and reaches
   assert.equal(card60AdvanceAction.state.public.timeline.stepIndex, 31);
   assert.equal(card60AdvanceAction.state.public.timeline.step_index, 31);
   assert.equal(card60AdvanceAction.state.public.timeline.screenId, "S1");
+  assert.equal(card60AdvanceAction.state.public.timeline.activeInfoId, "i17");
   assert.equal(card60AdvanceAction.state.public.timeline.canAdvance, false);
   assert.equal(card60AdvanceAction.state.secret?.opening?.selectedCardId, "60");
 

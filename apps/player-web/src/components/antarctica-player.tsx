@@ -285,7 +285,19 @@ export function CardComponent({
 }) {
   const { text } = component.props;
   const command = (component as AntarcticaUiComponent).actions?.onClick?.command;
-  const actionPayload = (component as AntarcticaUiComponent).actions?.onClick?.payload ?? {};
+  // UI manifest has cards with empty payload but component.id like "card-1", "card-3"
+  // Extract cardId from component.id to pass in payload (e.g., "card-3" -> cardId: "3")
+  const componentId = (component as AntarcticaUiComponent).id ?? "";
+  const cardIdMatch = componentId.match(/^card-(\d+)$/);
+  const cardIdFromComponent = cardIdMatch ? cardIdMatch[1] : undefined;
+
+  // Build payload: start with manifest payload, then add cardId if derived from component.id
+  // Only add cardId when payload is empty (UI manifest case) to avoid overwriting test mock data
+  const basePayload = (component as AntarcticaUiComponent).actions?.onClick?.payload ?? {};
+  const isPayloadEmpty = Object.keys(basePayload).length === 0;
+  const actionPayload: Record<string, unknown> = isPayloadEmpty && cardIdFromComponent
+    ? { cardId: cardIdFromComponent }
+    : { ...basePayload };
 
   const handleCardClick = () => {
     if (command) {
@@ -527,11 +539,11 @@ function resolveAntarcticaLayoutMode(
     return "topbar";
   }
 
-  // Only treat real info screens (i17+) as left-sidebar layout.
-  // i0 (step 0 intro screen) is the default entry and should not
-  // force left-sidebar mode - it uses topbar composition like the draft.
+  // Info screens (i7, i8, i9, i11, i13, i14, i15, i16, i17, etc.) use topbar composition
+  // per topsidebar-infocard.design.json: topbar metrics row + centered event card below.
+  // i0 (step 0 intro screen) is the default entry and also uses topbar composition.
   if (currentInfo && currentInfo.id !== "i0") {
-    return "leftsidebar";
+    return "topbar";
   }
 
   // Default to topbar composition (matching draft screen_s1 initial state)
@@ -623,40 +635,145 @@ function AntarcticaJournalRenderer({
   onJournal: () => void;
   onHint: () => void;
 }) {
-  const mid = Math.ceil(log.length / 2);
-  const columns = [log.slice(0, mid), log.slice(mid)];
+  /**
+   * Maps a raw runtime log entry to a user-facing journal entry.
+   *
+   * Log entries come from two paths:
+   * - Manifest-driven entries (deterministic handlers): have `kind` and `summary` from manifest-log.
+   *   These represent actual game actions (card advances, info transitions).
+   * - Runtime UI entries (buildTransition): have `actionId`, `capability`, `capabilityFamily`, `at`.
+   *   These represent runtime events like showHistory, showHint, requestServer.
+   *
+   * Journal should show only game-relevant entries (manifest path with kind=opening-card-advance,
+   * opening-info-advance, etc.) and skip pure UI interaction events (ui.panel.*).
+   */
+  const mapToJournalEntry = (entry: RuntimeLogEntry): { title: string; subtitle: string; time: string } | null => {
+    // Skip pure UI interaction events and runtime server requests - these are not user-facing game actions
+    // UNLESS the entry is manifest-driven (has kind and summary from deterministic handler)
+    const kind = (entry as Record<string, unknown>).kind as string | undefined;
+    const summary = (entry as Record<string, unknown>).summary as string | undefined;
+    const isManifestDriven = !!(kind && summary);
+
+    // Allow manifest-driven entries through regardless of capabilityFamily
+    if (!isManifestDriven) {
+      if (
+        entry.capabilityFamily === "ui.panel" ||
+        entry.capabilityFamily === "ui.screen" ||
+        entry.capabilityFamily === "runtime.server" ||
+        entry.actionId === "requestServer"
+      ) {
+        return null;
+      }
+    }
+
+    // For manifest-driven entries, use kind and summary directly
+    if (isManifestDriven) {
+      // Determine entry type label from kind
+      let typeLabel = "";
+      if (kind === "opening-card-advance") {
+        typeLabel = "Карточка";
+      } else if (kind === "opening-info-advance") {
+        typeLabel = "Инфо";
+      } else if (kind === "team-selection") {
+        typeLabel = "Команда";
+      } else if (kind === "board-advance") {
+        typeLabel = "Доска";
+      } else {
+        typeLabel = kind.replace(/-/g, " ").replace(/_/g, " ");
+      }
+
+      // Extract card/info id from summary if available
+      const cardIdMatch = summary.match(/Карточка\s*(\d+)/);
+      const infoIdMatch = summary.match(/i\d+(?:_\d+)?/);
+      if (cardIdMatch) {
+        return { title: `${typeLabel} ${cardIdMatch[1]}`, subtitle: summary, time: "" };
+      }
+      if (infoIdMatch) {
+        return { title: `${typeLabel} ${infoIdMatch[0]}`, subtitle: summary, time: "" };
+      }
+
+      return { title: typeLabel, subtitle: summary, time: "" };
+    }
+
+    // Fallback: derive from actionId for entries without kind
+    const actionId = entry.actionId ?? "unknown";
+
+    // Extract base name from actionId (e.g., "opening.card.3" -> "Карточка 3")
+    let title = actionId;
+    if (actionId.startsWith("opening.card.")) {
+      const cardId = actionId.replace("opening.card.", "").replace(".advance", "");
+      title = `Карточка ${cardId}`;
+    } else if (actionId.startsWith("opening.info.")) {
+      const infoId = actionId.replace("opening.info.", "").replace(".advance", "");
+      title = `Инфо ${infoId}`;
+    } else if (actionId.startsWith("opening.team.")) {
+      title = "Команда";
+    } else if (actionId === "showHistory") {
+      title = "Журнал";
+    } else if (actionId === "showHint") {
+      title = "Подсказка";
+    } else if (actionId.includes(".")) {
+      // Use last segment of dot-separated actionId as a readable fallback
+      const parts = actionId.split(".");
+      title = parts[parts.length - 1].replace(/_/g, " ");
+    }
+
+    // Derive subtitle from capability or kind metadata
+    const capability = entry.capability ?? entry.capabilityFamily ?? "";
+    // Use the payload if it's a useful string (e.g., hint text)
+    const subtitle =
+      typeof entry.payload === "string" && entry.payload.length > 0
+        ? entry.payload
+        : capability;
+
+    // Format timestamp for display
+    let time = "";
+    if (entry.at) {
+      try {
+        const date = new Date(entry.at);
+        time = date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
+      } catch {
+        time = "";
+      }
+    }
+
+    return { title, subtitle, time };
+  };
+
+  // Filter out null entries (UI events) and map to journal entries
+  const journalEntries = log
+    .map((entry) => mapToJournalEntry(entry))
+    .filter((entry): entry is { title: string; subtitle: string; time: string } => entry !== null);
 
   return (
     <div className="s1-renderer">
       <div className="s1-screen main-screen journal-screen">
-        <div className="additional-background">
+        {/* Main content area: full-width journal with central two-column entries */}
+        <div className="journal-main-content">
           <div className="journal-container">
             <h1 className="heading-h1">Журнал ходов</h1>
-            <div className="journal-grid">
-              {columns.map((column, index) => (
-                <section key={`journal-column-${index}`} className="journal-column">
-                  <div className="journal-cards-container">
-              {column.length > 0 ? (
-                      column.map((entry, entryIndex) => (
-                        <article key={`${entry.actionId}-${entryIndex}`} className="game-card journal-entry-card">
-                          <strong>{entry.actionId}</strong>
-                          <p>{entry.capability ?? entry.capabilityFamily ?? "unknown"}</p>
-                          <small>{entry.at ?? "no timestamp"}</small>
-                        </article>
-                      ))
-                    ) : (
-                      <article className="game-card journal-entry-card">
-                        <strong>Пусто</strong>
-                        <p>Записей журнала пока нет.</p>
-                      </article>
-                    )}
-                  </div>
-
-                  <div className="journal-variables-container">
-                    <AntarcticaMetricCluster metrics={metrics} variant="sidebar" />
-                  </div>
-                </section>
-              ))}
+            <div className="journal-entries">
+              {journalEntries.length > 0 ? (
+                journalEntries.map((entry, entryIndex) => (
+                  <article key={`journal-entry-${entryIndex}`} className="game-card journal-entry-card">
+                    <strong className="journal-entry-title">{entry.title}</strong>
+                    {entry.subtitle ? <p className="journal-entry-subtitle">{entry.subtitle}</p> : null}
+                    {entry.time ? <small className="journal-entry-time">{entry.time}</small> : null}
+                  </article>
+                ))
+              ) : (
+                /* Empty state: 2-column placeholder cards that match the target structure */
+                <div className="journal-empty-state">
+                  <article className="journal-empty-card">
+                    <strong>Журнал пуст</strong>
+                    <p>Записи появятся по мере прохождения</p>
+                  </article>
+                  <article className="journal-empty-card">
+                    <strong>Журнал пуст</strong>
+                    <p>Записи появятся по мере прохождения</p>
+                  </article>
+                </div>
+              )}
             </div>
             <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" />
           </div>
@@ -1244,23 +1361,42 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
    * Maps S1 UI manifest commands to action IDs for dispatch.
    * Commands are mapped to action IDs as defined in the game manifest.
    * When a command has no explicit mapping, dispatch fails gracefully.
+   *
+   * For card selection commands, resolves the real selectActionId from boardCards
+   * based on the cardId in the payload, rather than dispatching generic requestServer.
    */
   const dispatchS1Action = (command: string, payload: Record<string, unknown>) => {
-    // Map UI manifest commands to action IDs from game.manifest.json
-    // These commands correspond to runtime.actions.requestServer, showHint, etc.
-    const commandToActionId: Record<string, string> = {
-      requestServer: "requestServer",
-      showHint: "showHint",
-      showHistory: "showHistory",
-      showScreenWithLeftSideBar: "showScreenWithLeftSideBar"
-    };
-
-    const actionId = commandToActionId[command];
-    if (actionId) {
-      dispatchAction(actionId, payload);
-    } else {
-      setError(`Unknown S1 command: ${command}`);
+    // Handle requestServer with cardId - resolve to the actual card selectActionId
+    if (command === "requestServer") {
+      const cardId = payload?.cardId as string | undefined;
+      if (cardId && antarctica && boardCards.length > 0) {
+        const card = boardCards.find((c) => c.cardId === cardId);
+        if (card) {
+          dispatchAction(card.selectActionId);
+          return;
+        }
+      }
+      // Fallback: if we can't resolve, treat as generic requestServer
+      dispatchAction("requestServer", payload);
+      return;
     }
+
+    // Handle showHistory, showHint, showScreenWithLeftSideBar via direct dispatch
+    if (command === "showHistory") {
+      dispatchAction("showHistory");
+      return;
+    }
+    if (command === "showHint") {
+      dispatchAction("showHint");
+      return;
+    }
+    if (command === "showScreenWithLeftSideBar") {
+      dispatchAction("showScreenWithLeftSideBar");
+      return;
+    }
+
+    // Unknown command - report error
+    setError(`Unknown S1 command: ${command}`);
   };
 
   const publicState = session?.state?.public as Record<string, unknown> | undefined;
@@ -1328,10 +1464,17 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
       return null;
     } else if (screenId === "S1") {
       // Info screens: use activeInfoId for variant disambiguation (i19 vs i19_1)
+      // If activeInfoId exists in UI screens, use that UI screen
       if (infoId && antarcticaUi?.screens[infoId]) {
         return infoId;
       }
-      // activeInfoId not in manifest screens — use S1 directly if available
+      // If activeInfoId is set but not in UI screens (e.g., i0, i7 for early game),
+      // return null to trigger runtime fallback renderer which will use currentInfo
+      if (infoId) {
+        // activeInfoId is set but not in UI screens - use runtime fallback
+        return null;
+      }
+      // No activeInfoId set - use S1 placeholder screen if available
       if (antarcticaUi?.screens["S1"]) {
         return "S1";
       }
@@ -1399,6 +1542,12 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
           screenKey={screenKey ?? undefined}
           layoutMode={screenLayoutMode}
         />
+      ) : booting || !session ? (
+        /* Session not yet available — show loading state instead of fallback catalog flash */
+        <div className="antarctica-loading-state">
+          <div className="antarctica-loading-spinner" />
+          <span>Загрузка...</span>
+        </div>
       ) : (
         <AntarcticaFallbackRenderer
           content={content}

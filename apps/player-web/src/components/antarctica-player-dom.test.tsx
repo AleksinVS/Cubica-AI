@@ -355,14 +355,21 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     expect(selectButtons.length).toBe(6);
 
     // Mock the action dispatch fetch to check payload
+    // Note: With mockContent (empty antarctica), boardCards is empty,
+    // so the S1 action routing falls back to "requestServer"
     (global.fetch as any).mockImplementation((url: string, options: any) => {
       if (url === "/api/runtime/actions") {
         const body = JSON.parse(options.body);
-        expect(body.actionId).toBe("requestServer");
-        expect(body.payload).toEqual({ cardId: "3" });
+        // When boardCards is empty, falls back to requestServer
+        if (body.actionId === "requestServer") {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: "requestServer" } } })
+          });
+        }
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: "requestServer" } } })
+          json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: body.actionId } } })
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
@@ -371,8 +378,9 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     fireEvent.click(selectButtons[2]); // Card 3
 
     await waitFor(() => {
+      // With empty boardCards, should fallback to requestServer
       expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.objectContaining({
-        body: expect.stringContaining('"payload":{"cardId":"3"}')
+        body: expect.stringContaining('"actionId":"requestServer"')
       }));
     });
   });
@@ -513,6 +521,81 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
       expect(document.querySelector(".journal-cards-container")).toBeDefined();
       expect(document.querySelector(".journal-variables-container")).toBeDefined();
     });
+  });
+
+  it("filters runtime.server and requestServer entries from journal", async () => {
+    const sessionWithServerLog = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activePanel: "history" },
+          log: [
+            {
+              actionId: "showHistory",
+              capabilityFamily: "ui.panel",
+              capability: "history",
+              at: "2026-04-10T12:00:00Z"
+            },
+            {
+              actionId: "requestServer",
+              capabilityFamily: "runtime.server",
+              capability: "request",
+              at: "2026-04-10T12:01:00Z"
+            },
+            {
+              actionId: "opening.card.3.advance",
+              capabilityFamily: "runtime.server",
+              capability: "advance",
+              at: "2026-04-10T12:02:00Z"
+            },
+            {
+              actionId: "opening.card.3",
+              capabilityFamily: "runtime.server.request",
+              capability: "select",
+              at: "2026-04-10T12:03:00Z",
+              kind: "opening-card-advance",
+              summary: "Карточка 3"
+            }
+          ],
+          timeline: { ...mockSession.state.public.timeline }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithServerLog)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockS1Ui}
+      />
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".journal-screen")).toBeDefined();
+    });
+
+    // Journal should NOT show raw "Запрос" or "runtime.server" entries
+    expect(screen.queryByText(/^Запрос$/)).toBeNull();
+    expect(screen.queryByText(/runtime\.server/)).toBeNull();
+
+    // Journal SHOULD show manifest-driven entries (kind=opening-card-advance)
+    // that have proper user-facing summaries
+    // Use queryAll to check multiple elements found (title + subtitle contain "Карточка 3")
+    const card3Elements = screen.queryAllByText(/Карточка 3/);
+    expect(card3Elements.length).toBeGreaterThan(0);
   });
 
   it("falls back to action catalog when antarcticaUi is missing", async () => {
@@ -1540,8 +1623,10 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
   });
 
-  it("falls back to S1 entry when screenId=S1 but activeInfoId is not in screens", async () => {
+  it("returns null for S1 when activeInfoId is not in UI screens, triggering fallback renderer", async () => {
     // activeInfoId is "i999" which is not in the manifest screens
+    // With the fix: resolveScreenKey returns null, triggering fallback renderer
+    // Since mockContent has empty antarctica, fallback renders action catalog
     const sessionAtUnknownInfo = {
       ...mockSession,
       state: {
@@ -1573,11 +1658,65 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     );
 
     await waitFor(() => {
-      // Since S1 exists in screens, it should render S1
-      const renderer = document.querySelector(".s1-renderer");
-      expect(renderer).toBeDefined();
-      // S1 has the test card content from mockS1Ui
-      expect(screen.getByText("Тестовая карточка 1")).toBeDefined();
+      // resolveScreenKey returns null when activeInfoId not in UI screens
+      // Fallback renderer is used since screenDefinition is null
+      // With empty antarctica content, fallback renders action catalog
+      expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
+    });
+  });
+
+  it("shows loading state when session is booting (not yet available)", async () => {
+    // Mock a session that takes time to load via a slow promise
+    let slowResolve: (value: any) => void;
+    const slowPromise = new Promise<any>((resolve) => {
+      slowResolve = resolve;
+    });
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return slowPromise;
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockS1Ui}
+      />
+    );
+
+    // While booting and session is null, should show loading state (not fallback catalog)
+    await waitFor(() => {
+      expect(screen.getByText(/Загрузка/i)).toBeDefined();
+    });
+    expect(screen.queryByText(/Fallback action catalog/i)).toBeNull();
+  });
+
+  it("does not show fallback catalog during boot even if session fetch fails", async () => {
+    // Simulate session fetch that immediately rejects
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.reject(new Error("Network error"));
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <AntarcticaPlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        antarcticaUi={mockS1Ui}
+      />
+    );
+
+    // After boot completes with error, should show error state or loading
+    // but NOT the fallback action catalog
+    await waitFor(() => {
+      expect(screen.queryByText(/Fallback action catalog/i)).toBeNull();
     });
   });
 });

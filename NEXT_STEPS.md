@@ -48,6 +48,18 @@
 
 GSR-030 status updated (2026-04-12): `apps/player-web` split board support for `67..68` and `69..70` is confirmed as data-driven from `antarcticaUi` and `resolveBoardScreenKey`. The stale right-illustration placeholder test was removed and `npm test --workspace @cubica/player-web` now passes. Documentation updated.
 
+## Обновление по UI Layout Info Journal Parity (2026-04-12)
+**Статус: ✅ Completed**
+
+Цель блока: исправить visible drift на main board, info-экран с неправильным activeInfoId, и journal показывающий raw debug data.
+
+Выполнено:
+- **Manifest `activeInfoId` projection:** Добавлены `activeInfoId` в deterministic stateUpdate для early S1 transitions (`opening.card.3/9/18/22/31/3902/48/49/60.advance`), что обеспечивает правильный рендеринг info-экранов (i7, i8, i9, i11, i13, i14, i15, i16, i17).
+- **Journal rendering:** `AntarcticaJournalRenderer` теперь фильтрует UI interaction events и использует friendly titles вместо raw action IDs.
+- **Integration assertions:** Добавлены явные assertions для `opening.card.3.advance -> i7` и `opening.card.60.advance -> i17`.
+- **Browser verification (1920x1080):** Main board и journal panel рендерятся корректно; activeInfoId assertions проходят.
+- **Manifest diff:** 18 insertions, 9 deletions — минимальный focused change без formatting churn.
+
 ## Обновление по S1 UI Manifest & Mockup Alignment (2026-04-08)
 
 **Статус: ✅ Completed**

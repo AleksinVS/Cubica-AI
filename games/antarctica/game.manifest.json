@@ -2237,7 +2237,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 10,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i7"
         }
       }
     },
@@ -2504,7 +2505,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 12,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i8"
         }
       }
     },
@@ -3127,7 +3129,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 14,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i9"
         }
       }
     },
@@ -3614,7 +3617,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 18,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i11"
         }
       }
     },
@@ -4285,7 +4289,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 22,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i13"
         }
       }
     },
@@ -5218,7 +5223,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 24,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i14"
         }
       }
     },
@@ -6060,7 +6066,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 27,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i15"
         }
       }
     },
@@ -6220,7 +6227,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 29,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i16"
         }
       }
     },
@@ -7529,7 +7537,8 @@
           "timelineCanAdvance": false,
           "timelineStepIndex": 31,
           "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
+          "timelineScreenId": "S1",
+          "activeInfoId": "i17"
         }
       }
     },
