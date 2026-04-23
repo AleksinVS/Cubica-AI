@@ -92,3 +92,12 @@ Before planning anything, use these entry points:
 - [docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md](/home/abc/projects/Cubica-AI/docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md) - backend transition rulebook for the modular monolith phase.
 - [docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md](/home/abc/projects/Cubica-AI/docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md) - current rule for where game logic truth lives.
 - [services/runtime-api/HANDOFF.md](/home/abc/projects/Cubica-AI/services/runtime-api/HANDOFF.md) - practical runtime-api state, behavior, and next steps.
+
+---
+
+## 4. Work with temporary files
+
+- **Location:** All temporary files (screenshots, debug logs, intermediate artifacts) must be stored in the `.tmp/` directory at the repository root.
+- **Naming:** Use descriptive names with timestamps for screenshots (e.g., `.tmp/verification-topbar-2024-05-20.png`).
+- **Cleanup:** Agents are responsible for cleaning up their temporary files in `.tmp/` once the task is completed and verified. **Do not leave temporary files in the repository root.**
+- **Persistence:** Never commit files from the `.tmp/` directory to the repository.

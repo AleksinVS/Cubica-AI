@@ -20,6 +20,7 @@ build/
 # IDE / tooling
 .vscode/
 .idea/
+.playwright-mcp/
 *.suo
 *.user
 *.userosscache
@@ -31,3 +32,8 @@ __pycache__/
 
 # Misc
 Thumbs.db
+
+# Drafts and clones
+draft/**/.git/
+draft/**/*.log
+.tmp/logs/
