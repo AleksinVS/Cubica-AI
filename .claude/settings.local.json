@@ -2,7 +2,24 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Bash(git grep:*)"
+      "Bash(git grep:*)",
+      "WebSearch",
+      "Bash(npm install *)",
+      "Bash(curl *)",
+      "Bash(jobs *)",
+      "Bash(netstat -tlnp)",
+      "Bash(kill 1937309 1981680)",
+      "Bash(PORT=4000 npm run *)",
+      "Bash(npx playwright *)",
+      "Bash(node *)",
+      "Bash(npx playwright-core@installed --version)",
+      "Bash(awk '/@media|@supports/{start=NR} /\\\\}/{if\\(start\\) print \"Block from \" start \" to \" NR; start=0}' apps/player-web/app/globals.css)",
+      "Bash(grep -rn \"--font-inter\" apps/player-web/app/globals.css)",
+      "Bash(kill 2316222 *)",
+      "Bash(grep -E '\\\\.\\(js|ts|json|yaml|yml\\)$')",
+      "Bash(awk '{print $2}')",
+      "Bash(xargs -r kill)",
+      "Bash(kill *)"
     ]
   }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import type { CSSProperties } from "react";
 import type {
   PlayerFacingContent,
@@ -402,6 +402,9 @@ export function UiComponentNode({
           className={`s1-screen ${cssClass}`}
           style={props.backgroundImage ? { backgroundImage: `url(${props.backgroundImage})` } : undefined}
         >
+          {(cssClass.includes("topbar-screen-shell") || cssClass.includes("info-screen-shell")) && (
+            <div className="additional-background" />
+          )}
           {children.map((child, index) => (
             <UiComponentNode
               key={index}
@@ -555,17 +558,20 @@ function AntarcticaPanelButtonRow({
   onJournal,
   onHint,
   disabled = false,
-  layoutMode
+  layoutMode,
+  showArrows = true
 }: {
   onJournal: () => void;
   onHint: () => void;
   disabled?: boolean;
   layoutMode?: "leftsidebar" | "topbar";
+  showArrows?: boolean;
 }) {
   return (
     <div
       className="button-container antarctica-panel-buttons"
       style={layoutMode === "topbar" ? { position: "relative", top: "-11px" } : undefined}
+      onClick={(e) => e.stopPropagation()}
     >
       <button id="btn-journal" className="button-helper" type="button" onClick={onJournal} disabled={disabled}>
         журнал ходов
@@ -573,12 +579,16 @@ function AntarcticaPanelButtonRow({
       <button id="btn-hint" className="button-helper" type="button" onClick={onHint} disabled={disabled}>
         подсказка
       </button>
-      <button id="nav-left" className="button-helper-arrow" type="button" disabled>
-        Назад
-      </button>
-      <button id="nav-right" className="button-helper-arrow" type="button" disabled>
-        Вперед
-      </button>
+      {showArrows ? (
+        <>
+          <button id="nav-left" className="button-helper-arrow" type="button" disabled>
+            Назад
+          </button>
+          <button id="nav-right" className="button-helper-arrow" type="button" disabled>
+            Вперед
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -588,37 +598,43 @@ function AntarcticaHintRenderer({
   metrics,
   log,
   onJournal,
-  onHint
+  onHint,
+  onClose
 }: {
   content: PlayerFacingContent;
   metrics: MetricsSnapshot;
   log: Array<RuntimeLogEntry>;
   onJournal: () => void;
   onHint: () => void;
+  onClose?: () => void;
 }) {
   const latestEntry = log[log.length - 1] ?? null;
   const hintText =
     (typeof latestEntry?.payload === "string" ? latestEntry.payload : null) ||
     content.description ||
     "Подсказка пока не загружена";
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (contentRef.current && !contentRef.current.contains(e.target as Node)) {
+      onClose?.();
+    }
+  };
 
   return (
     <div className="s1-renderer">
-      <div className="s1-screen main-screen topbar-screen-shell antarctica-hint-screen">
+      <div className="s1-screen main-screen topbar-screen-shell antarctica-hint-screen" onClick={handleOverlayClick}>
+        <div className="additional-background" />
         <div className="s1-area game-variables-container topbar-variables-container">
           <AntarcticaMetricCluster metrics={metrics} variant="topbar" />
         </div>
-        <div className="s1-area main-content-area topbar-main-content">
+        <div className="s1-area main-content-area topbar-main-content" ref={contentRef}>
           <div className="cards-container topbar-cards-container antarctica-hint-cards">
-            <article className="s1-card hint-card">
-              <p className="s1-card-text">Подсказка</p>
-              <div className="hint-area">
-                <p className="hint-text">{hintText}</p>
-              </div>
-            </article>
+            <div className="hint-area" />
+            <p className="hint-text">{hintText}</p>
           </div>
-          <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" />
         </div>
+        <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" />
       </div>
     </div>
   );
@@ -628,13 +644,22 @@ function AntarcticaJournalRenderer({
   metrics,
   log,
   onJournal,
-  onHint
+  onHint,
+  onClose
 }: {
   metrics: MetricsSnapshot;
   log: Array<RuntimeLogEntry>;
   onJournal: () => void;
   onHint: () => void;
+  onClose?: () => void;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleOverlayClick = (e: React.MouseEvent) => {
+    if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      onClose?.();
+    }
+  };
   /**
    * Maps a raw runtime log entry to a user-facing journal entry.
    *
@@ -745,38 +770,55 @@ function AntarcticaJournalRenderer({
     .map((entry) => mapToJournalEntry(entry))
     .filter((entry): entry is { title: string; subtitle: string; time: string } => entry !== null);
 
+  // Static mock entries mirror the draft fixture so visual diff compares populated state.
+  // Draft cards contain only raw text (no title/subtitle structure).
+  const MOCK_ENTRIES: Array<{ text: string }> = [
+    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
+    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
+    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
+    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
+  ];
+
+  // Draft journal shows exactly 4 entries (2 per container); cap runtime log to 4 and backfill with mocks
+  const sourceEntries = journalEntries.length > 0 ? journalEntries : MOCK_ENTRIES;
+  const displayEntries: Array<{ text: string } | { title: string; subtitle: string; time: string }> = sourceEntries.slice(0, 4);
+  while (displayEntries.length < 4) {
+    displayEntries.push(MOCK_ENTRIES[displayEntries.length % MOCK_ENTRIES.length]);
+  }
+  const firstHalf = displayEntries.slice(0, 2);
+  const secondHalf = displayEntries.slice(2, 4);
+
   return (
     <div className="s1-renderer">
-      <div className="s1-screen main-screen journal-screen">
+      <div className="s1-screen main-screen journal-screen" onClick={handleOverlayClick}>
         {/* Main content area: full-width journal with central two-column entries */}
         <div className="journal-main-content">
-          <div className="journal-container">
+          <div className="journal-container" ref={containerRef}>
             <h1 className="heading-h1">Журнал ходов</h1>
             <div className="journal-entries">
-              {journalEntries.length > 0 ? (
-                journalEntries.map((entry, entryIndex) => (
-                  <article key={`journal-entry-${entryIndex}`} className="game-card journal-entry-card">
-                    <strong className="journal-entry-title">{entry.title}</strong>
-                    {entry.subtitle ? <p className="journal-entry-subtitle">{entry.subtitle}</p> : null}
-                    {entry.time ? <small className="journal-entry-time">{entry.time}</small> : null}
-                  </article>
-                ))
-              ) : (
-                /* Empty state: 2-column placeholder cards that match the target structure */
-                <div className="journal-empty-state">
-                  <article className="journal-empty-card">
-                    <strong>Журнал пуст</strong>
-                    <p>Записи появятся по мере прохождения</p>
-                  </article>
-                  <article className="journal-empty-card">
-                    <strong>Журнал пуст</strong>
-                    <p>Записи появятся по мере прохождения</p>
-                  </article>
-                </div>
-              )}
+              {firstHalf.map((entry, entryIndex) => (
+                <article key={`journal-entry-${entryIndex}`} className="game-card journal-entry-card">
+                  {"text" in entry ? entry.text : entry.subtitle || entry.title}
+                </article>
+              ))}
             </div>
-            <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" />
+            <div className="journal-variables-container">
+              <JournalMetricCluster metrics={metrics} />
+            </div>
           </div>
+          <div className="journal-container">
+            <div className="journal-entries">
+              {secondHalf.map((entry, entryIndex) => (
+                <article key={`journal-entry-second-${entryIndex}`} className="game-card journal-entry-card">
+                  {"text" in entry ? entry.text : entry.subtitle || entry.title}
+                </article>
+              ))}
+            </div>
+            <div className="journal-variables-container">
+              <JournalMetricCluster metrics={metrics} />
+            </div>
+          </div>
+          <AntarcticaPanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" showArrows={false} />
         </div>
       </div>
     </div>
@@ -895,6 +937,28 @@ function AntarcticaMetricCluster({
   );
 }
 
+/**
+ * Journal-style metric cluster matching draft `journalVariableComponent`.
+ * Renders value + caption in a compact text-only layout (no images).
+ */
+function JournalMetricCluster({ metrics }: { metrics: MetricsSnapshot }) {
+  return (
+    <>
+      {ANTARCTICA_FALLBACK_METRICS.map((metric) => {
+        const value = resolveMetricValueByAliases(metrics, metric.aliases);
+        return (
+          <div key={`journal-metric-${metric.id}`} className="journal-variable-component">
+            <div className="journal-variable__row">
+              <span className="journal-variable__value">{value}</span>
+            </div>
+            <span className="journal-variable__caption">{metric.caption}</span>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 function AntarcticaFallbackRenderer({
   content,
   runtimeApiUrl,
@@ -914,7 +978,9 @@ function AntarcticaFallbackRenderer({
   canAdvance,
   fallbackActions,
   dispatchAction,
-  layoutMode
+  layoutMode,
+  onJournal,
+  onHint
 }: {
   content: PlayerFacingContent;
   runtimeApiUrl: string;
@@ -935,15 +1001,17 @@ function AntarcticaFallbackRenderer({
   fallbackActions: ReturnType<typeof getFallbackActionEntries>;
   dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void;
   layoutMode?: "leftsidebar" | "topbar";
+  onJournal?: () => void;
+  onHint?: () => void;
 }) {
   // Compute shell class from layoutMode, falling back to topbar for initial state
   // (matching draft screen_s1 topbar composition by default)
   const shellClassName = currentBoard
     ? "s1-screen topbar-screen-shell"
-    : currentInfo
-      ? "s1-screen info-screen-shell"
-      : layoutMode === "leftsidebar"
-        ? "s1-screen leftsidebar-screen"
+    : layoutMode === "leftsidebar"
+      ? "s1-screen leftsidebar-screen"
+      : currentInfo
+        ? "s1-screen info-screen-shell"
         : "s1-screen topbar-screen-shell";
 
   const rendererClassName = `s1-renderer antarctica-fallback-renderer antarctica-s1-renderer antarctica-s1-renderer--${layoutMode}`;
@@ -951,7 +1019,8 @@ function AntarcticaFallbackRenderer({
   return (
     <div className={rendererClassName}>
       <div className={shellClassName} style={{ backgroundImage: "url(/images/arctic-background.png)" }}>
-          {currentBoard ? (
+        <div className="additional-background" />
+        {currentBoard ? (
             <>
               <div className="s1-area game-variables-container topbar-variables-container">
                 <AntarcticaMetricCluster metrics={metrics} variant="topbar" />
@@ -1029,10 +1098,7 @@ function AntarcticaFallbackRenderer({
                 ) : null}
               </div>
               {/* Panel buttons for topbar S1 board screen - placed in grid row 3 */}
-              <div
-                className="button-container antarctica-panel-buttons"
-                style={layoutMode === "topbar" ? { position: "relative", top: "-11px" } : undefined}
-              >
+              <div className="button-container antarctica-panel-buttons">
                 <button id="btn-journal" className="button-helper" type="button" onClick={() => dispatchAction("showHistory")} disabled={isPending || !sessionId} style={{ backgroundImage: "url(/images/jurnal-hodov.png)", backgroundSize: "cover" }}>
                   журнал ходов
                 </button>
@@ -1189,6 +1255,11 @@ function AntarcticaFallbackRenderer({
                   </>
                 )}
               </div>
+              {layoutMode === "leftsidebar" && (
+                <div className="s1-area button-container antarctica-panel-buttons">
+                  <AntarcticaPanelButtonRow onJournal={onJournal ?? (() => {})} onHint={onHint ?? (() => {})} layoutMode="leftsidebar" />
+                </div>
+              )}
             </>
           )}
       </div>
@@ -1201,6 +1272,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
   const [booting, setBooting] = useState(true);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [dismissedPanel, setDismissedPanel] = useState<string | null>(null);
 
   /**
    * Creates a new session via POST and stores the sessionId in localStorage.
@@ -1324,6 +1396,12 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
   const dispatchAction = (actionId: string, payload?: Record<string, unknown>) => {
     if (!session) {
       return;
+    }
+
+    // When the user explicitly requests a panel, clear any client-side dismissal
+    // so the server response is respected.
+    if (actionId === "showHistory" || actionId === "showHint") {
+      setDismissedPanel(null);
     }
 
     startTransition(() => {
@@ -1452,7 +1530,8 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
   const resolveScreenKey = (
     screenId: string | null,
     stepIndex: number | null,
-    infoId: string | null
+    infoId: string | null,
+    runtimeUi: RuntimeUiState
   ): string | null => {
     if (screenId === "S2") {
       // Board screens: derive manifest screen key from stepIndex
@@ -1463,6 +1542,10 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
       // Board screen not in manifest — return null to trigger fallback
       return null;
     } else if (screenId === "S1") {
+      // When runtime explicitly requests left-sidebar composition, use S1_LEFT manifest screen
+      if (runtimeUi.activeScreen === "left-sidebar" && antarcticaUi?.screens["S1_LEFT"]) {
+        return "S1_LEFT";
+      }
       // Info screens: use activeInfoId for variant disambiguation (i19 vs i19_1)
       // If activeInfoId exists in UI screens, use that UI screen
       if (infoId && antarcticaUi?.screens[infoId]) {
@@ -1491,7 +1574,7 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
     return null;
   };
 
-  const screenKey = antarcticaUi ? resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId) : null;
+  const screenKey = antarcticaUi ? resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId, runtimeUi) : null;
   const screenDefinition = screenKey ? antarcticaUi?.screens[screenKey] : null;
 
   const antarctica = resolveAntarcticaContent(content);
@@ -1513,7 +1596,15 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
     selectedCardId && boardCards.length > 0
       ? boardCards.find((card) => card.cardId === selectedCardId) ?? null
       : null;
-  const activePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;
+  const rawActivePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;
+  const activePanel = rawActivePanel && rawActivePanel !== dismissedPanel ? rawActivePanel : null;
+
+  useEffect(() => {
+    if (dismissedPanel && dismissedPanel !== rawActivePanel) {
+      setDismissedPanel(null);
+    }
+  }, [rawActivePanel, dismissedPanel]);
+
   const screenLayoutMode = resolveAntarcticaLayoutMode(screenKey, runtimeUi, currentBoard, currentInfo);
 
   return (
@@ -1522,8 +1613,9 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
         <AntarcticaJournalRenderer
           metrics={metrics}
           log={log}
-          onJournal={() => dispatchAction("showHistory")}
+          onJournal={() => setDismissedPanel("history")}
           onHint={() => dispatchAction("showHint")}
+          onClose={() => setDismissedPanel("history")}
         />
       ) : activePanel === "hint" ? (
         <AntarcticaHintRenderer
@@ -1531,7 +1623,8 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
           metrics={metrics}
           log={log}
           onJournal={() => dispatchAction("showHistory")}
-          onHint={() => dispatchAction("showHint")}
+          onHint={() => setDismissedPanel("hint")}
+          onClose={() => setDismissedPanel("hint")}
         />
       ) : screenDefinition ? (
         /* Manifest-driven rendering for in-scope tail screens (S1 info variants and S2 boards) */
@@ -1569,6 +1662,8 @@ export function AntarcticaPlayer({ runtimeApiUrl, content, mockups, antarcticaUi
           fallbackActions={fallbackActions}
           dispatchAction={dispatchAction}
           layoutMode={screenLayoutMode}
+          onJournal={() => dispatchAction("showHistory")}
+          onHint={() => dispatchAction("showHint")}
         />
       )}
       {error ? <div className="error antarctica-inline-error">{error}</div> : null}

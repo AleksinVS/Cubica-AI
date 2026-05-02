@@ -2210,6 +2210,262 @@
           }
         ]
       }
+    },
+    "S1_LEFT": {
+      "type": "screen",
+      "title": "Antarctica (Left Sidebar)",
+      "layout_id": "layout.web.s1_left",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen leftsidebar-screen",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "description": "Оставшееся время в игре. Основной параметр.",
+                  "backgroundImage": "/images/left-sidebar/days.png",
+                  "value": "{{game.state.public.metrics.score}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "description": "Уровень знаний, который игрок может использовать для решения задач.",
+                  "backgroundImage": "/images/left-sidebar/znania.png",
+                  "value": "{{game.state.public.metrics.pro}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "description": "Уровень доверия команды и окружения к игроку.",
+                  "backgroundImage": "/images/left-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "description": "Ресурс на действия и принятие решений.",
+                  "backgroundImage": "/images/left-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "description": "Способность управлять ситуацией и направлением изменений.",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "description": "Положение игрока в системе и степень влияния.",
+                  "backgroundImage": "/images/left-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "description": "Доступность связей и поддержки вокруг игрока.",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}"
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "description": "Нацеленность на результат без пустых конфликтов.",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}"
+                }
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "sidebar-decoration"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container topbar-cards-container"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "card-1",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-2",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-3",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-4",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-5",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
+                    "id": "card-6",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "bottom-controls-container"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHistory",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-hint",
+                    "props": {
+                      "caption": "Подсказка"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showHint",
+                        "payload": {}
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-left",
+                    "props": {
+                      "caption": "Назад"
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "nav-right",
+                    "props": {
+                      "caption": "Вперед"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "additional-background"
+            }
+          }
+        ]
+      }
     }
   },
   "layouts": {

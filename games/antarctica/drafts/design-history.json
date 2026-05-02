@@ -1,0 +1,98 @@
+{
+  "$schema": "https://cubica.platform/schemas/design-history.v1.json",
+  "game_id": "antarctica",
+  "updated_at": "2026-01-18T21:30:00Z",
+  "artifacts": {
+    "left-sidebar-6-cards": {
+      "type": "mockup",
+      "current_version": "1.1",
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "mockups/left-sidebar-6-cards.design.json",
+          "date": "2026-01-18"
+        },
+        {
+          "version": "1.1",
+          "file": "mockups/left-sidebar-6-cards.design.json",
+          "date": "2026-01-18",
+          "changes": "Added layout_properties and complex nested elements structure."
+        }
+      ]
+    },
+    "leftsidebar-infocard": {
+      "type": "mockup",
+      "current_version": "1.1",
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "mockups/leftsidebar-infocard.design.json",
+          "date": "2026-01-18"
+        },
+        {
+          "version": "1.1",
+          "file": "mockups/leftsidebar-infocard.design.json",
+          "date": "2026-01-18",
+          "changes": "Filled detailed description and regions."
+        }
+      ]
+    },
+    "moves-journal": {
+      "type": "mockup",
+      "current_version": "1.1",
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "mockups/moves-journal.design.json",
+          "date": "2026-01-18"
+        },
+        {
+          "version": "1.1",
+          "file": "mockups/moves-journal.design.json",
+          "date": "2026-01-18",
+          "changes": "Filled detailed description and regions."
+        }
+      ]
+    },
+    "top-sidebar-6-cards": {
+      "type": "mockup",
+      "current_version": "1.1",
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "mockups/top-sidebar-6-cards.design.json",
+          "date": "2026-01-18"
+        },
+        {
+          "version": "1.1",
+          "file": "mockups/top-sidebar-6-cards.design.json",
+          "date": "2026-01-18",
+          "changes": "Filled detailed description and regions."
+        }
+      ]
+    },
+    "topsidebar-infocard": {
+      "type": "mockup",
+      "current_version": "1.1",
+      "versions": [
+        {
+          "version": "1.0",
+          "file": "mockups/topsidebar-infocard.design.json",
+          "date": "2026-01-18"
+        },
+        {
+          "version": "1.1",
+          "file": "mockups/topsidebar-infocard.design.json",
+          "date": "2026-01-18",
+          "changes": "Filled detailed description and regions."
+        }
+      ]
+    }
+  },
+  "relationships": [],
+  "meta": {
+    "created_at": "2026-01-17T15:00:00Z",
+    "author": "AI Agent",
+    "description": "История дизайн-артефактов для игры Antarctica. Каталог подготовлен для добавления артефактов."
+  }
+}

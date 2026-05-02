@@ -1,0 +1,156 @@
+{
+    "$schema": "https://cubica.platform/schemas/design-artifact.v1.json",
+    "id": "moves-journal",
+    "type": "mockup",
+    "name": "Журнал ходов",
+    "description": "Экран журнала событий и ходов",
+    "image": {
+        "path": "mockups/moves-journal.jpg",
+        "format": "jpg",
+        "dimensions": {
+            "width": 1920,
+            "height": 1080
+        },
+        "dpi": 72
+    },
+    "generation": {
+        "prompt": "Game UI screen showing a detailed journal of moves and events. Left sidebar with metrics, right/main area with a scrollable list of text entries and timestamps. Art style is flat vector illustration, clean lines, cool color palette.",
+        "negative_prompt": "realistic, 3d, cluttered, noise, warm colors",
+        "style_reference": "concepts/main-style",
+        "model": "midjourney-v6"
+    },
+    "regions": [
+        {
+            "id": "sidebar",
+            "bounds": {
+                "x": 0,
+                "y": 0,
+                "width": 400,
+                "height": 1080
+            },
+            "type": "container",
+            "description": "Левая боковая панель с метриками",
+            "layout": {
+                "type": "flex",
+                "direction": "column",
+                "padding": 20,
+                "gap": 15
+            },
+            "generation": {
+                "prompt": "Deep blue sidebar background"
+            },
+            "style": {
+                "background": "#0f4c75"
+            },
+            "elements": [
+                {
+                    "id": "day-counter",
+                    "type": "indicator",
+                    "description": "Счетчик дней",
+                    "label": "45 Осталось дней",
+                    "generation": {
+                        "prompt": "Icon of a yellow sun on a light blue background"
+                    }
+                }
+            ]
+        },
+        {
+            "id": "journal-content",
+            "bounds": {
+                "x": 400,
+                "y": 0,
+                "width": 1520,
+                "height": 1080
+            },
+            "type": "container",
+            "description": "Основная область журнала",
+            "layout": {
+                "type": "flex",
+                "direction": "column",
+                "padding": 40,
+                "gap": 20
+            },
+            "style": {
+                "background": "#1b262c"
+            },
+            "generation": {
+                "prompt": "Dark blue main content area with journal entries"
+            },
+            "elements": [
+                {
+                    "id": "journal-title",
+                    "type": "text",
+                    "content": "Журнал событий",
+                    "style": {
+                        "font_size": 32,
+                        "color": "#ffffff",
+                        "font_weight": "bold"
+                    },
+                    "generation": {
+                        "prompt": "Title text 'Журнал событий'"
+                    }
+                },
+                {
+                    "id": "journal-list",
+                    "type": "list",
+                    "description": "Список записей журнала",
+                    "generation": {
+                        "prompt": "Vertical list of text entries with timestamps"
+                    },
+                    "elements": [
+                        {
+                            "id": "entry-1",
+                            "type": "journal-item",
+                            "content": "День 1: Прибытие в Антарктику",
+                            "generation": {
+                                "prompt": "Journal entry text"
+                            }
+                        },
+                        {
+                            "id": "entry-2",
+                            "type": "journal-item",
+                            "content": "День 2: Установка базы",
+                            "generation": {
+                                "prompt": "Journal entry text"
+                            }
+                        },
+                        {
+                            "id": "entry-3",
+                            "type": "journal-item",
+                            "content": "День 3: Первое исследование",
+                            "generation": {
+                                "prompt": "Journal entry text"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    ],
+    "style_tokens": {
+        "colors": {
+            "sidebar_bg": "#0f4c75",
+            "main_bg": "#1b262c",
+            "text_primary": "#ffffff",
+            "text_secondary": "#bbe1fa",
+            "accent_ice": "#a8d8ea"
+        },
+        "typography": {
+            "font_family": "Sans-Serif",
+            "heading_style": "bold uppercase",
+            "body_style": "regular"
+        }
+    },
+    "meta": {
+        "author": "Antigravity Agent",
+        "created_at": "2026-01-18T22:45:00+03:00",
+        "version": "1.0",
+        "tags": [
+            "mockup",
+            "journal",
+            "list",
+            "antarctica"
+        ],
+        "notes": "Created based on moves-journal.jpg"
+    }
+}

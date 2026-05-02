@@ -1,0 +1,122 @@
+{
+  "$schema": "https://cubica.platform/schemas/design-artifact.v1.json",
+  "id": "left-sidebar-6-cards-antarctica",
+  "type": "mockup",
+  "name": "Экран с левым сайдбаром и 6 карточками",
+  "description": "Игровой экран в холодной арктической стилистике: слева вертикальный сайдбар с показателями, по центру сетка из шести текстовых карточек (3x2), снизу панель управления с кнопками и стрелками навигации, справа декоративная иллюстрация с айсбергами и китом.",
+  "image": {
+    "path": "design/left-sidebar-6-cards.jpg",
+    "format": "jpg",
+    "dimensions": { "width": 1600, "height": 900 },
+    "dpi": 72
+  },
+  "generation": {
+    "prompt": "game UI screen, arctic theme, cold blue palette, left sidebar with stats, six text cards grid, bottom navigation buttons, whale and iceberg illustration, flat illustration style, russian language",
+    "negative_prompt": "warm colors, realistic photo, dark theme, cluttered UI",
+    "model": "stable-diffusion-xl",
+    "parameters": { "aspect_ratio": "16:9" }
+  },
+  "regions": [
+    {
+      "id": "sidebar-left",
+      "type": "container",
+      "bounds": { "x": 0, "y": 0, "width": 260, "height": 900 },
+      "description": "Левый вертикальный сайдбар с индикаторами состояний.",
+      "generation": { "prompt": "vertical icy game sidebar with stat counters" },
+      "elements": [
+        {
+          "id": "sidebar-timer",
+          "type": "progress-bar",
+          "label": "45 Осталось дней",
+          "generation": { "prompt": "circular icy timer badge with number 45" }
+        },
+        {
+          "id": "sidebar-stats",
+          "type": "container",
+          "generation": { "prompt": "list of stat badges, ice shards style, russian labels" }
+        }
+      ]
+    },
+    {
+      "id": "cards-grid",
+      "type": "container",
+      "bounds": { "x": 300, "y": 80, "width": 900, "height": 650 },
+      "layout": { "type": "grid", "rows": 2, "columns": 3, "gap": 24 },
+      "description": "Сетка из шести карточек с текстом.",
+      "generation": { "prompt": "six arctic style info cards grid" },
+      "elements": [
+        { "id": "card-1", "type": "card", "label": "Антарктика — это огромный мир...", "generation": { "prompt": "blue info card with russian paragraph text" } },
+        { "id": "card-2", "type": "card", "label": "Антарктика — это огромный мир...", "generation": { "prompt": "blue info card with russian paragraph text" } },
+        { "id": "card-3", "type": "card", "label": "Антарктика — это огромный мир...", "generation": { "prompt": "light highlighted info card with russian text" } },
+        { "id": "card-4", "type": "card", "label": "Антарктика — это огромный мир...", "generation": { "prompt": "blue info card with russian paragraph text" } },
+        { "id": "card-5", "type": "card", "label": "Антарктика — это огромный мир...", "generation": { "prompt": "blue info card with russian paragraph text" } },
+        { "id": "card-6", "type": "card", "label": "Антарктика — это огромный мир...", "generation": { "prompt": "blue info card with russian paragraph text" } }
+      ]
+    },
+    {
+      "id": "bottom-controls",
+      "type": "container",
+      "bounds": { "x": 300, "y": 760, "width": 900, "height": 100 },
+      "layout": { "type": "flex", "gap": 24 },
+      "description": "Нижняя панель с кнопками и навигационными стрелками.",
+      "generation": { "prompt": "bottom game UI controls, icy translucent buttons" },
+      "elements": [
+        {
+          "id": "btn-log",
+          "type": "button",
+          "label": "журнал ходов",
+          "generation": { "prompt": "frosted glass button with russian text журнал ходов" }
+        },
+        {
+          "id": "btn-hint",
+          "type": "button",
+          "label": "подсказка",
+          "generation": { "prompt": "frosted glass button with russian text подсказка" }
+        },
+        {
+          "id": "nav-left",
+          "type": "button",
+          "visual_tags": ["icon-only"],
+          "description": "Стрелка влево.",
+          "generation": { "prompt": "left arrow navigation button, icy UI" }
+        },
+        {
+          "id": "nav-right",
+          "type": "button",
+          "visual_tags": ["icon-only"],
+          "description": "Стрелка вправо.",
+          "generation": { "prompt": "right arrow navigation button, icy UI" }
+        }
+      ]
+    },
+    {
+      "id": "right-illustration",
+      "type": "image",
+      "bounds": { "x": 1230, "y": 0, "width": 370, "height": 900 },
+      "description": "Декоративная арктическая иллюстрация.",
+      "generation": { "prompt": "flat arctic illustration with iceberg, ocean and whale" }
+    }
+  ],
+  "style_tokens": {
+    "colors": {
+      "primary": "#0b6fa4",
+      "secondary": "#0a5c8a",
+      "background": "#0b4f7a",
+      "card": "#2f7fb3",
+      "text": "#ffffff",
+      "accent": "#e6f2fa"
+    },
+    "typography": {
+      "font_family": "Sans-serif",
+      "body_size": 16
+    },
+    "spacing": { "gap": 24, "padding_card": 20 },
+    "effects": { "shadows": "soft", "border_radius": 12 }
+  },
+  "meta": {
+    "author": "AI",
+    "version": "1.1",
+    "status": "draft",
+    "tags": ["game-ui", "arctic", "sidebar", "cards", "navigation"]
+  }
+}
