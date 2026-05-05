@@ -10,13 +10,9 @@
  * and the explicit i17 follow-up from the frozen player-content DTO.
  */
 
-import type {
-  GamePlayerBoard,
-  GamePlayerBoardCard,
-  GamePlayerContent,
-  GamePlayerInfoEntry,
-  PlayerFacingContent,
-} from "@cubica/contracts-manifest";
+import type { PlayerFacingContent } from "@cubica/contracts-manifest";
+import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerContent, GamePlayerInfoEntry } from "@/plugins/antarctica/contracts";
+
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 
 /** Antarctica player-facing content for steps 30-31 (board 55_60 and info i17) */

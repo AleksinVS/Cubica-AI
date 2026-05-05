@@ -1,4 +1,5 @@
-import type { GamePlayerBoardCard, GamePlayerContent } from "@cubica/contracts-manifest";
+import type { GamePlayerBoardCard, GamePlayerContent } from "@/plugins/antarctica/contracts";
+
 
 /**
  * Создаёт адаптер, который преобразует UI-команды из манифеста

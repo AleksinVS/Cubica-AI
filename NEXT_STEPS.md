@@ -150,7 +150,7 @@ Delivered S2 board screens теперь визуально выровнены п
 
 ## Приоритет 6. Repository Hygiene
 
-1. Поддерживать `repo-manifest.json` и `PROJECT_STRUCTURE.yaml` синхронно с фактическими workspace-артефактами.
+1. Поддерживать `PROJECT_STRUCTURE.yaml` синхронно с фактическими workspace-артефактами через `.desc.json`.
 2. Явно размечать `actual / target / draft / archive / placeholder` только там, где это помогает агентам не путать канонические и draft-слои.
 3. Держать root-level `verify:*` scripts в актуальном состоянии, чтобы следующий агент мог быстро проверить текущий canonical slice.
 

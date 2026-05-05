@@ -1,7 +1,7 @@
-import type { PlayerFacingContent } from "@cubica/contracts-manifest";
-import type {
-  GamePlayerBoardCard
-} from "@cubica/contracts-manifest";
+import type { PlayerFacingContent } from '@cubica/contracts-manifest';
+
+import type { GamePlayerBoardCard } from '@/plugins/antarctica/contracts';
+
 import type { MetricsSnapshot } from "@/types/game-state";
 import type {
   resolveCurrentBoard,
@@ -81,7 +81,7 @@ export function FallbackRenderer({
 
   return (
     <div className={rendererClassName}>
-      <div className={shellClassName} style={{ backgroundImage: "url(/images/arctic-background.png)" }}>
+      <div className={shellClassName}>
         <div className="additional-background" />
         {currentBoard ? (
             <>
@@ -162,16 +162,16 @@ export function FallbackRenderer({
               </div>
               {/* Panel buttons for topbar board screen - placed in grid row 3 */}
               <div className="button-container panel-buttons">
-                <button id="btn-journal" className="button-helper" type="button" onClick={() => dispatchAction("showHistory")} disabled={isPending || !sessionId} style={{ backgroundImage: "url(/images/jurnal-hodov.png)", backgroundSize: "cover" }}>
+                <button id="btn-journal" className="button-helper" type="button" onClick={() => dispatchAction("showHistory")} disabled={isPending || !sessionId}>
                   журнал ходов
                 </button>
-                <button id="btn-hint" className="button-helper" type="button" onClick={() => dispatchAction("showHint")} disabled={isPending || !sessionId} style={{ backgroundImage: "url(/images/podskazka.png)", backgroundSize: "cover" }}>
+                <button id="btn-hint" className="button-helper" type="button" onClick={() => dispatchAction("showHint")} disabled={isPending || !sessionId}>
                   подсказка
                 </button>
-                <button id="nav-left" className="button-helper-arrow" type="button" disabled style={{ backgroundImage: "url(/images/arrow-left.png)", backgroundSize: "contain" }}>
+                <button id="nav-left" className="button-helper-arrow" type="button" disabled>
                   Назад
                 </button>
-                <button id="nav-right" className="button-helper-arrow" type="button" disabled style={{ backgroundImage: "url(/images/arrow-right.png)", backgroundSize: "contain" }}>
+                <button id="nav-right" className="button-helper-arrow" type="button" disabled>
                   Вперед
                 </button>
               </div>

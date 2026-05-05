@@ -28,5 +28,4 @@ These rules apply to everything under `.codex/skills/`.
 
 ## Documentation Sync
 
-- If this subtree changes structurally, update `PROJECT_STRUCTURE.json` and `repo-manifest.json`.
 - If the workflow hierarchy changes, update this file and the affected skill files together.

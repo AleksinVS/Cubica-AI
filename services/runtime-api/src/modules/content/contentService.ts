@@ -1,6 +1,3 @@
-import { readFile, readdir } from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import type {
   PlayerFacingAction,
   PlayerFacingContent,
@@ -11,14 +8,8 @@ import type {
 } from "@cubica/contracts-manifest";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
-
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
-
-const resolveGameMockupsDir = (gameId: string) =>
-  path.resolve(repoRoot, "games", gameId, "design", "mockups");
-
-const resolveGameUiManifestPath = (gameId: string) =>
-  path.resolve(repoRoot, "games", gameId, "ui", "web", "ui.manifest.json");
+import type { IGameRepository } from "./repository.ts";
+import { LocalFileGameRepository } from "./localFileRepository.ts";
 
 interface RawMockupDesign {
   id?: string;
@@ -41,7 +32,7 @@ const parseMockupFile = (raw: string, filename: string): PlayerFacingMockup => {
     // If JSON parsing fails, use defaults based on filename
   }
 
-  const id = typeof parsed.id === "string" ? parsed.id : path.basename(filename, ".design.json");
+  const id = typeof parsed.id === "string" ? parsed.id : filename.replace(".design.json", "");
   const name = typeof parsed.name === "string" ? parsed.name : id;
   const description = typeof parsed.description === "string" ? parsed.description : "";
   const type = typeof parsed.type === "string" ? parsed.type : "mockup";
@@ -65,27 +56,10 @@ const parseMockupFile = (raw: string, filename: string): PlayerFacingMockup => {
   };
 };
 
-const loadMockupsForGame = async (gameId: string): Promise<Array<PlayerFacingMockup>> => {
-  const mockupsDir = resolveGameMockupsDir(gameId);
-
-  let files: string[] = [];
-
-  try {
-    files = (await readdir(mockupsDir)).filter((file) => file.endsWith(".design.json")).sort();
-  } catch {
-    return [];
-  }
-
-  const mockups = await Promise.all(
-    files.map(async (file) => {
-      const raw = await readFile(path.resolve(mockupsDir, file), "utf-8");
-      return parseMockupFile(raw, file);
-    })
-  );
-
-  return mockups;
+const loadMockupsForGame = async (gameId: string, repository: IGameRepository): Promise<Array<PlayerFacingMockup>> => {
+  const mockupFiles = await repository.getMockupFiles(gameId);
+  return mockupFiles.map(f => parseMockupFile(f.raw, f.filename));
 };
-
 
 interface RawUiManifest {
   meta?: {
@@ -103,42 +77,17 @@ interface RawUiManifest {
   [key: string]: unknown;
 }
 
-/**
- * Loads the game UI manifest (ui.manifest.json) for the requested game.
- * Returns undefined if the file does not exist or cannot be parsed.
- * This is an additive read-only projection; no manifest validation is performed here.
- */
-const loadGameUiManifest = async (gameId: string): Promise<RawUiManifest | undefined> => {
-  const manifestPath = resolveGameUiManifestPath(gameId);
-
-  let raw: string;
-  try {
-    raw = await readFile(manifestPath, "utf-8");
-  } catch (error) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as { code: string }).code === "ENOENT"
-    ) {
-      // UI manifest does not exist for this game; this is non-fatal for the content API.
-      return undefined;
-    }
-    throw error;
-  }
+const loadGameUiManifest = async (gameId: string, repository: IGameRepository): Promise<RawUiManifest | undefined> => {
+  const raw = await repository.getUiManifestRaw(gameId);
+  if (!raw) return undefined;
 
   try {
     return JSON.parse(raw) as RawUiManifest;
   } catch {
-    // Malformed UI manifest; return undefined to avoid breaking the content API.
     return undefined;
   }
 };
 
-/**
- * Transforms a raw UI manifest screen object (with snake_case fields) into a typed
- * GameUiScreenDefinition (with camelCase fields).
- */
 const transformScreen = (
   rawScreen: Record<string, unknown>
 ): GameUiScreenDefinition => {
@@ -146,24 +95,10 @@ const transformScreen = (
     type: "screen",
     title: typeof rawScreen.title === "string" ? rawScreen.title : "Game",
     layoutId: typeof rawScreen.layout_id === "string" ? rawScreen.layout_id : undefined,
-    // Deep clone the root component tree, preserving all children and props.
     root: structuredClone(rawScreen.root) as GameUiScreenDefinition["root"]
   };
 };
 
-/**
- * Projects all available UI screens from the raw UI manifest into a multi-screen
- * GamePlayerUiContent structure.
- * Asset references (image paths) are preserved as data strings, not resolved URLs.
- *
- * Screen selection contract:
- * - Runtime snapshot field `timeline.screenId` selects the current screen from `screens`.
- * - Runtime snapshot field `timeline.activeInfoId` disambiguates variant info screens (e.g., i19 vs i19_1).
- * - When `timeline.screenId` is not in `screens`, the player falls back to the action catalog.
- * - The `entryPoint` field holds the canonical entry screen id (e.g. "S1" for web).
- *
- * Selection is driven by runtime snapshot fields, not by UI-side heuristics.
- */
 const projectGameUiContent = (
   rawManifest: RawUiManifest
 ): GamePlayerUiContent | undefined => {
@@ -172,11 +107,9 @@ const projectGameUiContent = (
   const rawScreens = rawManifest.screens;
 
   if (!rawScreens || typeof rawScreens !== "object") {
-    // No screens defined in the UI manifest.
     return undefined;
   }
 
-  // Project design artifact registry for reference/metadata purposes.
   const designArtifacts: Record<string, { id: string; type: string; sourceRef?: { file?: string } }> = {};
   const registry = rawManifest.design_artifacts?.registry;
   if (registry && typeof registry === "object") {
@@ -191,7 +124,6 @@ const projectGameUiContent = (
     }
   }
 
-  // Project all available screens, not just the entry point.
   const screens: Record<string, GameUiScreenDefinition> = {};
   for (const [screenId, rawScreen] of Object.entries(rawScreens)) {
     if (rawScreen && typeof rawScreen === "object") {
@@ -200,7 +132,6 @@ const projectGameUiContent = (
   }
 
   if (Object.keys(screens).length === 0) {
-    // No valid screens found.
     return undefined;
   }
 
@@ -214,7 +145,7 @@ const projectGameUiContent = (
   };
 };
 
-const projectManifestToPlayerContent = async (bundle: GameBundle): Promise<PlayerFacingContent> => {
+const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IGameRepository): Promise<PlayerFacingContent> => {
   const { manifest } = bundle;
 
   const actions: Array<PlayerFacingAction> = Object.entries(
@@ -227,7 +158,7 @@ const projectManifestToPlayerContent = async (bundle: GameBundle): Promise<Playe
   }));
 
   const gameSpecificContent = manifest.content?.[manifest.meta.id];
-  const rawUiManifest = await loadGameUiManifest(manifest.meta.id);
+  const rawUiManifest = await loadGameUiManifest(manifest.meta.id, repository);
   const gameUi = rawUiManifest ? projectGameUiContent(rawUiManifest) : undefined;
 
   return {
@@ -255,6 +186,11 @@ export interface ContentServiceResult {
 
 export class ContentService {
   private readonly bundleCache = new Map<string, GameBundle>();
+  private readonly repository: IGameRepository;
+  
+  constructor(repository: IGameRepository) {
+    this.repository = repository;
+  }
 
   async getBundle(gameId: string): Promise<GameBundle> {
     const cached = this.bundleCache.get(gameId);
@@ -262,7 +198,7 @@ export class ContentService {
       return cached;
     }
 
-    const bundle = await loadGameBundle(gameId);
+    const bundle = await loadGameBundle(gameId, this.repository);
     this.bundleCache.set(gameId, bundle);
     return bundle;
   }
@@ -300,16 +236,16 @@ export class ContentService {
       }
       throw error;
     }
-    const mockups = await loadMockupsForGame(options.gameId);
+    const mockups = await loadMockupsForGame(options.gameId, this.repository);
 
-    const content = await projectManifestToPlayerContent(bundle);
+    const content = await projectManifestToPlayerContent(bundle, this.repository);
     content.mockups = mockups;
 
     return { content };
   }
 }
 
-export const contentService = new ContentService();
+export const contentService = new ContentService(new LocalFileGameRepository());
 
 export async function loadPlayerFacingContent(
   options: ContentServiceOptions

@@ -1,12 +1,6 @@
-import type {
-  GamePlayerBoard,
-  GamePlayerBoardCard,
-  GamePlayerContent,
-  GamePlayerInfoEntry,
-  GamePlayerTeamSelectionScene,
-  PlayerFacingContent,
-  PlayerFacingMockup
-} from "@cubica/contracts-manifest";
+import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
+import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerContent, GamePlayerInfoEntry, GamePlayerTeamSelectionScene } from "@/plugins/antarctica/contracts";
+
 import type { CreateSessionResponse, DispatchActionResponse } from "@cubica/contracts-session";
 
 export type { PlayerFacingMockup as GameMockup };

@@ -10,7 +10,6 @@ import type { PlayerState } from "@/presenter/types";
 import type { ViewCommand } from "@cubica/sdk-core";
 import { GamePresenter } from "@/presenter/game-presenter";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
-import { ANTARCTICA_GAME_CONFIG } from "@/presenter/game-config";
 import type { AntarcticaGameState } from "@/presenter/game-config";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { FallbackRenderer } from "@/components/fallback-renderer";
@@ -24,6 +23,7 @@ export type GamePlayerProps = {
   content: PlayerFacingContent;
   mockups: Array<PlayerFacingMockup>;
   gameUi?: GamePlayerUiContent;
+  config: any;
 };
 
 /**
@@ -33,7 +33,7 @@ export type GamePlayerProps = {
  * и обновляет React-состояние. Вся бизнес-логика (boot, dispatch, routing)
  * делегирована Presenter.
  */
-export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi }: GamePlayerProps) {
+export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: GamePlayerProps) {
   const [playerState, setPlayerState] = useState<PlayerState<AntarcticaGameState> | null>(null);
   const [screenKey, setScreenKey] = useState<string | undefined>(undefined);
   const [layoutMode, setLayoutMode] = useState<"leftsidebar" | "topbar">("topbar");
@@ -47,7 +47,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi }: GamePlay
       gateway,
       content,
       gameUi,
-      config: ANTARCTICA_GAME_CONFIG
+      config
     });
     presenterRef.current = presenter;
 
@@ -165,7 +165,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi }: GamePlay
           onJournal={() => handleDismissPanel("history")}
           onHint={() => handleAction("showHint")}
           onClose={() => handleDismissPanel("history")}
-          fallbackMetrics={ANTARCTICA_GAME_CONFIG.fallbackMetrics}
+          fallbackMetrics={config.fallbackMetrics}
         />
       ) : state.activePanel === "hint" ? (
         <HintRenderer
@@ -175,7 +175,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi }: GamePlay
           onJournal={() => handleAction("showHistory")}
           onHint={() => handleDismissPanel("hint")}
           onClose={() => handleDismissPanel("hint")}
-          fallbackMetrics={ANTARCTICA_GAME_CONFIG.fallbackMetrics}
+          fallbackMetrics={config.fallbackMetrics}
         />
       ) : screenKey && gameUi?.screens[screenKey] ? (
         <ManifestRenderer
@@ -184,7 +184,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi }: GamePlay
           onAction={handleManifestAction}
           screenKey={screenKey}
           layoutMode={layoutMode}
-          metricBackgroundImages={ANTARCTICA_GAME_CONFIG.metricBackgroundImages}
+          metricBackgroundImages={config.metricBackgroundImages}
         />
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
@@ -214,7 +214,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi }: GamePlay
           layoutMode={layoutMode}
           onJournal={() => handleAction("showHistory")}
           onHint={() => handleAction("showHint")}
-          fallbackMetrics={ANTARCTICA_GAME_CONFIG.fallbackMetrics}
+          fallbackMetrics={config.fallbackMetrics}
         />
       )}
       {state.error ? <div className="error inline-error">{state.error}</div> : null}

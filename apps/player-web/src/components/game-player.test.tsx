@@ -14,7 +14,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import React from "react";
 
-import type { GamePlayerBoard } from "@cubica/contracts-manifest";
+import type { GamePlayerBoard } from "@/plugins/antarctica/contracts";
+
 
 import {
   openingTailStep30AntarcticaContent,

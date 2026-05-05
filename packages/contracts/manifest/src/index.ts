@@ -128,35 +128,20 @@ export interface GameManifestDeterministicSourceRef {
 /**
  * Minimal guard shape for deterministic opening-card and team-selection slices.
  */
+export interface GameManifestDeterministicStateCondition {
+  path: string;
+  operator: "==" | "!=" | ">" | ">=" | "<" | "<=" | "exists" | "not_exists";
+  value?: unknown;
+}
+
 export interface GameManifestDeterministicGuard {
   timeline?: {
     line?: string;
     stepIndex?: number;
     canAdvance?: boolean;
   };
-  opening?: {
-    selectedCardIdAbsent?: boolean;
-    selectedCardIdEquals?: string;
-  };
-  card?: {
-    id: string;
-    selected?: boolean;
-    resolved?: boolean;
-    locked?: boolean;
-    available?: boolean;
-  };
-  teamSelection?: {
-    pickCountLessThan?: number;
-    pickCountEquals?: number;
-  };
-  team?: {
-    memberId: string;
-    selected?: boolean;
-  };
-  board?: {
-    cardIds: Array<string>;
-    resolvedCountAtLeast?: number;
-  };
+  stateConditions?: Array<GameManifestDeterministicStateCondition>;
+  [key: string]: unknown;
 }
 
 export interface GameManifestDeterministicMetricDelta {
@@ -183,17 +168,8 @@ export interface GameManifestDeterministicConditionalMetricBonus {
   metricDeltas: Array<GameManifestDeterministicMetricDelta>;
 }
 
-/**
- * Local bonus gated by previously known card state.
- */
-export interface GameManifestDeterministicConditionalCardBonus {
-  whenCard: {
-    cardId: string;
-    selected?: boolean;
-    resolved?: boolean;
-    locked?: boolean;
-    available?: boolean;
-  };
+export interface GameManifestDeterministicConditionalStateBonus {
+  when: Array<GameManifestDeterministicStateCondition>;
   metricDeltas: Array<GameManifestDeterministicMetricDelta>;
 }
 
@@ -225,6 +201,12 @@ export interface GameManifestDeterministicLogMetadata {
   cardId?: string;
 }
 
+export interface GameManifestDeterministicStatePatch {
+  op: "add" | "replace" | "remove" | "increment" | "append";
+  path: string;
+  value?: unknown;
+}
+
 export interface GameManifestDeterministicStateUpdate {
   timelineCanAdvance?: boolean;
   // Explicit timeline coordinates for deterministic transitions (for example intro info step -> next screen).
@@ -233,38 +215,7 @@ export interface GameManifestDeterministicStateUpdate {
   timelineScreenId?: string;
   activeInfoId?: string;
   selectedCardId?: string;
-  boardThreshold?: {
-    cardIds: Array<string>;
-    resolvedCountAtLeast: number;
-    timelineCanAdvance?: boolean;
-  };
-  cardFlags?: {
-    cardId: string;
-    selected?: boolean;
-    resolved?: boolean;
-    locked?: boolean;
-    available?: boolean;
-  };
-  boardCardUnlock?: {
-    cardIds: Array<string>;
-    resolvedCountAtLeast: number;
-    unlockCardId: string;
-    /** Optional card id that prevents unlock if already available. */
-    unlessCardAvailable?: string;
-  };
-  boardEntryAltCardSwap?: {
-    when: GameManifestDeterministicMetricCondition;
-    baseCardId: string;
-    altCardId: string;
-  };
-  teamFlags?: {
-    memberId: string;
-    selected?: boolean;
-  };
-  teamSelection?: {
-    pickCountDelta?: number;
-    selectedMemberIdsAppend?: string;
-  };
+  statePatches?: Array<GameManifestDeterministicStatePatch>;
 }
 
 export interface GameManifestDeterministicActionMetadata {
@@ -272,7 +223,7 @@ export interface GameManifestDeterministicActionMetadata {
   guard: GameManifestDeterministicGuard;
   metricDeltas: Array<GameManifestDeterministicMetricDelta>;
   conditionalMetricBonuses?: Array<GameManifestDeterministicConditionalMetricBonus>;
-  conditionalCardBonuses?: Array<GameManifestDeterministicConditionalCardBonus>;
+  conditionalStateBonuses?: Array<GameManifestDeterministicConditionalStateBonus>;
   conditionalInfoVariant?: GameManifestDeterministicConditionalInfoVariant;
   conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
   log: GameManifestDeterministicLogMetadata;
@@ -331,60 +282,8 @@ export interface PlayerFacingMockup {
   imagePath: string;
 }
 
-export interface GamePlayerInfoEntry {
-  id: string;
-  stepIndex: number;
-  screenId: string;
-  title: string;
-  body: string;
-  advanceActionId: string;
-  advanceLabel?: string;
-}
-
-export interface GamePlayerTeamSelectionMember {
-  memberId: string;
-  name: string;
-  summary: string;
-  selectActionId: string;
-  selectLabel?: string;
-}
-
-export interface GamePlayerTeamSelectionScene {
-  id: string;
-  stepIndex: number;
-  screenId: string;
-  title: string;
-  body: string;
-  requiredPickCount: number;
-  confirmActionId: string;
-  confirmLabel?: string;
-  members: Array<GamePlayerTeamSelectionMember>;
-}
-
-export interface GamePlayerBoardCard {
-  cardId: string;
-  title: string;
-  summary: string;
-  selectActionId: string;
-  selectLabel?: string;
-  advanceActionId?: string;
-  advanceLabel?: string;
-}
-
-export interface GamePlayerBoard {
-  id: string;
-  title?: string;
-  body?: string;
-  stepIndex: number;
-  screenId: string;
-  cardIds: Array<string>;
-}
-
-export interface GamePlayerContent {
-  infos: Array<GamePlayerInfoEntry>;
-  boards: Array<GamePlayerBoard>;
-  teamSelections?: Array<GamePlayerTeamSelectionScene>;
-  cards: Array<GamePlayerBoardCard>;
+export interface CustomGameContent {
+  [key: string]: unknown;
 }
 
 /**

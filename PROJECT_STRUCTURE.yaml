@@ -20,13 +20,18 @@ docs: # Архитектура, задачи, планирование
 games: # Пакеты игр и связанные ресурсы 
   antarctica: directory... # Пакет игры «Antarctica» (канонический content layer) 
 packages: # Переиспользуемые платформенные пакеты (contracts) 
-  contracts: directory... # Слой общих контрактов между сервисами 
+  contracts: # Слой общих контрактов между сервисами 
+    ai: directory... # AI task, result and eval contracts for Cubica.
+    manifest: directory... # Manifest and content contracts for Cubica.
+    runtime: directory... # Runtime execution contracts for Cubica.
+    session: directory... # Session lifecycle and player API contracts for Cubica.
 scripts: directory... # Скрипты разработки и индексирования 
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 
   react-sdk: directory... # SDK для React/Next.js‑приложений 
   shared: directory... # Общие UI‑компоненты и утилиты 
-  viewers: directory... # Библиотека плееров для отображения игр 
+  viewers: # Библиотека плееров для отображения игр 
+    web-base: directory... # Базовый веб-viewer для платформы Cubica. Содержит переиспользуемые компоненты для загрузки манифестов, управления состоянием и маршрутизации действий.
 services: # Сервисы и инфраструктура 
   portal-backend: directory... # Импортированный backend-набросок портала 
   runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
@@ -36,4 +41,3 @@ package.json: file # Корневой npm-workspace
 PROJECT_OVERVIEW.md: file # Общий обзор проекта
 PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
 README.md: file # Основное описание репозитория
-repo-manifest.json: file # Машиночитаемый индекс артефактов репозитория

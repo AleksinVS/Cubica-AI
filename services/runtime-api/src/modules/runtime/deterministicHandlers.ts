@@ -303,74 +303,37 @@ const evaluateManifestGuard = (
     failures.push(`public.timeline.canAdvance expected ${String(guard.timeline.canAdvance)}`);
   }
 
-  const secretState = ensureObject(state.secret);
-  const opening = ensureObject(secretState.opening);
-
-  if (guard.opening?.selectedCardIdAbsent === true && opening.selectedCardId !== undefined) {
-    failures.push("secret.opening.selectedCardId must be absent");
-  }
-
-  if (guard.opening?.selectedCardIdEquals !== undefined && opening.selectedCardId !== guard.opening.selectedCardIdEquals) {
-    failures.push(`secret.opening.selectedCardId expected "${guard.opening.selectedCardIdEquals}"`);
-  }
-
-  if (guard.card) {
-    const cardState = readCardState(state, guard.card.id);
-
-    if (guard.card.selected !== undefined && cardState.selected !== guard.card.selected) {
-      failures.push(`public.flags.cards["${guard.card.id}"].selected expected ${String(guard.card.selected)}`);
-    }
-
-    if (guard.card.resolved !== undefined && cardState.resolved !== guard.card.resolved) {
-      failures.push(`public.flags.cards["${guard.card.id}"].resolved expected ${String(guard.card.resolved)}`);
-    }
-
-    if (guard.card.locked !== undefined && cardState.locked !== guard.card.locked) {
-      failures.push(`public.flags.cards["${guard.card.id}"].locked expected ${String(guard.card.locked)}`);
-    }
-
-    if (guard.card.available !== undefined && cardState.available !== guard.card.available) {
-      failures.push(`public.flags.cards["${guard.card.id}"].available expected ${String(guard.card.available)}`);
-    }
-  }
-
-  if (guard.teamSelection) {
-    const teamSelection = readTeamSelectionState(state);
-    const pickCount = typeof teamSelection.pickCount === "number" ? teamSelection.pickCount : 0;
-
-    if (
-      guard.teamSelection.pickCountLessThan !== undefined &&
-      !(pickCount < guard.teamSelection.pickCountLessThan)
-    ) {
-      failures.push(`public.teamSelection.pickCount expected < ${guard.teamSelection.pickCountLessThan}`);
-    }
-
-    if (
-      guard.teamSelection.pickCountEquals !== undefined &&
-      pickCount !== guard.teamSelection.pickCountEquals
-    ) {
-      failures.push(`public.teamSelection.pickCount expected ${guard.teamSelection.pickCountEquals}`);
-    }
-  }
-
-  if (guard.team) {
-    const teamMemberState = readTeamMemberState(state, guard.team.memberId);
-
-    if (guard.team.selected !== undefined && teamMemberState.selected !== guard.team.selected) {
-      failures.push(`public.flags.team["${guard.team.memberId}"].selected expected ${String(guard.team.selected)}`);
-    }
-  }
-
-  if (guard.board) {
-    const resolvedCount = countResolvedCards(state, guard.board.cardIds);
-
-    if (
-      guard.board.resolvedCountAtLeast !== undefined &&
-      resolvedCount < guard.board.resolvedCountAtLeast
-    ) {
-      failures.push(
-        `public.flags.cards resolved count for board [${guard.board.cardIds.join(", ")}] expected >= ${guard.board.resolvedCountAtLeast} (got ${resolvedCount})`
-      );
+  if (guard.stateConditions) {
+    for (const condition of guard.stateConditions) {
+      const pathParts = condition.path.split('/');
+      let current: unknown = state;
+      for (const part of pathParts) {
+        if (part === '') continue;
+        if (current == null || typeof current !== 'object') {
+          current = undefined;
+          break;
+        }
+        current = (current as Record<string, unknown>)[part];
+      }
+      
+      const value = current;
+      const expected = condition.value;
+      
+      let conditionMet = false;
+      switch (condition.operator) {
+        case "==": conditionMet = value === expected; break;
+        case "!=": conditionMet = value !== expected; break;
+        case ">": conditionMet = typeof value === 'number' && typeof expected === 'number' && value > expected; break;
+        case ">=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value >= expected; break;
+        case "<": conditionMet = typeof value === 'number' && typeof expected === 'number' && value < expected; break;
+        case "<=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value <= expected; break;
+        case "exists": conditionMet = value !== undefined && value !== null; break;
+        case "not_exists": conditionMet = value === undefined || value === null; break;
+      }
+      
+      if (!conditionMet) {
+        failures.push(`Condition failed: ${condition.path} ${condition.operator} ${String(expected)} (actual: ${String(value)})`);
+      }
     }
   }
 
@@ -404,8 +367,41 @@ const applyManifestMetricDeltas = (
     }
   }
 
-  for (const bonus of metadata.conditionalCardBonuses ?? []) {
-    if (evaluateCardCondition(state, bonus.whenCard)) {
+  for (const bonus of metadata.conditionalStateBonuses ?? []) {
+    let allMet = true;
+    for (const condition of bonus.when) {
+      // Evaluate generic state condition
+      const pathParts = condition.path.split('/');
+      let current: unknown = state;
+      for (const part of pathParts) {
+        if (part === '') continue;
+        if (current == null || typeof current !== 'object') {
+          current = undefined;
+          break;
+        }
+        current = (current as Record<string, unknown>)[part];
+      }
+      
+      const value = current;
+      const expected = condition.value;
+      
+      let conditionMet = false;
+      switch (condition.operator) {
+        case "==": conditionMet = value === expected; break;
+        case "!=": conditionMet = value !== expected; break;
+        case ">": conditionMet = typeof value === 'number' && typeof expected === 'number' && value > expected; break;
+        case ">=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value >= expected; break;
+        case "<": conditionMet = typeof value === 'number' && typeof expected === 'number' && value < expected; break;
+        case "<=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value <= expected; break;
+        case "exists": conditionMet = value !== undefined && value !== null; break;
+        case "not_exists": conditionMet = value === undefined || value === null; break;
+      }
+      if (!conditionMet) {
+        allMet = false;
+        break;
+      }
+    }
+    if (allMet) {
       applyMetricDeltas(state, bonus.metricDeltas);
     }
   }
@@ -471,8 +467,6 @@ const applyManifestStateUpdate = (
 ) => {
   const publicState = ensureObject(state.public);
   const timeline = ensureObject(publicState.timeline);
-  const flags = ensureObject(publicState.flags);
-  const cards = ensureObject(flags.cards);
   const stateUpdate = metadata.stateUpdate;
 
   if (stateUpdate.timelineCanAdvance !== undefined) {
@@ -494,108 +488,6 @@ const applyManifestStateUpdate = (
     timeline.activeInfoId = stateUpdate.activeInfoId;
   }
 
-  if (stateUpdate.cardFlags) {
-    const cardId = stateUpdate.cardFlags.cardId;
-    const cardState = ensureObject(cards[cardId]);
-
-    if (stateUpdate.cardFlags.selected !== undefined) {
-      cardState.selected = stateUpdate.cardFlags.selected;
-    }
-
-    if (stateUpdate.cardFlags.resolved !== undefined) {
-      cardState.resolved = stateUpdate.cardFlags.resolved;
-    }
-
-    if (stateUpdate.cardFlags.locked !== undefined) {
-      cardState.locked = stateUpdate.cardFlags.locked;
-    }
-
-    if (stateUpdate.cardFlags.available !== undefined) {
-      cardState.available = stateUpdate.cardFlags.available;
-    }
-
-    writeCardState(cards, cardId, cardState);
-  }
-
-  if (stateUpdate.teamFlags) {
-    const memberId = stateUpdate.teamFlags.memberId;
-    const flagsTeam = ensureObject(flags.team);
-    const teamMemberState = ensureObject(flagsTeam[memberId]);
-
-    if (stateUpdate.teamFlags.selected !== undefined) {
-      teamMemberState.selected = stateUpdate.teamFlags.selected;
-    }
-
-    flagsTeam[memberId] = teamMemberState;
-    flags.team = flagsTeam;
-  }
-
-  if (stateUpdate.boardCardUnlock) {
-    const resolvedCount = countResolvedCards(state, stateUpdate.boardCardUnlock.cardIds);
-
-    if (resolvedCount >= stateUpdate.boardCardUnlock.resolvedCountAtLeast) {
-      const unlessCardId = stateUpdate.boardCardUnlock.unlessCardAvailable;
-      const shouldUnlock = !unlessCardId || readCardState(state, unlessCardId).available !== true;
-      if (shouldUnlock) {
-        const unlockCardState = ensureObject(cards[stateUpdate.boardCardUnlock.unlockCardId]);
-        unlockCardState.locked = false;
-        unlockCardState.available = true;
-        writeCardState(cards, stateUpdate.boardCardUnlock.unlockCardId, unlockCardState);
-      }
-    }
-  }
-
-  if (
-    stateUpdate.boardEntryAltCardSwap &&
-    evaluateMetricCondition(state, stateUpdate.boardEntryAltCardSwap.when)
-  ) {
-    const baseCardState = ensureObject(cards[stateUpdate.boardEntryAltCardSwap.baseCardId]);
-    baseCardState.available = false;
-    writeCardState(cards, stateUpdate.boardEntryAltCardSwap.baseCardId, baseCardState);
-
-    const altCardState = ensureObject(cards[stateUpdate.boardEntryAltCardSwap.altCardId]);
-    altCardState.locked = false;
-    altCardState.available = true;
-    writeCardState(cards, stateUpdate.boardEntryAltCardSwap.altCardId, altCardState);
-  }
-
-  if (stateUpdate.boardThreshold) {
-    const resolvedCount = countResolvedCards(state, stateUpdate.boardThreshold.cardIds);
-
-    if (resolvedCount >= stateUpdate.boardThreshold.resolvedCountAtLeast) {
-      timeline.canAdvance = stateUpdate.boardThreshold.timelineCanAdvance ?? true;
-    }
-  }
-
-  flags.cards = cards;
-  publicState.flags = flags;
-  publicState.timeline = timeline;
-
-  if (stateUpdate.teamSelection) {
-    const teamSelection = ensureObject(publicState.teamSelection);
-    const currentPickCount = typeof teamSelection.pickCount === "number" ? teamSelection.pickCount : 0;
-
-    if (
-      stateUpdate.teamSelection.pickCountDelta !== undefined &&
-      stateUpdate.teamSelection.selectedMemberIdsAppend === undefined
-    ) {
-      teamSelection.pickCount = currentPickCount + stateUpdate.teamSelection.pickCountDelta;
-    }
-
-    if (stateUpdate.teamSelection.selectedMemberIdsAppend !== undefined) {
-      const selectedMemberIds = Array.isArray(teamSelection.selectedMemberIds)
-        ? [...teamSelection.selectedMemberIds]
-        : [];
-      selectedMemberIds.push(stateUpdate.teamSelection.selectedMemberIdsAppend);
-      teamSelection.selectedMemberIds = selectedMemberIds;
-      teamSelection.pickCount = currentPickCount + (stateUpdate.teamSelection.pickCountDelta ?? 1);
-    }
-
-    publicState.teamSelection = teamSelection;
-  }
-
-  state.public = publicState;
-
   if (stateUpdate.selectedCardId !== undefined) {
     const secretState = ensureObject(state.secret);
     const opening = ensureObject(secretState.opening);
@@ -603,6 +495,41 @@ const applyManifestStateUpdate = (
     secretState.opening = opening;
     state.secret = secretState;
   }
+
+  if (stateUpdate.statePatches) {
+    for (const patch of stateUpdate.statePatches) {
+      const pathParts = patch.path.split('/');
+      let current: Record<string, unknown> = state as Record<string, unknown>;
+      
+      for (let i = 0; i < pathParts.length - 1; i++) {
+        const part = pathParts[i];
+        if (part === '') continue;
+        if (typeof current[part] !== 'object' || current[part] === null) {
+          current[part] = {};
+        }
+        current = current[part] as Record<string, unknown>;
+      }
+      
+      const lastPart = pathParts[pathParts.length - 1];
+      if (lastPart === '') continue;
+      
+      if (patch.op === "add" || patch.op === "replace") {
+        current[lastPart] = patch.value;
+      } else if (patch.op === "remove") {
+        delete current[lastPart];
+      } else if (patch.op === "increment") {
+        current[lastPart] = ((current[lastPart] as number) || 0) + (patch.value as number);
+      } else if (patch.op === "append") {
+        if (!Array.isArray(current[lastPart])) {
+          current[lastPart] = [];
+        }
+        (current[lastPart] as Array<unknown>).push(patch.value);
+      }
+    }
+  }
+
+  publicState.timeline = timeline;
+  state.public = publicState;
 
   if (conditionalInfoVariant) {
     timeline.activeInfoId = conditionalInfoVariant.activeInfoId;

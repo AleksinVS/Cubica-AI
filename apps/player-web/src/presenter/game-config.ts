@@ -1,11 +1,6 @@
-import type {
-  GamePlayerBoard,
-  GamePlayerBoardCard,
-  GamePlayerInfoEntry,
-  GamePlayerTeamSelectionScene,
-  GamePlayerUiContent,
-  PlayerFacingContent
-} from "@cubica/contracts-manifest";
+import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
+import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerInfoEntry, GamePlayerTeamSelectionScene } from "@/plugins/antarctica/contracts";
+
 import type { RuntimeUiState } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
 import type { ActionEntry } from "@/lib/game-content-resolvers";

@@ -27,6 +27,8 @@ Agents must always:
 3. **Maintain documentation**
    - Create and update documentation wherever it is needed;
    - Never leave documentation in a state that contradicts the actual code or structure.
+   - For all documentation files that are more than a few sections long, add a **Table of Contents** at the top.
+   - The Table of Contents should use **internal anchors/links** to sections within the same file.
 
 4. **Write clear and rich comments in code**
    - Comment code so that a **complete newcomer to the project** can quickly understand what is happening by reading:
@@ -52,8 +54,8 @@ Agents must always:
    - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
    - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
    - Delivery-specific bounded gameplay details must go in Gameplay Slice Records or Content-packs under `docs/tasks/content-packs`.
+
 7. **Keep architectural authority and final review with the main agent**
-   - Built-in subagents may support architecture work only as analysts: they may gather facts, compare options, and analyze bounded areas.
    - Built-in subagents must not be treated as the final decision-maker for architectural choices.
    
 8. **Manage architectural drift and legacy gaps**
@@ -93,11 +95,9 @@ Before planning anything, use these entry points:
 - [PROJECT_STRUCTURE.yaml](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.yaml) - current repository layout and workspace map.
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
-- [repo-manifest.json](/home/abc/projects/Cubica-AI/repo-manifest.json) - machine-readable index of canonical, draft, and target artifacts.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
 - [draft/Antarctica/README.md](/home/abc/projects/Cubica-AI/draft/Antarctica/README.md) - explains the structure of the legacy `GameFull.html` prototype used for current Antarctica mechanics extraction.
 - `draft/Antarctica/GameFull.html` - current factual source for Antarctica scenario/mechanics extraction during migration; do not read it whole in-chat, inspect it via scripts and targeted queries only.
-- [services/runtime-api/HANDOFF.md](/home/abc/projects/Cubica-AI/services/runtime-api/HANDOFF.md) - practical runtime-api state, behavior, and next steps.
 
 ---
 

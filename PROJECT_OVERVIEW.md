@@ -61,7 +61,7 @@
 
 ## 3. Логическая архитектура
 
-Раздел ниже описывает target platform architecture. Текущий canonical slice уже зафиксирован выше и в `NEXT_STEPS.md`, `repo-manifest.json` и `services/runtime-api/HANDOFF.md`.
+Раздел ниже описывает target platform architecture. Текущий canonical slice уже зафиксирован выше и в `NEXT_STEPS.md` и `services/runtime-api/HANDOFF.md`.
 
 ## MVP (Model–View–Presenter)
 

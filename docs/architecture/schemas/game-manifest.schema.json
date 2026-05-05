@@ -2,215 +2,6 @@
   "$ref": "#/definitions/RootGameManifest",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "GamePlayerBoard": {
-      "additionalProperties": false,
-      "properties": {
-        "body": {
-          "type": "string"
-        },
-        "cardIds": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "id": {
-          "type": "string"
-        },
-        "screenId": {
-          "type": "string"
-        },
-        "stepIndex": {
-          "type": "number"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "stepIndex",
-        "screenId",
-        "cardIds"
-      ],
-      "type": "object"
-    },
-    "GamePlayerBoardCard": {
-      "additionalProperties": false,
-      "properties": {
-        "advanceActionId": {
-          "type": "string"
-        },
-        "advanceLabel": {
-          "type": "string"
-        },
-        "cardId": {
-          "type": "string"
-        },
-        "selectActionId": {
-          "type": "string"
-        },
-        "selectLabel": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "cardId",
-        "title",
-        "summary",
-        "selectActionId"
-      ],
-      "type": "object"
-    },
-    "GamePlayerContent": {
-      "additionalProperties": false,
-      "properties": {
-        "boards": {
-          "items": {
-            "$ref": "#/definitions/GamePlayerBoard"
-          },
-          "type": "array"
-        },
-        "cards": {
-          "items": {
-            "$ref": "#/definitions/GamePlayerBoardCard"
-          },
-          "type": "array"
-        },
-        "infos": {
-          "items": {
-            "$ref": "#/definitions/GamePlayerInfoEntry"
-          },
-          "type": "array"
-        },
-        "teamSelections": {
-          "items": {
-            "$ref": "#/definitions/GamePlayerTeamSelectionScene"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "infos",
-        "boards",
-        "cards"
-      ],
-      "type": "object"
-    },
-    "GamePlayerInfoEntry": {
-      "additionalProperties": false,
-      "properties": {
-        "advanceActionId": {
-          "type": "string"
-        },
-        "advanceLabel": {
-          "type": "string"
-        },
-        "body": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "screenId": {
-          "type": "string"
-        },
-        "stepIndex": {
-          "type": "number"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "stepIndex",
-        "screenId",
-        "title",
-        "body",
-        "advanceActionId"
-      ],
-      "type": "object"
-    },
-    "GamePlayerTeamSelectionMember": {
-      "additionalProperties": false,
-      "properties": {
-        "memberId": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "selectActionId": {
-          "type": "string"
-        },
-        "selectLabel": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "memberId",
-        "name",
-        "summary",
-        "selectActionId"
-      ],
-      "type": "object"
-    },
-    "GamePlayerTeamSelectionScene": {
-      "additionalProperties": false,
-      "properties": {
-        "body": {
-          "type": "string"
-        },
-        "confirmActionId": {
-          "type": "string"
-        },
-        "confirmLabel": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "members": {
-          "items": {
-            "$ref": "#/definitions/GamePlayerTeamSelectionMember"
-          },
-          "type": "array"
-        },
-        "requiredPickCount": {
-          "type": "number"
-        },
-        "screenId": {
-          "type": "string"
-        },
-        "stepIndex": {
-          "type": "number"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "stepIndex",
-        "screenId",
-        "title",
-        "body",
-        "requiredPickCount",
-        "confirmActionId",
-        "members"
-      ],
-      "type": "object"
-    },
     "GameManifest": {
       "additionalProperties": false,
       "properties": {
@@ -230,7 +21,7 @@
           "$ref": "#/definitions/GameManifestMeta"
         },
         "state": {
-          "$ref": "#/definitions/GameManifestState%3Calias-1075645507-74138-74264-1075645507-0-218439%3Cstring%2Cunknown%3E%2Calias-1075645507-74138-74264-1075645507-0-218439%3Cstring%2Cunknown%3E%3E"
+          "$ref": "#/definitions/GameManifestState%3Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%2Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%3E"
         }
       },
       "required": [
@@ -327,11 +118,10 @@
       "type": "object"
     },
     "GameManifestContent": {
-      "additionalProperties": { "type": "object" },
+      "additionalProperties": {
+        "description": "Game-specific content is keyed by gameId."
+      },
       "properties": {
-        "antarctica": {
-          "$ref": "#/definitions/GamePlayerContent"
-        },
         "design": {
           "additionalProperties": false,
           "properties": {
@@ -397,14 +187,8 @@
       "type": "object"
     },
     "GameManifestDeterministicActionMetadata": {
-      "additionalProperties": false,
+      "additionalProperties": true,
       "properties": {
-        "conditionalCardBonuses": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicConditionalCardBonus"
-          },
-          "type": "array"
-        },
         "conditionalInfoVariant": {
           "$ref": "#/definitions/GameManifestDeterministicConditionalInfoVariant"
         },
@@ -414,6 +198,12 @@
         "conditionalMetricBonuses": {
           "items": {
             "$ref": "#/definitions/GameManifestDeterministicConditionalMetricBonus"
+          },
+          "type": "array"
+        },
+        "conditionalStateBonuses": {
+          "items": {
+            "$ref": "#/definitions/GameManifestDeterministicConditionalStateBonus"
           },
           "type": "array"
         },
@@ -433,7 +223,6 @@
           "items": {
             "$ref": "#/definitions/GameManifestDeterministicSourceRef"
           },
-          "minItems": 1,
           "type": "array"
         },
         "stateUpdate": {
@@ -446,47 +235,6 @@
         "metricDeltas",
         "log",
         "stateUpdate"
-      ],
-      "type": "object"
-    },
-    "GameManifestDeterministicConditionalCardBonus": {
-      "additionalProperties": false,
-      "description": "Local bonus gated by previously known card state.",
-      "properties": {
-        "metricDeltas": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicMetricDelta"
-          },
-          "type": "array"
-        },
-        "whenCard": {
-          "additionalProperties": false,
-          "properties": {
-            "available": {
-              "type": "boolean"
-            },
-            "cardId": {
-              "type": "string"
-            },
-            "locked": {
-              "type": "boolean"
-            },
-            "resolved": {
-              "type": "boolean"
-            },
-            "selected": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "cardId"
-          ],
-          "type": "object"
-        }
-      },
-      "required": [
-        "whenCard",
-        "metricDeltas"
       ],
       "type": "object"
     },
@@ -560,90 +308,36 @@
       ],
       "type": "object"
     },
-    "GameManifestDeterministicGuard": {
+    "GameManifestDeterministicConditionalStateBonus": {
       "additionalProperties": false,
-      "description": "Minimal guard shape for the first Antarctica opening-card and team-selection slices.",
       "properties": {
-        "board": {
-          "additionalProperties": false,
-          "properties": {
-            "cardIds": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "resolvedCountAtLeast": {
-              "type": "number"
-            }
+        "metricDeltas": {
+          "items": {
+            "$ref": "#/definitions/GameManifestDeterministicMetricDelta"
           },
-          "required": [
-            "cardIds"
-          ],
-          "type": "object"
+          "type": "array"
         },
-        "card": {
-          "additionalProperties": false,
-          "properties": {
-            "available": {
-              "type": "boolean"
-            },
-            "id": {
-              "type": "string"
-            },
-            "locked": {
-              "type": "boolean"
-            },
-            "resolved": {
-              "type": "boolean"
-            },
-            "selected": {
-              "type": "boolean"
-            }
+        "when": {
+          "items": {
+            "$ref": "#/definitions/GameManifestDeterministicStateCondition"
           },
-          "required": [
-            "id"
-          ],
-          "type": "object"
-        },
-        "opening": {
-          "additionalProperties": false,
-          "properties": {
-            "selectedCardIdAbsent": {
-              "type": "boolean"
-            },
-            "selectedCardIdEquals": {
-              "type": "string"
-            }
+          "type": "array"
+        }
+      },
+      "required": [
+        "when",
+        "metricDeltas"
+      ],
+      "type": "object"
+    },
+    "GameManifestDeterministicGuard": {
+      "additionalProperties": true,
+      "properties": {
+        "stateConditions": {
+          "items": {
+            "$ref": "#/definitions/GameManifestDeterministicStateCondition"
           },
-          "type": "object"
-        },
-        "team": {
-          "additionalProperties": false,
-          "properties": {
-            "memberId": {
-              "type": "string"
-            },
-            "selected": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "memberId"
-          ],
-          "type": "object"
-        },
-        "teamSelection": {
-          "additionalProperties": false,
-          "properties": {
-            "pickCountEquals": {
-              "type": "number"
-            },
-            "pickCountLessThan": {
-              "type": "number"
-            }
-          },
-          "type": "object"
+          "type": "array"
         },
         "timeline": {
           "additionalProperties": false,
@@ -687,7 +381,7 @@
     },
     "GameManifestDeterministicMetricCondition": {
       "additionalProperties": false,
-      "description": "Bounded metric comparison used by explicit Antarctica card-local hooks.",
+      "description": "Bounded metric comparison used by explicit deterministic card-local hooks.",
       "properties": {
         "metricId": {
           "type": "string"
@@ -757,133 +451,72 @@
       ],
       "type": "object"
     },
-    "GameManifestDeterministicStateUpdate": {
+    "GameManifestDeterministicStateCondition": {
       "additionalProperties": false,
+      "description": "Minimal guard shape for deterministic opening-card and team-selection slices.",
+      "properties": {
+        "operator": {
+          "enum": [
+            "==",
+            "!=",
+            ">",
+            ">=",
+            "<",
+            "<=",
+            "exists",
+            "not_exists"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "path",
+        "operator"
+      ],
+      "type": "object"
+    },
+    "GameManifestDeterministicStatePatch": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": [
+            "add",
+            "replace",
+            "remove",
+            "increment",
+            "append"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "op",
+        "path"
+      ],
+      "type": "object"
+    },
+    "GameManifestDeterministicStateUpdate": {
+      "additionalProperties": true,
       "properties": {
         "activeInfoId": {
           "type": "string"
         },
-        "boardCardUnlock": {
-          "additionalProperties": false,
-          "properties": {
-            "cardIds": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "resolvedCountAtLeast": {
-              "type": "number"
-            },
-            "unlockCardId": {
-              "type": "string"
-            },
-            "unlessCardAvailable": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "cardIds",
-            "resolvedCountAtLeast",
-            "unlockCardId"
-          ],
-          "type": "object"
-        },
-        "boardEntryAltCardSwap": {
-          "additionalProperties": false,
-          "properties": {
-            "altCardId": {
-              "type": "string"
-            },
-            "baseCardId": {
-              "type": "string"
-            },
-            "when": {
-              "$ref": "#/definitions/GameManifestDeterministicMetricCondition"
-            }
-          },
-          "required": [
-            "when",
-            "baseCardId",
-            "altCardId"
-          ],
-          "type": "object"
-        },
-        "boardThreshold": {
-          "additionalProperties": false,
-          "properties": {
-            "cardIds": {
-              "items": {
-                "type": "string"
-              },
-              "type": "array"
-            },
-            "resolvedCountAtLeast": {
-              "type": "number"
-            },
-            "timelineCanAdvance": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "cardIds",
-            "resolvedCountAtLeast"
-          ],
-          "type": "object"
-        },
-        "cardFlags": {
-          "additionalProperties": false,
-          "properties": {
-            "available": {
-              "type": "boolean"
-            },
-            "cardId": {
-              "type": "string"
-            },
-            "locked": {
-              "type": "boolean"
-            },
-            "resolved": {
-              "type": "boolean"
-            },
-            "selected": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "cardId"
-          ],
-          "type": "object"
-        },
         "selectedCardId": {
           "type": "string"
         },
-        "teamFlags": {
-          "additionalProperties": false,
-          "properties": {
-            "memberId": {
-              "type": "string"
-            },
-            "selected": {
-              "type": "boolean"
-            }
+        "statePatches": {
+          "items": {
+            "$ref": "#/definitions/GameManifestDeterministicStatePatch"
           },
-          "required": [
-            "memberId"
-          ],
-          "type": "object"
-        },
-        "teamSelection": {
-          "additionalProperties": false,
-          "properties": {
-            "pickCountDelta": {
-              "type": "number"
-            },
-            "selectedMemberIdsAppend": {
-              "type": "string"
-            }
-          },
-          "type": "object"
+          "type": "array"
         },
         "timelineCanAdvance": {
           "type": "boolean"
@@ -974,7 +607,6 @@
           "type": "string"
         },
         "name": {
-          "minLength": 1,
           "type": "string"
         },
         "references": {
@@ -984,7 +616,6 @@
           "type": "array"
         },
         "schemaVersion": {
-          "minLength": 1,
           "type": "string"
         },
         "tags": {
@@ -1044,7 +675,7 @@
       ],
       "type": "object"
     },
-    "GameManifestState<alias-1075645507-74138-74264-1075645507-0-218439<string,unknown>,alias-1075645507-74138-74264-1075645507-0-218439<string,unknown>>": {
+    "GameManifestState<alias-942026824-74138-74264-942026824-0-218439<string,unknown>,alias-942026824-74138-74264-942026824-0-218439<string,unknown>>": {
       "additionalProperties": false,
       "properties": {
         "public": {

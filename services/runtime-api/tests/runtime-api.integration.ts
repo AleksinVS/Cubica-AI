@@ -205,7 +205,7 @@ const reachOpeningStep20InfoI12 = async (
     `${options.step17GoCardActionId}.advance`,
     "opening.info.i11.advance",
     ...options.step19CardActionIds,
-    "opening.board.25_30.advance"
+    "opening.(board as any).25_30.advance"
   ];
 
   return dispatchActionSequence(sessionId, playerId, postConfirmActions);
@@ -1325,7 +1325,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   const { response: advanceBeforeThresholdResponse, body: advanceBeforeThresholdBody } = await dispatchAction(
     created.sessionId,
     "team-selection-path",
-    "opening.board.25_30.advance"
+    "opening.(board as any).25_30.advance"
   );
   assert.equal(advanceBeforeThresholdResponse.status, 400);
   const advanceBeforeThresholdErrorBody = advanceBeforeThresholdBody as { error: string };
@@ -1359,7 +1359,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   const { response: boardAdvanceResponse, body: boardAdvanceBody } = await dispatchAction(
     created.sessionId,
     "team-selection-path",
-    "opening.board.25_30.advance"
+    "opening.(board as any).25_30.advance"
   );
   assert.equal(boardAdvanceResponse.status, 200);
   const boardAdvanceAction = boardAdvanceBody as ActionResponse;
@@ -1373,7 +1373,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   assert.equal(boardAdvanceAction.state.public.timeline.screen_id, "S1");
   assert.equal(boardAdvanceAction.state.public.timeline.canAdvance, false);
   assert.equal(boardAdvanceAction.state.secret?.opening?.selectedCardId, "22");
-  assert.equal(boardAdvanceLogEntry.actionId, "opening.board.25_30.advance");
+  assert.equal(boardAdvanceLogEntry.actionId, "opening.(board as any).25_30.advance");
   assert.equal(boardAdvanceLogEntry.kind, "opening-board-advance");
 });
 
@@ -2417,18 +2417,18 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(Array.isArray(antarcticaContent.teamSelections));
   assert.ok(Array.isArray(antarcticaContent.boards));
   assert.ok(Array.isArray(antarcticaContent.cards));
-  const infoI0 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i0");
-  const infoI8 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i8");
-  const infoI9 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i9");
-  const infoI10 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i10");
-  const infoI11 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i11");
-  const infoI12 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i12");
-  const infoI13 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i13");
-  const infoI14 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i14");
-  const infoI14_2 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i14_2");
-  const infoI15 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i15");
-  const infoI16 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i16");
-  const teamSelection = (antarcticaContent.teamSelections as Array<{ stepIndex: number; id: string }>).find((entry) => entry.stepIndex === 15);
+  const infoI0 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i0");
+  const infoI8 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i8");
+  const infoI9 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i9");
+  const infoI10 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i10");
+  const infoI11 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i11");
+  const infoI12 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i12");
+  const infoI13 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i13");
+  const infoI14 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i14");
+  const infoI14_2 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i14_2");
+  const infoI15 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i15");
+  const infoI16 = (antarcticaContent.infos as Array<{ id: string }>).find((entry: any) => entry.id === "i16");
+  const teamSelection = (antarcticaContent.teamSelections as Array<{ stepIndex: number; id: string }>).find((entry: any) => entry.stepIndex === 15);
   assert.ok(infoI0);
   assert.ok(infoI8);
   assert.ok(infoI9);
@@ -2441,93 +2441,93 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(infoI15);
   assert.ok(infoI16);
   assert.ok(teamSelection);
-  assert.equal(infoI0.stepIndex, 0);
-  assert.equal(infoI0.screenId, "S1");
-  assert.equal(infoI0.advanceActionId, "opening.info.i0.advance");
-  assert.equal(infoI8.stepIndex, 12);
-  assert.equal(infoI8.screenId, "S1");
-  assert.equal(infoI8.title, "Что скажет народ?");
-  assert.equal(infoI8.advanceActionId, "opening.info.i8.advance");
-  assert.equal(infoI9.stepIndex, 14);
-  assert.equal(infoI9.screenId, "S1");
-  assert.equal(infoI9.title, "Создание «штаба»");
-  assert.equal(infoI9.advanceActionId, "opening.info.i9.advance");
-  assert.equal(infoI10.stepIndex, 16);
-  assert.equal(infoI10.screenId, "S1");
-  assert.equal(infoI10.title, "Работаем «в одной упряжке»");
-  assert.equal(infoI10.advanceActionId, "opening.info.i10.advance");
-  assert.equal(infoI11.stepIndex, 18);
-  assert.equal(infoI11.screenId, "S1");
-  assert.equal(infoI11.title, "Первые шаги");
+  assert.equal((infoI0 as any).stepIndex, 0);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i0.advance");
+  assert.equal((infoI0 as any).stepIndex, 12);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Что скажет народ?");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i8.advance");
+  assert.equal((infoI0 as any).stepIndex, 14);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Создание «штаба»");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i9.advance");
+  assert.equal((infoI0 as any).stepIndex, 16);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Работаем «в одной упряжке»");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i10.advance");
+  assert.equal((infoI0 as any).stepIndex, 18);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Первые шаги");
   assert.equal(
-    infoI11.body,
+    (infoI0 as any).body,
     "<p>Теперь, когда команда почувствовала в себе силы для свершений, нужно все-таки что-то сделать. Это желание вместе со странным параличом, сковавшим мысли, привели к тому, что команда просидела молча несколько часов.</p><p>«Ну, хватит! Кальмары уже переварились, пора задать жару!» Несмотря на то, что никакого смысла в этой фразе не было, она произвела волшебный эффект. Все вскочили и как будто бы стало ясно, что нужно делать.</p>"
   );
-  assert.equal(infoI11.advanceActionId, "opening.info.i11.advance");
-  assert.equal(infoI12.stepIndex, 20);
-  assert.equal(infoI12.screenId, "S1");
-  assert.equal(infoI12.title, "Разброд и шатание");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i11.advance");
+  assert.equal((infoI0 as any).stepIndex, 20);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Разброд и шатание");
   assert.equal(
-    infoI12.body,
+    (infoI0 as any).body,
     "<p>С одной стороны, жизнь пингвинов осталась прежней. С другой – коренным образом изменилась. Ощущение надвигающейся угрозы давило незаметно, но зато каждый день и каждый час. Кто-то пытался игнорировать это, кто-то, наоборот, позволял этом чувству взять верх, а кто-то даже наслаждался им.</p><p>От первого шока пингвины были как бы в состоянии легкой анестезии, которая быстро кончалась. Пока в штабе продумывали решения, в стае с каждым днем становилось тревожнее. Появились радикально настроенные формирования, слухи о грядущем конце света. Даже у Григория возникли свои последователи, которые все отрицали. Некоторые отрицали даже авторитет руководства, а некоторые - отрицали саму идею отрицания перспектив жизни на айсберге. В литературе пингвинов стали отчетливо видны признаки пост-модернизма и декадентства.</p><p>В общем, нужно было спешить, пока не грянул гром… Нужно ли тратить время на борьбу с паникой?</p>"
   );
-  assert.equal(infoI12.advanceActionId, "opening.info.i12.advance");
-  assert.equal(infoI13.stepIndex, 22);
-  assert.equal(infoI13.screenId, "S1");
-  assert.equal(infoI13.title, "Вперед-вперед!");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i12.advance");
+  assert.equal((infoI0 as any).stepIndex, 22);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Вперед-вперед!");
   assert.equal(
-    infoI13.body,
+    (infoI0 as any).body,
     "<p>Сдержав волну паники, команда изменений смогла продолжить работу. </p><p>Уже начинала сказываться усталость от напряженной работы, но пингвины были полны решимости и энтузиазма. Они не хотели останавливаться. Только вперед! Только победа!</p>"
   );
-  assert.equal(infoI13.advanceActionId, "opening.info.i13.advance");
-  assert.equal(infoI14.stepIndex, 24);
-  assert.equal(infoI14.screenId, "S1");
-  assert.equal(infoI14.title, "Открытие");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i13.advance");
+  assert.equal((infoI0 as any).stepIndex, 24);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Открытие");
   assert.equal(
-    infoI14.body,
+    (infoI0 as any).body,
     "<p>Большинство пингвинов никогда не видели чайку вблизи. Они стояли в замешательстве и пытались понять, что это значит - быть чайкой? </p><p>\"Интересно, а как она держится в воздухе?\"... \"Кружится ли у нее голова, когда она летает?\"... \"Почему ее не сдувает ветром?\"... \"А где отдыхают чайки, когда устанут?\"... \"Есть ли у них дом?\"... \"Есть ли у них стая?\"... \"Можем ли мы с ней поговорить?\"... Эти и многие другие вопросы возникли в головах у пингвинов.</p><p>Хотя многие считают, что чайки и пингвины никогда не смогут ни о чем договориться, на самом деле это не так. Во-первых, пингвины в меру тактичны и не в меру любознательны, во-вторых, чайки достаточно общительны, в-третьих, далеко не все чайки являются природными врагами пингвинов (да и то лишь для некоторых видов пингвинов). </p><p>Пингвины дружно поздоровались и оказалось, что чайка говорит на языке очень похожем на пингвиний. \"Меньше отличий, чем между испанским и португальским!\" - подумал Федор, а Профессор подумал что-то про санскрит, но это была очень сложная мысль и ее здесь невозможно полностью сформулировать. В общем, они смогли поговорить с чайкой и задать ей все волнующие их вопросы. Оказалось, что чайку зовут Иннокентий, а работает он навигатором-разведчиком, это у чаек означает лететь впереди стаи и искать варианты нового места жительства. Стало понятно, что летают чайки с помощью крыльев, ветер иногда их все-таки сдувает, а образ жизни у них близок к кочевому.  Удалось понять,  чем  чайки  питаются  и  что  значит  быть  разведчиком. Вскоре  Иннокентий сказал, что у него дедлайн и он вынужден попрощаться и улететь. </p><p>Пингвины сразу поняли две вещи: первое, что это пока единственное реалистичное решение их нынешней проблемы, второе, что есть обоснованные сомнения в возможности применить решение к пингвинам. </p><p>\"Мы не такие, как чайки\"...  \"Они  летают\"... \"Они  используют другую технологию\"... \"У них другой метаболизм\"... \"Пингвины так не делали никогда, возможно, тому есть причины\"... Надежда и сомнения слились в головах пингвинов в адский коктейль.</p>"
   );
-  assert.equal(infoI14.advanceActionId, "opening.info.i14.advance");
-  assert.equal(infoI14_2.stepIndex, 25);
-  assert.equal(infoI14_2.screenId, "S1");
-  assert.equal(infoI14_2.title, "Открытие (продолжение)");
-  assert.ok(infoI14_2.body.includes("Но открытие случилось, оно изменило представление пингвинов о мире и потрясло их."));
-  assert.ok(infoI14_2.body.includes("Мы все живем в наших собственных легендах"));
-  assert.ok(infoI14_2.body.includes("Ну, за работу!"));
-  assert.equal(infoI14_2.advanceActionId, "opening.info.i14_2.advance");
-  assert.equal(infoI15.stepIndex, 27);
-  assert.equal(infoI15.screenId, "S1");
-  assert.equal(infoI15.title, "Для тех, кто не в курсе…");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i14.advance");
+  assert.equal((infoI0 as any).stepIndex, 25);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Открытие (продолжение)");
+  assert.ok((infoI0 as any).body.includes("Но открытие случилось, оно изменило представление пингвинов о мире и потрясло их."));
+  assert.ok((infoI0 as any).body.includes("Мы все живем в наших собственных легендах"));
+  assert.ok((infoI0 as any).body.includes("Ну, за работу!"));
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i14_2.advance");
+  assert.equal((infoI0 as any).stepIndex, 27);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Для тех, кто не в курсе…");
   assert.equal(
-    infoI15.body,
+    (infoI0 as any).body,
     "<p>Пожалуй, решение подоспело вовремя. Кажется, что по айсбергу пошла небольшая трещина. Хотя, это может быть, просто игра света из-за низкого, уже почти зимнего, солнца…</p><p>После того, как решение было найдено появился определенный оптимизм. Массовый оптимизм. Однако уже на собрании стало ясно, что некоторые пингвины не вполне поняли, что их ждет, некоторые отнеслись скептически. Естественно, была небольшая часть пингвинов, посчитавших происходящие абсурдом и противной самой сути пингвинов ересью.</p><p>Теперь, после собрания, когда одни задачи вроде бы уже решены, добавились новые. На месте одной решенной - по три новых. \"Какая-то гидра многозадачная...\" - растерянно пробормотала Алена, но тут же взяла себя в руки и предложила \"окутать всех пингвинов нежной, но плотной шкурой пропаганды\". Она объяснила, что пингвинам не стоит здесь оставлять возможность для лишних сомнений, тем более, что кто-то что-то не понял, а кого-то, возможно и не было на собрании. </p><p>Может быть, так и надо сделать? Может быть, надо, но совсем чуть-чуть? Или она перегибает льдину?..</p>"
   );
-  assert.equal(infoI15.advanceActionId, "opening.info.i15.advance");
-  assert.equal(infoI16.stepIndex, 29);
-  assert.equal(infoI16.screenId, "S1");
-  assert.equal(infoI16.title, "Предвкушение приключений. С привкусом страха и боли.");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i15.advance");
+  assert.equal((infoI0 as any).stepIndex, 29);
+  assert.equal((infoI0 as any).screenId, "S1");
+  assert.equal((infoI0 as any).title, "Предвкушение приключений. С привкусом страха и боли.");
   assert.equal(
-    infoI16.body,
+    (infoI0 as any).body,
     "<p>Общее собрание, обсуждение того, что \"пингвины не равно айсберг, айсберг не равно пингвины\", рассказ о чайке, романтика приключений, представленная в массовых коммуникациях и все прочие действия - шаг за шагом, мысль за мыслью - эти идеи укоренились в сознании пингвинов. Несколько десятков наиболее активных (и отважных!) начали работать вместе с командой изменений, в небольших группах они стали прорабатывать основные разделы плана: подбор разведчиков, поиск и оценку новых айсбергов, логистику перемещения всей колонии. Профессор подсчитал, что переезд всех пингвинов займет примерно неделю (более далекие айсберги выбирать бессмысленно, потому что тогда невозможно будет перевезти всех пингвинов).</p><p>Несколько пингвинов вызвались быть разведчиками и отправиться реализовывать часть плана, связанную с поиском и оценкой новых айсбергов. Это было хорошо. Плохо было то, что это были, в основном, молодые пингвины, недостаточно опытные, ищущие больше адреналин, чем новый дом для колонии.</p><p>С разведчиками был связан еще один сложный момент, решения которого пока не было. Пингвины к зиме накапливают значительный объем жира, который позволяет им выдерживать морозы и возможный недостаток пищи. Разведчики, выполняя свою работу, неизбежно потеряют почти весь свой зимний жир, и для выживания зимой им потребуется набрать жир заново и при этом ускоренным темпом, для чего нужна обильная пищи. Проблема в том, что тысячелетняя традиция пингвинов предписывает делиться пищей только с детьми, но никак не с другими взрослыми пингвинами, а вернувшиеся из экспедиции разведчики не смогут сами обеспечить себя необходимым объемом пищи.</p><p>Были и другие сложности. Григорий и его сторонники явно активизировались, теперь они проповедовали отказ от переезда. Они предвещали штормы, ужасные подводные течения, безжалостных чудовищ, которые должны покарать пингвинов, предавших свой айсберг, предназначенный им судьбой... Большинство к ним не особо прислушивались, но некоторых пингвинов это пугало. И это влияние понемногу росло.</p><p>Кроме того, некоторым молодым пингвинам стали сниться ночные кошмары. Возможно, одной из причин этого были рассказы напуганной воспитательницы детского сада или школьного учителя, может быть, тревога поселилась в некоторых семьях пингвинов. В любом случае, детские страхи очень тревожили взрослых, в том числе активистов перемен и самих будущих разведчиков.</p>"
   );
-  assert.equal(infoI16.advanceActionId, "opening.info.i16.advance");
-  assert.equal(teamSelection.id, "opening.team.selection");
-  assert.equal(teamSelection.screenId, "S2");
-  assert.equal(teamSelection.requiredPickCount, 5);
-  assert.equal(teamSelection.confirmActionId, "opening.team.confirm");
-  assert.equal(teamSelection.members.length, 10);
-  assert.equal(teamSelection.members[0].memberId, "fedya");
-  assert.equal(teamSelection.members[0].name, "Федор");
-  assert.equal(teamSelection.members[0].selectActionId, "opening.team.select.fedya");
-  const board = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.1_6");
-  const secondBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.7_12");
-  const thirdBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.13_18");
-  const fourthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.19_24");
-  const fifthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.25_30");
-  const sixthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.31_36");
-  const seventhBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.37_42");
-  const eighthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.43_48");
-  const ninthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.49_54");
+  assert.equal((infoI0 as any).advanceActionId, "opening.info.i16.advance");
+  assert.equal((teamSelection as any).id, "opening.team.selection");
+  assert.equal((teamSelection as any).screenId, "S2");
+  assert.equal((teamSelection as any).requiredPickCount, 5);
+  assert.equal((teamSelection as any).confirmActionId, "opening.team.confirm");
+  assert.equal((teamSelection as any).members.length, 10);
+  assert.equal((teamSelection as any).members[0].memberId, "fedya");
+  assert.equal((teamSelection as any).members[0].name, "Федор");
+  assert.equal((teamSelection as any).members[0].selectActionId, "opening.team.select.fedya");
+  const board = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).1_6");
+  const secondBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).7_12");
+  const thirdBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).13_18");
+  const fourthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).19_24");
+  const fifthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).25_30");
+  const sixthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).31_36");
+  const seventhBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).37_42");
+  const eighthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).43_48");
+  const ninthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).49_54");
   assert.ok(board);
   assert.ok(secondBoard);
   assert.ok(thirdBoard);
@@ -2537,78 +2537,78 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(seventhBoard);
   assert.ok(eighthBoard);
   assert.ok(ninthBoard);
-  assert.equal(board.stepIndex, 9);
-  assert.deepEqual(board.cardIds, ["1", "2", "3", "4", "5", "6"]);
-  assert.equal(secondBoard.stepIndex, 11);
-  assert.equal(secondBoard.screenId, "S2");
-  assert.deepEqual(secondBoard.cardIds, ["7", "8", "9", "10", "11", "12"]);
-  assert.equal(thirdBoard.stepIndex, 13);
-  assert.equal(thirdBoard.screenId, "S2");
-  assert.deepEqual(thirdBoard.cardIds, ["13", "14", "15", "16", "17", "18"]);
-  assert.equal(fourthBoard.stepIndex, 17);
-  assert.equal(fourthBoard.screenId, "S2");
-  assert.equal(fourthBoard.title, "Выберите четвертый шаг");
-  assert.deepEqual(fourthBoard.cardIds, ["19", "20", "21", "22", "23", "24"]);
-  assert.equal(fifthBoard.stepIndex, 19);
-  assert.equal(fifthBoard.screenId, "S2");
-  assert.equal(fifthBoard.title, "Выберите пятый шаг");
-  assert.deepEqual(fifthBoard.cardIds, ["25", "26", "27", "28", "29", "30"]);
-  assert.equal(sixthBoard.stepIndex, 21);
-  assert.equal(sixthBoard.screenId, "S2");
-  assert.equal(sixthBoard.title, "Выберите шестой шаг");
-  assert.deepEqual(sixthBoard.cardIds, ["31", "32", "33", "34", "35", "36"]);
-  assert.equal(seventhBoard.stepIndex, 23);
-  assert.equal(seventhBoard.screenId, "S2");
-  assert.equal(seventhBoard.title, "Выберите седьмой шаг");
-  assert.deepEqual(seventhBoard.cardIds, ["37", "38", "39", "3902", "40", "41", "42"]);
-  assert.equal(eighthBoard.stepIndex, 26);
-  assert.equal(eighthBoard.screenId, "S2");
-  assert.equal(eighthBoard.title, "Выберите восьмой шаг");
-  assert.deepEqual(eighthBoard.cardIds, ["43", "44", "45", "46", "47", "48"]);
-  assert.equal(ninthBoard.stepIndex, 28);
-  assert.equal(ninthBoard.screenId, "S2");
-  assert.equal(ninthBoard.title, "Выберите девятый шаг");
-  assert.deepEqual(ninthBoard.cardIds, ["49", "50", "51", "52", "53", "54"]);
-  const card25 = body.content.antarctica.cards.find((entry) => entry.cardId === "25");
-  const card26 = body.content.antarctica.cards.find((entry) => entry.cardId === "26");
-  const card27 = body.content.antarctica.cards.find((entry) => entry.cardId === "27");
-  const card28 = body.content.antarctica.cards.find((entry) => entry.cardId === "28");
-  const card29 = body.content.antarctica.cards.find((entry) => entry.cardId === "29");
-  const card30 = body.content.antarctica.cards.find((entry) => entry.cardId === "30");
-  const card7 = body.content.antarctica.cards.find((entry) => entry.cardId === "7");
-  const card9 = body.content.antarctica.cards.find((entry) => entry.cardId === "9");
-  const card12 = body.content.antarctica.cards.find((entry) => entry.cardId === "12");
-  const card13 = body.content.antarctica.cards.find((entry) => entry.cardId === "13");
-  const card18 = body.content.antarctica.cards.find((entry) => entry.cardId === "18");
-  const card19 = body.content.antarctica.cards.find((entry) => entry.cardId === "19");
-  const card22 = body.content.antarctica.cards.find((entry) => entry.cardId === "22");
-  const card23 = body.content.antarctica.cards.find((entry) => entry.cardId === "23");
-  const card24 = body.content.antarctica.cards.find((entry) => entry.cardId === "24");
-  const card31 = body.content.antarctica.cards.find((entry) => entry.cardId === "31");
-  const card32 = body.content.antarctica.cards.find((entry) => entry.cardId === "32");
-  const card33 = body.content.antarctica.cards.find((entry) => entry.cardId === "33");
-  const card34 = body.content.antarctica.cards.find((entry) => entry.cardId === "34");
-  const card35 = body.content.antarctica.cards.find((entry) => entry.cardId === "35");
-  const card36 = body.content.antarctica.cards.find((entry) => entry.cardId === "36");
-  const card37 = body.content.antarctica.cards.find((entry) => entry.cardId === "37");
-  const card38 = body.content.antarctica.cards.find((entry) => entry.cardId === "38");
-  const card39 = body.content.antarctica.cards.find((entry) => entry.cardId === "39");
-  const card3902 = body.content.antarctica.cards.find((entry) => entry.cardId === "3902");
-  const card40 = body.content.antarctica.cards.find((entry) => entry.cardId === "40");
-  const card41 = body.content.antarctica.cards.find((entry) => entry.cardId === "41");
-  const card42 = body.content.antarctica.cards.find((entry) => entry.cardId === "42");
-  const card43 = body.content.antarctica.cards.find((entry) => entry.cardId === "43");
-  const card44 = body.content.antarctica.cards.find((entry) => entry.cardId === "44");
-  const card45 = body.content.antarctica.cards.find((entry) => entry.cardId === "45");
-  const card46 = body.content.antarctica.cards.find((entry) => entry.cardId === "46");
-  const card47 = body.content.antarctica.cards.find((entry) => entry.cardId === "47");
-  const card48 = body.content.antarctica.cards.find((entry) => entry.cardId === "48");
-  const card49 = body.content.antarctica.cards.find((entry) => entry.cardId === "49");
-  const card50 = body.content.antarctica.cards.find((entry) => entry.cardId === "50");
-  const card51 = body.content.antarctica.cards.find((entry) => entry.cardId === "51");
-  const card52 = body.content.antarctica.cards.find((entry) => entry.cardId === "52");
-  const card53 = body.content.antarctica.cards.find((entry) => entry.cardId === "53");
-  const card54 = body.content.antarctica.cards.find((entry) => entry.cardId === "54");
+  assert.equal((board as any).stepIndex, 9);
+  assert.deepEqual((board as any).cardIds, ["1", "2", "3", "4", "5", "6"]);
+  assert.equal((secondBoard as any).stepIndex, 11);
+  assert.equal((secondBoard as any).screenId, "S2");
+  assert.deepEqual((secondBoard as any).cardIds, ["7", "8", "9", "10", "11", "12"]);
+  assert.equal((thirdBoard as any).stepIndex, 13);
+  assert.equal((thirdBoard as any).screenId, "S2");
+  assert.deepEqual((thirdBoard as any).cardIds, ["13", "14", "15", "16", "17", "18"]);
+  assert.equal((fourthBoard as any).stepIndex, 17);
+  assert.equal((fourthBoard as any).screenId, "S2");
+  assert.equal((fourthBoard as any).title, "Выберите четвертый шаг");
+  assert.deepEqual((fourthBoard as any).cardIds, ["19", "20", "21", "22", "23", "24"]);
+  assert.equal((fifthBoard as any).stepIndex, 19);
+  assert.equal((fifthBoard as any).screenId, "S2");
+  assert.equal((fifthBoard as any).title, "Выберите пятый шаг");
+  assert.deepEqual((fifthBoard as any).cardIds, ["25", "26", "27", "28", "29", "30"]);
+  assert.equal((sixthBoard as any).stepIndex, 21);
+  assert.equal((sixthBoard as any).screenId, "S2");
+  assert.equal((sixthBoard as any).title, "Выберите шестой шаг");
+  assert.deepEqual((sixthBoard as any).cardIds, ["31", "32", "33", "34", "35", "36"]);
+  assert.equal((seventhBoard as any).stepIndex, 23);
+  assert.equal((seventhBoard as any).screenId, "S2");
+  assert.equal((seventhBoard as any).title, "Выберите седьмой шаг");
+  assert.deepEqual((seventhBoard as any).cardIds, ["37", "38", "39", "3902", "40", "41", "42"]);
+  assert.equal((eighthBoard as any).stepIndex, 26);
+  assert.equal((eighthBoard as any).screenId, "S2");
+  assert.equal((eighthBoard as any).title, "Выберите восьмой шаг");
+  assert.deepEqual((eighthBoard as any).cardIds, ["43", "44", "45", "46", "47", "48"]);
+  assert.equal((ninthBoard as any).stepIndex, 28);
+  assert.equal((ninthBoard as any).screenId, "S2");
+  assert.equal((ninthBoard as any).title, "Выберите девятый шаг");
+  assert.deepEqual((ninthBoard as any).cardIds, ["49", "50", "51", "52", "53", "54"]);
+  const card25 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "25");
+  const card26 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "26");
+  const card27 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "27");
+  const card28 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "28");
+  const card29 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "29");
+  const card30 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "30");
+  const card7 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "7");
+  const card9 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "9");
+  const card12 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "12");
+  const card13 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "13");
+  const card18 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "18");
+  const card19 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "19");
+  const card22 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "22");
+  const card23 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "23");
+  const card24 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "24");
+  const card31 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "31");
+  const card32 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "32");
+  const card33 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "33");
+  const card34 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "34");
+  const card35 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "35");
+  const card36 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "36");
+  const card37 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "37");
+  const card38 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "38");
+  const card39 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "39");
+  const card3902 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "3902");
+  const card40 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "40");
+  const card41 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "41");
+  const card42 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "42");
+  const card43 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "43");
+  const card44 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "44");
+  const card45 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "45");
+  const card46 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "46");
+  const card47 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "47");
+  const card48 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "48");
+  const card49 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "49");
+  const card50 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "50");
+  const card51 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "51");
+  const card52 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "52");
+  const card53 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "53");
+  const card54 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "54");
   assert.ok(card7);
   assert.ok(card9);
   assert.ok(card12);
@@ -2898,10 +2898,10 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   );
   assert.equal(card54.selectActionId, "opening.card.54");
   assert.equal(card54.advanceActionId, "opening.card.54.advance");
-  const card3 = (antarcticaContent.cards as Array<{ cardId: string }>).find((entry) => entry.cardId === "3");
+  const card3 = (antarcticaContent.cards as Array<{ cardId: string }>).find((entry: any) => entry.cardId === "3");
   assert.ok(card3);
-  assert.equal(card3.selectActionId, "opening.card.3");
-  assert.equal(card3.advanceActionId, "opening.card.3.advance");
+  assert.equal((card3 as any).selectActionId, "opening.card.3");
+  assert.equal((card3 as any).advanceActionId, "opening.card.3.advance");
 });
 
 interface UiComponent {
@@ -2938,18 +2938,18 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   assert.equal(s1Screen.layoutId, "layout.web.s1");
 
   // Verify screen root (screenComponent)
-  assert.equal(s1Screen.root.type, "screenComponent");
-  assert.ok(s1Screen.root.props);
-  assert.match(String(s1Screen.root.props.cssClass), /\bmain-screen\b/);
-  assert.equal(s1Screen.root.props.backgroundImage, "/images/arctic-background.png");
+  assert.equal((s1Screen as any).root.type, "screenComponent");
+  assert.ok((s1Screen as any).root.props);
+  assert.match(String((s1Screen as any).root.props.cssClass), /\bmain-screen\b/);
+  assert.equal((s1Screen as any).root.props.backgroundImage, "/images/arctic-background.png");
 
   // Verify children exist (areas)
-  assert.ok(Array.isArray(s1Screen.root.children));
-  assert.ok(s1Screen.root.children!.length >= 2, "S1 should have at least 2 area children");
+  assert.ok(Array.isArray((s1Screen as any).root.children));
+  assert.ok((s1Screen as any).root.children!.length >= 2, "S1 should have at least 2 area children");
 
   // Find the game-variables-container area
-  const variablesArea = s1Screen.root.children!.find(
-    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("game-variables-container")
+  const variablesArea = (s1Screen as any).root.children!.find(
+    (child: any) => child.type === "areaComponent" && String(child.props.cssClass).includes("game-variables-container")
   );
   assert.ok(variablesArea, "game-variables-container area must be present");
   assert.ok(Array.isArray(variablesArea.children));
@@ -2957,13 +2957,13 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   // Verify all 8 metric gameVariableComponents are present
   const metricIds = ["score", "pro", "rep", "lid", "man", "stat", "cont", "constr"];
   const gameVariableComponents = variablesArea.children!.filter(
-    (child) => child.type === "gameVariableComponent"
+    (child: any) => child.type === "gameVariableComponent"
   );
   assert.equal(gameVariableComponents.length, 8, "S1 sidebar should have exactly 8 gameVariableComponents");
 
   // Verify each metric component has the expected structure and binding expression
   for (const metricId of metricIds) {
-    const component = gameVariableComponents.find((c) => c.id === metricId);
+    const component = gameVariableComponents.find((c: any) => c.id === metricId);
     assert.ok(component, `gameVariableComponent for metric "${metricId}" must be present`);
     assert.equal(component.type, "gameVariableComponent");
     assert.ok(component.props.caption, `metric "${metricId}" should have a caption`);
@@ -2974,35 +2974,35 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   }
 
   // Find the main-content-area
-  const mainArea = s1Screen.root.children!.find(
-    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("main-content-area")
+  const mainArea = (s1Screen as any).root.children!.find(
+    (child: any) => child.type === "areaComponent" && String(child.props.cssClass).includes("main-content-area")
   );
   assert.ok(mainArea, "main-content-area area must be present");
   assert.ok(Array.isArray(mainArea.children));
 
   // Find the cards-container area inside main-content-area
   const cardsArea = mainArea.children!.find(
-    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("cards-container")
+    (child: any) => child.type === "areaComponent" && String(child.props.cssClass).includes("cards-container")
   );
   assert.ok(cardsArea, "cards-container area must be present inside main-content-area");
   assert.ok(Array.isArray(cardsArea.children));
 
   // Find the bottom-controls-container area inside main-content-area
   const bottomControlsArea = mainArea.children!.find(
-    (child) => child.type === "areaComponent" && String(child.props.cssClass).includes("bottom-controls-container")
+    (child: any) => child.type === "areaComponent" && String(child.props.cssClass).includes("bottom-controls-container")
   );
   assert.ok(bottomControlsArea, "bottom-controls-container area must be present inside main-content-area");
   assert.ok(Array.isArray(bottomControlsArea.children));
 
   // Verify button components exist for hint and journal
-  const buttonComponents = bottomControlsArea.children!.filter((child) => child.type === "buttonComponent");
+  const buttonComponents = bottomControlsArea.children!.filter((child: any) => child.type === "buttonComponent");
   assert.ok(buttonComponents.length >= 2, "bottom-controls-container should have at least 2 button components");
 
-  const hintButton = buttonComponents.find((b) => b.id === "btn-hint");
+  const hintButton = buttonComponents.find((b: any) => b.id === "btn-hint");
   assert.ok(hintButton, "btn-hint button must be present");
   assert.equal(hintButton.props.caption, "Подсказка");
 
-  const journalButton = buttonComponents.find((b) => b.id === "btn-journal");
+  const journalButton = buttonComponents.find((b: any) => b.id === "btn-journal");
   assert.ok(journalButton, "btn-journal button must be present");
   assert.equal(journalButton.props.caption, "Журнал ходов");
 
@@ -3019,15 +3019,15 @@ test("GET /games/antarctica/player-content preserves asset references in antarct
   assert.ok(body.ui);
 
   // Multi-screen interface: screens["S1"].root
-  const s1Screen = (body.ui as Record<string, unknown>)!.screens["S1"];
+  const s1Screen = (body.ui as any)!.screens["S1"];
   assert.ok(s1Screen, "S1 screen must exist");
-  const root = s1Screen.root;
+  const root = (s1Screen as any).root;
   const rootProps = root.props as { backgroundImage?: string };
   assert.equal(rootProps.backgroundImage, "/images/arctic-background.png");
 
   // Verify metric background images are preserved (not resolved, just data strings)
   const variablesArea = (root.children as Array<Record<string, unknown>>)?.find(
-    (child) =>
+    (child: any) =>
       child.type === "areaComponent" &&
       String((child.props as Record<string, unknown>)?.cssClass).includes("game-variables-container")
   );
@@ -3038,7 +3038,7 @@ test("GET /games/antarctica/player-content preserves asset references in antarct
     id?: string;
     props: Record<string, unknown>;
   }>)?.find(
-    (child) => child.type === "gameVariableComponent" && child.id === "score"
+    (child: any) => child.type === "gameVariableComponent" && child.id === "score"
   );
   assert.ok(scoreComponent);
   const scoreProps = scoreComponent.props as { backgroundImage?: string };

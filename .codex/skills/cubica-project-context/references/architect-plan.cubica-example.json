@@ -110,7 +110,6 @@
     "Use Context7 when current library or framework behavior matters.",
     "Do not introduce a generic engine, DSL, selector system, or reusable abstraction without a proven repeat use case.",
     "Do not let apps/player-web read games/* directly as runtime truth.",
-    "Update PROJECT_STRUCTURE.json and repo-manifest.json for structural changes.",
     "Update delivery-specific migration details in Gameplay Slice Records instead of ADRs.",
     "If draft/Antarctica/GameFull.html must be consulted, use targeted scripts and extraction commands instead of whole-file prose reading."
   ],

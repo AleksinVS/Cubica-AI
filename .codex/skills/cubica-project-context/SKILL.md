@@ -53,7 +53,6 @@ Read these first:
 2. `PROJECT_OVERVIEW.md`
 3. `PROJECT_STRUCTURE.json`
 4. `docs/architecture/PROJECT_ARCHITECTURE.md`
-5. `repo-manifest.json`
 6. `NEXT_STEPS.md`
 7. `new-workflow_V2.md`
 8. `services/runtime-api/HANDOFF.md` when runtime behavior matters
@@ -77,7 +76,6 @@ Read these first:
 ## Documentation Rules
 
 - update `PROJECT_STRUCTURE.json` for structural changes;
-- update `repo-manifest.json` when artifact authority changes;
 - write ADRs only for stable project architecture decisions;
 - put delivery-specific gameplay migration details into Gameplay Slice Records, not ADRs.
 
