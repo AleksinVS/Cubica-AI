@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { AntarcticaPlayer } from "./antarctica-player";
-import type { PlayerFacingContent, AntarcticaPlayerUiContent } from "@cubica/contracts-manifest";
+import { GamePlayer } from "./game-player";
+import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -28,15 +28,17 @@ const mockContent: PlayerFacingContent = {
   locale: "ru-RU",
   actions: [],
   mockups: [],
-  antarctica: {
-    infos: [],
-    boards: [],
-    teamSelections: [],
-    cards: []
+  content: {
+    antarctica: {
+      infos: [],
+      boards: [],
+      teamSelections: [],
+      cards: []
+    }
   }
 };
 
-const mockS1Ui: AntarcticaPlayerUiContent = {
+const mockS1Ui: GamePlayerUiContent = {
   id: "antarctica.ui.web",
   version: "1.0.0",
   gameId: "antarctica",
@@ -174,7 +176,7 @@ const mockSession = {
   }
 };
 
-describe("AntarcticaPlayer S1 DOM Rendering", () => {
+describe("GamePlayer S1 DOM Rendering", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     (global.fetch as any).mockImplementation((url: string) => {
@@ -191,11 +193,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
   it("renders the S1 manifest-driven UI when at screen S1 and hides top metrics", async () => {
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui} 
+        gameUi={mockS1Ui} 
       />
     );
 
@@ -209,7 +211,7 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     expect(topMetrics).toBeNull();
 
     // Check for main layout regions
-    const renderer = document.querySelector(".s1-renderer");
+    const renderer = document.querySelector(".game-renderer");
     expect(renderer).toBeDefined();
 
     const sidebar = document.querySelector(".game-variables-container");
@@ -252,11 +254,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui} 
+        gameUi={mockS1Ui} 
       />
     );
 
@@ -289,11 +291,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
   it("passes component IDs to buttons", async () => {
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui} 
+        gameUi={mockS1Ui} 
       />
     );
 
@@ -313,11 +315,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
   it("resolves and displays metric bindings in the sidebar", async () => {
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui} 
+        gameUi={mockS1Ui} 
       />
     );
 
@@ -338,11 +340,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
   it("renders 6 cards and handles click with payload", async () => {
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui} 
+        gameUi={mockS1Ui} 
       />
     );
 
@@ -387,11 +389,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
   it("renders bottom control buttons and handles clicks", async () => {
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui} 
+        gameUi={mockS1Ui} 
       />
     );
 
@@ -457,16 +459,16 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockS1Ui}
+        gameUi={mockS1Ui}
       />
     );
 
     await waitFor(() => {
-      expect(document.querySelector(".antarctica-hint-screen")).toBeDefined();
+      expect(document.querySelector(".hint-screen")).toBeDefined();
       expect(document.querySelector(".hint-area")).toBeDefined();
       expect(document.querySelector(".hint-text")).toBeDefined();
       expect(screen.getByRole("button", { name: /Журнал ходов/i })).toBeDefined();
@@ -506,11 +508,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockS1Ui}
+        gameUi={mockS1Ui}
       />
     );
 
@@ -575,11 +577,11 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockS1Ui}
+        gameUi={mockS1Ui}
       />
     );
 
@@ -598,9 +600,9 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     expect(card3Elements.length).toBeGreaterThan(0);
   });
 
-  it("falls back to action catalog when antarcticaUi is missing", async () => {
+  it("falls back to action catalog when gameUi is missing", async () => {
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }} 
         mockups={[]} 
@@ -609,7 +611,7 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      expect(document.querySelector(".antarctica-player-shell")).toBeDefined();
+      expect(document.querySelector(".game-player-root")).toBeDefined();
       expect(document.querySelector(".panel")).toBeNull();
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
@@ -617,10 +619,10 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
   });
 
   it("ensures topbar screen shell has topbar child classes when fallback renderer uses topbar mode", async () => {
-    // No antarcticaUi so it falls back to AntarcticaFallbackRenderer
+    // No gameUi so it falls back to FallbackRenderer
     // Initial state resolves to topbar layoutMode by default
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -646,7 +648,7 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     expect(variablesContainer || mainContent || cardsContainer).toBeTruthy();
   });
 
-  it("falls back to action catalog when screenId is not S1 even if antarcticaUi is present", async () => {
+  it("falls back to action catalog when screenId is not S1 even if gameUi is present", async () => {
     const sessionWithS2 = {
       ...mockSession,
       state: {
@@ -669,17 +671,17 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <AntarcticaPlayer 
+      <GamePlayer 
         runtimeApiUrl="http://localhost:8080" 
         content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }} 
         mockups={[]} 
-        antarcticaUi={mockS1Ui}
+        gameUi={mockS1Ui}
       />
     );
 
     await waitFor(() => {
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      expect(document.querySelector(".antarctica-fallback-renderer")).toBeDefined();
+      expect(document.querySelector(".fallback-renderer")).toBeDefined();
       expect(document.querySelector(".panel")).toBeNull();
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
@@ -687,9 +689,9 @@ describe("AntarcticaPlayer S1 DOM Rendering", () => {
   });
 });
 
-describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
+describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
   // UI manifest with board screens for testing S2 board rendering
-  const mockUiWithBoards: AntarcticaPlayerUiContent = {
+  const mockUiWithBoards: GamePlayerUiContent = {
     id: "antarctica.ui.web",
     version: "1.2.0",
     gameId: "antarctica",
@@ -958,17 +960,17 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", (
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithBoards}
+        gameUi={mockUiWithBoards}
       />
     );
 
     await waitFor(() => {
       // Should render the manifest-driven board screen
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
@@ -1004,16 +1006,16 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", (
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithBoards}
+        gameUi={mockUiWithBoards}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
@@ -1046,16 +1048,16 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", (
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithBoards}
+        gameUi={mockUiWithBoards}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
@@ -1089,16 +1091,16 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", (
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithBoards}
+        gameUi={mockUiWithBoards}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
@@ -1132,18 +1134,18 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", (
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithBoards}
+        gameUi={mockUiWithBoards}
       />
     );
 
     await waitFor(() => {
       // Should fall back since stepIndex 20 has no board screen mapping
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      expect(document.querySelector(".antarctica-fallback-renderer")).toBeDefined();
+      expect(document.querySelector(".fallback-renderer")).toBeDefined();
       expect(document.querySelector(".panel")).toBeNull();
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
@@ -1151,7 +1153,7 @@ describe("AntarcticaPlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", (
   });
 });
 
-describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
+describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
   const buildInfoMetrics = () => ([
     {
       type: "gameVariableComponent" as const,
@@ -1273,7 +1275,7 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
   });
 
   // UI manifest with info variant screens for testing info screen selection
-  const mockUiWithInfoVariants: AntarcticaPlayerUiContent = {
+  const mockUiWithInfoVariants: GamePlayerUiContent = {
     id: "antarctica.ui.web",
     version: "1.2.0",
     gameId: "antarctica",
@@ -1344,16 +1346,16 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Ускорение процесса")).toBeDefined();
       expect(document.querySelector(".info-event-card")).toBeDefined();
@@ -1409,11 +1411,11 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
@@ -1452,11 +1454,11 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
@@ -1489,16 +1491,16 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Последствия переезда")).toBeDefined();
       expect(screen.getByText("После переезда началась работа над укреплением позиций.")).toBeDefined();
@@ -1528,16 +1530,16 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Быстрый переезд")).toBeDefined();
       expect(screen.getByText("Переезд был осуществлен быстро.")).toBeDefined();
@@ -1567,16 +1569,16 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Второй переезд")).toBeDefined();
       expect(screen.getByText("Продолжить")).toBeDefined();
@@ -1606,16 +1608,16 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
     await waitFor(() => {
-      const renderer = document.querySelector(".s1-renderer");
+      const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Финальный экран")).toBeDefined();
       expect(screen.getByText("История завершена.")).toBeDefined();
@@ -1623,10 +1625,73 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
   });
 
-  it("returns null for S1 when activeInfoId is not in UI screens, triggering fallback renderer", async () => {
-    // activeInfoId is "i999" which is not in the manifest screens
-    // With the fix: resolveScreenKey returns null, triggering fallback renderer
-    // Since mockContent has empty antarctica, fallback renders action catalog
+  it("renders early info i0 through FallbackRenderer when no dedicated UI screen exists", async () => {
+    // i0 has no dedicated UI screen in mockUiWithInfoVariants.
+    // resolveScreenKey should return null so FallbackRenderer shows the info content.
+    const mockContentWithInfo: PlayerFacingContent = {
+      ...mockContent,
+      content: {
+        antarctica: {
+          infos: [
+            {
+              id: "i0",
+              stepIndex: 0,
+              screenId: "S1",
+              title: 'Корпорация "Антарктика"',
+              body: "бизнес-квест (основан на идеях Джона Коттера)",
+              advanceActionId: "opening.info.i0.advance",
+              advanceLabel: "Продолжить"
+            }
+          ],
+          boards: [],
+          teamSelections: [],
+          cards: []
+        }
+      }
+    };
+
+    const sessionAtI0 = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          timeline: { screenId: "S1", stepIndex: 0, activeInfoId: "i0", stageId: "opening" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionAtI0)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContentWithInfo}
+        mockups={[]}
+        gameUi={mockUiWithInfoVariants}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Корпорация "Антарктика"')).toBeDefined();
+      expect(screen.getByText("Продолжить")).toBeDefined();
+      // S1 manifest screen should NOT be rendered (it contains test cards)
+      expect(screen.queryByText("Тестовая карточка 1")).toBeNull();
+    });
+  });
+
+  it("returns null for S1 when activeInfoId has no dedicated UI screen, triggering fallback renderer", async () => {
+    // activeInfoId is "i999" which is not in the manifest screens.
+    // resolveScreenKey returns null so FallbackRenderer is used.
+    // Since mockContent has empty antarctica data and no actions, fallback renders the empty catalog.
     const sessionAtUnknownInfo = {
       ...mockSession,
       state: {
@@ -1649,18 +1714,16 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockUiWithInfoVariants}
+        gameUi={mockUiWithInfoVariants}
       />
     );
 
     await waitFor(() => {
-      // resolveScreenKey returns null when activeInfoId not in UI screens
       // Fallback renderer is used since screenDefinition is null
-      // With empty antarctica content, fallback renders action catalog
       expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
     });
   });
@@ -1680,11 +1743,11 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockS1Ui}
+        gameUi={mockS1Ui}
       />
     );
 
@@ -1705,11 +1768,11 @@ describe("AntarcticaPlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <AntarcticaPlayer
+      <GamePlayer
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        antarcticaUi={mockS1Ui}
+        gameUi={mockS1Ui}
       />
     );
 

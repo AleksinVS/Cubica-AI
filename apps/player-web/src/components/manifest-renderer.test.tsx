@@ -1,11 +1,12 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import React from "react";
-import { AntarcticaS1Renderer, resolveMetricBinding } from "./antarctica-player";
-import type { AntarcticaPlayerS1UiContent } from "@cubica/contracts-manifest";
+import { ManifestRenderer } from "./manifest/manifest-renderer";
+import { resolveMetricBinding } from "@/lib/metric-resolvers";
+import type { GamePlayerS1UiContent } from "@cubica/contracts-manifest";
 
-describe("AntarcticaS1Renderer", () => {
-  const mockScreenDefinition: AntarcticaPlayerS1UiContent["screen"] = {
+describe("ManifestRenderer", () => {
+  const mockScreenDefinition: GamePlayerS1UiContent["screen"] = {
     type: "screen",
     title: "Opening Screen",
     root: {
@@ -80,7 +81,7 @@ describe("AntarcticaS1Renderer", () => {
 
   it("renders the sidebar with resolved metrics", () => {
     render(
-      <AntarcticaS1Renderer
+      <ManifestRenderer
         screenDefinition={mockScreenDefinition}
         metrics={mockMetrics}
         onAction={mockOnAction}
@@ -95,7 +96,7 @@ describe("AntarcticaS1Renderer", () => {
 
   it("renders cards with correct text", () => {
     render(
-      <AntarcticaS1Renderer
+      <ManifestRenderer
         screenDefinition={mockScreenDefinition}
         metrics={mockMetrics}
         onAction={mockOnAction}
@@ -107,7 +108,7 @@ describe("AntarcticaS1Renderer", () => {
 
   it("dispatches action when card button is clicked", () => {
     render(
-      <AntarcticaS1Renderer
+      <ManifestRenderer
         screenDefinition={mockScreenDefinition}
         metrics={mockMetrics}
         onAction={mockOnAction}
@@ -122,7 +123,7 @@ describe("AntarcticaS1Renderer", () => {
 
   it("renders bottom buttons and dispatches action", () => {
     render(
-      <AntarcticaS1Renderer
+      <ManifestRenderer
         screenDefinition={mockScreenDefinition}
         metrics={mockMetrics}
         onAction={mockOnAction}

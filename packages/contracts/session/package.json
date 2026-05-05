@@ -7,9 +7,9 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"TODO: add contracts-session build\"",
-    "test": "echo \"TODO: add contracts-session tests\"",
-    "lint": "echo \"TODO: add contracts-session lint\""
+    "build": "echo \"TODO: add contracts-session build\" && exit 1",
+    "test": "echo \"TODO: add contracts-session tests\" && exit 1",
+    "lint": "echo \"TODO: add contracts-session lint\" && exit 1"
   },
   "engines": {
     "node": ">=18"

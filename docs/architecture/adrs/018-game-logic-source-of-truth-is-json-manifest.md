@@ -33,7 +33,7 @@
 3. **`draft/Antarctica/README.md` является описанием legacy-прототипа, а не канонической структурой новой архитектуры.**
    - Его используют как reference для извлечения механик, сущностей и flow;
    - новая структура runtime, contracts и player не должна копировать устройство legacy HTML-прототипа.
-4. **`games/antarctica/design/mockups/` является source of truth для UI mockups**, но не для runtime-логики.
+4. **`games/antarctica/design/mockups/` является source of truth для UI mockups конкретной игры `Antarctica`**, но не для runtime-логики.
 5. **Любая исполнимая игровая логика должна появляться в манифесте или в связанных с ним машиночитаемых контрактах/runtime capabilities.**
 6. **Вопрос о том, как именно заполняется JSON-манифест, не фиксируется этим ADR.**
    - это может быть ручное редактирование, tooling, генерация, AI-assisted authoring, импорт из draft-источников или иная pipeline-модель;
@@ -53,7 +53,6 @@
 
 Ограничения и trade-offs:
 
-- потребуется явно извлечь логику `Antarctica` из `draft/Antarctica/GameFull.html` и связанных legacy-источников и нормализовать её в манифест;
 - narrative markdown может оставаться полезным, но не считается обязательным артефактом content bundle;
 - для сложных игр может понадобиться richer manifest model и tooling, чтобы JSON оставался поддерживаемым.
 

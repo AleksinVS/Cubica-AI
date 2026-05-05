@@ -391,14 +391,6 @@ const applyMetricDeltas = (state: RuntimeState, deltas: Array<GameManifestDeterm
   state.public = publicState;
 };
 
-const recalculateDerivedMetrics = (state: RuntimeState) => {
-  const publicState = ensureObject(state.public);
-  const metrics = ensureObject(publicState.metrics);
-  const time = typeof metrics.time === "number" ? metrics.time : 0;
-  metrics.score = 60 - time;
-  publicState.metrics = metrics;
-  state.public = publicState;
-};
 
 const applyManifestMetricDeltas = (
   state: RuntimeState,
@@ -418,7 +410,6 @@ const applyManifestMetricDeltas = (
     }
   }
 
-  recalculateDerivedMetrics(state);
 };
 
 const resolveConditionalLineSwitch = (
@@ -542,20 +533,15 @@ const applyManifestStateUpdate = (
   if (stateUpdate.boardCardUnlock) {
     const resolvedCount = countResolvedCards(state, stateUpdate.boardCardUnlock.cardIds);
 
-    // GSR-023 keeps the entry-time 39 -> 3902 swap as a board-local snapshot
-    // under the bounded-manifest architecture from ADR-024.
-    // Once 3902 is exposed, the later unlock threshold must not re-enable base card 39.
-    const alt3902State =
-      stateUpdate.boardCardUnlock.unlockCardId === "39" ? readCardState(state, "3902") : null;
-
-    if (
-      resolvedCount >= stateUpdate.boardCardUnlock.resolvedCountAtLeast &&
-      alt3902State?.available !== true
-    ) {
-      const unlockCardState = ensureObject(cards[stateUpdate.boardCardUnlock.unlockCardId]);
-      unlockCardState.locked = false;
-      unlockCardState.available = true;
-      writeCardState(cards, stateUpdate.boardCardUnlock.unlockCardId, unlockCardState);
+    if (resolvedCount >= stateUpdate.boardCardUnlock.resolvedCountAtLeast) {
+      const unlessCardId = stateUpdate.boardCardUnlock.unlessCardAvailable;
+      const shouldUnlock = !unlessCardId || readCardState(state, unlessCardId).available !== true;
+      if (shouldUnlock) {
+        const unlockCardState = ensureObject(cards[stateUpdate.boardCardUnlock.unlockCardId]);
+        unlockCardState.locked = false;
+        unlockCardState.available = true;
+        writeCardState(cards, stateUpdate.boardCardUnlock.unlockCardId, unlockCardState);
+      }
     }
   }
 

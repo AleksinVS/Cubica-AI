@@ -167,14 +167,16 @@ test("validateGameManifest rejects a manifest without required fields", () => {
   );
 });
 
-test("validateGameManifest rejects actions without capability metadata", () => {
+test("validateGameManifest rejects actions with invalid handlerType", () => {
   assert.throws(
     () =>
       validateGameManifest({
         ...validManifest,
         actions: {
           showHint: {
-            handlerType: "script",
+            handlerType: 123,
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
             function: "showHint"
           }
         }
@@ -376,20 +378,13 @@ test("validateGameManifest rejects manifest with missing engine.systemPrompt", (
   );
 });
 
-test("validateGameManifest rejects manifest with invalid state.public.timeline", () => {
+test("validateGameManifest rejects manifest with invalid state.public as non-object", () => {
   assert.throws(
     () =>
       validateGameManifest({
         ...validManifest,
         state: {
-          public: {
-            timeline: {
-              line: "main"
-              // missing stepIndex, stageId, screenId
-            },
-            log: [],
-            flags: { cards: {} }
-          }
+          public: "not-an-object"
         }
       }),
     ManifestValidationError

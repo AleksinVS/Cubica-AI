@@ -1,0 +1,39 @@
+# PROJECT STRUCTURE
+# =================
+# AUTO-GENERATED FILE - DO NOT EDIT MANUALLY.
+# Use `node scripts/dev/generate-structure.js` to update.
+# This file provides a machine-readable overview of the repository layout.
+# Note: 'draft', 'sandbox', '.tmp' and 'node_modules' are excluded.
+# Note: ONLY documented files and directories (via .desc.json or package.json) are shown.
+
+apps: # Приложения и импортированные frontend-заготовки 
+  player-web: directory... # Канонический web player scaffold для Antarctica 
+  portal-nextjs: directory... # Импортированный набросок портала (не каноническая архитектура) 
+archive: directory... # Архив старых документов и черновиков 
+data: directory... # Фикстуры и моки данных 
+docs: # Архитектура, задачи, планирование 
+  architecture: directory... # Архитектурные документы, ADR, схемы 
+  legacy:
+    debt-log.csv: file # Центральный реестр долга (tech debt)
+    stubs-register.md: file # Реестр временных заглушек
+  tasks: directory... # Система задач, ExecPlans и ROADMAP 
+games: # Пакеты игр и связанные ресурсы 
+  antarctica: directory... # Пакет игры «Antarctica» (канонический content layer) 
+packages: # Переиспользуемые платформенные пакеты (contracts) 
+  contracts: directory... # Слой общих контрактов между сервисами 
+scripts: directory... # Скрипты разработки и индексирования 
+SDK: # SDK и вспомогательные библиотеки 
+  core: directory... # Базовые компоненты SDK и общая логика 
+  react-sdk: directory... # SDK для React/Next.js‑приложений 
+  shared: directory... # Общие UI‑компоненты и утилиты 
+  viewers: directory... # Библиотека плееров для отображения игр 
+services: # Сервисы и инфраструктура 
+  portal-backend: directory... # Импортированный backend-набросок портала 
+  runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
+AGENTS.md: file # Правила работы ИИ‑агентов
+NEXT_STEPS.md: file # Ближайшие инженерные шаги и приоритеты миграции
+package.json: file # Корневой npm-workspace
+PROJECT_OVERVIEW.md: file # Общий обзор проекта
+PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
+README.md: file # Основное описание репозитория
+repo-manifest.json: file # Машиночитаемый индекс артефактов репозитория

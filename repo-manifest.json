@@ -3,12 +3,12 @@
     "id": "cubica-monorepo",
     "name": "Cubica",
     "status": "actual",
-    "last_verified_at": "2026-04-08",
+    "last_verified_at": "2026-05-03",
     "source_of_truth": [
       "NEXT_STEPS.md",
       "services/runtime-api/HANDOFF.md",
       "PROJECT_OVERVIEW.md",
-      "PROJECT_STRUCTURE.md",
+      "PROJECT_STRUCTURE.yaml",
       "docs/architecture/PROJECT_ARCHITECTURE.md",
       "docs/architecture/gameplay-slices/README.md",
       "docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md",
@@ -86,6 +86,13 @@
       "id": "adr.024.bounded-manifest-driven-gameplay-mechanics",
       "kind": "adr",
       "path": "docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md",
+      "status": "actual",
+      "owner": "platform"
+    },
+    {
+      "id": "adr.025.json-schema-as-ssot",
+      "kind": "adr",
+      "path": "docs/architecture/adrs/025-json-schema-as-ssot-for-manifest-validation.md",
       "status": "actual",
       "owner": "platform"
     },
@@ -233,7 +240,7 @@
       "id": "contracts.ai",
       "kind": "package",
       "path": "packages/contracts/ai",
-      "status": "target",
+      "status": "actual",
       "owner": "platform"
     },
     {

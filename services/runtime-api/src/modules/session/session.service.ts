@@ -14,8 +14,6 @@ interface SessionServiceOptions {
   sessionStore?: SessionStorePort<RuntimeState>;
 }
 
-const DEFAULT_GAME_ID = "antarctica";
-
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
 
@@ -24,7 +22,10 @@ export class SessionService {
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
-    const gameId = request.gameId ?? DEFAULT_GAME_ID;
+    const gameId = request.gameId;
+    if (!gameId) {
+      throw new Error("gameId is required to create a session");
+    }
     const playerId: PlayerId | undefined = request.playerId;
 
     const initialState = (await contentService.getInitialState(gameId)) as RuntimeState;

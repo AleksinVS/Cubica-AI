@@ -37,3 +37,4 @@ Thumbs.db
 draft/**/.git/
 draft/**/*.log
 .tmp/logs/
+sandbox/nanobanana-output/

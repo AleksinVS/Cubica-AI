@@ -222,7 +222,7 @@ Recommended `development_method`: `TDD`
 
 Смысл этого процесса: архитектура не должна плыть во время выполнения, а каждое изменение должно проходить через короткий и проверяемый цикл.
 
-Техническая заметка по startup docs: в текущем репозитории есть naming mismatch (несовпадение имён документов) между ожидаемым `PROJECT_STRUCTURE.json` и реально используемым `PROJECT_STRUCTURE.md`. Это пока не исправляется в этом roadmap-pass, но будущим сессиям нужно учитывать это расхождение при стартовом чтении проекта.
+Техническая заметка по startup docs: в текущем репозитории используется автосгенерированный файл `PROJECT_STRUCTURE.yaml`. Он является единственным источником истины для структуры проекта.
 
 ## Non-Goals And Constraints
 
@@ -242,5 +242,6 @@ Recommended `development_method`: `TDD`
 - Editor direction: `docs/tasks/epics/E_00021_game_editor_development.md`
 - Antarctica delivery line: `docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md`
 - Quality / observability: `docs/tasks/epics/E_0050_observability_and_quality.md`
+- **Architecture Drift Prevention:** `docs/tasks/epics/E_0060_architecture_drift_prevention.md`
 
 Эти файлы остаются местом для детальной декомпозиции. Этот `ROADMAP.md` фиксирует только стратегический курс.

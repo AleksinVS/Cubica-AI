@@ -6,8 +6,8 @@ import type {
   PlayerFacingContent,
   PlayerFacingMockup,
   GameManifestActionDefinition,
-  AntarcticaPlayerUiContent,
-  AntarcticaUiScreenDefinition
+  GamePlayerUiContent,
+  GameUiScreenDefinition
 } from "@cubica/contracts-manifest";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
@@ -86,14 +86,6 @@ const loadMockupsForGame = async (gameId: string): Promise<Array<PlayerFacingMoc
   return mockups;
 };
 
-const projectAntarcticaContent = (bundle: GameBundle): PlayerFacingContent["antarctica"] => {
-  const antarctica = bundle.manifest.content?.antarctica;
-  if (!antarctica) {
-    return undefined;
-  }
-
-  return structuredClone(antarctica);
-};
 
 interface RawUiManifest {
   meta?: {
@@ -112,16 +104,11 @@ interface RawUiManifest {
 }
 
 /**
- * Loads the Antarctica UI manifest (ui.manifest.json) for the bounded S1 screen.
+ * Loads the game UI manifest (ui.manifest.json) for the requested game.
  * Returns undefined if the file does not exist or cannot be parsed.
  * This is an additive read-only projection; no manifest validation is performed here.
  */
-const loadAntarcticaUiManifest = async (gameId: string): Promise<RawUiManifest | undefined> => {
-  if (gameId !== "antarctica") {
-    // S1 UI manifest is currently Antarctica-specific; return undefined for other games.
-    return undefined;
-  }
-
+const loadGameUiManifest = async (gameId: string): Promise<RawUiManifest | undefined> => {
   const manifestPath = resolveGameUiManifestPath(gameId);
 
   let raw: string;
@@ -150,41 +137,36 @@ const loadAntarcticaUiManifest = async (gameId: string): Promise<RawUiManifest |
 
 /**
  * Transforms a raw UI manifest screen object (with snake_case fields) into a typed
- * AntarcticaUiScreenDefinition (with camelCase fields).
+ * GameUiScreenDefinition (with camelCase fields).
  */
 const transformScreen = (
   rawScreen: Record<string, unknown>
-): AntarcticaUiScreenDefinition => {
+): GameUiScreenDefinition => {
   return {
     type: "screen",
-    title: typeof rawScreen.title === "string" ? rawScreen.title : "Antarctica",
+    title: typeof rawScreen.title === "string" ? rawScreen.title : "Game",
     layoutId: typeof rawScreen.layout_id === "string" ? rawScreen.layout_id : undefined,
     // Deep clone the root component tree, preserving all children and props.
-    root: structuredClone(rawScreen.root) as AntarcticaUiScreenDefinition["root"]
+    root: structuredClone(rawScreen.root) as GameUiScreenDefinition["root"]
   };
 };
 
 /**
  * Projects all available UI screens from the raw UI manifest into a multi-screen
- * AntarcticaPlayerUiContent structure.
+ * GamePlayerUiContent structure.
  * Asset references (image paths) are preserved as data strings, not resolved URLs.
  *
  * Screen selection contract:
  * - Runtime snapshot field `timeline.screenId` selects the current screen from `screens`.
  * - Runtime snapshot field `timeline.activeInfoId` disambiguates variant info screens (e.g., i19 vs i19_1).
  * - When `timeline.screenId` is not in `screens`, the player falls back to the action catalog.
- * - The `entryPoint` field holds the canonical entry screen id ("S1" for Antarctica web).
- *
- * Bounded screens covered:
- * - S1: opening entry screen
- * - Screens 55..60 (stepIndex 30), 61..66 (stepIndex 32), 67..68 (stepIndex 34), 69..70 (stepIndex 36) — board screens
- * - Info screens i17, i18, i19, i19_1, i20, i21 — variant info screens
+ * - The `entryPoint` field holds the canonical entry screen id (e.g. "S1" for web).
  *
  * Selection is driven by runtime snapshot fields, not by UI-side heuristics.
  */
-const projectAntarcticaUiContent = (
+const projectGameUiContent = (
   rawManifest: RawUiManifest
-): AntarcticaPlayerUiContent | undefined => {
+): GamePlayerUiContent | undefined => {
   const meta = rawManifest.meta ?? {};
   const entryPoint = rawManifest.entry_point ?? "S1";
   const rawScreens = rawManifest.screens;
@@ -210,7 +192,7 @@ const projectAntarcticaUiContent = (
   }
 
   // Project all available screens, not just the entry point.
-  const screens: Record<string, AntarcticaUiScreenDefinition> = {};
+  const screens: Record<string, GameUiScreenDefinition> = {};
   for (const [screenId, rawScreen] of Object.entries(rawScreens)) {
     if (rawScreen && typeof rawScreen === "object") {
       screens[screenId] = transformScreen(rawScreen as Record<string, unknown>);
@@ -223,16 +205,16 @@ const projectAntarcticaUiContent = (
   }
 
   return {
-    id: typeof meta.id === "string" ? meta.id : "antarctica.ui.web",
+    id: typeof meta.id === "string" ? meta.id : "game.ui.web",
     version: typeof meta.version === "string" ? meta.version : "1.0.0",
-    gameId: typeof meta.game_id === "string" ? meta.game_id : "antarctica",
+    gameId: typeof meta.game_id === "string" ? meta.game_id : "game",
     entryPoint,
     screens,
     designArtifacts: Object.keys(designArtifacts).length > 0 ? designArtifacts : undefined
   };
 };
 
-const projectManifestToPlayerContent = (bundle: GameBundle): PlayerFacingContent => {
+const projectManifestToPlayerContent = async (bundle: GameBundle): Promise<PlayerFacingContent> => {
   const { manifest } = bundle;
 
   const actions: Array<PlayerFacingAction> = Object.entries(
@@ -244,6 +226,10 @@ const projectManifestToPlayerContent = (bundle: GameBundle): PlayerFacingContent
     capability: definition.capability ?? null
   }));
 
+  const gameSpecificContent = manifest.content?.[manifest.meta.id];
+  const rawUiManifest = await loadGameUiManifest(manifest.meta.id);
+  const gameUi = rawUiManifest ? projectGameUiContent(rawUiManifest) : undefined;
+
   return {
     gameId: manifest.meta.id,
     version: manifest.meta.version,
@@ -254,7 +240,8 @@ const projectManifestToPlayerContent = (bundle: GameBundle): PlayerFacingContent
     training: manifest.meta.training,
     actions,
     mockups: [],
-    antarctica: projectAntarcticaContent(bundle)
+    content: gameSpecificContent ? { [manifest.meta.id]: structuredClone(gameSpecificContent) } : undefined,
+    ui: gameUi
   };
 };
 
@@ -315,15 +302,8 @@ export class ContentService {
     }
     const mockups = await loadMockupsForGame(options.gameId);
 
-    // Load and project the bounded multi-screen UI manifest for Antarctica.
-    // This is additive: if the UI manifest is missing or malformed, we still return
-    // the gameplay content (antarctica) without breaking the API contract.
-    const rawUiManifest = await loadAntarcticaUiManifest(options.gameId);
-    const antarcticaUi = rawUiManifest ? projectAntarcticaUiContent(rawUiManifest) : undefined;
-
-    const content = projectManifestToPlayerContent(bundle);
+    const content = await projectManifestToPlayerContent(bundle);
     content.mockups = mockups;
-    content.antarcticaUi = antarcticaUi;
 
     return { content };
   }

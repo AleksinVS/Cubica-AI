@@ -2,8 +2,8 @@
  * Integration-style tests for Antarctica player-web rendering.
  *
  * Covers slice-step30-31-render:
- * - Board 55_60 (stepIndex 30) is rendered from content.antarctica.boards and cards
- * - Info i17 (stepIndex 31) is rendered from content.antarctica.infos with explicit advance action
+ * - Board 55_60 (stepIndex 30) is rendered from content.boards and cards
+ * - Info i17 (stepIndex 31) is rendered from content.infos with explicit advance action
  * - Selected go-card state is correctly reflected in the UI
  *
  * These tests verify that the player-web renders opening-tail scenes from
@@ -14,7 +14,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import React from "react";
 
-import type { AntarcticaPlayerBoard } from "@cubica/contracts-manifest";
+import type { GamePlayerBoard } from "@cubica/contracts-manifest";
 
 import {
   openingTailStep30AntarcticaContent,
@@ -42,29 +42,29 @@ import {
 } from "@/test/antarctica-opening-tail-fixtures";
 
 import {
-  resolveAntarcticaContent,
+  resolveGameContent,
   resolveCurrentBoard,
   resolveCurrentInfoEntry,
   resolveBoardCards,
   readSelectedCardId,
   readCanAdvance,
-} from "@/lib/antarctica";
+} from "@/lib/game-content-resolvers";
 
 describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
-  describe("resolveAntarcticaContent", () => {
+  describe("resolveGameContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
-      const antarctica = resolveAntarcticaContent(openingTailStep30PlayerContent);
+      const antarctica = resolveGameContent(openingTailStep30PlayerContent);
       expect(antarctica).not.toBeNull();
       expect(antarctica?.boards).toHaveLength(1);
       expect(antarctica?.infos).toHaveLength(1);
     });
 
     it("returns null when no Antarctica content is present", () => {
-      const contentWithoutAntarctica = {
+      const contentWithoutGameContent = {
         ...openingTailStep30PlayerContent,
-        antarctica: undefined,
+        content: undefined,
       };
-      const antarctica = resolveAntarcticaContent(contentWithoutAntarctica);
+      const antarctica = resolveGameContent(contentWithoutGameContent);
       expect(antarctica).toBeNull();
     });
   });
@@ -107,7 +107,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   describe("resolveBoardCards for opening.board.55_60", () => {
     it("resolves all 6 cards for board 55_60", () => {
       const antarctica = openingTailStep30AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.55_60",
         stepIndex: 30,
         screenId: "S2",
@@ -122,7 +122,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
 
     it("identifies go-cards (55, 57, 58, 60) by presence of advanceActionId", () => {
       const antarctica = openingTailStep30AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.55_60",
         stepIndex: 30,
         screenId: "S2",
@@ -142,7 +142,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
 
     it("filters out unavailable cards based on cardFlags", () => {
       const antarctica = openingTailStep30AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.55_60",
         stepIndex: 30,
         screenId: "S2",
@@ -211,7 +211,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   describe("go-card advance flow: board 55_60 -> i17", () => {
     it("at step 30, board 55_60 is rendered with go-card 55 having advanceActionId", () => {
       const antarctica = openingTailStep30AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.55_60",
         stepIndex: 30,
         screenId: "S2",
@@ -241,9 +241,9 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
 });
 
 describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
-  describe("resolveAntarcticaContent", () => {
+  describe("resolveGameContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
-      const antarctica = resolveAntarcticaContent(openingTailStep32PlayerContent);
+      const antarctica = resolveGameContent(openingTailStep32PlayerContent);
       expect(antarctica).not.toBeNull();
       expect(antarctica?.boards).toHaveLength(1);
       expect(antarctica?.infos).toHaveLength(1);
@@ -278,7 +278,7 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
   describe("resolveBoardCards for opening.board.61_66", () => {
     it("resolves all 6 cards for board 61_66", () => {
       const antarctica = openingTailStep32AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.61_66",
         stepIndex: 32,
         screenId: "S2",
@@ -293,7 +293,7 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
 
     it("identifies go-cards (61, 66) by presence of advanceActionId", () => {
       const antarctica = openingTailStep32AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.61_66",
         stepIndex: 32,
         screenId: "S2",
@@ -313,7 +313,7 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
 
     it("card 66 has advanceActionId making it a go-card", () => {
       const antarctica = openingTailStep32AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.61_66",
         stepIndex: 32,
         screenId: "S2",
@@ -397,7 +397,7 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
   describe("go-card advance flows: board 61_66 -> i18", () => {
     it("at step 32, board 61_66 go-card 61 leads to info i18", () => {
       const antarctica = openingTailStep32AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.61_66",
         stepIndex: 32,
         screenId: "S2",
@@ -413,7 +413,7 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
 
     it("at step 32, board 61_66 go-card 66 (unlocked) also leads to info i18", () => {
       const antarctica = openingTailStep32AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.61_66",
         stepIndex: 32,
         screenId: "S2",
@@ -442,9 +442,9 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
 });
 
 describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, and Terminal i21", () => {
-  describe("resolveAntarcticaContent", () => {
+  describe("resolveGameContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
-      const antarctica = resolveAntarcticaContent(openingTailStep34PlayerContent);
+      const antarctica = resolveGameContent(openingTailStep34PlayerContent);
       expect(antarctica).not.toBeNull();
       expect(antarctica?.boards).toHaveLength(2);
       expect(antarctica?.infos).toHaveLength(4);
@@ -492,7 +492,7 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
   describe("resolveBoardCards for split final-tail boards", () => {
     it("resolves cards 67 and 68 for board 67_68", () => {
       const antarctica = openingTailStep34AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
@@ -507,7 +507,7 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
 
     it("resolves cards 69 and 70 for board 69_70", () => {
       const antarctica = openingTailStep34AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.69_70",
         stepIndex: 36,
         screenId: "S2",
@@ -522,13 +522,13 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
 
     it("identifies go-cards per split board by presence of advanceActionId", () => {
       const antarctica = openingTailStep34AntarcticaContent;
-      const board67_68: AntarcticaPlayerBoard = {
+      const board67_68: GamePlayerBoard = {
         id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
         cardIds: ["67", "68"],
       };
-      const board69_70: AntarcticaPlayerBoard = {
+      const board69_70: GamePlayerBoard = {
         id: "opening.board.69_70",
         stepIndex: 36,
         screenId: "S2",
@@ -548,7 +548,7 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
 
     it("go-card 68 has advanceActionId for fast-variant routing", () => {
       const antarctica = openingTailStep34AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
@@ -565,7 +565,7 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
 
     it("go-card 69 leads to i20 follow-up", () => {
       const antarctica = openingTailStep34AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.69_70",
         stepIndex: 36,
         screenId: "S2",
@@ -667,7 +667,7 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
   describe("go-card advance flows: board 67_68 -> i19/i19_1 -> board 69_70 -> i20 -> i21 (terminal)", () => {
     it("at step 34, board 67_68 go-card 68 leads to i19/i19_1", () => {
       const antarctica = openingTailStep34AntarcticaContent;
-      const board: AntarcticaPlayerBoard = {
+      const board: GamePlayerBoard = {
         id: "opening.board.67_68",
         stepIndex: 34,
         screenId: "S2",
@@ -736,7 +736,7 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
 });
 
 /**
- * Session resilience tests for AntarcticaPlayer.
+ * Session resilience tests for GamePlayer.
  *
  * Covers:
  * - Stale session fallback: when stored sessionId is invalid (runtime restarted),

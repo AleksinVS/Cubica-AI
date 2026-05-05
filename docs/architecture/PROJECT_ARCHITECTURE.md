@@ -130,11 +130,10 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 
 - `games/antarctica/` — эталонный пакет игры (манифесты + ассеты).
 - **Схемы и форматы:**
-  - `docs/architecture/schemas/manifest-structure.md` — описание исторической/расширенной manifest-lineage; для текущего исполнимого shape `Antarctica` ориентироваться в первую очередь на `packages/contracts/manifest` и `services/runtime-api/src/modules/content/manifestValidation.ts`.
-    - `docs/architecture/schemas/ui-schema-concept.md` — концепция гибридной схемы интерфейса (Hybrid SDUI).
-    - `docs/architecture/schemas/game-manifest.schema.json` — legacy schema lineage document, не являющийся текущим canonical validator для `runtime-api`.
-    - `docs/architecture/schemas/ui-manifest.schema.json` — формальная JSON Schema UI‑манифеста (экраны, компоненты, макеты).
-    - `docs/architecture/schemas/examples/*.json` — примеры валидных манифестов.
+  - `docs/architecture/schemas/manifest-structure.md` — описание концепции манифестов.
+  - **Важно:** Согласно ADR-025, единственным источником истины (SSOT) для структуры манифеста является `docs/architecture/schemas/game-manifest.schema.json`. Императивные TypeScript-проверки структуры запрещены; бэкенд использует `ajv` для декларативной валидации.
+  - `docs/architecture/schemas/ui-manifest.schema.json` — формальная JSON Schema UI‑манифеста (экраны, компоненты, макеты).
+  - `docs/architecture/schemas/examples/*.json` — примеры валидных манифестов.
   
   **Версионирование манифестов:**
 

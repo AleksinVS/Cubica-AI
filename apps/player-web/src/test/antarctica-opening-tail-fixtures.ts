@@ -11,16 +11,16 @@
  */
 
 import type {
-  AntarcticaPlayerBoard,
-  AntarcticaPlayerBoardCard,
-  AntarcticaPlayerContent,
-  AntarcticaPlayerInfoEntry,
+  GamePlayerBoard,
+  GamePlayerBoardCard,
+  GamePlayerContent,
+  GamePlayerInfoEntry,
   PlayerFacingContent,
 } from "@cubica/contracts-manifest";
-import type { SessionSnapshot } from "@/lib/antarctica";
+import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 
 /** Antarctica player-facing content for steps 30-31 (board 55_60 and info i17) */
-export const openingTailStep30AntarcticaContent: AntarcticaPlayerContent = {
+export const openingTailStep30AntarcticaContent: GamePlayerContent = {
   infos: [
     {
       id: "i17",
@@ -119,7 +119,7 @@ export const openingTailStep30PlayerContent: PlayerFacingContent = {
     },
   ],
   mockups: [],
-  antarctica: openingTailStep30AntarcticaContent,
+  content: { antarctica: openingTailStep30AntarcticaContent },
 };
 
 /** Session snapshot at step 30 showing board 55_60 with no card selected yet */
@@ -210,7 +210,7 @@ export const openingTailStep31InfoSessionSnapshot: SessionSnapshot = {
  */
 
 /** Antarctica player-facing content for steps 32-33 (board 61_66 and info i18) */
-export const openingTailStep32AntarcticaContent: AntarcticaPlayerContent = {
+export const openingTailStep32AntarcticaContent: GamePlayerContent = {
   infos: [
     {
       id: "i18",
@@ -305,7 +305,7 @@ export const openingTailStep32PlayerContent: PlayerFacingContent = {
     },
   ],
   mockups: [],
-  antarctica: openingTailStep32AntarcticaContent,
+  content: { antarctica: openingTailStep32AntarcticaContent },
 };
 
 /** Session snapshot at step 32 showing board 61_66 with card 66 locked initially */
@@ -458,7 +458,7 @@ export const openingTailStep33InfoSessionSnapshot: SessionSnapshot = {
  */
 
 /** Antarctica player-facing content for steps 34-38 (boards 67_68 and 69_70, infos i19/i19_1, i20, i21) */
-export const openingTailStep34AntarcticaContent: AntarcticaPlayerContent = {
+export const openingTailStep34AntarcticaContent: GamePlayerContent = {
   infos: [
     {
       id: "i19",
@@ -586,7 +586,7 @@ export const openingTailStep34PlayerContent: PlayerFacingContent = {
     },
   ],
   mockups: [],
-  antarctica: openingTailStep34AntarcticaContent,
+  content: { antarctica: openingTailStep34AntarcticaContent },
 };
 
 /** Session snapshot at step 34 showing board 67_68 */

@@ -49,7 +49,7 @@ select {
   overflow: hidden;
 }
 
-.antarctica-player-root {
+.game-player-root {
   min-height: 100vh;
 }
 
@@ -130,7 +130,7 @@ select {
   backdrop-filter: blur(24px);
 }
 
-.antarctica-fallback-renderer.s1-renderer {
+.fallback-renderer.game-renderer {
   width: 100%;
   max-width: none;
   min-height: 100vh;
@@ -147,26 +147,26 @@ select {
   transform: none;
 }
 
-.antarctica-fallback-renderer .s1-screen {
+.fallback-renderer .game-screen {
   width: 100%;
   min-height: calc(100vh - 40px);
   height: auto;
 }
 
-.antarctica-fallback-renderer.s1-renderer:has(.info-screen-shell),
-.antarctica-fallback-renderer.s1-renderer:has(.topbar-screen-shell) {
+.fallback-renderer.game-renderer:has(.info-screen-shell),
+.fallback-renderer.game-renderer:has(.topbar-screen-shell) {
   width: 100%;
   height: auto;
 }
 
-.antarctica-player-shell {
+.game-player-root {
   min-height: 100vh;
   display: grid;
   gap: 20px;
   padding: 20px;
 }
 
-.antarctica-runtime-strip {
+.runtime-strip {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -178,17 +178,17 @@ select {
   backdrop-filter: blur(18px);
 }
 
-.antarctica-runtime-copy {
+.runtime-copy {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
-.antarctica-runtime-copy strong {
+.runtime-copy strong {
   font-size: 1.02rem;
 }
 
-.antarctica-runtime-actions {
+.runtime-actions {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -196,54 +196,54 @@ select {
   justify-content: flex-end;
 }
 
-.antarctica-inline-error {
+.inline-error {
   margin: 0;
 }
 
-.antarctica-fallback-card {
+.fallback-card {
   gap: 14px;
 }
 
-.antarctica-fallback-card-head {
+.fallback-card-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
 }
 
-.antarctica-fallback-card-meta {
+.fallback-card-meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.antarctica-fallback-copy {
+.fallback-copy {
   margin: 0;
   color: var(--muted);
   line-height: 1.6;
 }
 
-.antarctica-fallback-summary-card {
+.fallback-summary-card {
   width: 100%;
   min-height: 100%;
 }
 
-.antarctica-team-cards-container,
-.antarctica-action-cards-container {
+.team-cards-container,
+.action-cards-container {
   align-items: stretch;
 }
 
-.antarctica-team-controls {
+.team-controls {
   width: 100%;
   min-height: auto;
   align-items: center;
 }
 
-.antarctica-team-controls .antarctica-fallback-summary-card {
+.team-controls .fallback-summary-card {
   flex: 1 1 auto;
 }
 
-.antarctica-team-controls .s1-button {
+.team-controls .game-button {
   flex-shrink: 0;
 }
 
@@ -535,7 +535,7 @@ select {
    =========================================================================== */
 
 /* S1 renderer root - horizontal layout with sidebar, main area, and decor illustration */
-.s1-renderer {
+.game-renderer {
   display: flex;
   flex-direction: row;
   gap: 0;
@@ -553,19 +553,19 @@ select {
 }
 
 /* Expand renderer for info screens per leftsidebar-infocard mockup (1920x1080) */
-.s1-renderer:has(.info-screen-shell) {
+.game-renderer:has(.info-screen-shell) {
   width: 1920px;
   height: 1080px;
 }
 
-.s1-renderer:has(.topbar-screen-shell),
-.s1-renderer:has(.journal-screen) {
+.game-renderer:has(.topbar-screen-shell),
+.game-renderer:has(.journal-screen) {
   width: 1920px;
   height: 1080px;
 }
 
 /* S1 screen container */
-.s1-screen {
+.game-screen {
   display: flex;
   flex-direction: row;
   flex: 1;
@@ -697,7 +697,7 @@ select {
 }
 
 /* S1 area - generic class for manifest areas */
-.s1-area {
+.game-area {
   display: flex;
 }
 
@@ -749,8 +749,8 @@ select {
   width: 100%;
 }
 
-.topbar-board-title .s1-card,
-.topbar-board-header > .s1-card {
+.topbar-board-title .game-card,
+.topbar-board-header > .game-card {
   padding: 24px 28px;
   border-radius: 18px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
@@ -758,16 +758,16 @@ select {
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
 }
 
-.topbar-board-title .s1-card:hover,
-.topbar-board-header > .s1-card:hover {
+.topbar-board-title .game-card:hover,
+.topbar-board-header > .game-card:hover {
   transform: none;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
   border-color: rgba(184, 225, 250, 0.28);
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
 }
 
-.topbar-board-title .s1-card-text,
-.topbar-board-header > .s1-card .s1-card-text {
+.topbar-board-title .game-card-text,
+.topbar-board-header > .game-card .game-card-text {
   font-size: 1.2rem;
   font-weight: 600;
   color: #f3fbff;
@@ -810,7 +810,7 @@ select {
    =========================================================================== */
 
 /* Override card styling for info title and body text - no blue gradient, just text */
-.info-screen-shell .info-event-text .s1-card {
+.info-screen-shell .info-event-text .game-card {
   background: transparent !important;
   border: none !important;
   border-radius: 0 !important;
@@ -821,7 +821,7 @@ select {
   gap: 12px;
 }
 
-.info-screen-shell .info-event-text .s1-card:hover {
+.info-screen-shell .info-event-text .game-card:hover {
   background: transparent !important;
   border: none !important;
   transform: none !important;
@@ -829,7 +829,7 @@ select {
 }
 
 /* Info title styling - bold, larger text */
-.info-screen-shell .info-event-text .s1-card .s1-card-text {
+.info-screen-shell .info-event-text .game-card .game-card-text {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.4;
@@ -837,7 +837,7 @@ select {
 }
 
 /* Info body styling - regular body text */
-.info-event-text .s1-card .s1-card-text {
+.info-event-text .game-card .game-card-text {
   font-size: 1.05rem;
   font-weight: 400;
   line-height: 1.6;
@@ -1096,7 +1096,7 @@ select {
 }
 
 /* S1 card component - using design tokens */
-.s1-card {
+.game-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1109,14 +1109,14 @@ select {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
 }
 
-.s1-card:hover {
+.game-card:hover {
   background: linear-gradient(135deg, #3c8dc2 0%, #2f7fb3 100%);
   border-color: rgba(184, 225, 250, 0.5);
   transform: translateY(-8px);
   box-shadow: 0 20px 48px rgba(0, 0, 0, 0.4);
 }
 
-.topbar-screen-shell .s1-card {
+.topbar-screen-shell .game-card {
   min-height: 180px;
   padding: 28px 24px;
   border-radius: 16px;
@@ -1124,17 +1124,17 @@ select {
   border: 1px solid rgba(184, 225, 250, 0.26);
 }
 
-.topbar-screen-shell .s1-card:hover {
+.topbar-screen-shell .game-card:hover {
   transform: translateY(-6px);
   background: linear-gradient(180deg, rgba(64, 154, 203, 0.98) 0%, rgba(38, 112, 158, 0.98) 100%);
 }
 
-.topbar-screen-shell .topbar-board-title .s1-card,
-.topbar-screen-shell .topbar-board-header > .s1-card {
+.topbar-screen-shell .topbar-board-title .game-card,
+.topbar-screen-shell .topbar-board-header > .game-card {
   min-height: auto;
 }
 
-.s1-card-text {
+.game-card-text {
   margin: 0;
   font-size: 1.05rem; /* Design token: body_size */
   line-height: 1.6;
@@ -1142,7 +1142,7 @@ select {
 }
 
 /* S1 button component - Frosted glass style from mockup */
-.s1-button {
+.game-button {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1162,14 +1162,14 @@ select {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
-.s1-button:hover:not(:disabled) {
+.game-button:hover:not(:disabled) {
   background: rgba(230, 242, 250, 0.2);
   border-color: rgba(230, 242, 250, 0.5);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(157, 227, 255, 0.2);
 }
 
-.s1-button::before {
+.game-button::before {
   content: "";
   width: 24px;
   height: 24px;
@@ -1373,26 +1373,26 @@ select {
 }
 
 @media (max-width: 1640px) {
-  .s1-renderer {
+  .game-renderer {
     transform: scale(0.9);
     transform-origin: top center;
   }
 }
 
 @media (max-width: 1440px) {
-  .s1-renderer {
+  .game-renderer {
     transform: scale(0.8);
   }
 }
 
 @media (max-width: 1280px) {
-  .s1-renderer {
+  .game-renderer {
     transform: scale(0.7);
   }
 }
 
 @media (max-width: 1080px) {
-  .s1-renderer {
+  .game-renderer {
     flex-direction: column;
     width: 100%;
     height: auto;
@@ -1459,27 +1459,27 @@ select {
    modes: left-sidebar cards, topbar cards, journal, and info.
    =========================================================================== */
 
-.antarctica-player-root.shell::before,
-.antarctica-player-root.shell::after {
+.game-player-root.shell::before,
+.game-player-root.shell::after {
   content: none;
 }
 
-.antarctica-player-root {
+.game-player-root {
   min-height: 100vh;
   background: transparent;
 }
 
-.antarctica-player-root,
-.antarctica-player-root * {
+.game-player-root,
+.game-player-root * {
   font-family: var(--font-inter), system-ui, sans-serif;
 }
 
-.antarctica-inline-error {
+.inline-error {
   margin: 0.75rem 1rem 0;
 }
 
 /* Loading state shown while session is booting */
-.antarctica-loading-state {
+.loading-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1490,7 +1490,7 @@ select {
   font-size: 1.1rem;
 }
 
-.antarctica-loading-spinner {
+.loading-spinner {
   width: 48px;
   height: 48px;
   border: 3px solid rgba(170, 227, 255, 0.2);
@@ -1499,38 +1499,38 @@ select {
   animation: antarctica-spin 1s linear infinite;
 }
 
-@keyframes antarctica-spin {
+@keyframes loading-spin {
   to { transform: rotate(360deg); }
 }
 
-.antarctica-s1-renderer,
-.antarctica-fallback-renderer {
+.game-renderer,
+.fallback-renderer {
   width: 100%;
   min-height: 100vh;
   display: block;
 }
 
-/* Override .s1-renderer:has() rules that set fixed dimensions for fallback renders in topbar mode */
-/* Also override responsive scale transforms from generic .s1-renderer media queries */
-.antarctica-s1-renderer.antarctica-s1-renderer--topbar {
+/* Override .game-renderer:has() rules that set fixed dimensions for fallback renders in topbar mode */
+/* Also override responsive scale transforms from generic .game-renderer media queries */
+.game-renderer.game-renderer--topbar {
   width: 100%;
   min-height: 100vh;
   height: auto;
   transform: none;
 }
 
-.antarctica-fallback-renderer.antarctica-s1-renderer--topbar {
+.fallback-renderer.game-renderer--topbar {
   width: 100%;
   min-height: 100vh;
   height: auto;
   transform: none;
 }
 
-.antarctica-s1-renderer .s1-screen,
-.antarctica-fallback-renderer .s1-screen,
+.game-renderer .game-screen,
+.fallback-renderer .game-screen,
 .leftsidebar-screen,
 .topbar-screen-shell,
-.antarctica-hint-screen,
+.hint-screen,
 .journal-screen,
 .info-screen-shell {
   width: 100%;
@@ -1544,7 +1544,7 @@ select {
 
 .leftsidebar-screen,
 .topbar-screen-shell,
-.antarctica-hint-screen,
+.hint-screen,
 .journal-screen,
 .info-screen-shell {
   display: grid;
@@ -1593,13 +1593,13 @@ select {
 }
 
 .topbar-screen-shell,
-.antarctica-hint-screen {
+.hint-screen {
   grid-template-columns: 10% 80% 10%;
   grid-template-rows: 15% 1fr auto;
 }
 
 .topbar-screen-shell .game-variables-container,
-.antarctica-hint-screen .game-variables-container {
+.hint-screen .game-variables-container {
   grid-column: 1 / 4;
   grid-row: 1;
   display: flex;
@@ -1611,7 +1611,7 @@ select {
 }
 
 .topbar-screen-shell .main-content-area,
-.antarctica-hint-screen .main-content-area {
+.hint-screen .main-content-area {
   grid-column: 2;
   grid-row: 2;
   display: flex;
@@ -1624,7 +1624,7 @@ select {
 }
 
 .topbar-screen-shell .cards-container,
-.antarctica-hint-screen .cards-container {
+.hint-screen .cards-container {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -1640,7 +1640,7 @@ select {
 }
 
 .topbar-screen-shell .cards-container > *,
-.antarctica-hint-screen .cards-container > * {
+.hint-screen .cards-container > * {
   width: auto !important;
   min-width: unset;
   max-width: unset;
@@ -1660,7 +1660,7 @@ select {
   align-items: stretch;
 }
 
-.topbar-screen-shell .topbar-cards-container .s1-card {
+.topbar-screen-shell .topbar-cards-container .game-card {
   min-height: 234px;
   display: flex;
   flex-direction: column;
@@ -1676,12 +1676,12 @@ select {
   position: relative;
 }
 
-.topbar-screen-shell .topbar-cards-container .s1-card:nth-child(n + 4):nth-child(-n + 6) {
+.topbar-screen-shell .topbar-cards-container .game-card:nth-child(n + 4):nth-child(-n + 6) {
   min-height: 253px;
 }
 
 /* Action button inside topbar cards - visible, properly sized */
-.topbar-screen-shell .topbar-cards-container .s1-card button.action-button {
+.topbar-screen-shell .topbar-cards-container .game-card button.action-button {
   position: static;
   opacity: 1;
   width: auto;
@@ -1701,31 +1701,31 @@ select {
   transition: all 160ms ease;
 }
 
-.topbar-screen-shell .topbar-cards-container .s1-card button.action-button:hover {
+.topbar-screen-shell .topbar-cards-container .game-card button.action-button:hover {
   background: rgba(157, 227, 255, 0.25);
   border-color: rgba(157, 227, 255, 0.5);
   transform: translateY(-1px);
 }
 
-.topbar-screen-shell .topbar-cards-container .s1-card button.action-button:disabled {
+.topbar-screen-shell .topbar-cards-container .game-card button.action-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
 .topbar-screen-shell .topbar-cards-container > *,
-.topbar-screen-shell .topbar-cards-container .s1-card {
+.topbar-screen-shell .topbar-cards-container .game-card {
   min-height: 234px;
 }
 
-.topbar-screen-shell .topbar-cards-container .s1-card:nth-child(n + 4):nth-child(-n + 6) {
+.topbar-screen-shell .topbar-cards-container .game-card:nth-child(n + 4):nth-child(-n + 6) {
   min-height: 253px;
 }
 
 .topbar-screen-shell .button-container,
-.antarctica-hint-screen .button-container,
+.hint-screen .button-container,
 .journal-screen .button-container,
 .info-screen-shell .button-container,
-.s1-renderer .button-container {
+.game-renderer .button-container {
   grid-column: 2;
   grid-row: 3;
   display: flex;
@@ -1734,11 +1734,11 @@ select {
   padding: 2em 0;
 }
 
-.topbar-screen-shell .s1-card,
-.leftsidebar-screen .s1-card,
-.antarctica-hint-screen .s1-card,
-.journal-screen .s1-card,
-.info-screen-shell .s1-card {
+.topbar-screen-shell .game-card,
+.leftsidebar-screen .game-card,
+.hint-screen .game-card,
+.journal-screen .game-card,
+.info-screen-shell .game-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1756,7 +1756,7 @@ select {
 }
 
 /* Hide internal action buttons in topbar screen S1 cards - card itself handles interaction */
-.topbar-screen-shell .s1-card button.action-button {
+.topbar-screen-shell .game-card button.action-button {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -1766,7 +1766,7 @@ select {
 }
 
 /* Topbar S1 panel buttons - use draft helper styling with background images */
-.topbar-screen-shell .button-container.antarctica-panel-buttons {
+.topbar-screen-shell .button-container.panel-buttons {
   grid-column: 2;
   grid-row: 3;
   display: flex;
@@ -1777,7 +1777,7 @@ select {
   margin: 0 auto;
 }
 
-.topbar-screen-shell .button-container.antarctica-panel-buttons .button-helper {
+.topbar-screen-shell .button-container.panel-buttons .button-helper {
   all: unset;
   color: rgba(255, 255, 255, 0.9);
   border: none;
@@ -1791,12 +1791,12 @@ select {
   height: auto;
 }
 
-.topbar-screen-shell .button-container.antarctica-panel-buttons .button-helper:disabled {
+.topbar-screen-shell .button-container.panel-buttons .button-helper:disabled {
   opacity: 0.58;
   cursor: not-allowed;
 }
 
-.topbar-screen-shell .button-container.antarctica-panel-buttons .button-helper-arrow {
+.topbar-screen-shell .button-container.panel-buttons .button-helper-arrow {
   all: unset;
   cursor: pointer;
   background-repeat: no-repeat;
@@ -1908,11 +1908,11 @@ select {
   display: inline-block;
 }
 
-.topbar-screen-shell .s1-card:hover,
-.leftsidebar-screen .s1-card:hover,
-.antarctica-hint-screen .s1-card:hover,
-.journal-screen .s1-card:hover,
-.info-screen-shell .s1-card:hover {
+.topbar-screen-shell .game-card:hover,
+.leftsidebar-screen .game-card:hover,
+.hint-screen .game-card:hover,
+.journal-screen .game-card:hover,
+.info-screen-shell .game-card:hover {
   background: rgba(162, 217, 247, 0.58);
   transform: none;
   box-shadow: none;
@@ -2408,7 +2408,7 @@ select {
   padding: 1rem;
 }
 
-.info-screen-shell .info-event-text .s1-card .s1-card-text {
+.info-screen-shell .info-event-text .game-card .game-card-text {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.4;
@@ -2430,11 +2430,11 @@ select {
   display: none;
 }
 
-.antarctica-runtime-strip {
+.runtime-strip {
   display: none;
 }
 
-.antarctica-fallback-renderer .s1-screen {
+.fallback-renderer .game-screen {
   background-color: transparent;
 }
 
@@ -2467,36 +2467,36 @@ select {
 
   /* Keep the draft topbar desktop grid at 1280px; only narrower screens need a stacked fallback. */
   .topbar-screen-shell,
-  .antarctica-hint-screen {
+  .hint-screen {
     grid-template-columns: 10% 80% 10%;
     grid-template-rows: 15% 1fr auto;
   }
 
   .topbar-screen-shell .game-variables-container,
-  .antarctica-hint-screen .game-variables-container {
+  .hint-screen .game-variables-container {
     grid-column: 1 / 4;
     grid-row: 1;
   }
 
   .topbar-screen-shell .main-content-area,
-  .antarctica-hint-screen .main-content-area,
+  .hint-screen .main-content-area,
   .topbar-screen-shell .button-container,
-  .antarctica-hint-screen .button-container {
+  .hint-screen .button-container {
     grid-column: 2;
   }
 
   .topbar-screen-shell .main-content-area,
-  .antarctica-hint-screen .main-content-area {
+  .hint-screen .main-content-area {
     grid-row: 2;
   }
 
   .topbar-screen-shell .button-container,
-  .antarctica-hint-screen .button-container {
+  .hint-screen .button-container {
     grid-row: 3;
   }
 
   .topbar-screen-shell .cards-container,
-  .antarctica-hint-screen .cards-container {
+  .hint-screen .cards-container {
     grid-template-columns: none;
   }
 
@@ -2547,7 +2547,7 @@ select {
 
 /* Variables container should span only the left two grid columns (90%) */
 .topbar-screen-shell .game-variables-container,
-.antarctica-hint-screen .game-variables-container {
+.hint-screen .game-variables-container {
   grid-column: 1 / 3 !important;
   height: auto !important;
   padding: 1em !important;
@@ -2622,7 +2622,7 @@ select {
 
 /* Cards container: switch from grid to flex to match draft */
 .topbar-screen-shell .cards-container,
-.antarctica-hint-screen .cards-container {
+.hint-screen .cards-container {
   display: flex !important;
   flex-wrap: wrap !important;
   justify-content: center !important;
@@ -2634,8 +2634,8 @@ select {
 }
 
 /* Remove aggressive width: auto !important on card children */
-.topbar-screen-shell .cards-container > .s1-card,
-.antarctica-hint-screen .cards-container > .s1-card {
+.topbar-screen-shell .cards-container > .game-card,
+.hint-screen .cards-container > .game-card {
   width: calc(33.33% - 20px) !important;
   min-width: unset !important;
   max-width: unset !important;
@@ -2645,8 +2645,8 @@ select {
 }
 
 /* Card styling parity: draft uses semi-transparent light blue, no radius/border/shadow */
-.topbar-screen-shell .cards-container > .s1-card,
-.antarctica-hint-screen .cards-container > .s1-card {
+.topbar-screen-shell .cards-container > .game-card,
+.hint-screen .cards-container > .game-card {
   padding: 1em !important;
   background-color: rgba(162, 217, 247, 0.5) !important;
   background-image: none !important;
@@ -2659,7 +2659,7 @@ select {
 }
 
 /* Button container padding should match draft */
-.topbar-screen-shell .button-container.antarctica-panel-buttons {
+.topbar-screen-shell .button-container.panel-buttons {
   padding: 2em !important;
   width: 100% !important;
   gap: 1em !important;
@@ -2676,7 +2676,7 @@ select {
 }
 
 /* Ensure topbar board header card doesn't force min-height */
-.topbar-screen-shell .topbar-board-header .s1-card {
+.topbar-screen-shell .topbar-board-header .game-card {
   min-height: auto !important;
 }
 
@@ -2688,26 +2688,26 @@ select {
 }
 
 /* Cards should stretch to fill flex lines like draft .game-card */
-.topbar-screen-shell .cards-container > .s1-card {
+.topbar-screen-shell .cards-container > .game-card {
   display: block !important;
   gap: normal !important;
 }
 
-/* Override .antarctica-fallback-card internal spacing to match draft single-text cards */
-.topbar-screen-shell .cards-container > .s1-card .antarctica-fallback-card-head,
-.topbar-screen-shell .cards-container > .s1-card .antarctica-fallback-card-meta,
-.topbar-screen-shell .cards-container > .s1-card .action-button {
+/* Override .fallback-card internal spacing to match draft single-text cards */
+.topbar-screen-shell .cards-container > .game-card .fallback-card-head,
+.topbar-screen-shell .cards-container > .game-card .fallback-card-meta,
+.topbar-screen-shell .cards-container > .game-card .action-button {
   display: none !important;
 }
 
-.topbar-screen-shell .cards-container > .s1-card .s1-card-text {
+.topbar-screen-shell .cards-container > .game-card .game-card-text {
   margin: 0 !important;
   font-size: 1rem !important;
   line-height: 1.4 !important;
 }
 
 /* Hide internal action buttons in topbar screen S1 cards - already hidden by position:absolute */
-.topbar-screen-shell .s1-card button.action-button {
+.topbar-screen-shell .game-card button.action-button {
   position: absolute !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -2842,7 +2842,7 @@ select {
 }
 
 /* Button container inside journal should match draft */
-.journal-main-content > .button-container.antarctica-panel-buttons {
+.journal-main-content > .button-container.panel-buttons {
   padding: 2em !important;
   gap: 1em !important;
   width: 100% !important;
@@ -2855,9 +2855,9 @@ select {
    =========================================================================== */
 
 /* Remove renderer border — draft main-screen has no border */
-.s1-renderer:has(.leftsidebar-screen),
-.s1-renderer:has(.journal-screen),
-.s1-renderer:has(.antarctica-hint-screen) {
+.game-renderer:has(.leftsidebar-screen),
+.game-renderer:has(.journal-screen),
+.game-renderer:has(.hint-screen) {
   border: none !important;
   box-shadow: none !important;
 }
@@ -2972,7 +2972,7 @@ select {
   margin: 0 auto !important;
 }
 
-.leftsidebar-screen .cards-container > .s1-card {
+.leftsidebar-screen .cards-container > .game-card {
   width: 100% !important;
   padding: 1.25em 1em !important;
   border-radius: 10px !important;
@@ -2987,17 +2987,17 @@ select {
 }
 
 /* Hide internal action buttons in leftsidebar cards */
-.leftsidebar-screen .cards-container > .s1-card button.action-button {
+.leftsidebar-screen .cards-container > .game-card button.action-button {
   display: none !important;
 }
 
 /* Match draft card text line-height */
-.leftsidebar-screen .cards-container > .s1-card .s1-card-text {
+.leftsidebar-screen .cards-container > .game-card .game-card-text {
   line-height: 1.35 !important;
 }
 
 /* Fallback button container for leftsidebar */
-.leftsidebar-screen .button-container.antarctica-panel-buttons {
+.leftsidebar-screen .button-container.panel-buttons {
   grid-column: 2 !important;
   grid-row: 2 !important;
   padding: 2em !important;
@@ -3006,7 +3006,7 @@ select {
 }
 
 /* Ensure leftsidebar fallback buttons use correct layout */
-.leftsidebar-screen .button-container.antarctica-panel-buttons .button-helper {
+.leftsidebar-screen .button-container.panel-buttons .button-helper {
   all: unset !important;
   color: rgba(255, 255, 255, 0.9) !important;
   border: none !important;
@@ -3020,7 +3020,7 @@ select {
   height: auto !important;
 }
 
-.leftsidebar-screen .button-container.antarctica-panel-buttons .button-helper-arrow {
+.leftsidebar-screen .button-container.panel-buttons .button-helper-arrow {
   all: unset !important;
   cursor: pointer !important;
   background-repeat: no-repeat !important;
@@ -3169,7 +3169,7 @@ select {
 }
 
 /* Draft parity — info text should be plain white bold like hint-text */
-.info-screen-shell .info-event-text .s1-card .s1-card-text {
+.info-screen-shell .info-event-text .game-card .game-card-text {
   font-size: 1rem !important;
   font-weight: bold !important;
   line-height: 1.5 !important;
@@ -3177,7 +3177,7 @@ select {
 }
 
 /* Hint area should match draft: simple translucent block */
-.antarctica-hint-screen .hint-area {
+.hint-screen .hint-area {
   display: block !important;
   align-items: normal !important;
   justify-content: normal !important;
@@ -3188,7 +3188,7 @@ select {
 }
 
 /* Hint text matches draft */
-.antarctica-hint-screen .hint-text {
+.hint-screen .hint-text {
   color: white !important;
   font-weight: bold !important;
   line-height: 1.5 !important;
@@ -3198,7 +3198,7 @@ select {
 }
 
 /* Match draft button-container padding for grid row 3 height */
-.antarctica-hint-screen .button-container.antarctica-panel-buttons {
+.hint-screen .button-container.panel-buttons {
   padding: 2em !important;
 }
 

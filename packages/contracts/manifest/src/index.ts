@@ -1,6 +1,6 @@
 /**
  * Cubica Manifest Contracts
- * Version: 1.2.0
+ * Version: 1.3.0
  *
  * Bounded contract surface for game manifest structures, player-facing content projections,
  * and UI component types used by runtime-api and player-web consumers.
@@ -12,8 +12,8 @@
  *
  * Consumer mapping:
  * - `runtime-api` content module: uses `GameManifest`, `ManifestBundle`, `GameManifestActionDefinition`
- * - `runtime-api` player-content API: uses `PlayerFacingContent`, `AntarcticaPlayerUiContent`
- * - `player-web` renderer: uses `AntarcticaPlayerUiContent`, `AntarcticaPlayerS1UiContent` (deprecated), `AntarcticaUiComponent` types
+ * - `runtime-api` player-content API: uses `PlayerFacingContent`, `GamePlayerUiContent`
+ * - `player-web` renderer: uses `GamePlayerUiContent`, `GamePlayerS1UiContent` (deprecated), `GameUiComponent` types
  */
 
 export type GameManifestId = string;
@@ -95,7 +95,8 @@ export interface GameManifestContent {
     participants?: GameManifestDocumentRef;
     facilitators?: GameManifestDocumentRef;
   };
-  antarctica?: AntarcticaPlayerContent;
+  /** Game-specific content is keyed by gameId. */
+  [key: string]: unknown;
 }
 
 export interface GameManifestEngineConfig {
@@ -125,7 +126,7 @@ export interface GameManifestDeterministicSourceRef {
 }
 
 /**
- * Minimal guard shape for the first Antarctica opening-card and team-selection slices.
+ * Minimal guard shape for deterministic opening-card and team-selection slices.
  */
 export interface GameManifestDeterministicGuard {
   timeline?: {
@@ -166,7 +167,7 @@ export interface GameManifestDeterministicMetricDelta {
 export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
 
 /**
- * Bounded metric comparison used by explicit Antarctica card-local hooks.
+ * Bounded metric comparison used by explicit deterministic card-local hooks.
  */
 export interface GameManifestDeterministicMetricCondition {
   metricId: string;
@@ -248,6 +249,8 @@ export interface GameManifestDeterministicStateUpdate {
     cardIds: Array<string>;
     resolvedCountAtLeast: number;
     unlockCardId: string;
+    /** Optional card id that prevents unlock if already available. */
+    unlessCardAvailable?: string;
   };
   boardEntryAltCardSwap?: {
     when: GameManifestDeterministicMetricCondition;
@@ -328,7 +331,7 @@ export interface PlayerFacingMockup {
   imagePath: string;
 }
 
-export interface AntarcticaPlayerInfoEntry {
+export interface GamePlayerInfoEntry {
   id: string;
   stepIndex: number;
   screenId: string;
@@ -338,7 +341,7 @@ export interface AntarcticaPlayerInfoEntry {
   advanceLabel?: string;
 }
 
-export interface AntarcticaPlayerTeamSelectionMember {
+export interface GamePlayerTeamSelectionMember {
   memberId: string;
   name: string;
   summary: string;
@@ -346,7 +349,7 @@ export interface AntarcticaPlayerTeamSelectionMember {
   selectLabel?: string;
 }
 
-export interface AntarcticaPlayerTeamSelectionScene {
+export interface GamePlayerTeamSelectionScene {
   id: string;
   stepIndex: number;
   screenId: string;
@@ -355,10 +358,10 @@ export interface AntarcticaPlayerTeamSelectionScene {
   requiredPickCount: number;
   confirmActionId: string;
   confirmLabel?: string;
-  members: Array<AntarcticaPlayerTeamSelectionMember>;
+  members: Array<GamePlayerTeamSelectionMember>;
 }
 
-export interface AntarcticaPlayerBoardCard {
+export interface GamePlayerBoardCard {
   cardId: string;
   title: string;
   summary: string;
@@ -368,7 +371,7 @@ export interface AntarcticaPlayerBoardCard {
   advanceLabel?: string;
 }
 
-export interface AntarcticaPlayerBoard {
+export interface GamePlayerBoard {
   id: string;
   title?: string;
   body?: string;
@@ -377,18 +380,18 @@ export interface AntarcticaPlayerBoard {
   cardIds: Array<string>;
 }
 
-export interface AntarcticaPlayerContent {
-  infos: Array<AntarcticaPlayerInfoEntry>;
-  boards: Array<AntarcticaPlayerBoard>;
-  teamSelections?: Array<AntarcticaPlayerTeamSelectionScene>;
-  cards: Array<AntarcticaPlayerBoardCard>;
+export interface GamePlayerContent {
+  infos: Array<GamePlayerInfoEntry>;
+  boards: Array<GamePlayerBoard>;
+  teamSelections?: Array<GamePlayerTeamSelectionScene>;
+  cards: Array<GamePlayerBoardCard>;
 }
 
 /**
  * Bounded S1 UI component types supported by the manifest-driven renderer.
  * Only these component types are allowed in the player-web S1 delivery slice.
  */
-export type AntarcticaUiComponentType =
+export type GameUiComponentType =
   | "screenComponent"
   | "areaComponent"
   | "gameVariableComponent"
@@ -398,7 +401,7 @@ export type AntarcticaUiComponentType =
 /**
  * Props for screenComponent in S1 layout.
  */
-export interface AntarcticaUiScreenComponentProps {
+export interface GameUiScreenComponentProps {
   cssClass?: string;
   backgroundImage?: string;
 }
@@ -406,14 +409,14 @@ export interface AntarcticaUiScreenComponentProps {
 /**
  * Props for areaComponent (layout container) in S1.
  */
-export interface AntarcticaUiAreaComponentProps {
+export interface GameUiAreaComponentProps {
   cssClass?: string;
 }
 
 /**
  * Props for gameVariableComponent (metric display) in S1 sidebar.
  */
-export interface AntarcticaUiGameVariableComponentProps {
+export interface GameUiGameVariableComponentProps {
   caption: string;
   description?: string;
   backgroundImage?: string;
@@ -427,32 +430,32 @@ export interface AntarcticaUiGameVariableComponentProps {
 /**
  * Props for cardComponent (interactive card) in S1.
  */
-export interface AntarcticaUiCardComponentProps {
+export interface GameUiCardComponentProps {
   text?: string;
 }
 
 /**
  * Props for buttonComponent (action button) in S1.
  */
-export interface AntarcticaUiButtonComponentProps {
+export interface GameUiButtonComponentProps {
   caption: string;
 }
 
 /**
  * Union of all supported S1 component props shapes.
  */
-export type AntarcticaUiComponentProps =
-  | AntarcticaUiScreenComponentProps
-  | AntarcticaUiAreaComponentProps
-  | AntarcticaUiGameVariableComponentProps
-  | AntarcticaUiCardComponentProps
-  | AntarcticaUiButtonComponentProps;
+export type GameUiComponentProps =
+  | GameUiScreenComponentProps
+  | GameUiAreaComponentProps
+  | GameUiGameVariableComponentProps
+  | GameUiCardComponentProps
+  | GameUiButtonComponentProps;
 
 /**
  * Action descriptor for interactive S1 UI components.
  * Used by cardComponent and buttonComponent to define on-click behavior.
  */
-export interface AntarcticaUiComponentAction {
+export interface GameUiComponentAction {
   command: string;
   payload: Record<string, unknown>;
 }
@@ -461,36 +464,36 @@ export interface AntarcticaUiComponentAction {
  * A single UI component in the S1 manifest tree.
  * Children are nested components for container types (screenComponent, areaComponent).
  */
-export interface AntarcticaUiComponent<
-  TProps extends AntarcticaUiComponentProps = AntarcticaUiComponentProps
+export interface GameUiComponent<
+  TProps extends GameUiComponentProps = GameUiComponentProps
 > {
-  type: AntarcticaUiComponentType;
+  type: GameUiComponentType;
   id?: string;
   props: TProps;
-  children?: Array<AntarcticaUiComponent>;
+  children?: Array<GameUiComponent>;
   /** Interactive actions for cardComponent and buttonComponent. */
   actions?: {
-    onClick?: AntarcticaUiComponentAction;
+    onClick?: GameUiComponentAction;
   };
 }
 
 /**
- * Screen definition for the Antarctica UI manifest entry.
+ * Screen definition for the game UI manifest entry.
  * Each screen has a root component tree and a screenId key for runtime selection.
  * This is the bounded UI shape served through the runtime-owned player-content boundary.
  */
-export interface AntarcticaUiScreenDefinition {
+export interface GameUiScreenDefinition {
   type: "screen";
   title: string;
   layoutId?: string;
   /** The root screenComponent of the screen. */
-  root: AntarcticaUiComponent;
+  root: GameUiComponent;
 }
 
 /**
  * Design artifact reference stored in the UI manifest.
  */
-export interface AntarcticaUiDesignArtifactRef {
+export interface GameUiDesignArtifactRef {
   id: string;
   type: string;
   sourceRef?: {
@@ -507,9 +510,9 @@ export interface AntarcticaUiDesignArtifactRef {
  * - Runtime snapshot field `timeline.screenId` selects the current screen from `screens`.
  * - Runtime snapshot field `timeline.activeInfoId` disambiguates variant info screens (e.g., i19 vs i19_1).
  * - When `timeline.screenId` is not in `screens`, the player falls back to the action catalog.
- * - The `entryPoint` field holds the canonical entry screen id ("S1" for Antarctica web).
+ * - The `entryPoint` field holds the canonical entry screen id (e.g. "S1" for web).
  */
-export interface AntarcticaPlayerUiContent {
+export interface GamePlayerUiContent {
   /** UI manifest identifier. */
   id: string;
   /** UI manifest version. */
@@ -517,7 +520,7 @@ export interface AntarcticaPlayerUiContent {
   /** The game id this UI is for. */
   gameId: string;
   /**
-   * Canonical entry-point screen id for the opening flow (always "S1" for Antarctica web).
+   * Canonical entry-point screen id for the opening flow (e.g. "S1" for web).
    * Used when no runtime snapshot is available yet (initial load).
    */
   entryPoint: string;
@@ -531,23 +534,23 @@ export interface AntarcticaPlayerUiContent {
    * Screen selection is driven by runtime snapshot field `timeline.screenId`.
    * Variant info screens (i19 vs i19_1) are disambiguated by `timeline.activeInfoId`.
    */
-  screens: Record<string, AntarcticaUiScreenDefinition>;
+  screens: Record<string, GameUiScreenDefinition>;
   /** Design artifact registry from the UI manifest (for reference/metadata). */
-  designArtifacts?: Record<string, AntarcticaUiDesignArtifactRef>;
+  designArtifacts?: Record<string, GameUiDesignArtifactRef>;
 }
 
 /**
- * @deprecated Use AntarcticaPlayerUiContent instead. Kept for S1-only consumers.
+ * @deprecated Use GamePlayerUiContent instead. Kept for S1-only consumers.
  * Bounded S1 UI content served through the player-facing content API.
  * Contains only the S1 screen definition needed for the opening screen renderer.
  * Asset references (image paths) are served as data, not embedded constants.
  */
-export interface AntarcticaPlayerS1UiContent extends AntarcticaPlayerUiContent {
+export interface GamePlayerS1UiContent extends GamePlayerUiContent {
   /**
    * S1 screen definition with full component tree.
    * @deprecated Use screens["S1"] instead for multi-screen support.
    */
-  screen: AntarcticaUiScreenDefinition;
+  screen: GameUiScreenDefinition;
 }
 
 /**
@@ -566,7 +569,8 @@ export interface GameContentBundleMetadata {
  * This DTO is the public surface that `runtime-api` projects for `player-web` consumers.
  * Contains game metadata, available actions, mockups, and optional game-specific content.
  *
- * For Antarctica, the `antarcticaUi` field carries manifest-driven UI screen definitions.
+ * The `content` field carries game-specific gameplay content keyed by gameId.
+ * The `ui` field carries the multi-screen UI manifest projection for manifest-driven rendering.
  * Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.activeInfoId`),
  * not by UI-side heuristics.
  */
@@ -580,26 +584,10 @@ export interface PlayerFacingContent {
   training?: GameManifestTraining;
   actions: Array<PlayerFacingAction>;
   mockups: Array<PlayerFacingMockup>;
-  /** Antarctica-specific gameplay content (boards, info entries, cards). */
-  antarctica?: AntarcticaPlayerContent;
-  /**
-   * Antarctica-specific multi-screen UI manifest data for manifest-driven rendering.
-   * When present, enables UI-based rendering for in-scope screens.
-   * Fallback to action catalog for screens not covered by the UI manifest.
-   */
-  antarcticaUi?: AntarcticaPlayerUiContent;
+  /** Game-specific gameplay content keyed by gameId. */
+  content?: Record<string, unknown>;
+  /** Multi-screen UI manifest projection for manifest-driven rendering. */
+  ui?: GamePlayerUiContent;
 }
 
-/**
- * Extended PlayerFacingContent for Antarctica with full UI manifest support.
- * This type explicitly documents the Antarctica UI contract surface.
- *
- * @deprecated Use `PlayerFacingContent` with `antarcticaUi` field instead.
- */
-export interface AntarcticaPlayerFacingContent extends PlayerFacingContent {
-  /** Antarctica gameplay content projection. */
-  antarctica?: AntarcticaPlayerContent;
-  /** Multi-screen UI manifest data for manifest-driven rendering. */
-  antarcticaUi?: AntarcticaPlayerUiContent;
-}
 

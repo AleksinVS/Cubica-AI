@@ -158,7 +158,7 @@ docs/tasks/
   features/
     F-YY-XXXXR-<kebab>.md         # фича: задачи/подзадачи и DoD
   content-packs/
-    CP-YY-XXXXR-<kebab>.md         # ExecPlan: фичи (ссылками), план реализации
+    CP-YY-XXXXR-<kebab>.yaml         # ExecPlan: фичи (ссылками), план реализации
   
   # R - резервная цифра счетчика
   # YY - последние две цифры года в котором была создана задача

@@ -1089,7 +1089,6 @@
   "state": {
     "public": {
       "metrics": {
-        "score": 60,
         "time": 0,
         "pro": 0,
         "rep": 0,
@@ -1102,8 +1101,11 @@
       "timeline": {
         "line": "main",
         "stepIndex": 0,
+        "step_index": 0,
         "stageId": "stage_intro",
+        "stage_id": "stage_intro",
         "screenId": "S1",
+        "screen_id": "S1",
         "activeInfoId": "i0",
         "canAdvance": false
       },
@@ -1444,6 +1446,10 @@
     },
     "secret": {
       "stagePicks": {
+        "stage_intro": 0,
+        "stage_mid": 0
+      },
+      "stage_picks": {
         "stage_intro": 0,
         "stage_mid": 0
       },
@@ -4956,7 +4962,8 @@
           "boardCardUnlock": {
             "cardIds": ["37", "38", "39", "40", "41", "42"],
             "resolvedCountAtLeast": 3,
-            "unlockCardId": "39"
+            "unlockCardId": "39",
+            "unlessCardAvailable": "3902"
           }
         }
       }
@@ -5016,7 +5023,8 @@
           "boardCardUnlock": {
             "cardIds": ["37", "38", "39", "40", "41", "42"],
             "resolvedCountAtLeast": 3,
-            "unlockCardId": "39"
+            "unlockCardId": "39",
+            "unlessCardAvailable": "3902"
           }
         }
       }
@@ -5283,7 +5291,8 @@
           "boardCardUnlock": {
             "cardIds": ["37", "38", "39", "40", "41", "42"],
             "resolvedCountAtLeast": 3,
-            "unlockCardId": "39"
+            "unlockCardId": "39",
+            "unlessCardAvailable": "3902"
           }
         }
       }
@@ -5343,7 +5352,8 @@
           "boardCardUnlock": {
             "cardIds": ["37", "38", "39", "40", "41", "42"],
             "resolvedCountAtLeast": 3,
-            "unlockCardId": "39"
+            "unlockCardId": "39",
+            "unlessCardAvailable": "3902"
           }
         }
       }
@@ -5407,7 +5417,8 @@
           "boardCardUnlock": {
             "cardIds": ["37", "38", "39", "40", "41", "42"],
             "resolvedCountAtLeast": 3,
-            "unlockCardId": "39"
+            "unlockCardId": "39",
+            "unlessCardAvailable": "3902"
           }
         }
       }

@@ -25,8 +25,9 @@
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | LEGACY-0001 | game-engine | data/mocks/llm/default-response.json | стартовый commit | Заменить на интеграцию с LLM к Phase1 | Game Engine Team | active | Требуется контракт API с Router |
-| LEGACY-0002 | antarctica-nextjs-player | games/antarctica-nextjs-player/src/app/api/submit/route.js | CP_00024 | Удалить после подключения к реальному Router API (Phase1) | Frontend Team | active | Dev-заглушка Router для Next.js-плеера; запись в debt-log LEGACY-0002 |
 
 ## Архив заглушек
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| LEGACY-0002 | antarctica-nextjs-player | games/antarctica-nextjs-player/src/app/api/submit/route.js | CP_00024 | Удалить после подключения к реальному Router API (Phase1) | Frontend Team | removed | Плеер полностью заменен на apps/player-web |
+| LEGACY-0007 | antarctica-player | games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json | CP_00024 | Удалить при переходе на SSOT | Content Team | removed | Плеер удален, данные берутся из games/antarctica |

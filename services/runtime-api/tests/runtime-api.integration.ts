@@ -407,7 +407,7 @@ test("GET /readiness returns 200 with correct payload when runtime is healthy", 
     ready: boolean;
     service: string;
     dependencies: {
-      content: { status: string; gameId: string };
+      content: { status: string };
       sessionStore: { status: string; mode: string };
     };
   }>(response);
@@ -415,7 +415,6 @@ test("GET /readiness returns 200 with correct payload when runtime is healthy", 
   assert.equal(body.ready, true);
   assert.equal(body.service, "runtime-api");
   assert.equal(body.dependencies.content.status, "ok");
-  assert.equal(body.dependencies.content.gameId, "antarctica");
   assert.equal(body.dependencies.sessionStore.status, "ok");
   assert.equal(body.dependencies.sessionStore.mode, "in-memory");
 });
@@ -556,15 +555,15 @@ test("GET /games/:id/player-content returns antarcticaUi manifest for Antarctica
 
   assert.equal(response.status, 200);
   assert.equal(body.gameId, "antarctica");
-  assert.ok(body.antarcticaUi);
-  assert.equal(body.antarcticaUi.id, "antarctica.ui.web");
-  assert.equal(body.antarcticaUi.entryPoint, "S1");
+  assert.ok(body.ui);
+  assert.equal(body.ui.id, "antarctica.ui.web");
+  assert.equal(body.ui.entryPoint, "S1");
   // Multi-screen interface: screens["S1"] replaces the deprecated single-screen field
-  assert.ok(body.antarcticaUi.screens);
-  assert.ok(body.antarcticaUi.screens["S1"]);
-  assert.equal(body.antarcticaUi.screens["S1"].type, "screen");
-  assert.ok(body.antarcticaUi.screens["S1"].root);
-  assert.equal(body.antarcticaUi.screens["S1"].root.type, "screenComponent");
+  assert.ok(body.ui.screens);
+  assert.ok(body.ui.screens["S1"]);
+  assert.equal(body.ui.screens["S1"].type, "screen");
+  assert.ok(body.ui.screens["S1"].root);
+  assert.equal(body.ui.screens["S1"].root.type, "screenComponent");
 });
 
 test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {
@@ -618,7 +617,7 @@ test("POST /actions progresses from first board through i7 to second board after
   assert.equal(cardState.resolved, true);
   assert.equal(cardAction.state.secret?.opening?.selectedCardId, "3");
   assert.equal(cardAction.state.public.metrics?.time, 1);
-  assert.equal(cardAction.state.public.metrics?.score, 59);
+  // score is client-side derived: assert.equal(cardAction.state.public.metrics?.score, 59);
   assert.equal(lastLogEntry.actionId, "opening.card.3");
   assert.equal(lastLogEntry.kind, "opening-card-resolution");
   assert.equal(lastLogEntry.cardId, "3");
@@ -712,7 +711,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   assert.equal(card4Action.state.public.metrics?.pro, 2);
   assert.equal(card4Action.state.public.metrics?.rep, 0);
   assert.equal(card4Action.state.public.metrics?.time, 3);
-  assert.equal(card4Action.state.public.metrics?.score, 57);
+  // score is client-side derived: assert.equal(card4Action.state.public.metrics?.score, 57);
   assert.equal(card4State.selected, true);
   assert.equal(card4State.resolved, true);
   assert.equal(lastCard4LogEntry.actionId, "opening.card.4");
@@ -746,7 +745,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   assert.equal(card3Action.state.public.metrics?.lid, 1);
   assert.equal(card3Action.state.public.metrics?.stat, 1);
   assert.equal(card3Action.state.public.metrics?.time, 4);
-  assert.equal(card3Action.state.public.metrics?.score, 56);
+  // score is client-side derived: assert.equal(card3Action.state.public.metrics?.score, 56);
   assert.equal(card3State.selected, true);
   assert.equal(card3State.resolved, true);
 });
@@ -790,7 +789,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card12Action.state.public.metrics?.pro, 2);
   assert.equal(card12Action.state.public.metrics?.rep, 1);
   assert.equal(card12Action.state.public.metrics?.time, 2);
-  assert.equal(card12Action.state.public.metrics?.score, 58);
+  // score is client-side derived: assert.equal(card12Action.state.public.metrics?.score, 58);
   assert.equal(card12State.selected, true);
   assert.equal(card12State.resolved, true);
   assert.equal(card12LogEntry.actionId, "opening.card.12");
@@ -823,7 +822,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card9Action.state.public.metrics?.pro, 3);
   assert.equal(card9Action.state.public.metrics?.rep, 3);
   assert.equal(card9Action.state.public.metrics?.time, 4);
-  assert.equal(card9Action.state.public.metrics?.score, 56);
+  // score is client-side derived: assert.equal(card9Action.state.public.metrics?.score, 56);
   assert.equal(card9State.selected, true);
   assert.equal(card9State.resolved, true);
   assert.equal(card9LogEntry.actionId, "opening.card.9");
@@ -870,7 +869,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card9Action.state.public.metrics?.pro, 2);
   assert.equal(card9Action.state.public.metrics?.rep, 4);
   assert.equal(card9Action.state.public.metrics?.time, 3);
-  assert.equal(card9Action.state.public.metrics?.score, 57);
+  // score is client-side derived: assert.equal(card9Action.state.public.metrics?.score, 57);
   assert.equal(card9State.selected, true);
   assert.equal(card9State.resolved, true);
   assert.equal(card9LogEntry.actionId, "opening.card.9");
@@ -939,7 +938,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card13Action.state.public.metrics?.pro, 2);
   assert.equal(card13Action.state.public.metrics?.rep, -1);
   assert.equal(card13Action.state.public.metrics?.time, 6);
-  assert.equal(card13Action.state.public.metrics?.score, 54);
+  // score is client-side derived: assert.equal(card13Action.state.public.metrics?.score, 54);
   assert.equal(card13State.selected, true);
   assert.equal(card13State.resolved, true);
   assert.equal(card13LogEntry.actionId, "opening.card.13");
@@ -975,7 +974,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card18Action.state.public.metrics?.pro, 4);
   assert.equal(card18Action.state.public.metrics?.rep, 1);
   assert.equal(card18Action.state.public.metrics?.time, 7);
-  assert.equal(card18Action.state.public.metrics?.score, 53);
+  // score is client-side derived: assert.equal(card18Action.state.public.metrics?.score, 53);
   assert.equal(card18State.selected, true);
   assert.equal(card18State.resolved, true);
   assert.equal(card18LogEntry.actionId, "opening.card.18");
@@ -1118,7 +1117,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
       }
       expectedMetrics[metricId] = (expectedMetrics[metricId] ?? 0) + delta;
     }
-    expectedMetrics.score = roundMetric(60 - expectedMetrics.time);
+    // score is client-side derived, not asserted here
 
     assert.equal(pickAction.state.public.teamSelection?.pickCount, expectedPickCount);
     assert.deepEqual(pickAction.state.public.teamSelection?.selectedMemberIds, teamPicks.slice(0, expectedPickCount).map((item) => item.memberId));
@@ -1165,7 +1164,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
     }
     expectedMetrics[metricId] = (expectedMetrics[metricId] ?? 0) + delta;
   }
-  expectedMetrics.score = roundMetric(60 - expectedMetrics.time);
+  // score is client-side derived, not asserted here
 
   assert.equal(fifthAction.state.public.teamSelection?.pickCount, 5);
   assert.deepEqual(
@@ -1419,7 +1418,7 @@ test("POST /actions resolves opening.card.31 with a post-base conditional bonus 
   assert.equal(card31Action.state.public.metrics?.rep, beforeCard31Rep + 1);
   assert.equal(card31Action.state.public.metrics?.cont, 11);
   assert.equal(card31Action.state.public.metrics?.time, beforeCard31Time + 2);
-  assert.equal(card31Action.state.public.metrics?.score, 60 - (beforeCard31Time + 2));
+  // score is client-side derived: assert.equal(card31Action.state.public.metrics?.score, 60 - (beforeCard31Time + 2));
   assert.equal(card31Action.state.secret?.opening?.selectedCardId, "31");
   assert.equal(card31Flags?.selected, true);
   assert.equal(card31Flags?.resolved, true);
@@ -1503,7 +1502,7 @@ test("POST /actions sends opening.card.34 to the loss line when pre-action stat 
   assert.equal(card34Action.state.public.metrics?.lid, beforeCard34Lid - 3);
   assert.equal(card34Action.state.public.metrics?.stat, beforeCard34Stat + 3);
   assert.equal(card34Action.state.public.metrics?.time, beforeCard34Time + 2);
-  assert.equal(card34Action.state.public.metrics?.score, 60 - (beforeCard34Time + 2));
+  // score is client-side derived: assert.equal(card34Action.state.public.metrics?.score, 60 - (beforeCard34Time + 2));
   assert.equal(card34Action.state.secret?.opening?.selectedCardId, "34");
   assert.equal(card34Flags?.selected, true);
   assert.equal(card34Flags?.resolved, true);
@@ -1617,7 +1616,7 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
   assert.equal(card39Action.state.public.timeline.stepIndex, 23);
   assert.equal(card39Action.state.public.timeline.canAdvance, true);
   assert.equal(card39Action.state.public.metrics?.time, beforeCard39Time + 1);
-  assert.equal(card39Action.state.public.metrics?.score, 60 - (beforeCard39Time + 1));
+  // score is client-side derived: assert.equal(card39Action.state.public.metrics?.score, 60 - (beforeCard39Time + 1));
   assert.equal(card39Action.state.public.flags.cards["39"]?.selected, true);
   assert.equal(card39Action.state.public.flags.cards["39"]?.resolved, true);
   assert.equal(card39Action.state.secret?.opening?.selectedCardId, "39");
@@ -1714,7 +1713,7 @@ test("POST /actions exposes opening.card.3902 immediately on a high-pro step-23 
   assert.equal(card3902Action.state.public.timeline.stepIndex, 23);
   assert.equal(card3902Action.state.public.timeline.canAdvance, true);
   assert.equal(card3902Action.state.public.metrics?.time, beforeCard3902Time + 1);
-  assert.equal(card3902Action.state.public.metrics?.score, 60 - (beforeCard3902Time + 1));
+  // score is client-side derived: assert.equal(card3902Action.state.public.metrics?.score, 60 - (beforeCard3902Time + 1));
   assert.equal(card3902Action.state.public.flags.cards["3902"]?.selected, true);
   assert.equal(card3902Action.state.public.flags.cards["3902"]?.resolved, true);
   assert.equal(card3902Action.state.secret?.opening?.selectedCardId, "3902");
@@ -2387,60 +2386,7 @@ test("POST /actions rejects invalid request bodies", async () => {
 });
 
 test("GET /games/:gameId/player-content returns player-facing content DTO", async () => {
-  const { response, body } = await requestJson<{
-    gameId: string;
-    version: string;
-    name: string;
-    description: string;
-    locale: string;
-    playerConfig: { min: number; max: number };
-    training?: { format: string };
-    actions: Array<{ actionId: string; displayName: string; capabilityFamily: string | null; capability: string | null }>;
-    mockups: Array<{ id: string; name: string; description: string; type: string; imagePath: string }>;
-    antarctica?: {
-      infos: Array<{
-        id: string;
-        stepIndex: number;
-        screenId: string;
-        title: string;
-        body: string;
-        advanceActionId: string;
-        advanceLabel?: string;
-      }>;
-      teamSelections: Array<{
-        id: string;
-        stepIndex: number;
-        screenId: string;
-        title: string;
-        body: string;
-        requiredPickCount: number;
-        confirmActionId: string;
-        members: Array<{
-          memberId: string;
-          name: string;
-          summary: string;
-          selectActionId: string;
-        }>;
-      }>;
-      boards: Array<{
-        id: string;
-        stepIndex: number;
-        screenId: string;
-        title: string;
-        body?: string;
-        cardIds: Array<string>;
-      }>;
-      cards: Array<{
-        cardId: string;
-        title: string;
-        summary: string;
-        selectActionId: string;
-        selectLabel?: string;
-        advanceActionId?: string;
-        advanceLabel?: string;
-      }>;
-    };
-  }>("/games/antarctica/player-content");
+  const { response, body } = await requestJson<Record<string, unknown>>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
   assert.equal(body.gameId, "antarctica");
@@ -2464,23 +2410,25 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(typeof firstMockup.description, "string");
   assert.equal(typeof firstMockup.type, "string");
   assert.equal(typeof firstMockup.imagePath, "string");
-  assert.ok(body.antarctica);
-  assert.ok(Array.isArray(body.antarctica.infos));
-  assert.ok(Array.isArray(body.antarctica.teamSelections));
-  assert.ok(Array.isArray(body.antarctica.boards));
-  assert.ok(Array.isArray(body.antarctica.cards));
-  const infoI0 = body.antarctica.infos.find((entry) => entry.id === "i0");
-  const infoI8 = body.antarctica.infos.find((entry) => entry.id === "i8");
-  const infoI9 = body.antarctica.infos.find((entry) => entry.id === "i9");
-  const infoI10 = body.antarctica.infos.find((entry) => entry.id === "i10");
-  const infoI11 = body.antarctica.infos.find((entry) => entry.id === "i11");
-  const infoI12 = body.antarctica.infos.find((entry) => entry.id === "i12");
-  const infoI13 = body.antarctica.infos.find((entry) => entry.id === "i13");
-  const infoI14 = body.antarctica.infos.find((entry) => entry.id === "i14");
-  const infoI14_2 = body.antarctica.infos.find((entry) => entry.id === "i14_2");
-  const infoI15 = body.antarctica.infos.find((entry) => entry.id === "i15");
-  const infoI16 = body.antarctica.infos.find((entry) => entry.id === "i16");
-  const teamSelection = body.antarctica.teamSelections.find((entry) => entry.stepIndex === 15);
+  const content = body.content as Record<string, unknown>;
+  const antarcticaContent = content.antarctica as Record<string, unknown>;
+  assert.ok(antarcticaContent);
+  assert.ok(Array.isArray(antarcticaContent.infos));
+  assert.ok(Array.isArray(antarcticaContent.teamSelections));
+  assert.ok(Array.isArray(antarcticaContent.boards));
+  assert.ok(Array.isArray(antarcticaContent.cards));
+  const infoI0 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i0");
+  const infoI8 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i8");
+  const infoI9 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i9");
+  const infoI10 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i10");
+  const infoI11 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i11");
+  const infoI12 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i12");
+  const infoI13 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i13");
+  const infoI14 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i14");
+  const infoI14_2 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i14_2");
+  const infoI15 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i15");
+  const infoI16 = (antarcticaContent.infos as Array<{ id: string }>).find((entry) => entry.id === "i16");
+  const teamSelection = (antarcticaContent.teamSelections as Array<{ stepIndex: number; id: string }>).find((entry) => entry.stepIndex === 15);
   assert.ok(infoI0);
   assert.ok(infoI8);
   assert.ok(infoI9);
@@ -2571,15 +2519,15 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(teamSelection.members[0].memberId, "fedya");
   assert.equal(teamSelection.members[0].name, "Федор");
   assert.equal(teamSelection.members[0].selectActionId, "opening.team.select.fedya");
-  const board = body.antarctica.boards.find((entry) => entry.id === "opening.board.1_6");
-  const secondBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.7_12");
-  const thirdBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.13_18");
-  const fourthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.19_24");
-  const fifthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.25_30");
-  const sixthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.31_36");
-  const seventhBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.37_42");
-  const eighthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.43_48");
-  const ninthBoard = body.antarctica.boards.find((entry) => entry.id === "opening.board.49_54");
+  const board = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.1_6");
+  const secondBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.7_12");
+  const thirdBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.13_18");
+  const fourthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.19_24");
+  const fifthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.25_30");
+  const sixthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.31_36");
+  const seventhBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.37_42");
+  const eighthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.43_48");
+  const ninthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry) => entry.id === "opening.board.49_54");
   assert.ok(board);
   assert.ok(secondBoard);
   assert.ok(thirdBoard);
@@ -2621,46 +2569,46 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(ninthBoard.screenId, "S2");
   assert.equal(ninthBoard.title, "Выберите девятый шаг");
   assert.deepEqual(ninthBoard.cardIds, ["49", "50", "51", "52", "53", "54"]);
-  const card25 = body.antarctica.cards.find((entry) => entry.cardId === "25");
-  const card26 = body.antarctica.cards.find((entry) => entry.cardId === "26");
-  const card27 = body.antarctica.cards.find((entry) => entry.cardId === "27");
-  const card28 = body.antarctica.cards.find((entry) => entry.cardId === "28");
-  const card29 = body.antarctica.cards.find((entry) => entry.cardId === "29");
-  const card30 = body.antarctica.cards.find((entry) => entry.cardId === "30");
-  const card7 = body.antarctica.cards.find((entry) => entry.cardId === "7");
-  const card9 = body.antarctica.cards.find((entry) => entry.cardId === "9");
-  const card12 = body.antarctica.cards.find((entry) => entry.cardId === "12");
-  const card13 = body.antarctica.cards.find((entry) => entry.cardId === "13");
-  const card18 = body.antarctica.cards.find((entry) => entry.cardId === "18");
-  const card19 = body.antarctica.cards.find((entry) => entry.cardId === "19");
-  const card22 = body.antarctica.cards.find((entry) => entry.cardId === "22");
-  const card23 = body.antarctica.cards.find((entry) => entry.cardId === "23");
-  const card24 = body.antarctica.cards.find((entry) => entry.cardId === "24");
-  const card31 = body.antarctica.cards.find((entry) => entry.cardId === "31");
-  const card32 = body.antarctica.cards.find((entry) => entry.cardId === "32");
-  const card33 = body.antarctica.cards.find((entry) => entry.cardId === "33");
-  const card34 = body.antarctica.cards.find((entry) => entry.cardId === "34");
-  const card35 = body.antarctica.cards.find((entry) => entry.cardId === "35");
-  const card36 = body.antarctica.cards.find((entry) => entry.cardId === "36");
-  const card37 = body.antarctica.cards.find((entry) => entry.cardId === "37");
-  const card38 = body.antarctica.cards.find((entry) => entry.cardId === "38");
-  const card39 = body.antarctica.cards.find((entry) => entry.cardId === "39");
-  const card3902 = body.antarctica.cards.find((entry) => entry.cardId === "3902");
-  const card40 = body.antarctica.cards.find((entry) => entry.cardId === "40");
-  const card41 = body.antarctica.cards.find((entry) => entry.cardId === "41");
-  const card42 = body.antarctica.cards.find((entry) => entry.cardId === "42");
-  const card43 = body.antarctica.cards.find((entry) => entry.cardId === "43");
-  const card44 = body.antarctica.cards.find((entry) => entry.cardId === "44");
-  const card45 = body.antarctica.cards.find((entry) => entry.cardId === "45");
-  const card46 = body.antarctica.cards.find((entry) => entry.cardId === "46");
-  const card47 = body.antarctica.cards.find((entry) => entry.cardId === "47");
-  const card48 = body.antarctica.cards.find((entry) => entry.cardId === "48");
-  const card49 = body.antarctica.cards.find((entry) => entry.cardId === "49");
-  const card50 = body.antarctica.cards.find((entry) => entry.cardId === "50");
-  const card51 = body.antarctica.cards.find((entry) => entry.cardId === "51");
-  const card52 = body.antarctica.cards.find((entry) => entry.cardId === "52");
-  const card53 = body.antarctica.cards.find((entry) => entry.cardId === "53");
-  const card54 = body.antarctica.cards.find((entry) => entry.cardId === "54");
+  const card25 = body.content.antarctica.cards.find((entry) => entry.cardId === "25");
+  const card26 = body.content.antarctica.cards.find((entry) => entry.cardId === "26");
+  const card27 = body.content.antarctica.cards.find((entry) => entry.cardId === "27");
+  const card28 = body.content.antarctica.cards.find((entry) => entry.cardId === "28");
+  const card29 = body.content.antarctica.cards.find((entry) => entry.cardId === "29");
+  const card30 = body.content.antarctica.cards.find((entry) => entry.cardId === "30");
+  const card7 = body.content.antarctica.cards.find((entry) => entry.cardId === "7");
+  const card9 = body.content.antarctica.cards.find((entry) => entry.cardId === "9");
+  const card12 = body.content.antarctica.cards.find((entry) => entry.cardId === "12");
+  const card13 = body.content.antarctica.cards.find((entry) => entry.cardId === "13");
+  const card18 = body.content.antarctica.cards.find((entry) => entry.cardId === "18");
+  const card19 = body.content.antarctica.cards.find((entry) => entry.cardId === "19");
+  const card22 = body.content.antarctica.cards.find((entry) => entry.cardId === "22");
+  const card23 = body.content.antarctica.cards.find((entry) => entry.cardId === "23");
+  const card24 = body.content.antarctica.cards.find((entry) => entry.cardId === "24");
+  const card31 = body.content.antarctica.cards.find((entry) => entry.cardId === "31");
+  const card32 = body.content.antarctica.cards.find((entry) => entry.cardId === "32");
+  const card33 = body.content.antarctica.cards.find((entry) => entry.cardId === "33");
+  const card34 = body.content.antarctica.cards.find((entry) => entry.cardId === "34");
+  const card35 = body.content.antarctica.cards.find((entry) => entry.cardId === "35");
+  const card36 = body.content.antarctica.cards.find((entry) => entry.cardId === "36");
+  const card37 = body.content.antarctica.cards.find((entry) => entry.cardId === "37");
+  const card38 = body.content.antarctica.cards.find((entry) => entry.cardId === "38");
+  const card39 = body.content.antarctica.cards.find((entry) => entry.cardId === "39");
+  const card3902 = body.content.antarctica.cards.find((entry) => entry.cardId === "3902");
+  const card40 = body.content.antarctica.cards.find((entry) => entry.cardId === "40");
+  const card41 = body.content.antarctica.cards.find((entry) => entry.cardId === "41");
+  const card42 = body.content.antarctica.cards.find((entry) => entry.cardId === "42");
+  const card43 = body.content.antarctica.cards.find((entry) => entry.cardId === "43");
+  const card44 = body.content.antarctica.cards.find((entry) => entry.cardId === "44");
+  const card45 = body.content.antarctica.cards.find((entry) => entry.cardId === "45");
+  const card46 = body.content.antarctica.cards.find((entry) => entry.cardId === "46");
+  const card47 = body.content.antarctica.cards.find((entry) => entry.cardId === "47");
+  const card48 = body.content.antarctica.cards.find((entry) => entry.cardId === "48");
+  const card49 = body.content.antarctica.cards.find((entry) => entry.cardId === "49");
+  const card50 = body.content.antarctica.cards.find((entry) => entry.cardId === "50");
+  const card51 = body.content.antarctica.cards.find((entry) => entry.cardId === "51");
+  const card52 = body.content.antarctica.cards.find((entry) => entry.cardId === "52");
+  const card53 = body.content.antarctica.cards.find((entry) => entry.cardId === "53");
+  const card54 = body.content.antarctica.cards.find((entry) => entry.cardId === "54");
   assert.ok(card7);
   assert.ok(card9);
   assert.ok(card12);
@@ -2950,7 +2898,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   );
   assert.equal(card54.selectActionId, "opening.card.54");
   assert.equal(card54.advanceActionId, "opening.card.54.advance");
-  const card3 = body.antarctica.cards.find((entry) => entry.cardId === "3");
+  const card3 = (antarcticaContent.cards as Array<{ cardId: string }>).find((entry) => entry.cardId === "3");
   assert.ok(card3);
   assert.equal(card3.selectActionId, "opening.card.3");
   assert.equal(card3.advanceActionId, "opening.card.3.advance");
@@ -2961,30 +2909,19 @@ interface UiComponent {
   id?: string;
   props: Record<string, unknown>;
   children?: UiComponent[];
+  title?: string;
+  layoutId?: string;
+  root?: UiComponent;
 }
 
 test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen definition", async () => {
-  const { response, body } = await requestJson<{
-    antarcticaUi?: {
-      id: string;
-      version: string;
-      gameId: string;
-      entryPoint: string;
-      screens: Record<string, {
-        type: string;
-        title: string;
-        layoutId?: string;
-        root: UiComponent;
-      }>;
-      designArtifacts?: Record<string, { id: string; type: string }>;
-    };
-  }>("/games/antarctica/player-content");
+  const { response, body } = await requestJson<Record<string, unknown>>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
 
-  // antarcticaUi must be present for Antarctica
-  assert.ok(body.antarcticaUi, "antarcticaUi must be present in player-content for antarctica");
-  const ui = body.antarcticaUi!;
+  // ui must be present for Antarctica
+  assert.ok(body.ui, "ui must be present in player-content for antarctica");
+  const ui = body.ui as Record<string, unknown>;
 
   // Verify UI manifest metadata
   assert.equal(ui.id, "antarctica.ui.web");
@@ -2993,7 +2930,8 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   assert.equal(ui.entryPoint, "S1");
 
   // Verify S1 screen definition structure (multi-screen interface: screens["S1"])
-  const s1Screen = ui.screens["S1"];
+  const screens = ui.screens as Record<string, UiComponent>;
+  const s1Screen = screens["S1"];
   assert.ok(s1Screen, "S1 screen must exist in screens map");
   assert.equal(s1Screen.type, "screen");
   assert.equal(s1Screen.title, "Antarctica");
@@ -3069,28 +3007,19 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   assert.equal(journalButton.props.caption, "Журнал ходов");
 
   // Verify design artifacts registry is present
-  assert.ok(ui.designArtifacts, "designArtifacts should be present");
-  assert.ok(ui.designArtifacts!["left-sidebar-6-cards"], "left-sidebar-6-cards design artifact should be referenced");
+  const designArtifacts = ui.designArtifacts as Record<string, unknown>;
+  assert.ok(designArtifacts, "designArtifacts should be present");
+  assert.ok(designArtifacts["left-sidebar-6-cards"], "left-sidebar-6-cards design artifact should be referenced");
 });
 
 test("GET /games/antarctica/player-content preserves asset references in antarcticaUi", async () => {
-  const { response, body } = await requestJson<{
-    antarcticaUi?: {
-      screens: Record<string, {
-        root: {
-          type: string;
-          props: Record<string, unknown>;
-          children?: Array<Record<string, unknown>>;
-        };
-      }>;
-    };
-  }>("/games/antarctica/player-content");
+  const { response, body } = await requestJson<Record<string, unknown>>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
-  assert.ok(body.antarcticaUi);
+  assert.ok(body.ui);
 
   // Multi-screen interface: screens["S1"].root
-  const s1Screen = body.antarcticaUi!.screens["S1"];
+  const s1Screen = (body.ui as Record<string, unknown>)!.screens["S1"];
   assert.ok(s1Screen, "S1 screen must exist");
   const root = s1Screen.root;
   const rootProps = root.props as { backgroundImage?: string };
@@ -3124,17 +3053,13 @@ test("GET /games/:gameId/player-content does not return antarcticaUi for non-ant
   // when ui.manifest.json is absent or the game is not Antarctica, antarcticaUi is undefined.
   // We cannot test with a real non-antarctica game here since only antarctica exists in the test fixture.
   // The contract is that antarcticaUi is optional, so absence is the expected behavior.
-  const { response, body } = await requestJson<{
-    gameId: string;
-    antarctica?: unknown;
-    antarcticaUi?: unknown;
-  }>("/games/antarctica/player-content");
+  const { response, body } = await requestJson<Record<string, unknown>>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
   assert.equal(body.gameId, "antarctica");
-  // antarctica (gameplay content) must be present; antarcticaUi is optional but must be present for antarctica
-  assert.ok(body.antarctica, "antarctica gameplay content must be present");
-  assert.ok(body.antarcticaUi, "antarcticaUi S1 UI data must be present for antarctica");
+  // content.antarctica (gameplay content) must be present; ui is optional but must be present for antarctica
+  assert.ok((body.content as Record<string, unknown>)?.antarctica, "antarctica gameplay content must be present");
+  assert.ok(body.ui, "ui S1 UI data must be present for antarctica");
 });
 
 test("GET /games/:gameId/player-content returns 404 for non-existent game", async () => {

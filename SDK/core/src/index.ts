@@ -3,8 +3,8 @@
  * Replace placeholders with concrete implementations as the platform evolves.
  */
 
-export * from './view-protocol';
-export * from './state';
+export * from './view-protocol.ts';
+export * from './state.ts';
 
 export interface SessionOptions {
   routerBaseUrl: string;

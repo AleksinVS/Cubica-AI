@@ -9,7 +9,7 @@
 - `games/antarctica/design/mockups/` — source of truth для UI mockups и экранного намерения.
 - `draft/Antarctica/GameFull.html` — текущий фактический источник для извлечения сценария и игровой механики `Antarctica` в ходе миграции. Это текущее состояние миграции, а не архитектурное решение, до завершения переноса логики в manifest.
 - `draft/Antarctica/README.md` — reference по устройству legacy HTML-прототипа и guide по его структуре; использовать вместе со script-based анализом `GameFull.html`, а не как целевую архитектуру.
-- `draft/antarctica-nextjs-player/` — UI prototype/reference for visual ideas only, не source of truth для кода, структуры, архитектуры или логики.
+- `draft/game-player-nextjs/` — UI prototype/reference for visual ideas only, не source of truth для кода, структуры, архитектуры или логики.
 
 Архитектурное правило по-прежнему закреплено в `ADR-018`: исполнимая логика должна заканчиваться в JSON manifest. `GameFull.html` используется только как текущий migration/source artifact для извлечения этой логики.
 
@@ -150,6 +150,9 @@ Delivered S2 board screens теперь визуально выровнены п
 
 ## Приоритет 6. Repository Hygiene
 
-1. Поддерживать `repo-manifest.json` и `PROJECT_STRUCTURE.md` синхронно с фактическими workspace-артефактами.
+1. Поддерживать `repo-manifest.json` и `PROJECT_STRUCTURE.yaml` синхронно с фактическими workspace-артефактами.
 2. Явно размечать `actual / target / draft / archive / placeholder` только там, где это помогает агентам не путать канонические и draft-слои.
 3. Держать root-level `verify:*` scripts в актуальном состоянии, чтобы следующий агент мог быстро проверить текущий canonical slice.
+
+## Приоритет 7. Завершенные Архитектурные Эпики
+- **E_0060 (Architecture Drift Prevention)**: Успешно завершен. Логика «Антарктики» изолирована от ядра (`services/runtime-api` и ADR очищены), внедрена автогенерация структуры проекта (`PROJECT_STRUCTURE.yaml`), наведен порядок в `draft/` и установлены правила работы с легаси-разрывами.

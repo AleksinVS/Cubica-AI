@@ -15,9 +15,9 @@
     "react-dom": "^18.0.0"
   },
   "scripts": {
-    "build": "echo \"TODO: bundle with rollup\"",
-    "test": "echo \"TODO: add react-sdk tests\"",
-    "lint": "echo \"TODO: add lint rules\""
+    "build": "echo \"TODO: bundle with rollup\" && exit 1",
+    "test": "echo \"TODO: add react-sdk tests\" && exit 1",
+    "lint": "echo \"TODO: add lint rules\" && exit 1"
   },
   "engines": {
     "node": ">=18"
