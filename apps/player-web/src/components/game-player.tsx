@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   PlayerFacingContent,
   PlayerFacingMockup,
@@ -8,9 +8,11 @@ import type {
 } from "@cubica/contracts-manifest";
 import type { PlayerState } from "@/presenter/types";
 import type { ViewCommand } from "@cubica/sdk-core";
+import type { GameConfigData, AntarcticaGameState } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
-import type { AntarcticaGameState } from "@/presenter/game-config";
+import { buildGameConfig } from "@/presenter/game-config-registry";
+import "@/plugins/register-games";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { FallbackRenderer } from "@/components/fallback-renderer";
 import { HintRenderer } from "@/components/panels/hint-renderer";
@@ -23,17 +25,27 @@ export type GamePlayerProps = {
   content: PlayerFacingContent;
   mockups: Array<PlayerFacingMockup>;
   gameUi?: GamePlayerUiContent;
-  config: any;
+  /** Serializable game configuration data (passed from Server Component). */
+  config: GameConfigData;
 };
 
 /**
- * Корневой компонент игрока Антарктиды.
+ * Корневой компонент игрового плеера.
  *
  * Создаёт Presenter и ViewGateway, подписывается на команды от Presenter
  * и обновляет React-состояние. Вся бизнес-логика (boot, dispatch, routing)
  * делегирована Presenter.
+ *
+ * GameConfigData передаётся через пропсы от Server Component,
+ * а функциональные резолверы предоставляются через реестр
+ * (game-config-registry) и объединяются с данными на клиенте.
  */
-export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: GamePlayerProps) {
+export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: configData }: GamePlayerProps) {
+  const fullConfig = useMemo(
+    () => buildGameConfig<AntarcticaGameState, GamePlayerUiContent>(configData),
+    [configData]
+  );
+
   const [playerState, setPlayerState] = useState<PlayerState<AntarcticaGameState> | null>(null);
   const [screenKey, setScreenKey] = useState<string | undefined>(undefined);
   const [layoutMode, setLayoutMode] = useState<"leftsidebar" | "topbar">("topbar");
@@ -47,7 +59,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
       gateway,
       content,
       gameUi,
-      config
+      config: fullConfig
     });
     presenterRef.current = presenter;
 
@@ -98,7 +110,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
       unsubscribe();
       presenterRef.current = null;
     };
-  }, [content, gameUi]);
+  }, [content, gameUi, fullConfig]);
 
   const handleAction = (actionId: string, payload?: Record<string, unknown>) => {
     const presenter = presenterRef.current;
@@ -124,7 +136,6 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
         console.error(message);
       }
     );
-
     adapter(command, payload);
   };
 
@@ -165,7 +176,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
           onJournal={() => handleDismissPanel("history")}
           onHint={() => handleAction("showHint")}
           onClose={() => handleDismissPanel("history")}
-          fallbackMetrics={config.fallbackMetrics}
+          fallbackMetrics={fullConfig.fallbackMetrics}
         />
       ) : state.activePanel === "hint" ? (
         <HintRenderer
@@ -175,7 +186,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
           onJournal={() => handleAction("showHistory")}
           onHint={() => handleDismissPanel("hint")}
           onClose={() => handleDismissPanel("hint")}
-          fallbackMetrics={config.fallbackMetrics}
+          fallbackMetrics={fullConfig.fallbackMetrics}
         />
       ) : screenKey && gameUi?.screens[screenKey] ? (
         <ManifestRenderer
@@ -184,7 +195,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
           onAction={handleManifestAction}
           screenKey={screenKey}
           layoutMode={layoutMode}
-          metricBackgroundImages={config.metricBackgroundImages}
+          metricBackgroundImages={fullConfig.metricBackgroundImages}
         />
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
@@ -214,7 +225,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config }: 
           layoutMode={layoutMode}
           onJournal={() => handleAction("showHistory")}
           onHint={() => handleAction("showHint")}
-          fallbackMetrics={config.fallbackMetrics}
+          fallbackMetrics={fullConfig.fallbackMetrics}
         />
       )}
       {state.error ? <div className="error inline-error">{state.error}</div> : null}

@@ -1,4 +1,4 @@
-import { ANTARCTICA_GAME_CONFIG } from "@/presenter/game-config";
+import { ANTARCTICA_GAME_CONFIG_DATA } from "@/presenter/antarctica-config-data";
 import { GamePlayer } from "@/components/game-player";
 import { getRuntimeApiUrl, loadGamePlayerContent } from "@/lib/game-content-resolvers";
 
@@ -13,7 +13,7 @@ export default async function Page() {
       content={content}
       mockups={content.mockups}
       gameUi={content.ui}
-      config={ANTARCTICA_GAME_CONFIG}
+      config={ANTARCTICA_GAME_CONFIG_DATA}
     />
   );
 }

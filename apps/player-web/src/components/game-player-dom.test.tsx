@@ -1,4 +1,6 @@
-import { ANTARCTICA_GAME_CONFIG } from "@/presenter/game-config";
+import { ANTARCTICA_GAME_CONFIG_DATA } from "@/presenter/antarctica-config-data";
+import { buildGameConfig } from "@/presenter/game-config-registry";
+import "@/plugins/register-games";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -194,7 +196,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
   it("renders the S1 manifest-driven UI when at screen S1 and hides top metrics", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
@@ -255,7 +257,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
@@ -292,7 +294,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
   it("passes component IDs to buttons", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
@@ -316,7 +318,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
   it("resolves and displays metric bindings in the sidebar", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
@@ -341,7 +343,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
   it("renders 6 cards and handles click with payload", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
@@ -390,7 +392,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
   it("renders bottom control buttons and handles clicks", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={mockContent} 
         mockups={[]} 
@@ -460,7 +462,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -509,7 +511,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -578,7 +580,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -603,7 +605,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
   it("falls back to action catalog when gameUi is missing", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }} 
         mockups={[]} 
@@ -623,7 +625,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     // No gameUi so it falls back to FallbackRenderer
     // Initial state resolves to topbar layoutMode by default
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -672,7 +674,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
         content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }} 
         mockups={[]} 
@@ -961,7 +963,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1007,7 +1009,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1049,7 +1051,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1092,7 +1094,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1135,7 +1137,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1347,7 +1349,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1412,7 +1414,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1455,7 +1457,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1492,7 +1494,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1531,7 +1533,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1570,7 +1572,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1609,7 +1611,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1673,7 +1675,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContentWithInfo}
         mockups={[]}
@@ -1715,7 +1717,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1744,7 +1746,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
@@ -1769,7 +1771,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG}
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
