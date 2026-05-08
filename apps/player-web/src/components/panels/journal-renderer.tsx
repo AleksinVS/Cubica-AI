@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import type { MetricsSnapshot, RuntimeLogEntry } from "@/types/game-state";
 import type { FallbackMetricSpec } from "@/presenter/game-config";
+import { ManifestAction } from "@cubica/contracts-manifest";
 import { PanelButtonRow } from "./panel-button-row";
 import { JournalMetricCluster } from "./journal-metric-cluster";
 
@@ -23,7 +24,7 @@ function mapToJournalEntry(entry: RuntimeLogEntry): { title: string; subtitle: s
       entry.capabilityFamily === "ui.panel" ||
       entry.capabilityFamily === "ui.screen" ||
       entry.capabilityFamily === "runtime.server" ||
-      entry.actionId === "requestServer"
+      entry.actionId === ManifestAction.REQUEST_SERVER
     ) {
       return null;
     }
@@ -65,9 +66,9 @@ function mapToJournalEntry(entry: RuntimeLogEntry): { title: string; subtitle: s
     title = `Инфо ${infoId}`;
   } else if (actionId.startsWith("opening.team.")) {
     title = "Команда";
-  } else if (actionId === "showHistory") {
+  } else if (actionId === ManifestAction.SHOW_HISTORY) {
     title = "Журнал";
-  } else if (actionId === "showHint") {
+  } else if (actionId === ManifestAction.SHOW_HINT) {
     title = "Подсказка";
   } else if (actionId.includes(".")) {
     const parts = actionId.split(".");

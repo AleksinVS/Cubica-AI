@@ -8,21 +8,21 @@ import type { ScreenRoutingEntry, GamePlayerUiContent } from "@cubica/contracts-
  *   2. Manifest screenRouting entries (data-driven, this module)
  *   3. Direct screenId lookup in uiContent.screens
  *   4. activeInfoId disambiguation
- *   5. runtimeUi.activeScreen override
+ *   5. runtimeUi.activeScreen override (maps "left-sidebar" → leftsidebar layout)
  *
- * Currently (Antarctica), the plugin's resolveScreenKey always wins because
- * GamePresenter calls it directly. This module provides a data-driven
- * alternative for future games that don't need custom routing logic.
- * When a game opts into manifest-driven routing, GamePresenter should call
- * resolveScreenKey (this module) instead of the plugin method.
+ * When a game plugin provides resolveScreenKey, the GamePresenter calls it
+ * directly. When the plugin omits resolveScreenKey, the GamePresenter calls
+ * resolveScreenKey from this module, using the screenRouting data from the
+ * UI manifest. This makes screen routing fully data-driven for games that
+ * don't need custom routing logic.
  *
  * @see GamePresenter.playerState (current routing call site)
  * @see GameConfigResolvers.resolveScreenKey (plugin override)
  */
 
 /**
- * Разрешает ключ экрана UI-манифеста на основе состояния runtime
- * и таблицы маршрутизации из манифеста.
+ * Resolves the UI manifest screen key based on runtime state
+ * and routing entries from the manifest.
  */
 export function resolveScreenKey(
   screenRouting: ScreenRoutingEntry[] | undefined,
@@ -32,11 +32,11 @@ export function resolveScreenKey(
   runtimeUi: { activeScreen?: string },
   uiContent: GamePlayerUiContent | undefined
 ): string | null {
-  // 1. Попробовать routing entries из манифеста
+  // 1. Try routing entries from manifest
   if (screenRouting && screenRouting.length > 0) {
     for (const entry of screenRouting) {
       if (matchesConditions(entry, screenId, stepIndex, activeInfoId)) {
-        // Проверить, что целевой экран существует в манифесте
+        // Check that the target screen exists in the manifest
         if (uiContent?.screens[entry.screenKey]) {
           return entry.screenKey;
         }
@@ -54,16 +54,31 @@ export function resolveScreenKey(
     return activeInfoId;
   }
 
-  // 4. Layout override через runtimeUi
-  if (runtimeUi.activeScreen === "left-sidebar" && uiContent?.screens["S1_LEFT"]) {
-    return "S1_LEFT";
+  // 4. Layout override via runtimeUi
+  if (runtimeUi.activeScreen === "left-sidebar") {
+    // Check for a left-sidebar variant screen
+    const leftScreenKey = findLeftSidebarScreen(uiContent);
+    if (leftScreenKey) {
+      return leftScreenKey;
+    }
   }
 
   return null;
 }
 
 /**
- * Проверяет, совпадают ли условия routing entry с текущим состоянием.
+ * Finds a left-sidebar variant screen key in the UI manifest.
+ * Checks common naming patterns: S1_LEFT, {screenId}_LEFT.
+ */
+function findLeftSidebarScreen(uiContent: GamePlayerUiContent | undefined): string | null {
+  if (!uiContent) return null;
+  // Check for a generic left-sidebar variant
+  if (uiContent.screens["S1_LEFT"]) return "S1_LEFT";
+  return null;
+}
+
+/**
+ * Checks whether routing entry conditions match the current state.
  */
 function matchesConditions(
   entry: ScreenRoutingEntry,
@@ -73,17 +88,17 @@ function matchesConditions(
 ): boolean {
   const { conditions } = entry;
 
-  // screenId должен совпадать (если указан)
+  // screenId must match (if specified)
   if (conditions.screenId !== undefined && conditions.screenId !== screenId) {
     return false;
   }
 
-  // stepIndex — точное совпадение (если указан)
+  // stepIndex — exact match (if specified)
   if (conditions.stepIndex !== undefined && conditions.stepIndex !== stepIndex) {
     return false;
   }
 
-  // stepIndexRange — диапазон (если указан)
+  // stepIndexRange — range match (if specified)
   if (conditions.stepIndexRange !== undefined) {
     if (stepIndex === null) {
       return false;
@@ -93,7 +108,7 @@ function matchesConditions(
     }
   }
 
-  // activeInfoId — если указан, должен совпадать
+  // activeInfoId — must match if specified
   if (conditions.activeInfoId !== undefined && conditions.activeInfoId !== activeInfoId) {
     return false;
   }
@@ -102,8 +117,8 @@ function matchesConditions(
 }
 
 /**
- * Определяет layout mode на основе routing entry (если найдено)
- * или runtimeUi.activeScreen.
+ * Determines layout mode from routing entry (if found)
+ * or runtimeUi.activeScreen.
  */
 export function resolveLayoutModeFromRouting(
   screenRouting: ScreenRoutingEntry[] | undefined,
@@ -131,5 +146,5 @@ export function resolveLayoutModeFromRouting(
     return "topbar";
   }
 
-  return null;
+  return fallback;
 }

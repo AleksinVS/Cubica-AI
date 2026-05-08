@@ -8,7 +8,11 @@ import { resolveMetricBinding } from "@/lib/metric-resolvers";
 import { resolveMetricBackgroundImage } from "@/lib/layout-helpers";
 
 /**
- * Рендерит gameVariableComponent (отображение метрики в сайдбаре или topbar).
+ * Renders gameVariableComponent (metric display in sidebar or topbar).
+ *
+ * The `layout` prop on component.props controls visual treatment:
+ * - "prominent": larger display with fixed dimensions (for primary score metrics)
+ * - "default" or undefined: standard metric display
  */
 export function GameVariableComponent({
   component,
@@ -27,10 +31,10 @@ export function GameVariableComponent({
   const resolvedValue = resolveMetricBinding(value, metrics);
   const id = (component as GameUiComponent).id;
   const resolvedBackgroundImage = resolveMetricBackgroundImage(id, backgroundImage, layoutMode, metricBackgroundImages);
+  const isProminent = component.props.layout === "prominent";
 
   if (layoutMode === "topbar") {
-    const isScoreMetric = id === "score";
-    const scoreMetricStyle: CSSProperties | undefined = isScoreMetric
+    const prominentStyle: CSSProperties | undefined = isProminent
       ? {
           display: "block",
           position: "relative",
@@ -42,7 +46,7 @@ export function GameVariableComponent({
           boxSizing: "border-box"
         }
       : undefined;
-    const scoreCaptionStyle: CSSProperties | undefined = isScoreMetric
+    const prominentCaptionStyle: CSSProperties | undefined = isProminent
       ? {
           display: "block",
           width: "75px",
@@ -53,14 +57,14 @@ export function GameVariableComponent({
 
     return (
       <div
-        className={`game-variable ${id ? `game-variable--${id}` : ""} game-variable--topbar`}
-        style={scoreMetricStyle}
+        className={`game-variable ${id ? `game-variable--${id}` : ""} game-variable--topbar${isProminent ? " game-variable--prominent" : ""}`}
+        style={prominentStyle}
       >
         {resolvedBackgroundImage && (
           <div
             className="game-variable-image game-variable-visual"
             style={
-              isScoreMetric
+              isProminent
                 ? {
                     backgroundImage: `url(${resolvedBackgroundImage})`,
                     width: "75px",
@@ -76,7 +80,7 @@ export function GameVariableComponent({
             <strong className="game-variable-value">{resolvedValue}</strong>
           </div>
         )}
-        <span className="game-variable-caption" style={scoreCaptionStyle}>
+        <span className="game-variable-caption" style={prominentCaptionStyle}>
           {caption}
         </span>
         {description && <p className="game-variable-description">{description}</p>}
@@ -85,7 +89,7 @@ export function GameVariableComponent({
   }
 
   return (
-    <div className={`game-variable ${id ? `game-variable--${id}` : ""}`}>
+    <div className={`game-variable ${id ? `game-variable--${id}` : ""}${isProminent ? " game-variable--prominent" : ""}`}>
       {resolvedBackgroundImage && (
         <div className="game-variable-image" style={{ backgroundImage: `url(${resolvedBackgroundImage})` }} />
       )}

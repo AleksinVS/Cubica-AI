@@ -339,6 +339,14 @@ export interface GameUiGameVariableComponentProps {
    * The renderer resolves this against the session snapshot at display time.
    */
   value: string;
+  /**
+   * Layout variant for the metric display.
+   * - "default": standard size
+   * - "prominent": larger display (e.g., primary score metric)
+   * Replaces the previous id-based "score" check — games should set this
+   * on metrics that need special visual treatment.
+   */
+  layout?: "default" | "prominent";
 }
 
 /**
@@ -571,6 +579,16 @@ export interface GamePlayerUiContent {
    * Variant info screens (i19 vs i19_1) are disambiguated by `timeline.activeInfoId`.
    */
   screens: Record<string, GameUiScreenDefinition>;
+  /**
+   * Data-driven screen routing entries.
+   * When provided, the generic screen router matches runtime state
+   * (screenId, stepIndex, activeInfoId) against these entries to resolve
+   * screen keys. Games can omit this and provide resolveScreenKey in
+   * their plugin config instead.
+   */
+  screenRouting?: Array<ScreenRoutingEntry>;
+  /** Metric specifications for fallback metric display. */
+  metricSpecs?: Array<MetricConfigSpec>;
   /** Design artifact registry from the UI manifest (for reference/metadata). */
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
 }
@@ -650,5 +668,58 @@ export interface PlayerFacingContent {
   /** Multi-screen UI manifest projection for manifest-driven rendering. */
   ui?: GamePlayerUiContent;
 }
+
+/**
+ * Metric specification for fallback metric display.
+ * Describes a single metric with its ID, display caption, and value binding.
+ * This replaces the player-web-specific FallbackMetricSpec and makes metric
+ * configuration part of the manifest data, derivable without hardcoded config.
+ */
+export interface MetricConfigSpec {
+  /** Metric identifier (e.g., "time", "score", "pro"). */
+  id: string;
+  /** Display caption (e.g., "Остаток дней", "Баллы"). */
+  caption: string;
+  /** Optional description. */
+  description?: string;
+  /** Value binding expression (e.g., "{{game.state.public.metrics.time}}"). */
+  value: string;
+  /** Alternate identifiers for metric lookup (aliases). */
+  aliases?: Array<string>;
+  /** Background images for different layout modes. */
+  images?: {
+    sidebar?: string;
+    topbar?: string;
+  };
+  /** Layout variant: "prominent" for primary score metric, "default" for others. */
+  layout?: "default" | "prominent";
+}
+
+/**
+ * Platform-level action command constants.
+ *
+ * These are the canonical command strings used in onClick actions
+ * across manifest-driven and convention-based rendering.
+ * Use these constants instead of bare string literals to ensure
+ * consistency and discoverability.
+ */
+export const ManifestAction = {
+  /** Show the move history panel. */
+  SHOW_HISTORY: "showHistory",
+  /** Show the hint panel. */
+  SHOW_HINT: "showHint",
+  /** Dismiss an active panel (history, hint, etc.). */
+  DISMISS_PANEL: "dismiss_panel",
+  /** Request a server action (most common game action). */
+  REQUEST_SERVER: "requestServer",
+  /** Advance the game timeline (info screens, selections). */
+  ADVANCE: "advance",
+  /** Reset the game session. */
+  RESET_GAME: "reset_game",
+  /** Switch to a left-sidebar layout screen. */
+  SHOW_LEFT_SIDEBAR: "showScreenWithLeftSideBar",
+} as const;
+
+export type ManifestActionType = (typeof ManifestAction)[keyof typeof ManifestAction];
 
 

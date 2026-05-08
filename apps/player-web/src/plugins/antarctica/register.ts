@@ -2,6 +2,7 @@ import { registerGameResolvers } from "@/presenter/game-config-registry";
 import type { GameConfigData, GameConfig, ResolverFactory } from "@/presenter/game-config";
 import type { AntarcticaGameState } from "./contracts";
 import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
+import { ManifestAction } from "@cubica/contracts-manifest";
 import type { RuntimeUiState, GameSession } from "@/types/game-state";
 import {
   resolveAntarcticaContent,
@@ -50,7 +51,7 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
 
     resolveScreenKey(screenId, stepIndex, infoId, runtimeUi, gameUi) {
       if (screenId === "S2") {
-        const boardKey = this.resolveBoardScreenKey(stepIndex);
+        const boardKey = this.resolveBoardScreenKey?.(stepIndex) ?? null;
         if (boardKey && gameUi?.screens[boardKey]) {
           return boardKey;
         }
@@ -153,7 +154,7 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
         gameContent: resolveAntarcticaContent(content),
         resolveActionId(command, payload) {
           // Card selection: find selectActionId from boardCards
-          if (command === "requestServer" && payload.cardId) {
+          if (command === ManifestAction.REQUEST_SERVER && payload.cardId) {
             const cardId = String(payload.cardId);
             const card = gameState.boardCards.find((c) => c.cardId === cardId);
             if (card) {
@@ -161,11 +162,11 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
             }
           }
           // Advance action: resolve from advanceActionId payload
-          if (command === "advance" && payload.advanceActionId) {
+          if (command === ManifestAction.ADVANCE && payload.advanceActionId) {
             return String(payload.advanceActionId);
           }
           // Info advance: resolve from actionId payload
-          if (command === "requestServer" && payload.actionId) {
+          if (command === ManifestAction.REQUEST_SERVER && payload.actionId) {
             return String(payload.actionId);
           }
           return null;

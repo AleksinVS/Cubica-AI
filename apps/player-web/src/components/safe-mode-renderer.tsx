@@ -1,8 +1,10 @@
 import type { PlayerFacingContent, GameUiScreenDefinition, GamePlayerUiContent, GameUiComponent, GameUiComponentType } from "@cubica/contracts-manifest";
+import { ManifestAction } from "@cubica/contracts-manifest";
 import type { FallbackMetricSpec } from "@/presenter/game-config";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { getFallbackActionEntries } from "@/lib/game-content-resolvers";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
+import { useLocale, type LocaleStrings } from "@/lib/locale";
 
 /**
  * Convention state keys that SafeModeRenderer checks for fallback screen generation.
@@ -83,7 +85,7 @@ export function SafeModeRenderer({
   gameUi: GamePlayerUiContent | undefined;
   layoutMode: "leftsidebar" | "topbar";
   dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void;
-  /** Game-плагин может предоставить кастомный builder для fallback-экранов */
+  /** Game plugin can provide custom builder for fallback screens */
   fallbackScreenBuilder?: (
     gameState: Record<string, unknown>,
     content: PlayerFacingContent,
@@ -92,18 +94,19 @@ export function SafeModeRenderer({
     metrics: MetricsSnapshot,
     onAction: (actionId: string) => void
   ) => GameUiScreenDefinition | null;
-  /** Manifest action handler — для fallbackScreenBuilder path через ManifestRenderer */
+  /** Manifest action handler — for fallbackScreenBuilder path via ManifestRenderer */
   onManifestAction?: (command: string, payload: Record<string, unknown>) => void;
-  /** Callback для кнопки "Журнал ходов" */
+  /** Callback for "Journal" button */
   onJournal?: () => void;
-  /** Callback для кнопки "Подсказка" */
+  /** Callback for "Hint" button */
   onHint?: () => void;
-  /** Флаг ожидания ответа сервера */
+  /** Pending server response flag */
   isPending?: boolean;
-  /** ID текущей сессии */
+  /** Current session ID */
   sessionId?: string | null;
 }) {
-  // 1. Попробовать game-specific builder из плагина → ManifestRenderer
+  const t = useLocale();
+  // 1. Try game-specific builder from plugin → ManifestRenderer
   if (fallbackScreenBuilder) {
     const screen = fallbackScreenBuilder(gameState, content, layoutMode, fallbackMetrics, metrics, (actionId) => dispatchAction(actionId));
     if (screen) {
@@ -126,7 +129,7 @@ export function SafeModeRenderer({
   const disabled = isPending || !sessionId;
 
   if (state.currentInfo) {
-    const screenDef = buildInfoScreenDefinition(state, layoutMode, fallbackMetrics, disabled);
+    const screenDef = buildInfoScreenDefinition(state, layoutMode, fallbackMetrics, disabled, t);
     return (
       <ManifestRenderer
         screenDefinition={screenDef}
@@ -140,7 +143,7 @@ export function SafeModeRenderer({
   }
 
   if (state.currentBoard) {
-    const screenDef = buildBoardScreenDefinition(state, content, layoutMode, fallbackMetrics, disabled);
+    const screenDef = buildBoardScreenDefinition(state, content, layoutMode, fallbackMetrics, disabled, t);
     return (
       <ManifestRenderer
         screenDefinition={screenDef}
@@ -154,7 +157,7 @@ export function SafeModeRenderer({
   }
 
   if (state.currentTeamSelection) {
-    const screenDef = buildTeamSelectionScreenDefinition(state, layoutMode, fallbackMetrics, disabled);
+    const screenDef = buildTeamSelectionScreenDefinition(state, layoutMode, fallbackMetrics, disabled, t);
     if (screenDef) {
       return (
         <ManifestRenderer
@@ -170,7 +173,7 @@ export function SafeModeRenderer({
   }
 
   // 3. Fallback — каталог действий
-  const fallbackScreenDef = buildFallbackActionsScreenDefinition(content, layoutMode, fallbackMetrics, disabled);
+  const fallbackScreenDef = buildFallbackActionsScreenDefinition(content, layoutMode, fallbackMetrics, disabled, t);
   return (
     <ManifestRenderer
       screenDefinition={fallbackScreenDef}
@@ -188,28 +191,28 @@ export function SafeModeRenderer({
 function createConventionActionAdapter(dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void) {
   return (command: string, payload: Record<string, unknown>) => {
     // Специальные команды панели
-    if (command === "showHistory") {
-      dispatchAction("showHistory");
+    if (command === ManifestAction.SHOW_HISTORY) {
+      dispatchAction(ManifestAction.SHOW_HISTORY);
       return;
     }
-    if (command === "showHint") {
-      dispatchAction("showHint");
+    if (command === ManifestAction.SHOW_HINT) {
+      dispatchAction(ManifestAction.SHOW_HINT);
       return;
     }
     // Advance — извлечь advanceActionId из payload
-    if (command === "advance" && payload.advanceActionId) {
+    if (command === ManifestAction.ADVANCE && payload.advanceActionId) {
       dispatchAction(String(payload.advanceActionId));
       return;
     }
     // RequestServer с actionId
-    if (command === "requestServer" && payload.actionId) {
+    if (command === ManifestAction.REQUEST_SERVER && payload.actionId) {
       dispatchAction(String(payload.actionId));
       return;
     }
     // RequestServer с cardId — извлечь selectActionId из gameState
-    if (command === "requestServer" && payload.cardId) {
-      // cardId уже передан — диспетчеризуем как есть, плагин резолвит
-      dispatchAction("requestServer", payload);
+    if (command === ManifestAction.REQUEST_SERVER && payload.cardId) {
+      // cardId already passed — dispatch as-is, plugin resolves
+      dispatchAction(ManifestAction.REQUEST_SERVER, payload);
       return;
     }
     // Fallback — передать команду как actionId
@@ -237,7 +240,8 @@ function buildMetricGameVariableComponents(
 
 function buildPanelButtonsArea(
   layoutMode: "leftsidebar" | "topbar",
-  disabled: boolean
+  disabled: boolean,
+  t: LocaleStrings
 ): GameUiComponent {
   return {
     type: "areaComponent",
@@ -246,24 +250,24 @@ function buildPanelButtonsArea(
       {
         type: "buttonComponent",
         id: "btn-journal",
-        props: { caption: "журнал ходов", variant: "helper" as const, disabled },
-        actions: { onClick: { command: "showHistory", payload: {} } },
+        props: { caption: t.journal, variant: "helper" as const, disabled },
+        actions: { onClick: { command: ManifestAction.SHOW_HISTORY, payload: {} } },
       },
       {
         type: "buttonComponent",
         id: "btn-hint",
-        props: { caption: "подсказка", variant: "helper" as const, disabled },
-        actions: { onClick: { command: "showHint", payload: {} } },
+        props: { caption: t.hint, variant: "helper" as const, disabled },
+        actions: { onClick: { command: ManifestAction.SHOW_HINT, payload: {} } },
       },
       {
         type: "buttonComponent",
         id: "nav-left",
-        props: { caption: "Назад", variant: "nav" as const, disabled: true },
+        props: { caption: t.back, variant: "nav" as const, disabled: true },
       },
       {
         type: "buttonComponent",
         id: "nav-right",
-        props: { caption: "Вперед", variant: "nav" as const, disabled: true },
+        props: { caption: t.forward, variant: "nav" as const, disabled: true },
       },
     ],
   };
@@ -273,7 +277,8 @@ function buildInfoScreenDefinition(
   state: Record<string, unknown>,
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
-  disabled: boolean
+  disabled: boolean,
+  t: LocaleStrings
 ): GameUiScreenDefinition {
   const info = state.currentInfo as Record<string, unknown> | undefined;
   const advanceActionId = info?.advanceActionId as string | undefined;
@@ -337,20 +342,20 @@ function buildInfoScreenDefinition(
             {
               type: "buttonComponent" as GameUiComponentType,
               id: "btn-advance",
-              props: { caption: advanceLabel ?? "Продолжить", variant: "action" as const, disabled },
-              actions: { onClick: { command: "advance", payload: { advanceActionId } } },
+              props: { caption: advanceLabel ?? t.continue, variant: "action" as const, disabled },
+              actions: { onClick: { command: ManifestAction.ADVANCE, payload: { advanceActionId } } },
             },
           ],
         }] : []),
       ],
     },
     // Panel buttons
-    buildPanelButtonsArea(layoutMode, disabled),
+    buildPanelButtonsArea(layoutMode, disabled, t),
   ];
 
   return {
     type: "screen",
-    title: infoTitle ?? "Информация",
+    title: infoTitle ?? t.information,
     layoutMode,
     root: {
       type: "screenComponent",
@@ -365,7 +370,8 @@ function buildBoardScreenDefinition(
   content: PlayerFacingContent,
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
-  disabled: boolean
+  disabled: boolean,
+  t: LocaleStrings
 ): GameUiScreenDefinition {
   const board = state.currentBoard as Record<string, unknown> | undefined;
   const canAdvance = state.canAdvance === true;
@@ -405,7 +411,7 @@ function buildBoardScreenDefinition(
           visualState: "default",
         },
         actions: {
-          onClick: { command: "requestServer", payload: { actionId: "{{card.selectActionId}}" } },
+          onClick: { command: ManifestAction.REQUEST_SERVER, payload: { actionId: "{{card.selectActionId}}" } },
         },
       },
     ],
@@ -422,13 +428,13 @@ function buildBoardScreenDefinition(
           type: "buttonComponent",
           id: "btn-advance",
           props: {
-            caption: ((state.selectedCard as Record<string, unknown>)?.advanceLabel as string) ?? "Продолжить",
+            caption: ((state.selectedCard as Record<string, unknown>)?.advanceLabel as string) ?? t.continue,
             variant: "action" as const,
             disabled,
           },
           actions: {
             onClick: {
-              command: "advance",
+              command: ManifestAction.ADVANCE,
               payload: { advanceActionId: (state.selectedCard as Record<string, unknown>)?.advanceActionId },
             },
           },
@@ -469,7 +475,7 @@ function buildBoardScreenDefinition(
           ],
         },
         // Panel buttons
-        buildPanelButtonsArea("topbar", disabled),
+        buildPanelButtonsArea("topbar", disabled, t),
       ],
     },
   };
@@ -479,7 +485,8 @@ function buildTeamSelectionScreenDefinition(
   state: Record<string, unknown>,
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
-  disabled: boolean
+  disabled: boolean,
+  t: LocaleStrings
 ): GameUiScreenDefinition | null {
   const teamSelection = state.currentTeamSelection as Record<string, unknown> | undefined;
   if (!teamSelection) return null;
@@ -489,7 +496,7 @@ function buildTeamSelectionScreenDefinition(
 
   return {
     type: "screen",
-    title: (teamSelection.title as string) ?? "Выбор команды",
+    title: (teamSelection.title as string) ?? t.teamSelection,
     layoutMode,
     root: {
       type: "screenComponent",
@@ -523,7 +530,7 @@ function buildTeamSelectionScreenDefinition(
                     selectLabel: "{{member.selectLabel}}",
                   },
                   actions: {
-                    onClick: { command: "requestServer", payload: { actionId: "{{member.selectActionId}}" } },
+                    onClick: { command: ManifestAction.REQUEST_SERVER, payload: { actionId: "{{member.selectActionId}}" } },
                   },
                 },
               ],
@@ -546,12 +553,12 @@ function buildTeamSelectionScreenDefinition(
                 {
                   type: "buttonComponent",
                   props: {
-                    caption: (teamSelection.confirmLabel as string) ?? "Подтвердить",
+                    caption: (teamSelection.confirmLabel as string) ?? t.confirm,
                     variant: "action" as const,
                     disabled: disabled || pickCount !== requiredPickCount,
                   },
                   actions: {
-                    onClick: { command: "requestServer", payload: { actionId: teamSelection.confirmActionId as string } },
+                    onClick: { command: ManifestAction.REQUEST_SERVER, payload: { actionId: teamSelection.confirmActionId as string } },
                   },
                 },
               ],
@@ -559,7 +566,7 @@ function buildTeamSelectionScreenDefinition(
           ],
         },
         // Panel buttons
-        buildPanelButtonsArea(layoutMode, disabled),
+        buildPanelButtonsArea(layoutMode, disabled, t),
       ],
     },
   };
@@ -569,7 +576,8 @@ function buildFallbackActionsScreenDefinition(
   content: PlayerFacingContent,
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
-  disabled: boolean
+  disabled: boolean,
+  t: LocaleStrings
 ): GameUiScreenDefinition {
   const actions = getFallbackActionEntries(content);
 
@@ -600,10 +608,10 @@ function buildFallbackActionsScreenDefinition(
                 "action",
                 ...(action.capabilityFamily ? [action.capabilityFamily] : []),
               ],
-              text: "Экран еще не описан в UI manifest, поэтому доступен безопасный runtime fallback.",
+              text: t.fallbackNotice,
             },
             actions: {
-              onClick: { command: "requestServer", payload: { actionId: action.actionId } },
+              onClick: { command: ManifestAction.REQUEST_SERVER, payload: { actionId: action.actionId } },
             },
           })),
         },

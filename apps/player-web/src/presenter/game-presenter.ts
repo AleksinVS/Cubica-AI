@@ -1,6 +1,7 @@
 import { applyJsonMergePatch } from "@cubica/sdk-core";
 import type { ViewCommand } from "@cubica/sdk-core";
 import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
+import { ManifestAction } from "@cubica/contracts-manifest";
 import type {
   GameSession,
   MetricsSnapshot,
@@ -15,6 +16,7 @@ import {
 } from "@/presenter/runtime-client";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import type { GameConfig } from "@/presenter/game-config";
+import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting } from "@/lib/screen-router";
 import type { ClientRequest } from "@/presenter/types";
 import type { PlayerState } from "@/presenter/types";
 
@@ -92,11 +94,16 @@ export class GamePresenter {
 
     const gameState = this.config.resolveGameState(this.content, this.session);
 
+    const screenRouting = this.gameUi?.screenRouting;
     const screenKey = this.gameUi
-      ? this.config.resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId, runtimeUi, this.gameUi)
+      ? this.config.resolveScreenKey
+        ? this.config.resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId, runtimeUi, this.gameUi)
+        : resolveScreenKeyDefault(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi, this.gameUi)
       : null;
 
-    const layoutMode = this.config.resolveLayoutMode(screenKey, runtimeUi, gameState);
+    const layoutMode = this.config.resolveLayoutMode
+      ? this.config.resolveLayoutMode(screenKey, runtimeUi, gameState)
+      : resolveLayoutModeFromRouting(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi) ?? "topbar";
 
     const rawActivePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;
     const activePanel = rawActivePanel && rawActivePanel !== this.dismissedPanel ? rawActivePanel : null;
@@ -190,16 +197,16 @@ export class GamePresenter {
     await this.syncView();
 
     try {
-      if (request.type === "showHistory" || request.type === "showHint") {
+      if (request.type === ManifestAction.SHOW_HISTORY || request.type === ManifestAction.SHOW_HINT) {
         this.dismissedPanel = null;
       }
 
-      if (request.type === "reset_game") {
+      if (request.type === ManifestAction.RESET_GAME) {
         await this.resetGame();
         return;
       }
 
-      if (request.type === "dismiss_panel") {
+      if (request.type === ManifestAction.DISMISS_PANEL) {
         this.dismissedPanel = (request.payload?.panel as string) ?? null;
         await this.syncView();
         return;

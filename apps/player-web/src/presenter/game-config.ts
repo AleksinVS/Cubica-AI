@@ -1,4 +1,4 @@
-import type { GamePlayerUiContent, PlayerFacingContent, GameState } from "@cubica/contracts-manifest";
+import type { GamePlayerUiContent, PlayerFacingContent, GameState, MetricConfigSpec } from "@cubica/contracts-manifest";
 
 import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
@@ -58,11 +58,21 @@ export interface GameConfigData {
  * - TUiContent: тип UI-контента манифеста (по умолчанию GamePlayerUiContent)
  */
 export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePlayerUiContent> {
-  /** Сопоставляет stepIndex с ключом экрана манифеста для S2-досок */
-  resolveBoardScreenKey: (stepIndex: number | null) => string | null;
+  /**
+   * Maps stepIndex to a manifest screen key for board screens.
+   * Optional — games without boards can omit this (defaults to null).
+   * Board-centric games (Antarctica) override this with step-to-screen mappings.
+   */
+  resolveBoardScreenKey?: (stepIndex: number | null) => string | null;
 
-  /** Выбирает ключ экрана из манифеста UI по текущему состоянию timeline */
-  resolveScreenKey: (
+  /**
+   * Resolves a manifest screen key from the current timeline state.
+   * Optional — when omitted, the data-driven screen router is used
+   * (matching against screenRouting entries from the UI manifest,
+   * then direct screenId lookup, then activeInfoId disambiguation).
+   * Board-centric games (Antarctica) override this for step-to-screen mappings.
+   */
+  resolveScreenKey?: (
     screenId: string | null,
     stepIndex: number | null,
     infoId: string | null,
@@ -70,8 +80,12 @@ export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePl
     uiContent: TUiContent | undefined
   ) => string | null;
 
-  /** Определяет раскладку экрана: topbar или leftsidebar */
-  resolveLayoutMode: (
+  /**
+   * Determines the screen layout mode: topbar or leftsidebar.
+   * Optional — when omitted, defaults to the data-driven layout resolver
+   * (checking screenRouting entries and runtimeUi.activeScreen).
+   */
+  resolveLayoutMode?: (
     screenKey: string | null,
     runtimeUi: RuntimeUiState,
     gameState: TGameState
@@ -162,3 +176,21 @@ export interface GameConfig<TGameState = GameState, TUiContent = GamePlayerUiCon
 export type ResolverFactory<TGameState = GameState, TUiContent = GamePlayerUiContent> = (
   data: GameConfigData
 ) => GameConfig<TGameState, TUiContent>;
+
+/**
+ * Converts MetricConfigSpec from the UI manifest to FallbackMetricSpec
+ * for backward compatibility with SafeModeRenderer and GamePlayer.
+ *
+ * When metric_specs are available in the UI manifest, games can skip
+ * defining fallbackMetrics in GameConfigData and derive them from the manifest instead.
+ */
+export function metricSpecsToFallbackMetrics(specs: Array<MetricConfigSpec>): Array<FallbackMetricSpec> {
+  return specs.map((spec) => ({
+    id: spec.id,
+    caption: spec.caption,
+    description: spec.description,
+    aliases: spec.aliases ?? [spec.id],
+    sidebarImage: spec.images?.sidebar ?? "",
+    topbarImage: spec.images?.topbar ?? "",
+  }));
+}

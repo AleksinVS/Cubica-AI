@@ -1,20 +1,22 @@
+import { ManifestAction } from "@cubica/contracts-manifest";
+
 /**
- * Создаёт адаптер, который преобразует UI-команды из манифеста
- * в runtime action IDs для dispatch.
+ * Creates an adapter that converts UI commands from the manifest
+ * into runtime action IDs for dispatch.
  *
- * Поддерживает два уровня настройки:
- * 1. commandMap — статический маппинг команд на actionId
- * 2. resolveActionId — динамическая резолюция (например, поиск cardId в boardCards)
+ * Supports two levels of customization:
+ * 1. commandMap — static mapping of commands to actionId
+ * 2. resolveActionId — dynamic resolution (e.g., finding cardId in boardCards)
  *
- * Если ни commandMap, ни resolveActionId не указаны, используется
- * дефолтный набор из 4 команд (showHistory, showHint, showScreenWithLeftSideBar).
+ * If neither commandMap nor resolveActionId are specified, a default
+ * set of platform commands is used (showHistory, showHint, showScreenWithLeftSideBar).
  */
 export function createManifestActionAdapter(options: {
-  /** Game-specific контент (тип unknown — плагин кастует к своему типу) */
+  /** Game-specific content (type unknown — plugin casts to its own type) */
   gameContent: unknown;
-  /** Маппинг манифестных команд на runtime action IDs */
+  /** Mapping of manifest commands to runtime action IDs */
   commandMap?: Record<string, string>;
-  /** Динамическая резолюция команд. Вызывается перед commandMap lookup. */
+  /** Dynamic command resolution. Called before commandMap lookup. */
   resolveActionId?: (command: string, payload: Record<string, unknown>) => string | null;
   /** Dispatch action callback */
   dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void;
@@ -24,7 +26,7 @@ export function createManifestActionAdapter(options: {
   const { commandMap, resolveActionId, dispatchAction, onError } = options;
 
   return (command: string, payload: Record<string, unknown>) => {
-    // 1. Попробовать динамическую резолюцию (плагин может искать cardId и т.д.)
+    // 1. Try dynamic resolution (plugin may search by cardId etc.)
     if (resolveActionId) {
       const actionId = resolveActionId(command, payload);
       if (actionId) {
@@ -33,29 +35,29 @@ export function createManifestActionAdapter(options: {
       }
     }
 
-    // 2. Попробовать статический маппинг
+    // 2. Try static mapping
     if (commandMap && command in commandMap) {
       dispatchAction(commandMap[command], payload);
       return;
     }
 
-    // 3. Дефолтные команды (backward compatibility)
-    if (command === "showHistory") {
-      dispatchAction("showHistory");
+    // 3. Default platform commands (backward compatibility)
+    if (command === ManifestAction.SHOW_HISTORY) {
+      dispatchAction(ManifestAction.SHOW_HISTORY);
       return;
     }
-    if (command === "showHint") {
-      dispatchAction("showHint");
+    if (command === ManifestAction.SHOW_HINT) {
+      dispatchAction(ManifestAction.SHOW_HINT);
       return;
     }
-    if (command === "showScreenWithLeftSideBar") {
-      dispatchAction("showScreenWithLeftSideBar");
+    if (command === ManifestAction.SHOW_LEFT_SIDEBAR) {
+      dispatchAction(ManifestAction.SHOW_LEFT_SIDEBAR);
       return;
     }
 
-    // 4. Fallback: передать команду как actionId
-    if (command === "requestServer") {
-      dispatchAction("requestServer", payload);
+    // 4. Fallback: pass command as actionId
+    if (command === ManifestAction.REQUEST_SERVER) {
+      dispatchAction(ManifestAction.REQUEST_SERVER, payload);
       return;
     }
 

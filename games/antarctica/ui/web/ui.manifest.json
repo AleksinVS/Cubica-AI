@@ -69,7 +69,8 @@
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре. Основной параметр.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -330,7 +331,8 @@
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -619,7 +621,8 @@
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -900,7 +903,8 @@
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -1151,7 +1155,8 @@
                 "props": {
                   "caption": "Остаток дней",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -1382,7 +1387,8 @@
                 "props": {
                   "caption": "Остаток дней",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -1614,7 +1620,8 @@
                 "props": {
                   "caption": "Остаток дней",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -1846,7 +1853,8 @@
                 "props": {
                   "caption": "Остаток дней",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -2078,7 +2086,8 @@
                 "props": {
                   "caption": "Остаток дней",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -2310,7 +2319,8 @@
                 "props": {
                   "caption": "Остаток дней",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -2543,7 +2553,8 @@
                   "caption": "Остаток дней",
                   "description": "Оставшееся время в игре. Основной параметр.",
                   "backgroundImage": "/images/left-sidebar/days.png",
-                  "value": "{{game.state.public.metrics.score}}"
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent"
                 }
               },
               {
@@ -2796,5 +2807,138 @@
         "source": "migration"
       }
     }
-  }
+  },
+  "metric_specs": [
+    {
+      "id": "time",
+      "caption": "Остаток дней",
+      "aliases": [
+        "days"
+      ],
+      "value": "{{game.state.public.metrics.time}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/days.png",
+        "topbar": "/images/top-sidebar/days.png"
+      },
+      "layout": "prominent"
+    },
+    {
+      "id": "score",
+      "caption": "Баллы",
+      "aliases": [
+        "points"
+      ],
+      "value": "{{game.state.public.metrics.score}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/score.png",
+        "topbar": "/images/top-sidebar/score.png"
+      },
+      "layout": "prominent"
+    },
+    {
+      "id": "pro",
+      "caption": "Знания",
+      "aliases": [
+        "knowledge"
+      ],
+      "value": "{{game.state.public.metrics.pro}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/pro.png",
+        "topbar": "/images/top-sidebar/pro.png"
+      }
+    },
+    {
+      "id": "rep",
+      "caption": "Доверие",
+      "aliases": [
+        "reputation"
+      ],
+      "value": "{{game.state.public.metrics.rep}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/rep.png",
+        "topbar": "/images/top-sidebar/rep.png"
+      }
+    },
+    {
+      "id": "lid",
+      "caption": "Энергия",
+      "aliases": [
+        "energy"
+      ],
+      "value": "{{game.state.public.metrics.lid}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/lid.png",
+        "topbar": "/images/top-sidebar/lid.png"
+      }
+    },
+    {
+      "id": "money",
+      "caption": "Бюджет",
+      "aliases": [
+        "budget"
+      ],
+      "value": "{{game.state.public.metrics.money}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/money.png",
+        "topbar": "/images/top-sidebar/money.png"
+      }
+    },
+    {
+      "id": "team",
+      "caption": "Команда",
+      "aliases": [
+        "teamScore"
+      ],
+      "value": "{{game.state.public.metrics.team}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/team.png",
+        "topbar": "/images/top-sidebar/team.png"
+      }
+    },
+    {
+      "id": "climate",
+      "caption": "Климат",
+      "aliases": [
+        "climate"
+      ],
+      "value": "{{game.state.public.metrics.climate}}",
+      "images": {
+        "sidebar": "/images/left-sidebar/climate.png",
+        "topbar": "/images/top-sidebar/climate.png"
+      }
+    }
+  ],
+  "screen_routing": [
+    {
+      "screenKey": "55..60",
+      "conditions": {
+        "screenId": "S2",
+        "stepIndex": 30
+      }
+    },
+    {
+      "screenKey": "61..66",
+      "conditions": {
+        "screenId": "S2",
+        "stepIndex": 32
+      }
+    },
+    {
+      "screenKey": "67..70",
+      "conditions": {
+        "screenId": "S2",
+        "stepIndexRange": {
+          "from": 34,
+          "to": 37
+        }
+      }
+    },
+    {
+      "screenKey": "S1_LEFT",
+      "conditions": {
+        "screenId": "S1",
+        "layoutMode": "leftsidebar"
+      }
+    }
+  ]
 }

@@ -4,7 +4,9 @@ import type {
   PlayerFacingMockup,
   GameManifestActionDefinition,
   GamePlayerUiContent,
-  GameUiScreenDefinition
+  GameUiScreenDefinition,
+  ScreenRoutingEntry,
+  MetricConfigSpec
 } from "@cubica/contracts-manifest";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
@@ -147,6 +149,8 @@ const projectGameUiContent = (
     gameId: typeof meta.game_id === "string" ? meta.game_id : "game",
     entryPoint,
     screens,
+    screenRouting: (rawManifest.screen_routing ?? rawManifest.screenRouting) as ScreenRoutingEntry[] | undefined,
+    metricSpecs: Array.isArray(rawManifest.metric_specs ?? rawManifest.metricSpecs) ? (rawManifest.metric_specs ?? rawManifest.metricSpecs) as MetricConfigSpec[] : undefined,
     designArtifacts: Object.keys(designArtifacts).length > 0 ? designArtifacts : undefined
   };
 };

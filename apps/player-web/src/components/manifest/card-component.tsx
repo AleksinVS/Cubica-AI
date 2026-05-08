@@ -3,6 +3,7 @@ import type {
   GameUiCardComponentProps
 } from "@cubica/contracts-manifest";
 import { resolveExpression, resolvePayloadExpressions } from "@/lib/expression-resolver";
+import { useLocale } from "@/lib/locale";
 
 /**
  * Рендерит cardComponent (интерактивная карточка в UI манифеста).
@@ -23,6 +24,7 @@ export function CardComponent({
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
 }) {
+  const t = useLocale();
   const { text, title, summary, chips, selectLabel, visualState } = component.props;
   const command = (component as GameUiComponent).actions?.onClick?.command;
   const componentId = (component as GameUiComponent).id ?? "";
@@ -76,7 +78,7 @@ export function CardComponent({
             onClick={(e) => { e.stopPropagation(); onAction(command, actionPayload); }}
             tabIndex={-1}
           >
-            Выбрать
+            {t.selectCard}
           </button>
         )}
       </article>
@@ -128,7 +130,7 @@ export function CardComponent({
           disabled={isDisabled}
           tabIndex={-1}
         >
-          {resolvedSelectLabel ?? "Выбрать"}
+          {resolvedSelectLabel ?? t.selectCard}
         </button>
       )}
     </article>

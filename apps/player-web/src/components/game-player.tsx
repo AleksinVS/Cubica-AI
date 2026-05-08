@@ -6,6 +6,9 @@ import type {
   PlayerFacingMockup,
   GamePlayerUiContent
 } from "@cubica/contracts-manifest";
+import { ManifestAction } from "@cubica/contracts-manifest";
+import { useLocale, LocaleProvider } from "@/lib/locale";
+import { ru } from "@/lib/locale/ru";
 import type { PlayerState } from "@/presenter/types";
 import type { ViewCommand } from "@cubica/sdk-core";
 import type { GameConfigData } from "@/presenter/game-config";
@@ -41,6 +44,7 @@ export type GamePlayerProps = {
  * (game-config-registry) и объединяются с данными на клиенте.
  */
 export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: configData }: GamePlayerProps) {
+  const t = useLocale();
   const fullConfig = useMemo(
     () => buildGameConfig(configData),
     [configData]
@@ -145,7 +149,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
 
     void presenter.handleEvent({
       source: "user" as const,
-      type: "dismiss_panel",
+      type: ManifestAction.DISMISS_PANEL,
       payload: { panel },
       timestamp: new Date().toISOString()
     });
@@ -158,7 +162,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
       <main className="shell game-player-root">
         <div className="loading-state">
           <div className="loading-spinner" />
-          <span>Загрузка...</span>
+          <span>{t.loading}</span>
         </div>
       </main>
     );
@@ -174,7 +178,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           metrics={metrics}
           log={log as Array<{ actionId: string; payload?: unknown; capability?: string; capabilityFamily?: string; at?: string }>}
           onJournal={() => handleDismissPanel("history")}
-          onHint={() => handleAction("showHint")}
+          onHint={() => handleAction(ManifestAction.SHOW_HINT)}
           onClose={() => handleDismissPanel("history")}
           fallbackMetrics={fullConfig.fallbackMetrics}
         />
@@ -183,7 +187,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           content={content}
           metrics={metrics}
           log={log as Array<{ actionId: string; payload?: unknown; capability?: string; capabilityFamily?: string; at?: string }>}
-          onJournal={() => handleAction("showHistory")}
+          onJournal={() => handleAction(ManifestAction.SHOW_HISTORY)}
           onHint={() => handleDismissPanel("hint")}
           onClose={() => handleDismissPanel("hint")}
           fallbackMetrics={fullConfig.fallbackMetrics}
@@ -202,7 +206,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
           <div className="loading-spinner" />
-          <span>Загрузка...</span>
+          <span>{t.loading}</span>
         </div>
       ) : (
         <SafeModeRenderer
@@ -215,8 +219,8 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           dispatchAction={handleAction}
           fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}
           onManifestAction={handleManifestAction}
-          onJournal={() => handleAction("showHistory")}
-          onHint={() => handleAction("showHint")}
+          onJournal={() => handleAction(ManifestAction.SHOW_HISTORY)}
+          onHint={() => handleAction(ManifestAction.SHOW_HINT)}
           isPending={state.isPending}
           sessionId={state.sessionId}
         />
