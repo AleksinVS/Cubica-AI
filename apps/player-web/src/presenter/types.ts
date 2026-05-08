@@ -28,11 +28,13 @@ export interface ClientRequest {
 /**
  * Публичное состояние игрока, которое Presenter синхронизирует с View.
  *
- * TGameState — game-specific часть состояния (currentBoard, boardCards и т.д.).
- * Generic слой платформы не знает о структуре TGameState,
- * он только мержит её с base-полями (sessionId, metrics, screenKey и т.д.).
+ * Поля из game-specific состояния (currentBoard, boardCards и т.д.)
+ * включаются через spread, поэтому тип — Record<string, unknown>
+ * для совместимости с любым game-specific состоянием.
+ * Компоненты View приводят нужные поля к конкретным типам через
+ * game-specific плагины.
  */
-export type PlayerState<TGameState> = TGameState & {
+export type PlayerState = Record<string, unknown> & {
   sessionId: string | null;
   metrics: Record<string, unknown>;
   screenKey: string | null;

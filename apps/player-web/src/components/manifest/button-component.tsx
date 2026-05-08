@@ -2,35 +2,65 @@ import type {
   GameUiComponent,
   GameUiButtonComponentProps
 } from "@cubica/contracts-manifest";
-import { resolveButtonId } from "@/lib/layout-helpers";
+import { resolvePayloadExpressions } from "@/lib/expression-resolver";
 
 /**
- * Рендерит buttonComponent (кнопка действия в UI манифеста).
+ * Рендерит buttonComponent (кнопка действия в UI манифесте).
+ *
+ * Поддерживает variant для стилизации:
+ * - "action" (default): основная кнопка действия (action-button game-button)
+ * - "helper": кнопка панели — журнал/подсказка (button-helper)
+ * - "nav": кнопка навигации — стрелки (button-helper-arrow)
  */
 export function ButtonComponent({
   component,
   onAction,
-  layoutMode
+  layoutMode,
+  localContext,
+  gameState,
 }: {
   component: GameUiComponent<GameUiButtonComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   layoutMode?: "leftsidebar" | "topbar";
+  localContext?: Record<string, unknown>;
+  gameState?: Record<string, unknown>;
 }) {
-  const { caption } = component.props;
+  const { caption, variant, disabled } = component.props;
   const command = (component as GameUiComponent).actions?.onClick?.command;
-  const id = resolveButtonId(caption, (component as GameUiComponent).id);
-  const isTopbarArrow = layoutMode === "topbar" && (id === "nav-left" || id === "nav-right");
+  const basePayload = (component as GameUiComponent).actions?.onClick?.payload ?? {};
+  const resolvedPayload = resolvePayloadExpressions(basePayload, gameState, localContext);
+
+  // Определяем CSS классы по variant
+  let className: string;
+  if (variant === "helper") {
+    className = "button-helper";
+  } else if (variant === "nav") {
+    className = "button-helper-arrow";
+  } else {
+    // variant === "action" или не указан
+    className = "action-button game-button";
+  }
+
+  // Для nav-кнопок в topbar — дополнительный класс
+  const isTopbarArrow = variant === "nav" && layoutMode === "topbar";
+  if (isTopbarArrow) {
+    className = appendClassName(className, "topbar-nav-button");
+  }
 
   return (
     <button
-      id={id}
-      className={`action-button game-button${isTopbarArrow ? " topbar-nav-button" : ""}`}
+      id={(component as GameUiComponent).id}
+      className={className}
       type="button"
-      onClick={() => command && onAction(command, (component as GameUiComponent).actions?.onClick?.payload ?? {})}
-      disabled={!command}
+      onClick={() => command && onAction(command, resolvedPayload)}
+      disabled={!command || disabled}
       aria-label={caption}
     >
-      {isTopbarArrow ? null : caption}
+      {variant === "nav" ? null : caption}
     </button>
   );
+}
+
+function appendClassName(base: string, extra: string): string {
+  return base ? `${base} ${extra}` : extra;
 }

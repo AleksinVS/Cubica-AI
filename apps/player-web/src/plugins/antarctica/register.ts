@@ -1,10 +1,10 @@
 import { registerGameResolvers } from "@/presenter/game-config-registry";
 import type { GameConfigData, GameConfig, ResolverFactory } from "@/presenter/game-config";
-import type { AntarcticaGameState } from "@/presenter/game-config";
+import type { AntarcticaGameState } from "./contracts";
 import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
 import type { RuntimeUiState, GameSession } from "@/types/game-state";
 import {
-  resolveGameContent,
+  resolveAntarcticaContent,
   resolveCurrentBoard,
   resolveCurrentInfoEntry,
   resolveCurrentTeamSelectionScene,
@@ -15,7 +15,7 @@ import {
   readTeamSelection,
   readCanAdvance,
   getFallbackActionEntries
-} from "@/lib/game-content-resolvers";
+} from "./state-resolvers";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 
 /**
@@ -43,8 +43,8 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
       if (stepIndex === null) return null;
       if (stepIndex === 30) return "55..60";
       if (stepIndex === 32) return "61..66";
-      if (stepIndex === 34) return "67..68";
-      if (stepIndex === 36) return "69..70";
+      if (stepIndex === 34) return "67..70";
+      if (stepIndex === 36) return "67..70";
       return null;
     },
 
@@ -102,7 +102,7 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
 
     resolveGameState(content, session) {
       const publicState = session?.state?.public as Record<string, unknown> | undefined;
-      const gameContent = resolveGameContent(content);
+      const gameContent = resolveAntarcticaContent(content);
       const currentInfo = resolveCurrentInfoEntry(gameContent, publicState);
       const currentBoard = resolveCurrentBoard(gameContent, publicState);
       const currentTeamSelection = resolveCurrentTeamSelectionScene(gameContent, publicState);
@@ -140,10 +140,36 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
       };
     },
 
+    resolveMetrics(metrics) {
+      // Antarctica: score = 60 - time (remaining days)
+      if (typeof metrics.time === "number" && !("score" in metrics)) {
+        metrics.score = 60 - metrics.time;
+      }
+      return metrics;
+    },
+
     createManifestActionAdapter(content, gameState, dispatchAction, onError) {
       return createManifestActionAdapter({
-        gameContent: resolveGameContent(content),
-        boardCards: gameState.boardCards,
+        gameContent: resolveAntarcticaContent(content),
+        resolveActionId(command, payload) {
+          // Card selection: find selectActionId from boardCards
+          if (command === "requestServer" && payload.cardId) {
+            const cardId = String(payload.cardId);
+            const card = gameState.boardCards.find((c) => c.cardId === cardId);
+            if (card) {
+              return card.selectActionId;
+            }
+          }
+          // Advance action: resolve from advanceActionId payload
+          if (command === "advance" && payload.advanceActionId) {
+            return String(payload.advanceActionId);
+          }
+          // Info advance: resolve from actionId payload
+          if (command === "requestServer" && payload.actionId) {
+            return String(payload.actionId);
+          }
+          return null;
+        },
         dispatchAction,
         onError
       });
@@ -155,7 +181,7 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
  * Регистрация фабрики резолверов Антарктиды в глобальном реестре.
  * Выполняется при импорте модуля (побочный эффект).
  */
-registerGameResolvers<AntarcticaGameState, GamePlayerUiContent>(
+registerGameResolvers(
   "antarctica",
-  createAntarcticaConfig
+  createAntarcticaConfig as unknown as import("@/presenter/game-config").ResolverFactory
 );

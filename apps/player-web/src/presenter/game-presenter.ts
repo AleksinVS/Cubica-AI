@@ -1,6 +1,6 @@
 import { applyJsonMergePatch } from "@cubica/sdk-core";
 import type { ViewCommand } from "@cubica/sdk-core";
-import type { PlayerFacingContent } from "@cubica/contracts-manifest";
+import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 import type {
   GameSession,
   MetricsSnapshot,
@@ -15,7 +15,8 @@ import {
 } from "@/presenter/runtime-client";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import type { GameConfig } from "@/presenter/game-config";
-import type { ClientRequest, PlayerState } from "@/presenter/types";
+import type { ClientRequest } from "@/presenter/types";
+import type { PlayerState } from "@/presenter/types";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
 
@@ -32,11 +33,11 @@ export type { ClientRequest, PlayerState } from "@/presenter/types";
  * правила маршрутизации экранов, fallback-метрики и разрешение content
  * передаются через {@link GameConfig} извне.
  */
-export class GamePresenter<TGameState, TUiContent> {
+export class GamePresenter {
   private gateway: ReactViewGateway;
   private content: PlayerFacingContent;
-  private gameUi: TUiContent | undefined;
-  private config: GameConfig<TGameState, TUiContent>;
+  private gameUi: GamePlayerUiContent | undefined;
+  private config: GameConfig;
 
   private session: GameSession | null = null;
   private booting = true;
@@ -47,8 +48,8 @@ export class GamePresenter<TGameState, TUiContent> {
   constructor(options: {
     gateway: ReactViewGateway;
     content: PlayerFacingContent;
-    gameUi?: TUiContent;
-    config: GameConfig<TGameState, TUiContent>;
+    gameUi?: GamePlayerUiContent;
+    config: GameConfig;
   }) {
     this.gateway = options.gateway;
     this.content = options.content;
@@ -59,12 +60,12 @@ export class GamePresenter<TGameState, TUiContent> {
   /**
    * Публичное состояние для подписки View.
    */
-  get playerState(): PlayerState<TGameState> {
+  get playerState(): PlayerState {
     const publicState = this.session?.state?.public as Record<string, unknown> | undefined;
-    const metrics = { ...(publicState?.metrics as MetricsSnapshot) ?? {} };
-    if (typeof metrics.time === "number" && !("score" in metrics)) {
-      metrics.score = 60 - metrics.time;
-    }
+    const rawMetrics = { ...(publicState?.metrics as MetricsSnapshot) ?? {} };
+    const metrics = this.config.resolveMetrics
+      ? this.config.resolveMetrics(rawMetrics)
+      : rawMetrics;
     const timeline = (publicState?.timeline as Record<string, unknown> | undefined) ?? {};
     const runtimeUi = (publicState?.ui as RuntimeUiState | undefined) ?? {};
 

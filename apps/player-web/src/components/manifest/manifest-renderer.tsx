@@ -1,4 +1,4 @@
-import type { GameUiScreenDefinition } from "@cubica/contracts-manifest";
+import type { GameUiScreenDefinition, GameUiDesignArtifactRef } from "@cubica/contracts-manifest";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { UiComponentNode } from "./ui-component-node";
 
@@ -7,19 +7,16 @@ import { UiComponentNode } from "./ui-component-node";
  * Рендерит экран из данных UI-манифеста,
  * связывая значения метрик из снимка сессии и направляя
  * действия кнопок/карточек в стандартный путь dispatch.
- *
- * Раскладка по умолчанию (mockup left-sidebar-6-cards):
- * - Левый сайдбар (260px): метрики
- * - Основная область: сетка карточек (3x2) + нижние элементы управления
- * - Правая декорация (370px): иллюстрация
  */
 export function ManifestRenderer({
   screenDefinition,
   metrics,
   onAction,
   screenKey,
-  layoutMode = "leftsidebar",
-  metricBackgroundImages
+  layoutMode: layoutModeProp = "topbar",
+  metricBackgroundImages,
+  gameState,
+  designArtifacts,
 }: {
   screenDefinition: GameUiScreenDefinition;
   metrics: MetricsSnapshot;
@@ -27,7 +24,17 @@ export function ManifestRenderer({
   screenKey?: string;
   layoutMode?: "leftsidebar" | "topbar";
   metricBackgroundImages?: Record<string, string>;
+  /** Полное состояние игры для разрешения выражений и itemTemplate. */
+  gameState?: Record<string, unknown>;
+  /** Registry дизайн-артефактов для visualMode="image". */
+  designArtifacts?: Record<string, GameUiDesignArtifactRef>;
 }) {
+  // Layout from screen definition takes priority over prop
+  const layoutMode =
+    screenDefinition.layoutMode && screenDefinition.layoutMode !== "auto"
+      ? screenDefinition.layoutMode
+      : layoutModeProp;
+
   return (
     <div className={`game-renderer game-renderer--${layoutMode}`}>
       <UiComponentNode
@@ -37,6 +44,9 @@ export function ManifestRenderer({
         screenKey={screenKey}
         layoutMode={layoutMode}
         metricBackgroundImages={metricBackgroundImages}
+        gameState={gameState}
+        parentVisualMode={screenDefinition.root.visualMode}
+        designArtifacts={designArtifacts}
       />
     </div>
   );

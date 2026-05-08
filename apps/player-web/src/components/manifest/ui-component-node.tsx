@@ -1,22 +1,51 @@
+import React from "react";
 import type {
   GameUiComponent,
   GameUiAreaComponentProps,
   GameUiButtonComponentProps,
   GameUiCardComponentProps,
   GameUiGameVariableComponentProps,
-  GameUiScreenComponentProps
+  GameUiScreenComponentProps,
+  GameUiRichTextComponentProps,
+  GameUiImageComponentProps,
+  GameUiDesignArtifactRef,
 } from "@cubica/contracts-manifest";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { appendClassName } from "@/lib/classname-utils";
 import { resolveAreaCssClass } from "@/lib/layout-helpers";
+import { resolveExpressions } from "@/lib/expression-resolver";
 import { GameVariableComponent } from "./game-variable-component";
 import { CardComponent } from "./card-component";
 import { ButtonComponent } from "./button-component";
+import { RichTextComponent } from "./rich-text-component";
+import { ImageComponent } from "./image-component";
+
+/**
+ * Резолвит designImageRef против designArtifacts registry.
+ * Возвращает URL изображения или undefined, если референс не найден.
+ */
+function resolveDesignImage(
+  designImageRef: string | undefined,
+  designArtifacts: Record<string, GameUiDesignArtifactRef> | undefined
+): string | undefined {
+  if (!designImageRef || !designArtifacts) return undefined;
+  const artifact = designArtifacts[designImageRef];
+  if (!artifact) return undefined;
+  return artifact.sourceRef?.file;
+}
 
 /**
  * Рекурсивно рендерит дерево UI-компонентов из манифеста.
- * Поддерживает ограниченный набор типов: screenComponent, areaComponent,
- * gameVariableComponent, cardComponent, buttonComponent.
+ * Поддерживает: screenComponent, areaComponent, gameVariableComponent,
+ * cardComponent, buttonComponent, richTextComponent, imageComponent.
+ *
+ * visualMode определяет способ рендеринга:
+ * - "style" (default): CSS-классы и inline-стили
+ * - "image": дизайн-макет как background-image через designImageRef
+ * - "auto": image если designImageRef доступен, иначе style
+ *
+ * При наличии itemTemplate итерирует по коллекции из gameState,
+ * создавая локальный контекст для каждого элемента.
  */
 export function UiComponentNode({
   component,
@@ -24,7 +53,11 @@ export function UiComponentNode({
   onAction,
   screenKey,
   layoutMode,
-  metricBackgroundImages
+  metricBackgroundImages,
+  gameState,
+  localContext,
+  parentVisualMode,
+  designArtifacts,
 }: {
   component: GameUiComponent;
   metrics: MetricsSnapshot;
@@ -32,8 +65,94 @@ export function UiComponentNode({
   screenKey?: string;
   layoutMode?: "leftsidebar" | "topbar";
   metricBackgroundImages?: Record<string, string>;
+  /** Полное состояние игры для разрешения выражений и itemTemplate. */
+  gameState?: Record<string, unknown>;
+  /** Локальный контекст для itemTemplate (переменные текущего элемента). */
+  localContext?: Record<string, unknown>;
+  /** Унаследованный визуальный режим от родителя. */
+  parentVisualMode?: "image" | "style" | "auto";
+  /** Registry дизайн-артефактов для разрешения designImageRef при visualMode="image". */
+  designArtifacts?: Record<string, GameUiDesignArtifactRef>;
 }) {
   const children = component.children ?? [];
+  const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
+
+  // visualMode resolution: "auto" → "image" if designImageRef available, else "style"
+  const resolvedDesignImage = resolveDesignImage(component.designImageRef, designArtifacts);
+  const isImageMode = effectiveVisualMode === "image" || (effectiveVisualMode === "auto" && !!resolvedDesignImage);
+
+  // itemTemplate: итерация по коллекции с локальным контекстом
+  if (component.itemTemplate && gameState) {
+    const collection = resolveExpressions(
+      component.itemTemplate.collection,
+      gameState,
+      localContext
+    );
+    const items = Array.isArray(collection) ? collection : [];
+    const itemKey = component.itemTemplate.itemKey;
+
+    const itemContent = (
+      <>
+        {items.map((item, index) => {
+          // Фильтрация: пропустить элементы, не проходящие filter-выражение
+          if (component.itemTemplate!.filter) {
+            const filterResult = resolveExpressions(
+              component.itemTemplate!.filter,
+              gameState,
+              { ...localContext, [itemKey]: item }
+            );
+            if (!filterResult) return null;
+          }
+
+          const itemLocalContext: Record<string, unknown> = {
+            ...localContext,
+            [itemKey]: item,
+          };
+
+          return (
+            <React.Fragment key={`${component.id ?? "item"}-${index}`}>
+              {children.map((child, childIndex) => (
+                <UiComponentNode
+                  key={childIndex}
+                  component={child}
+                  metrics={metrics}
+                  onAction={onAction}
+                  screenKey={screenKey}
+                  layoutMode={layoutMode}
+                  metricBackgroundImages={metricBackgroundImages}
+                  gameState={gameState}
+                  localContext={itemLocalContext}
+                  parentVisualMode={effectiveVisualMode}
+                  designArtifacts={designArtifacts}
+                />
+              ))}
+            </React.Fragment>
+          );
+        })}
+      </>
+    );
+
+    // Если itemTemplate находится на areaComponent или screenComponent,
+    // обернуть результат в контейнерный div с CSS-классом.
+    // Для других типов компонентов — вернуть как фрагмент без обёртки.
+    if (component.type === "areaComponent" || component.type === "screenComponent") {
+      const props = component.props as GameUiAreaComponentProps;
+      const cssClass = component.type === "areaComponent"
+        ? resolveAreaCssClass(props.cssClass, screenKey, layoutMode)
+        : (props as GameUiScreenComponentProps).cssClass ?? "";
+      const areaBgImage = isImageMode && resolvedDesignImage ? resolvedDesignImage : undefined;
+      return (
+        <div
+          className={component.type === "areaComponent" ? `game-area ${cssClass}` : `game-screen ${cssClass}`}
+          style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
+        >
+          {itemContent}
+        </div>
+      );
+    }
+
+    return itemContent;
+  }
 
   switch (component.type) {
     case "screenComponent": {
@@ -44,10 +163,14 @@ export function UiComponentNode({
           : layoutMode === "leftsidebar"
             ? appendClassName(props.cssClass, "leftsidebar-screen")
             : props.cssClass ?? "";
+      // visualMode="image": use design mockup as background
+      const bgImage = isImageMode && resolvedDesignImage
+        ? resolvedDesignImage
+        : props.backgroundImage;
       return (
         <div
           className={`game-screen ${cssClass}`}
-          style={props.backgroundImage ? { backgroundImage: `url(${props.backgroundImage})` } : undefined}
+          style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
         >
           {(cssClass.includes("topbar-screen-shell") || cssClass.includes("info-screen-shell")) && (
             <div className="additional-background" />
@@ -61,6 +184,10 @@ export function UiComponentNode({
               screenKey={screenKey}
               layoutMode={layoutMode}
               metricBackgroundImages={metricBackgroundImages}
+              gameState={gameState}
+              localContext={localContext}
+              parentVisualMode={effectiveVisualMode}
+              designArtifacts={designArtifacts}
             />
           ))}
         </div>
@@ -69,8 +196,13 @@ export function UiComponentNode({
 
     case "areaComponent": {
       const props = component.props as GameUiAreaComponentProps;
+      // visualMode="image": use design mockup as background for area
+      const areaBgImage = isImageMode && resolvedDesignImage ? resolvedDesignImage : undefined;
       return (
-        <div className={`game-area ${resolveAreaCssClass(props.cssClass, screenKey, layoutMode)}`}>
+        <div
+          className={`game-area ${resolveAreaCssClass(props.cssClass, screenKey, layoutMode)}`}
+          style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
+        >
           {children.map((child, index) => (
             <UiComponentNode
               key={index}
@@ -80,6 +212,10 @@ export function UiComponentNode({
               screenKey={screenKey}
               layoutMode={layoutMode}
               metricBackgroundImages={metricBackgroundImages}
+              gameState={gameState}
+              localContext={localContext}
+              parentVisualMode={effectiveVisualMode}
+              designArtifacts={designArtifacts}
             />
           ))}
         </div>
@@ -104,6 +240,8 @@ export function UiComponentNode({
         <CardComponent
           component={component as GameUiComponent<GameUiCardComponentProps>}
           onAction={onAction}
+          localContext={localContext}
+          gameState={gameState}
         />
       );
     }
@@ -114,6 +252,26 @@ export function UiComponentNode({
           component={component as GameUiComponent<GameUiButtonComponentProps>}
           onAction={onAction}
           layoutMode={layoutMode}
+          localContext={localContext}
+          gameState={gameState}
+        />
+      );
+    }
+
+    case "richTextComponent": {
+      return (
+        <RichTextComponent
+          component={component as GameUiComponent<GameUiRichTextComponentProps>}
+          localContext={localContext}
+          gameState={gameState}
+        />
+      );
+    }
+
+    case "imageComponent": {
+      return (
+        <ImageComponent
+          component={component as GameUiComponent<GameUiImageComponentProps>}
         />
       );
     }

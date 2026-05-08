@@ -8,13 +8,13 @@ import type {
 } from "@cubica/contracts-manifest";
 import type { PlayerState } from "@/presenter/types";
 import type { ViewCommand } from "@cubica/sdk-core";
-import type { GameConfigData, AntarcticaGameState } from "@/presenter/game-config";
+import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import { buildGameConfig } from "@/presenter/game-config-registry";
 import "@/plugins/register-games";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
-import { FallbackRenderer } from "@/components/fallback-renderer";
+import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { HintRenderer } from "@/components/panels/hint-renderer";
 import { JournalRenderer } from "@/components/panels/journal-renderer";
 
@@ -42,20 +42,20 @@ export type GamePlayerProps = {
  */
 export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: configData }: GamePlayerProps) {
   const fullConfig = useMemo(
-    () => buildGameConfig<AntarcticaGameState, GamePlayerUiContent>(configData),
+    () => buildGameConfig(configData),
     [configData]
   );
 
-  const [playerState, setPlayerState] = useState<PlayerState<AntarcticaGameState> | null>(null);
+  const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [screenKey, setScreenKey] = useState<string | undefined>(undefined);
   const [layoutMode, setLayoutMode] = useState<"leftsidebar" | "topbar">("topbar");
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
-  const presenterRef = useRef<GamePresenter<AntarcticaGameState, GamePlayerUiContent> | null>(null);
+  const presenterRef = useRef<GamePresenter | null>(null);
 
   useEffect(() => {
     const gateway = new ReactViewGateway();
-    const presenter = new GamePresenter<AntarcticaGameState, GamePlayerUiContent>({
+    const presenter = new GamePresenter({
       gateway,
       content,
       gameUi,
@@ -66,7 +66,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
     const unsubscribe = gateway.subscribe((command: ViewCommand) => {
       switch (command.type) {
         case "SYNC_STATE": {
-          const state = command.payload?.state as PlayerState<AntarcticaGameState> | undefined;
+          const state = command.payload?.state as PlayerState | undefined;
           if (state) {
             setPlayerState(state);
             if (state.screenKey) {
@@ -196,6 +196,8 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           screenKey={screenKey}
           layoutMode={layoutMode}
           metricBackgroundImages={fullConfig.metricBackgroundImages}
+          gameState={state as Record<string, unknown>}
+          designArtifacts={gameUi?.designArtifacts}
         />
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
@@ -203,29 +205,20 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           <span>Загрузка...</span>
         </div>
       ) : (
-        <FallbackRenderer
+        <SafeModeRenderer
           content={content}
-          runtimeApiUrl={runtimeApiUrl}
-          sessionId={state.sessionId}
-          isPending={state.isPending}
+          gameState={state as Record<string, unknown>}
           metrics={metrics}
-          currentInfo={state.currentInfo}
-          currentBoard={state.currentBoard}
-          currentTeamSelection={state.currentTeamSelection}
-          cardFlags={state.cardFlags}
-          selectedCardId={state.selectedCardId}
-          selectedCard={state.selectedCard}
-          boardCards={state.boardCards}
-          teamFlags={state.teamFlags}
-          selectedMemberIds={state.selectedMemberIds}
-          pickCount={state.pickCount}
-          canAdvance={state.canAdvance}
-          fallbackActions={state.fallbackActions}
-          dispatchAction={handleAction}
+          fallbackMetrics={fullConfig.fallbackMetrics}
+          gameUi={gameUi}
           layoutMode={layoutMode}
+          dispatchAction={handleAction}
+          fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}
+          onManifestAction={handleManifestAction}
           onJournal={() => handleAction("showHistory")}
           onHint={() => handleAction("showHint")}
-          fallbackMetrics={fullConfig.fallbackMetrics}
+          isPending={state.isPending}
+          sessionId={state.sessionId}
         />
       )}
       {state.error ? <div className="error inline-error">{state.error}</div> : null}

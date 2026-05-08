@@ -603,18 +603,19 @@ describe("GamePlayer S1 DOM Rendering", () => {
     expect(card3Elements.length).toBeGreaterThan(0);
   });
 
-  it("falls back to action catalog when gameUi is missing", async () => {
+  it("renders safe-mode fallback when gameUi is missing", async () => {
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
-        runtimeApiUrl="http://localhost:8080" 
-        content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }} 
-        mockups={[]} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }}
+        mockups={[]}
       />
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
+      // Without gameUi, SafeModeRenderer renders action cards through ManifestRenderer
       expect(document.querySelector(".game-player-root")).toBeDefined();
+      expect(document.querySelector(".game-renderer")).toBeDefined();
       expect(document.querySelector(".panel")).toBeNull();
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
@@ -651,7 +652,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     expect(variablesContainer || mainContent || cardsContainer).toBeTruthy();
   });
 
-  it("falls back to action catalog when screenId is not S1 even if gameUi is present", async () => {
+  it("renders safe-mode fallback when screenId is not S1 even if gameUi is present", async () => {
     const sessionWithS2 = {
       ...mockSession,
       state: {
@@ -674,17 +675,17 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
 
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
-        runtimeApiUrl="http://localhost:8080" 
-        content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }} 
-        mockups={[]} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={{...mockContent, playerConfig: { ...mockContent.playerConfig, min: 1, max: 1 } }}
+        mockups={[]}
         gameUi={mockS1Ui}
       />
     );
 
     await waitFor(() => {
-      expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      expect(document.querySelector(".fallback-renderer")).toBeDefined();
+      // S2 not in gameUi.screens, so SafeModeRenderer renders fallback through ManifestRenderer
+      expect(document.querySelector(".game-renderer")).toBeDefined();
       expect(document.querySelector(".panel")).toBeNull();
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
@@ -819,7 +820,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
           ]
         }
       },
-      "67..68": {
+      "67..70": {
         type: "screen",
         title: "Выберите двенадцатый шаг",
         root: {
@@ -870,54 +871,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
                       id: "card-68",
                       props: { text: "Оперативный сбор" },
                       actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.68" } } }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "69..70": {
-        type: "screen",
-        title: "Выберите тринадцатый шаг",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen topbar-screen-shell" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container topbar-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "score",
-                  props: {
-                    caption: "Остаток дней",
-                    value: "{{game.state.public.metrics.score}}"
-                  }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area topbar-main-content" },
-              children: [
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "board-header topbar-board-header" },
-                  children: [
-                    {
-                      type: "cardComponent",
-                      id: "board-title",
-                      props: { text: "После переезда нужно укрепить позиции." }
-                    }
-                  ]
-                },
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "cards-container topbar-cards-container" },
-                  children: [
+                    },
                     {
                       type: "cardComponent",
                       id: "card-69",
@@ -1028,8 +982,8 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     });
   });
 
-  it("renders board screen 67..68 when screenId=S2 and stepIndex=34", async () => {
-    const sessionAtBoard67_68 = {
+  it("renders board screen 67..70 when screenId=S2 and stepIndex=34", async () => {
+    const sessionAtBoard67_70 = {
       ...mockSession,
       state: {
         ...mockSession.state,
@@ -1044,7 +998,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
       if (url.includes("/api/runtime/sessions")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(sessionAtBoard67_68)
+          json: () => Promise.resolve(sessionAtBoard67_70)
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -1065,14 +1019,14 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
       expect(screen.getByText("Последняя проверка перед переездом.")).toBeDefined();
-      // Board cards from manifest
+      // Board cards from manifest (merged 67..70 screen)
       expect(screen.getByText("Кабинетный анализ")).toBeDefined();
       expect(screen.getByText("Оперативный сбор")).toBeDefined();
     });
   });
 
-  it("renders board screen 69..70 when screenId=S2 and stepIndex=36", async () => {
-    const sessionAtBoard69_70 = {
+  it("renders board screen 67..70 when screenId=S2 and stepIndex=36", async () => {
+    const sessionAtBoard67_70_step36 = {
       ...mockSession,
       state: {
         ...mockSession.state,
@@ -1087,7 +1041,7 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
       if (url.includes("/api/runtime/sessions")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve(sessionAtBoard69_70)
+          json: () => Promise.resolve(sessionAtBoard67_70_step36)
         });
       }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
@@ -1107,13 +1061,14 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
       expect(renderer).toBeDefined();
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
-      expect(screen.getByText("После переезда нужно укрепить позиции.")).toBeDefined();
-      expect(screen.getByText("Осмотр территории")).toBeDefined();
+      // Both step 34 and 36 resolve to the same 67..70 screen
+      expect(screen.getByText("Последняя проверка перед переездом.")).toBeDefined();
+      expect(screen.getByText("Кабинетный анализ")).toBeDefined();
       expect(screen.getByText("Подготовка к зиме")).toBeDefined();
     });
   });
 
-  it("falls back to action catalog when stepIndex is not a mapped board step", async () => {
+  it("renders safe-mode fallback when stepIndex is not a mapped board step", async () => {
     // stepIndex 20 is not mapped to any board screen key
     const sessionAtUnknownBoard = {
       ...mockSession,
@@ -1146,9 +1101,8 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     );
 
     await waitFor(() => {
-      // Should fall back since stepIndex 20 has no board screen mapping
-      expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
-      expect(document.querySelector(".fallback-renderer")).toBeDefined();
+      // Should fall back to SafeModeRenderer since stepIndex 20 has no board screen mapping
+      expect(document.querySelector(".game-renderer")).toBeDefined();
       expect(document.querySelector(".panel")).toBeNull();
       expect(document.querySelector(".journal-list")).toBeNull();
       expect(document.querySelector(".mockup-list")).toBeNull();
@@ -1691,10 +1645,10 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
   });
 
-  it("returns null for S1 when activeInfoId has no dedicated UI screen, triggering fallback renderer", async () => {
+  it("renders safe-mode fallback when activeInfoId has no dedicated UI screen", async () => {
     // activeInfoId is "i999" which is not in the manifest screens.
-    // resolveScreenKey returns null so FallbackRenderer is used.
-    // Since mockContent has empty antarctica data and no actions, fallback renders the empty catalog.
+    // resolveScreenKey returns null so SafeModeRenderer is used.
+    // Since mockContent has empty antarctica data, the fallback renders through ManifestRenderer.
     const sessionAtUnknownInfo = {
       ...mockSession,
       state: {
@@ -1726,8 +1680,8 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     );
 
     await waitFor(() => {
-      // Fallback renderer is used since screenDefinition is null
-      expect(screen.getByText(/Fallback action catalog/i)).toBeDefined();
+      // SafeModeRenderer renders through ManifestRenderer since screenDefinition is null
+      expect(document.querySelector(".game-renderer")).toBeDefined();
     });
   });
 

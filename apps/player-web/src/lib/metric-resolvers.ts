@@ -1,19 +1,19 @@
 import type { GamePlayerUiContent } from "@cubica/contracts-manifest";
 import type { MetricsSnapshot, RuntimeUiState } from "@/types/game-state";
+import { resolveExpression } from "@/lib/expression-resolver";
 import { appendClassName } from "@/lib/classname-utils";
 
 /**
  * Разрешает выражение привязки метрики, например "{{game.state.public.metrics.score}}",
  * против снимка метрик.
+ *
+ * Делегирует к контекстному expression resolver для поддержки
+ * расширенных выражений (path binding, context binding, fallbacks).
  */
 export function resolveMetricBinding(expression: string, metrics: MetricsSnapshot): string {
-  const match = expression.match(/^\{\{game\.state\.public\.metrics\.(\w+)\}\}$/);
-  if (!match) {
-    return expression;
-  }
-  const metricId = match[1];
-  const value = metrics[metricId];
-  return formatValue(value);
+  const result = resolveExpression(expression, { public: { metrics: metrics } });
+  // resolveExpression returns "" for missing paths; preserve "—" contract
+  return result === "" ? "—" : result;
 }
 
 function formatValue(value: unknown): string {

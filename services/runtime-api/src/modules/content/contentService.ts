@@ -95,6 +95,12 @@ const transformScreen = (
     type: "screen",
     title: typeof rawScreen.title === "string" ? rawScreen.title : "Game",
     layoutId: typeof rawScreen.layout_id === "string" ? rawScreen.layout_id : undefined,
+    layoutMode: typeof rawScreen.layout_mode === "string"
+      ? rawScreen.layout_mode as GameUiScreenDefinition["layoutMode"]
+      : undefined,
+    designRegions: Array.isArray(rawScreen.design_regions)
+      ? rawScreen.design_regions as GameUiScreenDefinition["designRegions"]
+      : undefined,
     root: structuredClone(rawScreen.root) as GameUiScreenDefinition["root"]
   };
 };

@@ -19,18 +19,17 @@ export const ANTARCTICA_GAME_CONFIG_DATA: GameConfigData = {
     { id: "score", caption: "Остаток дней", aliases: ["score", "days", "time"], sidebarImage: "/images/left-sidebar/days.png", topbarImage: "/images/top-sidebar/days-top.png" },
     { id: "pro", caption: "Знания", aliases: ["pro", "knowledge"], sidebarImage: "/images/left-sidebar/znania.png", topbarImage: "/images/top-sidebar/znaniya.png" },
     { id: "rep", caption: "Доверие", aliases: ["rep", "trust"], sidebarImage: "/images/left-sidebar/doverie.png", topbarImage: "/images/top-sidebar/doverie.png" },
-    { id: "energy", caption: "Энергия", aliases: ["energy", "lid"], sidebarImage: "/images/left-sidebar/energia.png", topbarImage: "/images/top-sidebar/energia.png" },
-    { id: "control", caption: "Контроль", aliases: ["control", "man"], sidebarImage: "/images/left-sidebar/kontrol.png", topbarImage: "/images/top-sidebar/kontrol.png" },
-    { id: "status", caption: "Статус", aliases: ["status", "stat"], sidebarImage: "/images/left-sidebar/status.png", topbarImage: "/images/top-sidebar/status.png" },
-    { id: "contact", caption: "Контакт", aliases: ["contact", "cont"], sidebarImage: "/images/left-sidebar/kontakt.png", topbarImage: "/images/top-sidebar/kontakt.png" },
-    { id: "constructive", caption: "Конструктив", aliases: ["constructive", "constr"], sidebarImage: "/images/left-sidebar/konstruktiv.png", topbarImage: "/images/top-sidebar/konstruktiv.png" }
+    { id: "lid", caption: "Энергия", aliases: ["lid", "energy"], sidebarImage: "/images/left-sidebar/energia.png", topbarImage: "/images/top-sidebar/energia.png" },
+    { id: "man", caption: "Контроль", aliases: ["man", "control"], sidebarImage: "/images/left-sidebar/kontrol.png", topbarImage: "/images/top-sidebar/kontrol.png" },
+    { id: "stat", caption: "Статус", aliases: ["stat", "status"], sidebarImage: "/images/left-sidebar/status.png", topbarImage: "/images/top-sidebar/status.png" },
+    { id: "cont", caption: "Контакт", aliases: ["cont", "contact"], sidebarImage: "/images/left-sidebar/kontakt.png", topbarImage: "/images/top-sidebar/kontakt.png" },
+    { id: "constr", caption: "Конструктив", aliases: ["constr", "constructive"], sidebarImage: "/images/left-sidebar/konstruktiv.png", topbarImage: "/images/top-sidebar/konstruktiv.png" }
   ] satisfies ReadonlyArray<FallbackMetricSpec>,
 
   topbarScreenKeys: [
     "55..60",
     "61..66",
-    "67..68",
-    "69..70"
+    "67..70"
   ],
 
   metricBackgroundImages: {

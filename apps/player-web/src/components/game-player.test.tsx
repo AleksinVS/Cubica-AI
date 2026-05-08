@@ -43,21 +43,24 @@ import {
 } from "@/test/antarctica-opening-tail-fixtures";
 
 import {
-  resolveGameContent,
-  resolveCurrentBoard,
-  resolveCurrentInfoEntry,
-  resolveBoardCards,
   readSelectedCardId,
   readCanAdvance,
 } from "@/lib/game-content-resolvers";
+import {
+  resolveAntarcticaContent,
+  resolveCurrentBoard,
+  resolveCurrentInfoEntry,
+  resolveBoardCards,
+} from "@/plugins/antarctica/state-resolvers";
+import type { GamePlayerContent } from "@/plugins/antarctica/contracts";
 
 describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   describe("resolveGameContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
-      const antarctica = resolveGameContent(openingTailStep30PlayerContent);
+      const antarctica = resolveAntarcticaContent(openingTailStep30PlayerContent);
       expect(antarctica).not.toBeNull();
-      expect(antarctica?.boards).toHaveLength(1);
-      expect(antarctica?.infos).toHaveLength(1);
+      expect((antarctica as GamePlayerContent)?.boards).toHaveLength(1);
+      expect((antarctica as GamePlayerContent)?.infos).toHaveLength(1);
     });
 
     it("returns null when no Antarctica content is present", () => {
@@ -65,7 +68,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
         ...openingTailStep30PlayerContent,
         content: undefined,
       };
-      const antarctica = resolveGameContent(contentWithoutGameContent);
+      const antarctica = resolveAntarcticaContent(contentWithoutGameContent);
       expect(antarctica).toBeNull();
     });
   });
@@ -242,12 +245,12 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
 });
 
 describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
-  describe("resolveGameContent", () => {
+  describe("resolveAntarcticaContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
-      const antarctica = resolveGameContent(openingTailStep32PlayerContent);
+      const antarctica = resolveAntarcticaContent(openingTailStep32PlayerContent);
       expect(antarctica).not.toBeNull();
-      expect(antarctica?.boards).toHaveLength(1);
-      expect(antarctica?.infos).toHaveLength(1);
+      expect((antarctica as GamePlayerContent)?.boards).toHaveLength(1);
+      expect((antarctica as GamePlayerContent)?.infos).toHaveLength(1);
     });
   });
 
@@ -443,12 +446,12 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
 });
 
 describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, and Terminal i21", () => {
-  describe("resolveGameContent", () => {
+  describe("resolveAntarcticaContent", () => {
     it("returns Antarctica content when present in player-facing DTO", () => {
-      const antarctica = resolveGameContent(openingTailStep34PlayerContent);
+      const antarctica = resolveAntarcticaContent(openingTailStep34PlayerContent);
       expect(antarctica).not.toBeNull();
-      expect(antarctica?.boards).toHaveLength(2);
-      expect(antarctica?.infos).toHaveLength(4);
+      expect((antarctica as GamePlayerContent)?.boards).toHaveLength(2);
+      expect((antarctica as GamePlayerContent)?.infos).toHaveLength(4);
     });
   });
 

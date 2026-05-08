@@ -16,6 +16,13 @@
  * - `player-web` renderer: uses `GamePlayerUiContent`, `GamePlayerS1UiContent` (deprecated), `GameUiComponent` types
  */
 
+/**
+ * Generic game state type. Game plugins extend this with their own
+ * game-specific state shape (e.g. AntarcticaGameState).
+ * The platform layer never assumes a specific shape — only plugins do.
+ */
+export type GameState = Record<string, unknown>;
+
 export type GameManifestId = string;
 export type GameManifestVersion = string;
 export type GameManifestLocale = string;
@@ -295,7 +302,9 @@ export type GameUiComponentType =
   | "areaComponent"
   | "gameVariableComponent"
   | "cardComponent"
-  | "buttonComponent";
+  | "buttonComponent"
+  | "richTextComponent"
+  | "imageComponent";
 
 /**
  * Props for screenComponent in S1 layout.
@@ -303,6 +312,8 @@ export type GameUiComponentType =
 export interface GameUiScreenComponentProps {
   cssClass?: string;
   backgroundImage?: string;
+  /** Visual mode override at screen level. Components inherit unless they override. */
+  visualMode?: "image" | "style" | "auto";
 }
 
 /**
@@ -310,6 +321,10 @@ export interface GameUiScreenComponentProps {
  */
 export interface GameUiAreaComponentProps {
   cssClass?: string;
+  /** Visual mode override at area level. */
+  visualMode?: "image" | "style" | "auto";
+  /** Reference to a design artifact image for "image" visualMode. */
+  designImageRef?: string;
 }
 
 /**
@@ -330,7 +345,18 @@ export interface GameUiGameVariableComponentProps {
  * Props for cardComponent (interactive card) in S1.
  */
 export interface GameUiCardComponentProps {
+  /** Simple text (backward compatible, single-field rendering). */
   text?: string;
+  /** Card title for multi-field rendering. */
+  title?: string;
+  /** Card summary for multi-field rendering. */
+  summary?: string;
+  /** Chip labels displayed as metadata tags. */
+  chips?: Array<string>;
+  /** Label for the select/choose button inside the card. */
+  selectLabel?: string;
+  /** Visual state for CSS class selection. */
+  visualState?: "default" | "selected" | "locked" | "resolved" | string;
 }
 
 /**
@@ -338,6 +364,36 @@ export interface GameUiCardComponentProps {
  */
 export interface GameUiButtonComponentProps {
   caption: string;
+  /** Semantic variant: "action" for primary, "helper" for journal/hint, "nav" for arrows. */
+  variant?: "action" | "helper" | "nav" | string;
+  /** Whether the button is disabled. */
+  disabled?: boolean;
+}
+
+/**
+ * Props for richTextComponent (HTML body text) in S1.
+ * Renders HTML via dangerouslySetInnerHTML when the string contains "<",
+ * otherwise wraps in a <p> tag.
+ */
+export interface GameUiRichTextComponentProps {
+  /** HTML or plain-text body to render. Supports {{...}} expression binding. */
+  html: string;
+  /** Optional CSS class for styling context. */
+  cssClass?: string;
+}
+
+/**
+ * Props for imageComponent (illustrations / decorative images) in S1.
+ * Renders as <img> by default, or as a background-image div when cssClass
+ * contains "illustration" or "decoration" (for layout integration).
+ */
+export interface GameUiImageComponentProps {
+  /** URL of the image to display. */
+  src: string;
+  /** Alt text for accessibility. */
+  alt?: string;
+  /** Optional CSS class for styling context. */
+  cssClass?: string;
 }
 
 /**
@@ -348,7 +404,9 @@ export type GameUiComponentProps =
   | GameUiAreaComponentProps
   | GameUiGameVariableComponentProps
   | GameUiCardComponentProps
-  | GameUiButtonComponentProps;
+  | GameUiButtonComponentProps
+  | GameUiRichTextComponentProps
+  | GameUiImageComponentProps;
 
 /**
  * Action descriptor for interactive S1 UI components.
@@ -374,6 +432,47 @@ export interface GameUiComponent<
   actions?: {
     onClick?: GameUiComponentAction;
   };
+  /**
+   * Template for iterating over a collection from game state.
+   * When present, the component's children are rendered once for each item
+   * in the resolved collection, with a local context bound to the current item.
+   */
+  itemTemplate?: GameUiItemTemplate;
+  /**
+   * Visual rendering mode for this component.
+   * - "image": renders using a design mockup image as background-image.
+   * - "style": renders using CSS classes and inline styles (default).
+   * - "auto": renderer decides based on available design data (default).
+   */
+  visualMode?: "image" | "style" | "auto";
+  /**
+   * Reference to a design artifact (mockup image) for "image" visualMode.
+   * The renderer resolves this against designArtifacts in the UI manifest.
+   */
+  designImageRef?: string;
+}
+
+/**
+ * Template configuration for iterating over a collection.
+ * The component renders its children for each item in the collection,
+ * with local context available for data binding expressions.
+ */
+export interface GameUiItemTemplate {
+  /**
+   * Expression resolving to an array in the game state.
+   * Examples: "{{state.public.cards}}", "{{currentBoard.cardIds}}"
+   */
+  collection: string;
+  /**
+   * Name of the local context variable for each item.
+   * Used in binding expressions like "{{card.title}}".
+   */
+  itemKey: string;
+  /**
+   * Optional filter expression. Items for which this expression
+   * resolves to falsy are excluded from rendering.
+   */
+  filter?: string;
 }
 
 /**
@@ -385,8 +484,46 @@ export interface GameUiScreenDefinition {
   type: "screen";
   title: string;
   layoutId?: string;
+  /**
+   * Explicit layout mode for this screen.
+   * When specified, the renderer uses this directly instead of heuristic resolution.
+   * When absent or "auto", the renderer falls back to convention-based layout selection.
+   */
+  layoutMode?: "leftsidebar" | "topbar" | "auto";
+  /**
+   * Design region annotations from mockup files.
+   * Provides layout hints (direction, padding, gap, alignment) from design artifacts.
+   * The renderer may use these for CSS class mapping and spacing when available.
+   */
+  designRegions?: DesignRegion[];
   /** The root screenComponent of the screen. */
   root: GameUiComponent;
+}
+
+/**
+ * A design region from a mockup file, providing layout hints
+ * that bridge the design-view gap.
+ */
+export interface DesignRegion {
+  /** Unique identifier matching a region in the design.json mockup. */
+  id: string;
+  /** Semantic role of this region (e.g., "metric-area", "card-area", "controls"). */
+  type: string;
+  /** Optional human-readable description. */
+  description?: string;
+  /** Layout hints from the design mockup. */
+  layout?: {
+    /** Layout direction: horizontal or vertical stacking. */
+    direction?: "row" | "column";
+    /** Padding in pixels. */
+    padding?: number;
+    /** Gap between items in pixels. */
+    gap?: number;
+    /** Alignment of items within the region. */
+    align?: "start" | "center" | "end" | "stretch";
+  };
+  /** Optional style overrides from the design mockup. */
+  style?: Record<string, unknown>;
 }
 
 /**
@@ -461,6 +598,31 @@ export interface GameContentBundleMetadata {
   manifestVersion: GameManifestVersion;
   uiManifestVersion?: string;
   loadedAt: string; // ISO timestamp
+}
+
+/**
+ * A single screen routing rule. Maps runtime state conditions
+ * (screenId, stepIndex range, active infoId) to a UI screen key.
+ *
+ * This replaces hard-coded step→screen mappings in game plugins,
+ * making screen routing data-driven and manifest-defined.
+ */
+export interface ScreenRoutingEntry {
+  /** Target screen key in the UI manifest (e.g., "55..60", "S1_LEFT"). */
+  screenKey: string;
+  /** Match conditions. All conditions must be satisfied for this entry to apply. */
+  conditions: {
+    /** Runtime screenId to match (e.g., "S2"). */
+    screenId?: string;
+    /** Step index to match exactly. */
+    stepIndex?: number;
+    /** Step index range (inclusive start, exclusive end). */
+    stepIndexRange?: { from: number; to: number };
+    /** Active info ID to match (e.g., "i19", "i19_1"). */
+    activeInfoId?: string;
+    /** Layout preference when this routing applies. */
+    layoutMode?: "leftsidebar" | "topbar";
+  };
 }
 
 /**

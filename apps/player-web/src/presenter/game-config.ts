@@ -1,13 +1,14 @@
-import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
-import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerInfoEntry, GamePlayerTeamSelectionScene } from "@/plugins/antarctica/contracts";
+import type { GamePlayerUiContent, PlayerFacingContent, GameState } from "@cubica/contracts-manifest";
 
-import type { RuntimeUiState } from "@/types/game-state";
+import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
-import type { ActionEntry } from "@/lib/game-content-resolvers";
 
 /**
  * Спецификация одной fallback-метрики.
  * Используется, когда UI-манифест не предоставляет собственные описания метрик.
+ *
+ * @deprecated Метрики должны описываться в UI-манифесте через gameVariableComponent.
+ * FallbackMetricSpec останется до полного покрытия всех экранов манифестом.
  */
 export interface FallbackMetricSpec {
   id: string;
@@ -16,29 +17,6 @@ export interface FallbackMetricSpec {
   aliases: Array<string>;
   sidebarImage: string;
   topbarImage: string;
-}
-
-/**
- * Game-specific состояние для игры Антарктида.
- * Этот тип живёт внутри game-config.ts, потому что он часть
- * конфигурации конкретной игры, а не generic слоя платформы.
- *
- * TODO: перенести в plugins/antarctica/contracts.ts при следующей
- * итерации выноса game-specific типов из platform-модулей.
- */
-export interface AntarcticaGameState {
-  currentInfo: GamePlayerInfoEntry | null;
-  currentBoard: GamePlayerBoard | null;
-  currentTeamSelection: GamePlayerTeamSelectionScene | null;
-  cardFlags: Record<string, { selected?: boolean; resolved?: boolean; locked?: boolean; available?: boolean }>;
-  selectedCardId: string | null;
-  selectedCard: GamePlayerBoardCard | null;
-  boardCards: Array<GamePlayerBoardCard>;
-  teamFlags: Record<string, { selected?: boolean }>;
-  selectedMemberIds: Array<string>;
-  pickCount: number;
-  canAdvance: boolean;
-  fallbackActions: Array<ActionEntry>;
 }
 
 /**
@@ -74,8 +52,12 @@ export interface GameConfigData {
  * Функциональные резолверы конфигурации игры.
  * Не могут быть сериализованы и должны быть зарегистрированы
  * на клиентской стороне через реестр (game-config-registry).
+ *
+ * Generic параметры:
+ * - TGameState: game-specific состояние (по умолчанию GameState — generic Record)
+ * - TUiContent: тип UI-контента манифеста (по умолчанию GamePlayerUiContent)
  */
-export interface GameConfigResolvers<TGameState, TUiContent> {
+export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePlayerUiContent> {
   /** Сопоставляет stepIndex с ключом экрана манифеста для S2-досок */
   resolveBoardScreenKey: (stepIndex: number | null) => string | null;
 
@@ -111,6 +93,34 @@ export interface GameConfigResolvers<TGameState, TUiContent> {
     dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void,
     onError: (message: string) => void
   ) => (command: string, payload: Record<string, unknown>) => void;
+
+  /**
+   * Опциональный builder для fallback-экранов.
+   * Вызывается SafeModeRenderer, когда манифест не описывает экран.
+   * Плагин может предоставить кастомный builder для генерации
+   * GameUiScreenDefinition из game-specific состояния.
+   */
+  /**
+   * Опциональный hook для деривации (производных) метрик.
+   * Вызывается Presenter-ом при каждом syncView.
+   * Позволяет игре вычислять производные метрики (например, score = 60 - time).
+   */
+  resolveMetrics?: (metrics: MetricsSnapshot) => MetricsSnapshot;
+
+  /**
+   * Опциональный builder для fallback-экранов.
+   * Вызывается SafeModeRenderer, когда манифест не описывает экран.
+   * Плагин может предоставить кастомный builder для генерации
+   * GameUiScreenDefinition из game-specific состояния.
+   */
+  fallbackScreenBuilder?: (
+    gameState: Record<string, unknown>,
+    content: PlayerFacingContent,
+    layoutMode: "leftsidebar" | "topbar",
+    fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
+    metrics: Record<string, unknown>,
+    onAction: (actionId: string) => void
+  ) => import("@cubica/contracts-manifest").GameUiScreenDefinition | null;
 }
 
 /**
@@ -121,10 +131,10 @@ export interface GameConfigResolvers<TGameState, TUiContent> {
  * topbarScreenKeys в полном конфиге — Set для O(1) поиска.
  *
  * Generic параметры:
- * - TGameState: разрешённое game-specific состояние (currentBoard, boardCards и т.д.)
- * - TUiContent: тип UI-контента манифеста (screens, entryPoint)
+ * - TGameState: разрешённое game-specific состояние (по умолчанию GameState)
+ * - TUiContent: тип UI-контента манифеста (по умолчанию GamePlayerUiContent)
  */
-export interface GameConfig<TGameState, TUiContent> extends GameConfigResolvers<TGameState, TUiContent> {
+export interface GameConfig<TGameState = GameState, TUiContent = GamePlayerUiContent> extends GameConfigResolvers<TGameState, TUiContent> {
   /** Идентификатор игры в runtime-api */
   gameId: string;
 
@@ -149,6 +159,6 @@ export interface GameConfig<TGameState, TUiContent> extends GameConfigResolvers<
  * Регистрируется в реестре (game-config-registry) для каждой игры.
  * Получает GameConfigData, возвращает объект с работающими this-ссылками.
  */
-export type ResolverFactory<TGameState, TUiContent> = (
+export type ResolverFactory<TGameState = GameState, TUiContent = GamePlayerUiContent> = (
   data: GameConfigData
 ) => GameConfig<TGameState, TUiContent>;

@@ -598,7 +598,7 @@ select {
   transition: width 0.4s ease;
 }
 
-.info-screen-shell .game-variables-container {
+.info-screen-shell:not(.topbar-screen-shell) .game-variables-container {
   width: 400px;
   background: #0f4c75; /* Design token: sidebar_bg for infocard */
 }
@@ -632,7 +632,7 @@ select {
   transition: width 0.4s ease;
 }
 
-.info-screen-shell .main-content-area {
+.info-screen-shell:not(.topbar-screen-shell) .main-content-area {
   width: 100%;
   background: #1b262c; /* Design token: main_bg for infocard */
   padding-left: 60px;
@@ -2347,12 +2347,12 @@ select {
   padding: 2rem 0;
 }
 
-.info-screen-shell {
+.info-screen-shell:not(.topbar-screen-shell) {
   grid-template-columns: 20% 71% 9%;
   grid-template-rows: 90% 10%;
 }
 
-.info-screen-shell .game-variables-container {
+.info-screen-shell:not(.topbar-screen-shell) .game-variables-container {
   grid-column: 1;
   grid-row: 1 / 3;
   display: flex;
@@ -2363,7 +2363,7 @@ select {
   border-right: 1px solid rgba(170, 227, 255, 0.16);
 }
 
-.info-screen-shell .main-content-area {
+.info-screen-shell:not(.topbar-screen-shell) .main-content-area {
   grid-column: 2;
   grid-row: 1;
   display: flex;
@@ -2373,7 +2373,7 @@ select {
   background: transparent;
 }
 
-.info-screen-shell .info-content {
+.info-screen-shell:not(.topbar-screen-shell) .info-content {
   width: 100%;
   min-height: auto;
   display: flex;
@@ -2381,7 +2381,7 @@ select {
   padding-top: 0;
 }
 
-.info-screen-shell .info-event-card {
+.info-screen-shell:not(.topbar-screen-shell) .info-event-card {
   width: 100%;
   min-height: 680px;
   background: linear-gradient(180deg, rgba(16, 60, 93, 0.95) 0%, rgba(12, 47, 74, 0.98) 100%);
@@ -2392,7 +2392,7 @@ select {
   flex-direction: column;
 }
 
-.info-screen-shell .info-event-illustration {
+.info-screen-shell:not(.topbar-screen-shell) .info-event-illustration {
   min-height: 320px;
   background:
     linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
@@ -2401,14 +2401,14 @@ select {
   background-position: center;
 }
 
-.info-screen-shell .info-event-text {
+.info-screen-shell:not(.topbar-screen-shell) .info-event-text {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   padding: 1rem;
 }
 
-.info-screen-shell .info-event-text .game-card .game-card-text {
+.info-screen-shell:not(.topbar-screen-shell) .info-event-text .game-card .game-card-text {
   font-size: 1.5rem;
   font-weight: 700;
   line-height: 1.4;

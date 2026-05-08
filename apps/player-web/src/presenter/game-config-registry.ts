@@ -12,18 +12,18 @@ import type { GameConfigData, GameConfig, ResolverFactory } from "./game-config"
  * полный GameConfig через buildGameConfig(), который находит
  * нужную фабрику в реестре по gameId.
  */
-const registry = new Map<string, ResolverFactory<unknown, unknown>>();
+const registry = new Map<string, ResolverFactory>();
 
 /**
  * Регистрирует фабрику резолверов для игры.
  * Вызывается модулями регистрации игр (plugins/<gameId>/register.ts)
  * на этапе инициализации клиентского приложения.
  */
-export function registerGameResolvers<TGameState, TUiContent>(
+export function registerGameResolvers(
   gameId: string,
-  factory: ResolverFactory<TGameState, TUiContent>
+  factory: ResolverFactory
 ): void {
-  registry.set(gameId, factory as ResolverFactory<unknown, unknown>);
+  registry.set(gameId, factory);
 }
 
 /**
@@ -34,9 +34,7 @@ export function registerGameResolvers<TGameState, TUiContent>(
  * GameConfigData от Server Component. Бросает ошибку, если фабрика
  * для указанного gameId не зарегистрирована.
  */
-export function buildGameConfig<TGameState, TUiContent>(
-  data: GameConfigData
-): GameConfig<TGameState, TUiContent> {
+export function buildGameConfig(data: GameConfigData): GameConfig {
   const factory = registry.get(data.gameId);
   if (!factory) {
     throw new Error(
@@ -44,5 +42,5 @@ export function buildGameConfig<TGameState, TUiContent>(
       `Ensure the game plugin registers its resolvers before the component renders.`
     );
   }
-  return factory(data) as GameConfig<TGameState, TUiContent>;
+  return factory(data);
 }

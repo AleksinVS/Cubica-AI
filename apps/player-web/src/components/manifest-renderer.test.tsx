@@ -146,10 +146,11 @@ describe("resolveMetricBinding", () => {
     expect(resolveMetricBinding("{{game.state.public.metrics.pro}}", metrics)).toBe("5");
   });
 
-  it("returns the expression as-is if it doesn't match the pattern", () => {
+  it("returns plain text as-is, returns '—' for unresolvable expressions", () => {
     const metrics = { score: 100 };
     expect(resolveMetricBinding("score", metrics)).toBe("score");
-    expect(resolveMetricBinding("{{other.pattern}}", metrics)).toBe("{{other.pattern}}");
+    // Unresolvable {{...}} paths return "—" (empty from resolver → "—" fallback)
+    expect(resolveMetricBinding("{{other.pattern}}", metrics)).toBe("—");
   });
 
   it("returns '—' for missing metrics", () => {

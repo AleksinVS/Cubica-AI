@@ -1,5 +1,4 @@
 import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
-import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerContent, GamePlayerInfoEntry, GamePlayerTeamSelectionScene } from "@/plugins/antarctica/contracts";
 
 import type { CreateSessionResponse, DispatchActionResponse } from "@cubica/contracts-session";
 
@@ -20,6 +19,10 @@ export interface ActionEntry {
 export type SessionSnapshot = CreateSessionResponse<Record<string, unknown>>;
 export type ActionSnapshot = DispatchActionResponse<Record<string, unknown>>;
 
+/**
+ * Внутренние типы для чтения state — обобщённые, не привязанные к конкретной игре.
+ * Плагины используют свои типы для конкретных структур (например, AntarcticaGameState).
+ */
 type TimelineState = {
   stepIndex?: number;
   step_index?: number;
@@ -68,24 +71,33 @@ type SecretState = {
 };
 
 const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
-const playerWebUrl = process.env.PLAYER_WEB_URL ?? "http://localhost:3009";
+const playerWebUrl = process.env.PLAYER_WEB_URL ?? "http://localhost:3000";
 
 const parseJson = <TValue,>(raw: string): TValue => JSON.parse(raw) as TValue;
 
-const readStepIndex = (timeline: TimelineState | undefined) =>
+/**
+ * Читает stepIndex из timeline, поддерживая и camelCase и snake_case варианты.
+ */
+export const readStepIndex = (timeline: TimelineState | undefined) =>
   typeof timeline?.stepIndex === "number"
     ? timeline.stepIndex
     : typeof timeline?.step_index === "number"
       ? timeline.step_index
       : null;
 
-const readScreenId = (timeline: TimelineState | undefined) =>
+/**
+ * Читает screenId из timeline, поддерживая и camelCase и snake_case варианты.
+ */
+export const readScreenId = (timeline: TimelineState | undefined) =>
   typeof timeline?.screenId === "string"
     ? timeline.screenId
     : typeof timeline?.screen_id === "string"
       ? timeline.screen_id
       : null;
 
+/**
+ * Загружает PlayerFacingContent с retry-логикой.
+ */
 export async function loadGamePlayerContent(
   gameId: string,
   retries = 3,
@@ -121,6 +133,9 @@ export function getRuntimeApiUrl() {
   return runtimeApiUrl;
 }
 
+/**
+ * Извлекает fallback-действия из PlayerFacingContent.
+ */
 export function getFallbackActionEntries(content: PlayerFacingContent): Array<ActionEntry> {
   return content.actions.map((action) => ({
     actionId: action.actionId,
@@ -130,134 +145,88 @@ export function getFallbackActionEntries(content: PlayerFacingContent): Array<Ac
   }));
 }
 
-export function resolveGameContent(content: PlayerFacingContent): GamePlayerContent | null {
-  return (content.content?.[content.gameId] as GamePlayerContent) ?? null;
+/**
+ * Извлекает game-specific контент из PlayerFacingContent.
+ * Возвращает unknown — плагин приводит к своему типу.
+ */
+export function resolveGameContent(content: PlayerFacingContent): unknown {
+  return content.content?.[content.gameId] ?? null;
 }
 
-export function resolveCurrentInfoEntry(
-  gameContent: GamePlayerContent | null,
-  publicState: PublicState | undefined
-): GamePlayerInfoEntry | null {
-  if (!gameContent) {
-    return null;
-  }
-
-  const timeline = publicState?.timeline;
-  const stepIndex = readStepIndex(timeline);
-  const screenId = readScreenId(timeline);
-  const activeInfoId = timeline?.activeInfoId;
-
-  if (stepIndex === null || !screenId || !activeInfoId) {
-    if (stepIndex === null || !screenId) {
-      return null;
-    }
-
-    const entriesForStep = gameContent.infos.filter(
-      (entry) => entry.stepIndex === stepIndex && entry.screenId === screenId
-    );
-    return entriesForStep.length === 1 ? entriesForStep[0] : null;
-  }
-
-  const explicitMatch =
-    gameContent.infos.find(
-      (entry) =>
-        entry.id === activeInfoId && entry.stepIndex === stepIndex && entry.screenId === screenId
-    ) ?? null;
-
-  if (explicitMatch) {
-    return explicitMatch;
-  }
-
-  const entriesForStep = gameContent.infos.filter(
-    (entry) => entry.stepIndex === stepIndex && entry.screenId === screenId
-  );
-  return entriesForStep.length === 1 ? entriesForStep[0] : null;
+/**
+ * Читает public state из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
+export function readPublicState(session: SessionSnapshot | null): PublicState | undefined {
+  return session?.state?.public as PublicState | undefined;
 }
 
-export function resolveCurrentBoard(
-  gameContent: GamePlayerContent | null,
-  publicState: PublicState | undefined
-): GamePlayerBoard | null {
-  if (!gameContent) {
-    return null;
-  }
-
-  const timeline = publicState?.timeline;
-  const stepIndex = readStepIndex(timeline);
-  const screenId = readScreenId(timeline);
-
-  if (stepIndex === null || !screenId) {
-    return null;
-  }
-
-  return gameContent.boards.find((board) => board.stepIndex === stepIndex && board.screenId === screenId) ?? null;
+/**
+ * Читает secret state из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
+export function readSecretState(session: SessionSnapshot | null): SecretState | undefined {
+  return session?.state?.secret as SecretState | undefined;
 }
 
-export function resolveCurrentTeamSelectionScene(
-  gameContent: GamePlayerContent | null,
-  publicState: PublicState | undefined
-): GamePlayerTeamSelectionScene | null {
-  if (!gameContent?.teamSelections) {
-    return null;
-  }
-
-  const timeline = publicState?.timeline;
-  const stepIndex = readStepIndex(timeline);
-  const screenId = readScreenId(timeline);
-
-  if (stepIndex === null || !screenId) {
-    return null;
-  }
-
-  return (
-    gameContent.teamSelections.find((scene) => scene.stepIndex === stepIndex && scene.screenId === screenId) ?? null
-  );
+/**
+ * Читает timeline из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
+export function readTimeline(session: SessionSnapshot | null): TimelineState | undefined {
+  return readPublicState(session)?.timeline;
 }
 
-export function resolveBoardCards(
-  gameContent: GamePlayerContent | null,
-  board: GamePlayerBoard | null,
-  cardFlags?: Record<string, CardFlagState>
-): Array<GamePlayerBoardCard> {
-  if (!gameContent || !board) {
-    return [];
-  }
-
-  const cardsById = new Map(gameContent.cards.map((card) => [card.cardId, card]));
-  return board.cardIds
-    .map((cardId) => cardsById.get(cardId))
-    .filter((card): card is GamePlayerBoardCard => {
-      if (!card) {
-        return false;
-      }
-
-      const contentAvailable = (card as GamePlayerBoardCard & { available?: boolean }).available;
-      const cardState = cardFlags?.[card.cardId];
-      return contentAvailable !== false && cardState?.available !== false;
-    });
+/**
+ * Читает UI state из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
+export function readRuntimeUi(session: SessionSnapshot | null): {
+  activePanel?: string;
+  activeScreen?: string;
+  lastCapabilityFamily?: string;
+  lastCapability?: string;
+  serverRequested?: boolean;
+} | undefined {
+  return readPublicState(session)?.ui;
 }
 
-export function readSelectedCardId(session: SessionSnapshot | null): string | null {
-  const secretState = session?.state?.secret as SecretState | undefined;
-  return secretState?.opening?.selectedCardId ?? null;
-}
-
+/**
+ * Читает card flags из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
 export function readCardFlags(session: SessionSnapshot | null): Record<string, CardFlagState> {
-  const publicState = session?.state?.public as PublicState | undefined;
-  return publicState?.flags?.cards ?? {};
+  return readPublicState(session)?.flags?.cards ?? {};
 }
 
+/**
+ * Читает team flags из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
 export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
-  const publicState = session?.state?.public as PublicState | undefined;
-  return publicState?.flags?.team ?? {};
+  return readPublicState(session)?.flags?.team ?? {};
 }
 
+/**
+ * Читает team selection state из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
 export function readTeamSelection(session: SessionSnapshot | null): TeamSelectionState {
-  const publicState = session?.state?.public as PublicState | undefined;
-  return publicState?.teamSelection ?? {};
+  return readPublicState(session)?.teamSelection ?? {};
 }
 
+/**
+ * Читает canAdvance из session snapshot.
+ * Обобщённая утилита для плагинов.
+ */
 export function readCanAdvance(session: SessionSnapshot | null): boolean {
-  const publicState = session?.state?.public as PublicState | undefined;
-  return Boolean(publicState?.timeline?.canAdvance);
+  return Boolean(readPublicState(session)?.timeline?.canAdvance);
+}
+
+/**
+ * Читает selectedCardId из secret state.
+ * Обобщённая утилита для плагинов.
+ */
+export function readSelectedCardId(session: SessionSnapshot | null): string | null {
+  return readSecretState(session)?.opening?.selectedCardId ?? null;
 }

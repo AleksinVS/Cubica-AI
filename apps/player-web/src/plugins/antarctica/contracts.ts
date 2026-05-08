@@ -1,3 +1,5 @@
+import type { ActionEntry } from "@/lib/game-content-resolvers";
+
 export interface GamePlayerInfoEntry {
   id: string;
   stepIndex: number;
@@ -52,4 +54,24 @@ export interface GamePlayerContent {
   boards: Array<GamePlayerBoard>;
   teamSelections?: Array<GamePlayerTeamSelectionScene>;
   cards: Array<GamePlayerBoardCard>;
+}
+
+/**
+ * Game-specific state for Antarctica.
+ * Moved from platform (game-config.ts) to the plugin where it belongs.
+ * The platform layer uses the generic GameState type instead.
+ */
+export interface AntarcticaGameState {
+  currentInfo: GamePlayerInfoEntry | null;
+  currentBoard: GamePlayerBoard | null;
+  currentTeamSelection: GamePlayerTeamSelectionScene | null;
+  cardFlags: Record<string, { selected?: boolean; resolved?: boolean; locked?: boolean; available?: boolean }>;
+  selectedCardId: string | null;
+  selectedCard: GamePlayerBoardCard | null;
+  boardCards: Array<GamePlayerBoardCard>;
+  teamFlags: Record<string, { selected?: boolean }>;
+  selectedMemberIds: Array<string>;
+  pickCount: number;
+  canAdvance: boolean;
+  fallbackActions: Array<ActionEntry>;
 }
