@@ -6,7 +6,7 @@ import { validateGameManifest } from "../src/modules/content/manifestValidation.
 
 const validManifest = {
   meta: {
-    id: "antarctica",
+    id: "data",
     version: "1.0.0",
     name: "Antarctica",
     description: "Demo game",
@@ -35,7 +35,7 @@ const validManifest = {
 };
 
 // Antarctica player-facing content entries for boards 55-60, 61-66, 67-70 and infos i17-i21
-const openingTailAntarcticaContent = {
+const openingTailDataContent = {
   infos: [
     {
       id: "i17",
@@ -149,7 +149,7 @@ const openingTailAntarcticaContent = {
 test("validateGameManifest accepts a well-formed manifest", () => {
   const manifest = validateGameManifest(validManifest) as typeof validManifest;
 
-  assert.equal(manifest.meta.id, "antarctica");
+  assert.equal(manifest.meta.id, "data");
   assert.equal(manifest.state.public.timeline.stageId, "stage_intro");
 });
 
@@ -189,62 +189,62 @@ test("validateGameManifest accepts Antarctica opening-tail info entries (i17-i21
   const manifest = validateGameManifest({
     ...validManifest,
     content: {
-      antarctica: {
-        infos: openingTailAntarcticaContent.infos,
+      data: {
+        infos: openingTailDataContent.infos,
         boards: [],
         cards: []
       }
     }
   }) as unknown as Record<string, unknown>;
 
-  const antarctica = manifest.content as { antarctica?: { infos: unknown[] } };
-  assert.equal(antarctica?.antarctica?.infos.length, 6);
+  const data = manifest.content as { data?: { infos: unknown[] } };
+  assert.equal(data?.data?.infos.length, 6);
 });
 
 test("validateGameManifest accepts Antarctica opening-tail board entries (55-60, 61-66, 67-68, 69-70)", () => {
   const manifest = validateGameManifest({
     ...validManifest,
     content: {
-      antarctica: {
+      data: {
         infos: [],
-        boards: openingTailAntarcticaContent.boards,
+        boards: openingTailDataContent.boards,
         cards: []
       }
     }
   }) as unknown as Record<string, unknown>;
 
-  const antarctica = manifest.content as { antarctica?: { boards: unknown[] } };
-  assert.equal(antarctica?.antarctica?.boards.length, 4);
+  const data = manifest.content as { data?: { boards: unknown[] } };
+  assert.equal(data?.data?.boards.length, 4);
 });
 
 test("validateGameManifest accepts Antarctica opening-tail card entries (55-70)", () => {
   const manifest = validateGameManifest({
     ...validManifest,
     content: {
-      antarctica: {
+      data: {
         infos: [],
         boards: [],
-        cards: openingTailAntarcticaContent.cards
+        cards: openingTailDataContent.cards
       }
     }
   }) as unknown as Record<string, unknown>;
 
-  const antarctica = manifest.content as { antarctica?: { cards: unknown[] } };
-  assert.equal(antarctica?.antarctica?.cards.length, 16);
+  const data = manifest.content as { data?: { cards: unknown[] } };
+  assert.equal(data?.data?.cards.length, 16);
 });
 
 test("validateGameManifest accepts complete Antarctica opening-tail content (split boards 55-70, infos i17-i21)", () => {
   const manifest = validateGameManifest({
     ...validManifest,
     content: {
-      antarctica: openingTailAntarcticaContent
+      data: openingTailDataContent
     }
   }) as unknown as Record<string, unknown>;
 
-  const antarctica = manifest.content as { antarctica?: { infos: unknown[]; boards: unknown[]; cards: unknown[] } };
-  assert.equal(antarctica?.antarctica?.infos.length, 6);
-  assert.equal(antarctica?.antarctica?.boards.length, 4);
-  assert.equal(antarctica?.antarctica?.cards.length, 16);
+  const data = manifest.content as { data?: { infos: unknown[]; boards: unknown[]; cards: unknown[] } };
+  assert.equal(data?.data?.infos.length, 6);
+  assert.equal(data?.data?.boards.length, 4);
+  assert.equal(data?.data?.cards.length, 16);
 });
 
 test("validateGameManifest rejects board with missing required cardIds array", () => {
@@ -253,7 +253,7 @@ test("validateGameManifest rejects board with missing required cardIds array", (
       validateGameManifest({
         ...validManifest,
         content: {
-          antarctica: {
+          data: {
             infos: [],
             boards: [
               {
@@ -278,7 +278,7 @@ test("validateGameManifest rejects info entry with missing advanceActionId", () 
       validateGameManifest({
         ...validManifest,
         content: {
-          antarctica: {
+          data: {
             infos: [
               {
                 id: "i17",
@@ -304,7 +304,7 @@ test("validateGameManifest rejects card entry with missing selectActionId", () =
       validateGameManifest({
         ...validManifest,
         content: {
-          antarctica: {
+          data: {
             infos: [],
             boards: [],
             cards: [
@@ -457,7 +457,7 @@ test("validateGameManifest rejects team selection scene with missing requiredPic
       validateGameManifest({
         ...validManifest,
         content: {
-          antarctica: {
+          data: {
             infos: [],
             boards: [],
             teamSelections: [

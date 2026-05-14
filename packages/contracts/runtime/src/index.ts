@@ -29,6 +29,8 @@ export interface RuntimeManifestActionDefinition {
   capabilityFamily?: string;
   capability?: string;
   functionName?: string;
+  templateId?: string;
+  params?: Record<string, unknown>;
   raw: Record<string, unknown>;
 }
 

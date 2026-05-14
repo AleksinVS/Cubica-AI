@@ -205,7 +205,7 @@ const reachOpeningStep20InfoI12 = async (
     `${options.step17GoCardActionId}.advance`,
     "opening.info.i11.advance",
     ...options.step19CardActionIds,
-    "opening.(board as any).25_30.advance"
+    "opening.board.25_30.advance"
   ];
 
   return dispatchActionSequence(sessionId, playerId, postConfirmActions);
@@ -550,7 +550,7 @@ test("POST /actions routes different Antarctica actions through manifest capabil
   assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
 });
 
-test("GET /games/:id/player-content returns antarcticaUi manifest for Antarctica", async () => {
+test("GET /games/:id/player-content returns dataUi manifest for Antarctica", async () => {
   const { response, body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
 
   assert.equal(response.status, 200);
@@ -1325,7 +1325,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   const { response: advanceBeforeThresholdResponse, body: advanceBeforeThresholdBody } = await dispatchAction(
     created.sessionId,
     "team-selection-path",
-    "opening.(board as any).25_30.advance"
+    "opening.board.25_30.advance"
   );
   assert.equal(advanceBeforeThresholdResponse.status, 400);
   const advanceBeforeThresholdErrorBody = advanceBeforeThresholdBody as { error: string };
@@ -1359,7 +1359,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   const { response: boardAdvanceResponse, body: boardAdvanceBody } = await dispatchAction(
     created.sessionId,
     "team-selection-path",
-    "opening.(board as any).25_30.advance"
+    "opening.board.25_30.advance"
   );
   assert.equal(boardAdvanceResponse.status, 200);
   const boardAdvanceAction = boardAdvanceBody as ActionResponse;
@@ -1373,7 +1373,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   assert.equal(boardAdvanceAction.state.public.timeline.screen_id, "S1");
   assert.equal(boardAdvanceAction.state.public.timeline.canAdvance, false);
   assert.equal(boardAdvanceAction.state.secret?.opening?.selectedCardId, "22");
-  assert.equal(boardAdvanceLogEntry.actionId, "opening.(board as any).25_30.advance");
+  assert.equal(boardAdvanceLogEntry.actionId, "opening.board.25_30.advance");
   assert.equal(boardAdvanceLogEntry.kind, "opening-board-advance");
 });
 
@@ -2411,7 +2411,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal(typeof firstMockup.type, "string");
   assert.equal(typeof firstMockup.imagePath, "string");
   const content = body.content as Record<string, unknown>;
-  const antarcticaContent = content.antarctica as Record<string, unknown>;
+  const antarcticaContent = content.data as Record<string, unknown>;
   assert.ok(antarcticaContent);
   assert.ok(Array.isArray(antarcticaContent.infos));
   assert.ok(Array.isArray(antarcticaContent.teamSelections));
@@ -2444,73 +2444,73 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal((infoI0 as any).stepIndex, 0);
   assert.equal((infoI0 as any).screenId, "S1");
   assert.equal((infoI0 as any).advanceActionId, "opening.info.i0.advance");
-  assert.equal((infoI0 as any).stepIndex, 12);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Что скажет народ?");
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i8.advance");
-  assert.equal((infoI0 as any).stepIndex, 14);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Создание «штаба»");
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i9.advance");
-  assert.equal((infoI0 as any).stepIndex, 16);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Работаем «в одной упряжке»");
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i10.advance");
-  assert.equal((infoI0 as any).stepIndex, 18);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Первые шаги");
+  assert.equal((infoI8 as any).stepIndex, 12);
+  assert.equal((infoI8 as any).screenId, "S1");
+  assert.equal((infoI8 as any).title, "Что скажет народ?");
+  assert.equal((infoI8 as any).advanceActionId, "opening.info.i8.advance");
+  assert.equal((infoI9 as any).stepIndex, 14);
+  assert.equal((infoI9 as any).screenId, "S1");
+  assert.equal((infoI9 as any).title, "Создание «штаба»");
+  assert.equal((infoI9 as any).advanceActionId, "opening.info.i9.advance");
+  assert.equal((infoI10 as any).stepIndex, 16);
+  assert.equal((infoI10 as any).screenId, "S1");
+  assert.equal((infoI10 as any).title, "Работаем «в одной упряжке»");
+  assert.equal((infoI10 as any).advanceActionId, "opening.info.i10.advance");
+  assert.equal((infoI11 as any).stepIndex, 18);
+  assert.equal((infoI11 as any).screenId, "S1");
+  assert.equal((infoI11 as any).title, "Первые шаги");
   assert.equal(
-    (infoI0 as any).body,
+    (infoI11 as any).body,
     "<p>Теперь, когда команда почувствовала в себе силы для свершений, нужно все-таки что-то сделать. Это желание вместе со странным параличом, сковавшим мысли, привели к тому, что команда просидела молча несколько часов.</p><p>«Ну, хватит! Кальмары уже переварились, пора задать жару!» Несмотря на то, что никакого смысла в этой фразе не было, она произвела волшебный эффект. Все вскочили и как будто бы стало ясно, что нужно делать.</p>"
   );
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i11.advance");
-  assert.equal((infoI0 as any).stepIndex, 20);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Разброд и шатание");
+  assert.equal((infoI11 as any).advanceActionId, "opening.info.i11.advance");
+  assert.equal((infoI12 as any).stepIndex, 20);
+  assert.equal((infoI12 as any).screenId, "S1");
+  assert.equal((infoI12 as any).title, "Разброд и шатание");
   assert.equal(
-    (infoI0 as any).body,
+    (infoI12 as any).body,
     "<p>С одной стороны, жизнь пингвинов осталась прежней. С другой – коренным образом изменилась. Ощущение надвигающейся угрозы давило незаметно, но зато каждый день и каждый час. Кто-то пытался игнорировать это, кто-то, наоборот, позволял этом чувству взять верх, а кто-то даже наслаждался им.</p><p>От первого шока пингвины были как бы в состоянии легкой анестезии, которая быстро кончалась. Пока в штабе продумывали решения, в стае с каждым днем становилось тревожнее. Появились радикально настроенные формирования, слухи о грядущем конце света. Даже у Григория возникли свои последователи, которые все отрицали. Некоторые отрицали даже авторитет руководства, а некоторые - отрицали саму идею отрицания перспектив жизни на айсберге. В литературе пингвинов стали отчетливо видны признаки пост-модернизма и декадентства.</p><p>В общем, нужно было спешить, пока не грянул гром… Нужно ли тратить время на борьбу с паникой?</p>"
   );
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i12.advance");
-  assert.equal((infoI0 as any).stepIndex, 22);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Вперед-вперед!");
+  assert.equal((infoI12 as any).advanceActionId, "opening.info.i12.advance");
+  assert.equal((infoI13 as any).stepIndex, 22);
+  assert.equal((infoI13 as any).screenId, "S1");
+  assert.equal((infoI13 as any).title, "Вперед-вперед!");
   assert.equal(
-    (infoI0 as any).body,
+    (infoI13 as any).body,
     "<p>Сдержав волну паники, команда изменений смогла продолжить работу. </p><p>Уже начинала сказываться усталость от напряженной работы, но пингвины были полны решимости и энтузиазма. Они не хотели останавливаться. Только вперед! Только победа!</p>"
   );
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i13.advance");
-  assert.equal((infoI0 as any).stepIndex, 24);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Открытие");
+  assert.equal((infoI13 as any).advanceActionId, "opening.info.i13.advance");
+  assert.equal((infoI14 as any).stepIndex, 24);
+  assert.equal((infoI14 as any).screenId, "S1");
+  assert.equal((infoI14 as any).title, "Открытие");
   assert.equal(
-    (infoI0 as any).body,
+    (infoI14 as any).body,
     "<p>Большинство пингвинов никогда не видели чайку вблизи. Они стояли в замешательстве и пытались понять, что это значит - быть чайкой? </p><p>\"Интересно, а как она держится в воздухе?\"... \"Кружится ли у нее голова, когда она летает?\"... \"Почему ее не сдувает ветром?\"... \"А где отдыхают чайки, когда устанут?\"... \"Есть ли у них дом?\"... \"Есть ли у них стая?\"... \"Можем ли мы с ней поговорить?\"... Эти и многие другие вопросы возникли в головах у пингвинов.</p><p>Хотя многие считают, что чайки и пингвины никогда не смогут ни о чем договориться, на самом деле это не так. Во-первых, пингвины в меру тактичны и не в меру любознательны, во-вторых, чайки достаточно общительны, в-третьих, далеко не все чайки являются природными врагами пингвинов (да и то лишь для некоторых видов пингвинов). </p><p>Пингвины дружно поздоровались и оказалось, что чайка говорит на языке очень похожем на пингвиний. \"Меньше отличий, чем между испанским и португальским!\" - подумал Федор, а Профессор подумал что-то про санскрит, но это была очень сложная мысль и ее здесь невозможно полностью сформулировать. В общем, они смогли поговорить с чайкой и задать ей все волнующие их вопросы. Оказалось, что чайку зовут Иннокентий, а работает он навигатором-разведчиком, это у чаек означает лететь впереди стаи и искать варианты нового места жительства. Стало понятно, что летают чайки с помощью крыльев, ветер иногда их все-таки сдувает, а образ жизни у них близок к кочевому.  Удалось понять,  чем  чайки  питаются  и  что  значит  быть  разведчиком. Вскоре  Иннокентий сказал, что у него дедлайн и он вынужден попрощаться и улететь. </p><p>Пингвины сразу поняли две вещи: первое, что это пока единственное реалистичное решение их нынешней проблемы, второе, что есть обоснованные сомнения в возможности применить решение к пингвинам. </p><p>\"Мы не такие, как чайки\"...  \"Они  летают\"... \"Они  используют другую технологию\"... \"У них другой метаболизм\"... \"Пингвины так не делали никогда, возможно, тому есть причины\"... Надежда и сомнения слились в головах пингвинов в адский коктейль.</p>"
   );
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i14.advance");
-  assert.equal((infoI0 as any).stepIndex, 25);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Открытие (продолжение)");
-  assert.ok((infoI0 as any).body.includes("Но открытие случилось, оно изменило представление пингвинов о мире и потрясло их."));
-  assert.ok((infoI0 as any).body.includes("Мы все живем в наших собственных легендах"));
-  assert.ok((infoI0 as any).body.includes("Ну, за работу!"));
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i14_2.advance");
-  assert.equal((infoI0 as any).stepIndex, 27);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Для тех, кто не в курсе…");
+  assert.equal((infoI14 as any).advanceActionId, "opening.info.i14.advance");
+  assert.equal((infoI14_2 as any).stepIndex, 25);
+  assert.equal((infoI14_2 as any).screenId, "S1");
+  assert.equal((infoI14_2 as any).title, "Открытие (продолжение)");
+  assert.ok((infoI14_2 as any).body.includes("Но открытие случилось, оно изменило представление пингвинов о мире и потрясло их."));
+  assert.ok((infoI14_2 as any).body.includes("Мы все живем в наших собственных легендах"));
+  assert.ok((infoI14_2 as any).body.includes("Ну, за работу!"));
+  assert.equal((infoI14_2 as any).advanceActionId, "opening.info.i14_2.advance");
+  assert.equal((infoI15 as any).stepIndex, 27);
+  assert.equal((infoI15 as any).screenId, "S1");
+  assert.equal((infoI15 as any).title, "Для тех, кто не в курсе…");
   assert.equal(
-    (infoI0 as any).body,
+    (infoI15 as any).body,
     "<p>Пожалуй, решение подоспело вовремя. Кажется, что по айсбергу пошла небольшая трещина. Хотя, это может быть, просто игра света из-за низкого, уже почти зимнего, солнца…</p><p>После того, как решение было найдено появился определенный оптимизм. Массовый оптимизм. Однако уже на собрании стало ясно, что некоторые пингвины не вполне поняли, что их ждет, некоторые отнеслись скептически. Естественно, была небольшая часть пингвинов, посчитавших происходящие абсурдом и противной самой сути пингвинов ересью.</p><p>Теперь, после собрания, когда одни задачи вроде бы уже решены, добавились новые. На месте одной решенной - по три новых. \"Какая-то гидра многозадачная...\" - растерянно пробормотала Алена, но тут же взяла себя в руки и предложила \"окутать всех пингвинов нежной, но плотной шкурой пропаганды\". Она объяснила, что пингвинам не стоит здесь оставлять возможность для лишних сомнений, тем более, что кто-то что-то не понял, а кого-то, возможно и не было на собрании. </p><p>Может быть, так и надо сделать? Может быть, надо, но совсем чуть-чуть? Или она перегибает льдину?..</p>"
   );
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i15.advance");
-  assert.equal((infoI0 as any).stepIndex, 29);
-  assert.equal((infoI0 as any).screenId, "S1");
-  assert.equal((infoI0 as any).title, "Предвкушение приключений. С привкусом страха и боли.");
+  assert.equal((infoI15 as any).advanceActionId, "opening.info.i15.advance");
+  assert.equal((infoI16 as any).stepIndex, 29);
+  assert.equal((infoI16 as any).screenId, "S1");
+  assert.equal((infoI16 as any).title, "Предвкушение приключений. С привкусом страха и боли.");
   assert.equal(
-    (infoI0 as any).body,
+    (infoI16 as any).body,
     "<p>Общее собрание, обсуждение того, что \"пингвины не равно айсберг, айсберг не равно пингвины\", рассказ о чайке, романтика приключений, представленная в массовых коммуникациях и все прочие действия - шаг за шагом, мысль за мыслью - эти идеи укоренились в сознании пингвинов. Несколько десятков наиболее активных (и отважных!) начали работать вместе с командой изменений, в небольших группах они стали прорабатывать основные разделы плана: подбор разведчиков, поиск и оценку новых айсбергов, логистику перемещения всей колонии. Профессор подсчитал, что переезд всех пингвинов займет примерно неделю (более далекие айсберги выбирать бессмысленно, потому что тогда невозможно будет перевезти всех пингвинов).</p><p>Несколько пингвинов вызвались быть разведчиками и отправиться реализовывать часть плана, связанную с поиском и оценкой новых айсбергов. Это было хорошо. Плохо было то, что это были, в основном, молодые пингвины, недостаточно опытные, ищущие больше адреналин, чем новый дом для колонии.</p><p>С разведчиками был связан еще один сложный момент, решения которого пока не было. Пингвины к зиме накапливают значительный объем жира, который позволяет им выдерживать морозы и возможный недостаток пищи. Разведчики, выполняя свою работу, неизбежно потеряют почти весь свой зимний жир, и для выживания зимой им потребуется набрать жир заново и при этом ускоренным темпом, для чего нужна обильная пищи. Проблема в том, что тысячелетняя традиция пингвинов предписывает делиться пищей только с детьми, но никак не с другими взрослыми пингвинами, а вернувшиеся из экспедиции разведчики не смогут сами обеспечить себя необходимым объемом пищи.</p><p>Были и другие сложности. Григорий и его сторонники явно активизировались, теперь они проповедовали отказ от переезда. Они предвещали штормы, ужасные подводные течения, безжалостных чудовищ, которые должны покарать пингвинов, предавших свой айсберг, предназначенный им судьбой... Большинство к ним не особо прислушивались, но некоторых пингвинов это пугало. И это влияние понемногу росло.</p><p>Кроме того, некоторым молодым пингвинам стали сниться ночные кошмары. Возможно, одной из причин этого были рассказы напуганной воспитательницы детского сада или школьного учителя, может быть, тревога поселилась в некоторых семьях пингвинов. В любом случае, детские страхи очень тревожили взрослых, в том числе активистов перемен и самих будущих разведчиков.</p>"
   );
-  assert.equal((infoI0 as any).advanceActionId, "opening.info.i16.advance");
+  assert.equal((infoI16 as any).advanceActionId, "opening.info.i16.advance");
   assert.equal((teamSelection as any).id, "opening.team.selection");
   assert.equal((teamSelection as any).screenId, "S2");
   assert.equal((teamSelection as any).requiredPickCount, 5);
@@ -2519,15 +2519,15 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal((teamSelection as any).members[0].memberId, "fedya");
   assert.equal((teamSelection as any).members[0].name, "Федор");
   assert.equal((teamSelection as any).members[0].selectActionId, "opening.team.select.fedya");
-  const board = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).1_6");
-  const secondBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).7_12");
-  const thirdBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).13_18");
-  const fourthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).19_24");
-  const fifthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).25_30");
-  const sixthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).31_36");
-  const seventhBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).37_42");
-  const eighthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).43_48");
-  const ninthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.(board as any).49_54");
+  const board = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.1_6");
+  const secondBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.7_12");
+  const thirdBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.13_18");
+  const fourthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.19_24");
+  const fifthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.25_30");
+  const sixthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.31_36");
+  const seventhBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.37_42");
+  const eighthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.43_48");
+  const ninthBoard = (antarcticaContent.boards as Array<{ id: string }>).find((entry: any) => entry.id === "opening.board.49_54");
   assert.ok(board);
   assert.ok(secondBoard);
   assert.ok(thirdBoard);
@@ -2569,46 +2569,46 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.equal((ninthBoard as any).screenId, "S2");
   assert.equal((ninthBoard as any).title, "Выберите девятый шаг");
   assert.deepEqual((ninthBoard as any).cardIds, ["49", "50", "51", "52", "53", "54"]);
-  const card25 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "25");
-  const card26 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "26");
-  const card27 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "27");
-  const card28 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "28");
-  const card29 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "29");
-  const card30 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "30");
-  const card7 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "7");
-  const card9 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "9");
-  const card12 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "12");
-  const card13 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "13");
-  const card18 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "18");
-  const card19 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "19");
-  const card22 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "22");
-  const card23 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "23");
-  const card24 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "24");
-  const card31 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "31");
-  const card32 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "32");
-  const card33 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "33");
-  const card34 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "34");
-  const card35 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "35");
-  const card36 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "36");
-  const card37 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "37");
-  const card38 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "38");
-  const card39 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "39");
-  const card3902 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "3902");
-  const card40 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "40");
-  const card41 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "41");
-  const card42 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "42");
-  const card43 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "43");
-  const card44 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "44");
-  const card45 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "45");
-  const card46 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "46");
-  const card47 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "47");
-  const card48 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "48");
-  const card49 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "49");
-  const card50 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "50");
-  const card51 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "51");
-  const card52 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "52");
-  const card53 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "53");
-  const card54 = (body.content as any).antarctica.cards.find((entry: any) => entry.cardId === "54");
+  const card25 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "25");
+  const card26 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "26");
+  const card27 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "27");
+  const card28 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "28");
+  const card29 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "29");
+  const card30 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "30");
+  const card7 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "7");
+  const card9 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "9");
+  const card12 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "12");
+  const card13 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "13");
+  const card18 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "18");
+  const card19 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "19");
+  const card22 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "22");
+  const card23 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "23");
+  const card24 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "24");
+  const card31 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "31");
+  const card32 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "32");
+  const card33 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "33");
+  const card34 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "34");
+  const card35 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "35");
+  const card36 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "36");
+  const card37 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "37");
+  const card38 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "38");
+  const card39 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "39");
+  const card3902 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "3902");
+  const card40 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "40");
+  const card41 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "41");
+  const card42 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "42");
+  const card43 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "43");
+  const card44 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "44");
+  const card45 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "45");
+  const card46 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "46");
+  const card47 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "47");
+  const card48 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "48");
+  const card49 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "49");
+  const card50 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "50");
+  const card51 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "51");
+  const card52 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "52");
+  const card53 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "53");
+  const card54 = (body.content as any).data.cards.find((entry: any) => entry.cardId === "54");
   assert.ok(card7);
   assert.ok(card9);
   assert.ok(card12);
@@ -3057,8 +3057,8 @@ test("GET /games/:gameId/player-content does not return antarcticaUi for non-ant
 
   assert.equal(response.status, 200);
   assert.equal(body.gameId, "antarctica");
-  // content.antarctica (gameplay content) must be present; ui is optional but must be present for antarctica
-  assert.ok((body.content as Record<string, unknown>)?.antarctica, "antarctica gameplay content must be present");
+  // content.data (gameplay content) must be present; ui is optional but must be present for antarctica
+  assert.ok((body.content as Record<string, unknown>)?.data, "data gameplay content must be present");
   assert.ok(body.ui, "ui S1 UI data must be present for antarctica");
 });
 

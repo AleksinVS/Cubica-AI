@@ -22,6 +22,12 @@
         },
         "state": {
           "$ref": "#/definitions/GameManifestState%3Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%2Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%3E"
+        },
+        "templates": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GameManifestActionDefinition"
+          },
+          "type": "object"
         }
       },
       "required": [
@@ -56,6 +62,10 @@
         "handlerType": {
           "type": "string"
         },
+        "params": {
+          "additionalProperties": {},
+          "type": "object"
+        },
         "payloadSchema": {
           "additionalProperties": {},
           "type": "object"
@@ -69,6 +79,9 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "templateId": {
+          "type": "string"
         }
       },
       "required": [
@@ -272,10 +285,10 @@
           "type": "string"
         },
         "targetStepIndex": {
-          "type": "number"
+          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         },
         "timelineCanAdvance": {
-          "type": "boolean"
+          "oneOf": [{ "type": "boolean" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         },
         "when": {
           "$ref": "#/definitions/GameManifestDeterministicMetricCondition"
@@ -343,13 +356,13 @@
           "additionalProperties": false,
           "properties": {
             "canAdvance": {
-              "type": "boolean"
+              "oneOf": [{ "type": "boolean" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
             },
             "line": {
               "type": "string"
             },
             "stepIndex": {
-              "type": "number"
+              "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
             }
           },
           "type": "object"
@@ -390,7 +403,7 @@
           "$ref": "#/definitions/GameManifestDeterministicMetricOperator"
         },
         "threshold": {
-          "type": "number"
+          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         }
       },
       "required": [
@@ -404,7 +417,7 @@
       "additionalProperties": false,
       "properties": {
         "delta": {
-          "type": "number"
+          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         },
         "metricId": {
           "type": "string"
@@ -519,7 +532,7 @@
           "type": "array"
         },
         "timelineCanAdvance": {
-          "type": "boolean"
+          "oneOf": [{ "type": "boolean" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         },
         "timelineScreenId": {
           "type": "string"
@@ -528,7 +541,7 @@
           "type": "string"
         },
         "timelineStepIndex": {
-          "type": "number"
+          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         }
       },
       "type": "object"

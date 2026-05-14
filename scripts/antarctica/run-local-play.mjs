@@ -115,6 +115,8 @@ function startRuntimeApi() {
 function startPlayerWeb() {
   log("player-web", `Starting on port ${playerWebPort}...`);
   log("player-web", `Using RUNTIME_API_URL=${runtimeApiUrl}`);
+  const playerWebUrl = `http://localhost:${playerWebPort}`;
+  log("player-web", `Using PLAYER_WEB_URL=${playerWebUrl}`);
 
   playerWebProcess = spawnProcess(
     "npm",
@@ -122,6 +124,7 @@ function startPlayerWeb() {
     {
       RUNTIME_API_URL: runtimeApiUrl,
       PORT: playerWebPort,
+      PLAYER_WEB_URL: playerWebUrl,
       NEXT_IGNORE_INCORRECT_LOCKFILE: "1"
     },
     "player-web"

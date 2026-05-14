@@ -32,7 +32,7 @@ const mockContent: PlayerFacingContent = {
   actions: [],
   mockups: [],
   content: {
-    antarctica: {
+    data: {
       infos: [],
       boards: [],
       teamSelections: [],
@@ -1588,7 +1588,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     const mockContentWithInfo: PlayerFacingContent = {
       ...mockContent,
       content: {
-        antarctica: {
+        data: {
           infos: [
             {
               id: "i0",

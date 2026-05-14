@@ -144,8 +144,8 @@ export interface GameManifestDeterministicStateCondition {
 export interface GameManifestDeterministicGuard {
   timeline?: {
     line?: string;
-    stepIndex?: number;
-    canAdvance?: boolean;
+    stepIndex?: number | string;
+    canAdvance?: boolean | string;
   };
   stateConditions?: Array<GameManifestDeterministicStateCondition>;
   [key: string]: unknown;
@@ -153,7 +153,7 @@ export interface GameManifestDeterministicGuard {
 
 export interface GameManifestDeterministicMetricDelta {
   metricId: string;
-  delta: number;
+  delta: number | string;
 }
 
 export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
@@ -164,7 +164,7 @@ export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
 export interface GameManifestDeterministicMetricCondition {
   metricId: string;
   operator: GameManifestDeterministicMetricOperator;
-  threshold: number;
+  threshold: number | string;
 }
 
 /**
@@ -186,11 +186,11 @@ export interface GameManifestDeterministicConditionalStateBonus {
 export interface GameManifestDeterministicConditionalLineSwitch {
   when: GameManifestDeterministicMetricCondition;
   targetLine: string;
-  targetStepIndex: number;
+  targetStepIndex: number | string;
   targetStageId?: string;
   targetScreenId?: string;
   targetInfoId?: string;
-  timelineCanAdvance?: boolean;
+  timelineCanAdvance?: boolean | string;
 }
 
 /**
@@ -215,9 +215,9 @@ export interface GameManifestDeterministicStatePatch {
 }
 
 export interface GameManifestDeterministicStateUpdate {
-  timelineCanAdvance?: boolean;
+  timelineCanAdvance?: boolean | string;
   // Explicit timeline coordinates for deterministic transitions (for example intro info step -> next screen).
-  timelineStepIndex?: number;
+  timelineStepIndex?: number | string;
   timelineStageId?: string;
   timelineScreenId?: string;
   activeInfoId?: string;
@@ -239,6 +239,8 @@ export interface GameManifestDeterministicActionMetadata {
 
 export interface GameManifestActionDefinition {
   handlerType: "script" | "ui" | "ai" | "system" | "unknown" | string;
+  templateId?: string;
+  params?: Record<string, unknown>;
   capabilityFamily?: string;
   capability?: string;
   function?: string;
@@ -252,6 +254,8 @@ export interface GameManifestActionDefinition {
 
 export type GameManifestActionMap = Record<string, GameManifestActionDefinition>;
 
+export type GameManifestTemplateMap = Record<string, Partial<GameManifestActionDefinition>>;
+
 export interface GameManifest<
   TPublicState = Record<string, unknown>,
   TSecretState = Record<string, unknown>,
@@ -263,6 +267,7 @@ export interface GameManifest<
   engine?: GameManifestEngineConfig;
   state: GameManifestState<TPublicState, TSecretState>;
   actions: TActions;
+  templates?: GameManifestTemplateMap;
 }
 
 export interface ManifestBundle<

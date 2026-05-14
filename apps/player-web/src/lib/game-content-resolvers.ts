@@ -71,7 +71,7 @@ type SecretState = {
 };
 
 const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
-const playerWebUrl = process.env.PLAYER_WEB_URL ?? "http://localhost:3000";
+const playerWebUrl = process.env.PLAYER_WEB_URL ?? (process.env.PORT ? `http://localhost:${process.env.PORT}` : "http://localhost:3000");
 
 const parseJson = <TValue,>(raw: string): TValue => JSON.parse(raw) as TValue;
 
@@ -148,9 +148,10 @@ export function getFallbackActionEntries(content: PlayerFacingContent): Array<Ac
 /**
  * Извлекает game-specific контент из PlayerFacingContent.
  * Возвращает unknown — плагин приводит к своему типу.
+ * Предпочитает универсальный ключ 'data', но поддерживает обратную совместимость с ключом на базе gameId.
  */
 export function resolveGameContent(content: PlayerFacingContent): unknown {
-  return content.content?.[content.gameId] ?? null;
+  return content.content?.data ?? content.content?.[content.gameId] ?? null;
 }
 
 /**

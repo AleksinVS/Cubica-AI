@@ -41,16 +41,24 @@ export function listManifestActionDefinitions(bundle: GameBundle): Array<Runtime
           ? action.capability_name
           : undefined;
 
+    const templateId = typeof action.templateId === "string" ? action.templateId : undefined;
+    const params = isObjectRecord(action.params) ? action.params : undefined;
+
     return {
       actionId,
       handlerType,
       capabilityFamily,
       capability,
       functionName,
+      templateId,
+      params,
       raw: action
     };
   });
 }
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
 
 export function getManifestActionDefinition(bundle: GameBundle, actionId: string) {
   return listManifestActionDefinitions(bundle).find((definition) => definition.actionId === actionId) ?? null;

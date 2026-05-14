@@ -115,7 +115,7 @@ export const openingTailStep30PlayerContent: PlayerFacingContent = {
     },
   ],
   mockups: [],
-  content: { antarctica: openingTailStep30AntarcticaContent },
+  content: { data: openingTailStep30AntarcticaContent },
 };
 
 /** Session snapshot at step 30 showing board 55_60 with no card selected yet */
@@ -301,7 +301,7 @@ export const openingTailStep32PlayerContent: PlayerFacingContent = {
     },
   ],
   mockups: [],
-  content: { antarctica: openingTailStep32AntarcticaContent },
+  content: { data: openingTailStep32AntarcticaContent },
 };
 
 /** Session snapshot at step 32 showing board 61_66 with card 66 locked initially */
@@ -582,7 +582,7 @@ export const openingTailStep34PlayerContent: PlayerFacingContent = {
     },
   ],
   mockups: [],
-  content: { antarctica: openingTailStep34AntarcticaContent },
+  content: { data: openingTailStep34AntarcticaContent },
 };
 
 /** Session snapshot at step 34 showing board 67_68 */

@@ -17,7 +17,60 @@ type DeterministicHandlerMode = "capability" | "manifest-action";
 
 interface DeterministicHandlerOptions {
   mode?: DeterministicHandlerMode;
+  templates?: Record<string, unknown>;
 }
+
+const resolveValue = (value: unknown, params: Record<string, unknown>): any => {
+  if (typeof value === "string") {
+    const match = value.match(/^\{\{(.+?)\}\}$/);
+    if (match) {
+      const key = match[1].trim();
+      return params[key] !== undefined ? params[key] : value;
+    }
+    return value.replace(/\{\{(.+?)\}\}/g, (match, key) => {
+      const trimmedKey = key.trim();
+      return params[trimmedKey] !== undefined ? String(params[trimmedKey]) : match;
+    });
+  }
+  if (Array.isArray(value)) {
+    return value.map((item) => resolveValue(item, params));
+  }
+  if (isObjectRecord(value)) {
+    const res: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      res[k] = resolveValue(v, params);
+    }
+    return res;
+  }
+  return value;
+};
+
+const resolveTemplate = (
+  action: any,
+  templates: Record<string, unknown> | undefined
+): Record<string, unknown> => {
+  if (!action.templateId || !templates) {
+    return action.raw;
+  }
+
+  const template = templates[action.templateId];
+  if (!isObjectRecord(template)) {
+    return action.raw;
+  }
+
+  // Deep merge template with action raw (action raw takes precedence)
+  const merged = { ...template, ...action.raw };
+  if (isObjectRecord(template.deterministic) && isObjectRecord(action.raw.deterministic)) {
+    merged.deterministic = { ...template.deterministic, ...action.raw.deterministic };
+  }
+
+  // Substitute params
+  if (isObjectRecord(action.params)) {
+    return resolveValue(merged, action.params);
+  }
+
+  return merged;
+};
 
 const ensureObject = (value: unknown): RuntimeState =>
   value && typeof value === "object" && !Array.isArray(value) ? (value as RuntimeState) : {};
@@ -184,14 +237,16 @@ const buildTransition = (
 };
 
 const readManifestDeterministicMetadata = (
-  context: RuntimeActionContext<RuntimeState>
+  context: RuntimeActionContext<RuntimeState>,
+  templates?: Record<string, unknown>
 ): GameManifestDeterministicActionMetadata | null => {
-  const raw = context.manifestAction.raw;
-  if (!isObjectRecord(raw) || !isObjectRecord(raw.deterministic)) {
+  const resolved = resolveTemplate(context.manifestAction, templates);
+
+  if (!isObjectRecord(resolved) || !isObjectRecord(resolved.deterministic)) {
     return null;
   }
 
-  return raw.deterministic as unknown as GameManifestDeterministicActionMetadata;
+  return resolved.deterministic as unknown as GameManifestDeterministicActionMetadata;
 };
 
 const readCardState = (state: RuntimeState, cardId: string) => {
@@ -269,16 +324,17 @@ const evaluateMetricCondition = (
   condition: GameManifestDeterministicMetricCondition
 ) => {
   const metricValue = readMetricValue(state, condition.metricId);
+  const threshold = typeof condition.threshold === "string" ? Number(condition.threshold) : condition.threshold;
 
   if (condition.operator === ">") {
-    return metricValue > condition.threshold;
+    return metricValue > threshold;
   }
 
   if (condition.operator === "<") {
-    return metricValue < condition.threshold;
+    return metricValue < threshold;
   }
 
-  return metricValue === condition.threshold;
+  return metricValue === threshold;
 };
 
 const evaluateManifestGuard = (
@@ -346,7 +402,8 @@ const applyMetricDeltas = (state: RuntimeState, deltas: Array<GameManifestDeterm
 
   for (const delta of deltas) {
     const current = typeof metrics[delta.metricId] === "number" ? (metrics[delta.metricId] as number) : 0;
-    const nextValue = current + delta.delta;
+    const deltaValue = typeof delta.delta === "string" ? Number(delta.delta) : delta.delta;
+    const nextValue = current + deltaValue;
     metrics[delta.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
   }
 
@@ -561,9 +618,13 @@ const applyManifestStateUpdate = (
 
 const buildManifestActionTransition = (
   context: RuntimeActionContext<RuntimeState>,
-  capabilityFamily: CapabilityFamily
+  capabilityFamily: CapabilityFamily,
+  templates?: Record<string, unknown>
 ): RuntimeActionResult<RuntimeState> => {
-  if (context.manifestAction.handlerType !== "manifest-data") {
+  if (
+    context.manifestAction.handlerType !== "manifest-data" &&
+    context.manifestAction.handlerType !== "manifest-template"
+  ) {
     return {
       ok: false,
       error: {
@@ -573,7 +634,7 @@ const buildManifestActionTransition = (
     };
   }
 
-  const metadata = readManifestDeterministicMetadata(context);
+  const metadata = readManifestDeterministicMetadata(context, templates);
 
   if (!metadata) {
     return {
@@ -630,7 +691,7 @@ export function createDeterministicHandler(
 ): RuntimeActionHandler<RuntimeState> {
   const mode = options.mode ?? "capability";
   if (mode === "manifest-action") {
-    return (context) => buildManifestActionTransition(context, capabilityFamily);
+    return (context) => buildManifestActionTransition(context, capabilityFamily, options.templates);
   }
 
   return (context) => buildTransition(context, capabilityFamily);

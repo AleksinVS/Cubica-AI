@@ -167,7 +167,11 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
     capability: definition.capability ?? null
   }));
 
-  const gameSpecificContent = manifest.content?.[manifest.meta.id];
+  // Platform purity: prefer agnostic 'data' or 'collections' over legacy game-specific key.
+  const gameSpecificContent = manifest.content?.data ?? 
+                             manifest.content?.collections ?? 
+                             manifest.content?.[manifest.meta.id];
+
   const rawUiManifest = await loadGameUiManifest(manifest.meta.id, repository);
   const gameUi = rawUiManifest ? projectGameUiContent(rawUiManifest) : undefined;
 
@@ -181,7 +185,8 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
     training: manifest.meta.training,
     actions,
     mockups: [],
-    content: gameSpecificContent ? { [manifest.meta.id]: structuredClone(gameSpecificContent) } : undefined,
+    // Return content under the same key it was found, or default to 'data' for the projection
+    content: gameSpecificContent ? { data: structuredClone(gameSpecificContent) } : undefined,
     ui: gameUi
   };
 };

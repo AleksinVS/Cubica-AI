@@ -156,3 +156,25 @@ Delivered S2 board screens теперь визуально выровнены п
 
 ## Приоритет 7. Завершенные Архитектурные Эпики
 - **E_0060 (Architecture Drift Prevention)**: Успешно завершен. Логика «Антарктики» изолирована от ядра (`services/runtime-api` и ADR очищены), внедрена автогенерация структуры проекта (`PROJECT_STRUCTURE.yaml`), наведен порядок в `draft/` и установлены правила работы с легаси-разрывами.
+
+## Дорожная карта Универсальности (Roadmap)
+
+### Этап 1: Game-Agnostic Content & Runtime Projection
+**Статус: ✅ Completed (2026-05-10)**
+- В манифесте Antarctica ключ `antarctica` заменен на универсальный `data`.
+- `runtime-api` автоматически проецирует `data` или `collections` в унифицированном формате.
+- `player-web` переведен на разрешение контента через ключ `data`.
+- Внедрена строгая валидация сущностей `infos`, `boards`, `cards` в JSON-схеме.
+
+### Этап 2: Action Templates (Macros)
+**Статус: ✅ Completed (2026-05-13)**
+- Реализован ADR-028: механизмы шаблонизации действий для компактных манифестов.
+- В `runtime-api` добавлен движок разрешения шаблонов с поддержкой Deep Merge и подстановки параметров `{{param}}`.
+- Обновлены контракты и JSON-схема для поддержки секции `templates`.
+- Верифицировано тестом `services/runtime-api/tests/action-templates.test.ts`.
+
+### Этап 3: Миграция Antarctica & Content Deduplication
+**Статус: 🕒 Planned**
+- Рефакторинг `game.manifest.json` Антарктики с использованием шаблонов (цель: сокращение с 9000 до 3000 строк). План миграции: `docs/tasks/ANTARCTICA_MANIFEST_MIGRATION_PLAN.md`.
+- Внедрение системы `$ref` для устранения дублирования текстов.
+- Расширение библиотеки Generic UI компонентов.

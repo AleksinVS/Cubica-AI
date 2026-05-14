@@ -22,15 +22,15 @@ const createRegistryMap = (bundle: GameBundle) => {
       continue;
     }
 
-    if (definition.handlerType === "manifest-data") {
-      const deterministic = definition.raw.deterministic;
-      if (!deterministic || typeof deterministic !== "object") {
-        // Skip manifest-data actions that lack deterministic metadata.
-        // This keeps the runtime bounded and explicit.
-        continue;
-      }
+    if (definition.handlerType === "manifest-data" || definition.handlerType === "manifest-template") {
       const capabilityFamily = resolveActionCapabilityFamily(definition.capabilityFamily, definition.capability);
-      registry.set(definition.actionId, createDeterministicHandler(capabilityFamily, { mode: "manifest-action" }));
+      registry.set(
+        definition.actionId,
+        createDeterministicHandler(capabilityFamily, {
+          mode: "manifest-action",
+          templates: bundle.manifest.templates
+        })
+      );
     }
   }
 
