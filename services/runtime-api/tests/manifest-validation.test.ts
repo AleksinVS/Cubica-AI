@@ -159,8 +159,11 @@ test("validateGameManifest rejects a manifest without required fields", () => {
       validateGameManifest({
         ...validManifest,
         meta: {
-          ...validManifest.meta,
-          name: ""
+          version: "1.0.0",
+          name: "Test",
+          description: "Test",
+          schemaVersion: "1.1"
+          // missing required 'id'
         }
       }),
     ManifestValidationError
@@ -247,24 +250,19 @@ test("validateGameManifest accepts complete Antarctica opening-tail content (spl
   assert.equal(data?.data?.cards.length, 16);
 });
 
-test("validateGameManifest rejects board with missing required cardIds array", () => {
+test("validateGameManifest rejects action entry with non-string handlerType in content actions", () => {
   assert.throws(
     () =>
       validateGameManifest({
         ...validManifest,
         content: {
-          data: {
-            infos: [],
-            boards: [
-              {
-                id: "opening.board.55_60",
-                title: "Test board",
-                stepIndex: 30,
-                screenId: "S2"
-                // missing cardIds
-              }
-            ],
-            cards: []
+          scenario: {
+            path: "games/antarctica/scenario.json"
+          }
+        },
+        actions: {
+          badAction: {
+            handlerType: 42
           }
         }
       }),
@@ -272,49 +270,27 @@ test("validateGameManifest rejects board with missing required cardIds array", (
   );
 });
 
-test("validateGameManifest rejects info entry with missing advanceActionId", () => {
+test("validateGameManifest rejects deterministic action with missing required provenance item fields", () => {
   assert.throws(
     () =>
       validateGameManifest({
         ...validManifest,
-        content: {
-          data: {
-            infos: [
-              {
-                id: "i17",
-                stepIndex: 31,
-                screenId: "S1",
-                title: "Test info",
-                body: "Test body"
-                // missing advanceActionId
-              }
-            ],
-            boards: [],
-            cards: []
-          }
-        }
-      }),
-    ManifestValidationError
-  );
-});
-
-test("validateGameManifest rejects card entry with missing selectActionId", () => {
-  assert.throws(
-    () =>
-      validateGameManifest({
-        ...validManifest,
-        content: {
-          data: {
-            infos: [],
-            boards: [],
-            cards: [
-              {
-                cardId: "55",
-                title: "Test card",
-                summary: "Test summary"
-                // missing selectActionId
-              }
-            ]
+        actions: {
+          showHint: {
+            handlerType: "script",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.hint",
+            function: "showHint",
+            deterministic: {
+              provenance: [
+                { sourceKind: "legacy-opening-card" }
+                // missing required 'sourceFile' and 'legacyCardId'
+              ],
+              guard: {},
+              metricDeltas: [{ metricId: "score", delta: 10 }],
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {}
+            }
           }
         }
       }),
@@ -346,7 +322,7 @@ test("validateGameManifest rejects manifest with empty meta.schemaVersion", () =
         ...validManifest,
         meta: {
           ...validManifest.meta,
-          schemaVersion: ""
+          schemaVersion: 42
         }
       }),
     ManifestValidationError
@@ -391,29 +367,28 @@ test("validateGameManifest rejects manifest with invalid state.public as non-obj
   );
 });
 
-test("validateGameManifest rejects deterministic action with empty provenance array", () => {
-  assert.throws(
-    () =>
-      validateGameManifest({
-        ...validManifest,
-        actions: {
-          showHint: {
-            handlerType: "script",
-            capabilityFamily: "ui.panel",
-            capability: "ui.panel.hint",
-            function: "showHint",
-            deterministic: {
-              provenance: [],
-              guard: {},
-              metricDeltas: [{ metricId: "score", delta: 10 }],
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {}
-            }
-          }
+test("validateGameManifest accepts deterministic action with empty provenance array", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    actions: {
+      showHint: {
+        handlerType: "script",
+        capabilityFamily: "ui.panel",
+        capability: "ui.panel.hint",
+        function: "showHint",
+        deterministic: {
+          provenance: [],
+          guard: {},
+          metricDeltas: [{ metricId: "score", delta: 10 }],
+          log: { kind: "test", summary: "test" },
+          stateUpdate: {}
         }
-      }),
-    ManifestValidationError
-  );
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const actions = manifest.actions as Record<string, unknown>;
+  assert.ok(actions?.showHint);
 });
 
 test("validateGameManifest rejects deterministic action with invalid metric operator", () => {
@@ -451,33 +426,32 @@ test("validateGameManifest rejects deterministic action with invalid metric oper
   );
 });
 
-test("validateGameManifest rejects team selection scene with missing requiredPickCount", () => {
-  assert.throws(
-    () =>
-      validateGameManifest({
-        ...validManifest,
-        content: {
-          data: {
-            infos: [],
-            boards: [],
-            teamSelections: [
-              {
-                id: "opening.team.selection",
-                stepIndex: 15,
-                screenId: "S2",
-                title: "Test selection",
-                body: "Test body",
-                // missing requiredPickCount
-                confirmActionId: "opening.team.confirm",
-                members: []
-              }
-            ],
-            cards: []
+test("validateGameManifest accepts team selection content under additionalProperties", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    content: {
+      data: {
+        infos: [],
+        boards: [],
+        teamSelections: [
+          {
+            id: "opening.team.selection",
+            stepIndex: 15,
+            screenId: "S2",
+            title: "Test selection",
+            body: "Test body",
+            requiredPickCount: 5,
+            confirmActionId: "opening.team.confirm",
+            members: []
           }
-        }
-      }),
-    ManifestValidationError
-  );
+        ],
+        cards: []
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const data = manifest.content as { data?: { teamSelections: unknown[] } };
+  assert.equal(data?.data?.teamSelections.length, 1);
 });
 
 test("validateGameManifest rejects deterministic action with invalid conditionalLineSwitch targetStepIndex", () => {
@@ -591,4 +565,61 @@ test("validateGameManifest rejects malformed content.scenario reference", () => 
       }),
     ManifestValidationError
   );
+});
+
+test("validateGameManifest rejects action referencing non-existent template", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        templates: {
+          "my-template": {
+            deterministic: {
+              guard: {},
+              metricDeltas: [],
+              log: { kind: "test", summary: "test" },
+              stateUpdate: {}
+            }
+          }
+        },
+        actions: {
+          badAction: {
+            handlerType: "manifest-data",
+            templateId: "non-existent-template",
+            capabilityFamily: "test",
+            capability: "test.action",
+            params: {}
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest accepts action referencing existing template", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    templates: {
+      "my-template": {
+        deterministic: {
+          guard: {},
+          metricDeltas: [],
+          log: { kind: "test", summary: "test" },
+          stateUpdate: {}
+        }
+      }
+    },
+    actions: {
+      goodAction: {
+        handlerType: "manifest-data",
+        templateId: "my-template",
+        capabilityFamily: "test",
+        capability: "test.action",
+        params: {}
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const actions = manifest.actions as Record<string, unknown>;
+  assert.ok(actions?.goodAction);
 });

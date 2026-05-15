@@ -7,8 +7,11 @@ import type {
 import type {
   GameManifestDeterministicActionMetadata,
   GameManifestDeterministicMetricCondition,
-  GameManifestDeterministicMetricDelta
+  GameManifestDeterministicMetricDelta,
+  GameManifestTemplateMap,
+  JsonLogicExpression
 } from "@cubica/contracts-manifest";
+import jsonLogic from "json-logic-js";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -17,7 +20,7 @@ type DeterministicHandlerMode = "capability" | "manifest-action";
 
 interface DeterministicHandlerOptions {
   mode?: DeterministicHandlerMode;
-  templates?: Record<string, unknown>;
+  templates?: GameManifestTemplateMap;
 }
 
 const resolveValue = (value: unknown, params: Record<string, unknown>): any => {
@@ -47,29 +50,58 @@ const resolveValue = (value: unknown, params: Record<string, unknown>): any => {
 
 const resolveTemplate = (
   action: any,
-  templates: Record<string, unknown> | undefined
+  templates: GameManifestTemplateMap | undefined
 ): Record<string, unknown> => {
   if (!action.templateId || !templates) {
-    return action.raw;
+    return action.raw || {};
   }
 
   const template = templates[action.templateId];
   if (!isObjectRecord(template)) {
-    return action.raw;
+    return action.raw || {};
   }
 
-  // Deep merge template with action raw (action raw takes precedence)
-  const merged = { ...template, ...action.raw };
-  if (isObjectRecord(template.deterministic) && isObjectRecord(action.raw.deterministic)) {
-    merged.deterministic = { ...template.deterministic, ...action.raw.deterministic };
+  // Step 1: Resolve the template with params (substitute {{param}} placeholders).
+  const resolvedTemplate = isObjectRecord(action.params)
+    ? resolveValue(template, action.params)
+    : template;
+
+  // Step 2: Extract the action's deterministic overrides.
+  // Supports both direct `deterministic` and the `overrides.deterministic` pattern.
+  const raw = action.raw || {};
+  const actionDeterministic = isObjectRecord(raw.deterministic)
+    ? raw.deterministic
+    : isObjectRecord(raw.overrides) && isObjectRecord(raw.overrides.deterministic)
+      ? raw.overrides.deterministic
+      : null;
+
+
+  // Step 3: If no overrides, return the resolved template as-is.
+  if (!actionDeterministic || !isObjectRecord(resolvedTemplate.deterministic)) {
+    return { deterministic: resolvedTemplate.deterministic };
   }
 
-  // Substitute params
-  if (isObjectRecord(action.params)) {
-    return resolveValue(merged, action.params);
+  // Step 4: Deep merge — action deterministic overrides take precedence.
+  // Top-level deterministic fields: action replaces template.
+  const templateDet = resolvedTemplate.deterministic as Record<string, unknown>;
+  const mergedDeterministic = { ...templateDet, ...actionDeterministic };
+
+  // Guard: deep merge so action can override individual guard fields
+  // (e.g., adding stateConditions or overriding timeline).
+  if (isObjectRecord(templateDet.guard) && isObjectRecord(actionDeterministic.guard)) {
+    mergedDeterministic.guard = { ...templateDet.guard, ...actionDeterministic.guard };
+  } else if (isObjectRecord(actionDeterministic.guard)) {
+    // Action has guard but template doesn't (or template guard is not an object).
+    mergedDeterministic.guard = actionDeterministic.guard;
   }
 
-  return merged;
+  // StateUpdate: deep merge so action can add/override individual fields
+  // (e.g., adding activeInfoId or selectedCardId).
+  if (isObjectRecord(templateDet.stateUpdate) && isObjectRecord(actionDeterministic.stateUpdate)) {
+    mergedDeterministic.stateUpdate = { ...templateDet.stateUpdate, ...actionDeterministic.stateUpdate };
+  }
+
+  return { deterministic: mergedDeterministic };
 };
 
 const ensureObject = (value: unknown): RuntimeState =>
@@ -238,7 +270,7 @@ const buildTransition = (
 
 const readManifestDeterministicMetadata = (
   context: RuntimeActionContext<RuntimeState>,
-  templates?: Record<string, unknown>
+  templates?: GameManifestTemplateMap
 ): GameManifestDeterministicActionMetadata | null => {
   const resolved = resolveTemplate(context.manifestAction, templates);
 
@@ -256,61 +288,15 @@ const readCardState = (state: RuntimeState, cardId: string) => {
   return ensureObject(cards[cardId]);
 };
 
-const evaluateCardCondition = (
-  state: RuntimeState,
-  condition: {
-    cardId: string;
-    selected?: boolean;
-    resolved?: boolean;
-    locked?: boolean;
-    available?: boolean;
-  }
-) => {
-  const cardState = readCardState(state, condition.cardId);
-
-  if (condition.selected !== undefined && cardState.selected !== condition.selected) {
-    return false;
-  }
-  if (condition.resolved !== undefined && cardState.resolved !== condition.resolved) {
-    return false;
-  }
-  if (condition.locked !== undefined && cardState.locked !== condition.locked) {
-    return false;
-  }
-  if (condition.available !== undefined && cardState.available !== condition.available) {
-    return false;
-  }
-
-  return true;
-};
-
-const writeCardState = (cards: RuntimeState, cardId: string, nextCardState: RuntimeState) => {
-  cards[cardId] = nextCardState;
-};
-
-const countResolvedCards = (state: RuntimeState, cardIds: Array<string>) => {
+const countResolvedCards = (cards: Record<string, any>, cardIds: Array<string>) => {
   let resolvedCount = 0;
-
   for (const cardId of cardIds) {
-    const cardState = readCardState(state, cardId);
+    const cardState = ensureObject(cards[cardId]);
     if (cardState.resolved === true) {
-      resolvedCount += 1;
+      resolvedCount++;
     }
   }
-
   return resolvedCount;
-};
-
-const readTeamMemberState = (state: RuntimeState, memberId: string) => {
-  const publicState = ensureObject(state.public);
-  const flags = ensureObject(publicState.flags);
-  const team = ensureObject(flags.team);
-  return ensureObject(team[memberId]);
-};
-
-const readTeamSelectionState = (state: RuntimeState) => {
-  const publicState = ensureObject(state.public);
-  return ensureObject(publicState.teamSelection);
 };
 
 const readMetricValue = (state: RuntimeState, metricId: string) => {
@@ -321,17 +307,24 @@ const readMetricValue = (state: RuntimeState, metricId: string) => {
 
 const evaluateMetricCondition = (
   state: RuntimeState,
-  condition: GameManifestDeterministicMetricCondition
+  condition: { metricId: string; operator: string; threshold: number | string }
 ) => {
   const metricValue = readMetricValue(state, condition.metricId);
   const threshold = typeof condition.threshold === "string" ? Number(condition.threshold) : condition.threshold;
 
-  if (condition.operator === ">") {
-    return metricValue > threshold;
-  }
-
-  if (condition.operator === "<") {
-    return metricValue < threshold;
+  switch (condition.operator) {
+    case ">":
+      return metricValue > threshold;
+    case ">=":
+      return metricValue >= threshold;
+    case "<":
+      return metricValue < threshold;
+    case "<=":
+      return metricValue <= threshold;
+    case "==":
+      return metricValue === threshold;
+    case "!=":
+      return metricValue !== threshold;
   }
 
   return metricValue === threshold;
@@ -344,6 +337,10 @@ const evaluateManifestGuard = (
   const failures: Array<string> = [];
   const guard = metadata.guard;
 
+  if (!guard) {
+    return failures;
+  }
+
   const publicState = ensureObject(state.public);
   const timeline = ensureObject(publicState.timeline);
 
@@ -351,12 +348,33 @@ const evaluateManifestGuard = (
     failures.push(`public.timeline.line expected "${guard.timeline.line}"`);
   }
 
-  if (guard.timeline?.stepIndex !== undefined && timeline.stepIndex !== guard.timeline.stepIndex) {
-    failures.push(`public.timeline.stepIndex expected ${guard.timeline.stepIndex}`);
+  if (guard.timeline?.stepIndex !== undefined) {
+    const expectedStepIndex = typeof guard.timeline.stepIndex === 'string' ? Number(guard.timeline.stepIndex) : guard.timeline.stepIndex;
+    if (timeline.stepIndex !== expectedStepIndex) {
+      failures.push(`public.timeline.stepIndex expected ${String(expectedStepIndex)}`);
+    }
   }
 
-  if (guard.timeline?.canAdvance !== undefined && timeline.canAdvance !== guard.timeline.canAdvance) {
-    failures.push(`public.timeline.canAdvance expected ${String(guard.timeline.canAdvance)}`);
+  if (guard.timeline?.canAdvance !== undefined) {
+    const expectedCanAdvance = typeof guard.timeline.canAdvance === 'string' ? guard.timeline.canAdvance === 'true' : guard.timeline.canAdvance;
+    if (timeline.canAdvance !== expectedCanAdvance) {
+      failures.push(`public.timeline.canAdvance expected ${String(expectedCanAdvance)}`);
+    }
+  }
+
+  if ((guard as any).board) {
+    const flags = ensureObject(ensureObject(state.public).flags);
+    const cards = ensureObject(flags.cards);
+    const resolvedCount = countResolvedCards(cards, (guard as any).board.cardIds);
+
+    if (
+      (guard as any).board.resolvedCountAtLeast !== undefined &&
+      resolvedCount < (guard as any).board.resolvedCountAtLeast
+    ) {
+      failures.push(
+        `public.flags.cards resolved count for board [${(guard as any).board.cardIds.join(", ")}] expected >= ${(guard as any).board.resolvedCountAtLeast} (got ${resolvedCount})`
+      );
+    }
   }
 
   if (guard.stateConditions) {
@@ -393,6 +411,80 @@ const evaluateManifestGuard = (
     }
   }
 
+  // Semantic guard: card — checks card state in public.flags.cards[card.id]
+  if ((guard as any).card) {
+    const cardGuard = (guard as any).card;
+    const flags = ensureObject(publicState.flags);
+    const cards = ensureObject(flags.cards);
+    const cardState = ensureObject(cards[cardGuard.id]);
+
+    if (cardGuard.selected !== undefined && cardState.selected !== cardGuard.selected) {
+      failures.push(`card[${cardGuard.id}].selected expected ${cardGuard.selected}`);
+    }
+    if (cardGuard.resolved !== undefined && cardState.resolved !== cardGuard.resolved) {
+      failures.push(`card[${cardGuard.id}].resolved expected ${cardGuard.resolved}`);
+    }
+    if (cardGuard.locked !== undefined && cardState.locked !== cardGuard.locked) {
+      failures.push(`card[${cardGuard.id}].locked expected ${cardGuard.locked}`);
+    }
+    if (cardGuard.available !== undefined && cardState.available !== cardGuard.available) {
+      failures.push(`card[${cardGuard.id}].available expected ${cardGuard.available}`);
+    }
+  }
+
+  // Semantic guard: opening — checks secret.opening.selectedCardId
+  if ((guard as any).opening) {
+    const openingGuard = (guard as any).opening;
+    const secret = ensureObject((state as any).secret);
+    const opening = ensureObject(secret.opening);
+    const selectedCardId = opening.selectedCardId as string | undefined;
+
+    if (openingGuard.selectedCardIdAbsent === true) {
+      if (selectedCardId !== undefined && selectedCardId !== null) {
+        failures.push(`opening.selectedCardId expected absent, got "${selectedCardId}"`);
+      }
+    }
+    if (openingGuard.selectedCardIdEquals !== undefined) {
+      if (String(selectedCardId) !== String(openingGuard.selectedCardIdEquals)) {
+        failures.push(`opening.selectedCardId expected "${openingGuard.selectedCardIdEquals}", got "${String(selectedCardId)}"`);
+      }
+    }
+  }
+
+  // Semantic guard: team — checks public.flags.team[memberId]
+  if ((guard as any).team) {
+    const teamGuard = (guard as any).team;
+    const flags = ensureObject(publicState.flags);
+    const team = ensureObject(flags.team);
+    const memberState = ensureObject(team[teamGuard.memberId]);
+
+    if (teamGuard.selected !== undefined && memberState.selected !== teamGuard.selected) {
+      failures.push(`team[${teamGuard.memberId}].selected expected ${teamGuard.selected}`);
+    }
+  }
+
+  // Semantic guard: teamSelection — checks public.teamSelection.pickCount
+  if ((guard as any).teamSelection) {
+    const tsGuard = (guard as any).teamSelection;
+    const teamSelection = ensureObject(publicState.teamSelection);
+    const pickCount = Number(teamSelection.pickCount) || 0;
+
+    if (tsGuard.pickCountLessThan !== undefined && pickCount >= tsGuard.pickCountLessThan) {
+      failures.push(`teamSelection.pickCount expected < ${tsGuard.pickCountLessThan}, got ${pickCount}`);
+    }
+    if (tsGuard.pickCountEquals !== undefined && pickCount !== tsGuard.pickCountEquals) {
+      failures.push(`teamSelection.pickCount expected ${tsGuard.pickCountEquals}, got ${pickCount}`);
+    }
+  }
+
+  // Tier 2 guard: JsonLogic expression evaluation
+  if ((guard as any).jsonLogic) {
+    const result = jsonLogic.apply((guard as any).jsonLogic, state);
+    if (!result) {
+      failures.push(`JsonLogic guard evaluated to false`);
+    }
+  }
+
   return failures;
 };
 
@@ -402,7 +494,18 @@ const applyMetricDeltas = (state: RuntimeState, deltas: Array<GameManifestDeterm
 
   for (const delta of deltas) {
     const current = typeof metrics[delta.metricId] === "number" ? (metrics[delta.metricId] as number) : 0;
-    const deltaValue = typeof delta.delta === "string" ? Number(delta.delta) : delta.delta;
+    // Resolve delta value: number literal, template string, or JsonLogic expression.
+    let deltaValue: number;
+    if (typeof delta.delta === "number") {
+      deltaValue = delta.delta;
+    } else if (typeof delta.delta === "string") {
+      deltaValue = Number(delta.delta);
+    } else if (typeof delta.delta === "object" && delta.delta !== null) {
+      // JsonLogic expression — evaluate against the current state.
+      deltaValue = Number(jsonLogic.apply(delta.delta as any, state)) || 0;
+    } else {
+      deltaValue = 0;
+    }
     const nextValue = current + deltaValue;
     metrics[delta.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
   }
@@ -411,12 +514,13 @@ const applyMetricDeltas = (state: RuntimeState, deltas: Array<GameManifestDeterm
   state.public = publicState;
 };
 
-
 const applyManifestMetricDeltas = (
   state: RuntimeState,
   metadata: GameManifestDeterministicActionMetadata
 ) => {
-  applyMetricDeltas(state, metadata.metricDeltas);
+  if (metadata.metricDeltas) {
+    applyMetricDeltas(state, metadata.metricDeltas);
+  }
 
   for (const bonus of metadata.conditionalMetricBonuses ?? []) {
     if (evaluateMetricCondition(state, bonus.when)) {
@@ -497,17 +601,17 @@ const appendManifestLogEntry = (
   const log = metadata.log;
   const logEntry: Record<string, unknown> = {
     actionId: context.actionId,
-    kind: log.kind,
-    summary: log.summary,
+    kind: log?.kind,
+    summary: log?.summary,
     at: context.now.toISOString(),
-    legacyProvenance: metadata.provenance.map((item) => ({ ...item }))
+    legacyProvenance: metadata.provenance ? metadata.provenance.map((item) => ({ ...item })) : []
   };
 
-  if (log.stageId !== undefined) {
+  if (log?.stageId !== undefined) {
     logEntry.stageId = log.stageId;
   }
 
-  if (log.cardId !== undefined) {
+  if (log?.cardId !== undefined) {
     logEntry.cardId = log.cardId;
   }
 
@@ -522,16 +626,23 @@ const applyManifestStateUpdate = (
   conditionalLineSwitch: GameManifestDeterministicActionMetadata["conditionalLineSwitch"] | null = null,
   conditionalInfoVariant: GameManifestDeterministicActionMetadata["conditionalInfoVariant"] | null = null
 ) => {
+  const stateUpdate = metadata.stateUpdate;
+  if (!stateUpdate) {
+    return;
+  }
+
+  // 1. Process Manual Updates (Timeline, etc.)
   const publicState = ensureObject(state.public);
   const timeline = ensureObject(publicState.timeline);
-  const stateUpdate = metadata.stateUpdate;
 
   if (stateUpdate.timelineCanAdvance !== undefined) {
-    timeline.canAdvance = stateUpdate.timelineCanAdvance;
+    const nextCanAdvance = typeof stateUpdate.timelineCanAdvance === 'string' ? stateUpdate.timelineCanAdvance === 'true' : stateUpdate.timelineCanAdvance;
+    timeline.canAdvance = nextCanAdvance;
   }
   if (stateUpdate.timelineStepIndex !== undefined) {
-    timeline.stepIndex = stateUpdate.timelineStepIndex;
-    timeline.step_index = stateUpdate.timelineStepIndex;
+    const nextStepIndex = typeof stateUpdate.timelineStepIndex === 'string' ? Number(stateUpdate.timelineStepIndex) : stateUpdate.timelineStepIndex;
+    timeline.stepIndex = nextStepIndex;
+    timeline.step_index = nextStepIndex;
   }
   if (stateUpdate.timelineStageId !== undefined) {
     timeline.stageId = stateUpdate.timelineStageId;
@@ -545,6 +656,34 @@ const applyManifestStateUpdate = (
     timeline.activeInfoId = stateUpdate.activeInfoId;
   }
 
+  if (conditionalInfoVariant) {
+    timeline.activeInfoId = conditionalInfoVariant.activeInfoId;
+  }
+
+  if (conditionalLineSwitch) {
+    timeline.line = conditionalLineSwitch.targetLine;
+    timeline.stepIndex = conditionalLineSwitch.targetStepIndex;
+    timeline.step_index = conditionalLineSwitch.targetStepIndex;
+    if (conditionalLineSwitch.targetStageId !== undefined) {
+      timeline.stageId = conditionalLineSwitch.targetStageId;
+      timeline.stage_id = conditionalLineSwitch.targetStageId;
+    }
+    if (conditionalLineSwitch.targetScreenId !== undefined) {
+      timeline.screenId = conditionalLineSwitch.targetScreenId;
+      timeline.screen_id = conditionalLineSwitch.targetScreenId;
+    }
+    if (conditionalLineSwitch.targetInfoId !== undefined) {
+      timeline.activeInfoId = conditionalLineSwitch.targetInfoId;
+    }
+    if (conditionalLineSwitch.timelineCanAdvance !== undefined) {
+      timeline.canAdvance = conditionalLineSwitch.timelineCanAdvance;
+    }
+  }
+
+  // Sync references
+  publicState.timeline = timeline;
+  state.public = publicState;
+
   if (stateUpdate.selectedCardId !== undefined) {
     const secretState = ensureObject(state.secret);
     const opening = ensureObject(secretState.opening);
@@ -553,6 +692,7 @@ const applyManifestStateUpdate = (
     state.secret = secretState;
   }
 
+  // 2. Process Generic State Patches
   if (stateUpdate.statePatches) {
     for (const patch of stateUpdate.statePatches) {
       const pathParts = patch.path.split('/');
@@ -575,7 +715,7 @@ const applyManifestStateUpdate = (
       } else if (patch.op === "remove") {
         delete current[lastPart];
       } else if (patch.op === "increment") {
-        current[lastPart] = ((current[lastPart] as number) || 0) + (patch.value as number);
+        current[lastPart] = (Number(current[lastPart]) || 0) + Number(patch.value);
       } else if (patch.op === "append") {
         if (!Array.isArray(current[lastPart])) {
           current[lastPart] = [];
@@ -585,41 +725,106 @@ const applyManifestStateUpdate = (
     }
   }
 
-  publicState.timeline = timeline;
-  state.public = publicState;
+  // 3. Process Semantic State Updates (cardFlags, teamFlags, teamSelection)
+  const publicStateFinal = ensureObject(state.public);
+  const flags = ensureObject(publicStateFinal.flags);
+  const cards = ensureObject(flags.cards);
 
-  if (conditionalInfoVariant) {
-    timeline.activeInfoId = conditionalInfoVariant.activeInfoId;
-  }
-
-  if (conditionalLineSwitch) {
-    timeline.line = conditionalLineSwitch.targetLine;
-    timeline.stepIndex = conditionalLineSwitch.targetStepIndex;
-    timeline.step_index = conditionalLineSwitch.targetStepIndex;
-
-    if (conditionalLineSwitch.targetStageId !== undefined) {
-      timeline.stageId = conditionalLineSwitch.targetStageId;
-      timeline.stage_id = conditionalLineSwitch.targetStageId;
-    }
-
-    if (conditionalLineSwitch.targetScreenId !== undefined) {
-      timeline.screenId = conditionalLineSwitch.targetScreenId;
-      timeline.screen_id = conditionalLineSwitch.targetScreenId;
-    }
-    if (conditionalLineSwitch.targetInfoId !== undefined) {
-      timeline.activeInfoId = conditionalLineSwitch.targetInfoId;
-    }
-
-    if (conditionalLineSwitch.timelineCanAdvance !== undefined) {
-      timeline.canAdvance = conditionalLineSwitch.timelineCanAdvance;
+  // cardFlags: update card state in public.flags.cards[cardId]
+  if ((stateUpdate as any).cardFlags) {
+    const cf = (stateUpdate as any).cardFlags;
+    const cardId = cf.cardId;
+    if (cardId !== undefined) {
+      const cardState = ensureObject(cards[cardId]);
+      if (cf.selected !== undefined) cardState.selected = cf.selected;
+      if (cf.resolved !== undefined) cardState.resolved = cf.resolved;
+      if (cf.locked !== undefined) cardState.locked = cf.locked;
+      if (cf.available !== undefined) cardState.available = cf.available;
+      cards[cardId] = cardState;
     }
   }
+
+  // teamFlags: update team member state in public.flags.team[memberId]
+  if ((stateUpdate as any).teamFlags) {
+    const tf = (stateUpdate as any).teamFlags;
+    const memberId = tf.memberId;
+    if (memberId !== undefined) {
+      const team = ensureObject(flags.team);
+      const memberState = ensureObject(team[memberId]);
+      if (tf.selected !== undefined) memberState.selected = tf.selected;
+      team[memberId] = memberState;
+      flags.team = team;
+    }
+  }
+
+  // teamSelection: update pickCount and selectedMemberIds
+  if ((stateUpdate as any).teamSelection) {
+    const ts = (stateUpdate as any).teamSelection;
+    const teamSelection = ensureObject(publicStateFinal.teamSelection);
+    if (ts.pickCountDelta !== undefined) {
+      teamSelection.pickCount = (Number(teamSelection.pickCount) || 0) + Number(ts.pickCountDelta);
+    }
+    if (ts.selectedMemberIdsAppend !== undefined) {
+      if (!Array.isArray(teamSelection.selectedMemberIds)) {
+        teamSelection.selectedMemberIds = [];
+      }
+      (teamSelection.selectedMemberIds as Array<unknown>).push(ts.selectedMemberIdsAppend);
+    }
+    publicStateFinal.teamSelection = teamSelection;
+  }
+
+  if ((stateUpdate as any).boardCardUnlock) {
+    const board = (stateUpdate as any).boardCardUnlock;
+    const resolvedCount = countResolvedCards(cards, board.cardIds);
+
+    if (resolvedCount >= board.resolvedCountAtLeast) {
+      const unlessCardId = board.unlessCardAvailable;
+      const shouldUnlock = !unlessCardId || (cards[unlessCardId] && (cards[unlessCardId] as any).available !== true);
+      if (shouldUnlock) {
+        const unlockCardId = board.unlockCardId;
+        const unlockCardState = ensureObject(cards[unlockCardId]);
+        unlockCardState.locked = false;
+        unlockCardState.available = true;
+        cards[unlockCardId] = unlockCardState;
+      }
+    }
+  }
+
+  if (
+    (stateUpdate as any).boardEntryAltCardSwap &&
+    evaluateMetricCondition(state, (stateUpdate as any).boardEntryAltCardSwap.when)
+  ) {
+    const swap = (stateUpdate as any).boardEntryAltCardSwap;
+    const baseCardState = ensureObject(cards[swap.baseCardId]);
+    baseCardState.available = false;
+    cards[swap.baseCardId] = baseCardState;
+
+    const altCardState = ensureObject(cards[swap.altCardId]);
+    altCardState.locked = false;
+    altCardState.available = true;
+    cards[swap.altCardId] = altCardState;
+  }
+
+  if ((stateUpdate as any).boardThreshold) {
+    const board = (stateUpdate as any).boardThreshold;
+    const resolvedCount = countResolvedCards(cards, board.cardIds);
+
+    if (resolvedCount >= board.resolvedCountAtLeast) {
+      const timelineFinal = ensureObject(publicStateFinal.timeline);
+      timelineFinal.canAdvance = board.timelineCanAdvance ?? true;
+      publicStateFinal.timeline = timelineFinal;
+    }
+  }
+
+  flags.cards = cards;
+  publicStateFinal.flags = flags;
+  state.public = publicStateFinal;
 };
 
 const buildManifestActionTransition = (
   context: RuntimeActionContext<RuntimeState>,
   capabilityFamily: CapabilityFamily,
-  templates?: Record<string, unknown>
+  templates?: GameManifestTemplateMap
 ): RuntimeActionResult<RuntimeState> => {
   if (
     context.manifestAction.handlerType !== "manifest-data" &&
@@ -660,6 +865,7 @@ const buildManifestActionTransition = (
   const nextState = cloneState(context.state);
   const conditionalLineSwitch = resolveConditionalLineSwitch(context.state, metadata);
   const conditionalInfoVariant = resolveConditionalInfoVariant(context.state, metadata);
+
   applyManifestMetricDeltas(nextState, metadata);
   const logEntry = appendManifestLogEntry(nextState, context, metadata);
   applyManifestStateUpdate(nextState, metadata, conditionalLineSwitch, conditionalInfoVariant);

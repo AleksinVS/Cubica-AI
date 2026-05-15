@@ -173,6 +173,15 @@ Delivered S2 board screens теперь визуально выровнены п
 - Обновлены контракты и JSON-схема для поддержки секции `templates`.
 - Верифицировано тестом `services/runtime-api/tests/action-templates.test.ts`.
 
+### Этап 2.5: Three-Tier Logic Model (ADR-029)
+**Статус: ✅ Completed (2026-05-15)**
+- **Tier 1 (Action Templates)**: Рефакторинг Antarctica manifest — 137 действий переведены на 4 шаблона (`opening-card-resolution`, `opening-card-advance`, `opening-info-advance`, `opening-team-selection`). Добавлена поддержка `overrides.deterministic` для action-specific данных. Добавлены semantic guard evaluators (`card`, `opening`, `team`, `teamSelection`) и state update handlers (`cardFlags`, `teamFlags`, `teamSelection`). Валидация templateId cross-references.
+- **Tier 2 (JsonLogic)**: Интеграция `json-logic-js`. Добавлен тип `JsonLogicExpression`, JsonLogic guard evaluation, computed metric deltas через JsonLogic выражения. Кастомные guard-типы coexist с JsonLogic.
+- **Tier 3 (Script Actions)**: Задокументировано в `GAME_AUTHORING_GUIDE.md`.
+- Размер манифеста: 9,487 → 8,072 строк (−15%), 350 KB → 295 KB (−16%).
+- Тесты: 67/71 pass (4 pre-existing failures).
+- Руководство: [`docs/architecture/GAME_AUTHORING_GUIDE.md`](docs/architecture/GAME_AUTHORING_GUIDE.md).
+
 ### Этап 3: Миграция Antarctica & Content Deduplication
 **Статус: 🕒 Planned**
 - Рефакторинг `game.manifest.json` Антарктики с использованием шаблонов (цель: сокращение с 9000 до 3000 строк). План миграции: `docs/tasks/ANTARCTICA_MANIFEST_MIGRATION_PLAN.md`.

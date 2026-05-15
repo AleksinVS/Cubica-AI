@@ -10,7 +10,8 @@
     "@cubica/contracts-session": "file:../../packages/contracts/session",
     "ajv": "^8.20.0",
     "ajv-errors": "^3.0.0",
-    "ajv-formats": "^3.0.1"
+    "ajv-formats": "^3.0.1",
+    "json-logic-js": "^2.0.5"
   },
   "main": "src/index.ts",
   "types": "src/index.ts",

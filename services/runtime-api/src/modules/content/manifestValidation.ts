@@ -34,5 +34,24 @@ export function validateGameManifest(manifest: unknown): GameManifest {
       .join(", ");
     throw new ManifestValidationError(`Schema validation failed: ${errors}`);
   }
+
+  // Cross-validate templateId references: every action referencing a template
+  // must point to a template that actually exists in the manifest.
+  const m = manifest as Record<string, unknown>;
+  if (m.templates && typeof m.templates === "object" && m.actions && typeof m.actions === "object") {
+    const templates = m.templates as Record<string, unknown>;
+    const actions = m.actions as Record<string, unknown>;
+    for (const [actionId, action] of Object.entries(actions)) {
+      if (action && typeof action === "object" && !Array.isArray(action)) {
+        const templateId = (action as Record<string, unknown>).templateId;
+        if (typeof templateId === "string" && !(templateId in templates)) {
+          throw new ManifestValidationError(
+            `Action "${actionId}" references non-existent template "${templateId}"`
+          );
+        }
+      }
+    }
+  }
+
   return manifest as GameManifest;
 }

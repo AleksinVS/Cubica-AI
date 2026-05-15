@@ -150,3 +150,85 @@ test("deterministicHandler handles template with deep merge", async () => {
   // template log has summary: "{{summary}}"? No, I didn't put it in base_action.
   // Wait, if I want to override summary via params, the template MUST have the placeholder.
 });
+
+test("deterministicHandler resolves template with overrides.deterministic pattern", async () => {
+  const templates = {
+    "card-resolution": {
+      deterministic: {
+        guard: {
+          timeline: { line: "main", stepIndex: "{{stepIndex}}", canAdvance: false }
+        },
+        metricDeltas: [],
+        log: { kind: "card-resolution", cardId: "{{cardId}}", summary: "{{summary}}" },
+        stateUpdate: {
+          timelineCanAdvance: false,
+          cardFlags: { cardId: "{{cardId}}", selected: true, resolved: true }
+        }
+      }
+    }
+  };
+
+  const actionDef = {
+    handlerType: "manifest-data",
+    templateId: "card-resolution",
+    capabilityFamily: "test",
+    capability: "test.card.1",
+    params: { cardId: "1", stepIndex: 5, summary: "Card 1 resolved" },
+    overrides: {
+      deterministic: {
+        guard: {
+          card: { id: "1", selected: false, resolved: false }
+        },
+        metricDeltas: [{ metricId: "score", delta: 10 }],
+        stateUpdate: {
+          selectedCardId: "1"
+        }
+      }
+    }
+  };
+
+  const handler = createDeterministicHandler("runtime.server", {
+    mode: "manifest-action",
+    templates
+  });
+
+  const context: RuntimeActionContext<any> = {
+    sessionId: "session-1",
+    gameId: "test-game",
+    actionId: "test.card.1",
+    state: {
+      public: {
+        timeline: { line: "main", stepIndex: 5, canAdvance: false },
+        log: [],
+        flags: { cards: { "1": { selected: false, resolved: false } } }
+      }
+    },
+    now: new Date(),
+    manifestAction: {
+      actionId: "test.card.1",
+      handlerType: "manifest-data",
+      templateId: "card-resolution",
+      params: actionDef.params,
+      raw: actionDef
+    }
+  };
+
+  const result = await handler(context);
+
+  assert.ok(result.ok, `Action failed: ${result.error?.message}`);
+  const nextState = result.delta?.state as any;
+
+  // metricDeltas from overrides applied
+  assert.equal(nextState.public.metrics?.score, 10);
+
+  // cardFlags from template applied (cardId resolved from params)
+  assert.equal(nextState.public.flags.cards["1"]?.selected, true);
+  assert.equal(nextState.public.flags.cards["1"]?.resolved, true);
+
+  // selectedCardId from overrides applied
+  assert.equal(nextState.secret?.opening?.selectedCardId, "1");
+
+  // log from template applied (cardId resolved from params)
+  assert.equal(nextState.public.log[0].cardId, "1");
+  assert.equal(nextState.public.log[0].summary, "Card 1 resolved");
+});

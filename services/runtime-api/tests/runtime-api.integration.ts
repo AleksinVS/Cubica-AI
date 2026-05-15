@@ -177,9 +177,9 @@ const dispatchActionSequence = async (
   let lastAction: ActionResponse | null = null;
 
   for (const actionId of actionIds) {
-    const { response, body } = await dispatchAction(sessionId, playerId, actionId);
-    assert.equal(response.status, 200);
-    lastAction = body as ActionResponse;
+    const { response, body: resBody } = await dispatchAction(sessionId, playerId, actionId);
+    assert.equal(response.status, 200, `Action "${actionId}" failed with ${response.status}: ${JSON.stringify(resBody)}`);
+    lastAction = resBody as ActionResponse;
   }
 
   assert.ok(lastAction);
@@ -582,9 +582,9 @@ test("POST /actions progresses from first board through i7 to second board after
 
   let currentStepIndex = 0;
   for (const actionId of introActions) {
-    const { response, body } = await dispatchAction(created.sessionId, "intro-flow", actionId);
-    assert.equal(response.status, 200);
-    const action = body as ActionResponse;
+    const { response, body: resBody } = await dispatchAction(created.sessionId, "intro-flow", actionId);
+    assert.equal(response.status, 200, `Action "${actionId}" failed with ${response.status}: ${JSON.stringify(resBody)}`);
+    const action = resBody as ActionResponse;
     currentStepIndex += 1;
     assert.equal(action.state.public.timeline.stepIndex, currentStepIndex);
     assert.equal(action.state.public.timeline.step_index, currentStepIndex);

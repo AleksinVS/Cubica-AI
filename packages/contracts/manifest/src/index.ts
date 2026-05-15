@@ -128,8 +128,8 @@ export interface GameManifestDeterministicSourceRef {
   sourceKind: "legacy-opening-card" | string;
   sourceFile: GameManifestPath;
   legacyCardId: string;
-  lineIndex?: number;
-  stepIndex?: number;
+  lineIndex?: number | string;
+  stepIndex?: number | string;
 }
 
 /**
@@ -148,12 +148,25 @@ export interface GameManifestDeterministicGuard {
     canAdvance?: boolean | string;
   };
   stateConditions?: Array<GameManifestDeterministicStateCondition>;
+  jsonLogic?: JsonLogicExpression;
   [key: string]: unknown;
 }
 
+/**
+ * JsonLogic expression — a recursive JSON structure evaluated by json-logic-js.
+ * Can be a literal (string, number, boolean, null) or an object with a single
+ * operator key mapping to an array of sub-expressions.
+ */
+export type JsonLogicExpression =
+  | string
+  | number
+  | boolean
+  | null
+  | { [operator: string]: Array<JsonLogicExpression> };
+
 export interface GameManifestDeterministicMetricDelta {
   metricId: string;
-  delta: number | string;
+  delta: number | string | JsonLogicExpression;
 }
 
 export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
@@ -206,6 +219,7 @@ export interface GameManifestDeterministicLogMetadata {
   summary: string;
   stageId?: string;
   cardId?: string;
+  memberId?: string;
 }
 
 export interface GameManifestDeterministicStatePatch {
@@ -226,15 +240,17 @@ export interface GameManifestDeterministicStateUpdate {
 }
 
 export interface GameManifestDeterministicActionMetadata {
-  provenance: Array<GameManifestDeterministicSourceRef>;
-  guard: GameManifestDeterministicGuard;
-  metricDeltas: Array<GameManifestDeterministicMetricDelta>;
+  provenance?: Array<GameManifestDeterministicSourceRef>;
+  guard?: GameManifestDeterministicGuard;
+  metricDeltas?: Array<GameManifestDeterministicMetricDelta>;
   conditionalMetricBonuses?: Array<GameManifestDeterministicConditionalMetricBonus>;
+  conditionalCardBonuses?: Array<any>;
   conditionalStateBonuses?: Array<GameManifestDeterministicConditionalStateBonus>;
   conditionalInfoVariant?: GameManifestDeterministicConditionalInfoVariant;
   conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
-  log: GameManifestDeterministicLogMetadata;
-  stateUpdate: GameManifestDeterministicStateUpdate;
+  log?: GameManifestDeterministicLogMetadata;
+  stateUpdate?: GameManifestDeterministicStateUpdate;
+  [key: string]: unknown;
 }
 
 export interface GameManifestActionDefinition {

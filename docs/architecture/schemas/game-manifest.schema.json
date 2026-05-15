@@ -24,8 +24,9 @@
           "$ref": "#/definitions/GameManifestState%3Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%2Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%3E"
         },
         "templates": {
+          "description": "Reusable deterministic logic templates. Actions reference these via templateId.",
           "additionalProperties": {
-            "$ref": "#/definitions/GameManifestActionDefinition"
+            "$ref": "#/definitions/GameManifestTemplateDefinition"
           },
           "type": "object"
         }
@@ -62,6 +63,16 @@
         "handlerType": {
           "type": "string"
         },
+        "overrides": {
+          "description": "Action-specific deterministic overrides merged on top of the resolved template. Used when a template-based action needs extra fields (e.g., conditionalMetricBonuses).",
+          "type": "object",
+          "properties": {
+            "deterministic": {
+              "$ref": "#/definitions/GameManifestDeterministicActionMetadata"
+            }
+          },
+          "additionalProperties": false
+        },
         "params": {
           "additionalProperties": {},
           "type": "object"
@@ -86,6 +97,22 @@
       },
       "required": [
         "handlerType"
+      ],
+      "type": "object"
+    },
+    "GameManifestTemplateDefinition": {
+      "description": "A reusable template for deterministic action logic. Referenced by actions via templateId. Same structure as GameManifestActionDefinition but handlerType is not required (provided by the action).",
+      "additionalProperties": false,
+      "properties": {
+        "deterministic": {
+          "$ref": "#/definitions/GameManifestDeterministicActionMetadata"
+        },
+        "handlerType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "deterministic"
       ],
       "type": "object"
     },
@@ -200,7 +227,7 @@
       "type": "object"
     },
     "GameManifestDeterministicActionMetadata": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "conditionalInfoVariant": {
           "$ref": "#/definitions/GameManifestDeterministicConditionalInfoVariant"
@@ -242,13 +269,6 @@
           "$ref": "#/definitions/GameManifestDeterministicStateUpdate"
         }
       },
-      "required": [
-        "provenance",
-        "guard",
-        "metricDeltas",
-        "log",
-        "stateUpdate"
-      ],
       "type": "object"
     },
     "GameManifestDeterministicConditionalInfoVariant": {
@@ -346,6 +366,17 @@
     "GameManifestDeterministicGuard": {
       "additionalProperties": true,
       "properties": {
+        "board": {
+          "type": "object",
+          "properties": {
+            "cardIds": { "type": "array", "items": { "type": "string" } },
+            "resolvedCountAtLeast": { "type": "number" }
+          },
+          "required": ["cardIds", "resolvedCountAtLeast"]
+        },
+        "jsonLogic": {
+          "$ref": "#/definitions/JsonLogicExpression"
+        },
         "stateConditions": {
           "items": {
             "$ref": "#/definitions/GameManifestDeterministicStateCondition"
@@ -370,10 +401,23 @@
       },
       "type": "object"
     },
+    "JsonLogicExpression": {
+      "description": "Recursive JsonLogic operator expression — an object with a single operator key mapping to an array of sub-expressions. Primitive values (number, string, boolean, null) are handled by their respective schema types directly.",
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": {
+        "type": "array",
+        "items": { "$ref": "#/definitions/JsonLogicExpression" }
+      }
+    },
     "GameManifestDeterministicLogMetadata": {
       "additionalProperties": false,
       "properties": {
         "cardId": {
+          "type": "string"
+        },
+        "memberId": {
           "type": "string"
         },
         "kind": {
@@ -417,7 +461,11 @@
       "additionalProperties": false,
       "properties": {
         "delta": {
-          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+          "oneOf": [
+            { "type": "number" },
+            { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" },
+            { "$ref": "#/definitions/JsonLogicExpression" }
+          ]
         },
         "metricId": {
           "type": "string"
@@ -445,7 +493,7 @@
           "type": "string"
         },
         "lineIndex": {
-          "type": "number"
+          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         },
         "sourceFile": {
           "$ref": "#/definitions/GameManifestPath"
@@ -454,7 +502,7 @@
           "type": "string"
         },
         "stepIndex": {
-          "type": "number"
+          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
         }
       },
       "required": [
@@ -519,6 +567,34 @@
     "GameManifestDeterministicStateUpdate": {
       "additionalProperties": true,
       "properties": {
+        "boardCardUnlock": {
+          "type": "object",
+          "properties": {
+            "cardIds": { "type": "array", "items": { "type": "string" } },
+            "resolvedCountAtLeast": { "type": "number" },
+            "unlockCardId": { "type": "string" },
+            "unlessCardAvailable": { "type": "string" }
+          },
+          "required": ["cardIds", "resolvedCountAtLeast", "unlockCardId"]
+        },
+        "boardEntryAltCardSwap": {
+          "type": "object",
+          "properties": {
+            "altCardId": { "type": "string" },
+            "baseCardId": { "type": "string" },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicMetricCondition" }
+          },
+          "required": ["baseCardId", "altCardId", "when"]
+        },
+        "boardThreshold": {
+          "type": "object",
+          "properties": {
+            "cardIds": { "type": "array", "items": { "type": "string" } },
+            "resolvedCountAtLeast": { "type": "number" },
+            "timelineCanAdvance": { "type": "boolean" }
+          },
+          "required": ["cardIds", "resolvedCountAtLeast"]
+        },
         "activeInfoId": {
           "type": "string"
         },
