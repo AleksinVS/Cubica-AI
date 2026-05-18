@@ -241,7 +241,8 @@ function buildMetricGameVariableComponents(
 function buildPanelButtonsArea(
   layoutMode: "leftsidebar" | "topbar",
   disabled: boolean,
-  t: LocaleStrings
+  t: LocaleStrings,
+  forwardAction?: { command: string; payload: Record<string, unknown> }
 ): GameUiComponent {
   return {
     type: "areaComponent",
@@ -267,7 +268,8 @@ function buildPanelButtonsArea(
       {
         type: "buttonComponent",
         id: "nav-right",
-        props: { caption: t.forward, variant: "nav" as const, disabled: true },
+        props: { caption: t.forward, variant: "nav" as const, disabled: disabled || !forwardAction },
+        ...(forwardAction ? { actions: { onClick: forwardAction } } : {}),
       },
     ],
   };
@@ -282,11 +284,8 @@ function buildInfoScreenDefinition(
 ): GameUiScreenDefinition {
   const info = state.currentInfo as Record<string, unknown> | undefined;
   const advanceActionId = info?.advanceActionId as string | undefined;
-  const advanceLabel = info?.advanceLabel as string | undefined;
   const infoTitle = info?.title as string | undefined;
   const infoBody = info?.body as string | undefined;
-  const infoId = info?.id as string | undefined;
-  const infoStepIndex = info?.stepIndex as number | undefined;
 
   const shellCssClass = layoutMode === "leftsidebar"
     ? "leftsidebar-screen"
@@ -334,23 +333,18 @@ function buildInfoScreenDefinition(
             },
           ],
         },
-        // Advance button
-        ...(advanceActionId ? [{
-          type: "areaComponent" as GameUiComponentType,
-          props: { cssClass: "bottom-controls-container info-bottom-controls" },
-          children: [
-            {
-              type: "buttonComponent" as GameUiComponentType,
-              id: "btn-advance",
-              props: { caption: advanceLabel ?? t.continue, variant: "action" as const, disabled },
-              actions: { onClick: { command: ManifestAction.ADVANCE, payload: { advanceActionId } } },
-            },
-          ],
-        }] : []),
       ],
     },
-    // Panel buttons
-    buildPanelButtonsArea(layoutMode, disabled, t),
+    // Panel buttons. "Вперед" получает то же действие, которое раньше
+    // показывалось отдельной кнопкой "Продолжить".
+    buildPanelButtonsArea(
+      layoutMode,
+      disabled,
+      t,
+      advanceActionId
+        ? { command: ManifestAction.ADVANCE, payload: { advanceActionId } }
+        : undefined
+    ),
   ];
 
   return {
@@ -418,31 +412,11 @@ function buildBoardScreenDefinition(
     ],
   };
 
-  // Advance button (when card is selected and can advance)
-  const advanceArea: GameUiComponent[] = [];
-  if (canAdvance && state.selectedCard) {
-    advanceArea.push({
-      type: "areaComponent",
-      props: { cssClass: "info-bottom-controls" },
-      children: [
-        {
-          type: "buttonComponent",
-          id: "btn-advance",
-          props: {
-            caption: ((state.selectedCard as Record<string, unknown>)?.advanceLabel as string) ?? t.continue,
-            variant: "action" as const,
-            disabled,
-          },
-          actions: {
-            onClick: {
-              command: ManifestAction.ADVANCE,
-              payload: { advanceActionId: (state.selectedCard as Record<string, unknown>)?.advanceActionId },
-            },
-          },
-        },
-      ],
-    });
-  }
+  const selectedCard = state.selectedCard as Record<string, unknown> | undefined;
+  const selectedCardAdvanceActionId =
+    canAdvance && selectedCard
+      ? selectedCard.advanceActionId as string | undefined
+      : undefined;
 
   return {
     type: "screen",
@@ -471,12 +445,18 @@ function buildBoardScreenDefinition(
             }] : []),
             // Cards
             cardsArea,
-            // Advance
-            ...advanceArea,
           ],
         },
-        // Panel buttons
-        buildPanelButtonsArea("topbar", disabled, t),
+        // Panel buttons. "Вперед" активируется тем же canAdvance-состоянием,
+        // при котором раньше появлялась отдельная кнопка "Продолжить".
+        buildPanelButtonsArea(
+          "topbar",
+          disabled,
+          t,
+          selectedCardAdvanceActionId
+            ? { command: ManifestAction.ADVANCE, payload: { advanceActionId: selectedCardAdvanceActionId } }
+            : undefined
+        ),
       ],
     },
   };

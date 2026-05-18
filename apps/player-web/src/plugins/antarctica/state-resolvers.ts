@@ -8,7 +8,7 @@
  */
 
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
-import type { GamePlayerContent, GamePlayerBoardCard, GamePlayerBoard, GamePlayerInfoEntry, GamePlayerTeamSelectionScene } from "./contracts";
+import type { AntarcticaGameState, GamePlayerContent, GamePlayerBoardCard, GamePlayerBoard, GamePlayerInfoEntry, GamePlayerTeamSelectionScene } from "./contracts";
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import {
   resolveGameContent,
@@ -156,6 +156,36 @@ export function resolveBoardCards(
       const cardState = cardFlags?.[card.cardId];
       return contentAvailable !== false && cardState?.available !== false;
     });
+}
+
+/**
+ * Antarctica hint fallback: when no dedicated hint is available, show the
+ * last story info screen the player has reached. This is a game-specific
+ * mechanic, not a platform-wide player rule.
+ */
+export function resolveLastInfoHintText(
+  gameContent: GamePlayerContent | null,
+  gameState: AntarcticaGameState
+): string | null {
+  if (gameState.currentInfo?.body || gameState.currentInfo?.title) {
+    return [gameState.currentInfo.title, gameState.currentInfo.body].filter(Boolean).join("\n\n");
+  }
+
+  const currentStepIndex = gameState.currentBoard?.stepIndex ?? gameState.currentTeamSelection?.stepIndex;
+  if (!gameContent || typeof currentStepIndex !== "number") {
+    return null;
+  }
+
+  const lastInfo = gameContent.infos
+    .filter((entry) => entry.stepIndex <= currentStepIndex)
+    .sort((left, right) => left.stepIndex - right.stepIndex)
+    .at(-1);
+
+  if (!lastInfo?.body && !lastInfo?.title) {
+    return null;
+  }
+
+  return [lastInfo.title, lastInfo.body].filter(Boolean).join("\n\n");
 }
 
 /**

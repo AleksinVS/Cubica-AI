@@ -4,6 +4,16 @@ This file defines global rules for AI agents working in this repository.
 
 ---
 
+## Оглавление
+
+- [1. Scope and precedence of `AGENTS.md`](#1-scope-and-precedence-of-agentsmd)
+- [2. General rules for agents](#2-general-rules-for-agents)
+- [2.1 Workflow role compatibility (`wf-*`)](#21-workflow-role-compatibility-wf-)
+- [3. Key project documents to read first](#3-key-project-documents-to-read-first)
+- [4. Work with temporary files](#4-work-with-temporary-files)
+
+---
+
 ## 1. Scope and precedence of `AGENTS.md`
 
 - A **global**, short and stable `AGENTS.md` lives in the **repository root** (this file).
@@ -63,6 +73,11 @@ Agents must always:
 10. **Platform purity over game-specific hacks**
     - Any new game mechanic MUST be implemented by extending the manifest schema (capabilities, handlers, state extensions).
     - NEVER add game-specific `if/else` branches or hardcode game IDs (e.g., "antarctica") in the core platform layers (like `services/runtime-api`).
+    - Before designing or implementing a game mechanic, the agent MUST explicitly analyze whether the mechanic is:
+      - **general**: useful for a whole class of games or the platform as a whole;
+      - **game-specific**: meaningful only for one concrete game or scenario.
+    - If the classification is unclear, the agent MUST clarify it with the user or document the assumption before implementation.
+    - General mechanics belong in platform contracts, schema extensions, reusable handlers, or shared renderer behavior. Game-specific mechanics belong in the concrete game bundle/plugin/manifest and must not leak into generic player/runtime layers.
 
 11. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
     - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.

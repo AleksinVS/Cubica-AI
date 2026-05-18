@@ -3,6 +3,13 @@
 **Date:** 2026-05-08
 **Status:** Accepted
 
+## Оглавление
+
+- [Context](#context)
+- [Decision](#decision)
+- [Consequences](#consequences)
+- [Key Files Changed](#key-files-changed)
+
 ## Context
 
 The Cubica player-web platform was originally built for the Antarctica game. While the plugin architecture (GameConfig + GameConfigResolvers) provides a solid foundation for game-agnostic extensibility, several Antarctica-specific concepts leaked into the platform layer:
@@ -14,12 +21,13 @@ The Cubica player-web platform was originally built for the Antarctica game. Whi
 5. Russian strings were hardcoded in 9+ component files
 6. Metric configuration was only available via hardcoded TypeScript (`antarctica-config-data.ts`)
 7. Screen routing was only plugin-driven, with no data-driven alternative
+8. Hint fallback behavior risked becoming a generic player rule even when it represented a concrete game's story mechanic
 
 These leaks made adding a new game harder than necessary and made it difficult for AI agents to copy/modify games.
 
 ## Decision
 
-Implement seven universality improvements:
+Implement eight universality improvements:
 
 ### P1: Optional `resolveBoardScreenKey`
 Make `resolveBoardScreenKey` optional in `GameConfigResolvers`. Games without boards can omit it; the default returns `null`. Antarctica still provides it via optional chaining (`this.resolveBoardScreenKey?.(stepIndex) ?? null`).
@@ -42,6 +50,9 @@ Created `@/lib/locale/ru.ts` with all Russian strings as a typed locale object. 
 ### P7: Game scaffold template
 Created `scripts/dev/scaffold-game.js` that generates `contracts.ts`, `state-resolvers.ts`, and `register.ts` for a new game from its manifest data. The scaffold uses data-driven routing and layout by default (no `resolveScreenKey` or `resolveLayoutMode` overrides needed for simple games).
 
+### P8: Game-specific hint fallback resolver
+Added optional `resolveHintText` to `GameConfigResolvers`. Generic player components can render a default hint string, but the rule that chooses that string belongs to the concrete game plugin. Antarctica uses this hook to show the last reached info screen when no dedicated hint content exists.
+
 ## Consequences
 
 **Positive:**
@@ -51,18 +62,20 @@ Created `scripts/dev/scaffold-game.js` that generates `contracts.ts`, `state-res
 - All user-facing strings are in one locale file per language
 - AI agents can scaffold a game with `node scripts/dev/scaffold-game.js <gameId>`
 - Metric display configuration can come from the manifest instead of hardcoded config
+- Game-specific hint fallback rules stay in plugins instead of leaking into generic player components
 
 **Negative:**
 - `GamePlayerUiContent` now has two optional fields (`screenRouting`, `metricSpecs`) that older manifests won't provide — backward compatible since they default to `undefined`
 - Locale strings are currently only Russian; other languages need a new locale file + provider wrapper
 - The scaffold generates minimal `resolveGameState` implementations — games with complex state must fill in their own logic
+- Games that need custom hint fallback behavior must provide a small resolver in their plugin
 
 ## Key Files Changed
 
 | File | Change |
 |------|--------|
 | `packages/contracts/manifest/src/index.ts` | Added `ManifestAction` constants, `MetricConfigSpec`, `layout` on `GameUiGameVariableComponentProps`, `screenRouting` + `metricSpecs` on `GamePlayerUiContent` |
-| `apps/player-web/src/presenter/game-config.ts` | Made `resolveBoardScreenKey`, `resolveScreenKey`, `resolveLayoutMode` optional; added `metricSpecsToFallbackMetrics()` |
+| `apps/player-web/src/presenter/game-config.ts` | Made `resolveBoardScreenKey`, `resolveScreenKey`, `resolveLayoutMode` optional; added `metricSpecsToFallbackMetrics()` and optional `resolveHintText` |
 | `apps/player-web/src/presenter/game-presenter.ts` | Default to data-driven routing when plugin omits methods |
 | `apps/player-web/src/lib/screen-router.ts` | Added `findLeftSidebarScreen` instead of hardcoded "S1_LEFT" |
 | `apps/player-web/src/lib/locale/ru.ts` | All Russian strings centralized |
@@ -70,6 +83,8 @@ Created `scripts/dev/scaffold-game.js` that generates `contracts.ts`, `state-res
 | `apps/player-web/src/lib/manifest-action-adapter.ts` | Uses `ManifestAction` constants |
 | `apps/player-web/src/components/safe-mode-renderer.tsx` | Uses `useLocale()` for all strings |
 | `apps/player-web/src/components/game-player.tsx` | Uses `useLocale()` for loading text |
+| `apps/player-web/src/components/panels/hint-renderer.tsx` | Renders plugin-provided default hint text without owning game-specific fallback rules |
+| `apps/player-web/src/plugins/antarctica/state-resolvers.ts` | Owns Antarctica-specific "last info as hint" fallback resolver |
 | `apps/player-web/src/components/manifest/card-component.tsx` | Uses `useLocale()` for select label |
 | `apps/player-web/src/components/manifest/game-variable-component.tsx` | Uses `layout` prop instead of `id === "score"` |
 | `games/antarctica/ui/web/ui.manifest.json` | Added `screenRouting`, `metric_specs`, `layout: "prominent"` on score metric |

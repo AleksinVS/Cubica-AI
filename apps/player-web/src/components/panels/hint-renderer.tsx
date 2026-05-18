@@ -15,7 +15,8 @@ export function HintRenderer({
   onJournal,
   onHint,
   onClose,
-  fallbackMetrics
+  fallbackMetrics,
+  defaultHintText
 }: {
   content: PlayerFacingContent;
   metrics: MetricsSnapshot;
@@ -24,10 +25,12 @@ export function HintRenderer({
   onHint: () => void;
   onClose?: () => void;
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>;
+  defaultHintText?: string | null;
 }) {
   const latestEntry = log[log.length - 1] ?? null;
   const hintText =
     (typeof latestEntry?.payload === "string" ? latestEntry.payload : null) ||
+    defaultHintText ||
     content.description ||
     "Подсказка пока не загружена";
   const contentRef = useRef<HTMLDivElement>(null);

@@ -15,6 +15,7 @@ import {
   readTeamFlags,
   readTeamSelection,
   readCanAdvance,
+  resolveLastInfoHintText,
   getFallbackActionEntries
 } from "./state-resolvers";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
@@ -147,6 +148,10 @@ const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiC
         metrics.score = 60 - metrics.time;
       }
       return metrics;
+    },
+
+    resolveHintText(content, gameState) {
+      return resolveLastInfoHintText(resolveAntarcticaContent(content), gameState);
     },
 
     createManifestActionAdapter(content, gameState, dispatchAction, onError) {

@@ -20,6 +20,54 @@ import { ButtonComponent } from "./button-component";
 import { RichTextComponent } from "./rich-text-component";
 import { ImageComponent } from "./image-component";
 
+const FORWARD_NAV_BUTTON_ID = "nav-right";
+const ADVANCE_BUTTON_IDS = new Set(["btn-advance", "btn-finish"]);
+
+/**
+ * Переносит явное действие продолжения на стрелку "Вперед".
+ *
+ * UI-манифесты старого вида могут содержать отдельную кнопку "Продолжить"
+ * рядом со стрелками навигации. Runtime-смысл у нее тот же: выполнить
+ * следующий action (серверное игровое действие). Чтобы экран переходил
+ * через навигационную стрелку, рендерер убирает отдельную кнопку и назначает
+ * ее действие на nav-right.
+ */
+function moveAdvanceActionToForwardNavigation(children: Array<GameUiComponent>): Array<GameUiComponent> {
+  const advanceIndex = children.findIndex(
+    (child) => child.type === "buttonComponent" && child.id && ADVANCE_BUTTON_IDS.has(child.id) && child.actions?.onClick
+  );
+  const forwardIndex = children.findIndex(
+    (child) => child.type === "buttonComponent" && child.id === FORWARD_NAV_BUTTON_ID
+  );
+
+  if (advanceIndex === -1 || forwardIndex === -1) {
+    return children;
+  }
+
+  const advanceButton = children[advanceIndex];
+  const advanceProps = (advanceButton.props ?? {}) as GameUiButtonComponentProps;
+
+  return children.flatMap((child, index) => {
+    if (index === advanceIndex) {
+      return [];
+    }
+
+    if (index === forwardIndex) {
+      const forwardProps = (child.props ?? {}) as GameUiButtonComponentProps;
+      return [{
+        ...child,
+        props: {
+          ...forwardProps,
+          disabled: advanceProps.disabled === true,
+        },
+        actions: advanceButton.actions,
+      }];
+    }
+
+    return [child];
+  });
+}
+
 /**
  * Резолвит designImageRef против designArtifacts registry.
  * Возвращает URL изображения или undefined, если референс не найден.
@@ -74,7 +122,7 @@ export function UiComponentNode({
   /** Registry дизайн-артефактов для разрешения designImageRef при visualMode="image". */
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
 }) {
-  const children = component.children ?? [];
+  const children = moveAdvanceActionToForwardNavigation(component.children ?? []);
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
 
   // visualMode resolution: "auto" → "image" if designImageRef available, else "style"

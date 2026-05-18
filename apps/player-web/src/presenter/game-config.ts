@@ -122,6 +122,15 @@ export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePl
   resolveMetrics?: (metrics: MetricsSnapshot) => MetricsSnapshot;
 
   /**
+   * Опционально задаёт текст подсказки по умолчанию для конкретной игры.
+   * Используется только когда нет явно открытого hint-контента.
+   */
+  resolveHintText?: (
+    content: PlayerFacingContent,
+    gameState: TGameState
+  ) => string | null;
+
+  /**
    * Опциональный builder для fallback-экранов.
    * Вызывается SafeModeRenderer, когда манифест не описывает экран.
    * Плагин может предоставить кастомный builder для генерации

@@ -479,6 +479,76 @@ describe("GamePlayer S1 DOM Rendering", () => {
     });
   });
 
+  it("uses the latest info screen as the default hint when no dedicated hint exists", async () => {
+    const contentWithPreviousInfo: PlayerFacingContent = {
+      ...mockContent,
+      description: "Описание игры не должно быть подсказкой по умолчанию",
+      content: {
+        data: {
+          infos: [
+            {
+              id: "i1",
+              stepIndex: 1,
+              screenId: "S1",
+              title: "Предыдущий инфо-экран",
+              body: "Текст предыдущего инфо-экрана для подсказки.",
+              advanceActionId: "opening.info.i1.advance",
+              advanceLabel: "Продолжить"
+            }
+          ],
+          boards: [
+            {
+              id: "board-2",
+              stepIndex: 2,
+              screenId: "S2",
+              title: "Текущий board",
+              cardIds: []
+            }
+          ],
+          teamSelections: [],
+          cards: []
+        }
+      }
+    };
+    const sessionWithHintOnBoard = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activePanel: "hint" },
+          timeline: { screenId: "S2", stageId: "stage_intro", stepIndex: 2 }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithHintOnBoard)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={contentWithPreviousInfo}
+        mockups={[]}
+        gameUi={mockS1Ui}
+      />
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".hint-screen")).toBeDefined();
+      expect(screen.getByText(/Предыдущий инфо-экран/)).toBeDefined();
+      expect(screen.getByText(/Текст предыдущего инфо-экрана для подсказки/)).toBeDefined();
+      expect(screen.queryByText(/Описание игры не должно быть подсказкой/)).toBeNull();
+    });
+  });
+
   it("renders the journal panel as a dedicated visual mode", async () => {
     const sessionWithHistoryPanel = {
       ...mockSession,
@@ -1319,10 +1389,10 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       expect(document.querySelector(".info-event-illustration")).toBeDefined();
       expect(document.querySelector(".info-event-text")).toBeDefined();
       expect(document.querySelector(".info-bottom-controls")).toBeDefined();
-      expect(screen.getByRole("button", { name: /Продолжить/i })).toBeDefined();
+      expect(screen.queryByRole("button", { name: /Продолжить/i })).toBeNull();
       expect(screen.getByRole("button", { name: /Журнал ходов/i })).toBeDefined();
       expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
-      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
 
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
@@ -1377,11 +1447,11 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: /Продолжить/i })).toBeDefined();
+      expect(screen.getByRole("button", { name: /Вперед/i })).toBeDefined();
     });
 
     (global.fetch as any).mockClear();
-    fireEvent.click(screen.getByRole("button", { name: /Продолжить/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Вперед/i }));
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
@@ -1538,7 +1608,8 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
       expect(screen.getByText("Второй переезд")).toBeDefined();
-      expect(screen.getByText("Продолжить")).toBeDefined();
+      expect(screen.queryByText("Продолжить")).toBeNull();
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
   });
 
@@ -1578,7 +1649,8 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       expect(renderer).toBeDefined();
       expect(screen.getByText("Финальный экран")).toBeDefined();
       expect(screen.getByText("История завершена.")).toBeDefined();
-      expect(screen.getByText("Завершить")).toBeDefined();
+      expect(screen.queryByText("Завершить")).toBeNull();
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
   });
 
@@ -1639,7 +1711,8 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
 
     await waitFor(() => {
       expect(screen.getByText('Корпорация "Антарктика"')).toBeDefined();
-      expect(screen.getByText("Продолжить")).toBeDefined();
+      expect(screen.queryByText("Продолжить")).toBeNull();
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
       // S1 manifest screen should NOT be rendered (it contains test cards)
       expect(screen.queryByText("Тестовая карточка 1")).toBeNull();
     });

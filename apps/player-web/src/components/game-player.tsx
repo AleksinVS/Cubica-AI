@@ -194,6 +194,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           onHint={() => handleDismissPanel("hint")}
           onClose={() => handleDismissPanel("hint")}
           fallbackMetrics={fullConfig.fallbackMetrics}
+          defaultHintText={fullConfig.resolveHintText?.(content, state as Record<string, unknown>) ?? null}
         />
       ) : screenKey && gameUi?.screens[screenKey] ? (
         <ManifestRenderer
