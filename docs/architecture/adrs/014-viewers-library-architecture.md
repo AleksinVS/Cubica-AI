@@ -35,17 +35,8 @@ Viewer — это клиентский модуль, который читает
 - Технический долг: требуется отдельная оценка рисков режима без iframe и возможные дополнительные ограничения.
 - Процессные изменения: нужна регламентированная проверка скриптов, ведение реестра и ключей подписи.
 
-## План внедрения
-
-1. Подготовить архитектурный документ `docs/architecture/viewers-library.md` и связать его с этим ADR.
-2. Обновить `docs/architecture/PROJECT_ARCHITECTURE.md`, `PROJECT_OVERVIEW.md` и `PROJECT_STRUCTURE.yaml`.
-3. Синхронизировать задачи в `docs/tasks/` и ROADMAP.
-4. Отдельной фичей реализовать реестр скриптов, проверку подписи и загрузку в viewer.
-
 ## Связанные артефакты
 
-- `docs/tasks/archive/content-packs/CP_00071_viewers_library_architecture.yaml`
-- `docs/tasks/archive/features/F_00071_viewers_library_architecture_(E_0010).md`
 - `docs/architecture/adrs/002-abstract-view-protocol.md`
 - `docs/architecture/adrs/006-view-adapters-architecture.md`
 - `docs/architecture/adrs/010-js-sandbox-security.md`

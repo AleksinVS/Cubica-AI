@@ -11,7 +11,6 @@
 - [Альтернативы](#альтернативы)
 - [Решение](#решение)
 - [Последствия](#последствия)
-- [План внедрения](#план-внедрения)
 - [Связанные артефакты](#связанные-артефакты)
 
 ## Контекст
@@ -154,42 +153,6 @@
   - В ревью изменений сценариев нужно обращать внимание на добавление/изменение `anchor`‑комментариев.
   - Команда разработки UI должна договориться о нейминге `type`/`widget:*`/`controller_id` и вести реестр соответствий в коде.
 
-## План внедрения
-
-1. **Формализация в схемах и архитектурной документации**
-   - Обновить `docs/architecture/schemas/manifest-structure.md`, добавив:
-     - раздел про текстовые источники и якоря (Markdown‑ID и `<!-- anchor: ... -->`);
-     - описание `source_ref`/`resolved`/`format` и инвариантов по тексту;
-     - структуру логического манифеста и отдельного UI‑манифеста, включая раздел `layouts`.
-   - Добавить/обновить JSON Schema:
-     - новую схему логического манифеста (например, `manifest.v1.schema.json` или обновлённую `game-manifest.schema.json`);
-     - отдельную схему UI‑манифеста (`ui-manifest.schema.json`) с секциями `screens`, `components`, `layouts`.
-   - Обновить `PROJECT_ARCHITECTURE.md` (раздел про манифесты и Hybrid SDUI), отразив разделение логики и UI.
-
-2. **Инструменты генерации и проверки**
-   - Реализовать утилиту/скрипт для генерации/обновления логических манифестов из текстовых описаний:
-     - парсинг Markdown/HTML, поиск `anchor`‑комментариев;
-     - построение индекса `file` + `anchor` → текст/формат;
-     - обновление полей `source_ref`/`resolved`/`format` и хэшей в манифесте;
-     - валидация по JSON Schema.
-   - Добавить проверку в пайплайн (скрипты/CI), который:
-     - сравнивает хэши исходных файлов в манифесте с фактическими;
-     - предупреждает или блокирует сборку при рассинхронизации или битых ссылках.
-
-3. **Применение к реальной игре (Antarctica)**
-   - Вынести существующий UI сценария «Antarctica» в отдельный UI‑манифест в `games/antarctica-nextjs-player`:
-     - описать экраны и основные компоненты;
-     - добавить хотя бы один макет (`layouts`) как пример.
-   - Скорректировать логический манифест «Antarctica»:
-     - перевести текстовые поля на `source_ref` + `resolved`;
-     - связать логический манифест с UI‑манифестом по идентификаторам экранов/шаблонов.
-   - Обновить Next.js‑плеер для загрузки пары «логический манифест + UI‑манифест» и передачи View‑слою уже собранного JSON‑представления.
-
-4. **Документация и обучение команды**
-   - Historical note: the original implementation plan expected an update to the old roadmap and a Feature task. New follow-up work should now use `NEXT_STEPS.md` and `docs/tasks/active/`.
-   - Добавить ExecPlan (`docs/tasks/archive/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`) с подробным сценарием внедрения, ориентированным на нового участника команды.
-   - Описать в `docs/architecture/PROJECT_ARCHITECTURE.md` референсный пример (на базе «Antarctica») с полным путём от текстовых описаний и якорей до UI‑манифеста и работающего плеера.
-
 ## Связанные артефакты
 
 - `PROJECT_OVERVIEW.md`
@@ -199,9 +162,3 @@
 - `docs/architecture/schemas/manifest.v1.schema.json` (планируется)
 - `docs/architecture/schemas/ui-schema-concept.md`
 - `docs/architecture/schemas/ui-manifest.schema.json` (планируется)
-- `docs/tasks/archive/epics/E-25-00010-game-manifest-architecture.md`
-- `docs/tasks/archive/features/F_00010_game_manifest_format_and_schema_(E_25_0001).md`
-- `docs/tasks/archive/features/F_00020_ui_schema_definition.md`
-- `docs/tasks/archive/features/F_00021_antarctica_json_manifest_(E_0020).md`
-- Новый Feature‑документ для реализации данного ADR: `docs/tasks/archive/features/F_00070_manifest_text_anchors_and_ui_split.md`
-- ExecPlan для реализации: `docs/tasks/archive/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`

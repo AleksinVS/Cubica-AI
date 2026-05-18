@@ -67,24 +67,9 @@ Trade-offs:
 - часть текущей логики разбора manifest/design metadata должна переехать из `player-web` в `runtime-api`;
 - до завершения миграции некоторое время будут сосуществовать старый filesystem path и новый content API, но новым каноническим направлением считается только API path.
 
-## Near-Term Implementation Direction
-
-1. Добавить в contracts layer player-facing content DTO для `Antarctica`.
-2. В `runtime-api` выделить query/service boundary, которая:
-   - загружает manifest bundle;
-   - читает нужные design metadata;
-   - собирает player-facing content DTO.
-3. Добавить player-facing endpoint в `player-api`, например `GET /games/:gameId/content` или эквивалентный route с тем же смыслом.
-4. Перевести `apps/player-web` на consumption этого endpoint через собственные route handlers/proxy и убрать прямое чтение repo files.
-5. После миграции считать direct filesystem access из `player-web` архитектурным нарушением.
-
 ## Связанные артефакты
 
 - `docs/architecture/adrs/017-modular-monolith-transition-and-service-extraction.md`
 - `docs/architecture/adrs/018-game-logic-source-of-truth-is-json-manifest.md`
 - `docs/architecture/PROJECT_ARCHITECTURE.md`
 - `NEXT_STEPS.md`
-- `services/runtime-api/HANDOFF.md`
-- `apps/player-web/src/lib/antarctica.ts`
-- `services/runtime-api/src/modules/content/manifestLoader.ts`
-- `services/runtime-api/src/modules/player-api/httpServer.ts`

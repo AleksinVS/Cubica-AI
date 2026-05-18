@@ -92,5 +92,5 @@ Consulted: @todo
 
 ## Links
 
-- [F_00071](../../tasks/archive/features/F_00071_viewers_library_architecture_(E_0010).md): Архитектура библиотеки viewers.md
-- [F_00073](../../tasks/archive/features/F_00073_extension_packs_architecture_(E_0010).md): Архитектура пакетов расширений
+- `docs/architecture/adrs/014-viewers-library-architecture.md`
+- `docs/architecture/adrs/010-js-sandbox-security.md`

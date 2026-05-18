@@ -77,13 +77,3 @@ The JSON schema for `game.manifest.json` will be updated to include the `templat
 **Negative:**
 - **Indirection:** Understanding a single action now requires looking up its template.
 - **Implementation Overhead:** The `runtime-api` needs logic for template resolution and parameter substitution.
-
-## Implementation Plan
-
-1. **Contracts:** Update `@cubica/contracts-manifest` with `templates` and `templateId`/`params`.
-2. **Schema:** Update `game-manifest.schema.json`.
-3. **Runtime API:**
-    - Update `manifestActions.ts` to expose template info.
-    - Update `deterministicHandlers.ts` to resolve templates before applying logic.
-4. **Verification:** Add a test case with a templated action.
-5. **Refactoring:** (Optional/Later) Migrating Antarctica to use these templates.

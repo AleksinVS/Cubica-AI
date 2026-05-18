@@ -3,7 +3,7 @@
 - **Status**: Accepted
 - **Date**: 2025-11-27
 - **Author**: AI Agent
-- **Context**: Epic E_0010 (Game Manifest Architecture)
+- **Context**: Game Manifest Architecture
 
 ## 1. Context
 As games become more complex, they require not only logic (rules, scripts) but also media resources: images, audio, and video.
@@ -83,8 +83,3 @@ Game Logic (LLM or Script) triggers media playback via **View Commands** (Abstra
 
 ### Negative
 - **Verbosity**: Requires declaring every image in `assets` before using it. (Mitigation: tooling/editors can automate this).
-
-## 4. Implementation Status
-- Manifest Structure Spec: Updated in `docs/architecture/schemas/manifest-structure.md`.
-- UI Schema: Compatible with existing binding logic.
-

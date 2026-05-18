@@ -3,7 +3,7 @@
 - **Status**: Accepted
 - **Date**: 2025-11-27
 - **Author**: AI Agent
-- **Context**: Feature F_00041, Epic E_0030
+- **Context**: Hybrid Execution and Backend Security
 
 ## 1. Context
 

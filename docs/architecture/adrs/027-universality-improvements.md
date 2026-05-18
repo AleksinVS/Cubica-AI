@@ -8,7 +8,6 @@
 - [Context](#context)
 - [Decision](#decision)
 - [Consequences](#consequences)
-- [Key Files Changed](#key-files-changed)
 
 ## Context
 
@@ -69,24 +68,3 @@ Added optional `resolveHintText` to `GameConfigResolvers`. Generic player compon
 - Locale strings are currently only Russian; other languages need a new locale file + provider wrapper
 - The scaffold generates minimal `resolveGameState` implementations — games with complex state must fill in their own logic
 - Games that need custom hint fallback behavior must provide a small resolver in their plugin
-
-## Key Files Changed
-
-| File | Change |
-|------|--------|
-| `packages/contracts/manifest/src/index.ts` | Added `ManifestAction` constants, `MetricConfigSpec`, `layout` on `GameUiGameVariableComponentProps`, `screenRouting` + `metricSpecs` on `GamePlayerUiContent` |
-| `apps/player-web/src/presenter/game-config.ts` | Made `resolveBoardScreenKey`, `resolveScreenKey`, `resolveLayoutMode` optional; added `metricSpecsToFallbackMetrics()` and optional `resolveHintText` |
-| `apps/player-web/src/presenter/game-presenter.ts` | Default to data-driven routing when plugin omits methods |
-| `apps/player-web/src/lib/screen-router.ts` | Added `findLeftSidebarScreen` instead of hardcoded "S1_LEFT" |
-| `apps/player-web/src/lib/locale/ru.ts` | All Russian strings centralized |
-| `apps/player-web/src/lib/locale/index.ts` | `useLocale()` hook + `LocaleProvider` |
-| `apps/player-web/src/lib/manifest-action-adapter.ts` | Uses `ManifestAction` constants |
-| `apps/player-web/src/components/safe-mode-renderer.tsx` | Uses `useLocale()` for all strings |
-| `apps/player-web/src/components/game-player.tsx` | Uses `useLocale()` for loading text |
-| `apps/player-web/src/components/panels/hint-renderer.tsx` | Renders plugin-provided default hint text without owning game-specific fallback rules |
-| `apps/player-web/src/plugins/antarctica/state-resolvers.ts` | Owns Antarctica-specific "last info as hint" fallback resolver |
-| `apps/player-web/src/components/manifest/card-component.tsx` | Uses `useLocale()` for select label |
-| `apps/player-web/src/components/manifest/game-variable-component.tsx` | Uses `layout` prop instead of `id === "score"` |
-| `games/antarctica/ui/web/ui.manifest.json` | Added `screenRouting`, `metric_specs`, `layout: "prominent"` on score metric |
-| `services/runtime-api/src/modules/content/contentService.ts` | Passes `screenRouting` and `metricSpecs` from manifest |
-| `scripts/dev/scaffold-game.js` | New game scaffold generator |

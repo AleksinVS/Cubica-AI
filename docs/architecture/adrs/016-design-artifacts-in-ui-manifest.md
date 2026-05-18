@@ -16,7 +16,6 @@
   - [4. Связи и версионирование](#4-связи-и-версионирование)
   - [5. Интеграция с UI-манифестом](#5-интеграция-с-ui-манифестом)
 - [Последствия](#последствия)
-- [План внедрения](#план-внедрения)
 - [Связанные артефакты](#связанные-артефакты)
 
 ## Контекст
@@ -415,41 +414,9 @@ games/<game-id>/
 2. **Ручная разметка `regions`** — на начальном этапе требует ручной работы (в будущем можно автоматизировать через CV-модели)
 3. **Миграция существующих `layouts`** — текущая секция `layouts` должна быть либо мигрирована, либо объявлена deprecated
 
-### Требуемые изменения
-
-1. Обновить `ui-manifest.schema.json` — добавить секцию `design_artifacts`
-2. Создать `design-artifact.schema.json` — схема файла описания
-3. Создать `design-history.schema.json` — схема файла истории
-4. Обновить документацию (`PROJECT_ARCHITECTURE.md`, `manifest-structure.md`)
-5. Создать примеры для игры «Antarctica»
-
-## План внедрения
-
-1. **Формализация схем** (F_00074)
-   - Создать JSON Schema для `design-artifact.v1.json`
-   - Создать JSON Schema для `design-history.v1.json`
-   - Обновить `ui-manifest.schema.json`
-
-2. **Документация**
-   - Обновить `docs/architecture/schemas/manifest-structure.md`
-   - Обновить `PROJECT_ARCHITECTURE.md`
-   - Добавить примеры в `docs/architecture/schemas/examples/`
-
-3. **Пилотное применение** (в рамках Antarctica)
-   - Создать структуру `games/antarctica/design/`
-   - Создать описания для ключевых экранов
-   - Связать с UI-манифестом
-
-4. **Инструменты** (отдельная задача)
-   - CLI для валидации описаний
-   - Генератор `regions` из изображения (CV-модель)
-   - Визуализатор связей между артефактами
-
 ## Связанные артефакты
 
 - `docs/architecture/PROJECT_ARCHITECTURE.md` — раздел 2.3 (Данные и игровые манифесты)
 - `docs/architecture/adrs/009-asset-management-strategy.md` — управление медиа-ассетами
 - `docs/architecture/adrs/013-manifest-text-anchors-and-ui-split.md` — паттерн `source_ref`
 - `docs/architecture/schemas/ui-manifest.schema.json` — текущая схема UI-манифеста
-- `docs/tasks/archive/epics/E_0010_game_manifest_architecture.md` — родительский эпик
-- `docs/tasks/archive/features/F_00074_design_artifacts_for_ai_agents_(E_0010).md` — Feature-задача реализации

@@ -56,14 +56,6 @@
 - narrative markdown может оставаться полезным, но не считается обязательным артефактом content bundle;
 - для сложных игр может понадобиться richer manifest model и tooling, чтобы JSON оставался поддерживаемым.
 
-## План внедрения
-
-1. Обновить план миграции и agent-facing документы под новую truth model.
-2. Зафиксировать роли артефактов `games/antarctica/`, `games/antarctica/design/mockups/`, `draft/Antarctica/README.md`, `draft/Antarctica/GameFull.html`.
-3. Развить `packages/contracts/manifest` и manifest validation под реальную модель `Antarctica`.
-4. Извлечь игровую логику из draft-источников в `games/antarctica/game.manifest.json`.
-5. Подключить runtime и player к манифесту как к единому исполнимому source of truth.
-
 ## Связанные артефакты
 
 - `games/antarctica/game.manifest.json`

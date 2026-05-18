@@ -60,12 +60,5 @@
   - Требуется поддерживать проверки и актуальность схем.
   - При росте числа версий потребуется отдельная стратегия миграций (отдельный документ/задача).
 
-## План внедрения
-1. Зафиксировать поля в JSON Schema (`docs/architecture/schemas/game-manifest.schema.json`) — выполнено.
-2. Обновить примеры/шаблоны манифестов и инструменты валидации — по мере появления CLI/CI.
-3. Добавить проверку совместимости в Game Engine при загрузке манифеста — при реализации Engine.
-
 ## Связанные артефакты
 - `docs/architecture/schemas/game-manifest.schema.json`
-- `docs/tasks/archive/features/F_00040_manifest_versioning.md`
-- Historical roadmap from the previous planning system.
