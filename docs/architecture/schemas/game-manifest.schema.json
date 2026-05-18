@@ -247,6 +247,10 @@
           },
           "type": "array"
         },
+        "excludeFromLog": {
+          "type": "boolean",
+          "description": "If true, the runtime will skip creating a log entry for this action."
+        },
         "guard": {
           "$ref": "#/definitions/GameManifestDeterministicGuard"
         },
@@ -402,18 +406,35 @@
       "type": "object"
     },
     "JsonLogicExpression": {
-      "description": "Recursive JsonLogic operator expression — an object with a single operator key mapping to an array of sub-expressions. Primitive values (number, string, boolean, null) are handled by their respective schema types directly.",
-      "type": "object",
-      "minProperties": 1,
-      "maxProperties": 1,
-      "additionalProperties": {
-        "type": "array",
-        "items": { "$ref": "#/definitions/JsonLogicExpression" }
-      }
+      "description": "Recursive JsonLogic expression. Operators map either to one nested expression, for example {\"var\":\"public.metrics.pro\"}, or to an array of nested expressions.",
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 1,
+          "additionalProperties": {
+            "oneOf": [
+              { "$ref": "#/definitions/JsonLogicExpression" },
+              {
+                "type": "array",
+                "items": { "$ref": "#/definitions/JsonLogicExpression" }
+              }
+            ]
+          }
+        }
+      ]
     },
     "GameManifestDeterministicLogMetadata": {
       "additionalProperties": false,
       "properties": {
+        "backText": {
+          "type": "string",
+          "description": "Back (flipped/result) text of the card, shown in the journal after the choice is made."
+        },
         "cardId": {
           "type": "string"
         },
@@ -461,7 +482,7 @@
       "additionalProperties": false,
       "properties": {
         "delta": {
-          "oneOf": [
+          "anyOf": [
             { "type": "number" },
             { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" },
             { "$ref": "#/definitions/JsonLogicExpression" }

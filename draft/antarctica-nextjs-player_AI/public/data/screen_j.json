@@ -1,0 +1,257 @@
+{
+    "application": {
+        "class": "journal",
+        "component": "here?",
+        "description": "this is a journal screen",
+        "cssFile": "to load main css. suggestion: rename field as cssFile instead of css (suggestions for other css - cssClass, cssInline)",
+        "elements": {
+            "JOURNAL": {
+                "class": "screen",
+                "component": "screenComponent",
+                "backgroundImage": "./images/arctic-background.png",
+                "cssClass": "main-screen",
+                "elements": {
+                    "A1": {
+                        "class": "styling-area",
+                        "component": "areaComponent",
+                        "cssClass": "additional-background",
+                        "elements": {
+                            "A1-1": {
+                                "class": "styling-area",
+                                "component": "areaComponent",
+                                "cssClass": "journal-container",
+                                "elements": {
+                                    "T1": {
+                                        "class": "",
+                                        "component": "",
+                                        "cssClass": "heading-h1",
+                                        "text": "Журнал ходов"
+                                    },
+                                    "A1-1-1": {
+                                        "class": "styling-area",
+                                        "component": "areaComponent",
+                                        "cssClass": "journal-cards-container",
+                                        "elements": {
+                                            "C1": {
+                                                "class": "card",
+                                                "component": "cardComponent",
+                                                "cssClass": "game-card",
+                                                "state": "st1",
+                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                            },
+                                            "C2": {
+                                                "class": "card",
+                                                "component": "cardComponent",
+                                                "cssClass": "game-card",
+                                                "state": "st1",
+                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                            }
+                                        }
+                                    },
+                                    "A1-1-2": {
+                                        "class": "styling-area",
+                                        "component": "areaComponent",
+                                        "cssClass": "journal-variables-container",
+                                        "elements": {
+                                            "pro": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Знания",
+                                                "value": -1,
+                                                "previousValue": -1
+                                            },
+                                            "rep": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Доверие",
+                                                "value": 15,
+                                                "previousValue": 15
+                                            },
+                                            "lead": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Энергия",
+                                                "value": 7,
+                                                "previousValue": 5
+                                            },
+                                            "man": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "контроль",
+                                                "value": -8,
+                                                "previousValue": -8
+                                            },
+                                            "stat": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Статус",
+                                                "value": -5,
+                                                "previousValue": -5
+                                            },
+                                            "cont": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Контакт",
+                                                "value": 10,
+                                                "previousValue": 12
+                                            },
+                                            "constr": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Конструктив",
+                                                "value": 8,
+                                                "previousValue": 8
+                                            },
+                                            "flex": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Гибкость",
+                                                "value": 2,
+                                                "previousValue": 2
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "A1-2": {
+                                "class": "styling-area",
+                                "component": "areaComponent",
+                                "cssClass": "journal-container",
+                                "elements": {
+                                    "A1-2-1": {
+                                        "class": "styling-area",
+                                        "component": "areaComponent",
+                                        "cssClass": "journal-cards-container",
+                                        "elements": {
+                                            "C3": {
+                                                "class": "card",
+                                                "component": "cardComponent",
+                                                "cssClass": "game-card",
+                                                "state": "st1",
+                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                            },
+                                            "C4": {
+                                                "class": "card",
+                                                "component": "cardComponent",
+                                                "cssClass": "game-card",
+                                                "state": "st1",
+                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                            }
+                                        }
+                                    },
+                                    "A3": {
+                                        "class": "styling-area",
+                                        "component": "areaComponent",
+                                        "cssClass": "journal-variables-container",
+                                        "elements": {
+                                            "pro": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Знания",
+                                                "value": -1,
+                                                "previousValue": -1
+                                            },
+                                            "rep": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Доверие",
+                                                "value": 15,
+                                                "previousValue": 15
+                                            },
+                                            "lead": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Энергия",
+                                                "value": 7,
+                                                "previousValue": 5
+                                            },
+                                            "man": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "контроль",
+                                                "value": -8,
+                                                "previousValue": -8
+                                            },
+                                            "stat": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Статус",
+                                                "value": -5,
+                                                "previousValue": -5
+                                            },
+                                            "cont": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Контакт",
+                                                "value": 10,
+                                                "previousValue": 12
+                                            },
+                                            "constr": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Конструктив",
+                                                "value": 8,
+                                                "previousValue": 8
+                                            },
+                                            "flex": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Гибкость",
+                                                "value": 2,
+                                                "previousValue": 2
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+                            "A1-3": {
+                                "class": "area",
+                                "component": "areaComponent",
+                                "cssClass": "button-container",
+                                "elements": {
+                                    "B2": {
+                                        "class": "button",
+                                        "component": "buttonComponent",
+                                        "backgroundImage": "./images/gurnal-hodov.png",
+                                        "cssClass": "button-helper",
+                                        "caption": "журнал ходов",
+                                        "actions": {
+                                            "onClick": {
+                                                "command": "showHistory",
+                                                "id": "B2"
+                                            }
+                                        }
+                                    },
+                                    "B3": {
+                                        "class": "button",
+                                        "component": "buttonComponent",
+                                        "cssClass": "button-helper",
+                                        "backgroundImage": "./images/podskazka.png",
+                                        "caption": "подсказка",
+                                        "actions": {}
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

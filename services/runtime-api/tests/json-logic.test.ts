@@ -15,6 +15,8 @@ const makeContext = (
   now: new Date(),
   manifestAction: {
     ...manifestAction,
+    actionId,
+    handlerType: typeof manifestAction.handlerType === "string" ? manifestAction.handlerType : "manifest-data",
     // In the real flow, `raw` is the full action object from the manifest.
     // Set it to the manifestAction itself so resolveTemplate can access overrides.
     raw: manifestAction

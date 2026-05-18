@@ -2,6 +2,13 @@
 
 Документ фиксирует все временные заглушки в сервисах и SDK. Каждая запись должна ссылаться на строку в `debt-log.csv` и иметь план снятия.
 
+## Оглавление
+
+- [Формат записи](#формат-записи)
+- [Процесс обновления](#процесс-обновления)
+- [Текущие заглушки](#текущие-заглушки)
+- [Архив заглушек](#архив-заглушек)
+
 ## Формат записи
 | Поле | Описание |
 | --- | --- |
@@ -25,9 +32,14 @@
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | LEGACY-0001 | game-engine | data/mocks/llm/default-response.json | стартовый commit | Заменить на интеграцию с LLM к Phase1 | Game Engine Team | active | Требуется контракт API с Router |
+| LEGACY-0009 | runtime-api | services/runtime-api/src/modules/session/InMemorySessionStore.ts | canonical runtime slice | Заменить на PostgreSQL-backed persistence в `TSK-20260518-session-persistence-hardening` | Backend Team | active | Runtime state теряется при рестарте процесса |
+| LEGACY-0010 | runtime-api | services/runtime-api/src/modules/player-api/httpServer.ts readiness endpoint | canonical runtime slice | Проверять загрузку content bundle в `TSK-20260518-runtime-repository-boundary-and-readiness` | Backend Team | active | Сейчас endpoint подтверждает процесс, но не content readiness |
+| LEGACY-0011 | SDK/viewers/web-base | SDK/viewers/web-base | pre-canonical SDK scaffold | Классифицировать workspace статус в `TSK-20260518-workspace-project-references-cleanup` | SDK Team | active | Scaffold не входит в canonical player-web path |
+| LEGACY-0012 | services/router | services/router | historical target architecture | Классифицировать как archived target или contracts-only scaffold в `TSK-20260518-workspace-project-references-cleanup` | Backend Team | active | В текущем canonical slice runtime-api владеет boundary |
 
 ## Архив заглушек
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | LEGACY-0002 | antarctica-nextjs-player | games/antarctica-nextjs-player/src/app/api/submit/route.js | CP_00024 | Удалить после подключения к реальному Router API (Phase1) | Frontend Team | removed | Плеер полностью заменен на apps/player-web |
 | LEGACY-0007 | antarctica-player | games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json | CP_00024 | Удалить при переходе на SSOT | Content Team | removed | Плеер удален, данные берутся из games/antarctica |
+| LEGACY-0008 | canonical-slice | npm run verify:canonical | TSK-20260518 | Восстановить зеленые canonical checks | Platform Team | removed | Закрыто: `npm run verify:canonical` проходит 2026-05-18 |

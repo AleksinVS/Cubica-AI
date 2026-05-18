@@ -38,14 +38,14 @@ Viewer — это клиентский модуль, который читает
 ## План внедрения
 
 1. Подготовить архитектурный документ `docs/architecture/viewers-library.md` и связать его с этим ADR.
-2. Обновить `docs/architecture/PROJECT_ARCHITECTURE.md`, `PROJECT_OVERVIEW.md` и `PROJECT_STRUCTURE.md`.
+2. Обновить `docs/architecture/PROJECT_ARCHITECTURE.md`, `PROJECT_OVERVIEW.md` и `PROJECT_STRUCTURE.yaml`.
 3. Синхронизировать задачи в `docs/tasks/` и ROADMAP.
 4. Отдельной фичей реализовать реестр скриптов, проверку подписи и загрузку в viewer.
 
 ## Связанные артефакты
 
-- `docs/tasks/content-packs/CP_00071_viewers_library_architecture.yaml`
-- `docs/tasks/features/F_00071_viewers_library_architecture_(E_0010).md`
+- `docs/tasks/archive/content-packs/CP_00071_viewers_library_architecture.yaml`
+- `docs/tasks/archive/features/F_00071_viewers_library_architecture_(E_0010).md`
 - `docs/architecture/adrs/002-abstract-view-protocol.md`
 - `docs/architecture/adrs/006-view-adapters-architecture.md`
 - `docs/architecture/adrs/010-js-sandbox-security.md`

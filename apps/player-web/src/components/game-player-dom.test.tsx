@@ -557,11 +557,11 @@ describe("GamePlayer S1 DOM Rendering", () => {
             },
             {
               actionId: "opening.card.3",
-              capabilityFamily: "runtime.server.request",
-              capability: "select",
               at: "2026-04-10T12:03:00Z",
               kind: "opening-card-advance",
-              summary: "Карточка 3"
+              cardId: "3",
+              frontText: "Карточка 3",
+              backText: "Результат Карточки 3"
             }
           ],
           timeline: { ...mockSession.state.public.timeline }

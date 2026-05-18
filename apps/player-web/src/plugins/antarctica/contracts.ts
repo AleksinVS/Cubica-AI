@@ -33,7 +33,10 @@ export interface GamePlayerTeamSelectionScene {
 export interface GamePlayerBoardCard {
   cardId: string;
   title: string;
+  /** Front face text of the card. */
   summary: string;
+  /** Back (flipped/result) text shown after the card is selected. */
+  backText?: string;
   selectActionId: string;
   selectLabel?: string;
   advanceActionId?: string;

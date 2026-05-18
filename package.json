@@ -4,7 +4,6 @@
   "description": "Workspace root for Cubica SDK packages, games and supporting apps.",
   "license": "UNLICENSED",
   "workspaces": [
-
     "apps/player-web",
     "SDK/core",
     "SDK/shared",
@@ -27,7 +26,11 @@
     "antarctica:play": "node scripts/antarctica/run-local-play.mjs"
   },
   "devDependencies": {
+    "@next/swc-linux-x64-gnu": "16.2.6",
     "@types/node": "^24.6.0",
+    "pixelmatch": "^7.2.0",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.9.3"
   },
   "engines": {

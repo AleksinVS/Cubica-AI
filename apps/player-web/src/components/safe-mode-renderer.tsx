@@ -407,6 +407,7 @@ function buildBoardScreenDefinition(
         props: {
           title: "{{card.title}}",
           summary: "{{card.summary}}",
+          backText: "{{card.backText}}",
           selectLabel: "{{card.selectLabel}}",
           visualState: "default",
         },

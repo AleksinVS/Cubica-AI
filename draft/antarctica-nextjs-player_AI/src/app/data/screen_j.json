@@ -37,14 +37,14 @@
                                                 "component": "cardComponent",
                                                 "cssClass": "game-card",
                                                 "state": "st1",
-                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                                "text": "Есть идея! Создать клуб изучения айсберга! Совместно с другими любопытными проводить наблюдения снаружи и внутри айсберга, обсуждать закономерности и прогнозы."
                                             },
                                             "C2": {
                                                 "class": "card",
                                                 "component": "cardComponent",
                                                 "cssClass": "game-card",
                                                 "state": "st1",
-                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                                "text": "Некоторым понравились пещеры, кого-то напугали полости внутри айсберга. Возникло много разных идей и теорий, часть - интересные. Клуб заработал. О нем пошли слухи…"
                                             }
                                         }
                                     },
@@ -53,69 +53,69 @@
                                         "component": "areaComponent",
                                         "cssClass": "journal-variables-container",
                                         "elements": {
+                                            "time": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Остаток дней",
+                                                "value": 5,
+                                                "previousValue": 0
+                                            },
                                             "pro": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Знания",
-                                                "value": -1,
-                                                "previousValue": -1
+                                                "value": 8,
+                                                "previousValue": 0
                                             },
                                             "rep": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Доверие",
-                                                "value": 15,
-                                                "previousValue": 15
+                                                "value": -1,
+                                                "previousValue": 0
                                             },
-                                            "lead": {
+                                            "lid": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Энергия",
-                                                "value": 7,
-                                                "previousValue": 5
+                                                "value": 0,
+                                                "previousValue": 0
                                             },
                                             "man": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
-                                                "caption": "контроль",
-                                                "value": -8,
-                                                "previousValue": -8
+                                                "caption": "Контроль",
+                                                "value": 1,
+                                                "previousValue": 0
                                             },
                                             "stat": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Статус",
-                                                "value": -5,
-                                                "previousValue": -5
+                                                "value": 0,
+                                                "previousValue": 0
                                             },
                                             "cont": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Контакт",
-                                                "value": 10,
-                                                "previousValue": 12
+                                                "value": 1,
+                                                "previousValue": 0
                                             },
                                             "constr": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Конструктив",
-                                                "value": 8,
-                                                "previousValue": 8
-                                            },
-                                            "flex": {
-                                                "class": "journal-variable",
-                                                "component": "journalVariableComponent",
-                                                "cssClass": "journal-game-variable",
-                                                "caption": "Гибкость",
-                                                "value": 2,
-                                                "previousValue": 2
+                                                "value": 0,
+                                                "previousValue": 0
                                             }
                                         }
                                     }
@@ -136,14 +136,14 @@
                                                 "component": "cardComponent",
                                                 "cssClass": "game-card",
                                                 "state": "st1",
-                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                                "text": "Рассказать как можно большему количеству пингвинов. Начать с близких друзей, затем – друзьям друзей и далее… Вероятно, о проблеме узнают все и дело пойдет!"
                                             },
                                             "C4": {
                                                 "class": "card",
                                                 "component": "cardComponent",
                                                 "cssClass": "game-card",
                                                 "state": "st1",
-                                                "text": "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию"
+                                                "text": "Сколько пингвинов, столько и мнений. Кто-то испугался, кто-то возмутился, что его отвлекают. Кто-то поддержал, мол, надо смотреть в будущее! Кто-то уже думал об этом."
                                             }
                                         }
                                     },
@@ -152,69 +152,69 @@
                                         "component": "areaComponent",
                                         "cssClass": "journal-variables-container",
                                         "elements": {
+                                            "time": {
+                                                "class": "journal-variable",
+                                                "component": "journalVariableComponent",
+                                                "cssClass": "journal-game-variable",
+                                                "caption": "Остаток дней",
+                                                "value": 7,
+                                                "previousValue": 5
+                                            },
                                             "pro": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Знания",
-                                                "value": -1,
-                                                "previousValue": -1
+                                                "value": 8,
+                                                "previousValue": 8
                                             },
                                             "rep": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Доверие",
-                                                "value": 15,
-                                                "previousValue": 15
+                                                "value": -3,
+                                                "previousValue": -1
                                             },
-                                            "lead": {
+                                            "lid": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Энергия",
-                                                "value": 7,
-                                                "previousValue": 5
+                                                "value": 0,
+                                                "previousValue": 0
                                             },
                                             "man": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
-                                                "caption": "контроль",
-                                                "value": -8,
-                                                "previousValue": -8
+                                                "caption": "Контроль",
+                                                "value": 1,
+                                                "previousValue": 1
                                             },
                                             "stat": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Статус",
-                                                "value": -5,
-                                                "previousValue": -5
+                                                "value": 0,
+                                                "previousValue": 0
                                             },
                                             "cont": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Контакт",
-                                                "value": 10,
-                                                "previousValue": 12
+                                                "value": 1,
+                                                "previousValue": 1
                                             },
                                             "constr": {
                                                 "class": "journal-variable",
                                                 "component": "journalVariableComponent",
                                                 "cssClass": "journal-game-variable",
                                                 "caption": "Конструктив",
-                                                "value": 8,
-                                                "previousValue": 8
-                                            },
-                                            "flex": {
-                                                "class": "journal-variable",
-                                                "component": "journalVariableComponent",
-                                                "cssClass": "journal-game-variable",
-                                                "caption": "Гибкость",
-                                                "value": 2,
-                                                "previousValue": 2
+                                                "value": 0,
+                                                "previousValue": 0
                                             }
                                         }
                                     }

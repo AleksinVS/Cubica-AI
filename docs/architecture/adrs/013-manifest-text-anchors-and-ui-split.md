@@ -186,8 +186,8 @@
    - Обновить Next.js‑плеер для загрузки пары «логический манифест + UI‑манифест» и передачи View‑слою уже собранного JSON‑представления.
 
 4. **Документация и обучение команды**
-   - Обновить `docs/tasks/ROADMAP.md` и создать Feature‑задачу под реализацию (F‑25‑00070 или следующий свободный ID), связав её с Epic E‑25‑0010.
-   - Добавить ExecPlan (`docs/tasks/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`) с подробным сценарием внедрения, ориентированным на нового участника команды.
+   - Historical note: the original implementation plan expected an update to the old roadmap and a Feature task. New follow-up work should now use `NEXT_STEPS.md` and `docs/tasks/active/`.
+   - Добавить ExecPlan (`docs/tasks/archive/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`) с подробным сценарием внедрения, ориентированным на нового участника команды.
    - Описать в `docs/architecture/PROJECT_ARCHITECTURE.md` референсный пример (на базе «Antarctica») с полным путём от текстовых описаний и якорей до UI‑манифеста и работающего плеера.
 
 ## Связанные артефакты
@@ -199,9 +199,9 @@
 - `docs/architecture/schemas/manifest.v1.schema.json` (планируется)
 - `docs/architecture/schemas/ui-schema-concept.md`
 - `docs/architecture/schemas/ui-manifest.schema.json` (планируется)
-- `docs/tasks/epics/E-25-00010-game-manifest-architecture.md`
-- `docs/tasks/features/F_00010_game_manifest_format_and_schema_(E_25_0001).md`
-- `docs/tasks/features/F_00020_ui_schema_definition.md`
-- `docs/tasks/features/F_00021_antarctica_json_manifest_(E_0020).md`
-- Новый Feature‑документ для реализации данного ADR: `docs/tasks/features/F_00070_manifest_text_anchors_and_ui_split.md`
-- ExecPlan для реализации: `docs/tasks/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`
+- `docs/tasks/archive/epics/E-25-00010-game-manifest-architecture.md`
+- `docs/tasks/archive/features/F_00010_game_manifest_format_and_schema_(E_25_0001).md`
+- `docs/tasks/archive/features/F_00020_ui_schema_definition.md`
+- `docs/tasks/archive/features/F_00021_antarctica_json_manifest_(E_0020).md`
+- Новый Feature‑документ для реализации данного ADR: `docs/tasks/archive/features/F_00070_manifest_text_anchors_and_ui_split.md`
+- ExecPlan для реализации: `docs/tasks/archive/content-packs/CP_00070_manifest_text_anchors_and_ui_split.yaml`

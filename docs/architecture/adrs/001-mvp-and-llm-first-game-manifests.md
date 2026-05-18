@@ -134,6 +134,6 @@
 ## Связанные артефакты
 
 - `PROJECT_OVERVIEW.md` — разделы про MVP и LLM-first архитектуру игровых манифестов.
-- `docs/tasks/ROADMAP.md` — roadmap с первым эпиком про архитектуру JSON‑манифеста.
-- `docs/tasks/epics/E-25-0001-*.md` — эпик по проектированию формата игровых манифестов и схем.
-- `docs/tasks/content-packs/PLAN.md` — правила для ExecPlan, которые будут использоваться при реализации этого ADR.
+- Historical roadmap from the previous planning system.
+- `docs/tasks/archive/epics/E-25-0001-*.md` — эпик по проектированию формата игровых манифестов и схем.
+- `docs/tasks/archive/content-packs/PLAN.md` — правила для ExecPlan, которые будут использоваться при реализации этого ADR.

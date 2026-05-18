@@ -66,18 +66,21 @@ const resolveTemplate = (
     ? resolveValue(template, action.params)
     : template;
 
-  // Step 2: Extract the action's deterministic overrides.
-  // Supports both direct `deterministic` and the `overrides.deterministic` pattern.
+  // Step 2: Extract the action's deterministic overrides. Some migrated
+  // actions still carry direct metadata (for example audit flags) while bounded
+  // gameplay details live under `overrides.deterministic`; both shapes must be
+  // merged instead of choosing one and silently dropping the other.
   const raw = action.raw || {};
-  const actionDeterministic = isObjectRecord(raw.deterministic)
-    ? raw.deterministic
-    : isObjectRecord(raw.overrides) && isObjectRecord(raw.overrides.deterministic)
+  const directDeterministic = isObjectRecord(raw.deterministic) ? raw.deterministic : {};
+  const overrideDeterministic =
+    isObjectRecord(raw.overrides) && isObjectRecord(raw.overrides.deterministic)
       ? raw.overrides.deterministic
-      : null;
+      : {};
+  const actionDeterministic = { ...directDeterministic, ...overrideDeterministic };
 
 
   // Step 3: If no overrides, return the resolved template as-is.
-  if (!actionDeterministic || !isObjectRecord(resolvedTemplate.deterministic)) {
+  if (!isObjectRecord(resolvedTemplate.deterministic)) {
     return { deterministic: resolvedTemplate.deterministic };
   }
 
@@ -88,17 +91,25 @@ const resolveTemplate = (
 
   // Guard: deep merge so action can override individual guard fields
   // (e.g., adding stateConditions or overriding timeline).
-  if (isObjectRecord(templateDet.guard) && isObjectRecord(actionDeterministic.guard)) {
-    mergedDeterministic.guard = { ...templateDet.guard, ...actionDeterministic.guard };
-  } else if (isObjectRecord(actionDeterministic.guard)) {
+  const directGuard = isObjectRecord(directDeterministic.guard) ? directDeterministic.guard : {};
+  const overrideGuard = isObjectRecord(overrideDeterministic.guard) ? overrideDeterministic.guard : {};
+  const actionGuard = { ...directGuard, ...overrideGuard };
+  if (isObjectRecord(templateDet.guard) && Object.keys(actionGuard).length > 0) {
+    mergedDeterministic.guard = { ...templateDet.guard, ...actionGuard };
+  } else if (Object.keys(actionGuard).length > 0) {
     // Action has guard but template doesn't (or template guard is not an object).
-    mergedDeterministic.guard = actionDeterministic.guard;
+    mergedDeterministic.guard = actionGuard;
   }
 
   // StateUpdate: deep merge so action can add/override individual fields
   // (e.g., adding activeInfoId or selectedCardId).
-  if (isObjectRecord(templateDet.stateUpdate) && isObjectRecord(actionDeterministic.stateUpdate)) {
-    mergedDeterministic.stateUpdate = { ...templateDet.stateUpdate, ...actionDeterministic.stateUpdate };
+  const directStateUpdate = isObjectRecord(directDeterministic.stateUpdate) ? directDeterministic.stateUpdate : {};
+  const overrideStateUpdate = isObjectRecord(overrideDeterministic.stateUpdate) ? overrideDeterministic.stateUpdate : {};
+  const actionStateUpdate = { ...directStateUpdate, ...overrideStateUpdate };
+  if (isObjectRecord(templateDet.stateUpdate) && Object.keys(actionStateUpdate).length > 0) {
+    mergedDeterministic.stateUpdate = { ...templateDet.stateUpdate, ...actionStateUpdate };
+  } else if (Object.keys(actionStateUpdate).length > 0) {
+    mergedDeterministic.stateUpdate = actionStateUpdate;
   }
 
   return { deterministic: mergedDeterministic };
@@ -596,7 +607,9 @@ const resolveConditionalInfoVariant = (
 const appendManifestLogEntry = (
   state: RuntimeState,
   context: RuntimeActionContext<RuntimeState>,
-  metadata: GameManifestDeterministicActionMetadata
+  metadata: GameManifestDeterministicActionMetadata,
+  metricsBefore?: Record<string, unknown>,
+  metricsAfter?: Record<string, unknown>
 ) => {
   const log = metadata.log;
   const logEntry: Record<string, unknown> = {
@@ -613,6 +626,34 @@ const appendManifestLogEntry = (
 
   if (log?.cardId !== undefined) {
     logEntry.cardId = log.cardId;
+  }
+
+  if (log?.backText !== undefined) {
+    logEntry.backText = log.backText;
+  }
+
+  if (metricsBefore) {
+    logEntry.metricsBefore = metricsBefore;
+  }
+
+  if (metricsAfter) {
+    logEntry.metricsAfter = metricsAfter;
+  }
+
+  if (metricsBefore && metricsAfter) {
+    const deltas: Array<{ metricId: string; delta: number }> = [];
+    const allKeys = new Set([...Object.keys(metricsBefore), ...Object.keys(metricsAfter)]);
+    for (const key of allKeys) {
+      const before = typeof metricsBefore[key] === "number" ? (metricsBefore[key] as number) : 0;
+      const after = typeof metricsAfter[key] === "number" ? (metricsAfter[key] as number) : 0;
+      const delta = after - before;
+      if (delta !== 0) {
+        deltas.push({ metricId: key, delta });
+      }
+    }
+    if (deltas.length > 0) {
+      logEntry.metricDeltas = deltas;
+    }
   }
 
   appendLogEntry(state, logEntry);
@@ -866,8 +907,23 @@ const buildManifestActionTransition = (
   const conditionalLineSwitch = resolveConditionalLineSwitch(context.state, metadata);
   const conditionalInfoVariant = resolveConditionalInfoVariant(context.state, metadata);
 
+  const publicStateBefore = ensureObject(nextState.public);
+  const metricsBefore = { ...ensureObject(publicStateBefore.metrics) };
+
   applyManifestMetricDeltas(nextState, metadata);
-  const logEntry = appendManifestLogEntry(nextState, context, metadata);
+
+  const publicStateAfter = ensureObject(nextState.public);
+  const metricsAfter = { ...ensureObject(publicStateAfter.metrics) };
+
+  // `public.log` is the runtime audit trail used by integration checks and by
+  // presenters. Player-facing journal views filter card-resolution entries in
+  // the frontend, so runtime keeps every deterministic action auditable.
+  const skipLog = false;
+  let logEntry: Record<string, unknown> | null = null;
+  if (!skipLog) {
+    logEntry = appendManifestLogEntry(nextState, context, metadata, metricsBefore, metricsAfter);
+  }
+
   applyManifestStateUpdate(nextState, metadata, conditionalLineSwitch, conditionalInfoVariant);
 
   const effect: RuntimeActionEffect = {
@@ -882,12 +938,17 @@ const buildManifestActionTransition = (
 
   setRuntimeMetadata(nextState, context, effect, capabilityFamily);
 
+  const effects: Array<RuntimeActionEffect> = [effect];
+  if (logEntry) {
+    effects.push({ kind: "log", target: "public.log", data: logEntry as Record<string, unknown> });
+  }
+
   return {
     ok: true,
     delta: {
       state: nextState
     },
-    effects: [effect, { kind: "log", target: "public.log", data: logEntry }]
+    effects
   };
 };
 

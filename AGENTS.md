@@ -19,7 +19,7 @@ Agents must always load and follow the nearest `AGENTS.md` before working in tha
 ## 2. General rules for agents
 
 Agents must always:
-1. **When planning, configuring, and developing, always use Context7 MCP to get up-to-date documentation and best practices.**
+1. **When planning, configuring, and developing, use Context7 MCP to get up-to-date documentation and best practices.**
 2. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
    - Re-read the active workflow wrapper/role skill that governs the current work (for example: `$cubica`, `wf-architect`, `wf-orchestrator`).
@@ -50,28 +50,26 @@ Agents must always:
    - Avoid Anglicisms whenever possible.
 
 6. **Write ADR for any architecture changes**
+   - When responding to or working on architectural decisions, proposals, or questions, the agent must always start its response by explicitly describing how it understood the decision/proposal/question.
    - All architectural solutions must be reflected in the ADR.
    - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
    - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
-   - Delivery-specific bounded gameplay details must go in Gameplay Slice Records or Content-packs under `docs/tasks/content-packs`.
+   - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`; task execution plans and handoffs go in `docs/tasks/active/`.
 
-7. **Keep architectural authority and final review with the main agent**
-   - Built-in subagents must not be treated as the final decision-maker for architectural choices.
-   
-8. **Manage architectural drift and legacy gaps**
+9. **Manage architectural drift and legacy gaps**
     - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
     - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
 
-9. **Platform purity over game-specific hacks**
+10. **Platform purity over game-specific hacks**
     - Any new game mechanic MUST be implemented by extending the manifest schema (capabilities, handlers, state extensions).
     - NEVER add game-specific `if/else` branches or hardcode game IDs (e.g., "antarctica") in the core platform layers (like `services/runtime-api`).
 
-12. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
+11. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
     - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.
     - When adding new significant directories, you MUST create a `.desc.json` file inside them containing a short semantic description (1-2 sentences).
     - After any structural changes (adding/removing folders or `.desc.json` files), you MUST run `node scripts/dev/generate-structure.js` to regenerate `PROJECT_STRUCTURE.yaml` and keep the architecture context up to date.
 
-13. **ANTI-PATTERN: Declarative vs. Imperative Drift**
+12. **ANTI-PATTERN: Declarative vs. Imperative Drift**
     - NEVER replace declarative, cross-platform contracts (e.g., JSON Schema, OpenAPI specs) with language-specific imperative code (e.g., manual TypeScript type guards, Zod schemas isolated in backend code).
     - JSON Schema is the Single Source of Truth (SSOT) for data structures like Game Manifests. Validation must be performed by executing a standard validator (like AJV) against the JSON Schema, not by writing manual `if (typeof x !== 'string')` checks.
 

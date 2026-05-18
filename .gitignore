@@ -15,6 +15,7 @@ build/
 .out/
 .next/
 .tmp/
+test-results/
 .cache/
 
 # IDE / tooling

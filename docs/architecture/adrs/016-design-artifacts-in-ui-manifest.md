@@ -451,5 +451,5 @@ games/<game-id>/
 - `docs/architecture/adrs/009-asset-management-strategy.md` — управление медиа-ассетами
 - `docs/architecture/adrs/013-manifest-text-anchors-and-ui-split.md` — паттерн `source_ref`
 - `docs/architecture/schemas/ui-manifest.schema.json` — текущая схема UI-манифеста
-- `docs/tasks/epics/E_0010_game_manifest_architecture.md` — родительский эпик
-- `docs/tasks/features/F_00074-design-artifacts-for-ai-agents.md` — Feature-задача реализации
+- `docs/tasks/archive/epics/E_0010_game_manifest_architecture.md` — родительский эпик
+- `docs/tasks/archive/features/F_00074_design_artifacts_for_ai_agents_(E_0010).md` — Feature-задача реализации

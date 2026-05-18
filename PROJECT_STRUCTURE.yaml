@@ -16,7 +16,15 @@ docs: # Архитектура, задачи, планирование
   legacy:
     debt-log.csv: file # Центральный реестр долга (tech debt)
     stubs-register.md: file # Реестр временных заглушек
-  tasks: directory... # Система задач, ExecPlans и ROADMAP 
+  tasks: # Легковесная система задач и планов: текущие рабочие задачи, архив старой иерархии и постоянные артефакты задач.
+    active: # Активные рабочие задачи проекта. Каждый TSK-файл объединяет план, критерии приемки, проверки, артефакты и журнал передачи.
+      TSK-20260518-architecture-repair-and-task-system-migration.md: file # Активный план восстановления архитектурных проверок и завершения миграции системы задач на ADR-031.
+    archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
+      README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
+    artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
+    README.md: file # Правила текущей системы задач, планов и передачи артефактов.
+    ROADMAP.md: file # Историческая дорожная карта старой системы планирования; не используется как текущая доска.
+    STRATEGY.md: file # Стратегический слой планирования: горизонты, стратегические темы и правила приоритизации.
 games: # Пакеты игр и связанные ресурсы 
   antarctica: directory... # Пакет игры «Antarctica» (канонический content layer) 
 packages: # Переиспользуемые платформенные пакеты (contracts) 
@@ -25,7 +33,8 @@ packages: # Переиспользуемые платформенные паке
     manifest: directory... # Manifest and content contracts for Cubica.
     runtime: directory... # Runtime execution contracts for Cubica.
     session: directory... # Session lifecycle and player API contracts for Cubica.
-scripts: directory... # Скрипты разработки и индексирования 
+scripts: # Скрипты разработки и индексирования 
+  debug: directory... # Поддерживаемые debug-скрипты для локальной проверки UI, журналов и визуального сравнения. Скрипты не являются частью canonical verification и используются вручную при расследовании регрессий.
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 
   react-sdk: directory... # SDK для React/Next.js‑приложений 
@@ -37,7 +46,9 @@ services: # Сервисы и инфраструктура
   runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
 AGENTS.md: file # Правила работы ИИ‑агентов
 NEXT_STEPS.md: file # Ближайшие инженерные шаги и приоритеты миграции
+package-lock.json: file # Lockfile корневого npm-workspace
 package.json: file # Корневой npm-workspace
 PROJECT_OVERVIEW.md: file # Общий обзор проекта
 PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
+PROJECT_WORKFLOW_CONFIG.json: file # Конфигурация workflow-инструментов, поддерживаемая как корневой tool entry point
 README.md: file # Основное описание репозитория

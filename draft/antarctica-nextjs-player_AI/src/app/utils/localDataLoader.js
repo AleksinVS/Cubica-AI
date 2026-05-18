@@ -5,7 +5,7 @@ import journalScreen from '../data/screen_j.json';
 import antarcticaGameManifest from '../../../../antarctica/game.manifest.json';
 import antarcticaWebUiManifest from '../../../../antarctica/ui/web/ui.manifest.json';
 
-const DEFAULT_FIXTURE_KEY = 'main';
+const DEFAULT_FIXTURE_KEY = 'journal';
 
 const fixtureCatalog = {
     main: {

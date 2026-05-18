@@ -37,7 +37,7 @@
   - [4.2. Текущее состояние реализации](#42-текущее-состояние-реализации)
 - [5. Тестирование, наблюдаемость и эксплуатация](#5-тестирование-наблюдаемость-и-эксплуатация)
 - [6. Управление legacy и заглушками](#6-управление-legacy-и-заглушками)
-- [7. Связь с дорожной картой и ADR](#7-связь-с-дорожной-картой-и-adr)
+- [7. Связь с планированием и ADR](#7-связь-с-планированием-и-adr)
 
 ---
 
@@ -239,7 +239,7 @@ Execution Model определяет, как платформа обрабаты
  
 ### 4.1. Структура каталогов
  
-Фактическая структура репозитория описана в `PROJECT_STRUCTURE.md`. В контексте архитектуры важно следующее соответствие:
+Фактическая структура репозитория описана в `PROJECT_STRUCTURE.yaml`. В контексте архитектуры важно следующее соответствие:
 
 - `services/*` — backend‑сервисы платформы (Editor, Repository, Router, Engine, Catalog, Metadata DB).
 - `SDK/*` — SDK‑пакеты и вспомогательные библиотеки для клиентских приложений.
@@ -269,14 +269,14 @@ Execution Model определяет, как платформа обрабаты
 - **Нагрузочные тесты** — сценарии для Router и Engine.
 - **End‑to‑End‑тесты** — сценарии уровня пользователя через веб‑плеер (Next.js) и SDK.
 
-Детальная стратегия тестирования LLM‑игр (включая snapshot/semantic‑подходы и replay LLM‑ответов) будет оформлена в отдельном документе `docs/architecture/testing-strategy.md` и задачах `docs/tasks/features/F_00050_testing_strategy.md`.
+Детальная стратегия тестирования LLM‑игр (включая snapshot/semantic‑подходы и replay LLM‑ответов) должна оформляться через отдельный архитектурный документ и активную рабочую задачу в `docs/tasks/active/`.
 
 **Наблюдаемость и эксплуатация:**
 
 - Все сервисы должны писать структурированные логи в JSON‑формате с correlation/trace ID для трассировки запросов.
 - Ключевые метрики (latency, error rate, использование токенов LLM, попадания в rate limit) экспортируются в формате Prometheus.
 - Распределённый трейсинг строится на базе OpenTelemetry и охватывает путь запроса через Router, Engine и View Adapters.
-- Стандарты наблюдаемости и лимитирования будут зафиксированы в отдельном ADR (Observability Standards) и задачах `docs/tasks/features/F_00051_observability_framework.md` и `docs/tasks/features/F_00052_rate_limiting.md`.
+- Стандарты наблюдаемости и лимитирования должны фиксироваться в отдельном ADR и активной рабочей задаче в `docs/tasks/active/`.
 
 ---
 
@@ -290,15 +290,13 @@ Execution Model определяет, как платформа обрабаты
 
 ---
 
-## 7. Связь с дорожной картой и ADR
+## 7. Связь с планированием и ADR
 
-Архитектурные решения и планы реализации синхронизированы с системой задач:
+Архитектурные решения и планы реализации синхронизированы с легковесной системой задач из ADR-031:
 
-- `docs/tasks/ROADMAP.md` — высокоуровневый список Milestone/Epic/Feature.
-- `docs/tasks/milestones/M_010_game_player_alpha.md` — веха Alpha‑версии игрового плеера.
-- `docs/tasks/epics/E_0010_game_manifest_architecture.md` — эпик про архитектуру JSON‑манифестов и LLM‑first плеера.
-- `docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md` — эпик по переносу сценария «Antarctica» на Next.js‑плеер.
-- `docs/tasks/epics/E_0030_backend_architecture_design.md` — эпик, охватывающий архитектуру Backend и Game Engine.
-- `docs/tasks/epics/E_0050_observability_and_quality.md` — эпик, описывающий стратегию тестирования, наблюдаемости и rate limiting.
+- `NEXT_STEPS.md` — текущая доска проекта (`Now / Next / Later / Blocked`).
+- `docs/tasks/active/` — активные рабочие задачи `TSK-*`, объединяющие план, критерии приемки, проверки, артефакты и журнал передачи.
+- `docs/tasks/artifacts/` — постоянные артефакты рабочих задач.
+- `docs/tasks/archive/` — архив старой системы `milestones/`, `epics/`, `features/`, `content-packs/`.
 
-ADR‑файлы в `docs/architecture/adrs/` фиксируют архитектурные решения. `PROJECT_ARCHITECTURE.md` должен оставаться согласованным с актуальными ADR и ROADMAP.
+ADR‑файлы в `docs/architecture/adrs/` фиксируют архитектурные решения. `PROJECT_ARCHITECTURE.md` должен оставаться согласованным с актуальными ADR, `NEXT_STEPS.md` и активными задачами.

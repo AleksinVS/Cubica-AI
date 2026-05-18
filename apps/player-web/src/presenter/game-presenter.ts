@@ -46,6 +46,7 @@ export class GamePresenter {
   private isPending = false;
   private error: string | null = null;
   private dismissedPanel: string | null = null;
+  private currentActivePanel: string | null = null;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -106,7 +107,14 @@ export class GamePresenter {
       : resolveLayoutModeFromRouting(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi) ?? "topbar";
 
     const rawActivePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;
-    const activePanel = rawActivePanel && rawActivePanel !== this.dismissedPanel ? rawActivePanel : null;
+    let activePanel: string | null = null;
+    if (rawActivePanel && rawActivePanel !== this.dismissedPanel) {
+      activePanel = rawActivePanel;
+    } else if (!this.dismissedPanel && this.currentActivePanel) {
+      /* Preserve current panel if server didn't specify a new one and user didn't dismiss it */
+      activePanel = this.currentActivePanel;
+    }
+    this.currentActivePanel = activePanel;
 
     return {
       ...gameState,
@@ -201,6 +209,14 @@ export class GamePresenter {
         this.dismissedPanel = null;
       }
 
+      if (request.type === ManifestAction.SHOW_HISTORY) {
+        this.currentActivePanel = "history";
+      }
+
+      if (request.type === ManifestAction.SHOW_HINT) {
+        this.currentActivePanel = "hint";
+      }
+
       if (request.type === ManifestAction.RESET_GAME) {
         await this.resetGame();
         return;
@@ -208,6 +224,7 @@ export class GamePresenter {
 
       if (request.type === ManifestAction.DISMISS_PANEL) {
         this.dismissedPanel = (request.payload?.panel as string) ?? null;
+        this.currentActivePanel = null;
         await this.syncView();
         return;
       }

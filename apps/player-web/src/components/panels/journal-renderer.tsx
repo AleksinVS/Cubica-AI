@@ -1,101 +1,72 @@
 import { useRef } from "react";
 import type { MetricsSnapshot, RuntimeLogEntry } from "@/types/game-state";
 import type { FallbackMetricSpec } from "@/presenter/game-config";
+import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import { PanelButtonRow } from "./panel-button-row";
 import { JournalMetricCluster } from "./journal-metric-cluster";
 
 /**
- * Преобразует запись лога runtime в пользовательскую запись журнала.
- *
- * Записи поступают по двум путям:
- * - Из манифеста (deterministic handlers): имеют kind и summary.
- * - Из runtime UI (buildTransition): имеют actionId, capability, capabilityFamily, at.
- *
- * Журнал показывает только игровые события и пропускает чистые UI-взаимодействия.
+ * Определяет, является ли запись лога выбором карточки.
  */
-function mapToJournalEntry(entry: RuntimeLogEntry): { title: string; subtitle: string; time: string } | null {
-  const kind = (entry as Record<string, unknown>).kind as string | undefined;
-  const summary = (entry as Record<string, unknown>).summary as string | undefined;
-  const isManifestDriven = !!(kind && summary);
+function isCardLogEntry(entry: RuntimeLogEntry): boolean {
+  const hasVisibleCardText = Boolean(entry.frontText || entry.backText);
+  const isCardResolution = entry.kind === "opening-card-resolution";
+  const isPlainCardChoice = entry.actionId?.startsWith("opening.card.") && !entry.actionId.endsWith(".advance");
 
-  if (!isManifestDriven) {
-    if (
-      entry.capabilityFamily === "ui.panel" ||
-      entry.capabilityFamily === "ui.screen" ||
-      entry.capabilityFamily === "runtime.server" ||
-      entry.actionId === ManifestAction.REQUEST_SERVER
-    ) {
-      return null;
-    }
+  // The journal is player-facing: show card choices with visible card text, and
+  // keep backend/system events or bare "continue" advances out of the panel.
+  return isCardResolution || hasVisibleCardText || (isPlainCardChoice && Boolean(entry.cardId));
+}
+
+/**
+ * Извлекает cardId из записи лога.
+ */
+function resolveCardId(entry: RuntimeLogEntry): string | null {
+  const explicit = (entry as Record<string, unknown>).cardId as string | undefined;
+  if (explicit) return explicit;
+  if (entry.actionId?.startsWith("opening.card.")) {
+    return entry.actionId.replace("opening.card.", "").replace(".advance", "");
   }
+  return null;
+}
 
-  if (isManifestDriven) {
-    let typeLabel = "";
-    if (kind === "opening-card-advance") {
-      typeLabel = "Карточка";
-    } else if (kind === "opening-info-advance") {
-      typeLabel = "Инфо";
-    } else if (kind === "team-selection") {
-      typeLabel = "Команда";
-    } else if (kind === "board-advance") {
-      typeLabel = "Доска";
-    } else {
-      typeLabel = kind.replace(/-/g, " ").replace(/_/g, " ");
-    }
+/**
+ * Находит текст исходной и перевернутой карточки для записи журнала.
+ */
+function resolveCardTexts(
+  entry: RuntimeLogEntry,
+  gameState?: Record<string, unknown>,
+  content?: PlayerFacingContent
+): { frontText: string; backText: string } | null {
+  const cardId = resolveCardId(entry);
+  if (!cardId) return null;
 
-    const cardIdMatch = summary.match(/Карточка\s*(\d+)/);
-    const infoIdMatch = summary.match(/i\d+(?:_\d+)?/);
-    if (cardIdMatch) {
-      return { title: `${typeLabel} ${cardIdMatch[1]}`, subtitle: summary, time: "" };
-    }
-    if (infoIdMatch) {
-      return { title: `${typeLabel} ${infoIdMatch[0]}`, subtitle: summary, time: "" };
-    }
+  const boardCards = (gameState?.boardCards ?? []) as Array<
+    Record<string, unknown> & { cardId: string; summary?: string; backText?: string }
+  >;
+  const manifestContent = (content as unknown as Record<string, unknown>)?.content as
+    | Record<string, unknown>
+    | undefined;
+  const contentCards = (manifestContent?.data as Record<string, unknown>)?.cards as
+    | Array<Record<string, unknown> & { cardId: string; summary?: string; backText?: string }>
+    | undefined;
 
-    return { title: typeLabel, subtitle: summary, time: "" };
-  }
+  const card = boardCards.find((c) => c.cardId === cardId) ?? contentCards?.find((c) => c.cardId === cardId);
 
-  const actionId = entry.actionId ?? "unknown";
-  let title = actionId;
-  if (actionId.startsWith("opening.card.")) {
-    const cardId = actionId.replace("opening.card.", "").replace(".advance", "");
-    title = `Карточка ${cardId}`;
-  } else if (actionId.startsWith("opening.info.")) {
-    const infoId = actionId.replace("opening.info.", "").replace(".advance", "");
-    title = `Инфо ${infoId}`;
-  } else if (actionId.startsWith("opening.team.")) {
-    title = "Команда";
-  } else if (actionId === ManifestAction.SHOW_HISTORY) {
-    title = "Журнал";
-  } else if (actionId === ManifestAction.SHOW_HINT) {
-    title = "Подсказка";
-  } else if (actionId.includes(".")) {
-    const parts = actionId.split(".");
-    title = parts[parts.length - 1].replace(/_/g, " ");
-  }
+  const frontText = entry.frontText ?? card?.summary ?? "";
+  const backText = entry.backText ?? (entry as Record<string, unknown>).summary as string | undefined ?? (card?.backText as string | undefined) ?? "";
 
-  const capability = entry.capability ?? entry.capabilityFamily ?? "";
-  const subtitle =
-    typeof entry.payload === "string" && entry.payload.length > 0
-      ? entry.payload
-      : capability;
+  // Allow rendering when either text is available or the card was resolved
+  if (!frontText && !backText && !card) return null;
 
-  let time = "";
-  if (entry.at) {
-    try {
-      const date = new Date(entry.at);
-      time = date.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" });
-    } catch {
-      time = "";
-    }
-  }
-
-  return { title, subtitle, time };
+  return { frontText, backText };
 }
 
 /**
  * Рендерит overlay журнала ходов (history).
+ * Показывает только выборы карточек: front text слева, back text справа,
+ * а под ними метрики с изменениями (superscript diff).
  */
 export function JournalRenderer({
   metrics,
@@ -103,7 +74,9 @@ export function JournalRenderer({
   onJournal,
   onHint,
   onClose,
-  fallbackMetrics
+  fallbackMetrics,
+  gameState,
+  content
 }: {
   metrics: MetricsSnapshot;
   log: Array<RuntimeLogEntry>;
@@ -111,6 +84,8 @@ export function JournalRenderer({
   onHint: () => void;
   onClose?: () => void;
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>;
+  gameState?: Record<string, unknown>;
+  content?: PlayerFacingContent;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -120,24 +95,21 @@ export function JournalRenderer({
     }
   };
 
-  const journalEntries = log
-    .map((entry) => mapToJournalEntry(entry))
-    .filter((entry): entry is { title: string; subtitle: string; time: string } => entry !== null);
-
-  const MOCK_ENTRIES: Array<{ text: string }> = [
-    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
-    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
-    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" },
-    { text: "Но на айсберге пингвины были как в крепости, большинство хищников не могли до них добраться, кроме того, айсберг служил надежным убежищем от зимних ледяных штормов благодаря своим размерам и наличию" }
-  ];
-
-  const sourceEntries = journalEntries.length > 0 ? journalEntries : MOCK_ENTRIES;
-  const displayEntries: Array<{ text: string } | { title: string; subtitle: string; time: string }> = sourceEntries.slice(0, 4);
-  while (displayEntries.length < 4) {
-    displayEntries.push(MOCK_ENTRIES[displayEntries.length % MOCK_ENTRIES.length]);
-  }
-  const firstHalf = displayEntries.slice(0, 2);
-  const secondHalf = displayEntries.slice(2, 4);
+  const cardEntries = log
+    .filter(isCardLogEntry)
+    .map((entry) => {
+      const texts = resolveCardTexts(entry, gameState, content);
+      if (!texts) return null;
+      return {
+        frontText: texts.frontText,
+        backText: texts.backText,
+        metricsBefore: (entry as Record<string, unknown>).metricsBefore as MetricsSnapshot | undefined,
+        metricsAfter: (entry as Record<string, unknown>).metricsAfter as MetricsSnapshot | undefined,
+        metricDeltas: (entry as Record<string, unknown>).metricDeltas as Array<{ metricId: string; delta: number }> | undefined,
+        at: entry.at ?? ""
+      };
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   return (
     <div className="game-renderer">
@@ -145,28 +117,36 @@ export function JournalRenderer({
         <div className="journal-main-content">
           <div className="journal-container" ref={containerRef}>
             <h1 className="heading-h1">Журнал ходов</h1>
-            <div className="journal-entries">
-              {firstHalf.map((entry, entryIndex) => (
-                <article key={`journal-entry-${entryIndex}`} className="game-card journal-entry-card">
-                  {"text" in entry ? entry.text : entry.subtitle || entry.title}
-                </article>
-              ))}
-            </div>
-            <div className="journal-variables-container">
-              <JournalMetricCluster metrics={metrics} fallbackMetrics={fallbackMetrics} />
-            </div>
-          </div>
-          <div className="journal-container">
-            <div className="journal-entries">
-              {secondHalf.map((entry, entryIndex) => (
-                <article key={`journal-entry-second-${entryIndex}`} className="game-card journal-entry-card">
-                  {"text" in entry ? entry.text : entry.subtitle || entry.title}
-                </article>
-              ))}
-            </div>
-            <div className="journal-variables-container">
-              <JournalMetricCluster metrics={metrics} fallbackMetrics={fallbackMetrics} />
-            </div>
+            {cardEntries.length === 0 ? (
+              <div className="journal-empty-state">
+                <div className="journal-empty-card">Пока нет записей о выбранных карточках.</div>
+              </div>
+            ) : (
+              <div className="journal-entries-list">
+                {cardEntries.map((entry, index) => (
+                  <article key={`journal-card-${index}`} className="game-card journal-entry-card">
+                    <div className="journal-entry-columns">
+                      <div className="journal-entry-front">
+                        <div className="journal-entry-label">Исходная карточка</div>
+                        <div className="journal-entry-text">{entry.frontText}</div>
+                      </div>
+                      <div className="journal-entry-divider" />
+                      <div className="journal-entry-back">
+                        <div className="journal-entry-label">Результат</div>
+                        <div className="journal-entry-text">{entry.backText}</div>
+                      </div>
+                    </div>
+                    <div className="journal-entry-metrics">
+                      <JournalMetricCluster
+                        metrics={entry.metricsAfter ?? metrics}
+                        previousMetrics={entry.metricsBefore}
+                        fallbackMetrics={fallbackMetrics}
+                      />
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
           <PanelButtonRow onJournal={onJournal} onHint={onHint} layoutMode="topbar" showArrows={false} />
         </div>

@@ -67,6 +67,5 @@
 
 ## Связанные артефакты
 - `docs/architecture/schemas/game-manifest.schema.json`
-- `docs/tasks/features/F_00040_manifest_versioning.md`
-- `docs/tasks/ROADMAP.md`
-
+- `docs/tasks/archive/features/F_00040_manifest_versioning.md`
+- Historical roadmap from the previous planning system.

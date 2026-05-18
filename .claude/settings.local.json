@@ -19,7 +19,9 @@
       "Bash(grep -E '\\\\.\\(js|ts|json|yaml|yml\\)$')",
       "Bash(awk '{print $2}')",
       "Bash(xargs -r kill)",
-      "Bash(kill *)"
+      "Bash(kill *)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
     ]
   }
 }

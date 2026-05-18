@@ -1,5 +1,7 @@
 # ROADMAP
 
+> Historical note: this file belongs to the previous roadmap-style planning layer. The current project board is `NEXT_STEPS.md`; active execution plans live in `docs/tasks/active/` according to ADR-031. Keep this file only as strategic background unless a future task explicitly reactivates it.
+
 Назначение документа: стратегический план работ по Cubica.
 
 Этот файл отвечает на три вопроса:
@@ -236,12 +238,12 @@ Recommended `development_method`: `TDD`
 
 Для continuity и навигации сохраняем связь с уже существующими task-файлами:
 
-- Milestone: `docs/tasks/milestones/M_010_game_player_alpha.md`
-- Architecture / manifest foundation: `docs/tasks/epics/E_00001_architecture_review_consolidation.md`
-- Backend direction: `docs/tasks/epics/E_0030_backend_architecture_design.md`
-- Editor direction: `docs/tasks/epics/E_00021_game_editor_development.md`
-- Antarctica delivery line: `docs/tasks/epics/E_0020_antarctica_nextjs_game_player.md`
-- Quality / observability: `docs/tasks/epics/E_0050_observability_and_quality.md`
-- **Architecture Drift Prevention:** `docs/tasks/epics/E_0060_architecture_drift_prevention.md`
+- Milestone: `docs/tasks/archive/milestones/M_010_game_player_alpha.md`
+- Architecture / manifest foundation: `docs/tasks/archive/epics/E_00001_architecture_review_consolidation.md`
+- Backend direction: `docs/tasks/archive/epics/E_0030_backend_architecture_design.md`
+- Editor direction: `docs/tasks/archive/epics/E_00021_game_editor_development.md`
+- Antarctica delivery line: `docs/tasks/archive/epics/E_0020_antarctica_nextjs_game_player.md`
+- Quality / observability: `docs/tasks/archive/epics/E_0050_observability_and_quality.md`
+- **Architecture Drift Prevention:** `docs/tasks/archive/epics/E_0060_architecture_drift_prevention.md`
 
 Эти файлы остаются местом для детальной декомпозиции. Этот `ROADMAP.md` фиксирует только стратегический курс.

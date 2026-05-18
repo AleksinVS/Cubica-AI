@@ -10,6 +10,7 @@ import { ManifestAction } from "@cubica/contracts-manifest";
 import { useLocale, LocaleProvider } from "@/lib/locale";
 import { ru } from "@/lib/locale/ru";
 import type { PlayerState } from "@/presenter/types";
+import type { RuntimeLogEntry } from "@/types/game-state";
 import type { ViewCommand } from "@cubica/sdk-core";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
@@ -176,11 +177,13 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
       {state.activePanel === "history" ? (
         <JournalRenderer
           metrics={metrics}
-          log={log as Array<{ actionId: string; payload?: unknown; capability?: string; capabilityFamily?: string; at?: string }>}
+          log={log as Array<RuntimeLogEntry>}
           onJournal={() => handleDismissPanel("history")}
           onHint={() => handleAction(ManifestAction.SHOW_HINT)}
           onClose={() => handleDismissPanel("history")}
           fallbackMetrics={fullConfig.fallbackMetrics}
+          gameState={state as Record<string, unknown>}
+          content={content}
         />
       ) : state.activePanel === "hint" ? (
         <HintRenderer

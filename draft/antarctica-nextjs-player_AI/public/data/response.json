@@ -1,0 +1,18 @@
+{
+  "updates": {
+    "pro": {
+      "value": 10
+    },
+    "rep": {
+      "value": 6
+    },
+    "score": {
+      "value": 55
+    },
+    "C1": {
+      "backgroundImage": "./images/ledyanoy-fon.png",
+      "text": ""
+    }
+  },
+  "description": "This is a patch sebt by server to update the scene"
+}

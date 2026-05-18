@@ -2262,6 +2262,53 @@ select {
   padding-top: 0.75rem;
 }
 
+/* Two-column journal entry layout (front text | back text) */
+.journal-entries-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.journal-entry-columns {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.journal-entry-front,
+.journal-entry-back {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.journal-entry-divider {
+  width: 1px;
+  background: rgba(170, 227, 255, 0.2);
+  margin: 0 0.5rem;
+}
+
+.journal-entry-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(187, 225, 250, 0.7);
+}
+
+.journal-entry-text {
+  font-size: 0.95rem;
+  color: rgba(255, 255, 255, 0.95);
+  line-height: 1.5;
+}
+
+.journal-entry-metrics {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(170, 227, 255, 0.15);
+}
+
 /* Metric strip below journal entries - per moves-journal mockup */
 .journal-metric-strip {
   display: flex;
@@ -2734,7 +2781,7 @@ select {
   flex-direction: column !important;
   align-items: stretch !important;
   width: 100% !important;
-  overflow-y: visible !important;
+  overflow-y: auto !important;
 }
 
 .journal-container {
@@ -2763,6 +2810,12 @@ select {
   grid-template-columns: none !important;
 }
 
+.journal-entries-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+}
+
 .journal-entry-card,
 .journal-empty-card {
   display: block !important;
@@ -2776,14 +2829,47 @@ select {
   font-size: 16px !important;
   line-height: 1.4 !important;
   min-height: auto !important;
-  flex: 1 1 auto !important;
-  width: auto !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .journal-entry-title,
 .journal-entry-subtitle,
-.journal-entry-time {
+.journal-entry-time,
+.journal-entry-label {
   display: none !important;
+}
+
+.journal-entry-divider {
+  display: none !important;
+}
+
+.journal-entry-columns {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 1rem !important;
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.journal-entry-front,
+.journal-entry-back {
+  background: rgba(162, 217, 247, 0.5) !important;
+  padding: 16px !important;
+}
+
+.journal-entry-text {
+  font-size: 16px !important;
+  line-height: 22.4px !important;
+}
+
+.journal-entry-card {
+  background: transparent !important;
+  padding: 0 !important;
+}
+
+.journal-entry-metrics {
+  padding: 0 !important;
 }
 
 .journal-variables-container {
@@ -2860,6 +2946,26 @@ select {
 .game-renderer:has(.hint-screen) {
   border: none !important;
   box-shadow: none !important;
+}
+
+/* Disable viewport scaling on journal screen — draft journal never scales */
+.game-renderer:has(.journal-screen) {
+  transform: none !important;
+}
+
+/* Make journal renderer responsive — draft journal fills viewport */
+.game-renderer:has(.journal-screen) {
+  width: 100% !important;
+  max-width: none !important;
+  height: 100vh !important;
+  margin: 0 !important;
+}
+
+/* Journal shell layout: remove .game-player-root padding/grid/gap to match draft */
+.game-player-root:has(.journal-screen) {
+  padding: 0 !important;
+  gap: 0 !important;
+  display: block !important;
 }
 
 .leftsidebar-screen .game-variables-container {
@@ -3207,3 +3313,10 @@ select {
   justify-content: flex-start !important;
   padding: 1rem 0 !important;
 }
+
+/* Hide topbar variables when journal is open (draft parity) */
+.game-renderer:has(.journal-screen) .topbar-variables-container,
+.game-renderer:has(.journal-screen) .game-variables-container {
+  display: none !important;
+}
+

@@ -154,15 +154,15 @@ export interface GameManifestDeterministicGuard {
 
 /**
  * JsonLogic expression — a recursive JSON structure evaluated by json-logic-js.
- * Can be a literal (string, number, boolean, null) or an object with a single
- * operator key mapping to an array of sub-expressions.
+ * JsonLogic is a small JSON-based rules format; operator arguments can be a
+ * single value (`{"var":"public.metrics.pro"}`) or a list of nested values.
  */
 export type JsonLogicExpression =
   | string
   | number
   | boolean
   | null
-  | { [operator: string]: Array<JsonLogicExpression> };
+  | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> };
 
 export interface GameManifestDeterministicMetricDelta {
   metricId: string;
@@ -220,6 +220,8 @@ export interface GameManifestDeterministicLogMetadata {
   stageId?: string;
   cardId?: string;
   memberId?: string;
+  /** Back (flipped/result) text of the card, shown in the journal after the choice is made. */
+  backText?: string;
 }
 
 export interface GameManifestDeterministicStatePatch {
@@ -250,6 +252,8 @@ export interface GameManifestDeterministicActionMetadata {
   conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
   log?: GameManifestDeterministicLogMetadata;
   stateUpdate?: GameManifestDeterministicStateUpdate;
+  /** If true, the runtime will skip creating a log entry for this action. */
+  excludeFromLog?: boolean;
   [key: string]: unknown;
 }
 
@@ -378,8 +382,10 @@ export interface GameUiCardComponentProps {
   text?: string;
   /** Card title for multi-field rendering. */
   title?: string;
-  /** Card summary for multi-field rendering. */
+  /** Card summary for multi-field rendering (front face text). */
   summary?: string;
+  /** Back (flipped/result) text shown after the card is selected. */
+  backText?: string;
   /** Chip labels displayed as metadata tags. */
   chips?: Array<string>;
   /** Label for the select/choose button inside the card. */
@@ -742,5 +748,4 @@ export const ManifestAction = {
 } as const;
 
 export type ManifestActionType = (typeof ManifestAction)[keyof typeof ManifestAction];
-
 

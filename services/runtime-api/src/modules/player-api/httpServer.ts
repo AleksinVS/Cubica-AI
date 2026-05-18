@@ -116,6 +116,8 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      // eslint-disable-next-line no-console
+      console.error("Internal Server Error:", error);
       const message = error instanceof Error ? error.message : "Internal server error";
       sendJson(response, 500, { error: message });
     }

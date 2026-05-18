@@ -11,11 +11,25 @@ export type GameSession = SessionSnapshot & {
 
 export type RuntimeLogEntry = {
   actionId: string;
+  /** Runtime event kind from the backend audit log. */
+  kind?: string;
+  /** Manifest card identifier when the event belongs to a card choice. */
+  cardId?: string;
   capability?: string;
   capabilityFamily?: string;
   functionName?: string;
   at?: string;
   payload?: unknown;
+  /** Front text of the card that was selected (for journal display). */
+  frontText?: string;
+  /** Back (flipped/result) text of the card that was selected. */
+  backText?: string;
+  /** Metric snapshot before the action was applied. */
+  metricsBefore?: MetricsSnapshot;
+  /** Metric snapshot after the action was applied. */
+  metricsAfter?: MetricsSnapshot;
+  /** Computed metric deltas for this action. */
+  metricDeltas?: Array<{ metricId: string; delta: number }>;
 };
 
 export type MetricsSnapshot = Record<string, unknown>;

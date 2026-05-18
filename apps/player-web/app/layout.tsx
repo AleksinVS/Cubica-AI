@@ -1,24 +1,9 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const ibmPlexSans = IBM_Plex_Sans({
-  weight: ["400", "500", "600", "700"],
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-space-grotesk"
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  subsets: ["latin", "cyrillic"],
-  weight: ["400", "500", "600"],
-  variable: "--font-ibm-plex-mono"
-});
-
-const inter = Inter({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-inter"
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Cubica Player Web",
@@ -32,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <body className={`${ibmPlexSans.variable} ${ibmPlexMono.variable} ${inter.variable}`}>{children}</body>
+      <body className={inter.className}>{children}</body>
     </html>
   );
 }
