@@ -50,6 +50,8 @@ Keep Strapi secrets (`APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER
 
 `POST /orders/payment-stub` creates a paid order and purchase for the authenticated user without Robokassa. It is intended for test launch flows only and is disabled unless `PAYMENT_STUB_ENABLED=true`.
 
+For local browser testing, Strapi CORS allows `PORTAL_PUBLIC_URL` plus the local portal ports used by the current test contour. With the portal on `http://localhost:3010`, clicking `Купить` on `/games/antarctica` logs in the local test user and calls this endpoint directly.
+
 Request body:
 
 ```json

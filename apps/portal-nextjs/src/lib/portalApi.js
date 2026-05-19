@@ -16,6 +16,13 @@ const TOKEN_STORAGE_KEYS = [
   "strapi_jwt",
 ];
 
+const PRIMARY_TOKEN_STORAGE_KEY = "cubica.portal.jwt";
+const TEST_USER = {
+  username: "portal-test",
+  email: "portal-test@example.com",
+  password: "portal-test-password",
+};
+
 function getStoredJwt() {
   if (typeof window === "undefined") {
     return null;
@@ -68,6 +75,36 @@ async function request(path, options = {}) {
   return payload;
 }
 
+async function publicRequest(path, options = {}) {
+  const response = await fetch(buildUrl(path), {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message =
+      payload?.error?.message ||
+      payload?.message ||
+      `Portal API request failed with status ${response.status}`;
+    const error = new Error(message);
+    error.payload = payload;
+    throw error;
+  }
+
+  return payload;
+}
+
+function storeJwt(token) {
+  if (typeof window !== "undefined" && token) {
+    window.localStorage.setItem(PRIMARY_TOKEN_STORAGE_KEY, token);
+  }
+}
+
 function normalizeSessionList(payload) {
   if (Array.isArray(payload)) {
     return payload;
@@ -98,6 +135,60 @@ export async function copyLaunchLink({ purchaseId, linkId }) {
     launchSession: payload?.launchSession || payload?.data?.launchSession,
     raw: payload,
   };
+}
+
+export async function loginTestUser() {
+  const payload = await publicRequest("/api/auth/local", {
+    method: "POST",
+    body: JSON.stringify({
+      identifier: TEST_USER.email,
+      password: TEST_USER.password,
+    }),
+  });
+
+  storeJwt(payload?.jwt);
+  return payload;
+}
+
+export async function ensureTestUserSession() {
+  const existingToken = getStoredJwt();
+
+  if (existingToken) {
+    return { jwt: existingToken };
+  }
+
+  try {
+    const payload = await publicRequest("/api/auth/local/register", {
+      method: "POST",
+      body: JSON.stringify(TEST_USER),
+    });
+
+    storeJwt(payload?.jwt);
+    return payload;
+  } catch (error) {
+    return loginTestUser();
+  }
+}
+
+export async function createTestPurchase({
+  gameSlug,
+  packageType = "one-time",
+  price,
+  startDate,
+  endDate,
+}) {
+  await ensureTestUserSession();
+
+  return request("/api/orders/payment-stub", {
+    method: "POST",
+    body: JSON.stringify({
+      gameSlug,
+      packageType,
+      price,
+      startDate,
+      endDate,
+    }),
+  });
 }
 
 export async function listActiveSessions({ purchaseId, linkId }) {

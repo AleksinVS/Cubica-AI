@@ -1,5 +1,7 @@
 import styled from "styled-components";
 import { FaStar } from "react-icons/fa";
+import { useState } from "react";
+import { createTestPurchase } from "@/lib/portalApi";
 
 const InfoWrapper = styled.div`
     display: flex;
@@ -77,6 +79,13 @@ const ButtonGroup = styled.div`
 
 `;
 
+const StatusText = styled.p`
+    min-height: 1.4rem;
+    margin: 0;
+    color: rgb(var(--theme-yellow));
+    font-size: 0.9rem;
+`;
+
 const Delimeter = styled.div`
     width: 100%; 
     height: 1px; 
@@ -103,7 +112,33 @@ const Rating = ({ rating }) => {
 };
 
 
-const InfoContainer = ({ title, reviews, priceLaunch, priceMonth, description, details, rating }) => {
+const InfoContainer = ({ title, slug, reviews, priceLaunch, priceMonth, description, details, rating }) => {
+    const [purchaseStatus, setPurchaseStatus] = useState("");
+    const [isBuying, setIsBuying] = useState(false);
+
+    const handleTestPurchase = async () => {
+        setIsBuying(true);
+        setPurchaseStatus("Создаем тестовую покупку...");
+
+        try {
+            const result = await createTestPurchase({
+                gameSlug: slug,
+                packageType: "one-time",
+                price: priceLaunch,
+            });
+            const purchaseId = result?.purchase?.documentId;
+            setPurchaseStatus(
+                purchaseId
+                    ? `Покупка зачислена: ${purchaseId}`
+                    : "Покупка зачислена"
+            );
+        } catch (error) {
+            setPurchaseStatus(error.message || "Не удалось создать тестовую покупку");
+        } finally {
+            setIsBuying(false);
+        }
+    };
+
     return (
         <InfoWrapper>
             <Title>{title}</Title>
@@ -117,9 +152,12 @@ const InfoContainer = ({ title, reviews, priceLaunch, priceMonth, description, d
             </PriceWrapper>
             <ButtonGroup>
                 <button>Играть</button>
-                <button>Купить</button>
+                <button type="button" disabled={isBuying} onClick={handleTestPurchase}>
+                    {isBuying ? "Покупаем..." : "Купить"}
+                </button>
 
             </ButtonGroup>
+            <StatusText role="status">{purchaseStatus}</StatusText>
             <Delimeter />
             <Description>{description}</Description>
             <Delimeter />

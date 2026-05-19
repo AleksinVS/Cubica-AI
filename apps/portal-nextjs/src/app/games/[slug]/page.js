@@ -97,6 +97,7 @@ const GamePage = ({ params: paramsPromise }) => {
                     <InfoContainerWrapper>
                         <InfoContainer
                             title={game.title}
+                            slug={game.slug}
                             rating={game.rating}
                             reviews={game.reviews}
                             priceLaunch={game.pricePerLaunch}

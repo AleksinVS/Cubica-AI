@@ -1,3 +1,19 @@
+const localCorsOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'http://localhost:3010',
+  'http://45.32.22.80:12345',
+];
+
+function allowedCorsOrigins() {
+  return [
+    process.env.PORTAL_PUBLIC_URL,
+    process.env.PLAYER_PUBLIC_URL,
+    process.env.STRAPI_ADMIN_BACKEND_URL,
+    ...localCorsOrigins,
+  ].filter(Boolean);
+}
+
 module.exports = [
   'strapi::errors',
   'strapi::security',
@@ -6,11 +22,7 @@ module.exports = [
     config: {
       origin: (ctx) => {
         const origin = ctx.request.header.origin;
-
-        const allowedOrigins = [
-          'http://localhost:3000',
-          'http://45.32.22.80:12345',
-        ];
+        const allowedOrigins = allowedCorsOrigins();
 
         if (allowedOrigins.includes(origin)) {
           return origin;
