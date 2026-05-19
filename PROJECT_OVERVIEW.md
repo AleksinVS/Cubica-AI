@@ -30,6 +30,7 @@
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
 - `apps/player-web/` - канонический web delivery слой для `Antarctica`.
 - `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI.
+- `draft/cubica-portal-nextjs/` - текущий draft портала для следующего test VPS launch; он управляет будущими покупками/ссылками/игровыми сессиями, но не является source of truth для runtime-логики.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для сценария и механики `Antarctica` на время миграции; это состояние миграции, а не новое архитектурное решение; анализировать его нужно через scripts и targeted extraction, а не читать целиком как основной документ.
 - `draft/antarctica-nextjs-player/`, `apps/portal-nextjs/` и `services/portal-backend/` - draft-артефакты и прототипы, не целевая архитектура.
 
@@ -227,11 +228,8 @@
 - Канонический content bundle `games/antarctica/` с `game.manifest.json`, `ui.manifest.json` и design mockups.
 - Канонический backend runtime `services/runtime-api/` с bounded validation, capability routing и deterministic handlers.
 - Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/antarctica/` и `packages/contracts/*`.
+- `draft/cubica-portal-nextjs/` как текущий вариант портала для анализа, доработки и тестового запуска `Antarctica` через launch links.
 - `apps/portal-nextjs/` и `services/portal-backend/` как импортированные draft-артефакты портала для последующего анализа.
-- `draft/antarctica-nextjs-player/` как визуальный prototype/reference, но не source of truth для кода, структуры или runtime-логики.
-
----
-щего анализа.
 - `draft/antarctica-nextjs-player/` как визуальный prototype/reference, но не source of truth для кода, структуры или runtime-логики.
 
 ---

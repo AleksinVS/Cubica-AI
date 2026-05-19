@@ -20,6 +20,7 @@
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
 - `apps/player-web/` - канонический web delivery layer, который потребляет player-facing content API/DTO и уже рендерит первый bounded Antarctica current-step slice (`i0 -> board 1..6 -> i7`) из session snapshot + manifest content projection, а не из repo files напрямую (ADR-019).
 - `packages/contracts/*` - общий contracts layer.
+- `draft/cubica-portal-nextjs/` - current portal draft for test launch analysis; портал должен стать launch surface для покупок, ссылок и игровых сессий, но не runtime source of truth (ADR-032).
 - `draft/*` и импортированные portal/player drafts - reference only, а не canonical runtime/architecture sources.
 
 ## Оглавление
@@ -103,6 +104,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 - `draft/antarctica-nextjs-player/` — archived UI prototype and visual reference only.
 - `apps/player-web/` — current canonical web-player scaffold.
   - Должен опираться на `runtime-api` как на session/action boundary и player-facing content boundary.
+- `draft/cubica-portal-nextjs/` — current portal draft from upstream `aproskur/cubica-portal-nextjs`; используется для анализа и подготовки test VPS launch with `Antarctica`.
 - `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
 - `draft/Antarctica/` — legacy mechanics reference. На текущем migration этапе `draft/Antarctica/GameFull.html` остаётся фактическим extraction source для ещё не перенесённой gameplay-логики, но не считается canonical runtime truth.
 
@@ -217,6 +219,7 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-018 (JSON Manifest Truth Model):** Исполнимая логика игры закрепляется в `games/<id>/game.manifest.json`, а narrative и draft-артефакты не считаются runtime source of truth.
 - **ADR-019 (Runtime-Owned Player Content Boundary):** `runtime-api` владеет загрузкой game content и проекцией player-facing content DTO/API; `player-web` не должен читать `games/*` напрямую.
 - **ADR-024 (Bounded Manifest-Driven Gameplay Mechanics):** Cubica моделирует bounded gameplay mechanics через explicit manifest actions, explicit follow-up paths и auditable deterministic state; generic workflow/rule/selector engine откладывается до подтверждённого повторного use case, а delivery-specific slice specs выносятся в Gameplay Slice Records.
+- **ADR-032 (Portal Session Launch Boundary):** Портал управляет покупками, ссылками запуска и launch sessions, а runtime/player сохраняют владение игровым состоянием и отображением.
 
 
 ---
@@ -252,6 +255,7 @@ Execution Model определяет, как платформа обрабаты
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
+- `draft/cubica-portal-nextjs/` является текущим portal draft для следующего стратегического шага: test VPS launch с одной игрой `Antarctica`. Он не должен становиться источником исполнимой игровой логики.
 - В этом canonical slice bounded gameplay records `GSR-020`..`GSR-029` уже реализованы и доводят opening flow до terminal `i21`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.

@@ -1,0 +1,336 @@
+# TSK-20260518-portal-test-vps-and-antarctica-launch: Portal Test VPS and Antarctica Launch
+
+## Оглавление
+
+- [Status](#status)
+- [Why](#why)
+- [Strategic Goal](#strategic-goal)
+- [Current Portal Snapshot](#current-portal-snapshot)
+- [Target Architecture Assumption](#target-architecture-assumption)
+- [Resolved Product Decisions](#resolved-product-decisions)
+- [Current Portal Analysis](#current-portal-analysis)
+- [Strapi Decision Gate](#strapi-decision-gate)
+- [MVP Execution Slices](#mvp-execution-slices)
+- [Work Plan](#work-plan)
+- [Acceptance](#acceptance)
+- [Open Questions](#open-questions)
+- [Validation](#validation)
+- [Artifacts](#artifacts)
+- [Handoff Log](#handoff-log)
+
+## Status
+
+planned
+
+## Why
+
+Следующий стратегический шаг проекта — доработать портал и выполнить тестовый запуск через одну игру `Antarctica`. Этот шаг проверяет не только UI портала, но и общую платформенную механику покупок, ссылок запуска, игровых сессий, сроков действия и архивации.
+
+## Strategic Goal
+
+Получить проверяемый test VPS, где консультант может открыть портал, увидеть купленную `Antarctica`, скопировать ссылку запуска, создать или продолжить игровую сессию и проверить ограничения по сроку действия и количеству запусков.
+
+## Current Portal Snapshot
+
+- Локальный каталог `draft/cubica-portal-nextjs` обновлен из `https://github.com/aproskur/cubica-portal-nextjs`.
+- Проверенный upstream commit: `6f1eef790737f498e3d434ffc38f9cf6226a668c`.
+- Стек: Next.js `15.1.6`, React `19`, styled-components, App Router.
+- Production build проходит командой `npm run build`.
+- В репозитории есть `services/portal-backend` на Strapi `5.10.2`; он содержит content-types `game`, `order`, `purchase`, `link`, `payment-event` и Robokassa-интеграцию.
+- Физические миграции Strapi пока не описаны: `services/portal-backend/database/migrations` содержит только `.gitkeep`, а структура базы задается content-type schema files.
+
+## Target Architecture Assumption
+
+Механика ссылок и игровых сессий классифицируется как общая платформенная механика, а не как game-specific behavior `Antarctica`.
+
+Следствие: портал может хранить `game_id = antarctica` как данные покупки, но не должен содержать специальных условий для сценария, карточек, шагов или правил `Antarctica`. Исполнимая логика остается в `games/antarctica`, `services/runtime-api`, `apps/player-web` и `packages/contracts/*`.
+
+## Resolved Product Decisions
+
+- Launch link shape: path внутри портала; физически портал, player и runtime могут быть разными серверами за маршрутизацией.
+- First VPS purchase source: платежная заглушка вместо реальной оплаты.
+- Payment integration candidate: существующая Robokassa-интеграция в `services/portal-backend`; восстановление не требуется, код найден.
+- Day link timezone: Москва.
+- `launch_count`: количество созданных runtime sessions.
+- Minimal auth: логин/пароль для консультанта и admin window.
+- Completed one-time game log: показывать журнал ходов `Antarctica`; нужно проверить и при необходимости реализовать сохранение журнала после закрытия игровой сессии.
+
+## Current Portal Analysis
+
+### What Exists
+
+- Главная страница каталога с карточками игр.
+- Страница игры `/games/[slug]` с галереей, ценами и кнопками `Играть` / `Купить`.
+- Страница покупок `/games/my`.
+- Таблица ссылок в `src/components/GameLinksTable.js`.
+- Копирование URL через `navigator.clipboard.writeText`.
+- Фильтр поиска по локальным данным.
+
+### Main Gaps Against Target Architecture
+
+1. Нет backend boundary для покупок, ссылок и игровых сессий: данные лежат в `src/data/*.js` и `src/data/*.json`.
+2. Нет сущности игровой сессии с полями домена, токена, `purchase_id`, дат начала/окончания, счетчика ссылки и статуса.
+3. Копирование ссылки не создает новую сессию, не ведет аудит и не применяет правила разовой, дневной или месячной ссылки.
+4. URL сейчас статические и ведут на внешние домены вида `http://game1.cubica.pro`, а не в механизм запуска на портале.
+5. Нет route resolver, который при переходе по ссылке решает: создать новую runtime session или продолжить существующую.
+6. Нет интеграции с `services/runtime-api` и `apps/player-web`.
+7. Нет контроля `end_date`, архивации покупки, завершения разовой игры и открытия журнала ходов после завершения.
+8. Нет различия между однопользовательской и многопользовательской игрой на уровне launch behavior.
+9. Нет модального окна активных сессий и admin route для многопользовательских сессий.
+10. Нет авторизации, ролей, защиты admin-окна и разграничения доступа консультанта/игрока.
+11. Нет миграций, `.env.example`, health/readiness endpoints, логирования, аудита и deploy-конфигурации для VPS.
+12. UI сообщает `Link copied to clipboard!`, а целевое сообщение должно быть `Ссылка скопирована в буфер обмена`.
+
+### Existing Strapi/Payment Findings
+
+- `services/portal-backend/src/api/order/controllers/order.js` создает order, генерирует Robokassa payment link и обрабатывает `/robokassa/result`.
+- Успешный Robokassa callback переводит order в `paid` и создает `purchase`.
+- `payment-event` сохраняет отправленные и полученные платежные события.
+- `link.generate` уже содержит базовую генерацию ссылок по `purchaseId`, но сейчас:
+  - использует UTC helpers вместо московской timezone;
+  - создает link, а не отдельную launch session;
+  - формирует URL через `GAMESERVER_URL`, а целевой путь должен быть portal path;
+  - не считает `launch_count` по runtime sessions;
+  - не закрывает журнал ходов/архивирование.
+- `.env.example` не содержит Robokassa и `GAMESERVER_URL` переменные, хотя код их использует.
+
+### Strapi Recommendation
+
+Для test VPS имеет смысл сохранить Strapi как краткосрочный backend для каталога, пользователей, платежной заглушки, Robokassa и административного наполнения данных.
+
+Для launch sessions нужно ввести явную service boundary. На первом шаге ее можно реализовать как custom Strapi API, чтобы быстрее использовать существующие user/order/purchase/link content-types. При росте правил и нагрузки этот блок лучше вынести в собственный portal/session module с явными PostgreSQL migrations и тестами.
+
+### Weakly Worked Blocks
+
+- Domain model: покупки, ссылки, игровые сессии, устройства, запуски, архивы.
+- Session lifecycle: генерация, продолжение, завершение, истечение срока, журнал.
+- Data persistence: PostgreSQL schema, migrations, seed-данные, транзакции.
+- API contracts: portal-facing и player-launch endpoints.
+- Security: auth, roles, signed/admin links, защита от перебора токенов.
+- Deployment: production env, reverse proxy, process manager or containers, backup path.
+- Observability: structured logs, launch audit, error tracking.
+- Testing: unit rules for link validity, integration tests for session generation, e2e path from portal to player.
+- Frontend architecture: многие страницы являются client components, данные дублируются, `SearchProvider` подключен дважды, в production build остается `console.log`.
+
+## Strapi Decision Gate
+
+Перед началом реализации launch sessions нужно принять и зафиксировать короткое решение по роли Strapi на первом VPS.
+
+### Keep in Strapi for Test VPS
+
+- Каталог игр и карточки портала.
+- Пользователи и login/password авторизация через `users-permissions`.
+- `order`, `purchase`, `payment-event` и Robokassa-интеграция.
+- Платежная заглушка для создания paid order/purchase без внешней оплаты.
+- Административное наполнение тестовых данных.
+
+### Do Not Hide in Strapi CMS Rules
+
+- Создание и продолжение launch sessions.
+- Расчет сроков действия ссылок.
+- `launch_count` как число созданных runtime sessions.
+- Архивация разовой покупки после завершения.
+- Доступ к admin window игровой сессии.
+- Сохранение и выдача журнала ходов `Antarctica`.
+
+### Decision Criteria
+
+- Если логика является простой CRUD-операцией над каталогом, покупкой или платежным событием, ее можно оставить в Strapi.
+- Если логика влияет на запуск игры, срок действия ссылки, состояние игровой сессии или журнал ходов, она должна быть выделена в custom service boundary с тестами.
+- На первом VPS эта boundary может быть реализована как custom Strapi API, но с кодовой структурой, которую можно вынести из Strapi без переписывания правил.
+
+## MVP Execution Slices
+
+### Slice 0. Portal Static Review
+
+Цель: посмотреть текущий портал с тестовыми данными и зафиксировать UX/структурные разрывы.
+
+Acceptance:
+
+- Портал запускается локально.
+- Главная показывает `Antarctica`.
+- `/games/antarctica` открывает карточку игры.
+- `/games/my` показывает разовую, дневную и месячную ссылки.
+- Копирование показывает `Ссылка скопирована в буфер обмена`.
+
+### Slice 1. Payment Stub to Purchase
+
+Цель: создать покупку `Antarctica` на test VPS без реальной оплаты.
+
+Acceptance:
+
+- Консультант входит по логину/паролю.
+- Payment stub создает paid order и purchase.
+- Purchase связан с user, game, package type, start/end dates.
+- Robokassa-код остается доступен, но не обязателен для test VPS.
+
+### Slice 2. Copy Link to Launch Session
+
+Цель: копирование ссылки становится backend operation, а не копированием статического URL.
+
+Acceptance:
+
+- Для one-time ссылки создается или переиспользуется ровно одна launch session.
+- Для day/month ссылки создается новая launch session при каждом копировании.
+- Ссылка имеет portal path форму.
+- Событие копирования записывается в audit/event log.
+
+### Slice 3. Launch Link to Runtime Session
+
+Цель: переход по portal path запускает resolver, который создает или продолжает runtime session.
+
+Acceptance:
+
+- Resolver проверяет token, link counter, purchase owner/scope, status и срок действия.
+- `launch_count` увеличивается только при создании новой runtime session.
+- Day link использует московскую timezone.
+- Player открывается через `apps/player-web` и runtime/player boundary.
+
+### Slice 4. Completed One-Time to Archive and Journal
+
+Цель: завершенная разовая `Antarctica` больше не открывает игру как новую сессию.
+
+Acceptance:
+
+- Runtime/player передает completion event.
+- Purchase или launch session получает статус archived/completed.
+- Журнал ходов `Antarctica` сохраняется после закрытия игровой сессии.
+- Повторный переход по завершенной разовой ссылке открывает сохраненный журнал.
+
+### Slice 5. Multiplayer Sessions and Admin Window
+
+Цель: подготовить поведение для многопользовательского режима без game-specific branch в портале.
+
+Acceptance:
+
+- Для multiplayer game type таблица ссылок показывает кнопку `Сессии`.
+- Модальное окно показывает активные launch sessions.
+- Admin window открывается только после login/password проверки и проверки прав.
+
+## Work Plan
+
+### 1. Stabilize Portal Draft for Test Use
+
+1. Зафиксировать статус `draft/cubica-portal-nextjs` как current portal draft for test launch.
+2. Добавить минимальную документацию запуска: dev, production build, environment variables.
+3. Убрать явные демонстрационные данные из UI-слоя и подготовить переход на backend/API.
+4. Проверить, нужен ли `output: "standalone"` для VPS; если да, запускать production build через `node .next/standalone/server.js`, а не через `next start`.
+5. Закрыть Slice 0 и зафиксировать найденные UI/UX gaps отдельным artifact или Handoff entry.
+
+### 2. Pass Strapi Decision Gate
+
+1. Зафиксировать, какие content-types остаются в Strapi на test VPS.
+2. Выделить launch session lifecycle как custom service boundary.
+3. Добавить в `.env.example` недостающие переменные Robokassa, portal URL и runtime/player URL.
+4. Решить, где хранится новая schema: Strapi content-types для test VPS или SQL migration для собственного module.
+
+### 3. Define Portal Launch Domain
+
+1. Сверить текущие Strapi content-types `purchase`, `link`, `order`, `payment-event` с целевой launch model.
+2. Спроектировать недостающую schema для `game_launch_sessions`, `session_launch_events` и сохранения журнала ходов.
+3. Описать enum-значения типов ссылок: `single_use`, `day`, `month`.
+4. Описать enum-значения типов игр: `single_player`, `multi_player`.
+5. Определить поля статуса: `active`, `expired`, `completed`, `archived`, `revoked`.
+6. Зафиксировать правила московской timezone для дневной ссылки.
+7. Описать минимальный journal DTO для завершенной `Antarctica`.
+
+### 4. Build Backend/API Boundary
+
+1. Добавить portal API для каталога и покупок.
+2. Добавить платежную заглушку, которая создает paid order/purchase для test VPS без обращения к Robokassa.
+3. Добавить endpoint копирования ссылки, который создает или переиспользует launch session и возвращает готовый portal path URL.
+4. Добавить endpoint перехода по ссылке, который валидирует токен, счетчик, срок действия и статус.
+5. Добавить endpoint списка активных сессий для многопользовательской игры.
+6. Добавить admin endpoint для сессии с проверкой прав.
+7. Добавить endpoint журнала завершенной сессии.
+
+### 5. Integrate Antarctica
+
+1. Создать seed-покупку и ссылки для `game_id = antarctica` через платежную заглушку или seed script.
+2. Привязать portal game record к каноническому `games/antarctica/game.manifest.json` через данные/конфиг, а не через game-specific code branch.
+3. Настроить переход из portal launch resolver в `apps/player-web` с runtime session reference.
+4. При завершении `Antarctica` записывать completion event и архивировать разовую покупку.
+5. Для завершенной разовой игры открывать журнал ходов `Antarctica` и проверить сохранение журнала после закрытия игровой сессии.
+
+### 6. Implement Link Rules
+
+1. Разовая ссылка: одна launch session на весь срок, продолжение последнего состояния независимо от устройства, архивирование после завершения.
+2. Дневная ссылка: срок действия с `00:00:00` до `23:59:59` московского времени выбранной даты.
+3. Месячная ссылка: генерация сессии только в купленный период, срок каждой сессии 48 часов с момента генерации.
+4. Вести счетчик копирований/ссылок и журнал событий.
+5. Для истекшей ссылки показывать понятное состояние и рекомендацию обратиться в поддержку для продления.
+
+### 7. Implement Game Type Behavior
+
+1. Однопользовательская игра: device token в cookie определяет, какое состояние продолжать.
+2. Многопользовательская игра: состояние привязано к номеру launch session.
+3. Для многопользовательских покупок показать кнопку `Сессии` в таблице ссылок.
+4. В модальном окне сессий показать активные сессии, сроки действия, счетчик запусков и кнопку admin.
+
+### 8. Prepare Test VPS Deployment
+
+1. Выбрать минимальный deploy shape: Docker Compose или process manager behind reverse proxy.
+2. Поднять PostgreSQL как источник истины для портала и сессий.
+3. Развернуть portal, runtime-api и player-web в одном тестовом окружении.
+4. Настроить домены, HTTPS, `.env`, миграции и seed.
+5. Добавить health/readiness checks и базовые structured logs.
+6. Описать backup/restore минимум для PostgreSQL.
+
+### 9. Verification
+
+1. `npm run build` для портала.
+2. Runtime/player canonical checks.
+3. Unit tests для расчета сроков ссылок.
+4. Integration tests для копирования ссылки, перехода, повторного перехода и истечения срока.
+5. E2E smoke test: консультант копирует ссылку `Antarctica`, игрок запускает игру, повторный переход продолжает нужную сессию.
+6. Admin smoke test: многопользовательская сессия видна в списке и открывает admin window только с правами.
+7. Journal smoke test: завершенная разовая ссылка открывает сохраненный журнал ходов.
+
+## Acceptance
+
+- Test VPS открывает портал и страницу покупок.
+- Консультант входит по логину/паролю.
+- В портале есть купленная `Antarctica`, созданная через платежную заглушку.
+- Копирование ссылки показывает `Ссылка скопирована в буфер обмена`.
+- Для разовой, дневной и месячной ссылки выполняются разные правила генерации launch session.
+- Переход по ссылке запускает или продолжает `Antarctica` через runtime/player boundary.
+- Срок действия и статус ссылки проверяются на backend side.
+- `launch_count` увеличивается только при создании новой runtime session.
+- Дневная ссылка считается по московскому времени.
+- Для многопользовательской игры доступен список активных сессий.
+- Admin window требует login/password и проверку прав.
+- Завершенная разовая игра переводится в архив и открывает сохраненный журнал ходов `Antarctica`.
+
+## Open Questions
+
+1. Где именно будет проходить boundary между Strapi custom API и будущим собственным portal/session module?
+2. Какой URL path выбрать как canonical: `/play/:token/:counter`, `/launch/:token/:counter` или другой?
+3. Какой минимальный формат журнала ходов `Antarctica` должен быть возвращен player/runtime API после завершения?
+
+## Validation
+
+```text
+npm run build --prefix draft/cubica-portal-nextjs
+npm run verify:canonical
+```
+
+## Artifacts
+
+- `docs/architecture/adrs/032-portal-session-launch-boundary.md`
+
+## Handoff Log
+
+### 2026-05-18 — AI agent
+
+- Updated local portal draft from `https://github.com/aproskur/cubica-portal-nextjs` commit `6f1eef790737f498e3d434ffc38f9cf6226a668c`.
+- Reviewed current portal structure and recorded architecture gaps against the session-launch target.
+- Verified current portal production build with `npm run build`.
+
+### 2026-05-19 — AI agent
+
+- Recorded product decisions: portal path launch links, Moscow timezone, login/password auth, payment stub for first VPS, and `launch_count` as created runtime sessions.
+- Found existing Strapi backend and Robokassa payment block in `services/portal-backend`.
+- Recommended keeping Strapi short-term for catalog/users/payment/admin while keeping launch session lifecycle behind an explicit service boundary.
+- Filled local `draft/cubica-portal-nextjs` with temporary Antarctica test data for visual review.
+- Started local draft portal dev server on `http://localhost:3002` and verified `/`, `/games/antarctica`, `/games/my` return `200 OK`.
+- Added Strapi decision gate, MVP execution slices, stronger journal/session acceptance, and fixed work-plan numbering.

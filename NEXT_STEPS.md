@@ -25,6 +25,7 @@
 
 ## Next
 
+- [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — доработать портал как launch surface, развернуть test VPS и запустить игровые сессии `Antarctica` с контролем ссылок, сроков и запусков.
 - [TSK-20260518-json-schema-strict-validation](docs/tasks/active/TSK-20260518-json-schema-strict-validation.md) — перевести Ajv из `strict: false` к строгому режиму без императивного дрейфа.
 - [TSK-20260518-workspace-project-references-cleanup](docs/tasks/active/TSK-20260518-workspace-project-references-cleanup.md) — решить статус `SDK/viewers/web-base`, `services/router`, `apps/portal-nextjs`, `services/portal-backend`.
 - [TSK-20260518-runtime-repository-boundary-and-readiness](docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md) — сделать readiness честным и укрепить runtime repository boundary.
@@ -48,4 +49,5 @@
 - `services/runtime-api/` — канонический backend runtime в формате модульного монолита.
 - `apps/player-web/` — канонический web delivery layer.
 - `packages/contracts/*` — общий contracts layer.
+- `draft/cubica-portal-nextjs/` — текущий portal draft для анализа и подготовки test VPS launch; не является source of truth для игровой логики.
 - `draft/Antarctica/GameFull.html` — legacy extraction source на время миграции, не runtime source of truth.
