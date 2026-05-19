@@ -1,40 +1,74 @@
 [
-    {
-        "gameId": 1,
-        "gameName": "Интересная игра1",
-        "links": [
-            {
-                "id": 101,
-                "date": "22/09/2025",
-                "url": "http://game1.cubica.pro",
-                "type": "день"
-            },
-            {
-                "id": 102,
-                "date": "22/10/2025",
-                "url": "http://game1.cubica.pro",
-                "type": "разовая"
-            }
+  {
+    "gameId": "antarctica",
+    "gameName": "Antarctica",
+    "gameType": "single_player",
+    "purchaseDocumentId": "purchase_antarctica_static_demo",
+    "links": [
+      {
+        "id": "antarctica-one-time",
+        "date": "20/05/2026",
+        "url": "https://portal.cubica.pro/launch/demo-antarctica-one-time",
+        "type": "one-time",
+        "purchaseDocumentId": "purchase_antarctica_one_time_demo",
+        "linkDocumentId": "link_antarctica_one_time_demo"
+      },
+      {
+        "id": "antarctica-day",
+        "date": "20/05/2026",
+        "url": "https://portal.cubica.pro/launch/demo-antarctica-day",
+        "type": "day",
+        "startDate": "20/05/2026",
+        "endDate": "20/05/2026",
+        "purchaseDocumentId": "purchase_antarctica_day_demo",
+        "linkDocumentId": "link_antarctica_day_demo"
+      },
+      {
+        "id": "antarctica-month",
+        "date": "20/05/2026",
+        "url": "https://portal.cubica.pro/launch/demo-antarctica-month",
+        "type": "month",
+        "startDate": "20/05/2026",
+        "endDate": "20/06/2026",
+        "purchaseDocumentId": "purchase_antarctica_month_demo",
+        "linkDocumentId": "link_antarctica_month_demo"
+      }
+    ]
+  },
+  {
+    "gameId": "antarctica-team",
+    "gameName": "Antarctica: командный запуск",
+    "gameType": "multiplayer",
+    "links": [
+      {
+        "id": "antarctica-team-month",
+        "date": "20/05/2026",
+        "url": "https://portal.cubica.pro/launch/demo-antarctica-team",
+        "type": "team",
+        "mode": "multiplayer",
+        "startDate": "20/05/2026",
+        "endDate": "20/06/2026",
+        "purchaseDocumentId": "purchase_antarctica_team_demo",
+        "linkDocumentId": "link_antarctica_team_demo",
+        "sessions": [
+          {
+            "id": "session_antarctica_team_1",
+            "title": "Группа A",
+            "status": "active",
+            "startedAt": "20/05/2026 10:00",
+            "expiresAt": "22/05/2026 10:00",
+            "launchCount": 3
+          },
+          {
+            "id": "session_antarctica_team_2",
+            "title": "Группа B",
+            "status": "active",
+            "startedAt": "20/05/2026 14:00",
+            "expiresAt": "22/05/2026 14:00",
+            "launchCount": 1
+          }
         ]
-    },
-    {
-        "gameId": 2,
-        "gameName": "Пингвины",
-        "links": [
-            {
-                "id": 201,
-                "date": "22/09/2025",
-                "url": "http://game2.cubica.pro",
-                "type": "разовая"
-            },
-            {
-                "id": 202,
-                "date": "22/10/2025",
-                "url": "http://game2.cubica.pro",
-                "type": "месяц",
-                "startDate": "22/09/2025",
-                "endDate": "22/10/2025"
-            }
-        ]
-    }
+      }
+    ]
+  }
 ]

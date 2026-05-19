@@ -11,8 +11,6 @@ export default function MyGamesPage() {
         game.gameName?.toLowerCase().includes(searchQuery.toLowerCase() || "")
     );
 
-    console.log("Current search query:", searchQuery);
-
     return (
         <div>
             <GameLinksTable games={filteredGames} />

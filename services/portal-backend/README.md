@@ -1,61 +1,99 @@
-# 🚀 Getting started with Strapi
+# Portal Backend
 
-Strapi comes with a full featured [Command Line Interface](https://docs.strapi.io/dev-docs/cli) (CLI) which lets you scaffold and manage your project in seconds.
+Strapi backend for the Cubica portal catalog, orders, purchases, and payment callbacks.
 
-### `develop`
+## Table of Contents
 
-Start your Strapi application with autoReload enabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-develop)
+- [Quick Start](#quick-start)
+- [Build](#build)
+- [Test VPS Environment](#test-vps-environment)
+- [Payment Stub](#payment-stub)
+- [Robokassa](#robokassa)
 
-```
+## Quick Start
+
+```bash
+cd services/portal-backend
+cp .env.example .env
+npm install
 npm run develop
-# or
-yarn develop
 ```
 
-### `start`
+Production-style start:
 
-Start your Strapi application with autoReload disabled. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-start)
-
-```
+```bash
 npm run start
-# or
-yarn start
 ```
 
-### `build`
+## Build
 
-Build your admin panel. [Learn more](https://docs.strapi.io/dev-docs/cli#strapi-build)
+Build the Strapi admin panel:
 
-```
+```bash
 npm run build
-# or
-yarn build
 ```
 
-## ⚙️ Deployment
+## Test VPS Environment
 
-Strapi gives you many possible deployment options for your project including [Strapi Cloud](https://cloud.strapi.io). Browse the [deployment section of the documentation](https://docs.strapi.io/dev-docs/deployment) to find the best solution for your use case.
+Use `.env.example` as the baseline and set public URLs for the deployed portal, player, and runtime API:
 
+```bash
+PORTAL_PUBLIC_URL=https://portal.example.test
+PLAYER_PUBLIC_URL=https://player.example.test
+RUNTIME_API_URL=https://runtime.example.test
+PAYMENT_STUB_ENABLED=true
 ```
-yarn strapi deploy
+
+Keep Strapi secrets (`APP_KEYS`, `API_TOKEN_SALT`, `ADMIN_JWT_SECRET`, `TRANSFER_TOKEN_SALT`, `JWT_SECRET`) unique per VPS environment.
+
+## Payment Stub
+
+`POST /orders/payment-stub` creates a paid order and purchase for the authenticated user without Robokassa. It is intended for test launch flows only and is disabled unless `PAYMENT_STUB_ENABLED=true`.
+
+Request body:
+
+```json
+{
+  "gameDocumentId": "game-document-id",
+  "gameSlug": "optional-game-slug",
+  "packageType": "one-time",
+  "startDate": "2026-05-19",
+  "endDate": "2026-05-20",
+  "price": 1000
+}
 ```
 
-## 📚 Learn more
+Use either `gameDocumentId` or `gameSlug`. The endpoint is generic and does not contain game-specific branching.
 
-- [Resource center](https://strapi.io/resource-center) - Strapi resource center.
-- [Strapi documentation](https://docs.strapi.io) - Official Strapi documentation.
-- [Strapi tutorials](https://strapi.io/tutorials) - List of tutorials made by the core team and the community.
-- [Strapi blog](https://strapi.io/blog) - Official Strapi blog containing articles made by the Strapi team and the community.
-- [Changelog](https://strapi.io/changelog) - Find out about the Strapi product updates, new features and general improvements.
+Successful response:
 
-Feel free to check out the [Strapi GitHub repository](https://github.com/strapi/strapi). Your feedback and contributions are welcome!
+```json
+{
+  "order": {
+    "documentId": "order-document-id",
+    "status": "paid"
+  },
+  "purchase": {
+    "documentId": "purchase-document-id",
+    "status": "paid"
+  },
+  "status": "paid"
+}
+```
 
-## ✨ Community
+## Robokassa
 
-- [Discord](https://discord.strapi.io) - Come chat with the Strapi community including the core team.
-- [Forum](https://forum.strapi.io/) - Place to discuss, ask questions and find answers, show your Strapi project and get feedback or just talk with other Community members.
-- [Awesome Strapi](https://github.com/strapi/awesome-strapi) - A curated list of awesome things related to Strapi.
+The existing Robokassa flow remains available:
 
----
+- `GET /robokassa/payment-link?documentId=<orderDocumentId>`
+- `POST /robokassa/result`
 
-<sub>🤫 Psst! [Strapi is hiring](https://strapi.io/careers).</sub>
+Configure Robokassa with:
+
+```bash
+ROBO_MERCHANT_LOGIN=...
+ROBO_PASSWORD1=...
+ROBO_PASSWORD2=...
+ROBO_PAYMENT_SUCCESS_URL=https://portal.example.test/payment/success
+ROBO_PAYMENT_FAIL_URL=https://portal.example.test/payment/fail
+```

@@ -8,7 +8,7 @@
 
 apps: # Приложения и импортированные frontend-заготовки 
   player-web: directory... # Канонический web player scaffold для Antarctica 
-  portal-nextjs: directory... # Импортированный набросок портала (не каноническая архитектура) 
+  portal-nextjs: directory... # Next.js портал для каталога, покупок, ссылок запуска и первого test VPS launch с Antarctica.
 archive: directory... # Архив старых документов и черновиков 
 data: directory... # Фикстуры и моки данных 
 docs: # Архитектура, задачи, планирование 
@@ -42,7 +42,8 @@ SDK: # SDK и вспомогательные библиотеки
   viewers: # Библиотека плееров для отображения игр 
     web-base: directory... # Базовый веб-viewer для платформы Cubica. Содержит переиспользуемые компоненты для загрузки манифестов, управления состоянием и маршрутизации действий.
 services: # Сервисы и инфраструктура 
-  portal-backend: directory... # Импортированный backend-набросок портала 
+  portal-backend: # Strapi backend портала для каталога, заказов, покупок, платежной заглушки и launch-session API.
+    test: directory... # Focused backend tests that can run without a Strapi database; currently covers pure portal launch-session rule helpers.
   runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
 AGENTS.md: file # Правила работы ИИ‑агентов
 NEXT_STEPS.md: file # Ближайшие инженерные шаги и приоритеты миграции

@@ -1,0 +1,60 @@
+{
+  "kind": "collectionType",
+  "collectionName": "session_launch_events",
+  "info": {
+    "singularName": "session-launch-event",
+    "pluralName": "session-launch-events",
+    "displayName": "Session Launch Event",
+    "description": "Audit event for launch-session copy and resolve operations."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "event_type": {
+      "type": "enumeration",
+      "enum": [
+        "copy-link",
+        "resolve",
+        "runtime-created",
+        "rejected"
+      ],
+      "required": true
+    },
+    "occurred_at": {
+      "type": "datetime",
+      "required": true
+    },
+    "message": {
+      "type": "text"
+    },
+    "metadata": {
+      "type": "json"
+    },
+    "launch_session": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::launch-session.launch-session"
+    },
+    "purchase": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::purchase.purchase"
+    },
+    "link": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::link.link"
+    },
+    "game": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::game.game"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

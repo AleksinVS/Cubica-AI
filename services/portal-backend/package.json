@@ -9,7 +9,8 @@
     "develop": "strapi develop",
     "seed:example": "node ./scripts/seed.js",
     "start": "strapi start",
-    "strapi": "strapi"
+    "strapi": "strapi",
+    "test:portal-rules": "node --test test/portal-launch-rules.test.js"
   },
   "dependencies": {
     "@strapi/plugin-cloud": "5.10.2",

@@ -1,36 +1,46 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Cubica Portal Next.js
 
-## Getting Started
+Next.js portal draft for the Cubica test launch surface. The app shows the game catalog, purchased launch links, and the first frontend integration points for backend-managed launch links and active sessions.
 
-First, run the development server:
+## Оглавление
+
+- [Development](#development)
+- [Environment](#environment)
+- [Portal API Integration](#portal-api-integration)
+- [Verification](#verification)
+
+## Development
+
+Install dependencies and run the development server from this folder:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The default local URL is [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env.local` for local work and set:
 
-## Learn More
+```bash
+NEXT_PUBLIC_PORTAL_API_URL=http://localhost:1337
+```
 
-To learn more about Next.js, take a look at the following resources:
+`NEXT_PUBLIC_PORTAL_API_URL` is exposed to browser code by Next.js because launch-link copy and active-session listing are triggered from client components.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Portal API Integration
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`src/lib/portalApi.js` contains the thin browser API client. It sends a JWT (JSON Web Token, a signed authorization token) from `localStorage` when one is present and exposes:
 
-## Deploy on Vercel
+- `copyLaunchLink({ purchaseId, linkId })`
+- `listActiveSessions({ purchaseId, linkId })`
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The purchased-games table uses the backend first. If the backend is not configured, unavailable, or a row has no purchase/link `documentId`, the UI falls back to the static URL and local session data from `src/data/gameDataWithLinks.json`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Verification
+
+```bash
+npm run build
+```

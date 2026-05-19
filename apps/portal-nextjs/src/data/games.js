@@ -1,16 +1,16 @@
 export const games = [
     {
-        id: 1,
-        title: "Пингвины",
-        slug: "pinguins",
-        image: "/assets/images/antarctika.png",
+        id: "antarctica",
+        title: "Antarctica",
+        slug: "antarctica",
+        image: "/assets/images/antarctika.webp",
         pricePerLaunch: 750,
         pricePerMonth: 1650,
-        description: "Игра развивает командный дух",
+        description: "Бизнес-игра про командные решения в условиях антарктической экспедиции.",
         rating: 5,
         reviews: 244,
-        genre: "Карточки",
-        format: "Формат",
+        genre: "Бизнес-симуляция",
+        format: "Одиночная и командная",
         duration: "2 часа",
         author: "CUBICA",
         images: [

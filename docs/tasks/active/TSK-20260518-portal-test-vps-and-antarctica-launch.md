@@ -20,7 +20,7 @@
 
 ## Status
 
-planned
+in_progress
 
 ## Why
 
@@ -311,12 +311,25 @@ Acceptance:
 
 ```text
 npm run build --prefix draft/cubica-portal-nextjs
+npm run build --prefix apps/portal-nextjs
+npm run test:portal-rules --prefix services/portal-backend
 npm run verify:canonical
 ```
+
+Current validation notes:
+
+- `npm run build --prefix apps/portal-nextjs` passes after the first frontend/backend launch-link integration.
+- `npm run test:portal-rules --prefix services/portal-backend` passes for Moscow day bounds, month 48-hour windows and closed/expired session checks.
+- `node --check` passes for new portal-backend JavaScript files; new Strapi JSON schemas parse successfully.
+- `npm ci --prefix services/portal-backend` is currently blocked on `sharp` downloading `libvips` from GitHub with a request timeout, so Strapi admin build has not yet been verified on this host.
 
 ## Artifacts
 
 - `docs/architecture/adrs/032-portal-session-launch-boundary.md`
+- `services/portal-backend/src/api/launch-session/`
+- `services/portal-backend/src/api/session-launch-event/`
+- `services/portal-backend/src/utils/portal-launch-rules.js`
+- `apps/portal-nextjs/src/lib/portalApi.js`
 
 ## Handoff Log
 
@@ -334,3 +347,14 @@ npm run verify:canonical
 - Filled local `draft/cubica-portal-nextjs` with temporary Antarctica test data for visual review.
 - Started local draft portal dev server on `http://localhost:3002` and verified `/`, `/games/antarctica`, `/games/my` return `200 OK`.
 - Added Strapi decision gate, MVP execution slices, stronger journal/session acceptance, and fixed work-plan numbering.
+
+### 2026-05-19 — AI agent implementation pass
+
+- Added generic Strapi launch-session boundary with `POST /launch-sessions/copy-link`, `GET /launch-sessions/resolve/:token/:counter` and `GET /launch-sessions/active`.
+- Added `launch-session` and `session-launch-event` content-types for portal-owned launch records and audit events.
+- Added pure portal launch-rule helper and unit tests for Moscow day links, month 48-hour sessions and closed/expired sessions.
+- Added generic `POST /orders/payment-stub` for paid order/purchase creation without Robokassa when `PAYMENT_STUB_ENABLED=true`.
+- Updated tracked env examples for portal/backend URLs, runtime/player URLs, Robokassa settings and the payment stub flag.
+- Integrated `apps/portal-nextjs` with backend-first copy-link behavior, static fallback, exact copy message and multiplayer `Сессии` modal.
+- Updated local static portal data to focus on `Antarctica` one-time/day/month plus one multiplayer demo row.
+- Known remaining gap: current `player-web` still owns browser-side runtime session creation through localStorage, so the portal resolver returns `runtimeSessionId` and `playerUrl`, but player consumption of that id needs the next player-web integration slice.

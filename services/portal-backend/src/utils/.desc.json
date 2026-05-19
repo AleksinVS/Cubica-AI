@@ -1,0 +1,3 @@
+{
+  ".": "Pure backend helper modules shared by Strapi custom APIs; current helpers cover portal launch-session time-window and status rules."
+}

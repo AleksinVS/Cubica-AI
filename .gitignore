@@ -4,6 +4,8 @@ node_modules/
 coverage/
 .env
 .env.*
+!apps/portal-nextjs/.env.example
+!services/portal-backend/.env.example
 *.log
 npm-debug.log*
 yarn-debug.log*

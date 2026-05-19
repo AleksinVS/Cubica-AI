@@ -1,0 +1,100 @@
+{
+  "kind": "collectionType",
+  "collectionName": "launch_sessions",
+  "info": {
+    "singularName": "launch-session",
+    "pluralName": "launch-sessions",
+    "displayName": "Launch Session",
+    "description": "Portal-owned launch record that resolves a copied link into one runtime game session."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "token": {
+      "type": "uid",
+      "required": true
+    },
+    "counter": {
+      "type": "integer",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "completed",
+        "archived",
+        "revoked"
+      ],
+      "default": "active",
+      "required": true
+    },
+    "package_type": {
+      "type": "enumeration",
+      "enum": [
+        "one-time",
+        "day",
+        "month"
+      ],
+      "required": true
+    },
+    "starts_at": {
+      "type": "datetime"
+    },
+    "expires_at": {
+      "type": "datetime"
+    },
+    "runtime_session_id": {
+      "type": "string"
+    },
+    "runtime_created_at": {
+      "type": "datetime"
+    },
+    "launch_count": {
+      "type": "integer",
+      "default": 0,
+      "required": true
+    },
+    "source_type": {
+      "type": "enumeration",
+      "enum": [
+        "purchase",
+        "link"
+      ],
+      "required": true
+    },
+    "portal_url": {
+      "type": "string"
+    },
+    "player_url": {
+      "type": "string"
+    },
+    "admin_url": {
+      "type": "string"
+    },
+    "journal_url": {
+      "type": "string"
+    },
+    "purchase": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::purchase.purchase"
+    },
+    "link": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::link.link"
+    },
+    "game": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::game.game"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}
