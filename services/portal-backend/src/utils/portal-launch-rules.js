@@ -15,6 +15,7 @@ const MOSCOW_UTC_OFFSET_MS = MOSCOW_UTC_OFFSET_HOURS * MS_PER_HOUR;
 
 const PACKAGE_TYPES = new Set(['one-time', 'day', 'month']);
 const CLOSED_STATUSES = new Set(['completed', 'archived', 'revoked']);
+const MULTIPLAYER_GAME_TYPES = new Set(['multiplayer', 'multi_player', 'team', 'командная']);
 
 function asDate(value, fieldName = 'date') {
   if (!value) {
@@ -189,10 +190,32 @@ function getSessionStatus(session, now = new Date()) {
   return formatRuleResult(true, status === 'created' ? 'active' : status, 'Launch session is active');
 }
 
+/**
+ * Chooses how a portal launch session maps to runtime game state.
+ *
+ * "shared" means everyone opening the launch session gets the same runtime
+ * session. "device" means each browser/device gets its own runtime session
+ * inside the same launch session.
+ */
+function getRuntimeBindingType({ packageType, gameType }) {
+  if (packageType === 'one-time') {
+    return 'shared';
+  }
+
+  const normalizedGameType = String(gameType || '').toLowerCase();
+
+  if (MULTIPLAYER_GAME_TYPES.has(normalizedGameType)) {
+    return 'shared';
+  }
+
+  return 'device';
+}
+
 module.exports = {
   addHours,
   buildLaunchWindow,
   getMoscowDayBounds,
+  getRuntimeBindingType,
   getSessionStatus,
   minDate,
 };

@@ -61,6 +61,28 @@ module.exports = createCoreController('api::launch-session.launch-session', ({ s
     return ctx.send(result, result.httpStatus || 200);
   },
 
+  async runtimeBinding(ctx) {
+    const { token, counter } = ctx.params;
+
+    if (!token || !counter) {
+      return ctx.badRequest('token and counter are required');
+    }
+
+    const { deviceToken, playerId } = requestPayload(ctx);
+    const result = await strapi.service('api::launch-session.launch-session').bindRuntime({
+      token,
+      counter,
+      deviceToken,
+      playerId,
+    });
+
+    if (!result.ok && result.httpStatus === 404) {
+      return ctx.notFound(result.reason || 'Launch session not found');
+    }
+
+    return ctx.send(result, result.httpStatus || 200);
+  },
+
   async active(ctx) {
     const user = ctx.state.user;
 

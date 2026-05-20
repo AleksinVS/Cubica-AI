@@ -14,6 +14,12 @@ import {
   resumeSession,
   dispatchAction as dispatchRuntimeAction
 } from "@/presenter/runtime-client";
+import {
+  bindPortalLaunchSession,
+  launchScopedStorageKey,
+  readPortalLaunchContext,
+  type PortalLaunchContext
+} from "@/presenter/portal-launch-client";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import type { GameConfig } from "@/presenter/game-config";
 import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting } from "@/lib/screen-router";
@@ -47,6 +53,7 @@ export class GamePresenter {
   private error: string | null = null;
   private dismissedPanel: string | null = null;
   private currentActivePanel: string | null = null;
+  private launchContext: PortalLaunchContext | null = null;
 
   constructor(options: {
     gateway: ReactViewGateway;
@@ -135,6 +142,22 @@ export class GamePresenter {
    */
   async boot(): Promise<void> {
     try {
+      const portalLaunchContext = readPortalLaunchContext();
+
+      if (portalLaunchContext) {
+        const data = await bindPortalLaunchSession(portalLaunchContext, this.config.playerId);
+        this.launchContext = portalLaunchContext;
+        this.session = { ...data, gameId: data.gameId || this.config.gameId };
+        if (typeof window !== "undefined") {
+          window.localStorage.setItem(
+            launchScopedStorageKey(this.config.storageKey, portalLaunchContext),
+            data.sessionId
+          );
+        }
+        this.error = null;
+        return;
+      }
+
       const storedSessionId =
         typeof window !== "undefined"
           ? window.localStorage.getItem(this.config.storageKey)
@@ -176,13 +199,21 @@ export class GamePresenter {
     this.booting = true;
     this.error = null;
     if (typeof window !== "undefined") {
-      window.localStorage.removeItem(this.config.storageKey);
+      const storageKey = this.launchContext
+        ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
+        : this.config.storageKey;
+      window.localStorage.removeItem(storageKey);
     }
     try {
-      const data = await createNewSession(this.config.gameId, this.config.playerId);
-      this.session = { ...data, gameId: this.config.gameId };
+      const data = this.launchContext
+        ? await bindPortalLaunchSession(this.launchContext, this.config.playerId)
+        : await createNewSession(this.config.gameId, this.config.playerId);
+      this.session = { ...data, gameId: data.gameId || this.config.gameId };
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(this.config.storageKey, data.sessionId);
+        const storageKey = this.launchContext
+          ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
+          : this.config.storageKey;
+        window.localStorage.setItem(storageKey, data.sessionId);
       }
       this.error = null;
     } catch (err) {

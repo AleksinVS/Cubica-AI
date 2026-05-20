@@ -73,10 +73,12 @@
 - Потребуются новые API contracts, миграции, seed-данные для `Antarctica`, тесты времени действия ссылок и e2e-проверки переходов.
 - Текущий `draft/cubica-portal-nextjs` должен рассматриваться как visual/product draft и starting point для тестового портала, но не как готовый архитектурный источник истины.
 - Strapi может быть использован как краткосрочный backend для каталога, пользователей, платежной заглушки и Robokassa-интеграции, но session lifecycle должен иметь явный service boundary и не должен превращаться в набор неявных CMS-правил.
+- Точная привязка portal launch session к runtime session, включая per-device single-player и shared multiplayer behavior, уточнена в ADR-033.
 
 ## Связанные артефакты
 
 - `docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md`
+- `docs/architecture/adrs/033-portal-runtime-session-binding.md`
 - `docs/tasks/STRATEGY.md`
 - `NEXT_STEPS.md`
 - `docs/architecture/adrs/005-session-persistence.md`

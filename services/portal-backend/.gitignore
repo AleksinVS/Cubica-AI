@@ -137,6 +137,7 @@ tmp/
 # Strapi Build Files
 admin/build/
 admin/dist/
+types/generated/
 
 # Database Journals (SQLite)
 database/*.sqlite-journal

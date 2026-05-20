@@ -1,0 +1,3 @@
+{
+  "description": "Portal-owned bridge between a launch session, an optional player device token, and the runtime-api session that stores game state."
+}

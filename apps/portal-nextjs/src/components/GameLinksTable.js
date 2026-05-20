@@ -232,6 +232,29 @@ const SessionMeta = styled.div`
   font-size: 0.9rem;
 `;
 
+const SessionActions = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+`;
+
+const AdminLink = styled.a`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 10px;
+  border: 1px solid rgba(var(--theme-grey), 0.45);
+  border-radius: 6px;
+  color: rgb(var(--foreground));
+  text-decoration: none;
+
+  &:hover {
+    border-color: rgb(var(--theme-yellow));
+    color: rgb(var(--theme-yellow));
+  }
+`;
+
 function getLaunchIds(game, link) {
   return {
     purchaseId: link.purchaseDocumentId || link.purchaseId || game.purchaseDocumentId,
@@ -429,6 +452,13 @@ const GameLinksTable = ({ games }) => {
                         Запусков: {session.launchCount ?? session.launch_count ?? 0}
                       </span>
                     </SessionMeta>
+                    {session.adminUrl || session.admin_url ? (
+                      <SessionActions>
+                        <AdminLink href={session.adminUrl || session.admin_url}>
+                          Admin
+                        </AdminLink>
+                      </SessionActions>
+                    ) : null}
                   </SessionItem>
                 ))}
               </SessionList>

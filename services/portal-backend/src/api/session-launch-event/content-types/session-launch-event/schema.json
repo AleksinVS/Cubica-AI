@@ -16,7 +16,12 @@
       "enum": [
         "copy-link",
         "resolve",
+        "binding-created",
+        "binding-resumed",
         "runtime-created",
+        "completed",
+        "archived",
+        "admin-opened",
         "rejected"
       ],
       "required": true

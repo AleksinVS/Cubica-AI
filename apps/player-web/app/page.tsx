@@ -4,8 +4,16 @@ import { getRuntimeApiUrl, loadGamePlayerContent } from "@/lib/game-content-reso
 
 export const dynamic = "force-dynamic";
 
-export default async function Page() {
-  const content = await loadGamePlayerContent("antarctica");
+type PageProps = {
+  searchParams?: Promise<{
+    gameId?: string;
+  }>;
+};
+
+export default async function Page({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const gameId = params?.gameId || "antarctica";
+  const content = await loadGamePlayerContent(gameId);
 
   return (
     <GamePlayer

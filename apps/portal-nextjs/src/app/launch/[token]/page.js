@@ -3,10 +3,10 @@
 import { useParams } from "next/navigation";
 import LaunchResolver from "@/components/LaunchResolver";
 
-export default function LegacyLaunchPage() {
+export default function CanonicalLaunchPage() {
   const params = useParams();
-  const token = Array.isArray(params.token) ? params.token[0] : params.token;
-  const counter = Array.isArray(params.counter) ? params.counter[0] : params.counter;
+  const launchKey = Array.isArray(params.token) ? params.token[0] : params.token;
+  const [token, counter] = String(launchKey || "").split("::");
 
   return <LaunchResolver token={token} counter={counter} />;
 }

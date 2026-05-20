@@ -10,6 +10,7 @@
 - [Resolved Product Decisions](#resolved-product-decisions)
 - [Current Portal Analysis](#current-portal-analysis)
 - [Strapi Decision Gate](#strapi-decision-gate)
+- [Session Management Design](#session-management-design)
 - [MVP Execution Slices](#mvp-execution-slices)
 - [Work Plan](#work-plan)
 - [Acceptance](#acceptance)
@@ -66,20 +67,20 @@ in_progress
 - Копирование URL через `navigator.clipboard.writeText`.
 - Фильтр поиска по локальным данным.
 
-### Main Gaps Against Target Architecture
+### Remaining Gaps Against Target Architecture
 
-1. Нет backend boundary для покупок, ссылок и игровых сессий: данные лежат в `src/data/*.js` и `src/data/*.json`.
-2. Нет сущности игровой сессии с полями домена, токена, `purchase_id`, дат начала/окончания, счетчика ссылки и статуса.
-3. Копирование ссылки не создает новую сессию, не ведет аудит и не применяет правила разовой, дневной или месячной ссылки.
-4. URL сейчас статические и ведут на внешние домены вида `http://game1.cubica.pro`, а не в механизм запуска на портале.
-5. Нет route resolver, который при переходе по ссылке решает: создать новую runtime session или продолжить существующую.
-6. Нет интеграции с `services/runtime-api` и `apps/player-web`.
-7. Нет контроля `end_date`, архивации покупки, завершения разовой игры и открытия журнала ходов после завершения.
-8. Нет различия между однопользовательской и многопользовательской игрой на уровне launch behavior.
-9. Нет модального окна активных сессий и admin route для многопользовательских сессий.
-10. Нет авторизации, ролей, защиты admin-окна и разграничения доступа консультанта/игрока.
-11. Нет миграций, `.env.example`, health/readiness endpoints, логирования, аудита и deploy-конфигурации для VPS.
-12. UI сообщает `Link copied to clipboard!`, а целевое сообщение должно быть `Ссылка скопирована в буфер обмена`.
+Часть первичных gaps уже закрыта в `apps/portal-nextjs` и `services/portal-backend`: backend-first payment stub, login form, реальные покупки `/games/my`, launch-session API, portal route `/launch/:token::counter`, выбор `one-time/day/month`, copy message `Ссылка скопирована в буфер обмена`, базовый список активных сессий.
+
+Оставшиеся gaps:
+
+1. `apps/player-web` пока не использует portal launch context как источник истины и продолжает брать runtime `sessionId` из `localStorage`.
+2. Нет `runtime_session_binding` — привязки launch session к runtime session с учетом устройства и типа игры.
+3. Portal backend сейчас создает `runtime_session_id` как placeholder-style идентификатор, но еще не оркестрирует фактическое создание runtime session в `services/runtime-api`.
+4. Нет завершения one-time покупки через completion event, архивации и открытия журнала ходов.
+5. Есть минимальный admin route `/launch/:token::counter/admin` и кнопка `Admin` в модальном окне сессий; остается backend-проверка прав консультанта или администратора.
+6. Нет persisted runtime sessions для надежного VPS resume после рестарта runtime-api.
+7. Нет миграций/production deploy-контура, health/readiness для портального backend и полного наблюдения launch lifecycle.
+8. Страница сессий для multiplayer уже имеет UI основу, но еще не показывает runtime binding/admin actions как целевую модель.
 
 ### Existing Strapi/Payment Findings
 
@@ -139,6 +140,22 @@ in_progress
 - Если логика влияет на запуск игры, срок действия ссылки, состояние игровой сессии или журнал ходов, она должна быть выделена в custom service boundary с тестами.
 - На первом VPS эта boundary может быть реализована как custom Strapi API, но с кодовой структурой, которую можно вынести из Strapi без переписывания правил.
 
+## Session Management Design
+
+Архитектурное решение по связке portal launch session и runtime session зафиксировано в `docs/architecture/adrs/033-portal-runtime-session-binding.md`.
+
+Исполняемый дизайн и приемка блока управления сессиями зафиксированы в `docs/tasks/artifacts/TSK-20260518-portal-test-vps-and-antarctica-launch/session-management-design.md`.
+
+Ключевые решения:
+
+1. Разделить `launch session` и `runtime session`.
+2. Добавить `runtime_session_binding` как мост между портальной ссылкой, устройством игрока и runtime state.
+3. Для `one-time` всегда использовать одну runtime session независимо от устройства.
+4. Для `day/month` single-player использовать отдельную runtime session на устройство.
+5. Для multiplayer использовать одну runtime session на launch session.
+6. Player Web должен приоритетно использовать portal launch context и не подменять его старым `localStorage` session id.
+7. Admin route canonical form: `/launch/:token::counter/admin`, с login/password и проверкой прав.
+
 ## MVP Execution Slices
 
 ### Slice 0. Portal Static Review
@@ -185,6 +202,8 @@ Acceptance:
 - `launch_count` увеличивается только при создании новой runtime session.
 - Day link использует московскую timezone.
 - Player открывается через `apps/player-web` и runtime/player boundary.
+- Player Web не использует старый `localStorage` session id, если открыт portal launch context.
+- Для single-player day/month создается device-bound runtime session; для multiplayer создается shared runtime session.
 
 ### Slice 4. Completed One-Time to Archive and Journal
 
@@ -205,7 +224,21 @@ Acceptance:
 
 - Для multiplayer game type таблица ссылок показывает кнопку `Сессии`.
 - Модальное окно показывает активные launch sessions.
-- Admin window открывается только после login/password проверки и проверки прав.
+- Admin window открывается после login/password проверки; backend-проверка прав консультанта или администратора остается обязательной до приемки slice.
+- Добавление `admin` в конец ссылки открывает `/launch/:token::counter/admin`.
+
+### Slice 6. Player Runtime Binding
+
+Цель: устранить текущий gap, из-за которого разные portal links могут открывать одну browser-local runtime session.
+
+Acceptance:
+
+- `player-web` читает launch context из URL.
+- `player-web` создает или читает device token.
+- `player-web` вызывает portal runtime-binding endpoint.
+- Binding endpoint создает или возобновляет runtime session через `services/runtime-api`.
+- Stored browser session scoped by launch session id; чужой старый `localStorage` session id игнорируется.
+- Unit/integration tests покрывают matrix из session-management artifact.
 
 ## Work Plan
 
@@ -304,8 +337,9 @@ Acceptance:
 ## Open Questions
 
 1. Где именно будет проходить boundary между Strapi custom API и будущим собственным portal/session module?
-2. Какой URL path выбрать как canonical: `/play/:token/:counter`, `/launch/:token/:counter` или другой?
-3. Какой минимальный формат журнала ходов `Antarctica` должен быть возвращен player/runtime API после завершения?
+2. Какой минимальный формат журнала ходов `Antarctica` должен быть возвращен player/runtime API после завершения?
+3. Подтвердить one-time override: разовая ссылка всегда одна runtime session даже для single-player.
+4. Подтвердить storage для device token на первом VPS: рекомендуется cookie; localStorage оставить только для demo/local mode.
 
 ## Validation
 
@@ -321,11 +355,15 @@ Current validation notes:
 - `npm run build --prefix apps/portal-nextjs` passes after the first frontend/backend launch-link integration.
 - `npm run test:portal-rules --prefix services/portal-backend` passes for Moscow day bounds, month 48-hour windows and closed/expired session checks.
 - `node --check` passes for new portal-backend JavaScript files; new Strapi JSON schemas parse successfully.
-- `npm ci --prefix services/portal-backend` is currently blocked on `sharp` downloading `libvips` from GitHub with a request timeout, so Strapi admin build has not yet been verified on this host.
+- `npm ci --prefix services/portal-backend` passed after retrying with longer npm fetch timeouts.
+- `npm run build --prefix services/portal-backend` passed for the Strapi admin build.
+- `apps/player-web` runtime binding to portal launch context is not implemented yet; current browser-local session reuse is an intentional documented gap.
 
 ## Artifacts
 
 - `docs/architecture/adrs/032-portal-session-launch-boundary.md`
+- `docs/architecture/adrs/033-portal-runtime-session-binding.md`
+- `docs/tasks/artifacts/TSK-20260518-portal-test-vps-and-antarctica-launch/session-management-design.md`
 - `services/portal-backend/src/api/launch-session/`
 - `services/portal-backend/src/api/session-launch-event/`
 - `services/portal-backend/src/utils/portal-launch-rules.js`
@@ -358,3 +396,10 @@ Current validation notes:
 - Integrated `apps/portal-nextjs` with backend-first copy-link behavior, static fallback, exact copy message and multiplayer `Сессии` modal.
 - Updated local static portal data to focus on `Antarctica` one-time/day/month plus one multiplayer demo row.
 - Known remaining gap: current `player-web` still owns browser-side runtime session creation through localStorage, so the portal resolver returns `runtimeSessionId` and `playerUrl`, but player consumption of that id needs the next player-web integration slice.
+
+### 2026-05-20 — AI agent session-management design pass
+
+- Documented the discovered session gap: portal launch sessions exist, but player-web can still collapse different portal links into one browser-local runtime session.
+- Added ADR-033 for portal runtime session binding.
+- Added task artifact `session-management-design.md` with link-type/game-type matrix, backend/frontend/runtime work items and acceptance.
+- Updated this TSK with remaining gaps, Slice 6 Player Runtime Binding, admin route shape and open decisions.

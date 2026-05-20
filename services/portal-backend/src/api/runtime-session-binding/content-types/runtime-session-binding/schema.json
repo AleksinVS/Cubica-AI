@@ -1,0 +1,69 @@
+{
+  "kind": "collectionType",
+  "collectionName": "runtime_session_bindings",
+  "info": {
+    "singularName": "runtime-session-binding",
+    "pluralName": "runtime-session-bindings",
+    "displayName": "Runtime Session Binding",
+    "description": "Binds a portal launch session to a runtime-api session. Device bindings are used for single-player day/month links; shared bindings are used for one-time and multiplayer links."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "binding_key": {
+      "type": "string",
+      "required": true,
+      "unique": true
+    },
+    "binding_type": {
+      "type": "enumeration",
+      "enum": [
+        "shared",
+        "device"
+      ],
+      "required": true
+    },
+    "device_token_hash": {
+      "type": "string"
+    },
+    "runtime_session_id": {
+      "type": "string",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "active",
+        "completed",
+        "archived",
+        "revoked"
+      ],
+      "default": "active",
+      "required": true
+    },
+    "last_seen_at": {
+      "type": "datetime"
+    },
+    "launch_session": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::launch-session.launch-session"
+    },
+    "purchase": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::purchase.purchase"
+    },
+    "game": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::game.game"
+    },
+    "users_permissions_user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    }
+  }
+}

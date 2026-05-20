@@ -24,6 +24,14 @@ module.exports = {
       },
     },
     {
+      method: 'POST',
+      path: '/launch-sessions/resolve/:token/:counter/runtime-binding',
+      handler: 'launch-session.runtimeBinding',
+      config: {
+        auth: false,
+      },
+    },
+    {
       method: 'GET',
       path: '/launch-sessions/active',
       handler: 'launch-session.active',

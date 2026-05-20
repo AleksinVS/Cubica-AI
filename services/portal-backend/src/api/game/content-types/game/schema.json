@@ -99,7 +99,9 @@
       "enum": [
         "one-player",
         "multiplayer"
-      ]
+      ],
+      "default": "one-player",
+      "required": true
     },
     "price_per_day": {
       "type": "decimal"

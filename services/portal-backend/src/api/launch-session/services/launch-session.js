@@ -8,14 +8,16 @@
  * not know about Antarctica rules; game identity is treated as relational data.
  */
 
-const { randomUUID } = require('crypto');
+const { createHash, randomUUID } = require('crypto');
 const { createCoreService } = require('@strapi/strapi').factories;
 const {
   buildLaunchWindow,
+  getRuntimeBindingType,
   getSessionStatus,
 } = require('../../../utils/portal-launch-rules');
 
 const LAUNCH_SESSION_UID = 'api::launch-session.launch-session';
+const RUNTIME_SESSION_BINDING_UID = 'api::runtime-session-binding.runtime-session-binding';
 const SESSION_EVENT_UID = 'api::session-launch-event.session-launch-event';
 const PURCHASE_UID = 'api::purchase.purchase';
 const LINK_UID = 'api::link.link';
@@ -29,20 +31,23 @@ function portalBaseUrl() {
 }
 
 function buildPortalUrl(token, counter) {
-  return `${portalBaseUrl()}/launch/${token}/${counter}`;
+  return `${portalBaseUrl()}/launch/${token}::${counter}`;
 }
 
-function runtimeUrls(runtimeSessionId, session) {
+function runtimeGameId(session) {
+  return session.game?.slug || session.game?.documentId || session.game?.id;
+}
+
+function runtimeUrls(session) {
   const playerBase = cleanBaseUrl(process.env.PLAYER_PUBLIC_URL, `${portalBaseUrl()}/player`);
-  const adminBase = cleanBaseUrl(process.env.ADMIN_PUBLIC_URL, `${portalBaseUrl()}/admin`);
   const journalBase = cleanBaseUrl(process.env.JOURNAL_PUBLIC_URL, `${portalBaseUrl()}/journal`);
-  const gameId = session.game?.documentId || session.game?.slug || session.game?.id;
-  const suffix = `runtimeSessionId=${encodeURIComponent(runtimeSessionId)}`;
+  const gameId = runtimeGameId(session);
+  const suffix = `launchToken=${encodeURIComponent(session.token)}&launchCounter=${encodeURIComponent(session.counter)}`;
   const gameQuery = gameId ? `&gameId=${encodeURIComponent(gameId)}` : '';
 
   return {
     playerUrl: `${playerBase}?${suffix}${gameQuery}`,
-    adminUrl: `${adminBase}?${suffix}${gameQuery}`,
+    adminUrl: `${portalBaseUrl()}/launch/${session.token}::${session.counter}/admin`,
     journalUrl: `${journalBase}?${suffix}${gameQuery}`,
   };
 }
@@ -81,7 +86,7 @@ function pickEndDate({ link, purchase }) {
 }
 
 function publicSession(session) {
-  const urls = session.runtime_session_id ? runtimeUrls(session.runtime_session_id, session) : {};
+  const urls = runtimeUrls(session);
 
   return {
     id: session.documentId || session.id,
@@ -96,6 +101,56 @@ function publicSession(session) {
     portalUrl: session.portal_url || buildPortalUrl(session.token, session.counter),
     ...urls,
   };
+}
+
+function runtimeBaseUrl() {
+  return cleanBaseUrl(process.env.RUNTIME_API_URL, 'http://localhost:3001');
+}
+
+function hashDeviceToken(deviceToken) {
+  if (!deviceToken) {
+    return null;
+  }
+
+  return createHash('sha256').update(String(deviceToken)).digest('hex');
+}
+
+function runtimeBindingKey({ session, bindingType, deviceTokenHash }) {
+  const devicePart = bindingType === 'device' ? deviceTokenHash : 'shared';
+  return `${session.id}:${bindingType}:${devicePart}`;
+}
+
+function isUniqueConstraintError(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return message.includes('unique') || message.includes('duplicate');
+}
+
+async function readRuntimeJson(response) {
+  const payload = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const message = payload?.error || payload?.message || `Runtime API request failed with status ${response.status}`;
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
+  }
+
+  return payload;
+}
+
+async function createRuntimeSession({ gameId, playerId }) {
+  const response = await fetch(`${runtimeBaseUrl()}/sessions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ gameId, playerId }),
+  });
+
+  return readRuntimeJson(response);
+}
+
+async function resumeRuntimeSession(runtimeSessionId) {
+  const response = await fetch(`${runtimeBaseUrl()}/sessions/${encodeURIComponent(runtimeSessionId)}`);
+  return readRuntimeJson(response);
 }
 
 module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
@@ -178,6 +233,27 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
         package_type: 'one-time',
       },
       orderBy: { counter: 'asc' },
+      populate: {
+        purchase: true,
+        link: true,
+        game: true,
+        users_permissions_user: true,
+      },
+    });
+  },
+
+  async findSessionByTokenCounter({ token, counter }) {
+    const numericCounter = numericId(counter);
+
+    if (!numericCounter) {
+      return null;
+    }
+
+    return strapi.db.query(LAUNCH_SESSION_UID).findOne({
+      where: {
+        token,
+        counter: numericCounter,
+      },
       populate: {
         purchase: true,
         link: true,
@@ -340,18 +416,7 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
       return { ok: false, httpStatus: 400, status: 'rejected', reason: 'Invalid counter' };
     }
 
-    let session = await strapi.db.query(LAUNCH_SESSION_UID).findOne({
-      where: {
-        token,
-        counter: numericCounter,
-      },
-      populate: {
-        purchase: true,
-        link: true,
-        game: true,
-        users_permissions_user: true,
-      },
-    });
+    const session = await this.findSessionByTokenCounter({ token, counter: numericCounter });
 
     if (!session) {
       return { ok: false, httpStatus: 404, status: 'missing', reason: 'Launch session not found' };
@@ -380,27 +445,234 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
       };
     }
 
-    if (!session.runtime_session_id) {
-      const runtimeSessionId = randomUUID();
-      const urls = runtimeUrls(runtimeSessionId, session);
+    return {
+      ok: true,
+      status: 'active',
+      ...publicSession(session),
+    };
+  },
 
-      session = await strapi.db.query(LAUNCH_SESSION_UID).update({
-        where: { id: session.id },
-        data: {
-          runtime_session_id: runtimeSessionId,
-          runtime_created_at: new Date(),
-          launch_count: (session.launch_count || 0) + 1,
-          player_url: urls.playerUrl,
-          admin_url: urls.adminUrl,
-          journal_url: urls.journalUrl,
-        },
-        populate: {
-          purchase: true,
-          link: true,
-          game: true,
-          users_permissions_user: true,
-        },
+  async findBinding({ session, bindingType, deviceTokenHash }) {
+    const bindingKey = runtimeBindingKey({ session, bindingType, deviceTokenHash });
+    const where = {
+      launch_session: { id: session.id },
+      binding_type: bindingType,
+      status: 'active',
+    };
+
+    if (bindingType === 'device') {
+      where.device_token_hash = deviceTokenHash;
+    }
+
+    const currentBinding = await strapi.db.query(RUNTIME_SESSION_BINDING_UID).findOne({
+      where: {
+        binding_key: bindingKey,
+        status: 'active',
+      },
+      populate: {
+        launch_session: true,
+        purchase: true,
+        game: true,
+        users_permissions_user: true,
+      },
+    });
+
+    if (currentBinding) {
+      return currentBinding;
+    }
+
+    return strapi.db.query(RUNTIME_SESSION_BINDING_UID).findOne({
+      where,
+      populate: {
+        launch_session: true,
+        purchase: true,
+        game: true,
+        users_permissions_user: true,
+      },
+    });
+  },
+
+  async runtimeSnapshotOrNull(runtimeSessionId) {
+    if (!runtimeSessionId) {
+      return null;
+    }
+
+    try {
+      return await resumeRuntimeSession(runtimeSessionId);
+    } catch (error) {
+      if (error.status === 404) {
+        return null;
+      }
+
+      throw error;
+    }
+  },
+
+  async createRuntimeBinding({ session, bindingType, deviceTokenHash, playerId }) {
+    const gameId = runtimeGameId(session);
+
+    if (!gameId) {
+      return { ok: false, httpStatus: 409, status: 'rejected', reason: 'Launch session is not connected to a game' };
+    }
+
+    const runtimeSession = await createRuntimeSession({
+      gameId,
+      playerId: playerId || `portal-${session.id}`,
+    });
+    const urls = runtimeUrls(session);
+    const binding = await strapi.db.query(RUNTIME_SESSION_BINDING_UID).create({
+      data: {
+        binding_key: runtimeBindingKey({ session, bindingType, deviceTokenHash }),
+        binding_type: bindingType,
+        device_token_hash: deviceTokenHash,
+        runtime_session_id: runtimeSession.sessionId,
+        status: 'active',
+        last_seen_at: new Date(),
+        launch_session: connectRelation(session),
+        purchase: connectRelation(session.purchase),
+        game: connectRelation(session.game),
+        users_permissions_user: connectRelation(session.users_permissions_user),
+      },
+      populate: {
+        launch_session: true,
+        purchase: true,
+        game: true,
+        users_permissions_user: true,
+      },
+    });
+
+    const launchSessionPatch = {
+      player_url: urls.playerUrl,
+      admin_url: urls.adminUrl,
+      journal_url: urls.journalUrl,
+    };
+
+    if (bindingType === 'shared') {
+      launchSessionPatch.runtime_session_id = runtimeSession.sessionId;
+      launchSessionPatch.runtime_created_at = new Date();
+    }
+
+    await strapi.db.connection('launch_sessions')
+      .where({ id: session.id })
+      .update({
+        ...launchSessionPatch,
+        launch_count: strapi.db.connection.raw('COALESCE(launch_count, 0) + 1'),
       });
+
+    return { binding, runtimeSession, created: true };
+  },
+
+  async updateBindingRuntime({ binding, runtimeSession, session }) {
+    const updated = await strapi.db.query(RUNTIME_SESSION_BINDING_UID).update({
+      where: { id: binding.id },
+      data: {
+        runtime_session_id: runtimeSession.sessionId,
+        last_seen_at: new Date(),
+      },
+      populate: {
+        launch_session: true,
+        purchase: true,
+        game: true,
+        users_permissions_user: true,
+      },
+    });
+
+    await strapi.db.connection('launch_sessions')
+      .where({ id: session.id })
+      .update({
+        launch_count: strapi.db.connection.raw('COALESCE(launch_count, 0) + 1'),
+        ...(binding.binding_type === 'shared'
+          ? {
+            runtime_session_id: runtimeSession.sessionId,
+            runtime_created_at: new Date(),
+          }
+          : {}),
+      });
+
+    return updated;
+  },
+
+  async bindRuntime({ token, counter, deviceToken, playerId }) {
+    const session = await this.findSessionByTokenCounter({ token, counter });
+
+    if (!session) {
+      return { ok: false, httpStatus: 404, status: 'missing', reason: 'Launch session not found' };
+    }
+
+    const status = getSessionStatus(session);
+
+    if (!status.ok) {
+      await this.recordEvent({
+        eventType: 'rejected',
+        session,
+        purchase: session.purchase,
+        link: session.link,
+        game: session.game,
+        user: session.users_permissions_user,
+        message: status.reason,
+        metadata: { status: status.status, phase: 'runtime-binding' },
+      });
+
+      return {
+        ok: false,
+        httpStatus: status.status === 'expired' ? 410 : 409,
+        status: status.status,
+        reason: status.reason,
+      };
+    }
+
+    const bindingType = getRuntimeBindingType({
+      packageType: session.package_type,
+      gameType: session.game?.game_type,
+    });
+    const deviceTokenHash = bindingType === 'device' ? hashDeviceToken(deviceToken) : null;
+
+    if (bindingType === 'device' && !deviceTokenHash) {
+      return { ok: false, httpStatus: 400, status: 'rejected', reason: 'Device token is required for this launch session' };
+    }
+
+    let binding = await this.findBinding({ session, bindingType, deviceTokenHash });
+
+    if (binding) {
+      const resumed = await this.runtimeSnapshotOrNull(binding.runtime_session_id);
+
+      if (resumed) {
+        await strapi.db.query(RUNTIME_SESSION_BINDING_UID).update({
+          where: { id: binding.id },
+          data: { last_seen_at: new Date() },
+        });
+        await this.recordEvent({
+          eventType: 'binding-resumed',
+          session,
+          purchase: session.purchase,
+          link: session.link,
+          game: session.game,
+          user: session.users_permissions_user,
+          message: 'Resumed runtime session binding',
+          metadata: { bindingType, runtimeSessionId: binding.runtime_session_id },
+        });
+
+        return {
+          ok: true,
+          status: 'active',
+          bindingType,
+          runtimeSessionId: binding.runtime_session_id,
+          runtimeSession: resumed,
+          launchSession: publicSession(session),
+        };
+      }
+
+      const gameId = runtimeGameId(session);
+
+      if (!gameId) {
+        return { ok: false, httpStatus: 409, status: 'rejected', reason: 'Launch session is not connected to a game' };
+      }
+
+      const runtimeSession = await createRuntimeSession({
+        gameId,
+        playerId: playerId || `portal-${session.id}`,
+      });
+      binding = await this.updateBindingRuntime({ binding, runtimeSession, session });
 
       await this.recordEvent({
         eventType: 'runtime-created',
@@ -409,15 +681,78 @@ module.exports = createCoreService(LAUNCH_SESSION_UID, ({ strapi }) => ({
         link: session.link,
         game: session.game,
         user: session.users_permissions_user,
-        message: 'Created runtime session placeholder',
-        metadata: { runtimeSessionId },
+        message: 'Recreated stale runtime session binding',
+        metadata: { bindingType, runtimeSessionId: runtimeSession.sessionId },
       });
+
+      return {
+        ok: true,
+        status: 'active',
+        bindingType,
+        runtimeSessionId: runtimeSession.sessionId,
+        runtimeSession,
+        launchSession: publicSession(session),
+      };
     }
+
+    let created;
+
+    try {
+      created = await this.createRuntimeBinding({
+        session,
+        bindingType,
+        deviceTokenHash,
+        playerId,
+      });
+    } catch (error) {
+      if (!isUniqueConstraintError(error)) {
+        throw error;
+      }
+
+      binding = await this.findBinding({ session, bindingType, deviceTokenHash });
+
+      if (!binding) {
+        throw error;
+      }
+
+      const resumed = await this.runtimeSnapshotOrNull(binding.runtime_session_id);
+
+      if (resumed) {
+        return {
+          ok: true,
+          status: 'active',
+          bindingType,
+          runtimeSessionId: binding.runtime_session_id,
+          runtimeSession: resumed,
+          launchSession: publicSession(session),
+        };
+      }
+
+      throw error;
+    }
+
+    if (!created.ok && created.ok === false) {
+      return created;
+    }
+
+    await this.recordEvent({
+      eventType: 'binding-created',
+      session,
+      purchase: session.purchase,
+      link: session.link,
+      game: session.game,
+      user: session.users_permissions_user,
+      message: 'Created runtime session binding',
+      metadata: { bindingType, runtimeSessionId: created.runtimeSession.sessionId },
+    });
 
     return {
       ok: true,
       status: 'active',
-      ...publicSession(session),
+      bindingType,
+      runtimeSessionId: created.runtimeSession.sessionId,
+      runtimeSession: created.runtimeSession,
+      launchSession: publicSession(session),
     };
   },
 

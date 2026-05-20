@@ -6,6 +6,7 @@ const test = require('node:test');
 const {
   buildLaunchWindow,
   getMoscowDayBounds,
+  getRuntimeBindingType,
   getSessionStatus,
 } = require('../src/utils/portal-launch-rules');
 
@@ -84,4 +85,33 @@ test('closed and expired sessions are not resolvable', () => {
 
   assert.equal(expired.ok, false);
   assert.equal(expired.status, 'expired');
+});
+
+test('one-time links always use a shared runtime session', () => {
+  assert.equal(
+    getRuntimeBindingType({ packageType: 'one-time', gameType: 'one-player' }),
+    'shared'
+  );
+});
+
+test('single-player day and month links use device runtime sessions', () => {
+  assert.equal(
+    getRuntimeBindingType({ packageType: 'day', gameType: 'one-player' }),
+    'device'
+  );
+  assert.equal(
+    getRuntimeBindingType({ packageType: 'month', gameType: 'one-player' }),
+    'device'
+  );
+});
+
+test('multiplayer day and month links use a shared runtime session', () => {
+  assert.equal(
+    getRuntimeBindingType({ packageType: 'day', gameType: 'multiplayer' }),
+    'shared'
+  );
+  assert.equal(
+    getRuntimeBindingType({ packageType: 'month', gameType: 'multiplayer' }),
+    'shared'
+  );
 });

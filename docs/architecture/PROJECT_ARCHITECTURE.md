@@ -220,6 +220,7 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-019 (Runtime-Owned Player Content Boundary):** `runtime-api` владеет загрузкой game content и проекцией player-facing content DTO/API; `player-web` не должен читать `games/*` напрямую.
 - **ADR-024 (Bounded Manifest-Driven Gameplay Mechanics):** Cubica моделирует bounded gameplay mechanics через explicit manifest actions, explicit follow-up paths и auditable deterministic state; generic workflow/rule/selector engine откладывается до подтверждённого повторного use case, а delivery-specific slice specs выносятся в Gameplay Slice Records.
 - **ADR-032 (Portal Session Launch Boundary):** Портал управляет покупками, ссылками запуска и launch sessions, а runtime/player сохраняют владение игровым состоянием и отображением.
+- **ADR-033 (Portal Runtime Session Binding):** Портальная launch session должна явно связываться с runtime session; single-player day/month используют per-device binding, multiplayer использует shared binding, а one-time всегда ведет в одну runtime session.
 
 
 ---
