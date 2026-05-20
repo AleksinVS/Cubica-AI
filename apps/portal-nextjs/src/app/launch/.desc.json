@@ -1,0 +1,3 @@
+{
+  "description": "Portal launch-link route. It resolves copied game links through the portal backend and sends players to the runtime/player URL."
+}

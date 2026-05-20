@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from "react";
 import styled from "styled-components";
+import { loginPortalUser, registerPortalUser } from "@/lib/portalApi";
 
 const ModalOverlay = styled.div`
   position: fixed;
@@ -82,6 +83,11 @@ const StyledButton = styled.button`
     background: rgb(var(--theme-grey));
     color: white;
   }
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.7;
+  }
 `;
 
 const ToggleText = styled.p`
@@ -96,8 +102,75 @@ const ToggleText = styled.p`
   }
 `;
 
-const LoginModal = ({ isOpen, onClose }) => {
+const StatusMessage = styled.p`
+  margin: 10px 0 0;
+  min-height: 20px;
+  color: ${({ $type }) =>
+    $type === "error" ? "rgb(220, 80, 80)" : "rgb(var(--theme-yellow))"};
+  font-size: 14px;
+`;
+
+const LoginModal = ({ isOpen, onClose, onAuthenticated }) => {
     const [isRegisterMode, setIsRegisterMode] = useState(false);
+    const [username, setUsername] = useState("");
+    const [identifier, setIdentifier] = useState("");
+    const [password, setPassword] = useState("");
+    const [status, setStatus] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const resetStatus = () => setStatus(null);
+
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        resetStatus();
+
+        if (!identifier.trim() || !password) {
+            setStatus({ type: "error", text: "Введите логин и пароль." });
+            return;
+        }
+
+        if (isRegisterMode && !username.trim()) {
+            setStatus({ type: "error", text: "Введите имя пользователя." });
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            let payload;
+
+            if (isRegisterMode) {
+                payload = await registerPortalUser({
+                    username: username.trim(),
+                    email: identifier.trim(),
+                    password,
+                });
+            } else {
+                payload = await loginPortalUser({
+                    identifier: identifier.trim(),
+                    password,
+                });
+            }
+
+            setStatus({ type: "success", text: "Вход выполнен." });
+            window.setTimeout(() => {
+                onAuthenticated?.(payload?.user);
+                onClose();
+            }, 500);
+        } catch (error) {
+            setStatus({
+                type: "error",
+                text: error.message || "Не удалось войти. Проверьте логин и пароль.",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const switchMode = () => {
+        setIsRegisterMode(!isRegisterMode);
+        resetStatus();
+    };
 
     if (!isOpen) return null;
 
@@ -107,18 +180,43 @@ const LoginModal = ({ isOpen, onClose }) => {
                 <CloseButton onClick={onClose}>&times;</CloseButton>
                 <h2>{isRegisterMode ? "Регистрация" : "Вход"}</h2>
 
-                {/* Sign Up Mode: Add Name Input */}
-                {isRegisterMode && (
-                    <StyledInput type="text" placeholder="Имя" />
-                )}
+                <form onSubmit={handleSubmit}>
+                    {isRegisterMode && (
+                        <StyledInput
+                            type="text"
+                            placeholder="Имя"
+                            value={username}
+                            onChange={(event) => setUsername(event.target.value)}
+                        />
+                    )}
 
-                <StyledInput type="text" placeholder="Email" />
-                <StyledInput type="password" placeholder="Пароль" />
+                    <StyledInput
+                        type="text"
+                        placeholder={isRegisterMode ? "Email" : "Email или логин"}
+                        value={identifier}
+                        onChange={(event) => setIdentifier(event.target.value)}
+                    />
+                    <StyledInput
+                        type="password"
+                        placeholder="Пароль"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                    />
 
-                <StyledButton>{isRegisterMode ? "Зарегистрироваться" : "Войти"}</StyledButton>
+                    <StyledButton type="submit" disabled={isSubmitting}>
+                        {isSubmitting
+                            ? "Подождите..."
+                            : isRegisterMode
+                                ? "Зарегистрироваться"
+                                : "Войти"}
+                    </StyledButton>
+                </form>
 
-                {/* Toggle between Login and Register */}
-                <ToggleText onClick={() => setIsRegisterMode(!isRegisterMode)}>
+                <StatusMessage $type={status?.type} role={status ? "status" : undefined}>
+                    {status?.text || ""}
+                </StatusMessage>
+
+                <ToggleText onClick={switchMode}>
                     {isRegisterMode ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться"}
                 </ToggleText>
             </ModalContent>

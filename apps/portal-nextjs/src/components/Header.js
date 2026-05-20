@@ -2,11 +2,17 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import Link from "next/link";
-import { LuLogIn } from "react-icons/lu";
+import { LuLogIn, LuLogOut } from "react-icons/lu";
 import { FiMenu, FiX } from "react-icons/fi";
 import Logo from "@/components/Logo"
 import Breadcrumbs from "./Breadcrumb";
 import LoginModal from "./LoginModal";
+import {
+  clearPortalAuth,
+  fetchCurrentPortalUser,
+  getStoredJwt,
+  PORTAL_AUTH_CHANGED_EVENT,
+} from "@/lib/portalApi";
 
 const HeaderContainer = styled.header`
   display: flex;
@@ -128,6 +134,53 @@ const LoginIconWrapper = styled.div`
   }
 `;
 
+const UserArea = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const UserName = styled.span`
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgb(var(--foreground));
+`;
+
+const HeaderLink = styled(Link)`
+  color: rgb(var(--foreground));
+  text-decoration: none;
+  border: 1px solid rgba(var(--theme-grey), 0.45);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: nowrap;
+
+  &:hover {
+    border-color: rgb(var(--theme-yellow));
+    color: rgb(var(--theme-yellow));
+  }
+`;
+
+const HeaderButton = styled.button`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: rgb(var(--foreground));
+  background: transparent;
+  border: 1px solid rgba(var(--theme-grey), 0.45);
+  border-radius: 6px;
+  min-height: 36px;
+  padding: 8px 10px;
+  cursor: pointer;
+
+  &:hover {
+    border-color: rgb(var(--theme-yellow));
+    color: rgb(var(--theme-yellow));
+  }
+`;
+
 /* MOBILE MENU */
 const MobileHeaderContainer = styled.header`
   display: none;
@@ -245,6 +298,7 @@ const Header = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [pageName, setPageName] = useState("");
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
 
   useEffect(() => {
@@ -256,6 +310,72 @@ const Header = () => {
     window.addEventListener("resize", checkScreenSize);
     return () => window.removeEventListener("resize", checkScreenSize);
   }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadCurrentUser = async () => {
+      if (!getStoredJwt()) {
+        setCurrentUser(null);
+        return;
+      }
+
+      try {
+        const user = await fetchCurrentPortalUser();
+        if (isMounted) {
+          setCurrentUser(user);
+        }
+      } catch {
+        if (isMounted) {
+          clearPortalAuth();
+          setCurrentUser(null);
+        }
+      }
+    };
+
+    loadCurrentUser();
+    window.addEventListener(PORTAL_AUTH_CHANGED_EVENT, loadCurrentUser);
+    window.addEventListener("storage", loadCurrentUser);
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener(PORTAL_AUTH_CHANGED_EVENT, loadCurrentUser);
+      window.removeEventListener("storage", loadCurrentUser);
+    };
+  }, []);
+
+  const handleAuthenticated = (user) => {
+    setCurrentUser(user);
+    setIsLoginOpen(false);
+  };
+
+  const handleLogout = () => {
+    clearPortalAuth();
+    setCurrentUser(null);
+  };
+
+  const renderUserControls = () => {
+    if (!currentUser) {
+      return (
+        <LoginIconWrapper onClick={() => setIsLoginOpen(true)} title="Вход">
+          <LuLogIn />
+        </LoginIconWrapper>
+      );
+    }
+
+    return (
+      <UserArea>
+        <HeaderLink href="/games/my">Мои покупки</HeaderLink>
+        <UserName title={currentUser.email || currentUser.username}>
+          {currentUser.username || currentUser.email}
+        </UserName>
+        <HeaderButton type="button" onClick={handleLogout}>
+          <LuLogOut size={18} aria-hidden="true" />
+          Выйти
+        </HeaderButton>
+      </UserArea>
+    );
+  };
 
 
 
@@ -296,10 +416,7 @@ const Header = () => {
             {/* Breadcrumbs */}
             <Breadcrumbs />
 
-            {/* Login Button (Desktop) */}
-            <LoginIconWrapper onClick={() => setIsLoginOpen(true)}>
-              <LuLogIn />
-            </LoginIconWrapper>
+            {renderUserControls()}
           </RightContainer>
 
 
@@ -347,10 +464,18 @@ const Header = () => {
             <MobileOffCanavasMenuContainer>
               <StyledNextLink href="#">О платформе</StyledNextLink>
               <StyledNextLink href="#">Поддержка</StyledNextLink>
-              {/* Mobile Login Button */}
-              <LoginButton onClick={() => setIsLoginOpen(true)}>
-                <LuLogIn size={20} /> Вход
-              </LoginButton>
+              {currentUser ? (
+                <>
+                  <StyledNextLink href="/games/my">Мои покупки</StyledNextLink>
+                  <LoginButton onClick={handleLogout}>
+                    <LuLogOut size={20} /> Выйти
+                  </LoginButton>
+                </>
+              ) : (
+                <LoginButton onClick={() => setIsLoginOpen(true)}>
+                  <LuLogIn size={20} /> Вход
+                </LoginButton>
+              )}
             </MobileOffCanavasMenuContainer>
 
           </MobileOffCanvasMenu>
@@ -358,7 +483,11 @@ const Header = () => {
       )}
 
       {/* LOGIN MODAL (visible for both desktop and mobile) */}
-      <LoginModal isOpen={isLoginOpen} onClose={() => setIsLoginOpen(false)} />
+      <LoginModal
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
+        onAuthenticated={handleAuthenticated}
+      />
     </>
   );
 };

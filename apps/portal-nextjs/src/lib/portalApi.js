@@ -17,13 +17,14 @@ const TOKEN_STORAGE_KEYS = [
 ];
 
 const PRIMARY_TOKEN_STORAGE_KEY = "cubica.portal.jwt";
+export const PORTAL_AUTH_CHANGED_EVENT = "cubica.portal.auth.changed";
 const TEST_USER = {
   username: "portal-test",
   email: "portal-test@example.com",
   password: "portal-test-password",
 };
 
-function getStoredJwt() {
+export function getStoredJwt() {
   if (typeof window === "undefined") {
     return null;
   }
@@ -99,10 +100,58 @@ async function publicRequest(path, options = {}) {
   return payload;
 }
 
-function storeJwt(token) {
+export function storeJwt(token) {
   if (typeof window !== "undefined" && token) {
     window.localStorage.setItem(PRIMARY_TOKEN_STORAGE_KEY, token);
+    window.dispatchEvent(new Event(PORTAL_AUTH_CHANGED_EVENT));
   }
+}
+
+export function clearPortalAuth() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  for (const key of TOKEN_STORAGE_KEYS) {
+    window.localStorage.removeItem(key);
+  }
+
+  window.dispatchEvent(new Event(PORTAL_AUTH_CHANGED_EVENT));
+}
+
+export async function loginPortalUser({ identifier, password }) {
+  const payload = await publicRequest("/api/auth/local", {
+    method: "POST",
+    body: JSON.stringify({ identifier, password }),
+  });
+
+  storeJwt(payload?.jwt);
+  return payload;
+}
+
+export async function registerPortalUser({ username, email, password }) {
+  const payload = await publicRequest("/api/auth/local/register", {
+    method: "POST",
+    body: JSON.stringify({ username, email, password }),
+  });
+
+  storeJwt(payload?.jwt);
+  return payload;
+}
+
+export async function fetchCurrentPortalUser() {
+  return request("/api/users/me");
+}
+
+export async function listUserPurchases() {
+  const payload = await request("/api/purchases");
+  return Array.isArray(payload?.purchases) ? payload.purchases : [];
+}
+
+export async function resolveLaunchSession({ token, counter }) {
+  return publicRequest(
+    `/api/launch-sessions/resolve/${encodeURIComponent(token)}/${encodeURIComponent(counter)}`
+  );
 }
 
 function normalizeSessionList(payload) {

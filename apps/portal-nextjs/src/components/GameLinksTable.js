@@ -141,6 +141,11 @@ const StyledLink = styled.a`
   }
 `;
 
+const PendingLinkText = styled.span`
+  display: inline-block;
+  color: rgba(var(--foreground), 0.75);
+`;
+
 const IconButton = styled.button`
   background: transparent;
   border: 1px solid rgba(var(--theme-grey), 0.45);
@@ -344,9 +349,15 @@ const GameLinksTable = ({ games }) => {
                 <HoverRow key={link.id} tabIndex="0">
                   <Td>{game.gameName}</Td>
                   <Td>
-                    <StyledLink href={link.url} target="_blank">
-                      {link.url}
-                    </StyledLink>
+                    {link.url && link.url !== "#" ? (
+                      <StyledLink href={link.url} target="_blank">
+                        {link.url}
+                      </StyledLink>
+                    ) : (
+                      <PendingLinkText>
+                        Ссылка создается при копировании
+                      </PendingLinkText>
+                    )}
                   </Td>
                   <Td>{link.type}</Td>
                   <Td>

@@ -101,6 +101,7 @@ const GamePage = ({ params: paramsPromise }) => {
                             rating={game.rating}
                             reviews={game.reviews}
                             priceLaunch={game.pricePerLaunch}
+                            priceDay={game.pricePerDay}
                             priceMonth={game.pricePerMonth}
                             description={game.description}
                             details={{
