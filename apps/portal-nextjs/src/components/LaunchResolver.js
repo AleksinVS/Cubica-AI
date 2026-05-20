@@ -11,6 +11,7 @@
 
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { parseLaunchKey } from "@/lib/launchRoute";
 import { resolveLaunchSession } from "@/lib/portalApi";
 
 const Page = styled.main`
@@ -57,6 +58,31 @@ function statusMessage(status, reason) {
   return reason || "Не удалось открыть игровую сессию.";
 }
 
+function invalidLaunchMessage() {
+  const currentPath = typeof window !== "undefined" ? window.location.pathname : "";
+  return currentPath
+    ? `Некорректная ссылка запуска: ${currentPath}. Ожидаемый формат: /launch/token::counter.`
+    : "Некорректная ссылка запуска. Ожидаемый формат: /launch/token::counter.";
+}
+
+function resolveLaunchParams({ token, counter }) {
+  if (token && counter) {
+    return { token, counter };
+  }
+
+  if (typeof window === "undefined") {
+    return { token, counter };
+  }
+
+  const [, launchKey] = window.location.pathname.match(/^\/launch\/([^/]+)/) || [];
+  const parsed = parseLaunchKey(decodeURIComponent(launchKey || ""));
+
+  return {
+    token: token && counter ? token : parsed.token,
+    counter: counter || parsed.counter,
+  };
+}
+
 export default function LaunchResolver({ token, counter }) {
   const [state, setState] = useState({
     status: "loading",
@@ -69,11 +95,13 @@ export default function LaunchResolver({ token, counter }) {
 
     const run = async () => {
       try {
-        if (!token || !counter) {
-          throw new Error("Некорректная ссылка запуска.");
+        const resolved = resolveLaunchParams({ token, counter });
+
+        if (!resolved.token || !resolved.counter) {
+          throw new Error(invalidLaunchMessage());
         }
 
-        const result = await resolveLaunchSession({ token, counter });
+        const result = await resolveLaunchSession(resolved);
 
         if (!result?.ok || !result.playerUrl) {
           throw new Error(statusMessage(result?.status, result?.reason));

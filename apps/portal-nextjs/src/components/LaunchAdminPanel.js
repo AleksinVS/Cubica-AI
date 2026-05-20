@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import styled from "styled-components";
+import { parseLaunchKey } from "@/lib/launchRoute";
 import { fetchCurrentPortalUser, getStoredJwt } from "@/lib/portalApi";
 
 const Page = styled.main`
@@ -30,6 +31,24 @@ const Meta = styled.dl`
 `;
 
 export default function LaunchAdminPanel({ token, counter }) {
+  const resolved = (() => {
+    if (token && counter) {
+      return { token, counter };
+    }
+
+    if (typeof window === "undefined") {
+      return { token, counter };
+    }
+
+    const [, launchKey] = window.location.pathname.match(/^\/launch\/([^/]+)/) || [];
+    const parsed = parseLaunchKey(decodeURIComponent(launchKey || ""));
+
+    return {
+      token: token && counter ? token : parsed.token,
+      counter: counter || parsed.counter,
+    };
+  })();
+
   const [state, setState] = useState({
     status: "loading",
     message: "Проверяем доступ...",
@@ -81,9 +100,9 @@ export default function LaunchAdminPanel({ token, counter }) {
             <dt>Пользователь</dt>
             <dd>{state.user?.username || state.user?.email || "portal user"}</dd>
             <dt>Токен</dt>
-            <dd>{token || "не задан"}</dd>
+            <dd>{resolved.token || "не задан"}</dd>
             <dt>Счетчик</dt>
-            <dd>{counter || "не задан"}</dd>
+            <dd>{resolved.counter || "не задан"}</dd>
           </Meta>
         ) : (
           <p>{state.message}</p>
