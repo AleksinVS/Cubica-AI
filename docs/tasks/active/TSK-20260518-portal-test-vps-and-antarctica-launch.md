@@ -357,7 +357,7 @@ Current validation notes:
 - `node --check` passes for new portal-backend JavaScript files; new Strapi JSON schemas parse successfully.
 - `npm ci --prefix services/portal-backend` passed after retrying with longer npm fetch timeouts.
 - `npm run build --prefix services/portal-backend` passed for the Strapi admin build.
-- `apps/player-web` runtime binding to portal launch context is not implemented yet; current browser-local session reuse is an intentional documented gap.
+- `apps/player-web` now contains the first portal launch binding path through `src/presenter/portal-launch-client.ts` and `GamePresenter`; remaining gaps are portal-player-runtime integration coverage, completion event handling, archive/journal behavior, deploy readiness and production policy for the payment stub.
 
 ## Artifacts
 

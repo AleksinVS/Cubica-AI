@@ -37,4 +37,4 @@ This slice ends when the player reaches terminal info block `i21` either through
 
 - `docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md`
 - `NEXT_STEPS.md`
-- `services/runtime-api/HANDOFF.md`
+- `docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md`

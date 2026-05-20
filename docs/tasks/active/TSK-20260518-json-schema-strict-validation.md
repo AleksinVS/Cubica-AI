@@ -12,15 +12,18 @@ Ajv работает в нестрогом режиме, что ослабляе
 
 Перевести manifest validation к строгому режиму Ajv без ручных TypeScript-проверок вместо схемы.
 
+Отдельно покрыть текущую ручную cross-validation проверку `templateId` в `services/runtime-api/src/modules/content/manifestValidation.ts`: либо перенести проверку ссылок на `templates` в декларативную JSON Schema/validation layer, либо оформить bounded exception с причиной, владельцем и планом снятия.
+
 ## Plan
 
 1. Найти причины `strict: false`.
 2. Исправить схему и тесты.
-3. Подтвердить `services/runtime-api` checks.
+3. Классифицировать ручную проверку `templateId`: перенести в schema-level validation или задокументировать исключение без нарушения JSON Schema как SSOT.
+4. Подтвердить `services/runtime-api` checks.
 
 ## Acceptance
 
-Manifest validation использует строгий Ajv-режим, canonical checks проходят.
+Manifest validation использует строгий Ajv-режим, canonical checks проходят, а `templateId` reference validation больше не выглядит как неучтенный императивный drift.
 
 ## Validation
 

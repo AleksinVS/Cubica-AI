@@ -1,4 +1,11 @@
 {
   ".": "Активные рабочие задачи проекта. Каждый TSK-файл объединяет план, критерии приемки, проверки, артефакты и журнал передачи.",
-  "TSK-20260518-architecture-repair-and-task-system-migration.md": "Активный план восстановления архитектурных проверок и завершения миграции системы задач на ADR-031."
+  "TSK-20260518-architecture-repair-and-task-system-migration.md": "Активный план восстановления архитектурных проверок и завершения миграции системы задач на ADR-031.",
+  "TSK-20260518-contracts-neutrality-cleanup.md": "План очистки общего contracts layer от game-specific drift без потери Antarctica coverage.",
+  "TSK-20260518-json-schema-strict-validation.md": "План перевода manifest validation на строгий Ajv-режим без императивного дрейфа.",
+  "TSK-20260518-portal-test-vps-and-antarctica-launch.md": "План подготовки portal launch surface, test VPS и запуска Antarctica через ссылки и runtime sessions.",
+  "TSK-20260518-runtime-repository-boundary-and-readiness.md": "План укрепления runtime repository boundary и честной readiness-проверки game content.",
+  "TSK-20260518-session-persistence-hardening.md": "План production-ready session persistence вместо runtime-only in-memory store.",
+  "TSK-20260518-workspace-project-references-cleanup.md": "План классификации workspace, scaffold и TypeScript project reference gaps.",
+  "TSK-20260520-project-review-remediation.md": "Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20."
 }

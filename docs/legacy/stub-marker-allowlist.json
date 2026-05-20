@@ -1,0 +1,124 @@
+{
+  "description": "Allowlist for pre-existing stub markers that are intentionally not debt-log rows. Each entry must have an owner, reason, and expires_at date so the CI gate blocks new undocumented markers.",
+  "entries": [
+    {
+      "path": "apps/portal-nextjs/src/lib/portalApi.js",
+      "markers": ["stub"],
+      "owner": "Portal Team",
+      "reason": "Frontend draft calls the registered portal-backend payment stub while the test VPS payment flow is active.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "packages/contracts/*/package.json",
+      "markers": ["TODO"],
+      "owner": "Platform Team",
+      "reason": "Workspace package lifecycle scripts are non-executed placeholders until package build/test ownership is classified.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/*/package.json",
+      "markers": ["TODO"],
+      "owner": "SDK Team",
+      "reason": "SDK package lifecycle scripts are placeholders covered by the workspace project references cleanup task.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/viewers/web-base/package.json",
+      "markers": ["TODO"],
+      "owner": "SDK Team",
+      "reason": "Viewer package lifecycle scripts are placeholders while LEGACY-0011 is active.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "apps/player-web/package.json",
+      "markers": ["TODO"],
+      "owner": "Frontend Team",
+      "reason": "Lint script placeholder is outside the runtime/test gates fixed by this remediation.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "services/runtime-api/package.json",
+      "markers": ["TODO"],
+      "owner": "Backend Team",
+      "reason": "Build/lint script placeholders are outside the canonical runtime verification gate.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "services/metadata-db/DEV_GUIDE.md",
+      "markers": ["stub", "заглушка", "временно"],
+      "owner": "Backend Team",
+      "reason": "Historical service development guide describes registration policy for future metadata ingestion work.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "services/game-repository/DEV_GUIDE.md",
+      "markers": ["mock", "stub", "заглушка", "временно"],
+      "owner": "Backend Team",
+      "reason": "Historical service development guide describes pre-canonical repository scaffolding and registration policy.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "services/game-editor/DEV_GUIDE.md",
+      "markers": ["mock", "заглушка", "временно"],
+      "owner": "Backend Team",
+      "reason": "Historical service development guide describes future editor integration work rather than active runtime code.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/simulators/README.md",
+      "markers": ["TODO"],
+      "owner": "SDK Team",
+      "reason": "Simulator documentation is a historical SDK planning note pending workspace classification.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/shared/README.md",
+      "markers": ["TODO"],
+      "owner": "SDK Team",
+      "reason": "Shared SDK documentation keeps a placeholder task list until SDK package ownership is classified.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/react-sdk/DEV_GUIDE.md",
+      "markers": ["TODO", "stub", "заглушка", "временно"],
+      "owner": "SDK Team",
+      "reason": "React SDK guide describes planned package work while SDK scaffolding is covered by cleanup tasks.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/custom-examples/README.md",
+      "markers": ["заглушка"],
+      "owner": "SDK Team",
+      "reason": "Custom examples guide states the registration rule for future examples rather than adding an active stub.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "SDK/core/tests/README.md",
+      "markers": ["mock"],
+      "owner": "SDK Team",
+      "reason": "Test README uses mock as test terminology, not as an active production stub.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "docs/tasks/README.md",
+      "markers": ["временно"],
+      "owner": "Architecture Team",
+      "reason": "Task-system documentation describes lifecycle policy and not an active implementation stub.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "docs/tasks/ROADMAP.md",
+      "markers": ["временно"],
+      "owner": "Architecture Team",
+      "reason": "Roadmap text describes transient planning risk, not an active implementation stub.",
+      "expires_at": "2026-06-30"
+    },
+    {
+      "path": "docs/architecture/universality-analysis.md",
+      "markers": ["stub", "stubs"],
+      "owner": "Architecture Team",
+      "reason": "The document describes generated scaffold examples rather than an active runtime stub.",
+      "expires_at": "2026-06-30"
+    }
+  ]
+}

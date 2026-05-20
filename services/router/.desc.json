@@ -1,1 +1,3 @@
-{\n  ".": "Service boundary for router (placeholder)." \n}
+{
+  ".": "Service boundary for router scaffold. The current canonical runtime path is owned by services/runtime-api until this boundary is reclassified or extracted."
+}

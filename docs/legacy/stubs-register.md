@@ -32,10 +32,15 @@
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | LEGACY-0001 | game-engine | data/mocks/llm/default-response.json | стартовый commit | Заменить на интеграцию с LLM к Phase1 | Game Engine Team | active | Требуется контракт API с Router |
-| LEGACY-0009 | runtime-api | services/runtime-api/src/modules/session/InMemorySessionStore.ts | canonical runtime slice | Заменить на PostgreSQL-backed persistence в `TSK-20260518-session-persistence-hardening` | Backend Team | active | Runtime state теряется при рестарте процесса |
+| LEGACY-0003 | game-engine | services/game-engine/ | architecture repair review | Реализовать или удалить standalone Game Engine service boundary в Phase1 | Backend Team | active | Сейчас canonical runtime path находится в `services/runtime-api` |
+| LEGACY-0004 | backend services | services/game-catalog/ | architecture repair review | Реализовать или классифицировать Catalog/Editor/Repository/Metadata services в Phase1 | Backend Team | active | Сервисы остаются target/scaffold boundaries |
+| LEGACY-0005 | SDK/viewers | SDK/viewers/ | architecture repair review | Реализовать viewer library или сузить workspace scope в Phase1 | SDK Team | active | Viewer scaffold не участвует в canonical player-web path |
+| LEGACY-0006 | extension-packs | docs/architecture/adrs/015-extension-packs-architecture.md | ADR-015 | Реализовать Extension Packs runtime/SDK path в Phase2 | Engine Team | active | `SDK/extensions/` отсутствует намеренно; актуальная ссылка ведет на архитектурное решение ADR-015 |
+| LEGACY-0009 | runtime-api | services/runtime-api/src/modules/session/inMemorySessionStore.ts | canonical runtime slice | Заменить на PostgreSQL-backed persistence в `TSK-20260518-session-persistence-hardening` | Backend Team | active | Runtime state теряется при рестарте процесса |
 | LEGACY-0010 | runtime-api | services/runtime-api/src/modules/player-api/httpServer.ts readiness endpoint | canonical runtime slice | Проверять загрузку content bundle в `TSK-20260518-runtime-repository-boundary-and-readiness` | Backend Team | active | Сейчас endpoint подтверждает процесс, но не content readiness |
 | LEGACY-0011 | SDK/viewers/web-base | SDK/viewers/web-base | pre-canonical SDK scaffold | Классифицировать workspace статус в `TSK-20260518-workspace-project-references-cleanup` | SDK Team | active | Scaffold не входит в canonical player-web path |
 | LEGACY-0012 | services/router | services/router | historical target architecture | Классифицировать как archived target или contracts-only scaffold в `TSK-20260518-workspace-project-references-cleanup` | Backend Team | active | В текущем canonical slice runtime-api владеет boundary |
+| LEGACY-0013 | portal-backend | services/portal-backend | portal launch slice | Удалить payment stub или закрыть production policy после test VPS/payment integration | Portal Team | active | Доступен только при `PAYMENT_STUB_ENABLED=true`; backend markers покрывают payment-stub route/controller/readme |
 
 ## Архив заглушек
 | id | component | location | introduced_in | removal_plan | owner | status | notes |

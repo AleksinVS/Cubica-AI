@@ -1,9 +1,11 @@
 {
   ".": "Корень монорепозитория Cubica",
+  ".gitignore": "Правила исключения локальных зависимостей, сборочных и тестовых артефактов из Git.",
   "AGENTS.md": "Правила работы ИИ‑агентов",
   "NEXT_STEPS.md": "Ближайшие инженерные шаги и приоритеты миграции",
   "package.json": "Корневой npm-workspace",
   "package-lock.json": "Lockfile корневого npm-workspace",
+  "playwright.config.ts": "Конфигурация Playwright e2e-тестов для browser-level проверки player-web и runtime-api.",
   "PROJECT_OVERVIEW.md": "Общий обзор проекта",
   "PROJECT_WORKFLOW_CONFIG.json": "Конфигурация workflow-инструментов, поддерживаемая как корневой tool entry point",
   "PROJECT_STRUCTURE.yaml": "Описание структуры репозитория (этот файл)",

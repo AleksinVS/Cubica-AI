@@ -6,19 +6,33 @@
 # Note: 'draft', 'sandbox', '.tmp' and 'node_modules' are excluded.
 # Note: ONLY documented files and directories (via .desc.json or package.json) are shown.
 
+.github: # GitHub repository automation configuration, including required CI workflows.
+  workflows: # GitHub Actions workflows for canonical validation and legacy/stub governance gates.
+    ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
+  required-checks.md: file # Repository ruleset and branch protection notes for required CI checks.
 apps: # Приложения и импортированные frontend-заготовки 
-  player-web: directory... # Канонический web player scaffold для Antarctica 
+  player-web: # Канонический web player scaffold для Antarctica 
+    e2e: # Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.
+      player-web.spec.ts: file # E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding.
   portal-nextjs: directory... # Next.js портал для каталога, покупок, ссылок запуска и первого test VPS launch с Antarctica.
 archive: directory... # Архив старых документов и черновиков 
 data: directory... # Фикстуры и моки данных 
 docs: # Архитектура, задачи, планирование 
   architecture: directory... # Архитектурные документы, ADR, схемы 
   legacy:
-    debt-log.csv: file # Центральный реестр долга (tech debt)
-    stubs-register.md: file # Реестр временных заглушек
+    debt-log.csv: file # Центральный реестр долга (tech debt).
+    stub-marker-allowlist.json: file # Документированные исключения для CI-проверки маркеров заглушек с владельцем, причиной и сроком пересмотра.
+    stubs-register.md: file # Реестр временных заглушек.
   tasks: # Легковесная система задач и планов: текущие рабочие задачи, архив старой иерархии и постоянные артефакты задач.
     active: # Активные рабочие задачи проекта. Каждый TSK-файл объединяет план, критерии приемки, проверки, артефакты и журнал передачи.
       TSK-20260518-architecture-repair-and-task-system-migration.md: file # Активный план восстановления архитектурных проверок и завершения миграции системы задач на ADR-031.
+      TSK-20260518-contracts-neutrality-cleanup.md: file # План очистки общего contracts layer от game-specific drift без потери Antarctica coverage.
+      TSK-20260518-json-schema-strict-validation.md: file # План перевода manifest validation на строгий Ajv-режим без императивного дрейфа.
+      TSK-20260518-portal-test-vps-and-antarctica-launch.md: file # План подготовки portal launch surface, test VPS и запуска Antarctica через ссылки и runtime sessions.
+      TSK-20260518-runtime-repository-boundary-and-readiness.md: file # План укрепления runtime repository boundary и честной readiness-проверки game content.
+      TSK-20260518-session-persistence-hardening.md: file # План production-ready session persistence вместо runtime-only in-memory store.
+      TSK-20260518-workspace-project-references-cleanup.md: file # План классификации workspace, scaffold и TypeScript project reference gaps.
+      TSK-20260520-project-review-remediation.md: file # Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
@@ -34,6 +48,9 @@ packages: # Переиспользуемые платформенные паке
     runtime: directory... # Runtime execution contracts for Cubica.
     session: directory... # Session lifecycle and player API contracts for Cubica.
 scripts: # Скрипты разработки и индексирования 
+  ci: # Cross-platform CI validation scripts that enforce repository governance rules before merge.
+    validate-legacy.js: file # Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.
+    validate-legacy.ps1: file # PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.
   debug: directory... # Поддерживаемые debug-скрипты для локальной проверки UI, журналов и визуального сравнения. Скрипты не являются частью canonical verification и используются вручную при расследовании регрессий.
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 
@@ -42,13 +59,18 @@ SDK: # SDK и вспомогательные библиотеки
   viewers: # Библиотека плееров для отображения игр 
     web-base: directory... # Базовый веб-viewer для платформы Cubica. Содержит переиспользуемые компоненты для загрузки манифестов, управления состоянием и маршрутизации действий.
 services: # Сервисы и инфраструктура 
+  game-engine: directory... # Service boundary for a future game engine service. The current canonical runtime path executes deterministic manifest actions in services/runtime-api.
+  game-repository: directory... # Service boundary for a future game repository. The current canonical runtime loads game content through services/runtime-api.
   portal-backend: # Strapi backend портала для каталога, заказов, покупок, платежной заглушки и launch-session API.
     test: directory... # Focused backend tests that can run without a Strapi database; currently covers pure portal launch-session rule helpers.
+  router: directory... # Service boundary for router scaffold. The current canonical runtime path is owned by services/runtime-api until this boundary is reclassified or extracted.
   runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
+.gitignore: file # Правила исключения локальных зависимостей, сборочных и тестовых артефактов из Git.
 AGENTS.md: file # Правила работы ИИ‑агентов
 NEXT_STEPS.md: file # Ближайшие инженерные шаги и приоритеты миграции
 package-lock.json: file # Lockfile корневого npm-workspace
 package.json: file # Корневой npm-workspace
+playwright.config.ts: file # Конфигурация Playwright e2e-тестов для browser-level проверки player-web и runtime-api.
 PROJECT_OVERVIEW.md: file # Общий обзор проекта
 PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
 PROJECT_WORKFLOW_CONFIG.json: file # Конфигурация workflow-инструментов, поддерживаемая как корневой tool entry point

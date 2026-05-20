@@ -1,0 +1,4 @@
+{
+  ".": "Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.",
+  "player-web.spec.ts": "E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding."
+}

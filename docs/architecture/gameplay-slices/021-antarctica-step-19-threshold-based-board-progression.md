@@ -33,4 +33,4 @@ After the step-15 team-selection slice and its explicit follow-up path, Antarcti
 
 - `docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md`
 - `NEXT_STEPS.md`
-- `services/runtime-api/HANDOFF.md`
+- `docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md`

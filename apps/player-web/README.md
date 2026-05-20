@@ -1,6 +1,6 @@
 # `player-web`
 
-Canonical web player scaffold for `Antarctica`.
+Canonical web player for `Antarctica`.
 
 ## Run
 
@@ -51,9 +51,9 @@ The player-web supports two rendering paths for Antarctica:
    - **S2 board screens** (`screenId: "S2"`): Board screens keyed by stepIndex (55..60 at stepIndex 30, 61..66 at stepIndex 32, 67..68 at stepIndex 34, 69..70 at stepIndex 36) with top-sidebar layout, horizontal metrics bar, board header, and card selection grid.
    - **S1 info variant screens** (`screenId: "S1"` with `activeInfoId`): Info screens i17, i18, i19, i19_1, i20, i21 where `activeInfoId` disambiguates between variants (e.g., i19 vs i19_1 at the same stepIndex 35).
    
-   Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId`) following the contract in `CONTRACT_INDEX.md`. When a screen is not in the manifest, the player falls back to the action catalog resolver.
+   Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId`) following the typed DTOs in `packages/contracts/manifest` and `apps/player-web/src/types/`. When a screen is not in the manifest, the player falls back to the action catalog resolver.
 
-2. **Specialized Resolver Renderer**: For scenes outside the bounded manifest scope, the player uses a structured resolver logic (`src/lib/antarctica.ts`) to map session state to structured UI components (boards `1..70`, infos `i0..i21`, team-selection).
+2. **Specialized Resolver Renderer**: For scenes outside the bounded manifest scope, the player uses registered game plugins (`src/plugins/antarctica/*`) and presenter configuration (`src/presenter/antarctica-config-data.ts`) to map session state to structured UI components (boards `1..70`, infos `i0..i21`, team-selection).
 
 `player-web` combines that player-facing content with the live session snapshot (`timeline`, `selectedCardId`, metrics, card flags, etc.) to render the current scene. Board card rendering respects `flags.cards[cardId].available === false`, so locked or alt-swap cards stay hidden until runtime exposes them. For steps that are not modeled yet in the content DTO, the player falls back to the global action catalog.
 
@@ -62,8 +62,11 @@ Static assets (images) are located in `public/images/`. The UI manifest uses roo
 
 ### Testing
 Run `npm test` to execute Vitest suites:
-- `src/components/antarctica-s1-renderer.test.tsx`: DOM/Snapshot tests for the manifest-driven renderer.
-- `src/components/antarctica-player-dom.test.tsx`: Integration tests for the full AntarcticaPlayer component.
-- `src/components/antarctica-player.test.tsx`: Logic and resolver tests.
+- `src/components/manifest-renderer.test.tsx`: DOM tests for the manifest-driven renderer.
+- `src/components/game-player-dom.test.tsx`: Integration tests for the full GamePlayer component.
+- `src/components/game-player.test.tsx`: Logic and resolver tests.
+- `src/components/panels/journal-renderer.test.tsx`: Journal and metrics panel rendering tests.
+
+Run `npm run test:e2e` from the repository root to execute Playwright browser tests against `player-web` and `runtime-api`.
 
 It intentionally does not reuse the imported portal drafts as architecture reference.

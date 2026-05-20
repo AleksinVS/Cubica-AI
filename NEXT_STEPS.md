@@ -22,6 +22,7 @@
 ## Now
 
 - [TSK-20260518-architecture-repair-and-task-system-migration](docs/tasks/active/TSK-20260518-architecture-repair-and-task-system-migration.md) — восстановить зеленый canonical slice, устранить архитектурные разрывы из ревью 2026-05-18 и завершить миграцию системы задач на ADR-031.
+- [TSK-20260520-project-review-remediation](docs/tasks/active/TSK-20260520-project-review-remediation.md) — реализация исправлений находится на review: структурный индекс, legacy/stub реестры, битые ссылки и блокирующая CI-проверка незарегистрированных заглушек обновлены.
 
 ## Next
 

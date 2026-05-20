@@ -1,0 +1,4 @@
+{
+  ".": "GitHub repository automation configuration, including required CI workflows.",
+  "required-checks.md": "Repository ruleset and branch protection notes for required CI checks."
+}

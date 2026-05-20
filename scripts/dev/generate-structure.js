@@ -4,25 +4,30 @@ const path = require('path');
 const EXCLUDED = ['.git', 'node_modules', '.next', '.tmp', 'sandbox', 'draft'];
 const MAX_DEPTH = 3;
 
+function readJsonFileStrict(filePath) {
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch (error) {
+    const relativePath = path.relative(process.cwd(), filePath) || filePath;
+    throw new Error(`Invalid JSON in ${relativePath}: ${error.message}`);
+  }
+}
+
 function getDescriptions(dirPath) {
   const descs = {};
   
   // 1. package.json fallback for directory
   const pkgPath = path.join(dirPath, 'package.json');
   if (fs.existsSync(pkgPath)) {
-    try {
-      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
-      if (pkg.description) descs['.'] = pkg.description;
-    } catch (e) {}
+    const pkg = readJsonFileStrict(pkgPath);
+    if (pkg.description) descs['.'] = pkg.description;
   }
 
   // 2. .desc.json overrides and file descriptions
   const descPath = path.join(dirPath, '.desc.json');
   if (fs.existsSync(descPath)) {
-    try {
-      const parsed = JSON.parse(fs.readFileSync(descPath, 'utf8'));
-      Object.assign(descs, parsed);
-    } catch (e) {}
+    const parsed = readJsonFileStrict(descPath);
+    Object.assign(descs, parsed);
   }
   
   return descs;

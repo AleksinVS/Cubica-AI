@@ -1,0 +1,4 @@
+{
+  ".": "GitHub Actions workflows for canonical validation and legacy/stub governance gates.",
+  "ci.yml": "Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests."
+}

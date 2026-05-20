@@ -38,4 +38,4 @@ The next bounded slice covers the transition into board `31..36`, its card-local
 
 - `docs/architecture/adrs/024-bounded-manifest-driven-gameplay-mechanics.md`
 - `NEXT_STEPS.md`
-- `services/runtime-api/HANDOFF.md`
+- `docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md`
