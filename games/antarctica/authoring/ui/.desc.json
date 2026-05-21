@@ -1,0 +1,3 @@
+{
+  "description": "Channel-specific authoring manifests for Antarctica UI (web, telegram). Each file compiles into the corresponding runtime ui.manifest.json via the ADR-030 authoring compiler."
+}

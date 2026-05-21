@@ -31,6 +31,36 @@ function readJson(relativePath) {
   return JSON.parse(fs.readFileSync(absolutePath, "utf8"));
 }
 
+function toPointerSegment(segment) {
+  return String(segment).replace(/~/g, "~0").replace(/\//g, "~1");
+}
+
+function joinPointer(pointer, segment) {
+  return `${pointer}/${toPointerSegment(segment)}`;
+}
+
+function readJsonPointer(document, pointer) {
+  if (pointer === "") {
+    return { exists: true, value: document };
+  }
+  if (!pointer.startsWith("/")) {
+    return { exists: false, value: undefined };
+  }
+
+  let current = document;
+  for (const rawSegment of pointer.slice(1).split("/")) {
+    const segment = rawSegment.replace(/~1/g, "/").replace(/~0/g, "~");
+    if (!current || typeof current !== "object") {
+      return { exists: false, value: undefined };
+    }
+    if (!Object.prototype.hasOwnProperty.call(current, segment)) {
+      return { exists: false, value: undefined };
+    }
+    current = current[segment];
+  }
+  return { exists: true, value: current };
+}
+
 function collectFiles(root, predicate) {
   if (!fs.existsSync(root)) {
     return [];
@@ -106,10 +136,12 @@ function adoptedRuntimeFiles() {
   const files = [];
   const gameAuthoringFiles = collectFiles(path.join(repoRoot, "games"), (filePath) => filePath.endsWith("/authoring/game.authoring.json"));
   for (const source of gameAuthoringFiles) {
+    const gameRoot = path.dirname(path.dirname(source));
     files.push({
       kind: "game",
-      manifest: path.join(path.dirname(path.dirname(source)), "game.manifest.json"),
-      sourceMap: path.join(path.dirname(path.dirname(source)), "game.manifest.source-map.json")
+      gameRoot,
+      manifest: path.join(gameRoot, "game.manifest.json"),
+      sourceMap: path.join(gameRoot, "game.manifest.source-map.json")
     });
   }
 
@@ -119,6 +151,7 @@ function adoptedRuntimeFiles() {
     const gameRoot = path.dirname(path.dirname(path.dirname(source)));
     files.push({
       kind: "ui",
+      gameRoot,
       manifest: path.join(gameRoot, "ui", channel, "ui.manifest.json"),
       sourceMap: path.join(gameRoot, "ui", channel, "ui.manifest.source-map.json")
     });
@@ -159,6 +192,84 @@ function validateGeneratedOutputs(ajv) {
   }
 }
 
+function validateSourceMapPointers() {
+  const documentCache = new Map();
+  for (const file of adoptedRuntimeFiles()) {
+    const sourceMap = JSON.parse(fs.readFileSync(file.sourceMap, "utf8"));
+    for (const [generatedPointer, sources] of Object.entries(sourceMap.mappings || {})) {
+      for (const source of sources) {
+        const sourceFile = path.join(repoRoot, source.file);
+        if (!fs.existsSync(sourceFile)) {
+          fail(`${relative(file.sourceMap)} maps ${generatedPointer || "/"} to missing source file ${source.file}`);
+        }
+        let document = documentCache.get(sourceFile);
+        if (!document) {
+          document = JSON.parse(fs.readFileSync(sourceFile, "utf8"));
+          documentCache.set(sourceFile, document);
+        }
+        if (!readJsonPointer(document, source.pointer).exists) {
+          fail(`${relative(file.sourceMap)} maps ${generatedPointer || "/"} to missing source pointer ${source.file}${source.pointer}`);
+        }
+      }
+    }
+  }
+}
+
+function collectActionReferences(value, filePath, pointer = "") {
+  const references = [];
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => {
+      references.push(...collectActionReferences(item, filePath, joinPointer(pointer, index)));
+    });
+    return references;
+  }
+  if (!value || typeof value !== "object") {
+    return references;
+  }
+
+  if (value.payload && typeof value.payload.actionId === "string") {
+    references.push({
+      kind: "payload.actionId",
+      actionId: value.payload.actionId,
+      filePath,
+      pointer: `${pointer}/payload/actionId`
+    });
+  }
+  if (typeof value.advanceActionId === "string") {
+    references.push({
+      kind: "advanceActionId",
+      actionId: value.advanceActionId,
+      filePath,
+      pointer: `${pointer}/advanceActionId`
+    });
+  }
+
+  for (const [key, child] of Object.entries(value)) {
+    references.push(...collectActionReferences(child, filePath, joinPointer(pointer, key)));
+  }
+  return references;
+}
+
+function validateDanglingActionReferences() {
+  const files = adoptedRuntimeFiles();
+  const gameFiles = files.filter((file) => file.kind === "game");
+  for (const gameFile of gameFiles) {
+    const gameManifest = JSON.parse(fs.readFileSync(gameFile.manifest, "utf8"));
+    const actionIds = new Set(Object.keys(gameManifest.actions || {}));
+    const relatedFiles = files.filter((file) => file.gameRoot === gameFile.gameRoot);
+    for (const file of relatedFiles) {
+      const manifest = JSON.parse(fs.readFileSync(file.manifest, "utf8"));
+      for (const reference of collectActionReferences(manifest, file.manifest)) {
+        if (!actionIds.has(reference.actionId)) {
+          fail(
+            `${relative(reference.filePath)} has dangling ${reference.kind} "${reference.actionId}" at ${reference.pointer || "/"}`
+          );
+        }
+      }
+    }
+  }
+}
+
 function validateCompilerDrift() {
   try {
     execFileSync(
@@ -178,6 +289,8 @@ function main() {
   validateAuthoringInputs(ajv);
   validateCompilerDrift();
   validateGeneratedOutputs(ajv);
+  validateSourceMapPointers();
+  validateDanglingActionReferences();
   console.log("validate-manifest-authoring: OK");
 }
 

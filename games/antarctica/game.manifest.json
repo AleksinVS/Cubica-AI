@@ -1617,303 +1617,6 @@
     }
   },
   "actions": {
-    "opening.info.i0.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i0.advance",
-      "displayName": "Opening info i0 - advance to i02",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i0.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 0,
-        "nextStepIndex": 1,
-        "screenId": "S1",
-        "summary": "Интро i0 завершено, переход к i02."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i02.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i02.advance",
-      "displayName": "Opening info i02 - advance to i03",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i02.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 1,
-        "nextStepIndex": 2,
-        "screenId": "S1",
-        "summary": "Интро i02 завершено, переход к i03."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i03.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i03.advance",
-      "displayName": "Opening info i03 - advance to i1",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i03.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 2,
-        "nextStepIndex": 3,
-        "screenId": "S1",
-        "summary": "Интро i03 завершено, переход к i1."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i1.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i1.advance",
-      "displayName": "Opening info i1 - advance to i2",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i1.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 3,
-        "nextStepIndex": 4,
-        "screenId": "S1",
-        "summary": "Интро i1 завершено, переход к i2."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i2.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i2.advance",
-      "displayName": "Opening info i2 - advance to i3",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i2.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 4,
-        "nextStepIndex": 5,
-        "screenId": "S1",
-        "summary": "Интро i2 завершено, переход к i3."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i3.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i3.advance",
-      "displayName": "Opening info i3 - advance to i4",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i3.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 5,
-        "nextStepIndex": 6,
-        "screenId": "S1",
-        "summary": "Интро i3 завершено, переход к i4."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i4.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i4.advance",
-      "displayName": "Opening info i4 - advance to i5",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i4.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 6,
-        "nextStepIndex": 7,
-        "screenId": "S1",
-        "summary": "Интро i4 завершено, переход к i5."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i5.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i5.advance",
-      "displayName": "Opening info i5 - advance to i6",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i5.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 7,
-        "nextStepIndex": 8,
-        "screenId": "S1",
-        "summary": "Интро i5 завершено, переход к i6."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i6.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i6.advance",
-      "displayName": "Opening info i6 - advance to first board",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i6.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 8,
-        "nextStepIndex": 9,
-        "screenId": "S2",
-        "summary": "Интро i6 завершено, переход к первому экрану выбора карточек."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdAbsent": true
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.1": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -2201,77 +1904,6 @@
         }
       }
     },
-    "opening.card.3.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.3.advance",
-      "displayName": "Opening card 3 - advance to info i7",
-      "description": "Deterministic transition from resolved first opening board to info block i7.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "3",
-        "stepIndex": 9,
-        "nextStepIndex": 10,
-        "summary": "Переход после первого экрана карточек к инфо-блоку i7."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "3"
-            },
-            "card": {
-              "id": "3",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i7"
-          }
-        }
-      }
-    },
-    "opening.info.i7.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i7.advance",
-      "displayName": "Opening info i7 - advance to second board",
-      "description": "Deterministic intro advance payload extracted from legacy opening info block i7.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 10,
-        "nextStepIndex": 11,
-        "screenId": "S2",
-        "summary": "Интро i7 завершено, переход ко второму экрану выбора карточек."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "3"
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.7": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -2407,77 +2039,6 @@
             "selectedCardId": "9"
           }
         }
-      }
-    },
-    "opening.card.9.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.9.advance",
-      "displayName": "Opening card 9 - advance to info i8",
-      "description": "Deterministic transition from resolved second opening board to info block i8.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "9",
-        "stepIndex": 11,
-        "nextStepIndex": 12,
-        "summary": "Переход после второго экрана карточек к инфо-блоку i8."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "9"
-            },
-            "card": {
-              "id": "9",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i8"
-          }
-        }
-      }
-    },
-    "opening.info.i8.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i8.advance",
-      "displayName": "Opening info i8 - advance to third board",
-      "description": "Deterministic transition from legacy info block i8 to the third opening board.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 12,
-        "nextStepIndex": 13,
-        "screenId": "S2",
-        "summary": "Интро i8 завершено, переход к третьему экрану выбора карточек."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "9"
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.card.10": {
@@ -2883,110 +2444,6 @@
         }
       }
     },
-    "opening.card.18.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.18.advance",
-      "displayName": "Opening card 18 - advance to info i9",
-      "description": "Deterministic transition from the third opening board to legacy info block i9.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "18",
-        "stepIndex": 13,
-        "nextStepIndex": 14,
-        "summary": "Переход после третьего экрана карточек к инфо-блоку i9."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "18"
-            },
-            "card": {
-              "id": "18",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i9"
-          }
-        }
-      }
-    },
-    "opening.info.i9.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i9.advance",
-      "displayName": "Opening info i9 - advance to team-selection boundary",
-      "description": "Deterministic transition from legacy info block i9 to the team-selection boundary.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 14,
-        "nextStepIndex": 15,
-        "screenId": "S2",
-        "summary": "Интро i9 завершено, достигнута граница выбора команды."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "18"
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i10.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i10.advance",
-      "displayName": "Opening info i10 - advance to cards 19..24",
-      "description": "Deterministic transition from legacy info block i10 to the next opening board with cards 19..24.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 16,
-        "nextStepIndex": 17,
-        "screenId": "S2",
-        "summary": "Интро i10 завершено, открыт следующий экран карточек."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "18"
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.19": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -3259,103 +2716,6 @@
             }
           ]
         }
-      }
-    },
-    "opening.card.22.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.22.advance",
-      "displayName": "Opening card 22 - advance to info i11",
-      "description": "Deterministic transition from the step-17 go-card 22 to legacy info block i11.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "22",
-        "stepIndex": 17,
-        "nextStepIndex": 18,
-        "summary": "Переход после go-карты 22 к инфо-блоку i11."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "22"
-            },
-            "card": {
-              "id": "22",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i11"
-          }
-        }
-      }
-    },
-    "opening.card.23.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.23.advance",
-      "displayName": "Opening card 23 - advance to info i11",
-      "description": "Deterministic transition from the step-17 go-card 23 to legacy info block i11.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "23",
-        "stepIndex": 17,
-        "nextStepIndex": 18,
-        "summary": "Переход после go-карты 23 к инфо-блоку i11."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "23"
-            },
-            "card": {
-              "id": "23",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
-    "opening.info.i11.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i11.advance",
-      "displayName": "Opening info i11 - advance to cards 25..30",
-      "description": "Deterministic transition from legacy info block i11 to the next opening board with cards 25..30.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 18,
-        "nextStepIndex": 19,
-        "screenId": "S2",
-        "summary": "Интро i11 завершено, открыт следующий экран карточек."
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.card.25": {
@@ -3706,85 +3066,6 @@
         }
       }
     },
-    "opening.board.25_30.advance": {
-      "handlerType": "manifest-data",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.board.25_30.advance",
-      "displayName": "Opening board 25..30 - advance to info i12",
-      "description": "Deterministic transition from the step-19 board with cards 25..30 to legacy info block i12.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-board",
-        "deterministic",
-        "intro"
-      ],
-      "deterministic": {
-        "provenance": [
-          {
-            "sourceKind": "legacy-opening-board",
-            "sourceFile": "draft/Antarctica/GameFull.html",
-            "legacyCardId": "25_30",
-            "lineIndex": 0,
-            "stepIndex": 19
-          }
-        ],
-        "guard": {
-          "timeline": {
-            "line": "main",
-            "stepIndex": 19,
-            "canAdvance": true
-          },
-          "board": {
-            "cardIds": [
-              "25",
-              "26",
-              "27",
-              "28",
-              "29",
-              "30"
-            ],
-            "resolvedCountAtLeast": 3
-          }
-        },
-        "metricDeltas": [],
-        "log": {
-          "kind": "opening-board-advance",
-          "stageId": "stage_intro",
-          "summary": "Порог по карточкам 25..30 достигнут, переход к i12."
-        },
-        "stateUpdate": {
-          "timelineCanAdvance": false,
-          "timelineStepIndex": 20,
-          "timelineStageId": "stage_intro",
-          "timelineScreenId": "S1"
-        }
-      }
-    },
-    "opening.info.i12.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i12.advance",
-      "displayName": "Opening info i12 - advance to cards 31..36",
-      "description": "Deterministic transition from legacy info block i12 to the next opening board with cards 31..36.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 20,
-        "nextStepIndex": 21,
-        "screenId": "S2",
-        "summary": "Интро i12 завершено, открыт следующий экран карточек."
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.31": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -3848,44 +3129,6 @@
         }
       }
     },
-    "opening.card.31.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.31.advance",
-      "displayName": "Opening card 31 - advance to info i13",
-      "description": "Deterministic transition from legacy opening card 31 to info block i13.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "31",
-        "stepIndex": 21,
-        "nextStepIndex": 22,
-        "summary": "Карточка 31 завершена, переход к i13."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "31"
-            },
-            "card": {
-              "id": "31",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i13"
-          }
-        }
-      }
-    },
     "opening.card.32": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -3942,41 +3185,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    "opening.card.32.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.32.advance",
-      "displayName": "Opening card 32 - advance to info i13",
-      "description": "Deterministic transition from legacy opening card 32 to info block i13.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "32",
-        "stepIndex": 21,
-        "nextStepIndex": 22,
-        "summary": "Карточка 32 завершена, переход к i13."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "32"
-            },
-            "card": {
-              "id": "32",
-              "selected": true,
-              "resolved": true
-            }
-          }
         }
       }
     },
@@ -4044,41 +3252,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    "opening.card.33.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.33.advance",
-      "displayName": "Opening card 33 - advance to info i13",
-      "description": "Deterministic transition from legacy opening card 33 to info block i13.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "33",
-        "stepIndex": 21,
-        "nextStepIndex": 22,
-        "summary": "Карточка 33 завершена, переход к i13."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "33"
-            },
-            "card": {
-              "id": "33",
-              "selected": true,
-              "resolved": true
-            }
-          }
         }
       }
     },
@@ -4210,41 +3383,6 @@
         }
       }
     },
-    "opening.card.35.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.35.advance",
-      "displayName": "Opening card 35 - advance to info i13",
-      "description": "Deterministic transition from legacy opening card 35 to info block i13.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "35",
-        "stepIndex": 21,
-        "nextStepIndex": 22,
-        "summary": "Карточка 35 завершена, переход к i13."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "35"
-            },
-            "card": {
-              "id": "35",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
     "opening.card.36": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -4298,80 +3436,6 @@
             }
           ]
         }
-      }
-    },
-    "opening.card.36.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.36.advance",
-      "displayName": "Opening card 36 - advance to info i13",
-      "description": "Deterministic transition from legacy opening card 36 to info block i13.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "cardId": "36",
-        "stepIndex": 21,
-        "nextStepIndex": 22,
-        "summary": "Карточка 36 завершена, переход к i13."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "36"
-            },
-            "card": {
-              "id": "36",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
-    "opening.info.i13.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i13.advance",
-      "displayName": "Opening info i13 - advance to cards 37..42",
-      "description": "Deterministic transition from legacy info block i13 to the step-23 boundary with cards 37..42.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 22,
-        "nextStepIndex": 23,
-        "screenId": "S2",
-        "summary": "Интро i13 завершено, достигнута следующая mainline boundary."
-      },
-      "overrides": {
-        "deterministic": {
-          "stateUpdate": {
-            "boardEntryAltCardSwap": {
-              "when": {
-                "metricId": "pro",
-                "operator": ">",
-                "threshold": 40
-              },
-              "baseCardId": "39",
-              "altCardId": "3902"
-            }
-          }
-        }
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.card.37": {
@@ -4572,79 +3636,6 @@
         }
       }
     },
-    "opening.card.39.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.39.advance",
-      "displayName": "Opening card 39 - advance to info i14",
-      "description": "Deterministic transition from legacy opening card 39 to info block i14.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "locked-go-card"
-      ],
-      "params": {
-        "cardId": "39",
-        "stepIndex": 23,
-        "nextStepIndex": 24,
-        "summary": "Карточка 39 завершена, переход к i14."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "39"
-            },
-            "card": {
-              "id": "39",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
-    "opening.card.3902.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.3902.advance",
-      "displayName": "Opening card 3902 - advance to info i14",
-      "description": "Deterministic transition from alt opening card 3902 to info block i14.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "alt-card"
-      ],
-      "params": {
-        "cardId": "3902",
-        "stepIndex": 23,
-        "nextStepIndex": 24,
-        "summary": "Карточка 3902 завершена, переход к i14."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "3902"
-            },
-            "card": {
-              "id": "3902",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i14"
-          }
-        }
-      }
-    },
     "opening.card.40": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -4817,54 +3808,6 @@
         }
       }
     },
-    "opening.info.i14.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i14.advance",
-      "displayName": "Opening info i14 - advance to info i14_2",
-      "description": "Deterministic transition from legacy info block i14 to i14_2.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 24,
-        "nextStepIndex": 25,
-        "screenId": "S1",
-        "summary": "Интро i14 завершено, переход к i14_2."
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.info.i14_2.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i14_2.advance",
-      "displayName": "Opening info i14_2 - advance to cards 43..48",
-      "description": "Deterministic transition from legacy info block i14_2 to the next mainline boundary with cards 43..48.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 25,
-        "nextStepIndex": 26,
-        "screenId": "S2",
-        "summary": "Интро i14_2 завершено, достигнута следующая mainline boundary."
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.43": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -4922,41 +3865,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    "opening.card.43.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.43.advance",
-      "displayName": "Opening card 43 - advance to info i15",
-      "description": "Deterministic transition from legacy opening card 43 to info block i15.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "public-communication"
-      ],
-      "params": {
-        "cardId": "43",
-        "stepIndex": 26,
-        "nextStepIndex": 27,
-        "summary": "Карточка 43 завершена, переход к i15."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "43"
-            },
-            "card": {
-              "id": "43",
-              "selected": true,
-              "resolved": true
-            }
-          }
         }
       }
     },
@@ -5076,41 +3984,6 @@
         }
       }
     },
-    "opening.card.45.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.45.advance",
-      "displayName": "Opening card 45 - advance to info i15",
-      "description": "Deterministic transition from legacy opening card 45 to info block i15.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "public-communication"
-      ],
-      "params": {
-        "cardId": "45",
-        "stepIndex": 26,
-        "nextStepIndex": 27,
-        "summary": "Карточка 45 завершена, переход к i15."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "45"
-            },
-            "card": {
-              "id": "45",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
     "opening.card.46": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -5197,41 +4070,6 @@
         }
       }
     },
-    "opening.card.47.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.47.advance",
-      "displayName": "Opening card 47 - advance to info i15",
-      "description": "Deterministic transition from legacy opening card 47 to info block i15.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "public-communication"
-      ],
-      "params": {
-        "cardId": "47",
-        "stepIndex": 26,
-        "nextStepIndex": 27,
-        "summary": "Карточка 47 завершена, переход к i15."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "47"
-            },
-            "card": {
-              "id": "47",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
     "opening.card.48": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -5290,68 +4128,6 @@
             }
           ]
         }
-      }
-    },
-    "opening.card.48.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.48.advance",
-      "displayName": "Opening card 48 - advance to info i15",
-      "description": "Deterministic transition from legacy opening card 48 to info block i15.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "public-communication"
-      ],
-      "params": {
-        "cardId": "48",
-        "stepIndex": 26,
-        "nextStepIndex": 27,
-        "summary": "Карточка 48 завершена, переход к i15."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "48"
-            },
-            "card": {
-              "id": "48",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i15"
-          }
-        }
-      }
-    },
-    "opening.info.i15.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i15.advance",
-      "displayName": "Opening info i15 - advance to cards 49..54",
-      "description": "Deterministic transition from legacy info block i15 to the next mainline boundary with cards 49..54.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 27,
-        "nextStepIndex": 28,
-        "screenId": "S2",
-        "summary": "Интро i15 завершено, достигнута следующая mainline boundary."
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.card.49": {
@@ -5418,44 +4194,6 @@
         }
       }
     },
-    "opening.card.49.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.49.advance",
-      "displayName": "Opening card 49 - advance to info i16",
-      "description": "Deterministic transition from legacy opening card 49 to info block i16.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "trusted-messengers"
-      ],
-      "params": {
-        "cardId": "49",
-        "stepIndex": 28,
-        "nextStepIndex": 29,
-        "summary": "Карточка 49 завершена, переход к i16."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "49"
-            },
-            "card": {
-              "id": "49",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i16"
-          }
-        }
-      }
-    },
     "opening.card.50": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -5501,41 +4239,6 @@
           "stateUpdate": {
             "timelineCanAdvance": true,
             "selectedCardId": "50"
-          }
-        }
-      }
-    },
-    "opening.card.50.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.50.advance",
-      "displayName": "Opening card 50 - advance to info i16",
-      "description": "Deterministic transition from legacy opening card 50 to info block i16.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "trusted-messengers"
-      ],
-      "params": {
-        "cardId": "50",
-        "stepIndex": 28,
-        "nextStepIndex": 29,
-        "summary": "Карточка 50 завершена, переход к i16."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "50"
-            },
-            "card": {
-              "id": "50",
-              "selected": true,
-              "resolved": true
-            }
           }
         }
       }
@@ -5604,41 +4307,6 @@
         }
       }
     },
-    "opening.card.51.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.51.advance",
-      "displayName": "Opening card 51 - advance to info i16",
-      "description": "Deterministic transition from legacy opening card 51 to info block i16.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "trusted-messengers"
-      ],
-      "params": {
-        "cardId": "51",
-        "stepIndex": 28,
-        "nextStepIndex": 29,
-        "summary": "Карточка 51 завершена, переход к i16."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "51"
-            },
-            "card": {
-              "id": "51",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
     "opening.card.52": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -5680,41 +4348,6 @@
           "stateUpdate": {
             "timelineCanAdvance": true,
             "selectedCardId": "52"
-          }
-        }
-      }
-    },
-    "opening.card.52.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.52.advance",
-      "displayName": "Opening card 52 - advance to info i16",
-      "description": "Deterministic transition from legacy opening card 52 to info block i16.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "trusted-messengers"
-      ],
-      "params": {
-        "cardId": "52",
-        "stepIndex": 28,
-        "nextStepIndex": 29,
-        "summary": "Карточка 52 завершена, переход к i16."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "52"
-            },
-            "card": {
-              "id": "52",
-              "selected": true,
-              "resolved": true
-            }
           }
         }
       }
@@ -5764,41 +4397,6 @@
         }
       }
     },
-    "opening.card.53.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.53.advance",
-      "displayName": "Opening card 53 - advance to info i16",
-      "description": "Deterministic transition from legacy opening card 53 to info block i16.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "trusted-messengers"
-      ],
-      "params": {
-        "cardId": "53",
-        "stepIndex": 28,
-        "nextStepIndex": 29,
-        "summary": "Карточка 53 завершена, переход к i16."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "53"
-            },
-            "card": {
-              "id": "53",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
     "opening.card.54": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -5842,65 +4440,6 @@
             "selectedCardId": "54"
           }
         }
-      }
-    },
-    "opening.card.54.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.54.advance",
-      "displayName": "Opening card 54 - advance to info i16",
-      "description": "Deterministic transition from legacy opening card 54 to info block i16.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "trusted-messengers"
-      ],
-      "params": {
-        "cardId": "54",
-        "stepIndex": 28,
-        "nextStepIndex": 29,
-        "summary": "Карточка 54 завершена, переход к i16."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "54"
-            },
-            "card": {
-              "id": "54",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
-    "opening.info.i16.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i16.advance",
-      "displayName": "Opening info i16 - advance to cards 55..60",
-      "description": "Deterministic transition from legacy info block i16 to the next mainline boundary with cards 55..60.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 29,
-        "nextStepIndex": 30,
-        "screenId": "S2",
-        "summary": "Интро i16 завершено, достигнута следующая mainline boundary."
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.card.55": {
@@ -5994,41 +4533,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    "opening.card.55.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.55.advance",
-      "displayName": "Opening card 55 - advance to info i17",
-      "description": "Deterministic transition from legacy opening card 55 to info block i17.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "acceleration"
-      ],
-      "params": {
-        "cardId": "55",
-        "stepIndex": 30,
-        "nextStepIndex": 31,
-        "summary": "Карточка 55 завершена, переход к i17."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "55"
-            },
-            "card": {
-              "id": "55",
-              "selected": true,
-              "resolved": true
-            }
-          }
         }
       }
     },
@@ -6137,41 +4641,6 @@
         }
       }
     },
-    "opening.card.57.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.57.advance",
-      "displayName": "Opening card 57 - advance to info i17",
-      "description": "Deterministic transition from legacy opening card 57 to info block i17.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "acceleration"
-      ],
-      "params": {
-        "cardId": "57",
-        "stepIndex": 30,
-        "nextStepIndex": 31,
-        "summary": "Карточка 57 завершена, переход к i17."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "57"
-            },
-            "card": {
-              "id": "57",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
     "opening.card.58": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -6246,41 +4715,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    "opening.card.58.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.58.advance",
-      "displayName": "Opening card 58 - advance to info i17",
-      "description": "Deterministic transition from legacy opening card 58 to info block i17.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "acceleration"
-      ],
-      "params": {
-        "cardId": "58",
-        "stepIndex": 30,
-        "nextStepIndex": 31,
-        "summary": "Карточка 58 завершена, переход к i17."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "58"
-            },
-            "card": {
-              "id": "58",
-              "selected": true,
-              "resolved": true
-            }
-          }
         }
       }
     },
@@ -6481,68 +4915,6 @@
         }
       }
     },
-    "opening.card.60.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.60.advance",
-      "displayName": "Opening card 60 - advance to info i17",
-      "description": "Deterministic transition from legacy opening card 60 to info block i17.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "acceleration"
-      ],
-      "params": {
-        "cardId": "60",
-        "stepIndex": 30,
-        "nextStepIndex": 31,
-        "summary": "Карточка 60 завершена, переход к i17."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "60"
-            },
-            "card": {
-              "id": "60",
-              "selected": true,
-              "resolved": true
-            }
-          },
-          "stateUpdate": {
-            "activeInfoId": "i17"
-          }
-        }
-      }
-    },
-    "opening.info.i17.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i17.advance",
-      "displayName": "Opening info i17 - advance to cards 61..66",
-      "description": "Deterministic transition from legacy info block i17 to the next mainline boundary with cards 61..66.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 31,
-        "nextStepIndex": 32,
-        "screenId": "S2",
-        "summary": "Интро i17 завершено, достигнута следующая mainline boundary."
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.61": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -6609,41 +4981,6 @@
               ]
             }
           ]
-        }
-      }
-    },
-    "opening.card.61.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.61.advance",
-      "displayName": "Opening card 61 - advance to info i18",
-      "description": "Deterministic transition from legacy opening card 61 to info block i18.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "scout-dispatch"
-      ],
-      "params": {
-        "cardId": "61",
-        "stepIndex": 32,
-        "nextStepIndex": 33,
-        "summary": "Карточка 61 завершена, переход к i18."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "61"
-            },
-            "card": {
-              "id": "61",
-              "selected": true,
-              "resolved": true
-            }
-          }
         }
       }
     },
@@ -6978,66 +5315,6 @@
         }
       }
     },
-    "opening.card.66.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.66.advance",
-      "displayName": "Opening card 66 - advance to info i18",
-      "description": "Deterministic transition from legacy opening card 66 to info block i18.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "scout-dispatch",
-        "locked-go-card"
-      ],
-      "params": {
-        "cardId": "66",
-        "stepIndex": 32,
-        "nextStepIndex": 33,
-        "summary": "Карточка 66 завершена, переход к i18."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": {
-              "selectedCardIdEquals": "66"
-            },
-            "card": {
-              "id": "66",
-              "selected": true,
-              "resolved": true
-            }
-          }
-        }
-      }
-    },
-    "opening.info.i18.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i18.advance",
-      "displayName": "Opening info i18 - advance to cards 67..68",
-      "description": "Deterministic transition from legacy info block i18 to the next mainline boundary with cards 67..68.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "intro"
-      ],
-      "params": {
-        "stepIndex": 33,
-        "nextStepIndex": 34,
-        "screenId": "S2",
-        "summary": "Интро i18 завершено, достигнута следующая mainline boundary."
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
     "opening.card.67": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
@@ -7144,6 +5421,1092 @@
         }
       }
     },
+    "opening.card.69": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-resolution",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.69",
+      "displayName": "Opening card 69 - Начать готовить второй переезд",
+      "description": "Deterministic payload extracted from legacy opening card 69 for the step-36 second-relocation board.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "second-relocation"
+      ],
+      "params": {
+        "cardId": "69",
+        "stepIndex": 36,
+        "summary": "Колония восприняла идею второго переезда с неожиданным азартом."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "card": {
+              "id": "69",
+              "selected": false,
+              "resolved": false
+            }
+          },
+          "metricDeltas": [
+            {
+              "metricId": "rep",
+              "delta": 5
+            }
+          ],
+          "stateUpdate": {
+            "timelineCanAdvance": true,
+            "selectedCardId": "69"
+          }
+        }
+      }
+    },
+    "opening.card.70": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-resolution",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.70",
+      "displayName": "Opening card 70 - Взять паузу перед новыми изменениями",
+      "description": "Deterministic payload extracted from legacy opening card 70 for the step-36 second-relocation board.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "second-relocation"
+      ],
+      "params": {
+        "cardId": "70",
+        "stepIndex": 36,
+        "summary": "Попытка взять паузу была воспринята как сомнение и ударила по доверию к Совету."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "card": {
+              "id": "70",
+              "selected": false,
+              "resolved": false
+            }
+          },
+          "metricDeltas": [
+            {
+              "metricId": "rep",
+              "delta": -5
+            }
+          ]
+        }
+      }
+    },
+    "opening.card.3.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.3.advance",
+      "displayName": "Opening card 3 - advance to info i7",
+      "description": "Deterministic transition from resolved first opening board to info block i7.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "3",
+        "stepIndex": 9,
+        "nextStepIndex": 10,
+        "summary": "Переход после первого экрана карточек к инфо-блоку i7."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "3"
+            },
+            "card": {
+              "id": "3",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i7"
+          }
+        }
+      }
+    },
+    "opening.card.9.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.9.advance",
+      "displayName": "Opening card 9 - advance to info i8",
+      "description": "Deterministic transition from resolved second opening board to info block i8.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "9",
+        "stepIndex": 11,
+        "nextStepIndex": 12,
+        "summary": "Переход после второго экрана карточек к инфо-блоку i8."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "9"
+            },
+            "card": {
+              "id": "9",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i8"
+          }
+        }
+      }
+    },
+    "opening.card.18.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.18.advance",
+      "displayName": "Opening card 18 - advance to info i9",
+      "description": "Deterministic transition from the third opening board to legacy info block i9.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "18",
+        "stepIndex": 13,
+        "nextStepIndex": 14,
+        "summary": "Переход после третьего экрана карточек к инфо-блоку i9."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "18"
+            },
+            "card": {
+              "id": "18",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i9"
+          }
+        }
+      }
+    },
+    "opening.card.22.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.22.advance",
+      "displayName": "Opening card 22 - advance to info i11",
+      "description": "Deterministic transition from the step-17 go-card 22 to legacy info block i11.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "22",
+        "stepIndex": 17,
+        "nextStepIndex": 18,
+        "summary": "Переход после go-карты 22 к инфо-блоку i11."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "22"
+            },
+            "card": {
+              "id": "22",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i11"
+          }
+        }
+      }
+    },
+    "opening.card.23.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.23.advance",
+      "displayName": "Opening card 23 - advance to info i11",
+      "description": "Deterministic transition from the step-17 go-card 23 to legacy info block i11.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "23",
+        "stepIndex": 17,
+        "nextStepIndex": 18,
+        "summary": "Переход после go-карты 23 к инфо-блоку i11."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "23"
+            },
+            "card": {
+              "id": "23",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.31.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.31.advance",
+      "displayName": "Opening card 31 - advance to info i13",
+      "description": "Deterministic transition from legacy opening card 31 to info block i13.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "31",
+        "stepIndex": 21,
+        "nextStepIndex": 22,
+        "summary": "Карточка 31 завершена, переход к i13."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "31"
+            },
+            "card": {
+              "id": "31",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i13"
+          }
+        }
+      }
+    },
+    "opening.card.32.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.32.advance",
+      "displayName": "Opening card 32 - advance to info i13",
+      "description": "Deterministic transition from legacy opening card 32 to info block i13.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "32",
+        "stepIndex": 21,
+        "nextStepIndex": 22,
+        "summary": "Карточка 32 завершена, переход к i13."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "32"
+            },
+            "card": {
+              "id": "32",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.33.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.33.advance",
+      "displayName": "Opening card 33 - advance to info i13",
+      "description": "Deterministic transition from legacy opening card 33 to info block i13.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "33",
+        "stepIndex": 21,
+        "nextStepIndex": 22,
+        "summary": "Карточка 33 завершена, переход к i13."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "33"
+            },
+            "card": {
+              "id": "33",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.35.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.35.advance",
+      "displayName": "Opening card 35 - advance to info i13",
+      "description": "Deterministic transition from legacy opening card 35 to info block i13.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "35",
+        "stepIndex": 21,
+        "nextStepIndex": 22,
+        "summary": "Карточка 35 завершена, переход к i13."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "35"
+            },
+            "card": {
+              "id": "35",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.36.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.36.advance",
+      "displayName": "Opening card 36 - advance to info i13",
+      "description": "Deterministic transition from legacy opening card 36 to info block i13.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "cardId": "36",
+        "stepIndex": 21,
+        "nextStepIndex": 22,
+        "summary": "Карточка 36 завершена, переход к i13."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "36"
+            },
+            "card": {
+              "id": "36",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.39.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.39.advance",
+      "displayName": "Opening card 39 - advance to info i14",
+      "description": "Deterministic transition from legacy opening card 39 to info block i14.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "locked-go-card"
+      ],
+      "params": {
+        "cardId": "39",
+        "stepIndex": 23,
+        "nextStepIndex": 24,
+        "summary": "Карточка 39 завершена, переход к i14."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "39"
+            },
+            "card": {
+              "id": "39",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.3902.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.3902.advance",
+      "displayName": "Opening card 3902 - advance to info i14",
+      "description": "Deterministic transition from alt opening card 3902 to info block i14.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "alt-card"
+      ],
+      "params": {
+        "cardId": "3902",
+        "stepIndex": 23,
+        "nextStepIndex": 24,
+        "summary": "Карточка 3902 завершена, переход к i14."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "3902"
+            },
+            "card": {
+              "id": "3902",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i14"
+          }
+        }
+      }
+    },
+    "opening.card.43.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.43.advance",
+      "displayName": "Opening card 43 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 43 to info block i15.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "public-communication"
+      ],
+      "params": {
+        "cardId": "43",
+        "stepIndex": 26,
+        "nextStepIndex": 27,
+        "summary": "Карточка 43 завершена, переход к i15."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "43"
+            },
+            "card": {
+              "id": "43",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.45.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.45.advance",
+      "displayName": "Opening card 45 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 45 to info block i15.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "public-communication"
+      ],
+      "params": {
+        "cardId": "45",
+        "stepIndex": 26,
+        "nextStepIndex": 27,
+        "summary": "Карточка 45 завершена, переход к i15."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "45"
+            },
+            "card": {
+              "id": "45",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.47.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.47.advance",
+      "displayName": "Opening card 47 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 47 to info block i15.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "public-communication"
+      ],
+      "params": {
+        "cardId": "47",
+        "stepIndex": 26,
+        "nextStepIndex": 27,
+        "summary": "Карточка 47 завершена, переход к i15."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "47"
+            },
+            "card": {
+              "id": "47",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.48.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.48.advance",
+      "displayName": "Opening card 48 - advance to info i15",
+      "description": "Deterministic transition from legacy opening card 48 to info block i15.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "public-communication"
+      ],
+      "params": {
+        "cardId": "48",
+        "stepIndex": 26,
+        "nextStepIndex": 27,
+        "summary": "Карточка 48 завершена, переход к i15."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "48"
+            },
+            "card": {
+              "id": "48",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i15"
+          }
+        }
+      }
+    },
+    "opening.card.49.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.49.advance",
+      "displayName": "Opening card 49 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 49 to info block i16.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "trusted-messengers"
+      ],
+      "params": {
+        "cardId": "49",
+        "stepIndex": 28,
+        "nextStepIndex": 29,
+        "summary": "Карточка 49 завершена, переход к i16."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "49"
+            },
+            "card": {
+              "id": "49",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i16"
+          }
+        }
+      }
+    },
+    "opening.card.50.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.50.advance",
+      "displayName": "Opening card 50 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 50 to info block i16.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "trusted-messengers"
+      ],
+      "params": {
+        "cardId": "50",
+        "stepIndex": 28,
+        "nextStepIndex": 29,
+        "summary": "Карточка 50 завершена, переход к i16."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "50"
+            },
+            "card": {
+              "id": "50",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.51.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.51.advance",
+      "displayName": "Opening card 51 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 51 to info block i16.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "trusted-messengers"
+      ],
+      "params": {
+        "cardId": "51",
+        "stepIndex": 28,
+        "nextStepIndex": 29,
+        "summary": "Карточка 51 завершена, переход к i16."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "51"
+            },
+            "card": {
+              "id": "51",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.52.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.52.advance",
+      "displayName": "Opening card 52 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 52 to info block i16.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "trusted-messengers"
+      ],
+      "params": {
+        "cardId": "52",
+        "stepIndex": 28,
+        "nextStepIndex": 29,
+        "summary": "Карточка 52 завершена, переход к i16."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "52"
+            },
+            "card": {
+              "id": "52",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.53.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.53.advance",
+      "displayName": "Opening card 53 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 53 to info block i16.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "trusted-messengers"
+      ],
+      "params": {
+        "cardId": "53",
+        "stepIndex": 28,
+        "nextStepIndex": 29,
+        "summary": "Карточка 53 завершена, переход к i16."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "53"
+            },
+            "card": {
+              "id": "53",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.54.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.54.advance",
+      "displayName": "Opening card 54 - advance to info i16",
+      "description": "Deterministic transition from legacy opening card 54 to info block i16.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "trusted-messengers"
+      ],
+      "params": {
+        "cardId": "54",
+        "stepIndex": 28,
+        "nextStepIndex": 29,
+        "summary": "Карточка 54 завершена, переход к i16."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "54"
+            },
+            "card": {
+              "id": "54",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.55.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.55.advance",
+      "displayName": "Opening card 55 - advance to info i17",
+      "description": "Deterministic transition from legacy opening card 55 to info block i17.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "acceleration"
+      ],
+      "params": {
+        "cardId": "55",
+        "stepIndex": 30,
+        "nextStepIndex": 31,
+        "summary": "Карточка 55 завершена, переход к i17."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "55"
+            },
+            "card": {
+              "id": "55",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.57.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.57.advance",
+      "displayName": "Opening card 57 - advance to info i17",
+      "description": "Deterministic transition from legacy opening card 57 to info block i17.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "acceleration"
+      ],
+      "params": {
+        "cardId": "57",
+        "stepIndex": 30,
+        "nextStepIndex": 31,
+        "summary": "Карточка 57 завершена, переход к i17."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "57"
+            },
+            "card": {
+              "id": "57",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.58.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.58.advance",
+      "displayName": "Opening card 58 - advance to info i17",
+      "description": "Deterministic transition from legacy opening card 58 to info block i17.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "acceleration"
+      ],
+      "params": {
+        "cardId": "58",
+        "stepIndex": 30,
+        "nextStepIndex": 31,
+        "summary": "Карточка 58 завершена, переход к i17."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "58"
+            },
+            "card": {
+              "id": "58",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.60.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.60.advance",
+      "displayName": "Opening card 60 - advance to info i17",
+      "description": "Deterministic transition from legacy opening card 60 to info block i17.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "acceleration"
+      ],
+      "params": {
+        "cardId": "60",
+        "stepIndex": 30,
+        "nextStepIndex": 31,
+        "summary": "Карточка 60 завершена, переход к i17."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "60"
+            },
+            "card": {
+              "id": "60",
+              "selected": true,
+              "resolved": true
+            }
+          },
+          "stateUpdate": {
+            "activeInfoId": "i17"
+          }
+        }
+      }
+    },
+    "opening.card.61.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.61.advance",
+      "displayName": "Opening card 61 - advance to info i18",
+      "description": "Deterministic transition from legacy opening card 61 to info block i18.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "scout-dispatch"
+      ],
+      "params": {
+        "cardId": "61",
+        "stepIndex": 32,
+        "nextStepIndex": 33,
+        "summary": "Карточка 61 завершена, переход к i18."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "61"
+            },
+            "card": {
+              "id": "61",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
+    "opening.card.66.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-card-advance",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.card.66.advance",
+      "displayName": "Opening card 66 - advance to info i18",
+      "description": "Deterministic transition from legacy opening card 66 to info block i18.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-card",
+        "deterministic",
+        "scout-dispatch",
+        "locked-go-card"
+      ],
+      "params": {
+        "cardId": "66",
+        "stepIndex": 32,
+        "nextStepIndex": 33,
+        "summary": "Карточка 66 завершена, переход к i18."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "66"
+            },
+            "card": {
+              "id": "66",
+              "selected": true,
+              "resolved": true
+            }
+          }
+        }
+      }
+    },
     "opening.card.68.advance": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-advance",
@@ -7203,71 +6566,6 @@
         }
       }
     },
-    "opening.info.i19.advance": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-info-advance",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.info.i19.advance",
-      "displayName": "Opening info i19 - advance to cards 69..70",
-      "description": "Deterministic transition from legacy info block i19 or i19_1 to the next board with cards 69..70.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-info",
-        "deterministic",
-        "relocation-aftermath"
-      ],
-      "params": {
-        "stepIndex": 35,
-        "nextStepIndex": 36,
-        "screenId": "S2",
-        "summary": "Интро i19 завершено, достигнута следующая board boundary."
-      },
-      "deterministic": {
-        "excludeFromLog": true
-      }
-    },
-    "opening.card.69": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-resolution",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.69",
-      "displayName": "Opening card 69 - Начать готовить второй переезд",
-      "description": "Deterministic payload extracted from legacy opening card 69 for the step-36 second-relocation board.",
-      "tags": [
-        "antarctica",
-        "opening",
-        "legacy-card",
-        "deterministic",
-        "second-relocation"
-      ],
-      "params": {
-        "cardId": "69",
-        "stepIndex": 36,
-        "summary": "Колония восприняла идею второго переезда с неожиданным азартом."
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "card": {
-              "id": "69",
-              "selected": false,
-              "resolved": false
-            }
-          },
-          "metricDeltas": [
-            {
-              "metricId": "rep",
-              "delta": 5
-            }
-          ],
-          "stateUpdate": {
-            "timelineCanAdvance": true,
-            "selectedCardId": "69"
-          }
-        }
-      }
-    },
     "opening.card.69.advance": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-advance",
@@ -7306,47 +6604,697 @@
         }
       }
     },
-    "opening.card.70": {
+    "opening.info.i0.advance": {
       "handlerType": "manifest-data",
-      "templateId": "opening-card-resolution",
+      "templateId": "opening-info-advance",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.70",
-      "displayName": "Opening card 70 - Взять паузу перед новыми изменениями",
-      "description": "Deterministic payload extracted from legacy opening card 70 for the step-36 second-relocation board.",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i0.advance",
+      "displayName": "Opening info i0 - advance to i02",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i0.",
       "tags": [
         "antarctica",
         "opening",
-        "legacy-card",
+        "legacy-info",
         "deterministic",
-        "second-relocation"
+        "intro"
       ],
       "params": {
-        "cardId": "70",
-        "stepIndex": 36,
-        "summary": "Попытка взять паузу была воспринята как сомнение и ударила по доверию к Совету."
+        "stepIndex": 0,
+        "nextStepIndex": 1,
+        "screenId": "S1",
+        "summary": "Интро i0 завершено, переход к i02."
       },
       "overrides": {
         "deterministic": {
           "guard": {
-            "card": {
-              "id": "70",
-              "selected": false,
-              "resolved": false
+            "opening": {
+              "selectedCardIdAbsent": true
             }
-          },
-          "metricDeltas": [
-            {
-              "metricId": "rep",
-              "delta": -5
-            }
-          ]
+          }
         }
+      }
+    },
+    "opening.info.i02.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i02.advance",
+      "displayName": "Opening info i02 - advance to i03",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i02.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 1,
+        "nextStepIndex": 2,
+        "screenId": "S1",
+        "summary": "Интро i02 завершено, переход к i03."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i03.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i03.advance",
+      "displayName": "Opening info i03 - advance to i1",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i03.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 2,
+        "nextStepIndex": 3,
+        "screenId": "S1",
+        "summary": "Интро i03 завершено, переход к i1."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i1.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i1.advance",
+      "displayName": "Opening info i1 - advance to i2",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i1.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 3,
+        "nextStepIndex": 4,
+        "screenId": "S1",
+        "summary": "Интро i1 завершено, переход к i2."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i2.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i2.advance",
+      "displayName": "Opening info i2 - advance to i3",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i2.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 4,
+        "nextStepIndex": 5,
+        "screenId": "S1",
+        "summary": "Интро i2 завершено, переход к i3."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i3.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i3.advance",
+      "displayName": "Opening info i3 - advance to i4",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i3.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 5,
+        "nextStepIndex": 6,
+        "screenId": "S1",
+        "summary": "Интро i3 завершено, переход к i4."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i4.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i4.advance",
+      "displayName": "Opening info i4 - advance to i5",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i4.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 6,
+        "nextStepIndex": 7,
+        "screenId": "S1",
+        "summary": "Интро i4 завершено, переход к i5."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i5.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i5.advance",
+      "displayName": "Opening info i5 - advance to i6",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i5.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 7,
+        "nextStepIndex": 8,
+        "screenId": "S1",
+        "summary": "Интро i5 завершено, переход к i6."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i6.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i6.advance",
+      "displayName": "Opening info i6 - advance to first board",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i6.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 8,
+        "nextStepIndex": 9,
+        "screenId": "S2",
+        "summary": "Интро i6 завершено, переход к первому экрану выбора карточек."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdAbsent": true
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i7.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i7.advance",
+      "displayName": "Opening info i7 - advance to second board",
+      "description": "Deterministic intro advance payload extracted from legacy opening info block i7.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 10,
+        "nextStepIndex": 11,
+        "screenId": "S2",
+        "summary": "Интро i7 завершено, переход ко второму экрану выбора карточек."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "3"
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i8.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i8.advance",
+      "displayName": "Opening info i8 - advance to third board",
+      "description": "Deterministic transition from legacy info block i8 to the third opening board.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 12,
+        "nextStepIndex": 13,
+        "screenId": "S2",
+        "summary": "Интро i8 завершено, переход к третьему экрану выбора карточек."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "9"
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i9.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i9.advance",
+      "displayName": "Opening info i9 - advance to team-selection boundary",
+      "description": "Deterministic transition from legacy info block i9 to the team-selection boundary.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 14,
+        "nextStepIndex": 15,
+        "screenId": "S2",
+        "summary": "Интро i9 завершено, достигнута граница выбора команды."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "18"
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i10.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i10.advance",
+      "displayName": "Opening info i10 - advance to cards 19..24",
+      "description": "Deterministic transition from legacy info block i10 to the next opening board with cards 19..24.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 16,
+        "nextStepIndex": 17,
+        "screenId": "S2",
+        "summary": "Интро i10 завершено, открыт следующий экран карточек."
+      },
+      "overrides": {
+        "deterministic": {
+          "guard": {
+            "opening": {
+              "selectedCardIdEquals": "18"
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i11.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i11.advance",
+      "displayName": "Opening info i11 - advance to cards 25..30",
+      "description": "Deterministic transition from legacy info block i11 to the next opening board with cards 25..30.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 18,
+        "nextStepIndex": 19,
+        "screenId": "S2",
+        "summary": "Интро i11 завершено, открыт следующий экран карточек."
+      }
+    },
+    "opening.info.i12.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i12.advance",
+      "displayName": "Opening info i12 - advance to cards 31..36",
+      "description": "Deterministic transition from legacy info block i12 to the next opening board with cards 31..36.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 20,
+        "nextStepIndex": 21,
+        "screenId": "S2",
+        "summary": "Интро i12 завершено, открыт следующий экран карточек."
+      }
+    },
+    "opening.info.i13.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i13.advance",
+      "displayName": "Opening info i13 - advance to cards 37..42",
+      "description": "Deterministic transition from legacy info block i13 to the step-23 boundary with cards 37..42.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 22,
+        "nextStepIndex": 23,
+        "screenId": "S2",
+        "summary": "Интро i13 завершено, достигнута следующая mainline boundary."
+      },
+      "overrides": {
+        "deterministic": {
+          "stateUpdate": {
+            "boardEntryAltCardSwap": {
+              "when": {
+                "metricId": "pro",
+                "operator": ">",
+                "threshold": 40
+              },
+              "baseCardId": "39",
+              "altCardId": "3902"
+            }
+          }
+        }
+      }
+    },
+    "opening.info.i14.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i14.advance",
+      "displayName": "Opening info i14 - advance to info i14_2",
+      "description": "Deterministic transition from legacy info block i14 to i14_2.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 24,
+        "nextStepIndex": 25,
+        "screenId": "S1",
+        "summary": "Интро i14 завершено, переход к i14_2."
+      }
+    },
+    "opening.info.i14_2.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i14_2.advance",
+      "displayName": "Opening info i14_2 - advance to cards 43..48",
+      "description": "Deterministic transition from legacy info block i14_2 to the next mainline boundary with cards 43..48.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 25,
+        "nextStepIndex": 26,
+        "screenId": "S2",
+        "summary": "Интро i14_2 завершено, достигнута следующая mainline boundary."
+      }
+    },
+    "opening.info.i15.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i15.advance",
+      "displayName": "Opening info i15 - advance to cards 49..54",
+      "description": "Deterministic transition from legacy info block i15 to the next mainline boundary with cards 49..54.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 27,
+        "nextStepIndex": 28,
+        "screenId": "S2",
+        "summary": "Интро i15 завершено, достигнута следующая mainline boundary."
+      }
+    },
+    "opening.info.i16.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i16.advance",
+      "displayName": "Opening info i16 - advance to cards 55..60",
+      "description": "Deterministic transition from legacy info block i16 to the next mainline boundary with cards 55..60.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 29,
+        "nextStepIndex": 30,
+        "screenId": "S2",
+        "summary": "Интро i16 завершено, достигнута следующая mainline boundary."
+      }
+    },
+    "opening.info.i17.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i17.advance",
+      "displayName": "Opening info i17 - advance to cards 61..66",
+      "description": "Deterministic transition from legacy info block i17 to the next mainline boundary with cards 61..66.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 31,
+        "nextStepIndex": 32,
+        "screenId": "S2",
+        "summary": "Интро i17 завершено, достигнута следующая mainline boundary."
+      }
+    },
+    "opening.info.i18.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i18.advance",
+      "displayName": "Opening info i18 - advance to cards 67..68",
+      "description": "Deterministic transition from legacy info block i18 to the next mainline boundary with cards 67..68.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "intro"
+      ],
+      "params": {
+        "stepIndex": 33,
+        "nextStepIndex": 34,
+        "screenId": "S2",
+        "summary": "Интро i18 завершено, достигнута следующая mainline boundary."
+      }
+    },
+    "opening.info.i19.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i19.advance",
+      "displayName": "Opening info i19 - advance to cards 69..70",
+      "description": "Deterministic transition from legacy info block i19 or i19_1 to the next board with cards 69..70.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "relocation-aftermath"
+      ],
+      "params": {
+        "stepIndex": 35,
+        "nextStepIndex": 36,
+        "screenId": "S2",
+        "summary": "Интро i19 завершено, достигнута следующая board boundary."
       }
     },
     "opening.info.i20.advance": {
       "handlerType": "manifest-data",
       "templateId": "opening-info-advance",
       "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
       "capability": "antarctica.opening.info.i20.advance",
       "displayName": "Opening info i20 - advance to info i21",
       "description": "Deterministic transition from legacy info block i20 to final info block i21.",
@@ -7369,15 +7317,46 @@
             "activeInfoId": "i21"
           }
         }
-      },
+      }
+    },
+    "opening.info.i21.advance": {
+      "handlerType": "manifest-data",
+      "templateId": "opening-info-advance",
+      "capabilityFamily": "antarctica.opening",
       "deterministic": {
         "excludeFromLog": true
+      },
+      "capability": "antarctica.opening.info.i21.advance",
+      "displayName": "Opening info i21 - finish terminal screen",
+      "description": "Terminal no-op action for the final legacy info block i21; keeps the Finish button dispatchable without moving the scenario past the final screen.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-info",
+        "deterministic",
+        "terminal"
+      ],
+      "params": {
+        "stepIndex": 38,
+        "nextStepIndex": 38,
+        "screenId": "S1",
+        "summary": "Финальный экран i21 подтвержден без дальнейшего перехода."
+      },
+      "overrides": {
+        "deterministic": {
+          "stateUpdate": {
+            "activeInfoId": "i21"
+          }
+        }
       }
     },
     "opening.info.i34.advance": {
       "handlerType": "manifest-data",
       "templateId": "opening-info-advance",
       "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
       "capability": "antarctica.opening.info.i34.advance",
       "displayName": "Opening info i34 - advance to info i34_2",
       "description": "Deterministic transition on the loss line from legacy info block i34 to i34_2.",
@@ -7406,15 +7385,15 @@
             }
           }
         }
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.info.i34_2.advance": {
       "handlerType": "manifest-data",
       "templateId": "opening-info-advance",
       "capabilityFamily": "antarctica.opening",
+      "deterministic": {
+        "excludeFromLog": true
+      },
       "capability": "antarctica.opening.info.i34_2.advance",
       "displayName": "Opening info i34_2 - advance to info i21",
       "description": "Deterministic transition on the loss line from legacy info block i34_2 to i21.",
@@ -7443,18 +7422,12 @@
             }
           }
         }
-      },
-      "deterministic": {
-        "excludeFromLog": true
       }
     },
     "opening.team.select.fedya": {
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.fedya",
-      "displayName": "Opening team select - Fedya",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Fedya.",
       "tags": [
         "antarctica",
         "opening",
@@ -7462,6 +7435,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.fedya",
+      "displayName": "Opening team select - Fedya",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Fedya.",
       "params": {
         "memberId": "fedya",
         "summary": "Федор выбран в команду на шаге 15."
@@ -7515,9 +7491,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.aliona",
-      "displayName": "Opening team select - Aliona",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Aliona.",
       "tags": [
         "antarctica",
         "opening",
@@ -7525,6 +7498,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.aliona",
+      "displayName": "Opening team select - Aliona",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Aliona.",
       "params": {
         "memberId": "aliona",
         "summary": "Алена выбрана в команду на шаге 15."
@@ -7582,9 +7558,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.leo",
-      "displayName": "Opening team select - Leo",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Leo.",
       "tags": [
         "antarctica",
         "opening",
@@ -7592,6 +7565,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.leo",
+      "displayName": "Opening team select - Leo",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Leo.",
       "params": {
         "memberId": "leo",
         "summary": "Леонид выбран в команду на шаге 15."
@@ -7649,9 +7625,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.grisha",
-      "displayName": "Opening team select - Grisha",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Grisha.",
       "tags": [
         "antarctica",
         "opening",
@@ -7659,6 +7632,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.grisha",
+      "displayName": "Opening team select - Grisha",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Grisha.",
       "params": {
         "memberId": "grisha",
         "summary": "Григорий выбран в команду на шаге 15."
@@ -7712,9 +7688,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.liza",
-      "displayName": "Opening team select - Liza",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Liza.",
       "tags": [
         "antarctica",
         "opening",
@@ -7722,6 +7695,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.liza",
+      "displayName": "Opening team select - Liza",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Liza.",
       "params": {
         "memberId": "liza",
         "summary": "Елизавета выбрана в команду на шаге 15."
@@ -7779,9 +7755,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.zenya",
-      "displayName": "Opening team select - Zenya",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Zenya.",
       "tags": [
         "antarctica",
         "opening",
@@ -7789,6 +7762,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.zenya",
+      "displayName": "Opening team select - Zenya",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Zenya.",
       "params": {
         "memberId": "zenya",
         "summary": "Евгений выбран в команду на шаге 15."
@@ -7838,9 +7814,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.zora",
-      "displayName": "Opening team select - Zora",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Zora.",
       "tags": [
         "antarctica",
         "opening",
@@ -7848,6 +7821,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.zora",
+      "displayName": "Opening team select - Zora",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Zora.",
       "params": {
         "memberId": "zora",
         "summary": "Георгий выбран в команду на шаге 15."
@@ -7897,9 +7873,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.arkadii",
-      "displayName": "Opening team select - Arkadii",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Arkadii.",
       "tags": [
         "antarctica",
         "opening",
@@ -7907,6 +7880,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.arkadii",
+      "displayName": "Opening team select - Arkadii",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Arkadii.",
       "params": {
         "memberId": "arkadii",
         "summary": "Аркадий выбран в команду на шаге 15."
@@ -7956,9 +7932,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.vasya",
-      "displayName": "Opening team select - Vasya",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Vasya.",
       "tags": [
         "antarctica",
         "opening",
@@ -7966,6 +7939,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.vasya",
+      "displayName": "Opening team select - Vasya",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Vasya.",
       "params": {
         "memberId": "vasya",
         "summary": "Василий выбран в команду на шаге 15."
@@ -8015,9 +7991,6 @@
       "handlerType": "manifest-data",
       "templateId": "opening-team-selection",
       "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.team.select.tima",
-      "displayName": "Opening team select - Tima",
-      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Tima.",
       "tags": [
         "antarctica",
         "opening",
@@ -8025,6 +7998,9 @@
         "deterministic",
         "team-selection"
       ],
+      "capability": "antarctica.opening.team.select.tima",
+      "displayName": "Opening team select - Tima",
+      "description": "Deterministic team-selection payload extracted from the legacy step-15 team block for Tima.",
       "params": {
         "memberId": "tima",
         "summary": "Тимофей выбран в команду на шаге 15."
@@ -8071,6 +8047,61 @@
               "selectedMemberIdsAppend": "tima"
             }
           }
+        }
+      }
+    },
+    "opening.board.25_30.advance": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "antarctica.opening",
+      "capability": "antarctica.opening.board.25_30.advance",
+      "displayName": "Opening board 25..30 - advance to info i12",
+      "description": "Deterministic transition from the step-19 board with cards 25..30 to legacy info block i12.",
+      "tags": [
+        "antarctica",
+        "opening",
+        "legacy-board",
+        "deterministic",
+        "intro"
+      ],
+      "deterministic": {
+        "provenance": [
+          {
+            "sourceKind": "legacy-opening-board",
+            "sourceFile": "draft/Antarctica/GameFull.html",
+            "legacyCardId": "25_30",
+            "lineIndex": 0,
+            "stepIndex": 19
+          }
+        ],
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 19,
+            "canAdvance": true
+          },
+          "board": {
+            "cardIds": [
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30"
+            ],
+            "resolvedCountAtLeast": 3
+          }
+        },
+        "metricDeltas": [],
+        "log": {
+          "kind": "opening-board-advance",
+          "stageId": "stage_intro",
+          "summary": "Порог по карточкам 25..30 достигнут, переход к i12."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 20,
+          "timelineStageId": "stage_intro",
+          "timelineScreenId": "S1"
         }
       }
     },

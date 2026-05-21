@@ -136,9 +136,68 @@ function mergeObjects(parentValue, childValue) {
 function createCompilerContext(sourceFile, authoring) {
   return {
     sourceFile,
+    authoring,
     definitions: authoring._definitions || {},
     definitionCache: new Map()
   };
+}
+
+function readPointer(document, pointer) {
+  if (pointer === "") {
+    return { exists: true, value: document };
+  }
+  if (!pointer.startsWith("/")) {
+    return { exists: false, value: undefined };
+  }
+
+  let current = document;
+  for (const rawSegment of pointer.slice(1).split("/")) {
+    const segment = rawSegment.replace(/~1/g, "/").replace(/~0/g, "~");
+    if (!hasPlainObject(current) && !Array.isArray(current)) {
+      return { exists: false, value: undefined };
+    }
+    if (!Object.prototype.hasOwnProperty.call(current, segment)) {
+      return { exists: false, value: undefined };
+    }
+    current = current[segment];
+  }
+  return { exists: true, value: current };
+}
+
+function sourceExists(context, source) {
+  if (source.file !== relativePath(context.sourceFile)) {
+    return false;
+  }
+  return readPointer(context.authoring, source.pointer).exists;
+}
+
+function uniqueSources(sources) {
+  const seen = new Set();
+  const result = [];
+  for (const source of sources) {
+    const key = `${source.file}\0${source.pointer}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(source);
+    }
+  }
+  return result;
+}
+
+function deriveChildSources(parentSources, segment, context) {
+  const candidates = parentSources.map((source) => ({
+    file: source.file,
+    pointer: joinPointer(source.pointer, segment)
+  }));
+  const existing = candidates.filter((source) => sourceExists(context, source));
+  if (existing.length > 0) {
+    return uniqueSources(existing);
+  }
+
+  // Falling back to the nearest existing source keeps diagnostics useful even
+  // for merged object children that are created by the compiler rather than
+  // present as a concrete node in one authoring file.
+  return uniqueSources(parentSources.filter((source) => sourceExists(context, source)));
 }
 
 function resolveDefinition(typeName, context, stack = []) {
@@ -180,7 +239,8 @@ function compileNode(node, context, pointer, inheritedSources = []) {
     const values = [];
     const mappings = {};
     node.forEach((item, index) => {
-      const child = compileNode(item, context, joinPointer(pointer, index), inheritedSources);
+      const childSources = deriveChildSources(inheritedSources, index, context);
+      const child = compileNode(item, context, joinPointer(pointer, index), childSources);
       values.push(child.value);
       Object.assign(mappings, child.mappings);
     });
@@ -200,11 +260,12 @@ function compileNode(node, context, pointer, inheritedSources = []) {
   assertNoMergeOperatorConflicts(node, sourceFile, pointer);
 
   let working = withoutAuthoringKeys(node);
-  let sources = inheritedSources.length > 0 ? inheritedSources : [{ file: relativePath(sourceFile), pointer }];
+  const ownSources = inheritedSources.length > 0 ? inheritedSources : [{ file: relativePath(sourceFile), pointer }];
+  let sources = ownSources;
   if (typeof node._type === "string") {
     const resolved = resolveDefinition(node._type, context);
     working = mergeObjects(resolved.value, working);
-    sources = [{ file: relativePath(sourceFile), pointer }, ...resolved.sources];
+    sources = uniqueSources([...ownSources, ...resolved.sources]);
   }
 
   const result = {};
@@ -213,7 +274,8 @@ function compileNode(node, context, pointer, inheritedSources = []) {
   };
   for (const [key, value] of Object.entries(working)) {
     const childPointer = joinPointer(pointer, key);
-    const child = compileNode(value, context, childPointer, sources);
+    const childSources = deriveChildSources(sources, key, context);
+    const child = compileNode(value, context, childPointer, childSources);
     result[key] = child.value;
     Object.assign(mappings, child.mappings);
   }

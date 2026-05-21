@@ -239,3 +239,37 @@ rg -n '"_type"|"_extends"|"_definitions"|"_semantics"|"_source_trace"' games/*/g
 - Captured source map as a сопутствующий файл, not `_source_trace` inside runtime manifests.
 - Added execution matrix artifact for implementation planning.
 - Next safe step: implement Phase 1 structure conventions and authoring schema skeletons before compiler code.
+
+### 2026-05-21 - Antarctica parity adoption (Slices A1–A4)
+
+- Migrated `Antarctica` game, web UI, and telegram UI manifests to the ADR-030 authoring layer via parity adoption.
+- Created authoring files:
+  - `games/antarctica/authoring/game.authoring.json` (`game.AntarcticaManifest`);
+  - `games/antarctica/authoring/ui/web.authoring.json` (`ui.AntarcticaWebManifest`);
+  - `games/antarctica/authoring/ui/telegram.authoring.json` (`ui.AntarcticaTelegramManifest`).
+- Generated source maps:
+  - `games/antarctica/game.manifest.source-map.json`;
+  - `games/antarctica/ui/web/ui.manifest.source-map.json`;
+  - `games/antarctica/ui/telegram/ui.manifest.source-map.json`.
+- Compiler output is byte-equivalent to pre-existing runtime manifests (zero behavioral drift).
+- All governance gates pass: compile check, verify:manifest-authoring, verify:canonical, test:e2e.
+- Authoring-only key scan confirms zero leakage into runtime output.
+- Remaining work for Antarctica: semantic prototype extraction (Slices A5–A7), governance closeout (A8).
+
+### 2026-05-21 - Antarctica semantic prototype extraction (Slices A5–A7)
+
+- Extracted game-level semantic prototypes:
+  - `game.OpeningCardResolutionAction` (71 actions), `game.OpeningCardAdvanceAction` (30), `game.OpeningInfoAdvanceAction` (26), `game.OpeningTeamSelectionAction` (10).
+  - 7 unique no-template action definitions.
+  - Total: 12 game definitions, 144 action references.
+- Extracted web UI semantic prototypes:
+  - `ui.TopbarScreen` (10 screens), `ui.LeftSidebarScreen` (1 screen).
+  - 16 metric variable definitions (8 metrics × 2 layout variants).
+  - Total: 19 web UI definitions.
+- Extracted telegram UI semantic prototypes:
+  - `ui.TelegramScreen` (1 screen).
+  - Total: 2 telegram UI definitions.
+- All compiled outputs remain byte-equivalent to pre-extraction runtime manifests.
+- All governance gates pass: compile check, verify:manifest-authoring, verify:canonical, test:e2e.
+- Authoring-only key scan confirms zero leakage into runtime output.
+- Remaining work for Antarctica: governance closeout (Slice A8).

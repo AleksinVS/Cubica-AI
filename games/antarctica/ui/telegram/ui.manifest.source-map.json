@@ -1,0 +1,309 @@
+{
+  "version": 1,
+  "generatedFile": "games/antarctica/ui/telegram/ui.manifest.json",
+  "sourceFile": "games/antarctica/authoring/ui/telegram.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta/id"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta/version"
+      }
+    ],
+    "/meta/game_id": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta/game_id"
+      }
+    ],
+    "/meta/game_manifest_version": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta/game_manifest_version"
+      }
+    ],
+    "/meta/channel": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta/channel"
+      }
+    ],
+    "/meta/author": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/meta/author"
+      }
+    ],
+    "/entry_point": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/entry_point"
+      }
+    ],
+    "/screens": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/screens"
+      }
+    ],
+    "/screens/S1": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/screens/S1"
+      },
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen"
+      }
+    ],
+    "/screens/S1/type": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/type"
+      }
+    ],
+    "/screens/S1/title": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/title"
+      }
+    ],
+    "/screens/S1/layout_id": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/layout_id"
+      }
+    ],
+    "/screens/S1/root": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root"
+      }
+    ],
+    "/screens/S1/root/type": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/type"
+      }
+    ],
+    "/screens/S1/root/props": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/props"
+      }
+    ],
+    "/screens/S1/root/props/cssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/props/cssClass"
+      }
+    ],
+    "/screens/S1/root/children/0": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0"
+      }
+    ],
+    "/screens/S1/root/children/0/type": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/type"
+      }
+    ],
+    "/screens/S1/root/children/0/props": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/props"
+      }
+    ],
+    "/screens/S1/root/children/0/props/cssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/props/cssClass"
+      }
+    ],
+    "/screens/S1/root/children/0/children/0": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/0"
+      }
+    ],
+    "/screens/S1/root/children/0/children/0/type": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/0/type"
+      }
+    ],
+    "/screens/S1/root/children/0/children/0/id": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/0/id"
+      }
+    ],
+    "/screens/S1/root/children/0/children/0/props": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/0/props"
+      }
+    ],
+    "/screens/S1/root/children/0/children/0/props/text": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/0/props/text"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/type": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/type"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/id": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/id"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/props": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/props"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/props/caption": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/props/caption"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/actions": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/actions"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/actions/onClick": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/actions/onClick"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/actions/onClick/command": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/actions/onClick/command"
+      }
+    ],
+    "/screens/S1/root/children/0/children/1/actions/onClick/payload": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children/1/actions/onClick/payload"
+      }
+    ],
+    "/screens/S1/root/children/0/children": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children/0/children"
+      }
+    ],
+    "/screens/S1/root/children": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.TelegramScreen/root/children"
+      }
+    ],
+    "/layouts": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts"
+      }
+    ],
+    "/layouts/layout.telegram.s1": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1"
+      }
+    ],
+    "/layouts/layout.telegram.s1/target": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/target"
+      }
+    ],
+    "/layouts/layout.telegram.s1/target/kind": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/target/kind"
+      }
+    ],
+    "/layouts/layout.telegram.s1/target/id": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/target/id"
+      }
+    ],
+    "/layouts/layout.telegram.s1/image": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/image"
+      }
+    ],
+    "/layouts/layout.telegram.s1/spec": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/spec"
+      }
+    ],
+    "/layouts/layout.telegram.s1/spec/notes": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/spec/notes"
+      }
+    ],
+    "/layouts/layout.telegram.s1/variant": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/variant"
+      }
+    ],
+    "/layouts/layout.telegram.s1/meta": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/meta"
+      }
+    ],
+    "/layouts/layout.telegram.s1/meta/source": [
+      {
+        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaTelegramManifest/layouts/layout.telegram.s1/meta/source"
+      }
+    ]
+  }
+}

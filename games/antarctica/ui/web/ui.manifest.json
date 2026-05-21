@@ -47,13 +47,12 @@
   "screens": {
     "S1": {
       "type": "screen",
-      "title": "Antarctica",
-      "layout_id": "layout.web.s1",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen topbar-screen-shell"
         },
         "children": [
           {
@@ -67,10 +66,10 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "description": "Оставшееся время в игре. Основной параметр.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
+                  "layout": "prominent",
+                  "description": "Оставшееся время в игре. Основной параметр."
                 }
               },
               {
@@ -78,9 +77,9 @@
                 "id": "pro",
                 "props": {
                   "caption": "Знания",
-                  "description": "Уровень знаний, который игрок может использовать для решения задач.",
                   "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
+                  "value": "{{game.state.public.metrics.pro}}",
+                  "description": "Уровень знаний, который игрок может использовать для решения задач."
                 }
               },
               {
@@ -88,9 +87,9 @@
                 "id": "rep",
                 "props": {
                   "caption": "Доверие",
-                  "description": "Уровень доверия команды и окружения к игроку.",
                   "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
+                  "value": "{{game.state.public.metrics.rep}}",
+                  "description": "Уровень доверия команды и окружения к игроку."
                 }
               },
               {
@@ -98,9 +97,9 @@
                 "id": "lid",
                 "props": {
                   "caption": "Энергия",
-                  "description": "Ресурс на действия и принятие решений.",
                   "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
+                  "value": "{{game.state.public.metrics.lid}}",
+                  "description": "Ресурс на действия и принятие решений."
                 }
               },
               {
@@ -108,9 +107,9 @@
                 "id": "man",
                 "props": {
                   "caption": "Контроль",
-                  "description": "Способность управлять ситуацией и направлением изменений.",
                   "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
+                  "value": "{{game.state.public.metrics.man}}",
+                  "description": "Способность управлять ситуацией и направлением изменений."
                 }
               },
               {
@@ -118,9 +117,9 @@
                 "id": "stat",
                 "props": {
                   "caption": "Статус",
-                  "description": "Положение игрока в системе и степень влияния.",
                   "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
+                  "value": "{{game.state.public.metrics.stat}}",
+                  "description": "Положение игрока в системе и степень влияния."
                 }
               },
               {
@@ -128,9 +127,9 @@
                 "id": "cont",
                 "props": {
                   "caption": "Контакт",
-                  "description": "Доступность связей и поддержки вокруг игрока.",
                   "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
+                  "value": "{{game.state.public.metrics.cont}}",
+                  "description": "Доступность связей и поддержки вокруг игрока."
                 }
               },
               {
@@ -138,9 +137,9 @@
                 "id": "constr",
                 "props": {
                   "caption": "Конструктив",
-                  "description": "Нацеленность на результат без пустых конфликтов.",
                   "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
+                  "value": "{{game.state.public.metrics.constr}}",
+                  "description": "Нацеленность на результат без пустых конфликтов."
                 }
               },
               {
@@ -305,17 +304,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Antarctica",
+      "layout_id": "layout.web.s1"
     },
     "55..60": {
       "type": "screen",
-      "title": "Выберите десятый шаг",
-      "layout_id": "layout.web.board",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen topbar-screen-shell"
         },
         "children": [
           {
@@ -329,10 +328,10 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "description": "Оставшееся время в игре.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
+                  "layout": "prominent",
+                  "description": "Оставшееся время в игре."
                 }
               },
               {
@@ -595,17 +594,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Выберите десятый шаг",
+      "layout_id": "layout.web.board"
     },
     "61..66": {
       "type": "screen",
-      "title": "Выберите одинадцатый шаг",
-      "layout_id": "layout.web.board",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen topbar-screen-shell"
         },
         "children": [
           {
@@ -619,10 +618,10 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "description": "Оставшееся время в игре.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
+                  "layout": "prominent",
+                  "description": "Оставшееся время в игре."
                 }
               },
               {
@@ -877,17 +876,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Выберите одинадцатый шаг",
+      "layout_id": "layout.web.board"
     },
     "67..70": {
       "type": "screen",
-      "title": "Выберите двенадцатый шаг",
-      "layout_id": "layout.web.board",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen topbar-screen-shell"
         },
         "children": [
           {
@@ -901,10 +900,10 @@
                 "id": "score",
                 "props": {
                   "caption": "Остаток дней",
-                  "description": "Оставшееся время в игре.",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
                   "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
+                  "layout": "prominent",
+                  "description": "Оставшееся время в игре."
                 }
               },
               {
@@ -1129,18 +1128,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Выберите двенадцатый шаг",
+      "layout_id": "layout.web.board"
     },
     "i17": {
       "type": "screen",
-      "title": "Ускорение процесса",
-      "layout_id": "layout.web.info",
       "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -1362,17 +1360,18 @@
             }
           }
         ]
-      }
+      },
+      "title": "Ускорение процесса",
+      "layout_id": "layout.web.info"
     },
     "i18": {
       "type": "screen",
-      "title": "Отправка разведчиков",
-      "layout_id": "layout.web.info",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -1595,17 +1594,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Отправка разведчиков",
+      "layout_id": "layout.web.info"
     },
     "i19": {
       "type": "screen",
-      "title": "Последствия переезда",
-      "layout_id": "layout.web.info",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -1828,17 +1827,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Последствия переезда",
+      "layout_id": "layout.web.info"
     },
     "i19_1": {
       "type": "screen",
-      "title": "Быстрый переезд",
-      "layout_id": "layout.web.info",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -2061,17 +2060,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Быстрый переезд",
+      "layout_id": "layout.web.info"
     },
     "i20": {
       "type": "screen",
-      "title": "Второй переезд",
-      "layout_id": "layout.web.info",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -2294,17 +2293,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Второй переезд",
+      "layout_id": "layout.web.info"
     },
     "i21": {
       "type": "screen",
-      "title": "Финальный экран",
-      "layout_id": "layout.web.info",
+      "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -2527,17 +2526,17 @@
           }
         ]
       },
-      "layout_mode": "topbar"
+      "title": "Финальный экран",
+      "layout_id": "layout.web.info"
     },
     "S1_LEFT": {
       "type": "screen",
-      "title": "Antarctica (Left Sidebar)",
-      "layout_id": "layout.web.s1_left",
+      "layout_mode": "leftsidebar",
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "main-screen leftsidebar-screen",
-          "backgroundImage": "/images/arctic-background.png"
+          "backgroundImage": "/images/arctic-background.png",
+          "cssClass": "main-screen leftsidebar-screen"
         },
         "children": [
           {
@@ -2789,7 +2788,8 @@
           }
         ]
       },
-      "layout_mode": "leftsidebar"
+      "title": "Antarctica (Left Sidebar)",
+      "layout_id": "layout.web.s1_left"
     }
   },
   "layouts": {

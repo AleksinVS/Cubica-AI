@@ -39,6 +39,7 @@ docs: # Архитектура, задачи, планирование
       TSK-20260518-workspace-project-references-cleanup.md: file # План классификации workspace, scaffold и TypeScript project reference gaps.
       TSK-20260520-project-review-remediation.md: file # Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.
       TSK-20260521-antarctica-authoring-manifest-migration.md: file # План миграции манифестов Antarctica на обязательный authoring-слой ADR-030 с сохранением runtime-поведения.
+      TSK-20260521-antarctica-authoring-review-remediation.md: file # План исправлений по результатам ревью миграции Antarctica на ADR-030: missing action, source maps и доказательная документация.
       TSK-20260521-game-agnostic-architecture-simplification.md: file # План упрощения создания новых игр и снятия Antarctica-specific архитектурных утечек из платформенного слоя.
       TSK-20260521-semantic-prototype-authoring-layer.md: file # План внедрения обязательного authoring-слоя манифестов с компиляцией в runtime game/UI manifests.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
