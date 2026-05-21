@@ -209,6 +209,13 @@ rg -n '"_type"|"_extends"|"_definitions"|"_semantics"|"_source_trace"' games/*/g
 
 ## Handoff Log
 
+### 2026-05-21 - Antarctica migration planning
+
+- Added bounded execution documentation for migrating `Antarctica` game, web UI and telegram UI manifests to the ADR-030 authoring layer.
+- New task: `docs/tasks/active/TSK-20260521-antarctica-authoring-manifest-migration.md`.
+- New matrix: `docs/tasks/artifacts/TSK-20260521-antarctica-authoring-manifest-migration/execution-matrix.md`.
+- Recommended next step remains parity adoption first: generate identical runtime output from authoring inputs before extracting semantic prototypes.
+
 ### 2026-05-21 - Implementation pass
 
 - Added authoring schemas: `game-authoring.schema.json`, `ui-authoring.schema.json`, shared authoring definitions and source map schema.

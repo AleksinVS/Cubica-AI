@@ -81,7 +81,7 @@ A sidecar is a companion file stored next to the main artifact; here it means a 
 | S6 | Done | Source maps generated as companion files. |
 | S7 | Done | `simple-choice` has game/UI authoring inputs and generated outputs. |
 | S8 | Done | `verify:manifest-authoring`, `verify:canonical`, and GitHub CI job added. |
-| S9 | Pending | `Antarctica` migration remains a bounded follow-up. |
+| S9 | Documented | `Antarctica` migration is tracked by `docs/tasks/active/TSK-20260521-antarctica-authoring-manifest-migration.md`. |
 
 ## 7. Risks And Controls
 
