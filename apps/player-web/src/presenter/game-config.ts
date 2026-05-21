@@ -2,6 +2,7 @@ import type { GamePlayerUiContent, PlayerFacingContent, GameState, MetricConfigS
 
 import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
+import { createManifestActionAdapter as createGenericManifestActionAdapter } from "@/lib/manifest-action-adapter";
 
 /**
  * Спецификация одной fallback-метрики.
@@ -202,4 +203,115 @@ export function metricSpecsToFallbackMetrics(specs: Array<MetricConfigSpec>): Ar
     sidebarImage: spec.images?.sidebar ?? "",
     topbarImage: spec.images?.topbar ?? "",
   }));
+}
+
+const DEFAULT_PLAYER_ID = "player-web";
+const SAFE_STORAGE_ID = /[^a-zA-Z0-9_-]+/g;
+
+const toMetricBackgroundImages = (
+  specs: ReadonlyArray<FallbackMetricSpec>
+): Record<string, string> => {
+  const images: Record<string, string> = {};
+
+  for (const spec of specs) {
+    const image = spec.topbarImage || spec.sidebarImage;
+    if (!image) {
+      continue;
+    }
+
+    images[spec.id] = image;
+    for (const alias of spec.aliases) {
+      images[alias] = image;
+    }
+  }
+
+  return images;
+};
+
+const collectTopbarScreenKeys = (
+  uiContent: GamePlayerUiContent | undefined
+): Array<string> => {
+  if (!uiContent) {
+    return [];
+  }
+
+  const keys = new Set<string>();
+  for (const [screenKey, screen] of Object.entries(uiContent.screens)) {
+    if (screen.layoutMode === "topbar") {
+      keys.add(screenKey);
+    }
+  }
+
+  for (const entry of uiContent.screenRouting ?? []) {
+    if (entry.conditions.layoutMode === "topbar") {
+      keys.add(entry.screenKey);
+    }
+  }
+
+  return [...keys];
+};
+
+/**
+ * Builds the serializable player config for games that do not need a custom
+ * web plugin. The source of truth is player-facing content projected by
+ * runtime-api; the resulting config contains only values that can cross the
+ * Next.js Server Component to Client Component boundary.
+ */
+export function createDefaultGameConfigData(
+  content: PlayerFacingContent,
+  uiContent: GamePlayerUiContent | undefined = content.ui,
+  options: { playerId?: string } = {}
+): GameConfigData {
+  const fallbackMetrics = uiContent?.metricSpecs
+    ? metricSpecsToFallbackMetrics(uiContent.metricSpecs)
+    : [];
+  const safeGameId = content.gameId.replace(SAFE_STORAGE_ID, "-");
+
+  return {
+    gameId: content.gameId,
+    playerId: options.playerId ?? DEFAULT_PLAYER_ID,
+    storageKey: `cubica-${safeGameId}-session-id`,
+    fallbackMetrics,
+    topbarScreenKeys: collectTopbarScreenKeys(uiContent),
+    metricBackgroundImages: toMetricBackgroundImages(fallbackMetrics),
+  };
+}
+
+/**
+ * Default game config used when no game plugin is registered.
+ *
+ * It deliberately contains only generic behavior: session state is exposed to
+ * the manifest renderer, screen routing stays data-driven through the UI
+ * manifest, and UI commands dispatch explicit action IDs from payload data.
+ */
+export function createDefaultGameConfig(data: GameConfigData): GameConfig {
+  return {
+    gameId: data.gameId,
+    playerId: data.playerId,
+    storageKey: data.storageKey,
+    fallbackMetrics: data.fallbackMetrics,
+    topbarScreenKeys: new Set(data.topbarScreenKeys),
+    metricBackgroundImages: data.metricBackgroundImages,
+
+    resolveGameState(content, session) {
+      const state = session?.state as Record<string, unknown> | undefined;
+      const publicState = (state?.public ?? {}) as Record<string, unknown>;
+      const secretState = (state?.secret ?? {}) as Record<string, unknown>;
+
+      return {
+        public: publicState,
+        secret: secretState,
+        content: content.content?.data ?? content.content ?? null,
+        actions: content.actions,
+      };
+    },
+
+    createManifestActionAdapter(_content, _gameState, dispatchAction, onError) {
+      return createGenericManifestActionAdapter({
+        gameContent: null,
+        dispatchAction,
+        onError,
+      });
+    },
+  };
 }

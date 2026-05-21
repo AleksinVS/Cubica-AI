@@ -23,6 +23,7 @@
 
 - [TSK-20260518-architecture-repair-and-task-system-migration](docs/tasks/active/TSK-20260518-architecture-repair-and-task-system-migration.md) — восстановить зеленый canonical slice, устранить архитектурные разрывы из ревью 2026-05-18 и завершить миграцию системы задач на ADR-031.
 - [TSK-20260520-project-review-remediation](docs/tasks/active/TSK-20260520-project-review-remediation.md) — реализация исправлений находится на review: структурный индекс, legacy/stub реестры, битые ссылки и блокирующая CI-проверка незарегистрированных заглушек обновлены.
+- [TSK-20260521-game-agnostic-architecture-simplification](docs/tasks/active/TSK-20260521-game-agnostic-architecture-simplification.md) — implemented: default game config, исправленный scaffold, neutral journal metadata, `simple-choice` fixture и game-agnostic CI invariant добавлены.
 
 ## Next
 
@@ -46,6 +47,7 @@
 ## Canonical Context
 
 - `games/antarctica/game.manifest.json` — источник истины для исполнимой логики Antarctica.
+- `games/simple-choice/` — минимальная вторая игра для проверки game-agnostic runtime/player path.
 - `games/antarctica/design/mockups/` — источник UI-намерения и экранных макетов.
 - `services/runtime-api/` — канонический backend runtime в формате модульного монолита.
 - `apps/player-web/` — канонический web delivery layer.

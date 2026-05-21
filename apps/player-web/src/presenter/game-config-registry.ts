@@ -1,4 +1,5 @@
 import type { GameConfigData, GameConfig, ResolverFactory } from "./game-config";
+import { createDefaultGameConfig } from "./game-config";
 
 /**
  * Реестр фабрик резолверов для конфигураций игр.
@@ -31,16 +32,14 @@ export function registerGameResolvers(
  * находя зарегистрированную фабрику резолверов по gameId.
  *
  * Вызывается в клиентском компоненте (GamePlayer) после получения
- * GameConfigData от Server Component. Бросает ошибку, если фабрика
- * для указанного gameId не зарегистрирована.
+ * GameConfigData от Server Component. Если игра не зарегистрировала plugin,
+ * используется default-конфиг: он работает для манифестов с data-driven
+ * screen routing и явными actionId в UI payload.
  */
 export function buildGameConfig(data: GameConfigData): GameConfig {
   const factory = registry.get(data.gameId);
   if (!factory) {
-    throw new Error(
-      `No resolver factory registered for game: "${data.gameId}". ` +
-      `Ensure the game plugin registers its resolvers before the component renders.`
-    );
+    return createDefaultGameConfig(data);
   }
   return factory(data);
 }

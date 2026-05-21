@@ -5,7 +5,7 @@ import { SessionService } from "../session/session.service.ts";
 import { RuntimeService } from "../runtime/runtime.service.ts";
 import { loadPlayerFacingContent } from "../content/contentService.ts";
 import { buildReadinessResponse } from "../admin/health.ts";
-import { parseCreateSessionRequest, parseDispatchActionRequest } from "./requestValidation.ts";
+import { assertGameId, parseCreateSessionRequest, parseDispatchActionRequest } from "./requestValidation.ts";
 
 interface RuntimeApiServerOptions {
   port?: number;
@@ -59,6 +59,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       const playerContentMatch = request.method === "GET" && request.url?.match(/^\/games\/([^/]+)\/player-content$/);
       if (playerContentMatch) {
         const gameId = playerContentMatch[1];
+        assertGameId(gameId, "gameId");
         const { content } = await loadPlayerFacingContent({ gameId });
         sendJson(response, 200, content);
         return;

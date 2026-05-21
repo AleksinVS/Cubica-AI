@@ -1,0 +1,4 @@
+{
+  "summary": "Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.",
+  "owner": "platform"
+}

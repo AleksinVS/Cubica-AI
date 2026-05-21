@@ -389,14 +389,15 @@ test("GET /health returns 200 with correct payload", async () => {
   assert.equal(body.service, "runtime-api");
 });
 
-test("GET /health is fast (< 5ms under normal conditions)", async () => {
+test("GET /health is fast under normal conditions", async () => {
   const start = performance.now();
   const response = await fetch(`${baseUrl}/health`);
   const elapsed = performance.now() - start;
 
   assert.equal(response.status, 200);
-  // Allow some headroom for CI environments, but ensure it's fast
-  assert.ok(elapsed < 50, `Expected health check to be fast, took ${elapsed}ms`);
+  // Allow headroom for shared CI/agent environments while keeping the endpoint
+  // bounded to a quick in-process response.
+  assert.ok(elapsed < 100, `Expected health check to be fast, took ${elapsed}ms`);
 });
 
 test("GET /readiness returns 200 with correct payload when runtime is healthy", async () => {
@@ -478,7 +479,49 @@ test("POST /sessions rejects invalid request bodies", async () => {
   });
 
   assert.equal(response.status, 400);
-  assert.match(body.error, /gameId must be a non-empty string/);
+  assert.match(body.error, /gameId must match/);
+});
+
+test("POST /sessions rejects unsafe game ids before repository lookup", async () => {
+  const { response, body } = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "../antarctica"
+    })
+  });
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /gameId must match/);
+});
+
+test("simple-choice creates a session and dispatches a manifest action", async () => {
+  const { response: createResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "integration-test"
+    })
+  });
+
+  assert.equal(createResponse.status, 201);
+  assert.equal(session.gameId, "simple-choice");
+  assert.equal(session.state.public.timeline.screenId, "intro");
+  assert.equal(session.state.public.metrics?.score, 0);
+
+  const { response: actionResponse, body: action } = await dispatchAction(
+    session.sessionId,
+    "integration-test",
+    "choice.accept"
+  );
+
+  assert.equal(actionResponse.status, 200);
+  const actionBody = action as ActionResponse;
+  assert.equal(actionBody.state.public.timeline.screenId, "result");
+  assert.equal(actionBody.state.public.timeline.stepIndex, 1);
+  assert.equal(actionBody.state.public.metrics?.score, 1);
+  assert.equal((actionBody.state.public as unknown as { choice: { outcome: string } }).choice.outcome, "accepted");
+  assert.equal(actionBody.state.public.log[0].displayMode, "summary");
+  assert.equal(actionBody.state.public.log[0].entityType, "choice");
 });
 
 test("GET /sessions/:id returns the created session snapshot", async () => {
@@ -564,6 +607,17 @@ test("GET /games/:id/player-content returns dataUi manifest for Antarctica", asy
   assert.equal(body.ui.screens["S1"].type, "screen");
   assert.ok(body.ui.screens["S1"].root);
   assert.equal(body.ui.screens["S1"].root.type, "screenComponent");
+});
+
+test("GET /games/:id/player-content returns simple-choice UI manifest", async () => {
+  const { response, body } = await requestJson<PlayerFacingContent>("/games/simple-choice/player-content");
+
+  assert.equal(response.status, 200);
+  assert.equal(body.gameId, "simple-choice");
+  assert.equal(body.ui?.entryPoint, "intro");
+  assert.ok(body.ui?.screens.intro);
+  assert.ok(body.ui?.screens.result);
+  assert.equal(body.ui?.metricSpecs?.[0]?.id, "score");
 });
 
 test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {

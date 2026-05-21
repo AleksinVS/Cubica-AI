@@ -378,14 +378,49 @@
           },
           "required": ["cardIds", "resolvedCountAtLeast"]
         },
+        "card": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "selected": { "type": "boolean" },
+            "resolved": { "type": "boolean" },
+            "locked": { "type": "boolean" },
+            "available": { "type": "boolean" }
+          },
+          "required": ["id"]
+        },
         "jsonLogic": {
           "$ref": "#/definitions/JsonLogicExpression"
+        },
+        "opening": {
+          "type": "object",
+          "properties": {
+            "selectedCardIdAbsent": { "type": "boolean" },
+            "selectedCardIdEquals": {
+              "oneOf": [{ "type": "string" }, { "type": "number" }]
+            }
+          }
         },
         "stateConditions": {
           "items": {
             "$ref": "#/definitions/GameManifestDeterministicStateCondition"
           },
           "type": "array"
+        },
+        "team": {
+          "type": "object",
+          "properties": {
+            "memberId": { "type": "string" },
+            "selected": { "type": "boolean" }
+          },
+          "required": ["memberId"]
+        },
+        "teamSelection": {
+          "type": "object",
+          "properties": {
+            "pickCountLessThan": { "type": "number" },
+            "pickCountEquals": { "type": "number" }
+          }
         },
         "timeline": {
           "additionalProperties": false,
@@ -437,6 +472,14 @@
         },
         "cardId": {
           "type": "string"
+        },
+        "displayMode": {
+          "type": "string",
+          "description": "Player-facing rendering mode used by generic panels instead of action prefixes."
+        },
+        "entityType": {
+          "type": "string",
+          "description": "Neutral entity category for log entries, for example card, choice or info."
         },
         "memberId": {
           "type": "string"
@@ -619,6 +662,17 @@
         "activeInfoId": {
           "type": "string"
         },
+        "cardFlags": {
+          "type": "object",
+          "properties": {
+            "cardId": { "type": "string" },
+            "selected": { "type": "boolean" },
+            "resolved": { "type": "boolean" },
+            "locked": { "type": "boolean" },
+            "available": { "type": "boolean" }
+          },
+          "required": ["cardId"]
+        },
         "selectedCardId": {
           "type": "string"
         },
@@ -639,6 +693,23 @@
         },
         "timelineStepIndex": {
           "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+        },
+        "teamFlags": {
+          "type": "object",
+          "properties": {
+            "memberId": { "type": "string" },
+            "selected": { "type": "boolean" }
+          },
+          "required": ["memberId"]
+        },
+        "teamSelection": {
+          "type": "object",
+          "properties": {
+            "pickCountDelta": {
+              "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+            },
+            "selectedMemberIdsAppend": { "type": "string" }
+          }
         }
       },
       "type": "object"

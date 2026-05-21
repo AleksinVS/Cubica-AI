@@ -55,9 +55,27 @@ export function createManifestActionAdapter(options: {
       return;
     }
 
-    // 4. Fallback: pass command as actionId
+    // 4. Generic manifest-driven dispatch: simple games put the exact runtime
+    // action id into the UI payload, so no plugin resolver is needed.
     if (command === ManifestAction.REQUEST_SERVER) {
+      const actionId = payload.actionId;
+      if (typeof actionId === "string" && actionId.trim()) {
+        dispatchAction(actionId, payload);
+        return;
+      }
+
       dispatchAction(ManifestAction.REQUEST_SERVER, payload);
+      return;
+    }
+
+    if (command === ManifestAction.ADVANCE) {
+      const actionId = payload.actionId ?? payload.advanceActionId;
+      if (typeof actionId === "string" && actionId.trim()) {
+        dispatchAction(actionId, payload);
+        return;
+      }
+
+      dispatchAction(ManifestAction.ADVANCE, payload);
       return;
     }
 

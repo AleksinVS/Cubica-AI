@@ -26,9 +26,10 @@
 
 ### Текущий канонический срез
 - `games/antarctica/game.manifest.json` - источник истины для исполнимой логики `Antarctica`.
+- `games/simple-choice/` - минимальная вторая игра для проверки game-agnostic runtime/player path без custom web plugin.
 - `games/antarctica/design/mockups/` - источник истины для UI-намерения и экранных макетов.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
-- `apps/player-web/` - канонический web delivery слой для `Antarctica`.
+- `apps/player-web/` - канонический web delivery слой; сложные игры могут подключать plugin, а простые используют default config из `PlayerFacingContent.ui`.
 - `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI.
 - `draft/cubica-portal-nextjs/` - текущий draft портала для следующего test VPS launch; он управляет будущими покупками/ссылками/игровыми сессиями, но не является source of truth для runtime-логики.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для сценария и механики `Antarctica` на время миграции; это состояние миграции, а не новое архитектурное решение; анализировать его нужно через scripts и targeted extraction, а не читать целиком как основной документ.
@@ -56,6 +57,7 @@
 - **API First** — контракты документируются в `docs/architecture/` и синхронизируются с реализацией через CI.
 - **Observability by design** — логирование, метрики и трассировка изначально встроены во все сервисы.
 - **Stub-to-Production Path** — каждая временная заглушка регистрируется и имеет план снятия (см. `docs/legacy/debt-log.csv`).
+- **Game-Agnostic Default Path** — простая игра должна запускаться из `games/<id>/game.manifest.json` и `games/<id>/ui/web/ui.manifest.json` без правок generic runtime/player layers.
 - **Security & Privacy** — секреты хранятся вне кода, доступы разграничены RBAC, данные пользователей минимальны.
 - **Trunk-based development** — короткие feature-ветки, обязательные проверки и ревью, единая ветка `main`.
 - **MVP + LLM-first** — исторический target для более ранней версии платформы; текущий canonical slice использует deterministic runtime и JSON‑manifest source of truth, а LLM остаётся будущим capability layer для авторинга и расширения.
@@ -226,8 +228,9 @@
 ## 7. Текущее состояние
 На данный момент есть:
 - Канонический content bundle `games/antarctica/` с `game.manifest.json`, `ui.manifest.json` и design mockups.
+- Минимальный content bundle `games/simple-choice/`, который подтверждает запуск второй игры через generic `runtime-api` и `player-web` без custom plugin.
 - Канонический backend runtime `services/runtime-api/` с bounded validation, capability routing и deterministic handlers.
-- Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/antarctica/` и `packages/contracts/*`.
+- Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/*` и `packages/contracts/*`; для сложных игр он использует plugin, для простых - default config builder.
 - `draft/cubica-portal-nextjs/` как текущий вариант портала для анализа, доработки и тестового запуска `Antarctica` через launch links.
 - `apps/portal-nextjs/` и `services/portal-backend/` как импортированные draft-артефакты портала для последующего анализа.
 - `draft/antarctica-nextjs-player/` как визуальный prototype/reference, но не source of truth для кода, структуры или runtime-логики.

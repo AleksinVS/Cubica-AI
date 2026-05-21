@@ -71,7 +71,6 @@ type SecretState = {
 };
 
 const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
-const playerWebUrl = process.env.PLAYER_WEB_URL ?? (process.env.PORT ? `http://localhost:${process.env.PORT}` : "http://localhost:3000");
 
 const parseJson = <TValue,>(raw: string): TValue => JSON.parse(raw) as TValue;
 
@@ -107,9 +106,7 @@ export async function loadGamePlayerContent(
 
   for (let i = 0; i < retries; i++) {
     try {
-      const url = playerWebUrl
-        ? `${playerWebUrl}/api/runtime/player-content/${gameId}`
-        : `/api/runtime/player-content/${gameId}`;
+      const url = `${runtimeApiUrl}/games/${gameId}/player-content`;
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to load player content: ${response.status} ${response.statusText}`);

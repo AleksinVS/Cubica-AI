@@ -8220,6 +8220,8 @@
         "metricDeltas": [],
         "log": {
           "kind": "opening-card-resolution",
+          "entityType": "card",
+          "displayMode": "card",
           "stageId": "stage_intro",
           "cardId": "{{cardId}}",
           "summary": "{{summary}}"

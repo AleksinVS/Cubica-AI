@@ -73,4 +73,31 @@ test.describe("player-web e2e", () => {
     const scopedSessionId = await page.evaluate((key) => window.localStorage.getItem(key), `${storageKey}:launch:e2e-token:1`);
     expect(scopedSessionId).toBe(runtimeSession.sessionId);
   });
+
+  test("boots simple-choice without a game plugin and dispatches a manifest action", async ({ page }) => {
+    const createSession = page.waitForResponse((response) =>
+      response.url().endsWith("/api/runtime/sessions") &&
+      response.request().method() === "POST"
+    );
+
+    await page.goto("/?gameId=simple-choice");
+    await expect(page.locator(".game-player-root")).toBeVisible();
+    await expect(page.locator(".loading-state")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Choose path" })).toBeVisible();
+
+    const createSessionResponse = await createSession;
+    expect(createSessionResponse.status()).toBe(201);
+
+    const actionResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/runtime/actions") &&
+      response.request().method() === "POST"
+    );
+    await page.getByRole("button", { name: "Choose path" }).click();
+    expect((await actionResponse).status()).toBe(200);
+
+    await expect(page.getByRole("heading", { name: "Result" })).toBeVisible();
+    await expect(page.getByText("Outcome: accepted")).toBeVisible();
+    await expect(page.getByText("1")).toBeVisible();
+  });
 });

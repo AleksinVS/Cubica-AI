@@ -624,6 +624,14 @@ const appendManifestLogEntry = (
     logEntry.stageId = log.stageId;
   }
 
+  if (log?.displayMode !== undefined) {
+    logEntry.displayMode = log.displayMode;
+  }
+
+  if (log?.entityType !== undefined) {
+    logEntry.entityType = log.entityType;
+  }
+
   if (log?.cardId !== undefined) {
     logEntry.cardId = log.cardId;
   }

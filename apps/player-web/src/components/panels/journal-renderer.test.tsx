@@ -30,6 +30,9 @@ const mockMetrics: MetricsSnapshot = {
 
 const mockLogEntry: RuntimeLogEntry = {
   actionId: "opening.card.1",
+  entityType: "card",
+  displayMode: "card",
+  cardId: "1",
   at: "2026-05-16T10:00:00Z",
   frontText: "Front text of card 1",
   backText: "Back text of card 1 — result after flip",

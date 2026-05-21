@@ -1,6 +1,6 @@
-import { ANTARCTICA_GAME_CONFIG_DATA } from "@/presenter/antarctica-config-data";
 import { GamePlayer } from "@/components/game-player";
 import { getRuntimeApiUrl, loadGamePlayerContent } from "@/lib/game-content-resolvers";
+import { resolveGameConfigData } from "@/plugins/game-config-data";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +14,7 @@ export default async function Page({ searchParams }: PageProps) {
   const params = await searchParams;
   const gameId = params?.gameId || "antarctica";
   const content = await loadGamePlayerContent(gameId);
+  const config = resolveGameConfigData(content);
 
   return (
     <GamePlayer
@@ -21,7 +22,7 @@ export default async function Page({ searchParams }: PageProps) {
       content={content}
       mockups={content.mockups}
       gameUi={content.ui}
-      config={ANTARCTICA_GAME_CONFIG_DATA}
+      config={config}
     />
   );
 }

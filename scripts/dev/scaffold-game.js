@@ -12,11 +12,10 @@
  * The gameId must match a directory under games/ with a game.manifest.json.
  * Generated files are written to apps/player-web/src/plugins/<gameId>/.
  *
- * After running this script, you must:
- * 1. Add `import "@/plugins/<gameId>/register";` to apps/player-web/src/plugins/register-games.ts
- * 2. Create a Server Component that provides GameConfigData for the new game
- * 3. Implement game-specific state resolution logic in state-resolvers.ts
- * 4. Add UI manifest screens for the game
+ * A plugin is optional. Use this script only when manifest-driven routing and
+ * the default player config are not enough for a game-specific state adapter.
+ * The generated plugin intentionally omits no-op screen and layout resolvers so
+ * it does not disable data-driven routing from the UI manifest.
  */
 
 const fs = require("fs");
@@ -41,6 +40,7 @@ if (!fs.existsSync(manifestPath)) {
 const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf-8"));
 const gameName = manifest.meta?.name || gameId;
 const locale = manifest.config?.settings?.locale || "en-US";
+const typeName = toPascalCase(gameId);
 
 console.log(`Scaffolding plugin for: ${gameName} (${gameId})`);
 console.log(`Locale: ${locale}`);
@@ -60,7 +60,7 @@ const contractsContent = `import type { ActionEntry } from "@/lib/game-content-r
  * Modify these interfaces to match the game's actual state shape.
  */
 
-export interface ${capitalize(gameId)}GameState {
+export interface ${typeName}GameState {
   /** Add game-specific state fields here. */
   currentInfo: Record<string, unknown> | null;
   currentBoard: Record<string, unknown> | null;
@@ -73,7 +73,7 @@ export interface ${capitalize(gameId)}GameState {
  * Game-specific content structure.
  * Matches the shape stored in manifest.content.<gameId>.
  */
-export interface ${capitalize(gameId)}Content {
+export interface ${typeName}Content {
   // Define content shape based on game.manifest.json content.<gameId>
   [key: string]: unknown;
 }
@@ -84,15 +84,14 @@ const stateResolversContent = `/**
  * ${gameName}-specific state resolvers.
  *
  * These functions transform raw session state into the game-specific
- * ${capitalize(gameId)}GameState that the plugin's resolveGameState produces.
+ * ${typeName}GameState that the plugin's resolveGameState produces.
  */
 
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
-import type { ${capitalize(gameId)}Content } from "./contracts";
+import type { ${typeName}Content } from "./contracts";
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import {
   resolveGameContent,
-  readPublicState,
   readCanAdvance as readCanAdvanceGeneric,
   getFallbackActionEntries,
 } from "@/lib/game-content-resolvers";
@@ -100,8 +99,8 @@ import {
 /**
  * Extracts game-specific content from PlayerFacingContent.
  */
-export function resolve${capitalize(gameId)}Content(content: PlayerFacingContent): ${capitalize(gameId)}Content | null {
-  return resolveGameContent(content) as ${capitalize(gameId)}Content | null;
+export function resolve${typeName}Content(content: PlayerFacingContent): ${typeName}Content | null {
+  return resolveGameContent(content) as ${typeName}Content | null;
 }
 
 /**
@@ -118,10 +117,10 @@ export { getFallbackActionEntries };
 // --- register.ts ---
 const registerContent = `import { registerGameResolvers } from "@/presenter/game-config-registry";
 import type { GameConfigData, GameConfig, ResolverFactory } from "@/presenter/game-config";
-import type { ${capitalize(gameId)}GameState } from "./contracts";
+import type { ${typeName}GameState } from "./contracts";
 import type { GamePlayerUiContent } from "@cubica/contracts-manifest";
 import {
-  resolve${capitalize(gameId)}Content,
+  resolve${typeName}Content,
   readCanAdvance,
   getFallbackActionEntries,
 } from "./state-resolvers";
@@ -132,9 +131,9 @@ import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
  *
  * Creates a full GameConfig with working this-references from serializable data.
  */
-const create${capitalize(gameId)}Config: ResolverFactory<${capitalize(gameId)}GameState, GamePlayerUiContent> = (
+const create${typeName}Config: ResolverFactory<${typeName}GameState, GamePlayerUiContent> = (
   data: GameConfigData
-): GameConfig<${capitalize(gameId)}GameState, GamePlayerUiContent> => {
+): GameConfig<${typeName}GameState, GamePlayerUiContent> => {
   const topbarScreenKeys = new Set(data.topbarScreenKeys);
 
   return {
@@ -145,27 +144,8 @@ const create${capitalize(gameId)}Config: ResolverFactory<${capitalize(gameId)}Ga
     topbarScreenKeys,
     metricBackgroundImages: data.metricBackgroundImages,
 
-    resolveScreenKey(screenId, stepIndex, infoId, runtimeUi, gameUi) {
-      // Use data-driven routing from manifest screenRouting entries.
-      // Override this method only if the game needs custom routing logic.
-      return null;
-    },
-
-    resolveLayoutMode(screenKey, runtimeUi, gameState) {
-      // Use data-driven layout from manifest screenRouting entries.
-      // Override this method only if the game needs custom layout logic.
-      if (runtimeUi.activeScreen === "topbar") {
-        return "topbar";
-      }
-      if (runtimeUi.activeScreen === "left-sidebar") {
-        return "leftsidebar";
-      }
-      return "topbar";
-    },
-
     resolveGameState(content, session) {
-      const publicState = session?.state?.public as Record<string, unknown> | undefined;
-      const gameContent = resolve${capitalize(gameId)}Content(content);
+      const gameContent = resolve${typeName}Content(content);
       const canAdvance = readCanAdvance(session);
       const fallbackActions = getFallbackActionEntries(content);
 
@@ -179,7 +159,7 @@ const create${capitalize(gameId)}Config: ResolverFactory<${capitalize(gameId)}Ga
 
     createManifestActionAdapter(content, gameState, dispatchAction, onError) {
       return createManifestActionAdapter({
-        gameContent: resolve${capitalize(gameId)}Content(content),
+        gameContent: resolve${typeName}Content(content),
         dispatchAction,
         onError,
       });
@@ -193,12 +173,16 @@ const create${capitalize(gameId)}Config: ResolverFactory<${capitalize(gameId)}Ga
  */
 registerGameResolvers(
   "${gameId}",
-  create${capitalize(gameId)}Config as unknown as import("@/presenter/game-config").ResolverFactory
+  create${typeName}Config as unknown as import("@/presenter/game-config").ResolverFactory
 );
 `;
 
 // --- Write files ---
 const files = {
+  ".desc.json": JSON.stringify({
+    summary: `Optional player-web plugin scaffold for ${gameName}. Keep this directory limited to game-specific resolvers that cannot be expressed in manifests.`,
+    owner: "player-web"
+  }, null, 2) + "\n",
   "contracts.ts": contractsContent,
   "state-resolvers.ts": stateResolversContent,
   "register.ts": registerContent,
@@ -216,14 +200,18 @@ for (const [filename, content] of Object.entries(files)) {
 
 // --- Remind about manual steps ---
 console.log("");
-console.log("=== Manual steps required ===");
-console.log(`1. Add to apps/player-web/src/plugins/register-games.ts:`);
+console.log("=== Validation checklist ===");
+console.log(`1. Register the plugin only if custom resolvers are really needed:`);
 console.log(`   import "@/plugins/${gameId}/register";`);
-console.log(`2. Create a Server Component that provides GameConfigData for "${gameId}"`);
-console.log(`3. Implement game-specific state resolution in state-resolvers.ts`);
-console.log(`4. Add UI manifest screens at games/${gameId}/ui/web/ui.manifest.json`);
-console.log(`5. Update the Server Component to pass metricSpecs from the UI manifest`);
+console.log(`2. Keep resolveScreenKey/resolveLayoutMode omitted unless the game cannot use screen_routing.`);
+console.log(`3. Ensure games/${gameId}/ui/web/ui.manifest.json contains screens and screen_routing for the default path.`);
+console.log(`4. Run: node scripts/dev/generate-structure.js`);
+console.log(`5. Run: npm run verify:canonical`);
 
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
+function toPascalCase(str) {
+  return str
+    .split(/[^a-zA-Z0-9]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
 }

@@ -6,9 +6,17 @@ type JsonRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
 const assertRecord: (value: unknown, path: string) => asserts value is JsonRecord = (value, path) => {
   if (!isRecord(value)) {
     throw new RequestValidationError(`${path} must be an object`);
+  }
+};
+
+export const assertGameId: (value: unknown, path: string) => asserts value is string = (value, path) => {
+  if (typeof value !== "string" || !SAFE_GAME_ID_PATTERN.test(value)) {
+    throw new RequestValidationError(`${path} must match ${SAFE_GAME_ID_PATTERN}`);
   }
 };
 
@@ -30,7 +38,9 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
   }
 
   assertRecord(body, "POST /sessions body");
-  assertOptionalString(body.gameId, "gameId");
+  if (body.gameId !== undefined) {
+    assertGameId(body.gameId, "gameId");
+  }
   assertOptionalString(body.playerId, "playerId");
 
   return body as CreateSessionRequest;

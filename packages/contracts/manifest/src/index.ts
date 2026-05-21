@@ -147,6 +147,29 @@ export interface GameManifestDeterministicGuard {
     stepIndex?: number | string;
     canAdvance?: boolean | string;
   };
+  opening?: {
+    selectedCardIdAbsent?: boolean;
+    selectedCardIdEquals?: string | number;
+  };
+  card?: {
+    id: string;
+    selected?: boolean;
+    resolved?: boolean;
+    locked?: boolean;
+    available?: boolean;
+  };
+  team?: {
+    memberId: string;
+    selected?: boolean;
+  };
+  teamSelection?: {
+    pickCountLessThan?: number;
+    pickCountEquals?: number;
+  };
+  board?: {
+    cardIds: Array<string>;
+    resolvedCountAtLeast: number;
+  };
   stateConditions?: Array<GameManifestDeterministicStateCondition>;
   jsonLogic?: JsonLogicExpression;
   [key: string]: unknown;
@@ -217,6 +240,10 @@ export interface GameManifestDeterministicConditionalInfoVariant {
 export interface GameManifestDeterministicLogMetadata {
   kind: string;
   summary: string;
+  /** Player-facing rendering mode. Generic panels use this instead of action prefixes. */
+  displayMode?: "card" | "summary" | "hidden" | string;
+  /** Neutral entity category for log entries, for example "card" or "choice". */
+  entityType?: "card" | "choice" | "info" | string;
   stageId?: string;
   cardId?: string;
   memberId?: string;
@@ -239,6 +266,37 @@ export interface GameManifestDeterministicStateUpdate {
   activeInfoId?: string;
   selectedCardId?: string;
   statePatches?: Array<GameManifestDeterministicStatePatch>;
+  cardFlags?: {
+    cardId: string;
+    selected?: boolean;
+    resolved?: boolean;
+    locked?: boolean;
+    available?: boolean;
+  };
+  teamFlags?: {
+    memberId: string;
+    selected?: boolean;
+  };
+  teamSelection?: {
+    pickCountDelta?: number | string;
+    selectedMemberIdsAppend?: string;
+  };
+  boardCardUnlock?: {
+    cardIds: Array<string>;
+    resolvedCountAtLeast: number;
+    unlockCardId: string;
+    unlessCardAvailable?: string;
+  };
+  boardEntryAltCardSwap?: {
+    baseCardId: string;
+    altCardId: string;
+    when: GameManifestDeterministicMetricCondition;
+  };
+  boardThreshold?: {
+    cardIds: Array<string>;
+    resolvedCountAtLeast: number;
+    timelineCanAdvance?: boolean;
+  };
 }
 
 export interface GameManifestDeterministicActionMetadata {
@@ -748,4 +806,3 @@ export const ManifestAction = {
 } as const;
 
 export type ManifestActionType = (typeof ManifestAction)[keyof typeof ManifestAction];
-

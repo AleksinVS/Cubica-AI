@@ -11,12 +11,12 @@ import { JournalMetricCluster } from "./journal-metric-cluster";
  */
 function isCardLogEntry(entry: RuntimeLogEntry): boolean {
   const hasVisibleCardText = Boolean(entry.frontText || entry.backText);
-  const isCardResolution = entry.kind === "opening-card-resolution";
-  const isPlainCardChoice = entry.actionId?.startsWith("opening.card.") && !entry.actionId.endsWith(".advance");
+  const isCardEntry = entry.displayMode === "card" || entry.entityType === "card";
+  const hasNeutralCardPayload = Boolean(entry.cardId && ((entry as Record<string, unknown>).summary || entry.backText));
 
   // The journal is player-facing: show card choices with visible card text, and
   // keep backend/system events or bare "continue" advances out of the panel.
-  return isCardResolution || hasVisibleCardText || (isPlainCardChoice && Boolean(entry.cardId));
+  return isCardEntry || hasVisibleCardText || hasNeutralCardPayload;
 }
 
 /**
@@ -25,9 +25,6 @@ function isCardLogEntry(entry: RuntimeLogEntry): boolean {
 function resolveCardId(entry: RuntimeLogEntry): string | null {
   const explicit = (entry as Record<string, unknown>).cardId as string | undefined;
   if (explicit) return explicit;
-  if (entry.actionId?.startsWith("opening.card.")) {
-    return entry.actionId.replace("opening.card.", "").replace(".advance", "");
-  }
   return null;
 }
 

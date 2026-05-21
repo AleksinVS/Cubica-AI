@@ -94,6 +94,44 @@ describe("ManifestRenderer", () => {
     expect(metricBadge?.style.backgroundImage).toContain("/images/left-sidebar/days.png");
   });
 
+  it("renders topbar metric value without a background image", () => {
+    const screenWithoutMetricImage: GamePlayerS1UiContent["screen"] = {
+      ...mockScreenDefinition,
+      root: {
+        type: "screenComponent",
+        props: { cssClass: "topbar-screen-shell" },
+        children: [
+          {
+            type: "areaComponent",
+            props: { cssClass: "topbar-metrics" },
+            children: [
+              {
+                type: "gameVariableComponent",
+                id: "score",
+                props: {
+                  caption: "Score",
+                  value: "{{game.state.public.metrics.score}}"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    render(
+      <ManifestRenderer
+        screenDefinition={screenWithoutMetricImage}
+        metrics={mockMetrics}
+        onAction={mockOnAction}
+        layoutMode="topbar"
+      />
+    );
+
+    expect(screen.getByText("45")).toBeDefined();
+    expect(screen.getByText("Score")).toBeDefined();
+  });
+
   it("renders cards with correct text", () => {
     render(
       <ManifestRenderer

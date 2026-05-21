@@ -26,7 +26,7 @@ These leaks made adding a new game harder than necessary and made it difficult f
 
 ## Decision
 
-Implement eight universality improvements:
+Implement nine universality improvements:
 
 ### P1: Optional `resolveBoardScreenKey`
 Make `resolveBoardScreenKey` optional in `GameConfigResolvers`. Games without boards can omit it; the default returns `null`. Antarctica still provides it via optional chaining (`this.resolveBoardScreenKey?.(stepIndex) ?? null`).
@@ -52,6 +52,9 @@ Created `scripts/dev/scaffold-game.js` that generates `contracts.ts`, `state-res
 ### P8: Game-specific hint fallback resolver
 Added optional `resolveHintText` to `GameConfigResolvers`. Generic player components can render a default hint string, but the rule that chooses that string belongs to the concrete game plugin. Antarctica uses this hook to show the last reached info screen when no dedicated hint content exists.
 
+### P9: Plugin-optional default game path
+Added a default `GameConfigData` builder and default `GameConfig` factory for games that can be rendered from `PlayerFacingContent.ui`. If a game has no registered resolver factory, `player-web` uses manifest `screen_routing`, `metric_specs`, and explicit UI payload `actionId` values. Custom plugins remain supported for game-specific state projection and command resolution, but they are no longer required for simple games.
+
 ## Consequences
 
 **Positive:**
@@ -68,3 +71,5 @@ Added optional `resolveHintText` to `GameConfigResolvers`. Generic player compon
 - Locale strings are currently only Russian; other languages need a new locale file + provider wrapper
 - The scaffold generates minimal `resolveGameState` implementations — games with complex state must fill in their own logic
 - Games that need custom hint fallback behavior must provide a small resolver in their plugin
+- Simple games can now be added as `games/<gameId>/game.manifest.json` plus `games/<gameId>/ui/web/ui.manifest.json`; a plugin is optional rather than mandatory
+- CI can verify game-agnostic behavior with a second manifest-driven fixture instead of relying only on Antarctica

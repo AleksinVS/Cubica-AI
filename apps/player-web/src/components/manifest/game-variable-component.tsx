@@ -80,6 +80,9 @@ export function GameVariableComponent({
             <strong className="game-variable-value">{resolvedValue}</strong>
           </div>
         )}
+        {!resolvedBackgroundImage && (
+          <strong className="game-variable-value game-variable-value--plain">{resolvedValue}</strong>
+        )}
         <span className="game-variable-caption" style={prominentCaptionStyle}>
           {caption}
         </span>

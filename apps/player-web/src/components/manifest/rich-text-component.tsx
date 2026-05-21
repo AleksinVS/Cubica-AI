@@ -2,7 +2,7 @@ import type {
   GameUiComponent,
   GameUiRichTextComponentProps
 } from "@cubica/contracts-manifest";
-import { resolveExpression } from "@/lib/expression-resolver";
+import { resolveExpressions } from "@/lib/expression-resolver";
 
 /**
  * Рендерит richTextComponent — HTML или plain-text тело.
@@ -21,8 +21,8 @@ export function RichTextComponent({
   gameState?: Record<string, unknown>;
 }) {
   const { html, cssClass } = component.props;
-  const resolvedHtml = resolveExpression(html, gameState ?? {}, localContext);
-  const normalized = resolvedHtml.trim();
+  const resolvedHtml = resolveExpressions(html, gameState ?? {}, localContext);
+  const normalized = String(resolvedHtml).trim();
 
   if (!normalized) {
     return null;

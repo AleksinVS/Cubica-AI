@@ -13,6 +13,10 @@ export type RuntimeLogEntry = {
   actionId: string;
   /** Runtime event kind from the backend audit log. */
   kind?: string;
+  /** Neutral player-facing render mode from manifest log metadata. */
+  displayMode?: string;
+  /** Neutral entity category from manifest log metadata. */
+  entityType?: string;
   /** Manifest card identifier when the event belongs to a card choice. */
   cardId?: string;
   capability?: string;

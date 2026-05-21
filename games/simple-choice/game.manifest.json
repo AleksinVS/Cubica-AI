@@ -1,0 +1,118 @@
+{
+  "meta": {
+    "id": "simple-choice",
+    "version": "1.0.0",
+    "name": "Simple Choice",
+    "description": "Minimal manifest-driven game used as a second-game architecture fixture.",
+    "author": "Cubica",
+    "schemaVersion": "1.1",
+    "minEngineVersion": "0.1.0",
+    "training": {
+      "format": "single",
+      "duration": {
+        "minMinutes": 1,
+        "maxMinutes": 3
+      },
+      "competencies": [
+        {
+          "id": "decision-making",
+          "name": "Decision Making",
+          "description": "Makes a single explicit choice and observes the result."
+        }
+      ]
+    }
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 1
+    },
+    "settings": {
+      "mode": "singleplayer",
+      "locale": "en-US"
+    }
+  },
+  "content": {
+    "data": {
+      "choices": [
+        {
+          "id": "accept",
+          "title": "Take the clear path",
+          "summary": "Choose the option with the visible tradeoff.",
+          "actionId": "choice.accept"
+        }
+      ]
+    }
+  },
+  "engine": {
+    "systemPrompt": "Run the simple choice game deterministically from the manifest."
+  },
+  "state": {
+    "public": {
+      "timeline": {
+        "line": "main",
+        "stepIndex": 0,
+        "step_index": 0,
+        "stageId": "stage_simple",
+        "stage_id": "stage_simple",
+        "screenId": "intro",
+        "screen_id": "intro",
+        "canAdvance": false
+      },
+      "metrics": {
+        "score": 0
+      },
+      "choice": {
+        "outcome": "pending"
+      },
+      "flags": {
+        "cards": {}
+      },
+      "ui": {},
+      "log": []
+    },
+    "secret": {}
+  },
+  "actions": {
+    "choice.accept": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "simple-choice.choice.accept",
+      "displayName": "Accept the choice",
+      "deterministic": {
+        "guard": {
+          "timeline": {
+            "line": "main",
+            "stepIndex": 0,
+            "canAdvance": false
+          }
+        },
+        "metricDeltas": [
+          {
+            "metricId": "score",
+            "delta": 1
+          }
+        ],
+        "log": {
+          "kind": "choice-resolution",
+          "entityType": "choice",
+          "displayMode": "summary",
+          "summary": "The player chose the clear path."
+        },
+        "stateUpdate": {
+          "timelineCanAdvance": false,
+          "timelineStepIndex": 1,
+          "timelineScreenId": "result",
+          "activeInfoId": "result",
+          "statePatches": [
+            {
+              "op": "replace",
+              "path": "/public/choice/outcome",
+              "value": "accepted"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

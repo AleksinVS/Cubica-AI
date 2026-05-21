@@ -14,11 +14,12 @@
 
 - `games/antarctica/` - canonical content bundle.
 - `games/antarctica/game.manifest.json` - source of truth для исполнимой логики игры.
+- `games/simple-choice/` - minimal second game fixture that proves the game-agnostic runtime/player path without a custom web plugin.
 - `games/antarctica/design/mockups/` - source of truth для UI intent.
 - `games/antarctica/game.manifest.json` уже покрывает bounded gameplay slice records до terminal `i21`; архитектурное правило для этих механик закреплено в ADR-024, а step-specific delivery details вынесены в `docs/architecture/gameplay-slices/`.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
-- `apps/player-web/` - канонический web delivery layer, который потребляет player-facing content API/DTO и уже рендерит первый bounded Antarctica current-step slice (`i0 -> board 1..6 -> i7`) из session snapshot + manifest content projection, а не из repo files напрямую (ADR-019).
+- `apps/player-web/` - канонический web delivery layer, который потребляет player-facing content API/DTO и рендерит игры из session snapshot + manifest content projection, а не из repo files напрямую (ADR-019). Для простых игр используется default config builder из `PlayerFacingContent.ui`; для сложных игр сохраняется plugin layer.
 - `packages/contracts/*` - общий contracts layer.
 - `draft/cubica-portal-nextjs/` - current portal draft for test launch analysis; портал должен стать launch surface для покупок, ссылок и игровых сессий, но не runtime source of truth (ADR-032).
 - `draft/*` и импортированные portal/player drafts - reference only, а не canonical runtime/architecture sources.
@@ -131,6 +132,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 Текстовые источники и якоря из более ранней manifest-lineage остаются историческим направлением (см. ADR-013), но не считаются текущей канонической truth model для `Antarctica`. В текущем срезе narrative/extraction artifacts могут существовать как reference material или migration input, но не как runtime source of truth.
 
 - `games/antarctica/` — эталонный пакет игры (манифесты + ассеты).
+- `games/simple-choice/` — минимальный второй пакет игры для проверки generic runtime/player boundary без custom plugin.
 - **Схемы и форматы:**
   - `docs/architecture/schemas/manifest-structure.md` — описание концепции манифестов.
   - **Важно:** Согласно ADR-025, единственным источником истины (SSOT) для структуры манифеста является `docs/architecture/schemas/game-manifest.schema.json`. Императивные TypeScript-проверки структуры запрещены; бэкенд использует `ajv` для декларативной валидации.
@@ -256,6 +258,7 @@ Execution Model определяет, как платформа обрабаты
 На момент актуализации:
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
+- `games/simple-choice/` входит в canonical verification как game-agnostic fixture: он создаёт сессию, рендерится через UI manifest и выполняет deterministic action без Antarctica-specific player plugin.
 - `draft/cubica-portal-nextjs/` является текущим portal draft для следующего стратегического шага: test VPS launch с одной игрой `Antarctica`. Он не должен становиться источником исполнимой игровой логики.
 - В этом canonical slice bounded gameplay records `GSR-020`..`GSR-029` уже реализованы и доводят opening flow до terminal `i21`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
