@@ -1,0 +1,6 @@
+{
+  ".": "Editable ADR-030 authoring manifests for the simple-choice pilot. Runtime manifests are generated from these files and should not be edited directly.",
+  "summary": "Editable ADR-030 authoring manifests for the simple-choice pilot. Runtime manifests are generated from these files and should not be edited directly.",
+  "owner": "platform",
+  "game.authoring.json": "Authoring source for the generated simple-choice game manifest."
+}

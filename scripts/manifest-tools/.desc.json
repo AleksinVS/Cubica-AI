@@ -1,0 +1,4 @@
+{
+  ".": "Manifest transformation and generation tools used by development and CI workflows.",
+  "compile-authoring-manifests.cjs": "Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files."
+}

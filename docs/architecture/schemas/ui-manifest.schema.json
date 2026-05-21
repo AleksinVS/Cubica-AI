@@ -9,7 +9,7 @@
     "meta": {
       "type": "object",
       "description": "Метаданные UI-манифеста: идентификатор, версии и связь с игровым манифестом.",
-      "required": ["id", "version", "schema_version", "min_viewer_version"],
+      "required": ["id", "version", "game_id"],
       "properties": {
         "id": {
           "type": "string",
@@ -65,10 +65,14 @@
       "patternProperties": {
         "^[a-zA-Z0-9_.:-]+$": {
           "type": "object",
-          "required": ["type", "root"],
+          "required": ["root"],
           "properties": {
             "type": { "const": "screen" },
             "title": { "type": "string" },
+            "layout_mode": {
+              "type": "string",
+              "description": "Runtime layout hint used by the player presenter, for example topbar or leftsidebar."
+            },
             "layout_id": {
               "type": "string",
               "description": "Optional reference to a design layout defined in the 'layouts' section. DEPRECATED: Use design_artifact_id."
@@ -175,8 +179,10 @@
         "gameVariableComponent",
         "buttonComponent",
         "textComponent",
+        "richTextComponent",
         "inputComponent",
-        "imageComponent"
+        "imageComponent",
+        "helperComponent"
       ]
     },
     "uiComponent": {
@@ -185,7 +191,7 @@
       "required": ["type"],
       "properties": {
         "type": {
-          "oneOf": [
+          "anyOf": [
             { "$ref": "#/definitions/uiComponentType" },
             {
               "type": "string",

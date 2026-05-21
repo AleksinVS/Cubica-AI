@@ -1,0 +1,7 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/manifest-source-map.v1.json",
+  "title": "Cubica Manifest Source Map",
+  "description": "Tooling-only companion file that maps generated runtime manifest nodes back to authoring manifest sources.",
+  "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/sourceMap"
+}

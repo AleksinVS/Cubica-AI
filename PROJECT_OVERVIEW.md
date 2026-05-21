@@ -98,6 +98,7 @@
     - **Tier 2 — JsonLogic**: Декларативные выражения для guard-условий и вычисляемых значений метрик. Покрывает ~15% действий.
     - **Tier 3 — Script Actions**: Скриптовые действия для сложных интеракций. Покрывает ~5% действий.
     - Подробное руководство: [`docs/architecture/GAME_AUTHORING_GUIDE.md`](docs/architecture/GAME_AUTHORING_GUIDE.md).
+  - **Semantic Prototype Authoring Layer (ADR-030, Draft)**: целевой authoring-слой для game/UI manifests должен стать обязательным редактируемым источником для новых и изменяемых манифестов; runtime/player продолжают получать generated JSON, валидный по runtime JSON Schema.
   - **Структура манифеста может различаться у разных игр**.
     - Базовая структура манифеста и принципы описаны в `docs/architecture/schemas/manifest-structure.md`.
     - **Важно:** Единым источником истины (SSOT) для структуры манифеста является кроссплатформенная JSON-схема: `docs/architecture/schemas/game-manifest.schema.json` (согласно ADR-025).

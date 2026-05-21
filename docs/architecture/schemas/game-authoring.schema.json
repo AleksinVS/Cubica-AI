@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/game-authoring.v1.json",
+  "title": "Cubica Game Authoring Manifest",
+  "description": "Editable source format for game manifests. It compiles into game.manifest.json and is not consumed by runtime-api.",
+  "type": "object",
+  "required": [
+    "_schemaVersion",
+    "_manifestType",
+    "_definitions",
+    "root"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_schemaVersion": {
+      "const": "1.0"
+    },
+    "_manifestType": {
+      "const": "game"
+    },
+    "_definitions": {
+      "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/definitionsMap"
+    },
+    "root": {
+      "type": "object",
+      "description": "Authoring root that resolves into the runtime game manifest."
+    }
+  },
+  "additionalProperties": false
+}

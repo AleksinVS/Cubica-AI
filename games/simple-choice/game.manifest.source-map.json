@@ -1,0 +1,877 @@
+{
+  "version": 1,
+  "generatedFile": "games/simple-choice/game.manifest.json",
+  "sourceFile": "games/simple-choice/authoring/game.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/description": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/author": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/schemaVersion": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/minEngineVersion": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/format": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/duration": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/duration/minMinutes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/duration/maxMinutes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/competencies/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/competencies/0/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/competencies/0/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/competencies/0/description": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/meta/training/competencies": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config/players": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config/players/min": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config/players/max": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config/settings": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config/settings/mode": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/config/settings/locale": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data/choices/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data/choices/0/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data/choices/0/title": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data/choices/0/summary": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data/choices/0/actionId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/content/data/choices": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/engine": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/engine/systemPrompt": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/line": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/stepIndex": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/step_index": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/stageId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/stage_id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/screenId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/screen_id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/timeline/canAdvance": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/metrics": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/metrics/score": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/choice": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/choice/outcome": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/flags": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/flags/cards": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/ui": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/public/log": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/state/secret": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/actions": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.SimpleChoiceManifest"
+      }
+    ],
+    "/actions/choice.accept": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/handlerType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/capabilityFamily": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/capability": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/displayName": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/guard": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/guard/timeline": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/guard/timeline/line": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/guard/timeline/stepIndex": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/guard/timeline/canAdvance": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/metricDeltas/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/metricDeltas/0/metricId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/metricDeltas/0/delta": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/metricDeltas": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/log": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/log/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/log/entityType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/log/displayMode": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/log/summary": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/timelineCanAdvance": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/timelineStepIndex": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/timelineScreenId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/activeInfoId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/statePatches/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/statePatches/0/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/statePatches/0/path": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/statePatches/0/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ],
+    "/actions/choice.accept/deterministic/stateUpdate/statePatches": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/actions/choice.accept"
+      },
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/_definitions/game.AcceptChoiceAction"
+      }
+    ]
+  }
+}

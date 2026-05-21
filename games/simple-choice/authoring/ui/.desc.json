@@ -1,0 +1,6 @@
+{
+  ".": "Channel-specific UI authoring manifests for the simple-choice pilot.",
+  "summary": "Channel-specific UI authoring manifests for the simple-choice pilot.",
+  "owner": "player-web",
+  "web.authoring.json": "Authoring source for the generated simple-choice web UI manifest."
+}

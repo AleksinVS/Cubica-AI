@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/manifest-authoring-common.schema.json",
+  "title": "Cubica Manifest Authoring Common Definitions",
+  "description": "Shared JSON Schema definitions for authoring manifests. Authoring manifest means the editable source JSON compiled into runtime game/UI manifests.",
+  "definitions": {
+    "semanticType": {
+      "type": "string",
+      "description": "Semantic type name used by authoring instances. It explains the node intent and resolves through a local definition.",
+      "pattern": "^[a-z][a-zA-Z0-9]*(\\.[A-Z][a-zA-Z0-9]*)+$"
+    },
+    "authoringDefinition": {
+      "type": "object",
+      "description": "Reusable authoring prototype. _semantics is required so people and agents can understand why this definition exists.",
+      "required": [
+        "_semantics"
+      ],
+      "properties": {
+        "_extends": {
+          "$ref": "#/definitions/semanticType",
+          "description": "Optional inheritance edge to another authoring definition."
+        },
+        "_semantics": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Plain-language meaning of this reusable definition."
+        }
+      },
+      "additionalProperties": true
+    },
+    "definitionsMap": {
+      "type": "object",
+      "description": "Local registry of authoring definitions available to this manifest.",
+      "patternProperties": {
+        "^[a-z][a-zA-Z0-9]*(\\.[A-Z][a-zA-Z0-9]*)+$": {
+          "$ref": "#/definitions/authoringDefinition"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sourceMap": {
+      "type": "object",
+      "description": "Companion file mapping generated runtime JSON Pointers back to authoring sources.",
+      "required": [
+        "version",
+        "generatedFile",
+        "sourceFile",
+        "mappings"
+      ],
+      "properties": {
+        "version": {
+          "const": 1
+        },
+        "generatedFile": {
+          "type": "string"
+        },
+        "sourceFile": {
+          "type": "string"
+        },
+        "mappings": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "file",
+                "pointer"
+              ],
+              "properties": {
+                "file": {
+                  "type": "string"
+                },
+                "pointer": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

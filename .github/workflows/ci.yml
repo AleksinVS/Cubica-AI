@@ -31,6 +31,25 @@ jobs:
       - name: Validate legacy and stubs
         run: npm run verify:legacy
 
+  manifest-authoring:
+    name: manifest authoring gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate manifest authoring layer
+        run: npm run verify:manifest-authoring
+
   canonical:
     name: canonical verification
     runs-on: ubuntu-latest

@@ -18,7 +18,12 @@ apps: # Приложения и импортированные frontend-заго
 archive: directory... # Архив старых документов и черновиков 
 data: directory... # Фикстуры и моки данных 
 docs: # Архитектура, задачи, планирование 
-  architecture: directory... # Архитектурные документы, ADR, схемы 
+  architecture: # Архитектурные документы, ADR, схемы
+    schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
+      game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
+      manifest-authoring-common.schema.json: file # Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.
+      manifest-source-map.schema.json: file # JSON Schema for tooling-only source map companion files generated next to runtime manifests.
+      ui-authoring.schema.json: file # JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.
   legacy:
     debt-log.csv: file # Центральный реестр долга (tech debt).
     stub-marker-allowlist.json: file # Документированные исключения для CI-проверки маркеров заглушек с владельцем, причиной и сроком пересмотра.
@@ -34,6 +39,7 @@ docs: # Архитектура, задачи, планирование
       TSK-20260518-workspace-project-references-cleanup.md: file # План классификации workspace, scaffold и TypeScript project reference gaps.
       TSK-20260520-project-review-remediation.md: file # Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.
       TSK-20260521-game-agnostic-architecture-simplification.md: file # План упрощения создания новых игр и снятия Antarctica-specific архитектурных утечек из платформенного слоя.
+      TSK-20260521-semantic-prototype-authoring-layer.md: file # План внедрения обязательного authoring-слоя манифестов с компиляцией в runtime game/UI manifests.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
@@ -42,6 +48,9 @@ docs: # Архитектура, задачи, планирование
     STRATEGY.md: file # Стратегический слой планирования: горизонты, стратегические темы и правила приоритизации.
 games: # Пакеты игр и связанные ресурсы 
   antarctica: directory... # Пакет игры «Antarctica» (канонический content layer) 
+  simple-choice: # Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.
+    authoring: # Editable ADR-030 authoring manifests for the simple-choice pilot. Runtime manifests are generated from these files and should not be edited directly.
+      game.authoring.json: file # Authoring source for the generated simple-choice game manifest.
 packages: # Переиспользуемые платформенные пакеты (contracts) 
   contracts: # Слой общих контрактов между сервисами 
     ai: directory... # AI task, result and eval contracts for Cubica.
@@ -52,7 +61,10 @@ scripts: # Скрипты разработки и индексирования
   ci: # Cross-platform CI validation scripts that enforce repository governance rules before merge.
     validate-legacy.js: file # Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.
     validate-legacy.ps1: file # PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.
+    validate-manifest-authoring.js: file # Node.js validator for ADR-030 authoring manifest compilation, generated drift and authoring-only key leakage.
   debug: directory... # Поддерживаемые debug-скрипты для локальной проверки UI, журналов и визуального сравнения. Скрипты не являются частью canonical verification и используются вручную при расследовании регрессий.
+  manifest-tools: # Manifest transformation and generation tools used by development and CI workflows.
+    compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 
   react-sdk: directory... # SDK для React/Next.js‑приложений 

@@ -14,6 +14,7 @@ This file documents the checks that must be configured as required status checks
 ## Required Checks
 
 - `legacy/stub gate` - blocks malformed legacy registries, invalid `.desc.json`, missing `stub_reference` paths and unregistered stub markers.
+- `manifest authoring gate` - blocks stale generated manifests, invalid authoring manifests and authoring-only keys in runtime manifests.
 - `canonical verification` - runs the canonical runtime and player verification path.
 - `portal rule tests` - keeps portal launch rule tests green while the portal launch task remains active.
 - `player-web e2e` - runs browser-level Playwright checks for the player/runtime and portal launch binding paths.
@@ -28,4 +29,4 @@ The workflow in `.github/workflows/ci.yml` runs on:
 
 ## Repository Setting
 
-Branch protection or a repository ruleset must require `legacy/stub gate` before merge. The other checks should also remain required for `main` while their corresponding code paths are active.
+Branch protection or a repository ruleset must require `legacy/stub gate` and `manifest authoring gate` before merge. The other checks should also remain required for `main` while their corresponding code paths are active.

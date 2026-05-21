@@ -1,0 +1,977 @@
+{
+  "version": 1,
+  "generatedFile": "games/simple-choice/ui/web/ui.manifest.json",
+  "sourceFile": "games/simple-choice/authoring/ui/web.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/meta/game_id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/entry_point": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0/caption": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0/value": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0/aliases/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0/aliases": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs/0/layout": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/metric_specs": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/0/screenKey": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/0/conditions": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/0/conditions/screenId": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/0/conditions/layoutMode": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/1": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/1/screenKey": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/1/conditions": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/1/conditions/screenId": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing/1/conditions/layoutMode": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screen_routing": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screens": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.SimpleChoiceWebManifest"
+      }
+    ],
+    "/screens/intro": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/title": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/layout_mode": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/root": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/root/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/root/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/root/props/cssClass": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/root/props/backgroundImage": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/intro/root/children/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/intro/root/children/0/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/intro/root/children/0/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/intro/root/children/0/props/cssClass": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/intro/root/children/0/children/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/intro/root/children/0/children/0/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/intro/root/children/0/children/0/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/intro/root/children/0/children/0/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/intro/root/children/0/children/0/props/caption": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/intro/root/children/0/children/0/props/value": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/intro/root/children/0/children": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/intro/root/children/1": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/intro/root/children/1/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/intro/root/children/1/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/intro/root/children/1/props/cssClass": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/intro/root/children/1/children/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/intro/root/children/1/children/0/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/intro/root/children/1/children/0/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/intro/root/children/1/children/0/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/intro/root/children/1/children/0/props/html": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/props/caption": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/props/variant": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/actions": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/actions/onClick": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/actions/onClick/command": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/actions/onClick/payload": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children/1/actions/onClick/payload/actionId": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AcceptChoiceButton"
+      }
+    ],
+    "/screens/intro/root/children/1/children": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/intro/root/children": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/intro"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/title": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/layout_mode": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/root": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/root/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/root/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/root/props/cssClass": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/root/props/backgroundImage": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ],
+    "/screens/result/root/children/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/result/root/children/0/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/result/root/children/0/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/result/root/children/0/props/cssClass": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/result/root/children/0/children/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/result/root/children/0/children/0/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/result/root/children/0/children/0/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/result/root/children/0/children/0/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/result/root/children/0/children/0/props/caption": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/result/root/children/0/children/0/props/value": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.ScoreVariable"
+      }
+    ],
+    "/screens/result/root/children/0/children": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarMetricArea"
+      }
+    ],
+    "/screens/result/root/children/1": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/result/root/children/1/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/result/root/children/1/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/result/root/children/1/props/cssClass": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/result/root/children/1/children/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/result/root/children/1/children/0/type": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/result/root/children/1/children/0/id": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/result/root/children/1/children/0/props": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/result/root/children/1/children/0/props/html": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1/children/0"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.RichTextBlock"
+      }
+    ],
+    "/screens/result/root/children/1/children": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result/root/children/1"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.MainContentArea"
+      }
+    ],
+    "/screens/result/root/children": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/result"
+      },
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.TopbarScreen"
+      }
+    ]
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/ui-authoring.v1.json",
+  "title": "Cubica UI Authoring Manifest",
+  "description": "Editable source format for UI manifests. It compiles into ui.manifest.json and is not consumed by player/runtime layers.",
+  "type": "object",
+  "required": [
+    "_schemaVersion",
+    "_manifestType",
+    "_channel",
+    "_definitions",
+    "root"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_schemaVersion": {
+      "const": "1.0"
+    },
+    "_manifestType": {
+      "const": "ui"
+    },
+    "_channel": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Delivery channel compiled by this authoring file, for example web or telegram."
+    },
+    "_definitions": {
+      "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/definitionsMap"
+    },
+    "root": {
+      "type": "object",
+      "description": "Authoring root that resolves into the runtime UI manifest."
+    }
+  },
+  "additionalProperties": false
+}

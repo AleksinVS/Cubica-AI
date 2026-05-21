@@ -29,6 +29,7 @@
 
 - [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — доработать портал как launch surface, развернуть test VPS и запустить игровые сессии `Antarctica` с контролем ссылок, сроков и запусков.
 - [TSK-20260518-json-schema-strict-validation](docs/tasks/active/TSK-20260518-json-schema-strict-validation.md) — перевести Ajv из `strict: false` к строгому режиму без императивного дрейфа.
+- [TSK-20260521-semantic-prototype-authoring-layer](docs/tasks/active/TSK-20260521-semantic-prototype-authoring-layer.md) — внедрить обязательный authoring-слой для game/UI manifests по ADR-030 с идемпотентной компиляцией и CI-блокировкой generated drift.
 - [TSK-20260518-workspace-project-references-cleanup](docs/tasks/active/TSK-20260518-workspace-project-references-cleanup.md) — решить статус `SDK/viewers/web-base`, `services/router`, `apps/portal-nextjs`, `services/portal-backend`.
 - [TSK-20260518-runtime-repository-boundary-and-readiness](docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md) — сделать readiness честным и укрепить runtime repository boundary.
 - [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — оформить и реализовать путь снятия долга по `InMemorySessionStore`.
