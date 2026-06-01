@@ -17,7 +17,7 @@
 
 ## Status
 
-phase-9-local-plugin-migration-complete
+phase-10-runtime-preview-rollback-baseline
 
 ## Understanding
 
@@ -55,6 +55,7 @@ Flow-chart остается возможной вторичной проекци
 - Multi-service browser e2e baseline: Playwright can launch runtime-api, player-web and editor-web together, open an editor session, prepare preview and verify the player iframe uses the session `contentSourceId`.
 - Plugin architecture decision from ADR-037: target plugins live under `games/<gameId>/plugins/<pluginId>/`; first implementation is trusted project-local `player-web` plugins with no npm dependencies; marketplace and first-class runtime-api plugins are reserved for sandboxed later evolution; Antarctica plugin must migrate to `games/antarctica/plugins/antarctica-player`.
 - Runtime-api extension policy from ADR-040: new server-side mechanics must first be expressed through manifest/platform capabilities where possible; functionality tied to one concrete game is forbidden in generic `runtime-api`; trusted project runtime plugins use a separate process with a JSON protocol and separate review; marketplace plugins require a container sandbox or WebAssembly/WASI for pure computation.
+- Runtime-authoritative preview rollback decision is accepted for time travel: editor preview is a debugger for server-side game logic, `runtime-api` owns preview session restore, and rollback/new play keeps one linear trace without branching.
 
 Оставшиеся ограничения:
 
@@ -62,8 +63,8 @@ Flow-chart остается возможной вторичной проекци
 - Phase 8 AI apply is active-authoring-file JSON only and uses a deterministic local planner until a production AI provider and repair loop are wired;
 - local session preview uses a runtime content source registered from the session worktree; production player mode now uses ADR-039 published plugin bundle references instead of editor worktree code;
 - plugin-aware validation now covers project/plugin boundaries, `plugin.json` schema, `platform-only` dependency policy, discovery, direct typecheck execution with timeout, preview bundle handoff, player-web hot preview reload, exact `apiVersion: "1.0"` checks, production published bundle references and a dedicated editor UI journal row for plugin diagnostics. Cleanup манифеста `Antarctica` описан отдельно, а полноценный runtime-api plugin runner зафиксирован как долг `LEGACY-0014`;
-- full playthrough rollback UI and richer timeline time-travel controls are still open;
-- the next real preview rollback implementation requires an accepted transport/state decision. Options are recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`; no runtime/player restore contract should be added before user approval.
+- full playthrough rollback UI and richer timeline time-travel controls are still open beyond the initial runtime snapshot restore path;
+- the preview rollback transport/state decision is accepted as Variant B in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`: variants A/C are not target paths for server-authoritative games.
 - Phaser/canvas support is documented at the renderer adapter contract level, but concrete non-DOM adapter tests remain planned.
 
 ## Scope
@@ -119,7 +120,7 @@ Default tree mode shows semantic entities only and hides technical fields. Tree 
 
 ### R6. Timeline Modes
 
-Timeline supports manifest chronology for linear flows and recorded playthrough traces for nonlinear games. Timeline rollback changes preview session state only, not authoring JSON history.
+Timeline supports manifest chronology for linear flows and recorded playthrough traces for nonlinear games. Timeline rollback changes preview session state only, not authoring JSON history. Runtime-api is the authoritative restore owner for preview sessions; rollback followed by new play discards future trace events instead of branching history.
 
 ### R7. Preview Selection
 
@@ -257,6 +258,25 @@ Current limitations:
 - plugin validation now discovers `games/<gameId>/plugins/<pluginId>/plugin.json`, validates schema/dependency/path policy, runs direct `typecheck` with timeout and blocks preview/save on errors;
 - Antarctica player plugin now lives in `games/antarctica/plugins/antarctica-player`; `apps/player-web/src/plugins` keeps only the public plugin API facade and bundle loader, while non-preview mode loads the generated published bundle.
 - Local preview bundle handoff is implemented: editor-web builds a content-hashed session module, runtime-api carries only bundle references through `contentSourceId`, and player-web imports the module only in editor preview mode.
+
+### Phase 10. Runtime-Authoritative Preview Rollback
+
+1. [x] Record accepted Variant B: preview rollback restores runtime-api session state, because editor preview debugs server-side game logic.
+2. [x] Add a preview-only runtime-api session restore contract guarded by editor preview `contentSourceId`.
+3. [x] Add player-web preview snapshot messages containing session version, runtime state and last completed runtime action.
+4. [x] Add editor-web snapshot message validation, linear trace recording and UI rollback buttons in the timeline band.
+5. [x] Add editor-web server proxy route for restore calls so the browser editor does not call runtime-api directly.
+6. [x] Ensure rollback truncates future trace events locally and reloads the iframe on the restored runtime session.
+7. [ ] Persist trace snapshots under `.tmp/editor-playthroughs/` for long sessions.
+8. [ ] Add richer time-travel controls: current marker, explicit reset/replay affordances and event detail panel.
+9. [x] Add browser e2e that plays a preview action, rolls back, verifies player state reverted and verifies authoring dirty state did not change.
+
+Current limitations:
+
+- first implementation captures a runtime snapshot for every runtime state version, so exact rollback does not need sparse replay yet;
+- timeline event labels are action ids or generic runtime state labels; richer author-facing summaries remain follow-up;
+- trace persistence is still in memory for the browser session;
+- richer rollback controls are still pending, but the baseline timeline buttons already restore runtime-api preview state and discard future trace events.
 
 ## Acceptance
 
@@ -549,3 +569,13 @@ Required e2e assertions:
 - Added a dedicated `PluginDiagnosticsJournal` in `apps/editor-web` so plugin validation status appears separately from ordinary authoring JSON diagnostics.
 - Save HTTP 422 responses with `pluginValidation` now surface the actual `plugin-schema` and `plugin-validation` diagnostics instead of a generic save failure.
 - Routed diagnostics preserve optional plugin file context such as `filePath`, so the journal can show the plugin file and pointer that failed validation.
+
+### 2026-06-01 - Runtime Preview Rollback Baseline Implemented
+
+- Accepted the user's Variant B refinement: editor preview debugs authoritative server-side game logic, so rollback restores the `runtime-api` preview session and variants based on editor-only or player-local state are no longer target paths.
+- Added preview-only session restore in `runtime-api`, guarded by editor preview `contentSourceId`, plus a browser-safe editor-web proxy route at `/api/editor/preview/rollback`.
+- Player-web now emits preview runtime snapshots to editor-web; editor-web records a linear in-memory trace, shows runtime trace buttons in the timeline band and truncates future events after rollback instead of branching history.
+- The editor hides the floating property panel in preview Play mode so gameplay clicks reach the iframe without manual panel cleanup.
+- Browser e2e now covers `simple-choice` preview action, rollback to `T0`, restored player state and unchanged authoring dirty state. The same e2e file still verifies session `contentSourceId` preview and Antarctica session plugin bundle hot handoff.
+- Subagent delegation was attempted but unavailable because the current environment reported `agent thread limit reached`; implementation and verification were completed locally.
+- Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm run typecheck --workspace @cubica/player-web`, `npm run typecheck --workspace services/runtime-api`, `npm test --workspace @cubica/editor-engine`, `npm test --workspace @cubica/editor-web`, `npm test --workspace @cubica/player-web`, `npm test --workspace services/runtime-api`, `npm run build --workspace @cubica/editor-web`, `npm run build --workspace @cubica/player-web`, `npm run smoke --workspace services/runtime-api`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-preview-rollback-final`, runtime/editor leakage scans and `git diff --check`.

@@ -63,6 +63,7 @@ The goal is to move editor-engine from graph-primary authoring to preview-first 
 | E6 | Entity tree projection | editor-engine + editor-web | semantic tree uses `_label`, marks fallback labels, hides technical fields and routes parameters to property panel | unit + e2e | Implemented |
 | E7 | Preview selection overlay | editor-web overlay + player preview bridge | click, overlap picker, drag region and highlight baseline work through iframe messages | unit + smoke/e2e | Implemented baseline |
 | E8 | Timeline model | editor-engine + editor-web | manifest chronology and trace rollback work | unit + e2e | Implemented core + UI band baseline |
+| E8A | Runtime-authoritative preview rollback | contracts-session + runtime-api + player-web bridge + editor-web timeline | player preview emits runtime snapshots, editor trace records them linearly, runtime-api restores preview-only sessions, future trace is discarded after rollback | runtime integration + editor/player typecheck + browser e2e follow-up | Implemented baseline |
 | E9 | AI prompt intent flow | editor-web + AI patch boundary | prompt captures editor intent with target pointers and passes scoped active-file context to the patch route | focused tests | Implemented baseline |
 | E10 | Phaser/canvas readiness | docs + adapter contract tests | contract supports non-DOM renderer | adapter tests | Planned |
 | E11 | Automatic AI ChangeSet apply | editor-engine + editor-web + AI route | prompt applies bounded active-file JSON ChangeSet after dry-run validation and shows diff summary | unit + component + route tests | Implemented baseline |
@@ -89,7 +90,7 @@ The goal is to move editor-engine from graph-primary authoring to preview-first 
 | Adapter path | Role | Decision |
 | --- | --- | --- |
 | React DOM adapter | First reference implementation. Reads explicit editor metadata from rendered elements and exposes neutral descriptors. | Build first. |
-| Iframe message adapter | Production isolation boundary for preview. Uses postMessage with schema/origin checks. | Implemented baseline for runtime pointer descriptors; snapshot/rollback messages remain future work. |
+| Iframe message adapter | Production isolation boundary for preview. Uses postMessage with schema/origin checks. | Implemented baseline for runtime pointer descriptors and preview session snapshots. |
 | Phaser adapter | Future non-DOM renderer adapter. Uses Game Object metadata, hit areas, camera/world coordinate conversion. | Do not build until a Phaser game or prototype is in scope. |
 | Direct DOM traversal without adapter | Simplest prototype path. | Reject for production because it couples editor-engine to DOM renderer shape. |
 
@@ -98,7 +99,7 @@ The goal is to move editor-engine from graph-primary authoring to preview-first 
 | Timeline type | Source | Storage | Rollback strategy | Acceptance |
 | --- | --- | --- | --- | --- |
 | Manifest chronology | `root.logic.flows`, `steps`, `next`, branches | authoring JSON | select step and build preview state from deterministic references | linear game timeline appears without playing |
-| Recorded playthrough | preview action events | `.tmp/editor-playthroughs/` | restore nearest snapshot and replay following events | nonlinear session can move backward/forward |
+| Recorded playthrough | preview action events + runtime snapshots | in-memory first; `.tmp/editor-playthroughs/` planned | runtime-api restores exact preview snapshot first; sparse snapshot replay remains compatible follow-up | nonlinear session can move backward; rollback/new play keeps one linear path |
 | Named scenario | future test artifact | not in this slice | explicit schema and review | out of scope |
 
 ## 7. Entity Tree Matrix
@@ -136,6 +137,7 @@ Default entity tree is a semantic outline, not a pointer-complete JSON tree. Row
 | Project Git workspace | integration tests around worktree/session branch/commit/restore commit | Destructive or non-isolated versioning behavior. |
 | Session file workflow | editor-session-store tests and editor-web build for `/api/editor/session`, `/api/editor/file`, `/api/editor/files`, `/api/editor/layout` | Browser saves bypass worktree or mutate main checkout. |
 | Session compile/preview | editor-web tests/build; runtime-api content source integration test; Playwright editor session preview e2e with `EDITOR_PREVIEW_WORKTREES_ROOTS` for isolated local project repos | Preview shows main checkout instead of session edits, compile writes generated files outside the session worktree, or runtime-api accepts arbitrary content roots. |
+| Preview rollback | runtime-api integration test for `/sessions/:id/preview-restore`; editor-web preview message tests; player-web/editor-web typecheck; browser e2e follow-up for full iframe rollback | Rollback mutates authoring JSON, works for production sessions, branches future trace, or desynchronizes player-web from runtime-api. |
 | Plugin validation | boundary tests, `verify:manifest-authoring`, editor-web plugin validation tests and Playwright preview bundle test cover `plugin.json`, `platform-only`, discovery, direct `typecheck`, timeout diagnostics and local hot preview reload | Broken or unsafe game plugin edits. |
 | Plugin diagnostics journal | `npm test --workspace @cubica/editor-web -- plugin-diagnostics-journal editor-web-adapter project-plugin-validation` | Plugin validation failures become invisible or generic in editor UI. |
 | Plugin location | scan for former platform-local Antarctica imports in `apps/player-web` and `games/antarctica` | No matches after migration. Antarctica lives under `games/antarctica/plugins/antarctica-player`; `apps/player-web/src/plugins` only exposes the platform facade and bundle loader. |

@@ -164,6 +164,10 @@ Playthrough trace должен быть временным и не должен 
 
 Time travel должен опираться на event log плюс snapshots. Полный replay каждого клика с начала игры допустим только для маленьких сценариев; для больших игр редактор должен восстанавливать ближайший snapshot и replay events after it.
 
+Для server-authoritative games принят runtime-authoritative rollback: preview в редакторе является отладчиком серверной игровой логики, поэтому `runtime-api` владеет восстановлением preview-сессии. `player-web` в preview mode отправляет runtime snapshots в editor-web, editor-web ведет tooling-only trace, а rollback вызывает preview-only restore endpoint в `runtime-api` and reloads/resumes the same preview session.
+
+Restore endpoint доступен только для editor preview sessions with a temporary `contentSourceId`. Production/player sessions without `contentSourceId` must reject restore. При rollback и новом прохождении история не ветвится: editor trace discards all future events after the selected sequence and continues as one linear path.
+
 ## 9. Выбор объектов в предпросмотре
 
 Player preview должен отдавать editor overlay metadata:
@@ -260,6 +264,10 @@ Plugin changes extend validation gates. A ChangeSet touching plugins must run pl
 ### Store Chronology Only In Editor Sidecar
 
 Отклонено для линейных игр: если chronology является логикой игры, она должна быть в authoring-манифесте. Sidecar допустим только для recorded playthrough traces and editor layout.
+
+### Use Editor-Only Or Player-Local Rollback As Target
+
+Отклонено для целевой модели: preview должен отлаживать серверную игровую логику, поэтому rollback must restore runtime-api session state. Editor-only rollback does not change game state, and player-local rollback risks desynchronizing browser state from server-authoritative runtime state.
 
 ### Put Display Names Only In Sidecar
 

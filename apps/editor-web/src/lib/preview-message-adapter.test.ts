@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   isPlayerPreviewEntitiesMessage,
+  isPlayerPreviewSessionSnapshotMessage,
   mapGeneratedPointerToAuthoring,
   mapPlayerPreviewEntitiesToAuthoringDescriptors,
   sourceFileMatchesAuthoringFile,
@@ -39,6 +40,44 @@ describe("preview message adapter", () => {
     ).toBe(true);
 
     expect(isPlayerPreviewEntitiesMessage({ source: "other", type: "previewEntities", version: 1, entities: [] })).toBe(false);
+  });
+
+  it("accepts only bounded player preview session snapshot messages", () => {
+    expect(
+      isPlayerPreviewSessionSnapshotMessage({
+        source: "cubica-player-web",
+        type: "previewSessionSnapshot",
+        version: 1,
+        sessionId: "session-1",
+        gameId: "example",
+        sessionVersion: {
+          sessionId: "session-1",
+          stateVersion: 2,
+          lastEventSequence: 2
+        },
+        state: { public: { timeline: { stepIndex: 2 } } },
+        action: {
+          actionId: "advance",
+          payload: { source: "test" },
+          timestamp: "2026-06-01T00:00:00.000Z"
+        }
+      })
+    ).toBe(true);
+
+    expect(
+      isPlayerPreviewSessionSnapshotMessage({
+        source: "cubica-player-web",
+        type: "previewSessionSnapshot",
+        version: 1,
+        sessionId: "session-1",
+        sessionVersion: {
+          sessionId: "session-1",
+          stateVersion: -1,
+          lastEventSequence: 0
+        },
+        state: {}
+      })
+    ).toBe(false);
   });
 
   it("maps runtime pointers to authoring pointers through source maps", () => {

@@ -7,6 +7,12 @@
  */
 import type { PreviewEntityDescriptor, PreviewRect } from "@cubica/editor-engine";
 
+interface PreviewSessionStateVersion {
+  readonly sessionId: string;
+  readonly stateVersion: number;
+  readonly lastEventSequence: number;
+}
+
 export interface PreviewSourceMapping {
   readonly file: string;
   readonly pointer: string;
@@ -38,6 +44,21 @@ export interface PlayerPreviewEntitiesMessage {
   readonly entities: readonly PlayerPreviewEntityMessage[];
 }
 
+export interface PlayerPreviewSessionSnapshotMessage {
+  readonly source: "cubica-player-web";
+  readonly type: "previewSessionSnapshot";
+  readonly version: 1;
+  readonly sessionId: string;
+  readonly gameId?: string;
+  readonly sessionVersion: PreviewSessionStateVersion;
+  readonly state: Record<string, unknown>;
+  readonly action?: {
+    readonly actionId: string;
+    readonly payload?: Record<string, unknown>;
+    readonly timestamp: string;
+  };
+}
+
 export interface PreviewDescriptorMappingResult {
   readonly descriptors: readonly PreviewEntityDescriptor[];
   readonly unresolved: readonly PlayerPreviewEntityMessage[];
@@ -54,6 +75,31 @@ export function isPlayerPreviewEntitiesMessage(value: unknown): value is PlayerP
     value.version === 1 &&
     Array.isArray(value.entities)
   );
+}
+
+export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is PlayerPreviewSessionSnapshotMessage {
+  if (!isPlainRecord(value) || value.source !== "cubica-player-web" || value.type !== "previewSessionSnapshot") {
+    return false;
+  }
+
+  if (value.version !== 1 || typeof value.sessionId !== "string" || !isPlainRecord(value.state)) {
+    return false;
+  }
+
+  if (!isSessionStateVersion(value.sessionVersion)) {
+    return false;
+  }
+
+  if (value.action !== undefined) {
+    if (!isPlainRecord(value.action) || typeof value.action.actionId !== "string" || typeof value.action.timestamp !== "string") {
+      return false;
+    }
+    if (value.action.payload !== undefined && !isPlainRecord(value.action.payload)) {
+      return false;
+    }
+  }
+
+  return value.gameId === undefined || typeof value.gameId === "string";
 }
 
 export function mapPlayerPreviewEntitiesToAuthoringDescriptors(
@@ -179,4 +225,22 @@ function normalizePath(filePath: string): string {
 
 function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isSessionStateVersion(value: unknown): value is PreviewSessionStateVersion {
+  if (!isPlainRecord(value)) {
+    return false;
+  }
+  const stateVersion = value.stateVersion;
+  const lastEventSequence = value.lastEventSequence;
+
+  return (
+    typeof value.sessionId === "string" &&
+    typeof stateVersion === "number" &&
+    Number.isSafeInteger(stateVersion) &&
+    stateVersion >= 0 &&
+    typeof lastEventSequence === "number" &&
+    Number.isSafeInteger(lastEventSequence) &&
+    lastEventSequence >= 0
+  );
 }

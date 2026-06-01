@@ -794,6 +794,11 @@ textarea {
   right: 72px;
 }
 
+.workspace-grid.preview-play-mode .property-panel,
+.workspace-grid.preview-play-mode .property-rail {
+  display: none;
+}
+
 .property-rail button {
   background: rgba(255, 255, 255, 0.96);
   border: 1px solid #cfd6e2;

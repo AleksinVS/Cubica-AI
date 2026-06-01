@@ -717,6 +717,89 @@ test("editor preview content source serves generated manifests from a registered
   assert.equal((session.state.public as { choice?: { outcome?: string } }).choice?.outcome, "preview-source");
 });
 
+test("POST /sessions/:id/preview-restore rewinds only editor preview sessions", async () => {
+  await writePreviewContentRoot();
+
+  const sourceId = "runtime-preview-restore-test";
+  const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      contentSourceId: sourceId,
+      contentRoot: previewContentRoot
+    })
+  });
+  assert.equal(reloadResponse.status, 200);
+
+  const { response: createResponse, body: initial } = await requestJson<SessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "preview-rollback",
+      contentSourceId: sourceId
+    })
+  });
+  assert.equal(createResponse.status, 201);
+  assert.equal(initial.version.lastEventSequence, 0);
+
+  const { response: actionResponse, body: accepted } = await dispatchAction(
+    initial.sessionId,
+    "preview-rollback",
+    "choice.accept"
+  );
+  assert.equal(actionResponse.status, 200);
+  assert.equal((accepted as ActionResponse).version.lastEventSequence, 1);
+  assert.equal((accepted as ActionResponse).state.public.timeline.screenId, "result");
+
+  const { response: restoreResponse, body: restored } = await requestJson<SessionResponse & { restored: true }>(
+    `/sessions/${initial.sessionId}/preview-restore`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        state: initial.state,
+        version: initial.version,
+        targetEventSequence: 0,
+        reason: "editor-preview-rollback"
+      })
+    }
+  );
+  assert.equal(restoreResponse.status, 200);
+  assert.equal(restored.restored, true);
+  assert.equal(restored.sessionId, initial.sessionId);
+  assert.equal(restored.version.lastEventSequence, 0);
+  assert.equal(restored.state.public.timeline.screenId, "intro");
+  assert.equal(restored.state.public.metrics?.score, 0);
+
+  const { response: replayResponse, body: replayed } = await dispatchAction(
+    initial.sessionId,
+    "preview-rollback",
+    "choice.accept"
+  );
+  assert.equal(replayResponse.status, 200);
+  assert.equal((replayed as ActionResponse).version.lastEventSequence, 1);
+  assert.equal((replayed as ActionResponse).state.public.timeline.screenId, "result");
+
+  const production = await requestJson<SessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "production-rollback"
+    })
+  });
+  assert.equal(production.response.status, 201);
+
+  const rejected = await requestJson<{ error: string }>(`/sessions/${production.body.sessionId}/preview-restore`, {
+    method: "POST",
+    body: JSON.stringify({
+      state: production.body.state,
+      version: production.body.version,
+      targetEventSequence: 0
+    })
+  });
+  assert.equal(rejected.response.status, 403);
+  assert.match(rejected.body.error, /only for editor preview sessions/);
+});
+
 test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {
   const created = await createSession({ playerId: "intro-flow" });
   const introActions = [

@@ -1,4 +1,8 @@
-import type { CreateSessionRequest, DispatchActionInput } from "@cubica/contracts-session";
+import type {
+  CreateSessionRequest,
+  DispatchActionInput,
+  RestorePreviewSessionRequest
+} from "@cubica/contracts-session";
 import { RequestValidationError } from "../errors.ts";
 
 type JsonRecord = Record<string, unknown>;
@@ -24,6 +28,12 @@ export const assertGameId: (value: unknown, path: string) => asserts value is st
 const assertOptionalString: (value: unknown, path: string) => void = (value, path) => {
   if (value !== undefined && (typeof value !== "string" || !value.trim())) {
     throw new RequestValidationError(`${path} must be a non-empty string`);
+  }
+};
+
+const assertNonNegativeInteger: (value: unknown, path: string) => asserts value is number = (value, path) => {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) {
+    throw new RequestValidationError(`${path} must be a non-negative integer`);
   }
 };
 
@@ -63,4 +73,30 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
   assertOptionalString(body.playerId, "playerId");
 
   return body as unknown as DispatchActionInput;
+};
+
+export const parseRestorePreviewSessionRequest = (
+  body: unknown
+): RestorePreviewSessionRequest<Record<string, unknown>> => {
+  assertRecord(body, "POST /sessions/:id/preview-restore body");
+  const state = body.state;
+  const version = body.version;
+  assertRecord(state, "state");
+  assertRecord(version, "version");
+  assertNonNegativeInteger(version.stateVersion, "version.stateVersion");
+  assertNonNegativeInteger(version.lastEventSequence, "version.lastEventSequence");
+  if (body.targetEventSequence !== undefined) {
+    assertNonNegativeInteger(body.targetEventSequence, "targetEventSequence");
+  }
+  assertOptionalString(body.reason, "reason");
+
+  return {
+    state,
+    version: {
+      stateVersion: version.stateVersion,
+      lastEventSequence: version.lastEventSequence
+    },
+    targetEventSequence: body.targetEventSequence,
+    reason: typeof body.reason === "string" ? body.reason : undefined
+  };
 };

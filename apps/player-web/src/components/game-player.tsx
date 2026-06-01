@@ -22,7 +22,11 @@ import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { HintRenderer } from "@/components/panels/hint-renderer";
 import { JournalRenderer } from "@/components/panels/journal-renderer";
-import { useEditorPreviewBridge } from "@/components/editor-preview-bridge";
+import {
+  useEditorPreviewBridge,
+  type EditorPreviewCompletedAction,
+  type EditorPreviewSessionSnapshot
+} from "@/components/editor-preview-bridge";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -93,13 +97,31 @@ export function GamePlayer({
   const [screenKey, setScreenKey] = useState<string | undefined>(undefined);
   const [layoutMode, setLayoutMode] = useState<"leftsidebar" | "topbar">("topbar");
   const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [lastCompletedPreviewAction, setLastCompletedPreviewAction] = useState<EditorPreviewCompletedAction | undefined>(
+    undefined
+  );
 
   const presenterRef = useRef<GamePresenter | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
+  const previewSessionSnapshot = useMemo<EditorPreviewSessionSnapshot | undefined>(() => {
+    const snapshot = presenterRef.current?.sessionSnapshot;
+    if (snapshot === null || snapshot === undefined || snapshot.version === undefined) {
+      return undefined;
+    }
+
+    return {
+      sessionId: snapshot.sessionId,
+      gameId: snapshot.gameId,
+      version: snapshot.version,
+      state: snapshot.state
+    };
+  }, [playerState]);
   useEditorPreviewBridge(rootRef, {
     enabled: editorPreviewMode,
     parentOrigin: editorPreviewParentOrigin,
-    refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`
+    refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`,
+    sessionSnapshot: previewSessionSnapshot,
+    lastCompletedAction: lastCompletedPreviewAction
   });
 
   useEffect(() => {
@@ -203,18 +225,33 @@ export function GamePlayer({
     };
   }, [content, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
 
-  const handleAction = (actionId: string, payload?: Record<string, unknown>) => {
+  const handleAction = async (actionId: string, payload?: Record<string, unknown>) => {
     const presenter = presenterRef.current;
     if (!presenter) return;
+    const beforeSequence = presenter.sessionSnapshot?.version?.lastEventSequence ?? -1;
+    const timestamp = new Date().toISOString();
 
     const request = {
       source: "user" as const,
       type: actionId,
       payload: payload ?? {},
-      timestamp: new Date().toISOString()
+      timestamp
     };
 
-    void presenter.handleEvent(request);
+    await presenter.handleEvent(request);
+    const afterSnapshot = presenter.sessionSnapshot;
+    if (
+      editorPreviewMode &&
+      afterSnapshot !== null &&
+      afterSnapshot.version !== undefined &&
+      afterSnapshot.version.lastEventSequence > beforeSequence
+    ) {
+      setLastCompletedPreviewAction({
+        actionId,
+        payload: payload ?? {},
+        timestamp
+      });
+    }
   };
 
   const handleManifestAction = (command: string, payload: Record<string, unknown>) => {

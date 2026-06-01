@@ -19,7 +19,8 @@ import {
   assertContentSourceId,
   assertGameId,
   parseCreateSessionRequest,
-  parseDispatchActionRequest
+  parseDispatchActionRequest,
+  parseRestorePreviewSessionRequest
 } from "./requestValidation.ts";
 
 interface RuntimeApiServerOptions {
@@ -164,6 +165,19 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const requestBody = parseCreateSessionRequest(body);
         const snapshot = await sessionService.createSession(requestBody);
         sendJson(response, 201, snapshot);
+        return;
+      }
+
+      const previewRestoreMatch = request.method === "POST" &&
+        requestUrl.pathname.match(/^\/sessions\/([^/]+)\/preview-restore$/u);
+      if (previewRestoreMatch) {
+        const [, encodedSessionId] = previewRestoreMatch;
+        const body = await readJsonBody(request);
+        const snapshot = await sessionService.restorePreviewSession(
+          decodeURIComponent(encodedSessionId),
+          parseRestorePreviewSessionRequest(body)
+        );
+        sendJson(response, 200, snapshot);
         return;
       }
 

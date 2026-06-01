@@ -87,6 +87,31 @@ export interface DispatchActionResponse<TState = unknown> {
   state: TState;
 }
 
+export interface RestorePreviewSessionRequest<TState = unknown> {
+  /**
+   * Runtime state captured from the same preview session earlier in the
+   * playthrough. This endpoint is intended for editor debugging only.
+   */
+  state: TState;
+  /**
+   * Version that belongs to the restored state. The runtime-api normalizes the
+   * session id to the target session so callers cannot move state between ids.
+   */
+  version: Omit<SessionStateVersion, "sessionId"> & { sessionId?: SessionId };
+  /** Editor trace sequence selected by the author. Used for diagnostics/UI. */
+  targetEventSequence?: number;
+  /** Human-readable reason for audit logs and diagnostics. */
+  reason?: string;
+}
+
+export interface RestorePreviewSessionResponse<TState = unknown> {
+  sessionId: SessionId;
+  gameId: string;
+  version: SessionStateVersion;
+  state: TState;
+  restored: true;
+}
+
 export interface SessionStorePort<TState = unknown> {
   createSession(input: CreateSessionInput<TState>): Promise<SessionRecord<TState>>;
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
@@ -117,3 +142,9 @@ export interface ActionResponse<TState = unknown> {
   version: SessionStateVersion;
   state: TState;
 }
+
+/**
+ * Bounded HTTP response shape for editor-preview session restore.
+ * Production gameplay sessions must not expose this operation.
+ */
+export type RestorePreviewSessionSnapshot<TState = unknown> = RestorePreviewSessionResponse<TState>;

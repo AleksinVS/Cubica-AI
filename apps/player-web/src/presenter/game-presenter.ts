@@ -68,6 +68,16 @@ export class GamePresenter {
   }
 
   /**
+   * Runtime snapshot currently owned by the presenter.
+   *
+   * Editor preview uses it to report server-authoritative debugger snapshots
+   * without exposing editor-specific concepts to runtime-api or player plugins.
+   */
+  get sessionSnapshot(): GameSession | null {
+    return this.session;
+  }
+
+  /**
    * Публичное состояние для подписки View.
    */
   get playerState(): PlayerState {

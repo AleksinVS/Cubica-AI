@@ -88,6 +88,66 @@ test.describe("editor-web session preview", () => {
     }
   });
 
+  test("rolls back preview runtime state without dirtying authoring JSON", async ({ page, request }) => {
+    let editorSessionId: string | undefined;
+
+    try {
+      const sessionResponsePromise = page.waitForResponse((response) =>
+        response.url().endsWith("/api/editor/session") && response.request().method() === "POST"
+      );
+
+      await page.goto(`${editorUrl}/?gameId=simple-choice&file=game.authoring.json`);
+      await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
+
+      const sessionResponse = await sessionResponsePromise;
+      const sessionBody = (await sessionResponse.json()) as EditorSessionListResponse;
+      editorSessionId = sessionBody.session.sessionId;
+
+      const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+      const previewResponsePromise = page.waitForResponse((response) =>
+        response.url().endsWith("/api/editor/preview") && response.request().method() === "POST"
+      );
+      await previewButton.click();
+      const previewResponse = await previewResponsePromise;
+      const previewBody = (await previewResponse.json()) as EditorPreviewResponse;
+      expect(previewBody.ready, JSON.stringify(previewBody.diagnostics ?? [])).toBe(true);
+
+      const previewStage = page.getByLabel("Game preview");
+      const frame = page.frameLocator('iframe[title="Game preview"]');
+      await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
+      await expect(page.getByLabel("Timeline")).toContainText("T0: Initial runtime state");
+
+      await previewStage.getByRole("button", { name: "Inspect" }).click();
+      const floatingProperties = page.locator(".property-panel");
+      await floatingProperties.waitFor({ state: "visible", timeout: 1500 }).catch(() => undefined);
+      if (await floatingProperties.isVisible()) {
+        await floatingProperties.getByRole("button", { name: "Collapse" }).click();
+        await expect(floatingProperties).toBeHidden();
+      }
+      await frame.getByRole("button", { name: "Choose path" }).click();
+      await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
+      await expect(page.getByLabel("Timeline")).toContainText("T1: choice.accept");
+
+      const rollbackResponsePromise = page.waitForResponse((response) =>
+        response.url().endsWith("/api/editor/preview/rollback") && response.request().method() === "POST"
+      );
+      await page.getByLabel("Timeline").getByRole("button", { name: /T0: Initial runtime state/ }).click();
+      const rollbackResponse = await rollbackResponsePromise;
+      expect(rollbackResponse.status()).toBe(200);
+
+      await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
+      await expect(page.getByLabel("Timeline")).not.toContainText("T1: choice.accept");
+      await expect(page.getByLabel("Editor toolbar")).toContainText("Clean");
+    } finally {
+      await page.close().catch(() => undefined);
+      if (editorSessionId !== undefined) {
+        await request.delete(`${editorUrl}/api/editor/session`, {
+          data: { sessionId: editorSessionId }
+        });
+      }
+    }
+  });
+
   test("serves changed Antarctica session plugin bundle to preview", async ({ page, request }) => {
     let editorSessionId: string | undefined;
 

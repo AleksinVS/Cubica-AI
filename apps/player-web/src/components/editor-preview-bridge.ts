@@ -6,11 +6,14 @@
  * authoring JSON and does not import editor packages.
  */
 import { useEffect, type RefObject } from "react";
+import type { SessionStateVersion } from "@cubica/contracts-session";
 
 export interface EditorPreviewBridgeOptions {
   readonly enabled: boolean;
   readonly parentOrigin: string | undefined;
   readonly refreshSignal: unknown;
+  readonly sessionSnapshot?: EditorPreviewSessionSnapshot;
+  readonly lastCompletedAction?: EditorPreviewCompletedAction;
 }
 
 interface PreviewRect {
@@ -31,6 +34,19 @@ interface PlayerPreviewEntityMessage {
   readonly bounds: PreviewRect;
   readonly visible?: boolean;
   readonly selectable?: boolean;
+}
+
+export interface EditorPreviewSessionSnapshot {
+  readonly sessionId: string;
+  readonly gameId?: string;
+  readonly version: SessionStateVersion;
+  readonly state: Record<string, unknown>;
+}
+
+export interface EditorPreviewCompletedAction {
+  readonly actionId: string;
+  readonly payload?: Record<string, unknown>;
+  readonly timestamp: string;
 }
 
 const previewSelector = "[data-preview-runtime-pointer]";
@@ -58,6 +74,22 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
         },
         options.parentOrigin ?? "*"
       );
+
+      if (options.sessionSnapshot !== undefined) {
+        window.parent.postMessage(
+          {
+            source: "cubica-player-web",
+            type: "previewSessionSnapshot",
+            version: 1,
+            sessionId: options.sessionSnapshot.sessionId,
+            gameId: options.sessionSnapshot.gameId,
+            sessionVersion: options.sessionSnapshot.version,
+            state: options.sessionSnapshot.state,
+            action: options.lastCompletedAction
+          },
+          options.parentOrigin ?? "*"
+        );
+      }
     }
 
     function schedulePost() {
@@ -89,7 +121,14 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
       resizeObserver?.disconnect();
       window.removeEventListener("resize", schedulePost);
     };
-  }, [rootRef, options.enabled, options.parentOrigin, options.refreshSignal]);
+  }, [
+    rootRef,
+    options.enabled,
+    options.parentOrigin,
+    options.refreshSignal,
+    options.sessionSnapshot,
+    options.lastCompletedAction
+  ]);
 }
 
 function collectPreviewEntities(root: HTMLElement): readonly PlayerPreviewEntityMessage[] {

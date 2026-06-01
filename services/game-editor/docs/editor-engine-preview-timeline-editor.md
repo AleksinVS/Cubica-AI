@@ -220,18 +220,26 @@ Timeline has two modes:
 
 For recorded playthroughs:
 
-- store events and snapshots under `.tmp/editor-playthroughs/`;
+- record runtime events and snapshots from player-web preview messages;
+- keep initial browser implementation in memory and later store long-session traces under `.tmp/editor-playthroughs/`;
 - keep them out of generated manifests and commits;
-- replay from nearest snapshot, not from game start every time;
-- allow rollback preview session to a selected event;
+- restore exact snapshots through runtime-api first; sparse snapshot replay from nearest snapshot remains compatible follow-up work;
+- allow rollback preview session to a selected event through a preview-only runtime-api restore endpoint;
+- after rollback and new play, discard future events and keep one linear playthrough path;
 - distinguish rollback preview state from authoring document undo/redo.
 
 Important distinction:
 
 - **Document undo** changes authoring JSON history.
-- **Timeline rollback** changes preview session state.
+- **Timeline rollback** changes runtime-api preview session state.
 
 These must not share one undo stack.
+
+Accepted server-authoritative path:
+
+- Preview in the editor is also a debugger for server-side game logic.
+- `runtime-api` owns preview rollback and rejects restore for sessions without a temporary editor `contentSourceId`.
+- `player-web` does not keep authoritative rollback state; it sends preview snapshots and reloads/resumes the restored session after editor-web calls restore.
 
 ## 8. Manifest entity tree
 

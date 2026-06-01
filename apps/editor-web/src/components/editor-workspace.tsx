@@ -29,7 +29,10 @@ import {
   type NodeProps
 } from "@xyflow/react";
 import {
+  appendPreviewPlaythroughEvent,
+  buildPreviewTraceRestorePlan,
   createPatchJournalStep,
+  createPreviewPlaythroughTrace,
   createSchemaRegistry,
   dryRunEditorChangeSet,
   hashEditorText,
@@ -42,6 +45,7 @@ import {
   type PatchJournalStep,
   type PreviewEntityDescriptor,
   type PreviewPoint,
+  type PreviewPlaythroughTrace,
   type PreviewRect,
   type TextRange
 } from "@cubica/editor-engine";
@@ -86,7 +90,9 @@ import {
 } from "@/components/preview-selection-overlay";
 import {
   isPlayerPreviewEntitiesMessage,
+  isPlayerPreviewSessionSnapshotMessage,
   mapPlayerPreviewEntitiesToAuthoringDescriptors,
+  type PlayerPreviewSessionSnapshotMessage,
   type PreviewSelectionSourceMap
 } from "@/lib/preview-message-adapter";
 
@@ -157,7 +163,21 @@ interface EditorWorkflowResponse {
   readonly diagnostics?: readonly RoutedEditorDiagnostic[];
   readonly pluginValidation?: EditorPluginValidationResult;
   readonly playerUrl?: string;
+  readonly sessionId?: string;
   readonly sourceMaps?: readonly PreviewSelectionSourceMap[];
+}
+
+interface EditorPreviewRollbackResponse {
+  readonly ok: boolean;
+  readonly error?: string;
+  readonly targetEventSequence?: number;
+  readonly session?: {
+    readonly sessionId?: string;
+    readonly version?: {
+      readonly stateVersion?: number;
+      readonly lastEventSequence?: number;
+    };
+  };
 }
 
 interface EditorPluginValidationResult {
@@ -353,12 +373,17 @@ export function EditorWorkspace() {
   const [workflowDiagnostics, setWorkflowDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [pluginDiagnostics, setPluginDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewRuntimeSessionId, setPreviewRuntimeSessionId] = useState<string | undefined>(undefined);
   const [previewSourceMaps, setPreviewSourceMaps] = useState<readonly PreviewSelectionSourceMap[]>([]);
   const [previewEntities, setPreviewEntities] = useState<readonly PreviewEntityDescriptor[]>([]);
   const [previewUnresolvedEntityCount, setPreviewUnresolvedEntityCount] = useState(0);
   const [selectedPreviewEntityId, setSelectedPreviewEntityId] = useState<string | undefined>(undefined);
   const [previewPromptContext, setPreviewPromptContext] = useState<PreviewPromptContext | null>(null);
   const [previewAiIntent, setPreviewAiIntent] = useState<PreviewAiIntent | null>(null);
+  const [previewTrace, setPreviewTrace] = useState<PreviewPlaythroughTrace>(() =>
+    createPreviewPlaythroughTrace({ traceId: "preview-trace-initial" })
+  );
+  const [previewRollbackState, setPreviewRollbackState] = useState<"idle" | "restoring" | "restored" | "blocked" | "error">("idle");
   const [aiApplyState, setAiApplyState] = useState<"idle" | "planning" | "applying" | "applied" | "blocked" | "error" | "undone">("idle");
   const [aiPatchJournal, setAiPatchJournal] = useState<readonly PatchJournalStep[]>([]);
   const [aiRedoJournal, setAiRedoJournal] = useState<readonly PatchJournalStep[]>([]);
@@ -452,6 +477,7 @@ export function EditorWorkspace() {
   const isDirty = jsonText !== savedText;
   const nonVisualEntityCounts = useMemo(() => summarizeNonVisualEntities(viewModel.fullNodes), [viewModel.fullNodes]);
   const timelinePreviewEntries = viewModel.timeline.entries.filter((entry) => entry.kind === "step").slice(0, 8);
+  const previewTraceEntries = previewTrace.events.slice(-8);
 
   const projectedNodes = useMemo<SemanticFlowNode[]>(
     () => {
@@ -674,22 +700,34 @@ export function EditorWorkspace() {
         return;
       }
 
-      if (!isPlayerPreviewEntitiesMessage(event.data)) {
+      if (isPlayerPreviewEntitiesMessage(event.data)) {
+        const mapped = mapPlayerPreviewEntitiesToAuthoringDescriptors(event.data.entities, previewSourceMaps, {
+          currentAuthoringFile: currentDocument.filePath,
+          gameId: currentDocument.gameId
+        });
+
+        setPreviewEntities(mapped.descriptors);
+        setPreviewUnresolvedEntityCount(mapped.unresolved.length);
         return;
       }
 
-      const mapped = mapPlayerPreviewEntitiesToAuthoringDescriptors(event.data.entities, previewSourceMaps, {
-        currentAuthoringFile: currentDocument.filePath,
-        gameId: currentDocument.gameId
-      });
+      if (isPlayerPreviewSessionSnapshotMessage(event.data)) {
+        if (previewRuntimeSessionId !== undefined && event.data.sessionId !== previewRuntimeSessionId) {
+          return;
+        }
+        if (event.data.gameId !== undefined && event.data.gameId !== currentDocument.gameId) {
+          return;
+        }
 
-      setPreviewEntities(mapped.descriptors);
-      setPreviewUnresolvedEntityCount(mapped.unresolved.length);
+        setPreviewRuntimeSessionId(event.data.sessionId);
+        setPreviewTrace((currentTrace) => upsertRuntimeSnapshotInTrace(currentTrace, event.data));
+        setPreviewRollbackState((current) => (current === "restoring" ? "restored" : current));
+      }
     }
 
     window.addEventListener("message", handlePreviewMessage);
     return () => window.removeEventListener("message", handlePreviewMessage);
-  }, [currentDocument.filePath, currentDocument.gameId, previewSourceMaps, previewUrl]);
+  }, [currentDocument.filePath, currentDocument.gameId, previewRuntimeSessionId, previewSourceMaps, previewUrl]);
 
   useEffect(() => {
     if (selectedPreviewEntityId === undefined) {
@@ -758,6 +796,7 @@ export function EditorWorkspace() {
 
   function clearPreparedPreview() {
     setPreviewUrl(null);
+    setPreviewRuntimeSessionId(undefined);
     setPreviewSourceMaps([]);
     setPreviewEntities([]);
     setPreviewUnresolvedEntityCount(0);
@@ -765,6 +804,8 @@ export function EditorWorkspace() {
     setPreviewPromptContext(null);
     setPreviewAiIntent(null);
     setPreviewInspectMode(true);
+    setPreviewTrace(createPreviewPlaythroughTrace({ traceId: "preview-trace-initial", gameId: currentDocument.gameId }));
+    setPreviewRollbackState("idle");
   }
 
   function clearAiSessionState() {
@@ -1001,7 +1042,9 @@ export function EditorWorkspace() {
       setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
 
       if (result.ready && typeof result.playerUrl === "string") {
+        const runtimeSessionId = typeof result.sessionId === "string" ? result.sessionId : readSessionIdFromPreviewUrl(result.playerUrl);
         setPreviewUrl(result.playerUrl);
+        setPreviewRuntimeSessionId(runtimeSessionId);
         setPreviewSourceMaps(result.sourceMaps ?? []);
         setPreviewEntities([]);
         setPreviewUnresolvedEntityCount(0);
@@ -1009,6 +1052,11 @@ export function EditorWorkspace() {
         setPreviewPromptContext(null);
         setPreviewAiIntent(null);
         setPreviewInspectMode(true);
+        setPreviewTrace(createPreviewPlaythroughTrace({
+          traceId: runtimeSessionId === undefined ? `preview-${Date.now()}` : `preview-${runtimeSessionId}`,
+          gameId: currentDocument.gameId
+        }));
+        setPreviewRollbackState("idle");
         setWorkflowState("ready");
         setStatusMessage("Preview session is ready");
       } else {
@@ -1019,6 +1067,59 @@ export function EditorWorkspace() {
     } catch (error) {
       setWorkflowState("error");
       setStatusMessage(error instanceof Error ? error.message : "Preview failed.");
+    }
+  }
+
+  async function handlePreviewRollback(targetSequence: number) {
+    if (previewUrl === null || previewRuntimeSessionId === undefined) {
+      setPreviewRollbackState("blocked");
+      setStatusMessage("Preview rollback requires a prepared runtime session.");
+      return;
+    }
+
+    const plan = buildPreviewTraceRestorePlan(previewTrace, targetSequence);
+    if (plan.snapshot === undefined || plan.snapshot.eventSequence !== targetSequence) {
+      setPreviewRollbackState("blocked");
+      setStatusMessage("Preview rollback requires a runtime snapshot for the selected trace point.");
+      return;
+    }
+    const runtimeVersion = readRuntimeEventVersion(previewTrace, targetSequence) ?? {
+      stateVersion: targetSequence,
+      lastEventSequence: targetSequence
+    };
+
+    setPreviewRollbackState("restoring");
+    setStatusMessage(`Restoring preview to event ${targetSequence}...`);
+
+    try {
+      const response = await fetch("/api/editor/preview/rollback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId: currentDocument.gameId,
+          sessionId: previewRuntimeSessionId,
+          state: plan.snapshot.state,
+          version: runtimeVersion,
+          targetEventSequence: targetSequence
+        })
+      });
+      const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? `Preview rollback failed with HTTP ${response.status}.`);
+      }
+
+      setPreviewTrace((currentTrace) => truncatePreviewTrace(currentTrace, targetSequence));
+      setSelectedPreviewEntityId(undefined);
+      setPreviewPromptContext(null);
+      setPreviewAiIntent(null);
+      setPreviewEntities([]);
+      setPreviewUnresolvedEntityCount(0);
+      setPreviewRollbackState("restored");
+      setPreviewUrl(addPreviewReloadNonce(previewUrl, targetSequence));
+      setStatusMessage(`Preview restored to event ${targetSequence}; future trace was discarded.`);
+    } catch (error) {
+      setPreviewRollbackState("error");
+      setStatusMessage(error instanceof Error ? error.message : "Preview rollback failed.");
     }
   }
 
@@ -1685,7 +1786,9 @@ export function EditorWorkspace() {
       <section className="timeline-band" aria-label="Timeline">
         <strong>Timeline</strong>
         <span>{viewModel.timeline.entries.length} chronology entries</span>
+        <span>{previewTrace.events.length} runtime events</span>
         <span>{workflowState}</span>
+        <span>{previewRollbackState}</span>
         <span>{selectedNode?.semanticTitle ?? "No selection"}</span>
         {timelinePreviewEntries.map((entry) => (
           <button
@@ -1701,10 +1804,21 @@ export function EditorWorkspace() {
             {entry.order + 1}. {entry.label}
           </button>
         ))}
+        {previewTraceEntries.map((event) => (
+          <button
+            key={event.id}
+            type="button"
+            disabled={previewRollbackState === "restoring"}
+            title={`Restore runtime preview to event ${event.sequence}`}
+            onClick={() => void handlePreviewRollback(event.sequence)}
+          >
+            T{event.sequence}: {event.label}
+          </button>
+        ))}
       </section>
 
       <section
-        className={`workspace-grid ${jsonPanelOpen ? "" : "json-collapsed"} ${manifestPanelOpen ? "" : "manifest-collapsed"}`}
+        className={`workspace-grid ${jsonPanelOpen ? "" : "json-collapsed"} ${manifestPanelOpen ? "" : "manifest-collapsed"} ${previewUrl !== null && !previewInspectMode ? "preview-play-mode" : ""}`}
         aria-label="Authoring editor workspace"
       >
         <aside className={`manifest-panel ${manifestPanelOpen ? "" : "is-collapsed"}`} aria-label="Manifest navigation">
@@ -1823,20 +1937,21 @@ export function EditorWorkspace() {
           <div className="preview-stage-toolbar">
             <strong>Preview</strong>
             <span>{previewUrl === null ? "not prepared" : "ready"}</span>
+            {previewRuntimeSessionId !== undefined ? <span>session {previewRuntimeSessionId.slice(0, 18)}</span> : null}
             {previewUrl !== null ? <span>{previewEntities.length} selectable</span> : null}
+            {previewUrl !== null ? <span>{previewTrace.events.length} trace events</span> : null}
             {previewUrl !== null ? (
               <button
                 type="button"
                 aria-pressed={previewInspectMode}
-                onClick={() =>
-                  setPreviewInspectMode((current) => {
-                    if (current) {
-                      setPreviewPromptContext(null);
-                      setPreviewAiIntent(null);
-                    }
-                    return !current;
-                  })
-                }
+                onClick={() => {
+                  if (previewInspectMode) {
+                    setPreviewPromptContext(null);
+                    setPreviewAiIntent(null);
+                    setPropertyPanelOpen(false);
+                  }
+                  setPreviewInspectMode((current) => !current);
+                }}
               >
                 {previewInspectMode ? "Inspect" : "Play"}
               </button>
@@ -2571,6 +2686,104 @@ function fallbackMarkerRange(model: MonacoModel): MonacoRange {
     endLineNumber: 1,
     endColumn: Math.max(2, model.getLineMaxColumn(1))
   };
+}
+
+function upsertRuntimeSnapshotInTrace(
+  trace: PreviewPlaythroughTrace,
+  message: PlayerPreviewSessionSnapshotMessage
+): PreviewPlaythroughTrace {
+  const sequence = message.sessionVersion.lastEventSequence;
+  const action = message.action;
+  const baseTrace = createPreviewPlaythroughTrace({
+    traceId: trace.traceId,
+    gameId: trace.gameId ?? message.gameId,
+    events: trace.events.filter((event) => event.sequence !== sequence),
+    snapshots: trace.snapshots.filter((snapshot) => snapshot.eventSequence !== sequence)
+  });
+
+  return appendPreviewPlaythroughEvent(
+    baseTrace,
+    {
+      id: `runtime:${message.sessionId}:${sequence}`,
+      sequence,
+      timestamp: action?.timestamp ?? new Date().toISOString(),
+      kind: action === undefined ? "system" : "action",
+      label: action?.actionId ?? (sequence === 0 ? "Initial runtime state" : `Runtime state ${sequence}`),
+      payload: {
+        sessionId: message.sessionId,
+        sessionVersion: {
+          stateVersion: message.sessionVersion.stateVersion,
+          lastEventSequence: message.sessionVersion.lastEventSequence
+        },
+        action: action === undefined
+          ? undefined
+          : {
+              actionId: action.actionId,
+              payload: action.payload ?? {},
+              timestamp: action.timestamp
+            }
+      } as unknown as JsonValue
+    },
+    message.state as unknown as JsonValue
+  );
+}
+
+function truncatePreviewTrace(trace: PreviewPlaythroughTrace, targetSequence: number): PreviewPlaythroughTrace {
+  return createPreviewPlaythroughTrace({
+    traceId: trace.traceId,
+    gameId: trace.gameId,
+    events: trace.events.filter((event) => event.sequence <= targetSequence),
+    snapshots: trace.snapshots.filter((snapshot) => snapshot.eventSequence <= targetSequence)
+  });
+}
+
+function readRuntimeEventVersion(
+  trace: PreviewPlaythroughTrace,
+  targetSequence: number
+): { readonly stateVersion: number; readonly lastEventSequence: number } | undefined {
+  const payload = trace.events.find((event) => event.sequence === targetSequence)?.payload;
+  if (!isPlainJsonObject(payload)) {
+    return undefined;
+  }
+
+  const sessionVersion = payload.sessionVersion;
+  if (!isPlainJsonObject(sessionVersion)) {
+    return undefined;
+  }
+
+  const stateVersion = sessionVersion.stateVersion;
+  const lastEventSequence = sessionVersion.lastEventSequence;
+  if (
+    typeof stateVersion !== "number" ||
+    typeof lastEventSequence !== "number" ||
+    !Number.isSafeInteger(stateVersion) ||
+    !Number.isSafeInteger(lastEventSequence) ||
+    stateVersion < 0 ||
+    lastEventSequence < 0
+  ) {
+    return undefined;
+  }
+
+  return { stateVersion, lastEventSequence };
+}
+
+function readSessionIdFromPreviewUrl(value: string): string | undefined {
+  try {
+    return new URL(value).searchParams.get("sessionId") ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function addPreviewReloadNonce(value: string, targetSequence: number): string {
+  try {
+    const url = new URL(value);
+    url.searchParams.set("restoreSequence", String(targetSequence));
+    url.searchParams.set("restoreNonce", String(Date.now()));
+    return url.toString();
+  } catch {
+    return value;
+  }
 }
 
 function safeUrlOrigin(value: string): string | undefined {

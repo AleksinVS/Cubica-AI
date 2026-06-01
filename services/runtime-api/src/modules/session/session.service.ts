@@ -2,9 +2,12 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   PlayerId,
+  RestorePreviewSessionRequest,
+  RestorePreviewSessionResponse,
   SessionId
 } from "@cubica/contracts-session";
 import { contentService } from "../content/contentService.ts";
+import { HttpError, NotFoundError } from "../errors.ts";
 import { InMemorySessionStore } from "./inMemorySessionStore.ts";
 import type { SessionStorePort } from "@cubica/contracts-session";
 
@@ -60,6 +63,39 @@ export class SessionService {
       gameId: snapshot.gameId,
       version: snapshot.version,
       state: snapshot.state
+    };
+  }
+
+  async restorePreviewSession(
+    sessionId: SessionId,
+    request: RestorePreviewSessionRequest<RuntimeState>
+  ): Promise<RestorePreviewSessionResponse<RuntimeState>> {
+    const current = await this.sessionStore.getSession(sessionId);
+    if (!current) {
+      throw new NotFoundError(`Session "${sessionId}" was not found`);
+    }
+
+    if (!this.contentSourceBySessionId.has(sessionId)) {
+      throw new HttpError(403, "Preview session restore is available only for editor preview sessions.");
+    }
+
+    const restored = await this.sessionStore.updateSession({
+      ...current,
+      state: request.state,
+      version: {
+        sessionId,
+        stateVersion: request.version.stateVersion,
+        lastEventSequence: request.version.lastEventSequence
+      },
+      updatedAt: new Date()
+    });
+
+    return {
+      sessionId: restored.sessionId,
+      gameId: restored.gameId,
+      version: restored.version,
+      state: restored.state,
+      restored: true
     };
   }
 
