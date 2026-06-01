@@ -56,6 +56,7 @@ Flow-chart остается возможной вторичной проекци
 - Plugin architecture decision from ADR-037: target plugins live under `games/<gameId>/plugins/<pluginId>/`; first implementation is trusted project-local `player-web` plugins with no npm dependencies; marketplace and first-class runtime-api plugins are reserved for sandboxed later evolution; Antarctica plugin must migrate to `games/antarctica/plugins/antarctica-player`.
 - Runtime-api extension policy from ADR-040: new server-side mechanics must first be expressed through manifest/platform capabilities where possible; functionality tied to one concrete game is forbidden in generic `runtime-api`; trusted project runtime plugins use a separate process with a JSON protocol and separate review; marketplace plugins require a container sandbox or WebAssembly/WASI for pure computation.
 - Runtime-authoritative preview rollback decision is accepted for time travel: editor preview is a debugger for server-side game logic, `runtime-api` owns preview session restore, and rollback/new play keeps one linear trace without branching.
+- Preview trace persistence baseline: editor-web writes runtime timeline events and snapshots to `.tmp/editor-playthroughs/` through a server route, and rollback truncates persisted future events to keep one linear path.
 
 Оставшиеся ограничения:
 
@@ -63,7 +64,7 @@ Flow-chart остается возможной вторичной проекци
 - Phase 8 AI apply is active-authoring-file JSON only and uses a deterministic local planner until a production AI provider and repair loop are wired;
 - local session preview uses a runtime content source registered from the session worktree; production player mode now uses ADR-039 published plugin bundle references instead of editor worktree code;
 - plugin-aware validation now covers project/plugin boundaries, `plugin.json` schema, `platform-only` dependency policy, discovery, direct typecheck execution with timeout, preview bundle handoff, player-web hot preview reload, exact `apiVersion: "1.0"` checks, production published bundle references and a dedicated editor UI journal row for plugin diagnostics. Cleanup манифеста `Antarctica` описан отдельно, а полноценный runtime-api plugin runner зафиксирован как долг `LEGACY-0014`;
-- full playthrough rollback UI and richer timeline time-travel controls are still open beyond the initial runtime snapshot restore path;
+- richer timeline time-travel controls are still open beyond the initial runtime snapshot restore path;
 - the preview rollback transport/state decision is accepted as Variant B in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`: variants A/C are not target paths for server-authoritative games.
 - Phaser/canvas support is documented at the renderer adapter contract level, but concrete non-DOM adapter tests remain planned.
 
@@ -267,7 +268,7 @@ Current limitations:
 4. [x] Add editor-web snapshot message validation, linear trace recording and UI rollback buttons in the timeline band.
 5. [x] Add editor-web server proxy route for restore calls so the browser editor does not call runtime-api directly.
 6. [x] Ensure rollback truncates future trace events locally and reloads the iframe on the restored runtime session.
-7. [ ] Persist trace snapshots under `.tmp/editor-playthroughs/` for long sessions.
+7. [x] Persist trace snapshots under `.tmp/editor-playthroughs/` for long sessions.
 8. [ ] Add richer time-travel controls: current marker, explicit reset/replay affordances and event detail panel.
 9. [x] Add browser e2e that plays a preview action, rolls back, verifies player state reverted and verifies authoring dirty state did not change.
 
@@ -275,7 +276,6 @@ Current limitations:
 
 - first implementation captures a runtime snapshot for every runtime state version, so exact rollback does not need sparse replay yet;
 - timeline event labels are action ids or generic runtime state labels; richer author-facing summaries remain follow-up;
-- trace persistence is still in memory for the browser session;
 - richer rollback controls are still pending, but the baseline timeline buttons already restore runtime-api preview state and discard future trace events.
 
 ## Acceptance
@@ -340,6 +340,7 @@ Required e2e assertions:
 - overlap picker exposes layered objects;
 - drag rectangle opens AI prompt context;
 - timeline rollback does not change authoring dirty state;
+- rollback followed by continued play keeps a single linear runtime trace without duplicate branch events;
 - AI prompt can apply multiple validated ChangeSets before Save;
 - undo reverses unsaved AI ChangeSets without Git reset;
 - user-facing diff summary appears after automatic AI apply;
@@ -579,3 +580,11 @@ Required e2e assertions:
 - Browser e2e now covers `simple-choice` preview action, rollback to `T0`, restored player state and unchanged authoring dirty state. The same e2e file still verifies session `contentSourceId` preview and Antarctica session plugin bundle hot handoff.
 - Subagent delegation was attempted but unavailable because the current environment reported `agent thread limit reached`; implementation and verification were completed locally.
 - Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm run typecheck --workspace @cubica/player-web`, `npm run typecheck --workspace services/runtime-api`, `npm test --workspace @cubica/editor-engine`, `npm test --workspace @cubica/editor-web`, `npm test --workspace @cubica/player-web`, `npm test --workspace services/runtime-api`, `npm run build --workspace @cubica/editor-web`, `npm run build --workspace @cubica/player-web`, `npm run smoke --workspace services/runtime-api`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-preview-rollback-final`, runtime/editor leakage scans and `git diff --check`.
+
+### 2026-06-01 - Preview Trace Persistence Baseline Implemented
+
+- Added `apps/editor-web/src/lib/preview-trace-store.ts` and `/api/editor/preview/trace`.
+- Player-web snapshot messages are now persisted incrementally as editor-only trace documents under `.tmp/editor-playthroughs/`.
+- Runtime rollback also sends a trace truncation update, so persisted traces follow the accepted linear-history rule and do not keep discarded future events.
+- The persisted trace remains temporary tooling data: it is outside authoring JSON, generated manifests and Git commits.
+- Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm test --workspace @cubica/editor-web -- preview-trace-store preview-message-adapter`, `npm test --workspace @cubica/editor-web`, `npm run build --workspace @cubica/editor-web`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-preview-trace-store-final`.

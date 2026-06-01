@@ -221,11 +221,11 @@ Timeline has two modes:
 For recorded playthroughs:
 
 - record runtime events and snapshots from player-web preview messages;
-- keep initial browser implementation in memory and later store long-session traces under `.tmp/editor-playthroughs/`;
+- keep the active trace in browser state and persist long-session trace documents under `.tmp/editor-playthroughs/`;
 - keep them out of generated manifests and commits;
 - restore exact snapshots through runtime-api first; sparse snapshot replay from nearest snapshot remains compatible follow-up work;
 - allow rollback preview session to a selected event through a preview-only runtime-api restore endpoint;
-- after rollback and new play, discard future events and keep one linear playthrough path;
+- after rollback and new play, discard future events and truncate the persisted trace to keep one linear playthrough path;
 - distinguish rollback preview state from authoring document undo/redo.
 
 Important distinction:
@@ -470,7 +470,7 @@ games/antarctica/plugins/antarctica-player/
   src/register.ts
 ```
 
-The plugin closure record is documented in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`. Production/published player-web plugin bundle handoff is implemented through ADR-039. Richer playthrough rollback UI is the next major editor-engine area, but the concrete preview restore protocol must be selected before implementation; options are recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`.
+The plugin closure record is documented in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`. Production/published player-web plugin bundle handoff is implemented through ADR-039. The concrete preview restore protocol is accepted as runtime-authoritative Variant B and recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`; richer playthrough rollback UI remains the next major editor-engine area.
 
 ## 12. Если renderer основан на Phaser
 

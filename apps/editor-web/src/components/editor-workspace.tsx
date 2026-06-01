@@ -720,7 +720,13 @@ export function EditorWorkspace() {
         }
 
         setPreviewRuntimeSessionId(event.data.sessionId);
-        setPreviewTrace((currentTrace) => upsertRuntimeSnapshotInTrace(currentTrace, event.data));
+        setPreviewTrace((currentTrace) => {
+          const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, event.data);
+          void persistPreviewTraceSnapshot(nextTrace, event.data, editorSessionRef.current?.sessionId).catch(() => {
+            setStatusMessage("Preview trace persistence failed.");
+          });
+          return nextTrace;
+        });
         setPreviewRollbackState((current) => (current === "restoring" ? "restored" : current));
       }
     }
@@ -1108,7 +1114,11 @@ export function EditorWorkspace() {
         throw new Error(result.error ?? `Preview rollback failed with HTTP ${response.status}.`);
       }
 
-      setPreviewTrace((currentTrace) => truncatePreviewTrace(currentTrace, targetSequence));
+      const truncatedTrace = truncatePreviewTrace(previewTrace, targetSequence);
+      setPreviewTrace(truncatedTrace);
+      void persistPreviewTraceTruncation(truncatedTrace, previewRuntimeSessionId, editorSession?.sessionId, targetSequence).catch(() => {
+        setStatusMessage("Preview trace persistence failed after rollback.");
+      });
       setSelectedPreviewEntityId(undefined);
       setPreviewPromptContext(null);
       setPreviewAiIntent(null);
@@ -2765,6 +2775,63 @@ function readRuntimeEventVersion(
   }
 
   return { stateVersion, lastEventSequence };
+}
+
+async function persistPreviewTraceSnapshot(
+  trace: PreviewPlaythroughTrace,
+  message: PlayerPreviewSessionSnapshotMessage,
+  editorSessionId: string | undefined
+): Promise<void> {
+  const sequence = message.sessionVersion.lastEventSequence;
+  const event = trace.events.find((candidate) => candidate.sequence === sequence);
+  const snapshot = trace.snapshots.find((candidate) => candidate.eventSequence === sequence);
+  if (event === undefined || snapshot === undefined) {
+    return;
+  }
+
+  await postPreviewTraceUpdate({
+    traceId: trace.traceId,
+    gameId: trace.gameId ?? message.gameId,
+    editorSessionId,
+    runtimeSessionId: message.sessionId,
+    event,
+    snapshot
+  });
+}
+
+async function persistPreviewTraceTruncation(
+  trace: PreviewPlaythroughTrace,
+  runtimeSessionId: string,
+  editorSessionId: string | undefined,
+  targetSequence: number
+): Promise<void> {
+  await postPreviewTraceUpdate({
+    traceId: trace.traceId,
+    gameId: trace.gameId,
+    editorSessionId,
+    runtimeSessionId,
+    truncateAfterSequence: targetSequence
+  });
+}
+
+async function postPreviewTraceUpdate(body: {
+  readonly traceId: string;
+  readonly gameId?: string;
+  readonly editorSessionId?: string;
+  readonly runtimeSessionId?: string;
+  readonly event?: unknown;
+  readonly snapshot?: unknown;
+  readonly truncateAfterSequence?: number;
+}): Promise<void> {
+  const response = await fetch("/api/editor/preview/trace", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { readonly error?: string };
+    throw new Error(payload.error ?? `Preview trace update failed with HTTP ${response.status}.`);
+  }
 }
 
 function readSessionIdFromPreviewUrl(value: string): string | undefined {

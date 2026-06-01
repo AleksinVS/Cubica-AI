@@ -138,6 +138,10 @@ test.describe("editor-web session preview", () => {
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(page.getByLabel("Timeline")).not.toContainText("T1: choice.accept");
       await expect(page.getByLabel("Editor toolbar")).toContainText("Clean");
+
+      await frame.getByRole("button", { name: "Choose path" }).click();
+      await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
+      await expect(page.getByLabel("Timeline").getByRole("button", { name: /T1: choice.accept/ })).toHaveCount(1);
     } finally {
       await page.close().catch(() => undefined);
       if (editorSessionId !== undefined) {
