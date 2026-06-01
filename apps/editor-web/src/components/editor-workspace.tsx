@@ -45,6 +45,8 @@ import {
   type PatchJournalStep,
   type PreviewEntityDescriptor,
   type PreviewPoint,
+  type PreviewPlaythroughEvent,
+  type PreviewPlaythroughSnapshot,
   type PreviewPlaythroughTrace,
   type PreviewRect,
   type TextRange
@@ -346,6 +348,64 @@ const edgeTypes = {
   semantic: SemanticGraphEdge
 };
 
+function PreviewTraceDetailPanel({
+  event,
+  snapshot,
+  currentSequence,
+  rollbackState,
+  onRestore,
+  onReset,
+  onReplayCurrent
+}: {
+  event: PreviewPlaythroughEvent;
+  snapshot: PreviewPlaythroughSnapshot | undefined;
+  currentSequence: number | undefined;
+  rollbackState: "idle" | "restoring" | "restored" | "blocked" | "error";
+  onRestore: () => void;
+  onReset: () => void;
+  onReplayCurrent: () => void;
+}) {
+  const hasSnapshot = snapshot !== undefined;
+  const isRestoring = rollbackState === "restoring";
+
+  return (
+    <aside className="preview-trace-detail" aria-label="Preview trace details">
+      <div className="preview-trace-detail-head">
+        <strong>Preview trace</strong>
+        <span>Current {currentSequence === undefined ? "none" : `T${currentSequence}`}</span>
+      </div>
+      <dl>
+        <div>
+          <dt>Selected</dt>
+          <dd>T{event.sequence}: {event.label}</dd>
+        </div>
+        <div>
+          <dt>Kind</dt>
+          <dd>{event.kind}</dd>
+        </div>
+        <div>
+          <dt>Snapshot</dt>
+          <dd>{hasSnapshot ? "available" : "missing"}</dd>
+        </div>
+      </dl>
+      <div className="preview-trace-actions">
+        <button type="button" disabled={!hasSnapshot || isRestoring} onClick={onRestore}>
+          Restore selected
+        </button>
+        <button type="button" disabled={currentSequence === undefined || isRestoring} onClick={onReset}>
+          Reset to start
+        </button>
+        <button type="button" disabled={currentSequence === undefined || isRestoring} onClick={onReplayCurrent}>
+          Replay current
+        </button>
+      </div>
+      {event.payload !== undefined ? (
+        <pre aria-label="Selected trace event payload">{formatTraceJsonPreview(event.payload)}</pre>
+      ) : null}
+    </aside>
+  );
+}
+
 export function EditorWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -383,6 +443,7 @@ export function EditorWorkspace() {
   const [previewTrace, setPreviewTrace] = useState<PreviewPlaythroughTrace>(() =>
     createPreviewPlaythroughTrace({ traceId: "preview-trace-initial" })
   );
+  const [selectedPreviewTraceSequence, setSelectedPreviewTraceSequence] = useState<number | undefined>(undefined);
   const [previewRollbackState, setPreviewRollbackState] = useState<"idle" | "restoring" | "restored" | "blocked" | "error">("idle");
   const [aiApplyState, setAiApplyState] = useState<"idle" | "planning" | "applying" | "applied" | "blocked" | "error" | "undone">("idle");
   const [aiPatchJournal, setAiPatchJournal] = useState<readonly PatchJournalStep[]>([]);
@@ -478,6 +539,15 @@ export function EditorWorkspace() {
   const nonVisualEntityCounts = useMemo(() => summarizeNonVisualEntities(viewModel.fullNodes), [viewModel.fullNodes]);
   const timelinePreviewEntries = viewModel.timeline.entries.filter((entry) => entry.kind === "step").slice(0, 8);
   const previewTraceEntries = previewTrace.events.slice(-8);
+  const currentPreviewTraceEvent = previewTrace.events.length === 0
+    ? undefined
+    : previewTrace.events[previewTrace.events.length - 1];
+  const selectedPreviewTraceEvent = selectedPreviewTraceSequence === undefined
+    ? currentPreviewTraceEvent
+    : previewTrace.events.find((event) => event.sequence === selectedPreviewTraceSequence) ?? currentPreviewTraceEvent;
+  const selectedPreviewTraceSnapshot = selectedPreviewTraceEvent === undefined
+    ? undefined
+    : previewTrace.snapshots.find((snapshot) => snapshot.eventSequence === selectedPreviewTraceEvent.sequence);
 
   const projectedNodes = useMemo<SemanticFlowNode[]>(
     () => {
@@ -719,6 +789,7 @@ export function EditorWorkspace() {
           return;
         }
 
+        setSelectedPreviewTraceSequence(event.data.sessionVersion.lastEventSequence);
         setPreviewRuntimeSessionId(event.data.sessionId);
         setPreviewTrace((currentTrace) => {
           const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, event.data);
@@ -811,6 +882,7 @@ export function EditorWorkspace() {
     setPreviewAiIntent(null);
     setPreviewInspectMode(true);
     setPreviewTrace(createPreviewPlaythroughTrace({ traceId: "preview-trace-initial", gameId: currentDocument.gameId }));
+    setSelectedPreviewTraceSequence(undefined);
     setPreviewRollbackState("idle");
   }
 
@@ -1062,6 +1134,7 @@ export function EditorWorkspace() {
           traceId: runtimeSessionId === undefined ? `preview-${Date.now()}` : `preview-${runtimeSessionId}`,
           gameId: currentDocument.gameId
         }));
+        setSelectedPreviewTraceSequence(undefined);
         setPreviewRollbackState("idle");
         setWorkflowState("ready");
         setStatusMessage("Preview session is ready");
@@ -1124,6 +1197,7 @@ export function EditorWorkspace() {
       setPreviewAiIntent(null);
       setPreviewEntities([]);
       setPreviewUnresolvedEntityCount(0);
+      setSelectedPreviewTraceSequence(targetSequence);
       setPreviewRollbackState("restored");
       setPreviewUrl(addPreviewReloadNonce(previewUrl, targetSequence));
       setStatusMessage(`Preview restored to event ${targetSequence}; future trace was discarded.`);
@@ -1131,6 +1205,22 @@ export function EditorWorkspace() {
       setPreviewRollbackState("error");
       setStatusMessage(error instanceof Error ? error.message : "Preview rollback failed.");
     }
+  }
+
+  function handlePreviewResetToStart() {
+    const firstEvent = previewTrace.events[0];
+    if (firstEvent !== undefined) {
+      void handlePreviewRollback(firstEvent.sequence);
+    }
+  }
+
+  function handlePreviewReplayCurrent() {
+    if (previewUrl === null || currentPreviewTraceEvent === undefined) {
+      return;
+    }
+
+    setPreviewUrl(addPreviewReloadNonce(previewUrl, currentPreviewTraceEvent.sequence));
+    setStatusMessage(`Replaying current preview event ${currentPreviewTraceEvent.sequence}.`);
   }
 
   async function resetCurrentFile() {
@@ -1818,11 +1908,18 @@ export function EditorWorkspace() {
           <button
             key={event.id}
             type="button"
+            aria-pressed={selectedPreviewTraceEvent?.sequence === event.sequence}
+            className={[
+              "timeline-event",
+              currentPreviewTraceEvent?.sequence === event.sequence ? "is-current" : "",
+              selectedPreviewTraceEvent?.sequence === event.sequence ? "is-selected" : ""
+            ].filter(Boolean).join(" ")}
             disabled={previewRollbackState === "restoring"}
-            title={`Restore runtime preview to event ${event.sequence}`}
-            onClick={() => void handlePreviewRollback(event.sequence)}
+            title={`Inspect runtime preview event ${event.sequence}`}
+            onClick={() => setSelectedPreviewTraceSequence(event.sequence)}
           >
-            T{event.sequence}: {event.label}
+            <span>T{event.sequence}: {event.label}</span>
+            {currentPreviewTraceEvent?.sequence === event.sequence ? <b>Current</b> : null}
           </button>
         ))}
       </section>
@@ -1998,6 +2095,17 @@ export function EditorWorkspace() {
                     setPreviewAiIntent(null);
                   }}
                 />
+                {selectedPreviewTraceEvent !== undefined ? (
+                  <PreviewTraceDetailPanel
+                    event={selectedPreviewTraceEvent}
+                    snapshot={selectedPreviewTraceSnapshot}
+                    currentSequence={currentPreviewTraceEvent?.sequence}
+                    rollbackState={previewRollbackState}
+                    onRestore={() => void handlePreviewRollback(selectedPreviewTraceEvent.sequence)}
+                    onReset={handlePreviewResetToStart}
+                    onReplayCurrent={handlePreviewReplayCurrent}
+                  />
+                ) : null}
               </>
             ) : (
               <div className="preview-empty-state">
@@ -2775,6 +2883,15 @@ function readRuntimeEventVersion(
   }
 
   return { stateVersion, lastEventSequence };
+}
+
+function formatTraceJsonPreview(value: JsonValue): string {
+  const formatted = JSON.stringify(value, null, 2);
+  if (formatted.length <= 720) {
+    return formatted;
+  }
+
+  return `${formatted.slice(0, 720)}\n...`;
 }
 
 async function persistPreviewTraceSnapshot(

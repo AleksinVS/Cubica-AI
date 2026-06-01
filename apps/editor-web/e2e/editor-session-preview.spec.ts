@@ -116,6 +116,10 @@ test.describe("editor-web session preview", () => {
       const frame = page.frameLocator('iframe[title="Game preview"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(page.getByLabel("Timeline")).toContainText("T0: Initial runtime state");
+      const traceDetails = page.getByLabel("Preview trace details");
+      await expect(traceDetails).toContainText("Current T0");
+      await expect(traceDetails.getByRole("button", { name: "Reset to start" })).toBeVisible();
+      await expect(traceDetails.getByRole("button", { name: "Replay current" })).toBeVisible();
 
       await previewStage.getByRole("button", { name: "Inspect" }).click();
       const floatingProperties = page.locator(".property-panel");
@@ -127,21 +131,27 @@ test.describe("editor-web session preview", () => {
       await frame.getByRole("button", { name: "Choose path" }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
       await expect(page.getByLabel("Timeline")).toContainText("T1: choice.accept");
+      await expect(traceDetails).toContainText("Current T1");
+      await expect(traceDetails.getByLabel("Selected trace event payload")).toContainText("choice.accept");
 
+      await page.getByLabel("Timeline").getByRole("button", { name: /T0: Initial runtime state/ }).click();
+      await expect(traceDetails).toContainText("T0: Initial runtime state");
       const rollbackResponsePromise = page.waitForResponse((response) =>
         response.url().endsWith("/api/editor/preview/rollback") && response.request().method() === "POST"
       );
-      await page.getByLabel("Timeline").getByRole("button", { name: /T0: Initial runtime state/ }).click();
+      await traceDetails.getByRole("button", { name: "Restore selected" }).click();
       const rollbackResponse = await rollbackResponsePromise;
       expect(rollbackResponse.status()).toBe(200);
 
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(page.getByLabel("Timeline")).not.toContainText("T1: choice.accept");
+      await expect(traceDetails).toContainText("Current T0");
       await expect(page.getByLabel("Editor toolbar")).toContainText("Clean");
 
       await frame.getByRole("button", { name: "Choose path" }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
       await expect(page.getByLabel("Timeline").getByRole("button", { name: /T1: choice.accept/ })).toHaveCount(1);
+      await expect(traceDetails).toContainText("Current T1");
     } finally {
       await page.close().catch(() => undefined);
       if (editorSessionId !== undefined) {

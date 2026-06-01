@@ -470,7 +470,7 @@ games/antarctica/plugins/antarctica-player/
   src/register.ts
 ```
 
-The plugin closure record is documented in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`. Production/published player-web plugin bundle handoff is implemented through ADR-039. The concrete preview restore protocol is accepted as runtime-authoritative Variant B and recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`; richer playthrough rollback UI remains the next major editor-engine area.
+The plugin closure record is documented in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`. Production/published player-web plugin bundle handoff is implemented through ADR-039. The concrete preview restore protocol is accepted as runtime-authoritative Variant B and recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`; the baseline rollback UI now exposes a current marker, selected event detail panel and explicit restore/reset/replay controls.
 
 ## 12. Если renderer основан на Phaser
 

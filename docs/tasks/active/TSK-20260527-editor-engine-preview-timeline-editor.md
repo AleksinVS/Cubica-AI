@@ -269,14 +269,14 @@ Current limitations:
 5. [x] Add editor-web server proxy route for restore calls so the browser editor does not call runtime-api directly.
 6. [x] Ensure rollback truncates future trace events locally and reloads the iframe on the restored runtime session.
 7. [x] Persist trace snapshots under `.tmp/editor-playthroughs/` for long sessions.
-8. [ ] Add richer time-travel controls: current marker, explicit reset/replay affordances and event detail panel.
+8. [x] Add richer time-travel controls: current marker, explicit reset/replay affordances and event detail panel.
 9. [x] Add browser e2e that plays a preview action, rolls back, verifies player state reverted and verifies authoring dirty state did not change.
 
 Current limitations:
 
 - first implementation captures a runtime snapshot for every runtime state version, so exact rollback does not need sparse replay yet;
 - timeline event labels are action ids or generic runtime state labels; richer author-facing summaries remain follow-up;
-- richer rollback controls are still pending, but the baseline timeline buttons already restore runtime-api preview state and discard future trace events.
+- richer rollback controls are implemented as a baseline: timeline events select a trace point, the detail panel performs explicit restore/reset/replay actions, and runtime rollback still discards future trace events.
 
 ## Acceptance
 
@@ -588,3 +588,11 @@ Required e2e assertions:
 - Runtime rollback also sends a trace truncation update, so persisted traces follow the accepted linear-history rule and do not keep discarded future events.
 - The persisted trace remains temporary tooling data: it is outside authoring JSON, generated manifests and Git commits.
 - Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm test --workspace @cubica/editor-web -- preview-trace-store preview-message-adapter`, `npm test --workspace @cubica/editor-web`, `npm run build --workspace @cubica/editor-web`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-preview-trace-store-final`.
+
+### 2026-06-01 - Richer Preview Rollback UI Implemented
+
+- Timeline runtime event buttons now select a trace event instead of immediately rolling back the preview session.
+- Added a floating `Preview trace` detail panel with current marker, selected event metadata, explicit `Restore selected`, `Reset to start` and `Replay current` actions.
+- Browser e2e verifies the explicit restore flow, authoring dirty state preservation and rollback -> continued play without duplicate branch events.
+- Subagent delegation was attempted again, but the environment still reported `agent thread limit reached`; implementation and verification were completed locally.
+- Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm test --workspace @cubica/editor-web -- preview-message-adapter preview-trace-store`, `npm test --workspace @cubica/editor-web`, `npm run build --workspace @cubica/editor-web`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-richer-rollback-final`, runtime/editor leakage scans and `git diff --check`.
