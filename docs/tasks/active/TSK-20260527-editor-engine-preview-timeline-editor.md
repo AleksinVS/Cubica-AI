@@ -17,7 +17,7 @@
 
 ## Status
 
-phase-10-runtime-preview-rollback-baseline
+phase-10-runtime-preview-rollback-complete
 
 ## Understanding
 
@@ -595,4 +595,5 @@ Required e2e assertions:
 - Added a floating `Preview trace` detail panel with current marker, selected event metadata, explicit `Restore selected`, `Reset to start` and `Replay current` actions.
 - Browser e2e verifies the explicit restore flow, authoring dirty state preservation and rollback -> continued play without duplicate branch events.
 - Subagent delegation was attempted again, but the environment still reported `agent thread limit reached`; implementation and verification were completed locally.
-- Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm test --workspace @cubica/editor-web -- preview-message-adapter preview-trace-store`, `npm test --workspace @cubica/editor-web`, `npm run build --workspace @cubica/editor-web`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-richer-rollback-final`, runtime/editor leakage scans and `git diff --check`.
+- Validation run: `npm run typecheck --workspace @cubica/editor-web`, `npm test --workspace @cubica/editor-web -- preview-message-adapter preview-trace-store`, `npm test --workspace @cubica/editor-web`, `npm run build --workspace @cubica/editor-web`, `npm run test:e2e -- apps/editor-web/e2e/editor-session-preview.spec.ts --output=.tmp/playwright-output-richer-rollback-final`, `npm run verify:editor-engine`, `npm run verify:runtime-api`, `npm run verify:player-web`, `npm run verify:manifest-authoring`, runtime/editor leakage scans and `git diff --check`.
+- Note: the first `verify:manifest-authoring` attempt ran in parallel with heavy runtime/player gates and hit the plugin typecheck 15s timeout; the isolated rerun passed.
