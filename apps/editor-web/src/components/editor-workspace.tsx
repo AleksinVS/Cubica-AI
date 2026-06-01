@@ -78,6 +78,7 @@ import {
   type WritableGraphOperation
 } from "@/lib/editor-web-adapter";
 import { createDefaultCollapsedTreePointers, JsonTreeView } from "@/components/json-tree-view";
+import { PluginDiagnosticsJournal } from "@/components/plugin-diagnostics-journal";
 import {
   PreviewSelectionOverlay,
   type PreviewAiIntent,
@@ -127,6 +128,7 @@ interface SavedAuthoringFileDocument extends AuthoringFileDocument {
     readonly commitHash?: string;
     readonly changedPaths: readonly string[];
   };
+  readonly pluginValidation?: EditorPluginValidationResult;
 }
 
 interface EditorLayoutDocumentBody {
@@ -153,8 +155,14 @@ interface EditorWorkflowResponse {
   readonly ok: boolean;
   readonly ready?: boolean;
   readonly diagnostics?: readonly RoutedEditorDiagnostic[];
+  readonly pluginValidation?: EditorPluginValidationResult;
   readonly playerUrl?: string;
   readonly sourceMaps?: readonly PreviewSelectionSourceMap[];
+}
+
+interface EditorPluginValidationResult {
+  readonly ok: boolean;
+  readonly diagnostics: readonly RoutedEditorDiagnostic[];
 }
 
 interface AiPatchPlanResponse {
@@ -343,6 +351,7 @@ export function EditorWorkspace() {
   const [statusMessage, setStatusMessage] = useState("Loading repository files...");
   const [reverseDiagnostics, setReverseDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [workflowDiagnostics, setWorkflowDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
+  const [pluginDiagnostics, setPluginDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewSourceMaps, setPreviewSourceMaps] = useState<readonly PreviewSelectionSourceMap[]>([]);
   const [previewEntities, setPreviewEntities] = useState<readonly PreviewEntityDescriptor[]>([]);
@@ -766,10 +775,15 @@ export function EditorWorkspace() {
     setAiDiagnostics([]);
   }
 
+  function clearWorkflowAndPluginDiagnostics() {
+    setWorkflowDiagnostics([]);
+    setPluginDiagnostics([]);
+  }
+
   function handleJsonChange(value: string | undefined) {
     setJsonText(value ?? "");
     setReverseDiagnostics([]);
-    setWorkflowDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
     clearAiSessionState();
     clearPreparedPreview();
     setWorkflowState("idle");
@@ -863,6 +877,7 @@ export function EditorWorkspace() {
 
     setSaveState("saving");
     setStatusMessage("Saving...");
+    setPluginDiagnostics([]);
 
     try {
       const response = await fetch("/api/editor/file", {
@@ -879,14 +894,30 @@ export function EditorWorkspace() {
       });
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { readonly error?: string };
+        const body = (await response.json().catch(() => ({}))) as Partial<SavedAuthoringFileDocument> & {
+          readonly error?: string;
+          readonly pluginValidation?: EditorPluginValidationResult;
+        };
+        if (response.status === 422 && body.pluginValidation !== undefined) {
+          const nextPluginDiagnostics = body.pluginValidation.diagnostics;
+          adoptSavedDocumentVersion(body);
+          setPluginDiagnostics(nextPluginDiagnostics);
+          setWorkflowDiagnostics(nextPluginDiagnostics);
+          setSaveState("error");
+          setWorkflowState("blocked");
+          setStatusMessage(nextPluginDiagnostics[0]?.message ?? "Plugin validation blocked save.");
+          return;
+        }
+
         throw new Error(body.error ?? `Save failed with HTTP ${response.status}.`);
       }
 
       const saved = (await response.json()) as SavedAuthoringFileDocument;
+      const nextPluginDiagnostics = diagnosticsFromPluginValidation(saved.pluginValidation);
       applyLoadedDocument(saved);
       setSaveState("saved");
-      setWorkflowDiagnostics([]);
+      setWorkflowDiagnostics(nextPluginDiagnostics);
+      setPluginDiagnostics(nextPluginDiagnostics);
       clearAiSessionState();
       clearPreparedPreview();
       setWorkflowState("idle");
@@ -908,6 +939,7 @@ export function EditorWorkspace() {
 
     setWorkflowState("validating");
     setStatusMessage("Validating authoring text...");
+    setPluginDiagnostics([]);
 
     try {
       const result = await postEditorWorkflow("/api/editor/validate", {
@@ -917,6 +949,7 @@ export function EditorWorkspace() {
         sessionId: editorSession?.sessionId
       });
       setWorkflowDiagnostics(filterServerOnlyDiagnostics(result.diagnostics ?? []));
+      setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
       setWorkflowState(result.ok ? "validated" : "blocked");
       setStatusMessage(result.ok ? "Validation passed" : "Validation found blocking diagnostics");
     } catch (error) {
@@ -932,6 +965,7 @@ export function EditorWorkspace() {
 
     setWorkflowState("compiling");
     setStatusMessage("Compiling generated manifests...");
+    setPluginDiagnostics([]);
 
     try {
       const result = await postEditorWorkflow("/api/editor/compile", {
@@ -940,6 +974,7 @@ export function EditorWorkspace() {
         sessionId: editorSession?.sessionId
       });
       setWorkflowDiagnostics(result.diagnostics ?? []);
+      setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
       setWorkflowState(result.ok ? "compiled" : "blocked");
       setStatusMessage(result.ok ? "Compiled generated manifests" : "Compile found blocking diagnostics");
     } catch (error) {
@@ -955,6 +990,7 @@ export function EditorWorkspace() {
 
     setWorkflowState("previewing");
     setStatusMessage("Preparing player preview...");
+    setPluginDiagnostics([]);
 
     try {
       const result = await postEditorWorkflow("/api/editor/preview", {
@@ -962,6 +998,7 @@ export function EditorWorkspace() {
         sessionId: editorSession?.sessionId
       });
       setWorkflowDiagnostics(result.diagnostics ?? []);
+      setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
 
       if (result.ready && typeof result.playerUrl === "string") {
         setPreviewUrl(result.playerUrl);
@@ -1160,7 +1197,7 @@ export function EditorWorkspace() {
       setAiPatchJournal((current) => [...current, step]);
       setAiRedoJournal([]);
       setAiDiffSummary(dryRun.diffSummary);
-      setWorkflowDiagnostics([]);
+      clearWorkflowAndPluginDiagnostics();
       setReverseDiagnostics([]);
       clearPreparedPreview();
       setWorkflowState("idle");
@@ -1218,7 +1255,7 @@ export function EditorWorkspace() {
     setAiPatchJournal((current) => current.slice(0, -1));
     setAiRedoJournal((current) => [...current, step]);
     setAiDiffSummary(dryRun.diffSummary);
-    setWorkflowDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
     setReverseDiagnostics([]);
     clearPreparedPreview();
     setWorkflowState("idle");
@@ -1259,7 +1296,7 @@ export function EditorWorkspace() {
     setAiPatchJournal((current) => [...current, step]);
     setAiRedoJournal((current) => current.slice(0, -1));
     setAiDiffSummary(dryRun.diffSummary);
-    setWorkflowDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
     setReverseDiagnostics([]);
     clearPreparedPreview();
     setWorkflowState("idle");
@@ -1378,6 +1415,24 @@ export function EditorWorkspace() {
     router.replace(`?${next.toString()}`);
   }
 
+  function adoptSavedDocumentVersion(document: Partial<SavedAuthoringFileDocument>) {
+    const versionHash = document.versionHash;
+    const text = document.text;
+    if (typeof versionHash !== "string" || typeof text !== "string") {
+      return;
+    }
+
+    setCurrentDocument((current) =>
+      current.source === "repository"
+        ? {
+            ...current,
+            versionHash
+          }
+        : current
+    );
+    setSavedText(text);
+  }
+
   function applyLoadedDocument(document: AuthoringFileDocument, layoutDocument?: EditorLayoutDocument) {
     setCurrentDocument({
       source: "repository",
@@ -1400,7 +1455,7 @@ export function EditorWorkspace() {
     setTreeCollapsedPointers(createDefaultCollapsedTreePointers(createEditorViewModel(document.text, { filePath: document.filePath }).tree));
     setPropertyPanelOpen(false);
     setReverseDiagnostics([]);
-    setWorkflowDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
     clearAiSessionState();
     clearPreparedPreview();
     setWorkflowState("idle");
@@ -1433,7 +1488,7 @@ export function EditorWorkspace() {
     setTreeCollapsedPointers(createDefaultCollapsedTreePointers(createEditorViewModel(fallbackText, { filePath: embeddedFilePath }).tree));
     setPropertyPanelOpen(false);
     setReverseDiagnostics([]);
-    setWorkflowDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
     clearAiSessionState();
     clearPreparedPreview();
     setWorkflowState("idle");
@@ -1450,7 +1505,7 @@ export function EditorWorkspace() {
   ) {
     setJsonText(result.text);
     setReverseDiagnostics(result.diagnostics);
-    setWorkflowDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
     clearAiSessionState();
     clearPreparedPreview();
     setWorkflowState("idle");
@@ -1908,6 +1963,7 @@ export function EditorWorkspace() {
 
       <footer className="diagnostics-strip" aria-label="Diagnostics">
         <strong>Diagnostics</strong>
+        <PluginDiagnosticsJournal diagnostics={pluginDiagnostics} onSelectDiagnostic={handleDiagnosticClick} />
         {aiDiffSummary.length > 0 ? (
           <span className="ai-diff-summary" title={aiDiffSummary.map((item) => item.description).join("\n")}>
             AI {aiApplyState}: {aiDiffSummary.slice(0, 2).map((item) => humanizeDiffSummaryItem(item, viewModel.fullNodes)).join("; ")}
@@ -2404,6 +2460,20 @@ function filterServerOnlyDiagnostics(diagnostics: readonly RoutedEditorDiagnosti
   return diagnostics.filter(
     (diagnostic) => diagnostic.source !== "syntax" && diagnostic.source !== "schema" && diagnostic.source !== "semantic"
   );
+}
+
+function diagnosticsFromPluginValidation(
+  pluginValidation: EditorPluginValidationResult | undefined
+): readonly RoutedEditorDiagnostic[] {
+  return pluginValidation?.diagnostics ?? [];
+}
+
+function pluginDiagnosticsFromWorkflowResponse(result: EditorWorkflowResponse): readonly RoutedEditorDiagnostic[] {
+  return result.pluginValidation?.diagnostics ?? (result.diagnostics ?? []).filter(isPluginDiagnostic);
+}
+
+function isPluginDiagnostic(diagnostic: RoutedEditorDiagnostic): boolean {
+  return diagnostic.source === "plugin-schema" || diagnostic.source === "plugin-validation";
 }
 
 function humanizeDiffSummaryItem(item: EditorDiffSummaryItem, nodes: readonly EditorViewNode[]): string {

@@ -73,6 +73,9 @@ export interface RoutedEditorDiagnostic {
   readonly label: string;
   readonly message: string;
   readonly range: TextRange | undefined;
+  readonly filePath?: string;
+  readonly generatedFile?: string;
+  readonly generatedPointer?: string;
 }
 
 export type EditorTreeViewModel = TreeViewModel;
@@ -217,6 +220,9 @@ export function toRoutedDiagnostic(diagnostic: {
   readonly pointer: string;
   readonly message: string;
   readonly range?: RoutedEditorDiagnostic["range"];
+  readonly filePath?: string;
+  readonly generatedFile?: string;
+  readonly generatedPointer?: string;
 }): RoutedEditorDiagnostic {
   return {
     severity: diagnostic.severity,
@@ -224,7 +230,10 @@ export function toRoutedDiagnostic(diagnostic: {
     pointer: diagnostic.pointer,
     label: diagnostic.pointer === "" ? "/" : diagnostic.pointer,
     message: diagnostic.message,
-    range: diagnostic.range
+    range: diagnostic.range,
+    filePath: diagnostic.filePath,
+    generatedFile: diagnostic.generatedFile,
+    generatedPointer: diagnostic.generatedPointer
   };
 }
 

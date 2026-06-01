@@ -447,7 +447,7 @@ Plugins change the validation boundary:
 - npm dependencies are forbidden until plugin verification exists; after verification, dependencies are allowed only for verified marketplace plugins under a pinned/provenance policy;
 - preview must pick up plugin code changes without restarting `player-web`.
 
-Current local-preview plugin baseline validates path boundaries, discovers `games/<gameId>/plugins/<pluginId>/plugin.json`, validates `plugin.json` by JSON Schema, enforces `dependenciesPolicy: "platform-only"`, rejects unsafe package script declarations and runs the platform-owned `typecheck` command through direct process execution with timeout. `Antarctica` has been migrated to `games/antarctica/plugins/antarctica-player`. For editor preview, `editor-web` builds a content-hashed browser module from the session worktree, `runtime-api` carries only the bundle reference under the same `contentSourceId`, and `player-web` imports the module only in preview mode before rebuilding config. Follow-up gates are production/published bundle handoff, explicit `apiVersion` range policy, plugin-local test runner policy and a dedicated visual journal row for plugin diagnostics.
+Current local-preview plugin baseline validates path boundaries, discovers `games/<gameId>/plugins/<pluginId>/plugin.json`, validates `plugin.json` by JSON Schema, enforces `dependenciesPolicy: "platform-only"`, rejects unsafe package script declarations and runs the platform-owned `typecheck` command through direct process execution with timeout. `Antarctica` has been migrated to `games/antarctica/plugins/antarctica-player`. For editor preview, `editor-web` builds a content-hashed browser module from the session worktree, `runtime-api` carries only the bundle reference under the same `contentSourceId`, and `player-web` imports the module only in preview mode before rebuilding config. The editor footer now has a dedicated plugin diagnostics journal row, including Save HTTP 422 plugin validation failures. Follow-up gates are plugin-local test runner policy and future marketplace/runtime hardening.
 
 Accepted migration target:
 
@@ -462,7 +462,7 @@ games/antarctica/plugins/antarctica-player/
   src/register.ts
 ```
 
-The plugin closure record is documented in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`. The next editor-engine step is production/remote generated bundle handoff policy: decide how generated manifests, source maps and plugin bundles are committed, uploaded or rebuilt server-side, then extend e2e from local session preview to published/remote preview. Richer playthrough rollback UI follows after that.
+The plugin closure record is documented in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`. Production/published player-web plugin bundle handoff is implemented through ADR-039. Richer playthrough rollback UI is the next major editor-engine area, but the concrete preview restore protocol must be selected before implementation; options are recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`.
 
 ## 12. Если renderer основан на Phaser
 

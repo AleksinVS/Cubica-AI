@@ -61,8 +61,9 @@ Flow-chart остается возможной вторичной проекци
 - preview-first workspace, iframe selection, overlay, object picker and region prompt exist as a baseline; deeper browser e2e for selection/prompt/time-travel flows remains follow-up;
 - Phase 8 AI apply is active-authoring-file JSON only and uses a deterministic local planner until a production AI provider and repair loop are wired;
 - local session preview uses a runtime content source registered from the session worktree; production player mode now uses ADR-039 published plugin bundle references instead of editor worktree code;
-- plugin-aware validation now covers project/plugin boundaries, `plugin.json` schema, `platform-only` dependency policy, discovery, direct typecheck execution with timeout, preview bundle handoff, player-web hot preview reload, exact `apiVersion: "1.0"` checks and production published bundle references; remaining plugin gap is the dedicated UI journal row; cleanup манифеста `Antarctica` описан отдельно, а полноценный runtime-api plugin runner зафиксирован как долг `LEGACY-0014`;
+- plugin-aware validation now covers project/plugin boundaries, `plugin.json` schema, `platform-only` dependency policy, discovery, direct typecheck execution with timeout, preview bundle handoff, player-web hot preview reload, exact `apiVersion: "1.0"` checks, production published bundle references and a dedicated editor UI journal row for plugin diagnostics. Cleanup манифеста `Antarctica` описан отдельно, а полноценный runtime-api plugin runner зафиксирован как долг `LEGACY-0014`;
 - full playthrough rollback UI and richer timeline time-travel controls are still open;
+- the next real preview rollback implementation requires an accepted transport/state decision. Options are recorded in `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`; no runtime/player restore contract should be added before user approval.
 - Phaser/canvas support is documented at the renderer adapter contract level, but concrete non-DOM adapter tests remain planned.
 
 ## Scope
@@ -344,6 +345,7 @@ Required e2e assertions:
 - `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`
 - `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/phase-1a-v2-contract-report.md`
 - `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/phase-1b-v2-migration-report.md`
+- `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`
 
 ## Handoff Log
 
@@ -535,3 +537,15 @@ Required e2e assertions:
 - The closeout records final project state, execution state, repository facts, acceptance criteria, validation commands and remaining non-blocking debt.
 - The migration is complete for the trusted project-local `player-web` plugin stage: `Antarctica` lives under `games/antarctica/plugins/antarctica-player`, `simple-choice` remains plugin-free, local preview uses session plugin bundles, and runtime-api does not execute client plugin code.
 - Remaining follow-ups are published plugin bundle handoff, explicit `apiVersion` policy, editor UI journal row for plugin diagnostics, and the separate `LEGACY-0014` runtime-api plugin runner debt.
+
+### 2026-06-01 - Time-Travel Restore Decision Boundary
+
+- Added `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/time-travel-rollback-options.md`.
+- The document records the open options for preview rollback: editor-only recorded trace UI, runtime-api snapshot restore API, or player-local snapshot restore through the iframe bridge.
+- No runtime/player restore protocol is accepted yet. Implementation may continue only on UI and diagnostics work that does not mutate preview runtime state or authoring JSON history.
+
+### 2026-06-01 - Plugin Diagnostics Journal Implemented
+
+- Added a dedicated `PluginDiagnosticsJournal` in `apps/editor-web` so plugin validation status appears separately from ordinary authoring JSON diagnostics.
+- Save HTTP 422 responses with `pluginValidation` now surface the actual `plugin-schema` and `plugin-validation` diagnostics instead of a generic save failure.
+- Routed diagnostics preserve optional plugin file context such as `filePath`, so the journal can show the plugin file and pointer that failed validation.

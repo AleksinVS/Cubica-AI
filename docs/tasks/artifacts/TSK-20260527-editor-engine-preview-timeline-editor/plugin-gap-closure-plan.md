@@ -50,7 +50,7 @@
 | G5 | Закрыт для local preview | Нет hot preview reload кода plugin | Bundle content hash меняется при изменении plugin source. `player-web` загружает preview bundle с hash query и пересобирает config после `activate(api)` без перезапуска dev server. |
 | G6 | Закрыт | Production boundary не оформлен кодом | Publish builder creates immutable published bundle artifacts and metadata. Runtime-api exposes them through `PlayerFacingContent.pluginBundles`; player-web loads only `scope: "published"` outside preview. |
 | G7 | Закрыт | `apiVersion` не проверяется | First production policy is exact `apiVersion: "1.0"`; published metadata schema and player-web loader both enforce it. |
-| G8 | Частично закрыт | Diagnostics не попадают в journal | Preview/compile/save получают plugin diagnostics; Save commit блокируется при ошибке. UI journal как отдельная визуальная поверхность остается follow-up. |
+| G8 | Закрыт | Diagnostics не попадают в journal | Preview/compile/save получают plugin diagnostics; Save commit блокируется при ошибке. Editor UI теперь показывает отдельный `PluginDiagnosticsJournal`, а Save HTTP 422 раскрывает реальные plugin diagnostics вместо generic failure. |
 | G9 | Не входит в этот этап | Runtime plugins не реализованы | ADR-040 остается действующим ограничением: manifest/platform capabilities first, trusted runtime plugin только отдельным процессом и отдельным ревью. Полноценный runtime-api plugin runner оформлен как debt `LEGACY-0014`. |
 | G10 | Закрыт | Manifest debt у `Antarctica` и `simple-choice` | Бывшие script actions и runtime-script заглушка закрыты. Schema/runtime принимают deterministic-изменения через `effects[]`. Исполнительные записи: `antarctica-manifest-cleanup.md`, `deterministic-effects-migration-closeout.md`. |
 
@@ -389,6 +389,6 @@ Implemented files:
 
 Remaining gaps after this closure:
 
-- Plugin validation diagnostics are returned by preview/compile/save, but a dedicated visual journal row in the editor UI is still follow-up.
+- Plugin validation diagnostics are returned by preview/compile/save and shown in a dedicated editor UI journal row.
 - Runtime plugins remain a separate ADR-040 slice.
 - Cleanup манифестов `Antarctica` и `simple-choice` закрыт: deterministic-изменения идут через `effects[]`, без ранних schema/runtime алиасов. Полноценный runtime-api plugin runner зафиксирован как `LEGACY-0014`.
