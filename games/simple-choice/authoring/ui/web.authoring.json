@@ -1,153 +1,182 @@
 {
-  "$schema": "../../../../docs/architecture/schemas/ui-authoring.schema.json",
-  "_schemaVersion": "1.0",
+  "$schema": "../../../../docs/architecture/schemas/ui-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
   "_manifestType": "ui",
   "_channel": "web",
-  "_definitions": {
-    "ui.SimpleChoiceWebManifest": {
-      "_semantics": "Web UI manifest for the simple-choice pilot with two routed screens and one score metric.",
-      "meta": {
-        "id": "simple-choice.ui.web",
-        "version": "1.0.0",
-        "game_id": "simple-choice"
-      },
-      "entry_point": "intro",
-      "metric_specs": [
-        {
-          "id": "score",
-          "caption": "Score",
-          "value": "{{game.state.public.metrics.score}}",
-          "aliases": [
-            "score"
-          ],
-          "layout": "prominent"
-        }
-      ],
-      "screen_routing": [
-        {
-          "screenKey": "intro",
-          "conditions": {
-            "screenId": "intro",
-            "layoutMode": "topbar"
-          }
-        },
-        {
-          "screenKey": "result",
-          "conditions": {
-            "screenId": "result",
-            "layoutMode": "topbar"
-          }
-        }
-      ]
-    },
-    "ui.TopbarScreen": {
-      "_semantics": "Screen shell rendered by the player in the topbar layout with the shared background.",
-      "title": "",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "cssClass": "topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
-        }
-      }
-    },
-    "ui.TopbarMetricArea": {
-      "_semantics": "Top metrics area that displays the current score.",
-      "type": "areaComponent",
-      "props": {
-        "cssClass": "topbar-metrics"
-      },
-      "children": [
-        {
-          "_type": "ui.ScoreVariable"
-        }
-      ]
-    },
-    "ui.ScoreVariable": {
-      "_semantics": "Score variable rendered from public game metrics.",
-      "type": "gameVariableComponent",
-      "id": "score",
-      "props": {
-        "caption": "Score",
-        "value": "{{game.state.public.metrics.score}}"
-      }
-    },
-    "ui.MainContentArea": {
-      "_semantics": "Main information area for simple-choice text and actions.",
-      "type": "areaComponent",
-      "props": {
-        "cssClass": "info-main-content"
-      }
-    },
-    "ui.RichTextBlock": {
-      "_semantics": "Rich HTML text block used for simple-choice screen copy.",
-      "type": "richTextComponent",
-      "id": "",
-      "props": {
-        "html": ""
-      }
-    },
-    "ui.AcceptChoiceButton": {
-      "_semantics": "Primary action button that asks the server to run the simple-choice accept action.",
-      "type": "buttonComponent",
-      "id": "choice-accept",
-      "props": {
-        "caption": "Choose path",
-        "variant": "action"
-      },
-      "actions": {
-        "onClick": {
-          "command": "requestServer",
-          "payload": {
-            "actionId": "choice.accept"
-          }
-        }
-      }
-    }
-  },
+  "_definitions": {},
   "root": {
-    "_type": "ui.SimpleChoiceWebManifest",
-    "screens": {
-      "intro": {
-        "_type": "ui.TopbarScreen",
+    "_type": "ui.Manifest",
+    "_label": "Web-интерфейс: Simple Choice",
+    "_semantics": "Корневая сущность UI authoring v2.",
+    "meta": {
+      "id": "simple-choice.ui.web",
+      "version": "1.0.0",
+      "game_id": "simple-choice"
+    },
+    "entry_point": "intro",
+    "metric_specs": [
+      {
+        "id": "score",
+        "caption": "Score",
+        "value": "{{game.state.public.metrics.score}}",
+        "aliases": [
+          "score"
+        ],
+        "layout": "prominent"
+      }
+    ],
+    "screen_routing": [
+      {
+        "screenKey": "intro",
+        "conditions": {
+          "screenId": "intro",
+          "layoutMode": "topbar"
+        }
+      },
+      {
+        "screenKey": "result",
+        "conditions": {
+          "screenId": "result",
+          "layoutMode": "topbar"
+        }
+      }
+    ],
+    "screens": [
+      {
+        "id": "intro",
+        "_type": "ui.Screen",
+        "_label": "Экран intro: Simple Choice",
+        "_semantics": "Экран UI-манифеста intro.",
         "title": "Simple Choice",
+        "layout_mode": "topbar",
         "root": {
+          "_type": "ui.Component",
+          "_label": "Корневой контейнер",
+          "_semantics": "UI-компонент типа screenComponent.",
+          "type": "screenComponent",
+          "props": {
+            "cssClass": "topbar-screen-shell",
+            "backgroundImage": "/images/arctic-background.png"
+          },
           "children": [
             {
-              "_type": "ui.TopbarMetricArea"
-            },
-            {
-              "_type": "ui.MainContentArea",
+              "_type": "ui.Component",
+              "_label": "Область topbar metrics",
+              "_semantics": "UI-компонент типа areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "topbar-metrics"
+              },
               "children": [
                 {
-                  "_type": "ui.RichTextBlock",
+                  "_type": "ui.Component",
+                  "_label": "Score",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "score",
+                  "props": {
+                    "caption": "Score",
+                    "value": "{{game.state.public.metrics.score}}"
+                  }
+                }
+              ]
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Область info main content",
+              "_semantics": "UI-компонент типа areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "info-main-content"
+              },
+              "children": [
+                {
+                  "_type": "ui.Component",
+                  "_label": "Simple Choice Pick the clear option to prove the generic player path.",
+                  "_semantics": "UI-компонент типа richTextComponent.",
+                  "type": "richTextComponent",
                   "id": "intro-text",
                   "props": {
                     "html": "<h1>Simple Choice</h1><p>Pick the clear option to prove the generic player path.</p>"
                   }
                 },
                 {
-                  "_type": "ui.AcceptChoiceButton"
+                  "_type": "ui.Component",
+                  "_label": "Choose path",
+                  "_semantics": "UI-компонент типа buttonComponent.",
+                  "type": "buttonComponent",
+                  "id": "choice-accept",
+                  "props": {
+                    "caption": "Choose path",
+                    "variant": "action"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "choice.accept"
+                      }
+                    }
+                  }
                 }
               ]
             }
           ]
         }
       },
-      "result": {
-        "_type": "ui.TopbarScreen",
+      {
+        "id": "result",
+        "_type": "ui.Screen",
+        "_label": "Экран result: Simple Choice Result",
+        "_semantics": "Экран UI-манифеста result.",
         "title": "Simple Choice Result",
+        "layout_mode": "topbar",
         "root": {
+          "_type": "ui.Component",
+          "_label": "Корневой контейнер",
+          "_semantics": "UI-компонент типа screenComponent.",
+          "type": "screenComponent",
+          "props": {
+            "cssClass": "topbar-screen-shell",
+            "backgroundImage": "/images/arctic-background.png"
+          },
           "children": [
             {
-              "_type": "ui.TopbarMetricArea"
-            },
-            {
-              "_type": "ui.MainContentArea",
+              "_type": "ui.Component",
+              "_label": "Область topbar metrics",
+              "_semantics": "UI-компонент типа areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "topbar-metrics"
+              },
               "children": [
                 {
-                  "_type": "ui.RichTextBlock",
+                  "_type": "ui.Component",
+                  "_label": "Score",
+                  "_semantics": "UI-компонент типа gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "score",
+                  "props": {
+                    "caption": "Score",
+                    "value": "{{game.state.public.metrics.score}}"
+                  }
+                }
+              ]
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Область info main content",
+              "_semantics": "UI-компонент типа areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "info-main-content"
+              },
+              "children": [
+                {
+                  "_type": "ui.Component",
+                  "_label": "Result Outcome:",
+                  "_semantics": "UI-компонент типа richTextComponent.",
+                  "type": "richTextComponent",
                   "id": "result-text",
                   "props": {
                     "html": "<h1>Result</h1><p>Outcome: {{game.state.public.choice.outcome}}</p>"
@@ -158,6 +187,6 @@
           ]
         }
       }
-    }
+    ]
   }
 }

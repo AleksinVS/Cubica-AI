@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json",
+  "title": "Cubica Published Player-Web Plugin Bundles",
+  "description": "Generated metadata for immutable player-web plugin bundles created by the publish pipeline.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "bundles"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "bundles": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/publishedPlayerWebPluginBundle"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "publishedPlayerWebPluginBundle": {
+      "type": "object",
+      "required": [
+        "pluginId",
+        "gameId",
+        "apiVersion",
+        "target",
+        "scope",
+        "contentHash",
+        "integrity",
+        "filePath",
+        "url"
+      ],
+      "properties": {
+        "pluginId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "gameId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "apiVersion": {
+          "const": "1.0"
+        },
+        "target": {
+          "const": "player-web"
+        },
+        "scope": {
+          "const": "published"
+        },
+        "contentHash": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the generated bundle bytes.",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "integrity": {
+          "type": "string",
+          "description": "SRI-style digest for optional preload/script integrity checks.",
+          "pattern": "^sha256-[A-Za-z0-9+/]+={0,2}$"
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Game-root-relative path to the immutable bundle artifact.",
+          "pattern": "^published/[a-z][a-z0-9-]*\\.[a-f0-9]{64}\\.mjs$"
+        },
+        "url": {
+          "type": "string",
+          "description": "Runtime-api URL path used by player-web to import the bundle.",
+          "pattern": "^/published-plugin-bundles/[a-z][a-z0-9-]*/[a-z][a-z0-9-]*/[a-f0-9]{64}\\.mjs$"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

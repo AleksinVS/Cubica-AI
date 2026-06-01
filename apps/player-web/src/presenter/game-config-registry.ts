@@ -1,12 +1,13 @@
 import type { GameConfigData, GameConfig, ResolverFactory } from "./game-config";
 import { createDefaultGameConfig } from "./game-config";
+import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
 /**
  * Реестр фабрик резолверов для конфигураций игр.
  *
  * Generic-модуль — не содержит импортов конкретных игр.
- * Каждая игра регистрирует свою фабрику через registerGameResolvers()
- * в своём модуле регистрации (например, plugins/antarctica/register.ts).
+ * Каждая сложная игра регистрирует свою фабрику через публичный plugin API
+ * из project-local plugin, например `games/<gameId>/plugins/<pluginId>`.
  *
  * Платформенные компоненты (GamePlayer, GamePresenter) получают
  * GameConfigData через пропсы от Server Component и собирают
@@ -14,17 +15,35 @@ import { createDefaultGameConfig } from "./game-config";
  * нужную фабрику в реестре по gameId.
  */
 const registry = new Map<string, ResolverFactory>();
+const configDataRegistry = new Map<string, GameConfigData>();
 
 /**
  * Регистрирует фабрику резолверов для игры.
- * Вызывается модулями регистрации игр (plugins/<gameId>/register.ts)
- * на этапе инициализации клиентского приложения.
+ * Вызывается через публичный player plugin API на этапе инициализации
+ * клиентского приложения.
  */
 export function registerGameResolvers(
   gameId: string,
   factory: ResolverFactory
 ): void {
   registry.set(gameId, factory);
+}
+
+/**
+ * Registers serializable config data supplied by a player plugin.
+ *
+ * Preview bundles use this to replace stale server-side defaults after the
+ * browser imports the session-scoped plugin module.
+ */
+export function registerGameConfigData(data: GameConfigData): void {
+  configDataRegistry.set(data.gameId, data);
+}
+
+export function resolveRegisteredGameConfigData(
+  content: PlayerFacingContent,
+  fallback: GameConfigData
+): GameConfigData {
+  return configDataRegistry.get(content.gameId) ?? fallback;
 }
 
 /**

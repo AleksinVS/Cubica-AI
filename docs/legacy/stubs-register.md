@@ -41,6 +41,7 @@
 | LEGACY-0011 | SDK/viewers/web-base | SDK/viewers/web-base | pre-canonical SDK scaffold | Классифицировать workspace статус в `TSK-20260518-workspace-project-references-cleanup` | SDK Team | active | Scaffold не входит в canonical player-web path |
 | LEGACY-0012 | services/router | services/router | historical target architecture | Классифицировать как archived target или contracts-only scaffold в `TSK-20260518-workspace-project-references-cleanup` | Backend Team | active | В текущем canonical slice runtime-api владеет boundary |
 | LEGACY-0013 | portal-backend | services/portal-backend | portal launch slice | Удалить payment stub или закрыть production policy после test VPS/payment integration | Portal Team | active | Доступен только при `PAYMENT_STUB_ENABLED=true`; backend markers покрывают payment-stub route/controller/readme |
+| LEGACY-0014 | runtime-api plugins | docs/architecture/adrs/040-runtime-api-plugin-architecture.md | ADR-040 | Реализовать runtime plugin runner отдельным slice только после доказанной необходимости; до этого использовать manifest/platform capabilities | Backend Team | active | Полноценные runtime-api plugins не входят в Antarctica cleanup; доверенные исключения требуют отдельного ревью |
 
 ## Архив заглушек
 | id | component | location | introduced_in | removal_plan | owner | status | notes |

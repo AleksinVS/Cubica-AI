@@ -176,8 +176,8 @@ Completion evidence:
 - `game.AntarcticaManifest` — parity wrapper (unchanged from A2)
 - `game.OpeningCardResolutionAction` — 71 actions sharing `handlerType`, `templateId`, `capabilityFamily`
 - `game.OpeningCardAdvanceAction` — 30 actions sharing `handlerType`, `templateId`, `capabilityFamily`
-- `game.OpeningInfoAdvanceAction` — 26 actions sharing `handlerType`, `templateId`, `capabilityFamily`, `deterministic.excludeFromLog`
-- `game.OpeningTeamSelectionAction` — 10 actions sharing `handlerType`, `templateId`, `capabilityFamily`, `deterministic.excludeFromLog`
+- `game.OpeningInfoAdvanceAction` — 26 actions sharing `handlerType`, `templateId`, `capabilityFamily`
+- `game.OpeningTeamSelectionAction` — 10 actions sharing `handlerType`, `templateId`, `capabilityFamily`
 - 7 unique no-template action definitions: `game.OpeningBoard2530Advance`, `game.OpeningTeamConfirm`, `game.RequestServer`, `game.ShowHint`, `game.ShowHistory`, `game.ShowTopBar`, `game.ShowScreenWithLeftSideBar`
 - Total: 12 definitions, 144 action references
 

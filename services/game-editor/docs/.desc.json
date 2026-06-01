@@ -1,0 +1,4 @@
+{
+  ".": "Project documentation for Game Editor features, authoring workflows and editor-engine design.",
+  "editor-engine-authoring-manifest-editor.md": "Design document for the schema-first authoring manifest editor with flow-chart projection, Monaco/JSON editing and floating property panel."
+}

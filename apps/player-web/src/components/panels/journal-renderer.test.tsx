@@ -38,7 +38,7 @@ const mockLogEntry: RuntimeLogEntry = {
   backText: "Back text of card 1 — result after flip",
   metricsBefore: { score: 45, pro: 12 },
   metricsAfter: { score: 42, pro: 15 },
-  metricDeltas: [
+  metricChanges: [
     { metricId: "score", delta: -3 },
     { metricId: "pro", delta: 3 }
   ]

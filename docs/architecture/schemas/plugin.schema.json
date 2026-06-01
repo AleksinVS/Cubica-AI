@@ -1,0 +1,132 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/plugin.schema.json",
+  "title": "Cubica Project-Local Plugin Manifest",
+  "description": "Contract for trusted project-local plugins. The first supported target is player-web; marketplace and runtime-api targets are intentionally reserved for later architecture decisions.",
+  "type": "object",
+  "required": [
+    "id",
+    "gameId",
+    "apiVersion",
+    "targets",
+    "validation",
+    "permissions",
+    "dependenciesPolicy"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string",
+      "description": "Stable plugin identifier inside one game project.",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "gameId": {
+      "type": "string",
+      "description": "Game project that owns this plugin.",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "apiVersion": {
+      "type": "string",
+      "description": "Plugin contract version implemented by the plugin.",
+      "pattern": "^\\d+\\.\\d+$"
+    },
+    "targets": {
+      "type": "object",
+      "description": "Platform targets this plugin contributes to.",
+      "required": [
+        "player-web"
+      ],
+      "properties": {
+        "player-web": {
+          "type": "object",
+          "required": [
+            "entry",
+            "contributes"
+          ],
+          "properties": {
+            "entry": {
+              "type": "string",
+              "description": "Project-relative TypeScript entrypoint inside the plugin root.",
+              "pattern": "^src/[a-zA-Z0-9_.-]+\\.ts$"
+            },
+            "contributes": {
+              "type": "object",
+              "description": "Contribution points exposed by the plugin.",
+              "properties": {
+                "gameConfigFactory": {
+                  "type": "boolean",
+                  "description": "Registers a player-web game configuration factory."
+                }
+              },
+              "minProperties": 1,
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "validation": {
+      "type": "object",
+      "description": "Named package scripts allowed to run during plugin validation. The validator maps these names to direct process execution without shell strings.",
+      "properties": {
+        "typecheck": {
+          "$ref": "#/definitions/validationCommandName"
+        },
+        "build": {
+          "$ref": "#/definitions/validationCommandName"
+        },
+        "test": {
+          "$ref": "#/definitions/validationCommandName"
+        }
+      },
+      "minProperties": 1,
+      "additionalProperties": false
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Explicit permission request. First implementation allows only the locked-down local shape below.",
+      "required": [
+        "network",
+        "filesystem",
+        "environment"
+      ],
+      "properties": {
+        "network": {
+          "const": false
+        },
+        "filesystem": {
+          "const": "plugin-root-only"
+        },
+        "environment": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "maxItems": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "dependenciesPolicy": {
+      "const": "platform-only",
+      "description": "Plugins may use only platform-provided packages until marketplace verification exists."
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "validationCommandName": {
+      "type": "string",
+      "description": "Name of an allowed package script, not a shell command.",
+      "enum": [
+        "typecheck",
+        "build",
+        "test"
+      ]
+    }
+  }
+}

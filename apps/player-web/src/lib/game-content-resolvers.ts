@@ -9,6 +9,12 @@ export interface GamePlayerSourceData {
   runtimeApiUrl: string;
 }
 
+export interface LoadGamePlayerContentOptions {
+  retries?: number;
+  delayMs?: number;
+  contentSourceId?: string;
+}
+
 export interface ActionEntry {
   actionId: string;
   displayName: string;
@@ -99,14 +105,18 @@ export const readScreenId = (timeline: TimelineState | undefined) =>
  */
 export async function loadGamePlayerContent(
   gameId: string,
-  retries = 3,
-  delay = 1000
+  options: LoadGamePlayerContentOptions = {}
 ): Promise<PlayerFacingContent> {
+  const retries = options.retries ?? 3;
+  const delay = options.delayMs ?? 1000;
   let lastError: Error | null = null;
 
   for (let i = 0; i < retries; i++) {
     try {
-      const url = `${runtimeApiUrl}/games/${gameId}/player-content`;
+      const url = new URL(`/games/${gameId}/player-content`, runtimeApiUrl);
+      if (options.contentSourceId !== undefined) {
+        url.searchParams.set("contentSourceId", options.contentSourceId);
+      }
       const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Failed to load player content: ${response.status} ${response.statusText}`);

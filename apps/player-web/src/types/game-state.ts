@@ -13,9 +13,9 @@ export type RuntimeLogEntry = {
   actionId: string;
   /** Runtime event kind from the backend audit log. */
   kind?: string;
-  /** Neutral player-facing render mode from manifest log metadata. */
+  /** Neutral player-facing render mode from manifest log effect data. */
   displayMode?: string;
-  /** Neutral entity category from manifest log metadata. */
+  /** Neutral entity category from manifest log effect data. */
   entityType?: string;
   /** Manifest card identifier when the event belongs to a card choice. */
   cardId?: string;
@@ -32,8 +32,8 @@ export type RuntimeLogEntry = {
   metricsBefore?: MetricsSnapshot;
   /** Metric snapshot after the action was applied. */
   metricsAfter?: MetricsSnapshot;
-  /** Computed metric deltas for this action. */
-  metricDeltas?: Array<{ metricId: string; delta: number }>;
+  /** Computed metric changes for this action. */
+  metricChanges?: Array<{ metricId: string; delta: number }>;
 };
 
 export type MetricsSnapshot = Record<string, unknown>;

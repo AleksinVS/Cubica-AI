@@ -13,6 +13,7 @@ type RuntimeState = Record<string, unknown>;
 export interface RuntimeServiceDispatchOptions {
   sessionStore: SessionStorePort<RuntimeState>;
   gameId: string;
+  contentSourceId?: string;
   input: DispatchActionInput;
 }
 
@@ -23,7 +24,7 @@ export interface RuntimeServiceDispatchResult {
 
 export class RuntimeService {
   async dispatch(options: RuntimeServiceDispatchOptions): Promise<RuntimeServiceDispatchResult> {
-    const bundle = await contentService.getBundle(options.gameId);
+    const bundle = await contentService.getBundle(options.gameId, options.contentSourceId);
 
     const { snapshot, result } = await dispatchRuntimeAction({
       sessionStore: options.sessionStore,

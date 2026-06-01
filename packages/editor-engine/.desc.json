@@ -1,0 +1,3 @@
+{
+  ".": "Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers."
+}

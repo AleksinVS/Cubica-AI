@@ -1,0 +1,30 @@
+{
+  "name": "@cubica/editor-web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next dev",
+    "build": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next build",
+    "start": "next start",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@cubica/editor-engine": "file:../../packages/editor-engine",
+    "@monaco-editor/react": "^4.7.0",
+    "@xyflow/react": "^12.9.3",
+    "next": "15.1.6",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@next/swc-linux-x64-gnu": "15.1.6",
+    "@types/react": "^18.3.24",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.3.0",
+    "happy-dom": "^15.0.0",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.0"
+  }
+}

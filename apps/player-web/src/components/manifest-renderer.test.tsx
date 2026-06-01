@@ -175,6 +175,32 @@ describe("ManifestRenderer", () => {
     expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it("emits runtime pointer metadata only in editor preview mode", () => {
+    const { rerender } = render(
+      <ManifestRenderer
+        screenDefinition={mockScreenDefinition}
+        metrics={mockMetrics}
+        onAction={mockOnAction}
+        screenKey="S1"
+      />
+    );
+
+    expect(document.querySelector("[data-preview-runtime-pointer]")).toBeNull();
+
+    rerender(
+      <ManifestRenderer
+        screenDefinition={mockScreenDefinition}
+        metrics={mockMetrics}
+        onAction={mockOnAction}
+        screenKey="S1"
+        editorPreviewMode
+      />
+    );
+
+    expect(document.querySelector("[data-preview-runtime-pointer='/screens/S1/root']")).not.toBeNull();
+    expect(document.querySelector("[data-preview-runtime-pointer='/screens/S1/root/children/0']")).not.toBeNull();
+  });
 });
 
 describe("resolveMetricBinding", () => {

@@ -3,6 +3,7 @@ import type {
   GameUiButtonComponentProps
 } from "@cubica/contracts-manifest";
 import { resolvePayloadExpressions } from "@/lib/expression-resolver";
+import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
  * Рендерит buttonComponent (кнопка действия в UI манифесте).
@@ -18,12 +19,14 @@ export function ButtonComponent({
   layoutMode,
   localContext,
   gameState,
+  previewAttributes,
 }: {
   component: GameUiComponent<GameUiButtonComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   layoutMode?: "leftsidebar" | "topbar";
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
+  previewAttributes?: PreviewElementAttributes;
 }) {
   const { caption, variant, disabled } = component.props;
   const command = (component as GameUiComponent).actions?.onClick?.command;
@@ -49,6 +52,7 @@ export function ButtonComponent({
 
   return (
     <button
+      {...previewAttributes}
       id={(component as GameUiComponent).id}
       className={className}
       type="button"

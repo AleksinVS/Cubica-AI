@@ -3,7 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IGameRepository } from "./repository.ts";
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
+const defaultRepoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
 const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 const assertSafeGameId = (gameId: string) => {
@@ -13,15 +13,21 @@ const assertSafeGameId = (gameId: string) => {
 };
 
 export class LocalFileGameRepository implements IGameRepository {
+  private readonly repoRoot: string;
+
+  constructor(repoRoot: string = defaultRepoRoot) {
+    this.repoRoot = path.resolve(repoRoot);
+  }
+
   async getManifestRaw(gameId: string): Promise<string> {
     assertSafeGameId(gameId);
-    const manifestPath = path.resolve(repoRoot, "games", gameId, "game.manifest.json");
+    const manifestPath = path.resolve(this.repoRoot, "games", gameId, "game.manifest.json");
     return readFile(manifestPath, "utf-8");
   }
 
   async getUiManifestRaw(gameId: string): Promise<string | undefined> {
     assertSafeGameId(gameId);
-    const manifestPath = path.resolve(repoRoot, "games", gameId, "ui", "web", "ui.manifest.json");
+    const manifestPath = path.resolve(this.repoRoot, "games", gameId, "ui", "web", "ui.manifest.json");
     try {
       return await readFile(manifestPath, "utf-8");
     } catch (error) {
@@ -34,7 +40,7 @@ export class LocalFileGameRepository implements IGameRepository {
 
   async getMockupFiles(gameId: string): Promise<Array<{ filename: string; raw: string }>> {
     assertSafeGameId(gameId);
-    const mockupsDir = path.resolve(repoRoot, "games", gameId, "design", "mockups");
+    const mockupsDir = path.resolve(this.repoRoot, "games", gameId, "design", "mockups");
     let files: string[] = [];
     try {
       files = (await readdir(mockupsDir)).filter((file) => file.endsWith(".design.json")).sort();
@@ -48,5 +54,36 @@ export class LocalFileGameRepository implements IGameRepository {
         return { filename, raw };
       })
     );
+  }
+
+  async getPublishedPlayerWebPluginBundlesRaw(gameId: string): Promise<string | undefined> {
+    assertSafeGameId(gameId);
+    const metadataPath = path.resolve(this.repoRoot, "games", gameId, "published", "player-web-plugin-bundles.json");
+    try {
+      return await readFile(metadataPath, "utf-8");
+    } catch (error) {
+      if (typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "ENOENT") {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async getPublishedPlayerWebPluginBundleRaw(gameId: string, gameRootRelativeFilePath: string): Promise<string> {
+    assertSafeGameId(gameId);
+    if (
+      path.isAbsolute(gameRootRelativeFilePath) ||
+      gameRootRelativeFilePath.includes("\0") ||
+      !gameRootRelativeFilePath.startsWith("published/")
+    ) {
+      throw new Error("Published plugin bundle path must be relative to the game published artifact root.");
+    }
+
+    const gameRoot = path.resolve(this.repoRoot, "games", gameId);
+    const resolved = path.resolve(gameRoot, gameRootRelativeFilePath);
+    if (resolved === gameRoot || !resolved.startsWith(`${gameRoot}${path.sep}`)) {
+      throw new Error("Published plugin bundle path must stay inside the game root.");
+    }
+    return readFile(resolved, "utf-8");
   }
 }

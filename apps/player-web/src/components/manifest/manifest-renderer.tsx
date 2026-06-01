@@ -1,6 +1,7 @@
 import type { GameUiScreenDefinition, GameUiDesignArtifactRef } from "@cubica/contracts-manifest";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { UiComponentNode } from "./ui-component-node";
+import { screenRootRuntimePointer } from "./preview-metadata";
 
 /**
  * Ограниченный рендерер, управляемый манифестом.
@@ -17,6 +18,7 @@ export function ManifestRenderer({
   metricBackgroundImages,
   gameState,
   designArtifacts,
+  editorPreviewMode = false,
 }: {
   screenDefinition: GameUiScreenDefinition;
   metrics: MetricsSnapshot;
@@ -28,6 +30,8 @@ export function ManifestRenderer({
   gameState?: Record<string, unknown>;
   /** Registry дизайн-артефактов для visualMode="image". */
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
+  /** Enables generic runtime pointer metadata for the editor preview bridge. */
+  editorPreviewMode?: boolean;
 }) {
   // Layout from screen definition takes priority over prop
   const layoutMode =
@@ -47,6 +51,8 @@ export function ManifestRenderer({
         gameState={gameState}
         parentVisualMode={screenDefinition.root.visualMode}
         designArtifacts={designArtifacts}
+        editorPreviewMode={editorPreviewMode}
+        runtimePointer={screenRootRuntimePointer(screenKey)}
       />
     </div>
   );

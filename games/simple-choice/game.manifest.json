@@ -87,31 +87,38 @@
             "canAdvance": false
           }
         },
-        "metricDeltas": [
+        "effects": [
           {
+            "op": "metric.add",
             "metricId": "score",
             "delta": 1
+          },
+          {
+            "op": "timeline.set",
+            "canAdvance": false,
+            "stepIndex": 1,
+            "screenId": "result",
+            "activeInfoId": "result"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/choice/outcome",
+                "value": "accepted"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "choice-resolution",
+            "entityType": "choice",
+            "displayMode": "summary",
+            "summary": "The player chose the clear path.",
+            "auditMetrics": true
           }
-        ],
-        "log": {
-          "kind": "choice-resolution",
-          "entityType": "choice",
-          "displayMode": "summary",
-          "summary": "The player chose the clear path."
-        },
-        "stateUpdate": {
-          "timelineCanAdvance": false,
-          "timelineStepIndex": 1,
-          "timelineScreenId": "result",
-          "activeInfoId": "result",
-          "statePatches": [
-            {
-              "op": "replace",
-              "path": "/public/choice/outcome",
-              "value": "accepted"
-            }
-          ]
-        }
+        ]
       }
     }
   }

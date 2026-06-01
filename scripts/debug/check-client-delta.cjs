@@ -33,5 +33,5 @@ async function dispatch(sessionId, actionId) {
   const lastEntry = resp.state?.public?.log?.[resp.state?.public?.log?.length - 1];
   console.log("Last entry has metricsBefore:", !!lastEntry?.metricsBefore);
   console.log("Last entry has metricsAfter:", !!lastEntry?.metricsAfter);
-  console.log("Last entry has metricDeltas:", !!lastEntry?.metricDeltas);
+  console.log("Last entry has metricChanges:", !!lastEntry?.metricChanges);
 })();

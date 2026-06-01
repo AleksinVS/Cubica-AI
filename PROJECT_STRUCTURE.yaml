@@ -11,6 +11,7 @@
     ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
   required-checks.md: file # Repository ruleset and branch protection notes for required CI checks.
 apps: # Приложения и импортированные frontend-заготовки 
+  editor-web: directory... # Next.js App Router prototype for ADR-034 authoring manifest editing with a synchronized graph canvas, JSON editor, property panel and diagnostics strip.
   player-web: # Канонический web player scaffold для Antarctica 
     e2e: # Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.
       player-web.spec.ts: file # E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding.
@@ -42,6 +43,10 @@ docs: # Архитектура, задачи, планирование
       TSK-20260521-antarctica-authoring-review-remediation.md: file # План исправлений по результатам ревью миграции Antarctica на ADR-030: missing action, source maps и доказательная документация.
       TSK-20260521-game-agnostic-architecture-simplification.md: file # План упрощения создания новых игр и снятия Antarctica-specific архитектурных утечек из платформенного слоя.
       TSK-20260521-semantic-prototype-authoring-layer.md: file # План внедрения обязательного authoring-слоя манифестов с компиляцией в runtime game/UI manifests.
+      TSK-20260522-editor-engine-authoring-manifest-editor.md: file # План проектирования и реализации editor-engine для authoring-манифестов: graph projection, Monaco/JSON editor, floating property panel и reverse projection в JSON Patch.
+      TSK-20260522-editor-engine-json-tree-view.md: file # План добавления JSON tree view как третьего целевого режима редактирования editor-engine рядом с flow-chart и Monaco.
+      TSK-20260522-editor-engine-progressive-graph-ux.md: file # План следующего UX-среза editor-engine: прогрессивно раскрываемая семантическая диаграмма, разные типы узлов и сворачиваемые панели JSON/property.
+      TSK-20260527-editor-engine-preview-timeline-editor.md: file # План архитектурного перехода editor-engine к preview-first редактору с timeline, semantic entity tree, renderer adapter и AI prompt surface.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
@@ -49,7 +54,8 @@ docs: # Архитектура, задачи, планирование
     ROADMAP.md: file # Историческая дорожная карта старой системы планирования; не используется как текущая доска.
     STRATEGY.md: file # Стратегический слой планирования: горизонты, стратегические темы и правила приоритизации.
 games: # Пакеты игр и связанные ресурсы 
-  antarctica: directory... # Пакет игры «Antarctica» (канонический content layer) 
+  antarctica: # Пакет игры «Antarctica» (канонический content layer)
+    plugins: directory... # Project-local plugins for the Antarctica game. These plugins belong to the game project, not to the shared platform apps.
   simple-choice: # Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.
     authoring: # Editable ADR-030 authoring manifests for the simple-choice pilot. Runtime manifests are generated from these files and should not be edited directly.
       game.authoring.json: file # Authoring source for the generated simple-choice game manifest.
@@ -59,6 +65,7 @@ packages: # Переиспользуемые платформенные паке
     manifest: directory... # Manifest and content contracts for Cubica.
     runtime: directory... # Runtime execution contracts for Cubica.
     session: directory... # Session lifecycle and player API contracts for Cubica.
+  editor-engine: directory... # Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers.
 scripts: # Скрипты разработки и индексирования 
   ci: # Cross-platform CI validation scripts that enforce repository governance rules before merge.
     validate-legacy.js: file # Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.
@@ -74,6 +81,10 @@ SDK: # SDK и вспомогательные библиотеки
   viewers: # Библиотека плееров для отображения игр 
     web-base: directory... # Базовый веб-viewer для платформы Cubica. Содержит переиспользуемые компоненты для загрузки манифестов, управления состоянием и маршрутизации действий.
 services: # Сервисы и инфраструктура 
+  game-editor: # Service boundary for the future Cubica game editor. It contains authoring workspace documentation and will host editor-specific implementation when this boundary is activated.
+    docs: # Project documentation for Game Editor features, authoring workflows and editor-engine design.
+      editor-engine-authoring-manifest-editor.md: file # Design document for the schema-first authoring manifest editor with flow-chart projection, Monaco/JSON editing and floating property panel.
+    DEV_GUIDE.md: file # Development guide for the Game Editor service boundary, including current scope, planned editor-engine direction and testing expectations.
   game-engine: directory... # Service boundary for a future game engine service. The current canonical runtime path executes deterministic manifest actions in services/runtime-api.
   game-repository: directory... # Service boundary for a future game repository. The current canonical runtime loads game content through services/runtime-api.
   portal-backend: # Strapi backend портала для каталога, заказов, покупок, платежной заглушки и launch-session API.

@@ -14,7 +14,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import React from "react";
 
-import type { GamePlayerBoard } from "@/plugins/antarctica/contracts";
+import type { GamePlayerBoard } from "@cubica/antarctica-player-plugin/contracts";
 
 
 import {
@@ -51,8 +51,8 @@ import {
   resolveCurrentBoard,
   resolveCurrentInfoEntry,
   resolveBoardCards,
-} from "@/plugins/antarctica/state-resolvers";
-import type { GamePlayerContent } from "@/plugins/antarctica/contracts";
+} from "@cubica/antarctica-player-plugin/state-resolvers";
+import type { GamePlayerContent } from "@cubica/antarctica-player-plugin/contracts";
 
 describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   describe("resolveGameContent", () => {

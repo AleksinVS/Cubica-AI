@@ -6,6 +6,7 @@ import type {
 import type { MetricsSnapshot } from "@/types/game-state";
 import { resolveMetricBinding } from "@/lib/metric-resolvers";
 import { resolveMetricBackgroundImage } from "@/lib/layout-helpers";
+import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
  * Renders gameVariableComponent (metric display in sidebar or topbar).
@@ -19,13 +20,15 @@ export function GameVariableComponent({
   metrics,
   backgroundImage,
   layoutMode,
-  metricBackgroundImages
+  metricBackgroundImages,
+  previewAttributes
 }: {
   component: GameUiComponent<GameUiGameVariableComponentProps>;
   metrics: MetricsSnapshot;
   backgroundImage?: string;
   layoutMode?: "leftsidebar" | "topbar";
   metricBackgroundImages?: Record<string, string>;
+  previewAttributes?: PreviewElementAttributes;
 }) {
   const { caption, description, value } = component.props;
   const resolvedValue = resolveMetricBinding(value, metrics);
@@ -57,6 +60,7 @@ export function GameVariableComponent({
 
     return (
       <div
+        {...previewAttributes}
         className={`game-variable ${id ? `game-variable--${id}` : ""} game-variable--topbar${isProminent ? " game-variable--prominent" : ""}`}
         style={prominentStyle}
       >
@@ -92,7 +96,10 @@ export function GameVariableComponent({
   }
 
   return (
-    <div className={`game-variable ${id ? `game-variable--${id}` : ""}${isProminent ? " game-variable--prominent" : ""}`}>
+    <div
+      {...previewAttributes}
+      className={`game-variable ${id ? `game-variable--${id}` : ""}${isProminent ? " game-variable--prominent" : ""}`}
+    >
       {resolvedBackgroundImage && (
         <div className="game-variable-image" style={{ backgroundImage: `url(${resolvedBackgroundImage})` }} />
       )}

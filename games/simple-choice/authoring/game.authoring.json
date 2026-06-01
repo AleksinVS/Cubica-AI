@@ -1,133 +1,169 @@
 {
-  "$schema": "../../../docs/architecture/schemas/game-authoring.schema.json",
-  "_schemaVersion": "1.0",
+  "$schema": "../../../docs/architecture/schemas/game-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
   "_manifestType": "game",
-  "_definitions": {
-    "game.SimpleChoiceManifest": {
-      "_semantics": "Minimal deterministic game manifest used to prove that a second game can run through the generic runtime/player path.",
-      "meta": {
-        "id": "simple-choice",
-        "version": "1.0.0",
-        "name": "Simple Choice",
-        "description": "Minimal manifest-driven game used as a second-game architecture fixture.",
-        "author": "Cubica",
-        "schemaVersion": "1.1",
-        "minEngineVersion": "0.1.0",
-        "training": {
-          "format": "single",
-          "duration": {
-            "minMinutes": 1,
-            "maxMinutes": 3
-          },
-          "competencies": [
-            {
-              "id": "decision-making",
-              "name": "Decision Making",
-              "description": "Makes a single explicit choice and observes the result."
-            }
-          ]
-        }
-      },
-      "config": {
-        "players": {
-          "min": 1,
-          "max": 1
+  "_definitions": {},
+  "root": {
+    "_type": "game.Game",
+    "_label": "Игра Simple Choice",
+    "_semantics": "Minimal manifest-driven game used as a second-game architecture fixture.",
+    "meta": {
+      "id": "simple-choice",
+      "version": "1.0.0",
+      "name": "Simple Choice",
+      "description": "Minimal manifest-driven game used as a second-game architecture fixture.",
+      "author": "Cubica",
+      "schemaVersion": "1.1",
+      "minEngineVersion": "0.1.0",
+      "training": {
+        "format": "single",
+        "duration": {
+          "minMinutes": 1,
+          "maxMinutes": 3
         },
-        "settings": {
-          "mode": "singleplayer",
-          "locale": "en-US"
-        }
-      },
-      "content": {
-        "data": {
-          "choices": [
-            {
-              "id": "accept",
-              "title": "Take the clear path",
-              "summary": "Choose the option with the visible tradeoff.",
-              "actionId": "choice.accept"
-            }
-          ]
-        }
-      },
-      "engine": {
-        "systemPrompt": "Run the simple choice game deterministically from the manifest."
-      },
-      "state": {
-        "public": {
-          "timeline": {
-            "line": "main",
-            "stepIndex": 0,
-            "step_index": 0,
-            "stageId": "stage_simple",
-            "stage_id": "stage_simple",
-            "screenId": "intro",
-            "screen_id": "intro",
-            "canAdvance": false
-          },
-          "metrics": {
-            "score": 0
-          },
-          "choice": {
-            "outcome": "pending"
-          },
-          "flags": {
-            "cards": {}
-          },
-          "ui": {},
-          "log": []
-        },
-        "secret": {}
+        "competencies": [
+          {
+            "id": "decision-making",
+            "name": "Decision Making",
+            "description": "Makes a single explicit choice and observes the result."
+          }
+        ]
       }
     },
-    "game.AcceptChoiceAction": {
-      "_semantics": "Deterministic action that resolves the only simple-choice option and moves the player to the result screen.",
-      "handlerType": "manifest-data",
-      "capabilityFamily": "runtime.server",
-      "capability": "simple-choice.choice.accept",
-      "displayName": "Accept the choice",
-      "deterministic": {
-        "guard": {
-          "timeline": {
-            "line": "main",
-            "stepIndex": 0,
-            "canAdvance": false
-          }
-        },
-        "metricDeltas": [
+    "config": {
+      "players": {
+        "min": 1,
+        "max": 1
+      },
+      "settings": {
+        "mode": "singleplayer",
+        "locale": "en-US"
+      }
+    },
+    "content": {
+      "data": {
+        "choices": [
           {
-            "metricId": "score",
-            "delta": 1
+            "_type": "game.Choice",
+            "_label": "Take the clear path",
+            "_semantics": "Сущность игрового контента из коллекции choices.",
+            "id": "accept",
+            "title": "Take the clear path",
+            "summary": "Choose the option with the visible tradeoff.",
+            "actionId": "choice.accept"
           }
-        ],
-        "log": {
-          "kind": "choice-resolution",
-          "entityType": "choice",
-          "displayMode": "summary",
-          "summary": "The player chose the clear path."
+        ]
+      }
+    },
+    "engine": {
+      "systemPrompt": "Run the simple choice game deterministically from the manifest."
+    },
+    "state": {
+      "public": {
+        "timeline": {
+          "line": "main",
+          "stepIndex": 0,
+          "step_index": 0,
+          "stageId": "stage_simple",
+          "stage_id": "stage_simple",
+          "screenId": "intro",
+          "screen_id": "intro",
+          "canAdvance": false
         },
-        "stateUpdate": {
-          "timelineCanAdvance": false,
-          "timelineStepIndex": 1,
-          "timelineScreenId": "result",
-          "activeInfoId": "result",
-          "statePatches": [
+        "metrics": {
+          "score": 0
+        },
+        "choice": {
+          "outcome": "pending"
+        },
+        "flags": {
+          "cards": {}
+        },
+        "ui": {},
+        "log": []
+      },
+      "secret": {}
+    },
+    "logic": {
+      "_type": "game.Logic",
+      "_label": "Логика игры",
+      "_semantics": "Сценарные потоки, правила и действия authoring-манифеста.",
+      "flows": [
+        {
+          "id": "main",
+          "_type": "game.Flow",
+          "_label": "Основной поток",
+          "_semantics": "Минимальный поток для игры без явной коллекции сценарных шагов.",
+          "pattern": "pearl-string",
+          "steps": [
             {
-              "op": "replace",
-              "path": "/public/choice/outcome",
-              "value": "accepted"
+              "id": "main.start",
+              "_type": "game.Step",
+              "_label": "Начальное состояние",
+              "_semantics": "Начальный шаг, восстановленный из runtime state.",
+              "screenId": "intro",
+              "actionIds": [
+                "choice.accept"
+              ]
             }
           ]
         }
-      }
-    }
-  },
-  "root": {
-    "_type": "game.SimpleChoiceManifest",
-    "actions": {
-      "choice.accept": {
-        "_type": "game.AcceptChoiceAction"
-      }
+      ],
+      "systems": [],
+      "rules": [],
+      "actions": [
+        {
+          "id": "choice.accept",
+          "_type": "game.Action",
+          "_label": "Действие: Take the clear path",
+          "_semantics": "Игровое действие choice.accept.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "simple-choice.choice.accept",
+          "displayName": "Accept the choice",
+          "deterministic": {
+            "guard": {
+              "timeline": {
+                "line": "main",
+                "stepIndex": 0,
+                "canAdvance": false
+              }
+            },
+            "effects": [
+              {
+                "op": "metric.add",
+                "metricId": "score",
+                "delta": 1
+              },
+              {
+                "op": "timeline.set",
+                "canAdvance": false,
+                "stepIndex": 1,
+                "screenId": "result",
+                "activeInfoId": "result"
+              },
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/choice/outcome",
+                    "value": "accepted"
+                  }
+                ]
+              },
+              {
+                "op": "log.append",
+                "kind": "choice-resolution",
+                "entityType": "choice",
+                "displayMode": "summary",
+                "summary": "The player chose the clear path.",
+                "auditMetrics": true
+              }
+            ]
+          }
+        }
+      ]
     }
   }
 }

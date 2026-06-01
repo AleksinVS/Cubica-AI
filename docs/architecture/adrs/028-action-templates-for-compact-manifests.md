@@ -6,7 +6,7 @@
 
 ## Context
 
-The current `game.manifest.json` for complex games like Antarctica is extremely large (over 9000 lines). A significant portion of this size comes from repetitive action definitions, especially deterministic transitions between info screens or board steps. These actions often share the same `handlerType`, `guard` patterns, `stateUpdate` shapes, and `log` structures, differing only in specific parameters like `stepIndex` or text messages.
+The current `game.manifest.json` for complex games like Antarctica is extremely large (over 9000 lines). A significant portion of this size comes from repetitive action definitions, especially deterministic transitions between info screens or board steps. These actions often share the same `handlerType`, `guard` patterns, and `effects[]` structures, differing only in specific parameters like `stepIndex` or text messages.
 
 This redundancy has several negative consequences:
 1. **Context Bloat:** Large manifests consume significant tokens in LLM context windows, leading to attention degradation and errors during AI-assisted development.
@@ -29,12 +29,15 @@ Add a `templates` section to the root of the `GameManifest`. This section will s
         "guard": {
           "timeline": { "line": "main", "stepIndex": "{{current}}", "canAdvance": false }
         },
-        "stateUpdate": { "timelineStepIndex": "{{next}}" },
-        "log": {
-          "kind": "opening-info-advance",
-          "stageId": "stage_intro",
-          "summary": "{{summary}}"
-        }
+        "effects": [
+          { "op": "timeline.set", "stepIndex": "{{next}}" },
+          {
+            "op": "log.append",
+            "kind": "opening-info-advance",
+            "stageId": "stage_intro",
+            "summary": "{{summary}}"
+          }
+        ]
       }
     }
   }

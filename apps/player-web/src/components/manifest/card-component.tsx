@@ -4,6 +4,7 @@ import type {
 } from "@cubica/contracts-manifest";
 import { resolveExpression, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import { useLocale } from "@/lib/locale";
+import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
  * Рендерит cardComponent (интерактивная карточка в UI манифеста).
@@ -18,11 +19,13 @@ export function CardComponent({
   onAction,
   localContext,
   gameState,
+  previewAttributes,
 }: {
   component: GameUiComponent<GameUiCardComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
+  previewAttributes?: PreviewElementAttributes;
 }) {
   const t = useLocale();
   const { text, title, summary, chips, selectLabel, visualState } = component.props;
@@ -63,6 +66,7 @@ export function CardComponent({
 
     return (
       <article
+        {...previewAttributes}
         className="game-card"
         onClick={command ? handleCardClick : undefined}
         onKeyDown={command ? handleKeyDown : undefined}
@@ -104,6 +108,7 @@ export function CardComponent({
 
   return (
     <article
+      {...previewAttributes}
       className={`game-card fallback-card${visualStateClass}`}
       onClick={command && !isDisabled ? handleCardClick : undefined}
       onKeyDown={command && !isDisabled ? handleKeyDown : undefined}

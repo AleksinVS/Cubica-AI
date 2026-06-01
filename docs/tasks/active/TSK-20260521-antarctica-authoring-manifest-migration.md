@@ -276,7 +276,7 @@ rg -n '"_type"|"_extends"|"_definitions"|"_semantics"|"_source_trace"' games/ant
 - Extracted game semantic prototypes (Slice A5):
   - `game.OpeningCardResolutionAction` — 71 actions sharing 3 identical fields (`handlerType`, `templateId`, `capabilityFamily`).
   - `game.OpeningCardAdvanceAction` — 30 actions sharing 3 identical fields.
-  - `game.OpeningInfoAdvanceAction` — 26 actions sharing 4 identical fields (includes `deterministic.excludeFromLog`).
+  - `game.OpeningInfoAdvanceAction` — 26 actions sharing 4 identical fields.
   - `game.OpeningTeamSelectionAction` — 10 actions sharing 4 identical fields.
   - 7 no-template actions extracted as unique definitions (`game.OpeningBoard2530Advance`, `game.OpeningTeamConfirm`, `game.RequestServer`, `game.ShowHint`, `game.ShowHistory`, `game.ShowTopBar`, `game.ShowScreenWithLeftSideBar`).
   - Total: 12 definitions in `_definitions`, 144 action references in `root.actions`.

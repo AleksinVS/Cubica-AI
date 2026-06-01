@@ -187,11 +187,6 @@ export type JsonLogicExpression =
   | null
   | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> };
 
-export interface GameManifestDeterministicMetricDelta {
-  metricId: string;
-  delta: number | string | JsonLogicExpression;
-}
-
 export type GameManifestDeterministicMetricOperator = ">" | "<" | "==";
 
 /**
@@ -204,52 +199,96 @@ export interface GameManifestDeterministicMetricCondition {
 }
 
 /**
- * Local post-base metric bonus for explicit deterministic cards.
+ * Проверяемое условие эффекта. Это не код игры, а небольшая JSON-форма,
+ * которую `runtime-api` умеет вычислить по текущему состоянию.
  */
-export interface GameManifestDeterministicConditionalMetricBonus {
-  when: GameManifestDeterministicMetricCondition;
-  metricDeltas: Array<GameManifestDeterministicMetricDelta>;
-}
+export type GameManifestDeterministicEffectCondition =
+  | { readFrom?: "current" | "preAction"; metric: GameManifestDeterministicMetricCondition }
+  | { readFrom?: "current" | "preAction"; state: GameManifestDeterministicStateCondition }
+  | {
+      readFrom?: "current" | "preAction";
+      collectionCount: {
+        path: string;
+        ids: Array<string>;
+        field: string;
+        equals?: unknown;
+        countAtLeast: number | string;
+      };
+    }
+  | { all: Array<GameManifestDeterministicEffectCondition> }
+  | { any: Array<GameManifestDeterministicEffectCondition> }
+  | { not: GameManifestDeterministicEffectCondition };
 
-export interface GameManifestDeterministicConditionalStateBonus {
-  when: Array<GameManifestDeterministicStateCondition>;
-  metricDeltas: Array<GameManifestDeterministicMetricDelta>;
+export interface GameManifestDeterministicEffectBase {
+  /** Optional guard for this single effect. Omitted means "always apply". */
+  when?: GameManifestDeterministicEffectCondition;
 }
 
 /**
- * Local pre-base line switch for explicit deterministic cards.
+ * Проверяемый эффект манифеста: небольшая операция, которую `runtime-api`
+ * умеет проверить и применить без запуска произвольного игрового кода.
  */
-export interface GameManifestDeterministicConditionalLineSwitch {
-  when: GameManifestDeterministicMetricCondition;
-  targetLine: string;
-  targetStepIndex: number | string;
-  targetStageId?: string;
-  targetScreenId?: string;
-  targetInfoId?: string;
-  timelineCanAdvance?: boolean | string;
-}
-
-/**
- * Local info variant switch used when entering an info block.
- */
-export interface GameManifestDeterministicConditionalInfoVariant {
-  when: GameManifestDeterministicMetricCondition;
-  activeInfoId: string;
-}
-
-export interface GameManifestDeterministicLogMetadata {
-  kind: string;
-  summary: string;
-  /** Player-facing rendering mode. Generic panels use this instead of action prefixes. */
-  displayMode?: "card" | "summary" | "hidden" | string;
-  /** Neutral entity category for log entries, for example "card" or "choice". */
-  entityType?: "card" | "choice" | "info" | string;
-  stageId?: string;
-  cardId?: string;
-  memberId?: string;
-  /** Back (flipped/result) text of the card, shown in the journal after the choice is made. */
-  backText?: string;
-}
+export type GameManifestDeterministicEffect =
+  | (GameManifestDeterministicEffectBase & {
+      op: "runtime.server.request";
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "timeline.set";
+      line?: string;
+      stepIndex?: number | string;
+      stageId?: string;
+      screenId?: string;
+      activeInfoId?: string;
+      canAdvance?: boolean | string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "metric.add";
+      metricId: string;
+      delta: number | string | JsonLogicExpression;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "state.patch";
+      patches: Array<GameManifestDeterministicStatePatch>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "flag.set";
+      path: string;
+      values: Record<string, boolean>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "counter.add";
+      path: string;
+      delta: number | string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "collection.append";
+      path: string;
+      value: unknown;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "ui.panel.open";
+      panelId: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "ui.screen.open";
+      screenId: string;
+      layoutId?: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "log.append";
+      kind: string;
+      summary: string;
+      displayMode?: "card" | "summary" | "hidden" | string;
+      entityType?: "card" | "choice" | "info" | string;
+      stageId?: string;
+      cardId?: string;
+      memberId?: string;
+      backText?: string;
+      target?: "public.log";
+      /** If true, the runtime stores metric snapshots around this action. */
+      auditMetrics?: boolean;
+      data?: Record<string, unknown>;
+    });
 
 export interface GameManifestDeterministicStatePatch {
   op: "add" | "replace" | "remove" | "increment" | "append";
@@ -257,62 +296,10 @@ export interface GameManifestDeterministicStatePatch {
   value?: unknown;
 }
 
-export interface GameManifestDeterministicStateUpdate {
-  timelineCanAdvance?: boolean | string;
-  // Explicit timeline coordinates for deterministic transitions (for example intro info step -> next screen).
-  timelineStepIndex?: number | string;
-  timelineStageId?: string;
-  timelineScreenId?: string;
-  activeInfoId?: string;
-  selectedCardId?: string;
-  statePatches?: Array<GameManifestDeterministicStatePatch>;
-  cardFlags?: {
-    cardId: string;
-    selected?: boolean;
-    resolved?: boolean;
-    locked?: boolean;
-    available?: boolean;
-  };
-  teamFlags?: {
-    memberId: string;
-    selected?: boolean;
-  };
-  teamSelection?: {
-    pickCountDelta?: number | string;
-    selectedMemberIdsAppend?: string;
-  };
-  boardCardUnlock?: {
-    cardIds: Array<string>;
-    resolvedCountAtLeast: number;
-    unlockCardId: string;
-    unlessCardAvailable?: string;
-  };
-  boardEntryAltCardSwap?: {
-    baseCardId: string;
-    altCardId: string;
-    when: GameManifestDeterministicMetricCondition;
-  };
-  boardThreshold?: {
-    cardIds: Array<string>;
-    resolvedCountAtLeast: number;
-    timelineCanAdvance?: boolean;
-  };
-}
-
 export interface GameManifestDeterministicActionMetadata {
   provenance?: Array<GameManifestDeterministicSourceRef>;
   guard?: GameManifestDeterministicGuard;
-  metricDeltas?: Array<GameManifestDeterministicMetricDelta>;
-  conditionalMetricBonuses?: Array<GameManifestDeterministicConditionalMetricBonus>;
-  conditionalCardBonuses?: Array<any>;
-  conditionalStateBonuses?: Array<GameManifestDeterministicConditionalStateBonus>;
-  conditionalInfoVariant?: GameManifestDeterministicConditionalInfoVariant;
-  conditionalLineSwitch?: GameManifestDeterministicConditionalLineSwitch;
-  log?: GameManifestDeterministicLogMetadata;
-  stateUpdate?: GameManifestDeterministicStateUpdate;
-  /** If true, the runtime will skip creating a log entry for this action. */
-  excludeFromLog?: boolean;
-  [key: string]: unknown;
+  effects?: Array<GameManifestDeterministicEffect>;
 }
 
 export interface GameManifestActionDefinition {
@@ -752,6 +739,35 @@ export interface PlayerFacingContent {
   content?: Record<string, unknown>;
   /** Multi-screen UI manifest projection for manifest-driven rendering. */
   ui?: GamePlayerUiContent;
+  /**
+   * Browser-loadable player-web plugin bundles.
+   *
+   * Preview bundles are scoped to one editor content source. Published bundles
+   * are immutable artifacts created by the publish pipeline. In both cases
+   * runtime-api only passes references and never executes browser plugin code.
+   */
+  pluginBundles?: Array<PlayerWebPluginBundleReference>;
+}
+
+export type PlayerWebPluginBundleScope = "preview" | "published";
+
+/**
+ * Browser-loadable project-local plugin module.
+ *
+ * `url` is relative to runtime-api. The browser must resolve it against the
+ * runtime-api origin and cache/import by `contentHash`, rather than reading
+ * editor worktree paths or project source files directly.
+ */
+export interface PlayerWebPluginBundleReference {
+  pluginId: string;
+  gameId: GameManifestId;
+  apiVersion: string;
+  target: "player-web";
+  scope: PlayerWebPluginBundleScope;
+  contentHash: string;
+  /** Optional Subresource Integrity-style digest for published artifacts. */
+  integrity?: string;
+  url: string;
 }
 
 /**

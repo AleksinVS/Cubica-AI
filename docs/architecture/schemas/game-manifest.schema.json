@@ -64,7 +64,7 @@
           "type": "string"
         },
         "overrides": {
-          "description": "Action-specific deterministic overrides merged on top of the resolved template. Used when a template-based action needs extra fields (e.g., conditionalMetricBonuses).",
+          "description": "Action-specific deterministic overrides merged on top of the resolved template. Used when a template-based action needs extra effects.",
           "type": "object",
           "properties": {
             "deterministic": {
@@ -229,142 +229,23 @@
     "GameManifestDeterministicActionMetadata": {
       "additionalProperties": false,
       "properties": {
-        "conditionalInfoVariant": {
-          "$ref": "#/definitions/GameManifestDeterministicConditionalInfoVariant"
-        },
-        "conditionalLineSwitch": {
-          "$ref": "#/definitions/GameManifestDeterministicConditionalLineSwitch"
-        },
-        "conditionalMetricBonuses": {
+        "effects": {
+          "description": "Small manifest-declared operations that runtime-api can validate and apply without executing arbitrary game code.",
           "items": {
-            "$ref": "#/definitions/GameManifestDeterministicConditionalMetricBonus"
+            "$ref": "#/definitions/GameManifestDeterministicEffect"
           },
           "type": "array"
-        },
-        "conditionalStateBonuses": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicConditionalStateBonus"
-          },
-          "type": "array"
-        },
-        "excludeFromLog": {
-          "type": "boolean",
-          "description": "If true, the runtime will skip creating a log entry for this action."
         },
         "guard": {
           "$ref": "#/definitions/GameManifestDeterministicGuard"
-        },
-        "log": {
-          "$ref": "#/definitions/GameManifestDeterministicLogMetadata"
-        },
-        "metricDeltas": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicMetricDelta"
-          },
-          "type": "array"
         },
         "provenance": {
           "items": {
             "$ref": "#/definitions/GameManifestDeterministicSourceRef"
           },
           "type": "array"
-        },
-        "stateUpdate": {
-          "$ref": "#/definitions/GameManifestDeterministicStateUpdate"
         }
       },
-      "type": "object"
-    },
-    "GameManifestDeterministicConditionalInfoVariant": {
-      "additionalProperties": false,
-      "description": "Local info variant switch used when entering an info block.",
-      "properties": {
-        "activeInfoId": {
-          "type": "string"
-        },
-        "when": {
-          "$ref": "#/definitions/GameManifestDeterministicMetricCondition"
-        }
-      },
-      "required": [
-        "when",
-        "activeInfoId"
-      ],
-      "type": "object"
-    },
-    "GameManifestDeterministicConditionalLineSwitch": {
-      "additionalProperties": false,
-      "description": "Local pre-base line switch for explicit deterministic cards.",
-      "properties": {
-        "targetInfoId": {
-          "type": "string"
-        },
-        "targetLine": {
-          "type": "string"
-        },
-        "targetScreenId": {
-          "type": "string"
-        },
-        "targetStageId": {
-          "type": "string"
-        },
-        "targetStepIndex": {
-          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
-        },
-        "timelineCanAdvance": {
-          "oneOf": [{ "type": "boolean" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
-        },
-        "when": {
-          "$ref": "#/definitions/GameManifestDeterministicMetricCondition"
-        }
-      },
-      "required": [
-        "when",
-        "targetLine",
-        "targetStepIndex"
-      ],
-      "type": "object"
-    },
-    "GameManifestDeterministicConditionalMetricBonus": {
-      "additionalProperties": false,
-      "description": "Local post-base metric bonus for explicit deterministic cards.",
-      "properties": {
-        "metricDeltas": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicMetricDelta"
-          },
-          "type": "array"
-        },
-        "when": {
-          "$ref": "#/definitions/GameManifestDeterministicMetricCondition"
-        }
-      },
-      "required": [
-        "when",
-        "metricDeltas"
-      ],
-      "type": "object"
-    },
-    "GameManifestDeterministicConditionalStateBonus": {
-      "additionalProperties": false,
-      "properties": {
-        "metricDeltas": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicMetricDelta"
-          },
-          "type": "array"
-        },
-        "when": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicStateCondition"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "when",
-        "metricDeltas"
-      ],
       "type": "object"
     },
     "GameManifestDeterministicGuard": {
@@ -373,21 +254,43 @@
         "board": {
           "type": "object",
           "properties": {
-            "cardIds": { "type": "array", "items": { "type": "string" } },
-            "resolvedCountAtLeast": { "type": "number" }
+            "cardIds": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "resolvedCountAtLeast": {
+              "type": "number"
+            }
           },
-          "required": ["cardIds", "resolvedCountAtLeast"]
+          "required": [
+            "cardIds",
+            "resolvedCountAtLeast"
+          ]
         },
         "card": {
           "type": "object",
           "properties": {
-            "id": { "type": "string" },
-            "selected": { "type": "boolean" },
-            "resolved": { "type": "boolean" },
-            "locked": { "type": "boolean" },
-            "available": { "type": "boolean" }
+            "id": {
+              "type": "string"
+            },
+            "selected": {
+              "type": "boolean"
+            },
+            "resolved": {
+              "type": "boolean"
+            },
+            "locked": {
+              "type": "boolean"
+            },
+            "available": {
+              "type": "boolean"
+            }
           },
-          "required": ["id"]
+          "required": [
+            "id"
+          ]
         },
         "jsonLogic": {
           "$ref": "#/definitions/JsonLogicExpression"
@@ -395,9 +298,18 @@
         "opening": {
           "type": "object",
           "properties": {
-            "selectedCardIdAbsent": { "type": "boolean" },
+            "selectedCardIdAbsent": {
+              "type": "boolean"
+            },
             "selectedCardIdEquals": {
-              "oneOf": [{ "type": "string" }, { "type": "number" }]
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
             }
           }
         },
@@ -410,29 +322,55 @@
         "team": {
           "type": "object",
           "properties": {
-            "memberId": { "type": "string" },
-            "selected": { "type": "boolean" }
+            "memberId": {
+              "type": "string"
+            },
+            "selected": {
+              "type": "boolean"
+            }
           },
-          "required": ["memberId"]
+          "required": [
+            "memberId"
+          ]
         },
         "teamSelection": {
           "type": "object",
           "properties": {
-            "pickCountLessThan": { "type": "number" },
-            "pickCountEquals": { "type": "number" }
+            "pickCountLessThan": {
+              "type": "number"
+            },
+            "pickCountEquals": {
+              "type": "number"
+            }
           }
         },
         "timeline": {
           "additionalProperties": false,
           "properties": {
             "canAdvance": {
-              "oneOf": [{ "type": "boolean" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\{\\{.+\\}\\}$"
+                }
+              ]
             },
             "line": {
               "type": "string"
             },
             "stepIndex": {
-              "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\{\\{.+\\}\\}$"
+                }
+              ]
             }
           },
           "type": "object"
@@ -443,62 +381,37 @@
     "JsonLogicExpression": {
       "description": "Recursive JsonLogic expression. Operators map either to one nested expression, for example {\"var\":\"public.metrics.pro\"}, or to an array of nested expressions.",
       "oneOf": [
-        { "type": "string" },
-        { "type": "number" },
-        { "type": "boolean" },
-        { "type": "null" },
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        },
         {
           "type": "object",
           "minProperties": 1,
           "maxProperties": 1,
           "additionalProperties": {
             "oneOf": [
-              { "$ref": "#/definitions/JsonLogicExpression" },
+              {
+                "$ref": "#/definitions/JsonLogicExpression"
+              },
               {
                 "type": "array",
-                "items": { "$ref": "#/definitions/JsonLogicExpression" }
+                "items": {
+                  "$ref": "#/definitions/JsonLogicExpression"
+                }
               }
             ]
           }
         }
       ]
-    },
-    "GameManifestDeterministicLogMetadata": {
-      "additionalProperties": false,
-      "properties": {
-        "backText": {
-          "type": "string",
-          "description": "Back (flipped/result) text of the card, shown in the journal after the choice is made."
-        },
-        "cardId": {
-          "type": "string"
-        },
-        "displayMode": {
-          "type": "string",
-          "description": "Player-facing rendering mode used by generic panels instead of action prefixes."
-        },
-        "entityType": {
-          "type": "string",
-          "description": "Neutral entity category for log entries, for example card, choice or info."
-        },
-        "memberId": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string"
-        },
-        "stageId": {
-          "type": "string"
-        },
-        "summary": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "summary"
-      ],
-      "type": "object"
     },
     "GameManifestDeterministicMetricCondition": {
       "additionalProperties": false,
@@ -511,33 +424,21 @@
           "$ref": "#/definitions/GameManifestDeterministicMetricOperator"
         },
         "threshold": {
-          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\{\\{.+\\}\\}$"
+            }
+          ]
         }
       },
       "required": [
         "metricId",
         "operator",
         "threshold"
-      ],
-      "type": "object"
-    },
-    "GameManifestDeterministicMetricDelta": {
-      "additionalProperties": false,
-      "properties": {
-        "delta": {
-          "anyOf": [
-            { "type": "number" },
-            { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" },
-            { "$ref": "#/definitions/JsonLogicExpression" }
-          ]
-        },
-        "metricId": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "metricId",
-        "delta"
       ],
       "type": "object"
     },
@@ -557,7 +458,15 @@
           "type": "string"
         },
         "lineIndex": {
-          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\{\\{.+\\}\\}$"
+            }
+          ]
         },
         "sourceFile": {
           "$ref": "#/definitions/GameManifestPath"
@@ -566,7 +475,15 @@
           "type": "string"
         },
         "stepIndex": {
-          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\{\\{.+\\}\\}$"
+            }
+          ]
         }
       },
       "required": [
@@ -575,6 +492,481 @@
         "legacyCardId"
       ],
       "type": "object"
+    },
+    "GameManifestDeterministicEffectCondition": {
+      "description": "A schema-validated condition for a single manifest effect. Conditions are data, not executable game code.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "metric": {
+              "$ref": "#/definitions/GameManifestDeterministicMetricCondition"
+            },
+            "readFrom": {
+              "enum": [
+                "current",
+                "preAction"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "metric"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "state": {
+              "$ref": "#/definitions/GameManifestDeterministicStateCondition"
+            },
+            "readFrom": {
+              "enum": [
+                "current",
+                "preAction"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "state"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "collectionCount": {
+              "additionalProperties": false,
+              "properties": {
+                "countAtLeast": {
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^\\{\\{.+\\}\\}$"
+                    }
+                  ]
+                },
+                "equals": {},
+                "field": {
+                  "type": "string"
+                },
+                "ids": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "minItems": 1,
+                  "type": "array"
+                },
+                "path": {
+                  "pattern": "^/(public|secret)/",
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path",
+                "ids",
+                "field",
+                "countAtLeast"
+              ],
+              "type": "object"
+            },
+            "readFrom": {
+              "enum": [
+                "current",
+                "preAction"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "collectionCount"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "all": {
+              "items": {
+                "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "any": {
+              "items": {
+                "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+              },
+              "minItems": 1,
+              "type": "array"
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "not": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "GameManifestDeterministicEffect": {
+      "description": "A schema-validated runtime effect. Effects are data, not executable plugin code.",
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "runtime.server.request"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Set one or more timeline fields through a schema-validated manifest effect.",
+          "anyOf": [
+            {
+              "required": [
+                "activeInfoId"
+              ]
+            },
+            {
+              "required": [
+                "canAdvance"
+              ]
+            },
+            {
+              "required": [
+                "line"
+              ]
+            },
+            {
+              "required": [
+                "screenId"
+              ]
+            },
+            {
+              "required": [
+                "stageId"
+              ]
+            },
+            {
+              "required": [
+                "stepIndex"
+              ]
+            }
+          ],
+          "properties": {
+            "activeInfoId": {
+              "type": "string"
+            },
+            "canAdvance": {
+              "oneOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\{\\{.+\\}\\}$"
+                }
+              ]
+            },
+            "line": {
+              "type": "string"
+            },
+            "op": {
+              "const": "timeline.set"
+            },
+            "screenId": {
+              "type": "string"
+            },
+            "stageId": {
+              "type": "string"
+            },
+            "stepIndex": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\{\\{.+\\}\\}$"
+                }
+              ]
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "delta": {
+              "anyOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\{\\{.+\\}\\}$"
+                },
+                {
+                  "$ref": "#/definitions/JsonLogicExpression"
+                }
+              ]
+            },
+            "metricId": {
+              "type": "string"
+            },
+            "op": {
+              "const": "metric.add"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "metricId",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "state.patch"
+            },
+            "patches": {
+              "items": {
+                "$ref": "#/definitions/GameManifestDeterministicStatePatch"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "patches"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "flag.set"
+            },
+            "path": {
+              "pattern": "^/public/flags/",
+              "type": "string"
+            },
+            "values": {
+              "additionalProperties": {
+                "type": "boolean"
+              },
+              "minProperties": 1,
+              "type": "object"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "path",
+            "values"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "delta": {
+              "oneOf": [
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "string",
+                  "pattern": "^\\{\\{.+\\}\\}$"
+                }
+              ]
+            },
+            "op": {
+              "const": "counter.add"
+            },
+            "path": {
+              "pattern": "^/(public|secret)/",
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "path",
+            "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "collection.append"
+            },
+            "path": {
+              "pattern": "^/(public|secret)/",
+              "type": "string"
+            },
+            "value": {},
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "path",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "ui.panel.open"
+            },
+            "panelId": {
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "panelId"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "layoutId": {
+              "type": "string"
+            },
+            "op": {
+              "const": "ui.screen.open"
+            },
+            "screenId": {
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "screenId"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "backText": {
+              "type": "string"
+            },
+            "cardId": {
+              "type": "string"
+            },
+            "data": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "displayMode": {
+              "type": "string"
+            },
+            "entityType": {
+              "type": "string"
+            },
+            "kind": {
+              "type": "string"
+            },
+            "memberId": {
+              "type": "string"
+            },
+            "op": {
+              "const": "log.append"
+            },
+            "stageId": {
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "target": {
+              "const": "public.log"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            },
+            "auditMetrics": {
+              "type": "boolean",
+              "description": "If true, runtime-api stores metric snapshots before and after this action in the appended log entry."
+            }
+          },
+          "required": [
+            "op",
+            "kind",
+            "summary"
+          ],
+          "type": "object"
+        }
+      ]
     },
     "GameManifestDeterministicStateCondition": {
       "additionalProperties": false,
@@ -594,6 +986,7 @@
           "type": "string"
         },
         "path": {
+          "pattern": "^/(public|secret)/",
           "type": "string"
         },
         "value": {}
@@ -618,6 +1011,7 @@
           "type": "string"
         },
         "path": {
+          "pattern": "^/(public|secret)/",
           "type": "string"
         },
         "value": {}
@@ -626,92 +1020,6 @@
         "op",
         "path"
       ],
-      "type": "object"
-    },
-    "GameManifestDeterministicStateUpdate": {
-      "additionalProperties": true,
-      "properties": {
-        "boardCardUnlock": {
-          "type": "object",
-          "properties": {
-            "cardIds": { "type": "array", "items": { "type": "string" } },
-            "resolvedCountAtLeast": { "type": "number" },
-            "unlockCardId": { "type": "string" },
-            "unlessCardAvailable": { "type": "string" }
-          },
-          "required": ["cardIds", "resolvedCountAtLeast", "unlockCardId"]
-        },
-        "boardEntryAltCardSwap": {
-          "type": "object",
-          "properties": {
-            "altCardId": { "type": "string" },
-            "baseCardId": { "type": "string" },
-            "when": { "$ref": "#/definitions/GameManifestDeterministicMetricCondition" }
-          },
-          "required": ["baseCardId", "altCardId", "when"]
-        },
-        "boardThreshold": {
-          "type": "object",
-          "properties": {
-            "cardIds": { "type": "array", "items": { "type": "string" } },
-            "resolvedCountAtLeast": { "type": "number" },
-            "timelineCanAdvance": { "type": "boolean" }
-          },
-          "required": ["cardIds", "resolvedCountAtLeast"]
-        },
-        "activeInfoId": {
-          "type": "string"
-        },
-        "cardFlags": {
-          "type": "object",
-          "properties": {
-            "cardId": { "type": "string" },
-            "selected": { "type": "boolean" },
-            "resolved": { "type": "boolean" },
-            "locked": { "type": "boolean" },
-            "available": { "type": "boolean" }
-          },
-          "required": ["cardId"]
-        },
-        "selectedCardId": {
-          "type": "string"
-        },
-        "statePatches": {
-          "items": {
-            "$ref": "#/definitions/GameManifestDeterministicStatePatch"
-          },
-          "type": "array"
-        },
-        "timelineCanAdvance": {
-          "oneOf": [{ "type": "boolean" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
-        },
-        "timelineScreenId": {
-          "type": "string"
-        },
-        "timelineStageId": {
-          "type": "string"
-        },
-        "timelineStepIndex": {
-          "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
-        },
-        "teamFlags": {
-          "type": "object",
-          "properties": {
-            "memberId": { "type": "string" },
-            "selected": { "type": "boolean" }
-          },
-          "required": ["memberId"]
-        },
-        "teamSelection": {
-          "type": "object",
-          "properties": {
-            "pickCountDelta": {
-              "oneOf": [{ "type": "number" }, { "type": "string", "pattern": "^\\{\\{.+\\}\\}$" }]
-            },
-            "selectedMemberIdsAppend": { "type": "string" }
-          }
-        }
-      },
       "type": "object"
     },
     "GameManifestDocumentRef": {

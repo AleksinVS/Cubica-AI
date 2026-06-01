@@ -16,6 +16,7 @@ interface SessionServiceOptions {
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
+  private readonly contentSourceBySessionId = new Map<string, string>();
 
   constructor(options: SessionServiceOptions = {}) {
     this.sessionStore = options.sessionStore ?? new InMemorySessionStore<RuntimeState>();
@@ -28,13 +29,17 @@ export class SessionService {
     }
     const playerId: PlayerId | undefined = request.playerId;
 
-    const initialState = (await contentService.getInitialState(gameId)) as RuntimeState;
+    const initialState = (await contentService.getInitialState(gameId, request.contentSourceId)) as RuntimeState;
 
     const snapshot = await this.sessionStore.createSession({
       gameId,
       playerId,
       initialState
     });
+
+    if (request.contentSourceId !== undefined) {
+      this.contentSourceBySessionId.set(snapshot.sessionId, request.contentSourceId);
+    }
 
     return {
       sessionId: snapshot.sessionId,
@@ -60,5 +65,9 @@ export class SessionService {
 
   getSessionStore(): SessionStorePort<RuntimeState> {
     return this.sessionStore;
+  }
+
+  getContentSourceId(sessionId: SessionId): string | undefined {
+    return this.contentSourceBySessionId.get(sessionId);
   }
 }

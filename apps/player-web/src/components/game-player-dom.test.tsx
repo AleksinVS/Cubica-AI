@@ -1,6 +1,7 @@
-import { ANTARCTICA_GAME_CONFIG_DATA } from "@/presenter/antarctica-config-data";
+import { ANTARCTICA_GAME_CONFIG_DATA } from "@cubica/antarctica-player-plugin/config-data";
+import { activate as activateAntarcticaPlayer } from "@cubica/antarctica-player-plugin";
 import { buildGameConfig } from "@/presenter/game-config-registry";
-import "@/plugins/register-games";
+import { playerPluginApi } from "@/plugins/player-plugin-api";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
@@ -9,6 +10,7 @@ import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts
 
 // Mock fetch globally
 global.fetch = vi.fn();
+activateAntarcticaPlayer(playerPluginApi);
 
 const mockMetrics = {
   score: 45,

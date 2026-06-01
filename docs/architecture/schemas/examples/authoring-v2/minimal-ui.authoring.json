@@ -1,0 +1,73 @@
+{
+  "$schema": "https://cubica.platform/schemas/ui-authoring.v2.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "ui",
+  "_channel": "web",
+  "_definitions": {},
+  "root": {
+    "_type": "ui.Manifest",
+    "_label": "Web UI v2",
+    "_semantics": "Минимальный UI authoring v2 пример с деревом экранов и компонентов.",
+    "meta": {
+      "id": "authoring-v2-fixture.ui.web",
+      "version": "1.0.0",
+      "schema_version": "1.0",
+      "game_id": "authoring-v2-fixture",
+      "game_manifest_version": "1.0.0",
+      "channel": "web",
+      "author": "Cubica"
+    },
+    "entry_point": "intro",
+    "screens": [
+      {
+        "id": "intro",
+        "_type": "ui.Screen",
+        "_label": "Начальный экран",
+        "_semantics": "Первый экран, который выбирается entry_point.",
+        "title": "Authoring V2 Fixture",
+        "layout_mode": "topbar",
+        "root": {
+          "id": "intro.root",
+          "_type": "ui.Component",
+          "_label": "Корневой контейнер",
+          "_semantics": "Контейнер экрана, внутри которого находятся видимые компоненты.",
+          "type": "screenComponent",
+          "props": {
+            "cssClass": "topbar-screen-shell"
+          },
+          "children": [
+            {
+              "id": "intro.text",
+              "_type": "ui.Component",
+              "_label": "Вступительный текст",
+              "_semantics": "Текстовый блок, показывающий смысл текущего шага.",
+              "type": "richTextComponent",
+              "props": {
+                "html": "<h1>Authoring V2</h1><p>Минимальный экран для проверки редактора.</p>"
+              }
+            },
+            {
+              "id": "intro.accept",
+              "_type": "ui.Component",
+              "_label": "Кнопка решения",
+              "_semantics": "Кнопка вызывает игровое действие choice.accept.",
+              "type": "buttonComponent",
+              "props": {
+                "caption": "Принять решение",
+                "variant": "action"
+              },
+              "actions": {
+                "onClick": {
+                  "command": "requestServer",
+                  "payload": {
+                    "actionId": "choice.accept"
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

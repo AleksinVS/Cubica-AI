@@ -20,6 +20,15 @@
     "incremental": true,
     "baseUrl": ".",
     "paths": {
+      "@cubica/antarctica-player-plugin": [
+        "../../games/antarctica/plugins/antarctica-player/src/index.ts"
+      ],
+      "@cubica/antarctica-player-plugin/*": [
+        "../../games/antarctica/plugins/antarctica-player/src/*"
+      ],
+      "@cubica/player-web/plugin-api": [
+        "./src/plugins/player-plugin-api.ts"
+      ],
       "@/*": [
         "./src/*"
       ]

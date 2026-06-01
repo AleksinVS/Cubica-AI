@@ -102,7 +102,7 @@ export function JournalRenderer({
         backText: texts.backText,
         metricsBefore: (entry as Record<string, unknown>).metricsBefore as MetricsSnapshot | undefined,
         metricsAfter: (entry as Record<string, unknown>).metricsAfter as MetricsSnapshot | undefined,
-        metricDeltas: (entry as Record<string, unknown>).metricDeltas as Array<{ metricId: string; delta: number }> | undefined,
+        metricChanges: (entry as Record<string, unknown>).metricChanges as Array<{ metricId: string; delta: number }> | undefined,
         at: entry.at ?? ""
       };
     })

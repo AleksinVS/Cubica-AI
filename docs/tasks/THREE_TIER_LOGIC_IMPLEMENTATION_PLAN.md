@@ -1,6 +1,18 @@
 # План реализации Трехуровневой Логической Модели (Ladder of Power)
 
-Этот документ описывает шаги по внедрению модели логики, зафиксированной в ADR-029, включая Action Templates, JsonLogic и User Scripts.
+Этот документ описывает исторический план внедрения модели логики, зафиксированной в ADR-029, включая Action Templates, JsonLogic и расширяемые эффекты.
+
+## Оглавление
+
+- [Статус](#статус)
+- [Фаза 1: Завершение внедрения Tier 1 (Action Templates)](#фаза-1-завершение-внедрения-tier-1-action-templates)
+- [Фаза 2: Реализация Tier 2 (Bounded Logic / JsonLogic)](#фаза-2-реализация-tier-2-bounded-logic--jsonlogic)
+- [Фаза 3: Стандартизация Tier 3 (Declarative Effects)](#фаза-3-стандартизация-tier-3-declarative-effects)
+- [Фаза 4: Обновление документации и верификация](#фаза-4-обновление-документации-и-верификация)
+
+## Статус
+
+Этот план частично устарел после ADR-040. Новая серверная механика по умолчанию должна идти через манифест, JSON Schema и общие platform capabilities. `handlerType: "script"` не является целевым способом добавления логики; доверенные runtime-плагины допускаются только отдельным решением, отдельным процессом и JSON-протоколом.
 
 ## Фаза 1: Завершение внедрения Tier 1 (Action Templates)
 **Цель:** Обеспечить 5-кратное сокращение размера манифеста Antarctica.
@@ -20,20 +32,21 @@
 2.  **Runtime-API Updates**:
     *   Добавление поддержки ключа `jsonLogic` в `deterministicHandlers.ts` для полей:
         *   `guard` (сложные условия).
-        *   `metricDeltas` (динамические значения).
-        *   `stateUpdate` (вычисляемые состояния).
+        *   ``metric.add`` (динамические значения).
+        *   `effects[]` (проверяемые изменения состояния).
 3.  **Contracts & Schema**:
     *   Обновление `@cubica/contracts-manifest` для поддержки типа `JsonLogicExpression`.
     *   Обновление JSON-схемы для валидации древовидных структур логики.
 
-## Фаза 3: Стандартизация Tier 3 (User Scripts)
-**Цель:** Обеспечить безопасный "последний рубеж" для сложной логики.
+## Фаза 3: Стандартизация Tier 3 (Declarative Effects)
+**Цель:** Обеспечить проверяемый "последний рубеж" для сложной логики без произвольного кода в манифесте.
 
-1.  **Sandbox Capability Routing**:
-    *   Уточнение интерфейса между `runtime-api` и `isolated-vm` (ADR-010).
-    *   Добавление явной регистрации "разрешенных" функций скриптов в манифесте.
+1.  **Capability Routing**:
+    *   Описывать сложные действия через schema-defined `effects[]`, guard и ограниченные state paths.
+    *   Не использовать `node:vm`, `worker_threads` или `isolated-vm` как защитную границу для чужого кода.
 2.  **Antarctica Legacy Migration**:
-    *   Перенос оставшейся сложной логики (если такая останется после внедрения JsonLogic) в изолированные скрипты под `handlerType: "script"`.
+    *   Бывшие легкие UI/runtime script actions уже перенесены в `manifest-data` + `effects[]`.
+    *   Если позже потребуется серверный код, он должен идти через ADR-040 как доверенный runtime-плагин с отдельным процессом, владельцем, тестами и путем миграции.
 
 ## Фаза 4: Обновление документации и верификация
 **Цель:** Синхронизировать документацию с новой реальностью и подтвердить стабильность.
@@ -41,7 +54,7 @@
 1.  **Project Overview Update**:
     *   Отразить "Ladder of Power" в `PROJECT_OVERVIEW.md` как основной стандарт разработки.
 2.  **Authoring Guidelines**:
-    *   Создать `docs/architecture/GAME_AUTHORING_GUIDE.md` с примерами, когда использовать Templates, когда JsonLogic, а когда Scripts.
+    *   Создать `docs/architecture/GAME_AUTHORING_GUIDE.md` с примерами, когда использовать templates, когда JsonLogic, а когда schema-defined effects.
 3.  **Roadmap Alignment**:
     *   Обновить `NEXT_STEPS.md`, включив этапы внедрения JsonLogic.
 4.  **Verification**:

@@ -24,6 +24,7 @@
 2. Runtime может поддерживать bounded mechanics без преждевременной генерализации.
    - Специфические механики (Threshold-based progression, metric-gated outcomes, bounded line switching, locked-card unlock) допустимы как локальные manifest semantics для конкретных игр.
    - Generic workflow engine, selector DSL, rule interpreter или branch router не вводятся, пока не появится повторяющийся межсрезовый или межигровой use case.
+   - 2026-05-30 уточнение: ADR-040 вводит небольшой декларативный псевдоязык механик как развитие уже существующих templates, guards, JsonLogic, metric deltas и state patches. Это не отменяет запрет на большой workflow engine и не разрешает game-specific ветки в `runtime-api`.
 3. Player-visible gating и progress должны быть auditable.
    - Всё, что нужно UI и player-facing delivery для показа доступности, прогресса или выбранного состояния, должно проецироваться в явный deterministic state, как правило в `state.public`.
    - Hidden runtime bookkeeping допустим только для того, что не является player-visible behavior boundary.

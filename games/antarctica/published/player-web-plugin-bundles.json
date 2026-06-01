@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../docs/architecture/schemas/player-web-plugin-bundles.schema.json",
+  "schemaVersion": "1.0",
+  "bundles": [
+    {
+      "pluginId": "antarctica-player",
+      "gameId": "antarctica",
+      "apiVersion": "1.0",
+      "target": "player-web",
+      "scope": "published",
+      "contentHash": "37d2ac99bd033b21a09ba2640b2be3f75dd9e96617c83c7a9e9ace1b134a27e9",
+      "integrity": "sha256-N9Ksmb0DOyGgm6JkCyvj913Z6WYXyDx6nprOGxNKJ+k=",
+      "filePath": "published/antarctica-player.37d2ac99bd033b21a09ba2640b2be3f75dd9e96617c83c7a9e9ace1b134a27e9.mjs",
+      "url": "/published-plugin-bundles/antarctica/antarctica-player/37d2ac99bd033b21a09ba2640b2be3f75dd9e96617c83c7a9e9ace1b134a27e9.mjs"
+    }
+  ]
+}

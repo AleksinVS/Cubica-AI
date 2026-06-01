@@ -1,3 +1,4 @@
 {
-  ".": "Переиспользуемые платформенные пакеты (contracts)\\n"
+  ".": "Переиспользуемые платформенные пакеты (contracts)\\n",
+  "editor-engine": "Framework-agnostic editor engine for ADR-034 authoring manifest editing: DocumentStore, graph projection, reverse projection and diagnostics helpers."
 }

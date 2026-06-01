@@ -9,6 +9,44 @@
       "description": "Semantic type name used by authoring instances. It explains the node intent and resolves through a local definition.",
       "pattern": "^[a-z][a-zA-Z0-9]*(\\.[A-Z][a-zA-Z0-9]*)+$"
     },
+    "entityId": {
+      "type": "string",
+      "description": "Stable ASCII-first identifier used for references, JSON Pointer mapping and generated runtime maps.",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$"
+    },
+    "editorLabel": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable editor name for a semantic entity. Cyrillic labels are allowed and expected for Russian authoring."
+    },
+    "semanticDescription": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Plain-language explanation of what this entity means in game logic or UI."
+    },
+    "semanticEntity": {
+      "type": "object",
+      "description": "Base metadata for a real authoring entity shown by the editor entity tree. The authoring JSON remains the source of truth; this metadata must not leak into generated runtime manifests.",
+      "required": [
+        "_type",
+        "_label"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/entityId"
+        },
+        "_type": {
+          "$ref": "#/definitions/semanticType"
+        },
+        "_label": {
+          "$ref": "#/definitions/editorLabel"
+        },
+        "_semantics": {
+          "$ref": "#/definitions/semanticDescription"
+        }
+      },
+      "additionalProperties": true
+    },
     "authoringDefinition": {
       "type": "object",
       "description": "Reusable authoring prototype. _semantics is required so people and agents can understand why this definition exists.",
@@ -21,9 +59,11 @@
           "description": "Optional inheritance edge to another authoring definition."
         },
         "_semantics": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Plain-language meaning of this reusable definition."
+          "$ref": "#/definitions/semanticDescription"
+        },
+        "_label": {
+          "$ref": "#/definitions/editorLabel",
+          "description": "Optional editor-facing name for a reusable prototype. Real entity labels belong on root-owned entities."
         }
       },
       "additionalProperties": true

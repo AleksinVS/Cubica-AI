@@ -19,8 +19,11 @@
 - `games/antarctica/game.manifest.json` уже покрывает bounded gameplay slice records до terminal `i21`; архитектурное правило для этих механик закреплено в ADR-024, а step-specific delivery details вынесены в `docs/architecture/gameplay-slices/`.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для Antarctica mechanics migration; это состояние миграции, а не новое архитектурное решение, и это не canonical runtime source of truth.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита и owner загрузки игрового контента для runtime/player delivery (ADR-019).
-- `apps/player-web/` - канонический web delivery layer, который потребляет player-facing content API/DTO и рендерит игры из session snapshot + manifest content projection, а не из repo files напрямую (ADR-019). Для простых игр используется default config builder из `PlayerFacingContent.ui`; для сложных игр сохраняется plugin layer.
+- `apps/player-web/` - канонический web delivery layer, который потребляет player-facing content API/DTO и рендерит игры из session snapshot + manifest content projection, а не из repo files напрямую (ADR-019). Для простых игр используется default config builder из `PlayerFacingContent.ui`; для сложных игр сохраняется plugin layer. В editor preview mode player-web может отдавать generic runtime pointer metadata через `postMessage`, не импортирует `editor-engine` и не хранит authoring/editor state. ADR-037 меняет целевой plugin home: пользовательские плагины должны жить в `games/<gameId>/plugins/<pluginId>/`; Antarctica уже перенесена в `games/antarctica/plugins/antarctica-player`. Local preview loads session-scoped plugin bundles through `PlayerFacingContent.pluginBundles`; non-preview mode loads only published bundle references generated under `games/<gameId>/published/`.
 - `packages/contracts/*` - общий contracts layer.
+- `packages/editor-engine/` - framework-agnostic core первого полного authoring editor slice: DocumentStore, JSON Pointer/JSON Patch helpers, text location map, schema registry, graph/tree projections, `TreeViewModelBuilder`, semantic entity tree projection, renderer-neutral preview descriptors, manifest chronology timeline, preview playthrough trace model, diagnostics и reverse projection (ADR-034/ADR-036). Phase 1A добавила authoring v2 schemas, `_label` как поле "Синоним" and minimal compiler fixtures; Phase 1B migrated current authoring manifests to v2; preview hit-test/highlight contracts stay renderer-neutral.
+- `apps/editor-web/` - текущий Next.js authoring editor surface: preview-first shell with central preview workspace, iframe preview message bridge, preview selection overlay/object picker/region prompt baseline, collapsible manifest entity tree/graph rail, advanced JSON tree toggle, Monaco JSON editor rail, floating property panel, session-backed authoring file workflow, layout persistence и validate/compile/preview actions; это editor surface, а не runtime/player delivery layer. Phase 8 baseline added automatic active-file JSON ChangeSet apply from preview AI prompts, dry-run validation, undo/redo journal and diff summary. Phase 9 now opens Git worktree sessions for file/layout reads and Save commits; validate/compile run from the session worktree when `sessionId` is present, local preview registers an allowlisted session worktree as runtime-api/player-web `contentSourceId`, and Playwright covers the three-service session preview path. JSON Tree mode реализован в `TSK-20260522-editor-engine-json-tree-view`; structural tree operations пока отложены.
+- `docs/architecture/runtime-mechanics-language.md` - проектное описание минимального декларативного псевдоязыка механик: action, guard/when, effects, state paths, журнал и правила расширения `runtime-api` без веток под конкретную игру.
 - `draft/cubica-portal-nextjs/` - current portal draft for test launch analysis; портал должен стать launch surface для покупок, ссылок и игровых сессий, но не runtime source of truth (ADR-032).
 - `draft/*` и импортированные portal/player drafts - reference only, а не canonical runtime/architecture sources.
 
@@ -67,6 +70,8 @@ Target backend layer still describes a set of independent services (each in `ser
 
 - **Game Editor** (`services/game-editor/`) — редактор игр и сценариев.
   - Позволяет редактировать сценарии и манифесты (JSON) и публиковать их в репозиторий.
+  - Первый полный `editor-engine` slice реализован вне service folder: `packages/editor-engine` содержит framework-agnostic core, а `apps/editor-web` содержит Next.js authoring editor surface.
+  - Архитектурное правило ADR-034 сохраняется: flow-chart и JSON tree view являются проекциями authoring JSON, Monaco/JSON editor и property panel работают через единый DocumentStore, а visual edits возвращаются в authoring JSON через JSON Patch или в отдельный layout target для editor-only операций.
 - **Game Repository** (`services/game-repository/`) — авторитетное хранилище игровых манифестов и ассетов.
   - На ранних этапах использует файловое хранилище (`data/fixtures/`), в будущем — полноценный сервис с API по спецификации `docs/architecture/repository-openapi.yaml`.
 - **Game Catalog** (`services/game-catalog/`) — каталог опубликованных игр.
@@ -75,10 +80,10 @@ Target backend layer still describes a set of independent services (each in `ser
   - Принимает запросы от клиентов, управляет сессиями и пересылает действия в Game Engine, а также читает данные из Game Repository.
   - **Мультиплеер (ADR-011):** Поддерживает несколько игроков в одной сессии через Event Queue и бродкастинг обновлений.
 - **Game Engine** (`services/game-engine/`) — слой интеграции с LLM и выполнения скриптов.
-  - **Гибридная композиция (ADR-015):**
-    - **Engine Extensions (Build-time):** Компилируются с ядром, отвечают за системные возможности (БД, физика).
-    - **User Scripts (Runtime):** Загружаются динамически, отвечают за контент игры.
-  - **Безопасность (ADR-010):** Использует `isolated-vm` для изоляции пользовательских скриптов (Sandbox). Расширения работают в доверенной среде.
+  - **Историческая гибридная композиция (ADR-015):**
+    - **Engine Extensions (Build-time):** компилируются с ядром, отвечают за системные возможности (БД, физика).
+    - **User Scripts (Runtime):** были ранней идеей для динамической контентной логики.
+  - **Текущая граница (ADR-040):** новая серверная механика сначала выражается через манифест, JSON Schema и общие platform capabilities. `isolated-vm`, `node:vm` и `worker_threads` не считаются защитой для чужого кода; доверенные runtime-плагины требуют отдельного процесса с JSON-протоколом и отдельного ревью.
   - Возвращает структурированные дельты состояния в Router.
 - **Metadata Database** (`services/metadata-db/`) — аналитический слой.
   - Сводит события из Router, Engine и Repository для аналитики и отчетности (детально будет развиваться во Фазе 2+).
@@ -107,6 +112,7 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
   - Должен опираться на `runtime-api` как на session/action boundary и player-facing content boundary.
 - `draft/cubica-portal-nextjs/` — current portal draft from upstream `aproskur/cubica-portal-nextjs`; используется для анализа и подготовки test VPS launch with `Antarctica`.
 - `apps/portal-nextjs/` и `services/portal-backend/` — imported portal drafts for later analysis and redesign.
+- `apps/editor-web/` — current authoring editor surface for ADR-034/ADR-036. Он содержит preview-first workspace, manifest entity tree, advanced JSON tree, JSON editing через Monaco, floating property panel, preview selection overlay/object picker/region prompt baseline, repository file workflow и validate/compile/preview actions поверх `@cubica/editor-engine`.
 - `draft/Antarctica/` — legacy mechanics reference. На текущем migration этапе `draft/Antarctica/GameFull.html` остаётся фактическим extraction source для ещё не перенесённой gameplay-логики, но не считается canonical runtime truth.
 
 ### 2.3. Данные и игровые манифесты (current canonical model + historical lineage)
@@ -168,17 +174,23 @@ Execution Model определяет, как платформа обрабаты
 - Подгружает markdown‑ассеты (правила, лор, описания) по ссылкам из манифеста и подставляет их в системный промпт.
 - Собирает финальный запрос к LLM с учётом настроек контекста (`include`, размер окна истории и т.п.).
 
-**Hybrid Execution Model** (ADR-007, ADR-015):
-- Действия в манифесте могут обрабатываться LLM (`llm`) или скриптом (`script`), что позволяет совмещать творческую и детерминированную логику.
-- **User Scripts** выполняются в защищённой JS‑песочнице (`isolated-vm`) (см. ADR‑010), имеют доступ только к разрешенным API, например, получают копию состояния и аргументы действия и возвращают дельту состояния.
-- **Engine Extensions** предоставляют нативные функции, которые могут быть вызваны из скриптов (Bridge), обеспечивая доступ к тяжелым вычислениям или внешним системам.
-- Такое разделение ("Слоеный пирог") обеспечивает баланс между безопасностью контента и мощностью движка.
+**Hybrid Execution Model** (ADR-007, ADR-015, updated by ADR-040):
+- Исторически действия в манифесте могли обрабатываться LLM (`llm`) или скриптом (`script`).
+- Текущий runtime-api путь для новой детерминированной механики - `manifest-data`: guard, metric deltas, state patches and schema-defined `effects[]`.
+- **User Scripts** больше не считаются безопасным путем по умолчанию. Если нужен доверенный runtime-плагин, он должен запускаться отдельным процессом, принимать JSON-вход и возвращать JSON-патч, эффект или событие. Runtime-api проверяет результат и применяет его сам.
+- **Engine Extensions** остаются будущей доверенной моделью для тяжелых вычислений или внешних систем, но не заменяют manifest/platform capabilities.
 
 **Antarctica bounded manifest-driven gameplay mechanics** (ADR-024):
 - Antarctica gameplay migration uses explicit manifest actions, explicit follow-up paths, and deterministic bounded state instead of a generic workflow engine.
 - Threshold progression, metric-gated outcomes, bounded line switching, locked-card unlock, and entry-time alt-card swap are allowed as local manifest mechanics without introducing a platform-wide DSL.
 - Player-visible availability and progress must stay auditable through explicit deterministic state, typically in `state.public`.
 - Delivery-specific step-, board-, and card-level rules live in Gameplay Slice Records under `docs/architecture/gameplay-slices/`, not in ADRs.
+
+**Runtime mechanics language** (ADR-029, ADR-040):
+- Новая серверная механика сначала должна выражаться через manifest templates, guards, JsonLogic, JSON Patch-like effects, metrics, flags, timeline transitions and log entries.
+- Этот псевдоязык остается маленьким JSON-форматом для типовых правил; он не должен превращаться в большой workflow engine.
+- Если механика требует расширения `runtime-api`, расширение добавляется как общая platform capability with JSON Schema, not as `gameId` branch.
+- Cleanup манифеста `Antarctica`, описанный в `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/antarctica-manifest-cleanup.md`, следует этому правилу: привязанные к игре family names, старые script markers и ссылка на runtime-script заглушку закрыты через manifest/platform capabilities, без runtime plugin и без веток под конкретную игру.
 
 **Протокол взаимодействия с View** (ADR‑002, `docs/architecture/protocols/mvp-interaction.md`):
 - Presenter общается с клиентом через абстрактный шлюз команд (`ViewCommand` / `ViewResponse`), не завися от конкретного UI‑фреймворка.
@@ -211,11 +223,11 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-007 (Hybrid Engine):** Совмещение LLM и JS‑скриптов.
 - **ADR-008 (Versioning):** Стратегия версионирования манифестов (`schema_version`, `min_engine_version`).
 - **ADR-009 (Assets):** Централизованное управление медиа-ассетами в манифесте.
-- **ADR-010 (JS Security):** Использование `isolated-vm` для безопасного выполнения кода.
+- **ADR-010 (JS Security):** Историческое решение про `isolated-vm`; для текущего runtime-plugin направления действует уточнение ADR-040: `isolated-vm`, `node:vm` и `worker_threads` не являются защитной границей для чужого кода.
 - **ADR-011 (Multiplayer):** Free-form модель с очередью событий для поддержки нескольких игроков в сессии, явной версионностью состояния (`state_version`) и последовательностью событий (`sequence`), а также правилами обработки зависших и ошибочных событий.
 - **ADR-012 (Training Metadata):** Обучающие метаданные и методические материалы в манифесте игры.
 - **ADR-013 (Text Anchors & Manifest Split):** Текстовые якоря для синхронизации с источниками и разделение логического и UI-манифестов.
-- **ADR-015 (Extension Packs):** Архитектура пакетов расширений и гибридная модель движка (Engine Extensions + User Scripts).
+- **ADR-015 (Extension Packs):** Историческая архитектура пакетов расширений и гибридная модель движка; текущая runtime-api политика уточнена ADR-040.
 - **ADR-016 (Design Artifacts):** Дизайн-артефакты для ИИ-агентов в UI-манифесте — JSON-описания изображений с семантической разметкой и дизайн-токенами.
 - **ADR-017 (Modular Monolith Transition):** Ближайшая backend‑фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
 - **ADR-018 (JSON Manifest Truth Model):** Исполнимая логика игры закрепляется в `games/<id>/game.manifest.json`, а narrative и draft-артефакты не считаются runtime source of truth.
@@ -230,6 +242,13 @@ Execution Model определяет, как платформа обрабаты
 - **ADR-031 (Lightweight Task System):** Текущая работа планируется через `NEXT_STEPS.md`, активные `TSK-*` файлы и артефакты задач, а ADR не используется как execution tracker.
 - **ADR-032 (Portal Session Launch Boundary):** Портал управляет покупками, ссылками запуска и launch sessions, а runtime/player сохраняют владение игровым состоянием и отображением.
 - **ADR-033 (Portal Runtime Session Binding):** Портальная launch session должна явно связываться с runtime session; single-player day/month используют per-device binding, multiplayer использует shared binding, а one-time всегда ведет в одну runtime session.
+- **ADR-034 (Editor Engine For Authoring Manifest Editing):** `editor-engine` редактирует authoring-манифесты через schema-first graph projection, JSON tree view, Monaco/JSON editor, floating property panel и reverse projection в JSON Patch, не создавая второго source of truth. Текущая реализация закрывает graph/tree/text/panel; у Tree mode реализован scalar `set value`, а structural operations вынесены в follow-up.
+- **ADR-035 (Progressive Semantic Graph UX For Editor Engine):** следующий UX-срез `editor-engine` заменяет полный JSON-tree canvas на progressive semantic graph: текущая ветка раскрывается поэтапно, соседние ветки сворачиваются, узлы получают semantic roles/titles, а JSON/property panels становятся сворачиваемыми.
+- **ADR-036 (Semantic Authoring Structure And Preview-Timeline Editor):** следующий архитектурный поворот editor-engine: реальные game/UI сущности должны жить в `root` authoring-манифестов, `_definitions` остаются прототипами, `_label` хранит отображаемое имя сущности, а основным editor surface становится preview-first workspace с timeline, playthrough traces, entity tree and AI prompt overlay. Phase 1A реализовала v2 schema/fixture/compiler baseline; Phase 1B migrated current authoring manifests to v2; Phase 2/3 added renderer-neutral preview adapter contracts, a thin DOM adapter baseline and the preview-first editor shell; Phase 4 added default semantic entity tree with `_label` diagnostics; Phase 5 added manifest chronology timeline and preview trace restore planning; Phase 6/7 baseline added iframe preview descriptors, source-map pointer mapping, click/region selection overlay, object picker and AI intent queue. Phase 8 baseline added automatic active-file JSON ChangeSet apply, dry-run validation, undo/redo journal and diff summary. Phase 9 added Git worktree sessions for editor file/layout reads, Save commits, restore-commit rollback helpers, plugin boundary checks, session-aware validate/compile, allowlisted local session-aware runtime preview through `contentSourceId` and browser e2e for that local path.
+- **ADR-037 (Project-Local Plugins And Marketplace-Safe Evolution):** user-editable plugins move to project-local `games/<gameId>/plugins/<pluginId>/`; first implementation supports trusted local player-web plugins with schema/typecheck/build/test validation, no npm dependencies, hot preview reload and Antarctica migration to `games/antarctica/plugins/antarctica-player`. Marketplace and first-class runtime-api plugins are reserved for later sandboxed evolution. Runtime-api plugin-like code may exist before that ADR only as documented legacy/technical debt when server-side game logic cannot be expressed otherwise.
+- **ADR-038 (Testing Architecture And Policy):** тестовая архитектура строится как policy layer (слой правил, который определяет обязательные проверки) поверх текущих runners (запускателей тестов): `node:test` для backend, Vitest для TypeScript/UI packages, Playwright для browser E2E, Ajv/JSON Schema для contract validation и replay/eval contour для gameplay/LLM behavior.
+- **ADR-039 (Player-web Plugin Bundle Handoff):** local preview baseline is implemented: `editor-web` builds a session-scoped browser file for project `player-web` plugins, `runtime-api` carries only references through the preview content-source boundary, and `player-web` loads that file only in preview mode. The production model is implemented through immutable content-hash published bundles exposed through `PlayerFacingContent.pluginBundles`; `TSK-20260531-player-web-published-plugin-bundle-handoff` records that slice.
+- **ADR-040 (Runtime-api Extension Policy And Declarative Mechanics First):** новая серверная механика сначала обязана проверяться на выразимость через манифест или общую платформенную возможность; функционал под конкретную игру в общем `runtime-api` запрещен; доверенные проектные runtime-плагины запускаются отдельным процессом с JSON-протоколом и отдельным ревью; для marketplace целевой путь - контейнерная песочница или WebAssembly/WASI для чистых вычислений. Полноценный runtime-api plugin runner не реализован и зафиксирован как legacy/debt `LEGACY-0014`.
 
 
 ---
@@ -255,6 +274,8 @@ Execution Model определяет, как платформа обрабаты
 Фактическая структура репозитория описана в `PROJECT_STRUCTURE.yaml`. В контексте архитектуры важно следующее соответствие:
 
 - `services/*` — backend‑сервисы платформы (Editor, Repository, Router, Engine, Catalog, Metadata DB).
+- `apps/*` — web applications and prototypes, including canonical `apps/player-web` and current authoring editor prototype `apps/editor-web`.
+- `packages/*` — shared TypeScript packages, including contracts and the framework-agnostic `packages/editor-engine`.
 - `SDK/*` — SDK‑пакеты и вспомогательные библиотеки для клиентских приложений.
 - `draft/*` — прототипы и экспериментальные реализации (портал, плеер, legacy‑игра).
 - `data/fixtures/` и `data/mocks/` — игровые данные и моки внешних интеграций (LLM, Router).
@@ -266,25 +287,34 @@ Execution Model определяет, как платформа обрабаты
 
 - `services/runtime-api/`, `apps/player-web/`, `packages/contracts/*` и `games/antarctica/` составляют current canonical slice.
 - `games/simple-choice/` входит в canonical verification как game-agnostic fixture: он создаёт сессию, рендерится через UI manifest и выполняет deterministic action без Antarctica-specific player plugin.
+- `packages/editor-engine/` и `apps/editor-web` составляют current authoring editor implementation по ADR-034/ADR-036. Этот срез не меняет runtime/player boundary и не является источником runtime logic.
+- В authoring editor реализованы generic graph projection, semantic entity tree, advanced JSON Tree view, Monaco JSON editor, floating property panel, session-backed authoring file saving, editor-only layout persistence, session-aware validate/compile and local runtime preview baseline with browser e2e coverage, compiler/runtime validation, player preview, безопасное подмножество writable graph/tree operations через JSON Patch, renderer-neutral preview adapter protocol, thin DOM adapter baseline, iframe preview bridge, preview selection overlay/object picker/region prompt baseline, manifest chronology timeline, preview trace restore planning, automatic active-file JSON ChangeSet apply with undo/redo baseline and server-side Project Git Workspace helpers.
+- ADR-037 is the current plugin architecture boundary for this editor work: project-local plugin schema, Antarctica migration, discovery, `platform-only` dependency checks, direct typecheck diagnostics, local preview bundle handoff, player-web hot preview reload and production published bundle handoff are implemented for trusted local `player-web` plugins. Completion record for `Antarctica`: `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/antarctica-plugin-migration-closeout.md`. ADR-039 now has an implemented production/published model: publish creates immutable content-hash `player-web` plugin bundles, runtime-api exposes published bundle references in `PlayerFacingContent`, and player-web loads only published bundle references outside editor preview. Remaining plugin architecture gaps are dedicated editor UI journal rows and future marketplace/runtime hardening. ADR-040 принят как политика runtime-api extension: манифест сначала, никаких веток под конкретную игру в runtime core, trusted project runtime plugins через отдельный процесс с JSON-протоколом и отдельное ревью, container/WASI sandbox для marketplace. Cleanup манифестов `Antarctica` и `simple-choice` завершен: deterministic-изменения состояния, метрик, timeline и журнала идут через `effects[]`, а schema/runtime принимают один текущий формат deterministic-изменений. Полноценный runtime-api plugin runner зафиксирован как `LEGACY-0014`. Исполнительный record закрытия разрывов: `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/plugin-gap-closure-plan.md`.
+- Editor UX-срез по ADR-035 и `TSK-20260522-editor-engine-progressive-graph-ux` реализован и e2e-принят: raw JSON-tree graph заменен на progressive semantic graph, видимая диаграмма ограничена active branch, JSON/property panels могут сворачиваться. ADR-036 now has a baseline preview-first workspace shell, semantic entity tree, timeline model, preview selection overlay, automatic AI JSON ChangeSet apply, Project Git Workspace file workflow, session-aware validate/compile, local runtime preview content sources and local player plugin bundle preview; next architectural gap is full rollback UI, production/remote generated bundle handoff policy, plugin test runner policy and richer playthrough rollback UI.
 - `draft/cubica-portal-nextjs/` является текущим portal draft для следующего стратегического шага: test VPS launch с одной игрой `Antarctica`. Он не должен становиться источником исполнимой игровой логики.
 - В этом canonical slice bounded gameplay records `GSR-020`..`GSR-029` уже реализованы и доводят opening flow до terminal `i21`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
 - `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.
-- Future games should be added through `games/*`, `packages/contracts/*` and `runtime-api`, not by extending old draft paths.
+- Future games should be added through `games/*`, `packages/contracts/*` and `runtime-api`, not by extending old draft paths. Новые серверные механики должны проходить через `docs/architecture/runtime-mechanics-language.md` and ADR-040 before runtime code is added.
 
 ---
 
 ## 5. Тестирование, наблюдаемость и эксплуатация
 
-Текущая стратегия тестирования задаёт целевой уровень качества для развёртывания сервисов и SDK. Фактическое покрытие ограничено, но ориентиры следующие:
+Текущая стратегия тестирования задаёт целевой уровень качества для развёртывания сервисов, SDK и игровых пакетов. Детальная политика зафиксирована в `docs/architecture/testing-strategy.md`, а архитектурный выбор — в ADR-038.
 
+Основной подход: сохранить текущие runners (запускатели тестов) по зонам ответственности и добавить единый policy layer (слой правил, который определяет обязательные проверки) поверх них.
+
+- **Static/governance checks** — проверка типов, generated drift, legacy/stub registers, game-agnostic invariants и JSON Schema как source of truth.
 - **Unit‑тесты** — проверка бизнес‑логики, валидации данных и вспомогательных утилит.
-- **Интеграционные тесты** — проверка согласованности контрактов между сервисами и SDK.
-- **Нагрузочные тесты** — сценарии для Router и Engine.
-- **End‑to‑End‑тесты** — сценарии уровня пользователя через веб‑плеер (Next.js) и SDK.
+- **Contract‑тесты** — проверка DTO (Data Transfer Object, объект передачи данных между слоями), manifests, schemas и compiler output между слоями.
+- **Интеграционные тесты** — проверка согласованности публичных границ между сервисами, SDK и adapters.
+- **Component‑тесты** — проверка поведения React‑компонентов через пользовательские роли, текст и доступные состояния.
+- **End‑to‑End‑тесты** — сценарии уровня пользователя через Playwright, runtime-api, player-web и editor-web.
+- **Replay/eval‑тесты** — будущий контур для gameplay/LLM behavior, где replay означает повтор записанного сценария, а eval — оценочный тест качества ответа или состояния.
 
-Детальная стратегия тестирования LLM‑игр (включая snapshot/semantic‑подходы и replay LLM‑ответов) должна оформляться через отдельный архитектурный документ и активную рабочую задачу в `docs/tasks/active/`.
+Live LLM, реальные платежи и внешние сети не входят в быстрый PR-гейт; они проверяются через replay, моки, test VPS или отдельные release/nightly checks.
 
 **Наблюдаемость и эксплуатация:**
 

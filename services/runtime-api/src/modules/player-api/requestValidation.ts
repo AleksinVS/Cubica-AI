@@ -7,6 +7,7 @@ const isRecord = (value: unknown): value is JsonRecord =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
 const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const SAFE_CONTENT_SOURCE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$/u;
 
 const assertRecord: (value: unknown, path: string) => asserts value is JsonRecord = (value, path) => {
   if (!isRecord(value)) {
@@ -26,6 +27,12 @@ const assertOptionalString: (value: unknown, path: string) => void = (value, pat
   }
 };
 
+export const assertContentSourceId: (value: unknown, path: string) => asserts value is string = (value, path) => {
+  if (typeof value !== "string" || !SAFE_CONTENT_SOURCE_ID_PATTERN.test(value)) {
+    throw new RequestValidationError(`${path} must match ${SAFE_CONTENT_SOURCE_ID_PATTERN}`);
+  }
+};
+
 const assertRequiredString: (value: unknown, path: string) => asserts value is string = (value, path) => {
   if (typeof value !== "string" || !value.trim()) {
     throw new RequestValidationError(`${path} is required and must be a non-empty string`);
@@ -42,6 +49,9 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
     assertGameId(body.gameId, "gameId");
   }
   assertOptionalString(body.playerId, "playerId");
+  if (body.contentSourceId !== undefined) {
+    assertContentSourceId(body.contentSourceId, "contentSourceId");
+  }
 
   return body as CreateSessionRequest;
 };

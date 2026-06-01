@@ -10,12 +10,14 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
+const { createHash } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
 const Ajv = require("ajv");
+const { compileAuthoringFile, validateRuntimeManifest } = require("../manifest-tools/authoring-compiler.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
-const authoringOnlyKeys = new Set(["_type", "_extends", "_definitions", "_semantics", "_schemaVersion", "_manifestType", "_channel", "_source_trace"]);
+const authoringOnlyKeys = new Set(["_type", "_extends", "_label", "_definitions", "_semantics", "_schemaVersion", "_manifestType", "_channel", "_source_trace"]);
 
 function fail(message) {
   console.error(`validate-manifest-authoring: ${message}`);
@@ -87,13 +89,19 @@ function buildAjv() {
     "manifest-authoring-common.schema.json",
     "game-authoring.schema.json",
     "ui-authoring.schema.json",
+    "game-authoring-v2.schema.json",
+    "ui-authoring-v2.schema.json",
     "manifest-source-map.schema.json",
     "game-manifest.schema.json",
-    "ui-manifest.schema.json"
+    "ui-manifest.schema.json",
+    "plugin.schema.json",
+    "player-web-plugin-bundles.schema.json"
   ]) {
     const schema = readJson(`docs/architecture/schemas/${schemaFile}`);
     if (schemaFile === "game-manifest.schema.json") {
       ajv.addSchema(schema, "https://cubica.platform/schemas/game-manifest.schema.json");
+    } else if (schemaFile === "player-web-plugin-bundles.schema.json") {
+      ajv.addSchema(schema, "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json");
     } else {
       ajv.addSchema(schema);
     }
@@ -103,6 +111,26 @@ function buildAjv() {
 
 function formatErrors(errors) {
   return (errors || []).map((error) => `${error.instancePath || "/"} ${error.message}`).join("; ");
+}
+
+function authoringSchemaId(kind, authoring) {
+  if (authoring._schemaVersion !== "2.0") {
+    fail(`authoring manifests must use _schemaVersion "2.0"; found "${authoring._schemaVersion || "<missing>"}"`);
+  }
+  if (kind === "game") {
+    return "https://cubica.platform/schemas/game-authoring.v2.json";
+  }
+  return "https://cubica.platform/schemas/ui-authoring.v2.json";
+}
+
+function validateJsonData(ajv, schemaId, data, filePath) {
+  const validate = ajv.getSchema(schemaId);
+  if (!validate) {
+    fail(`schema is not registered: ${schemaId}`);
+  }
+  if (!validate(data)) {
+    fail(`${relative(filePath)} failed schema validation: ${formatErrors(validate.errors)}`);
+  }
 }
 
 function validateJsonFile(ajv, schemaId, filePath) {
@@ -116,19 +144,59 @@ function validateJsonFile(ajv, schemaId, filePath) {
   }
 }
 
+function validateAuthoringFile(ajv, kind, filePath) {
+  const data = JSON.parse(fs.readFileSync(filePath, "utf8"));
+  validateJsonData(ajv, authoringSchemaId(kind, data), data, filePath);
+}
+
 function validateAuthoringInputs(ajv) {
   const gameAuthoringFiles = collectFiles(path.join(repoRoot, "games"), (filePath) => filePath.endsWith("/authoring/game.authoring.json"));
   const uiAuthoringFiles = collectFiles(path.join(repoRoot, "games"), (filePath) => /\/authoring\/ui\/[^/]+\.authoring\.json$/.test(filePath));
 
   for (const filePath of gameAuthoringFiles) {
-    validateJsonFile(ajv, "https://cubica.platform/schemas/game-authoring.v1.json", filePath);
+    validateAuthoringFile(ajv, "game", filePath);
   }
   for (const filePath of uiAuthoringFiles) {
-    validateJsonFile(ajv, "https://cubica.platform/schemas/ui-authoring.v1.json", filePath);
+    validateAuthoringFile(ajv, "ui", filePath);
   }
 
   if (gameAuthoringFiles.length === 0 && uiAuthoringFiles.length === 0) {
     fail("no authoring manifests found; ADR-030 pilot must keep at least one adopted game/UI pair");
+  }
+}
+
+function validateAuthoringV2Examples(ajv) {
+  const examplesRoot = path.join(repoRoot, "docs", "architecture", "schemas", "examples", "authoring-v2");
+  const examples = [
+    {
+      kind: "game",
+      sourceFile: path.join(examplesRoot, "minimal-game.authoring.json"),
+      outputFile: path.join(repoRoot, ".tmp", "authoring-v2-fixture", "game.manifest.json"),
+      sourceMapFile: path.join(repoRoot, ".tmp", "authoring-v2-fixture", "game.manifest.source-map.json")
+    },
+    {
+      kind: "ui",
+      sourceFile: path.join(examplesRoot, "minimal-ui.authoring.json"),
+      outputFile: path.join(repoRoot, ".tmp", "authoring-v2-fixture", "ui", "web", "ui.manifest.json"),
+      sourceMapFile: path.join(repoRoot, ".tmp", "authoring-v2-fixture", "ui", "web", "ui.manifest.source-map.json")
+    }
+  ];
+
+  for (const job of examples) {
+    if (!fs.existsSync(job.sourceFile)) {
+      fail(`missing authoring v2 example: ${relative(job.sourceFile)}`);
+    }
+    const output = compileAuthoringFile(job, ajv);
+    const runtimeValidation = validateRuntimeManifest(job, output.manifest, ajv);
+    if (!runtimeValidation.valid) {
+      fail(
+        `${relative(job.sourceFile)} compiled to invalid runtime manifest: ${runtimeValidation.errors
+          .map((error) => `${error.pointer || "/"} ${error.message}`)
+          .join("; ")}`
+      );
+    }
+    validateJsonData(ajv, "https://cubica.platform/schemas/manifest-source-map.v1.json", output.sourceMap, job.sourceMapFile);
+    scanForAuthoringKeys(output.manifest, job.outputFile);
   }
 }
 
@@ -189,6 +257,69 @@ function validateGeneratedOutputs(ajv) {
     validateJsonFile(ajv, schemaId, file.manifest);
     validateJsonFile(ajv, "https://cubica.platform/schemas/manifest-source-map.v1.json", file.sourceMap);
     scanForAuthoringKeys(JSON.parse(fs.readFileSync(file.manifest, "utf8")), file.manifest);
+  }
+}
+
+function validatePluginManifests(ajv) {
+  const schemaId = "https://cubica.platform/schemas/plugin.schema.json";
+  const pluginManifests = [
+    ...collectFiles(path.join(repoRoot, "games"), (filePath) => /\/plugins\/[^/]+\/plugin\.json$/.test(filePath)),
+    ...collectFiles(path.join(schemasRoot, "examples", "plugin"), (filePath) => filePath.endsWith(".plugin.json"))
+  ];
+
+  for (const filePath of pluginManifests) {
+    validateJsonFile(ajv, schemaId, filePath);
+    const plugin = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    if (plugin.dependenciesPolicy === "platform-only") {
+      validatePlatformOnlyPluginPackage(filePath);
+    }
+  }
+}
+
+function validatePublishedPlayerWebPluginBundles(ajv) {
+  const schemaId = "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json";
+  const metadataFiles = collectFiles(path.join(repoRoot, "games"), (filePath) => /\/published\/player-web-plugin-bundles\.json$/.test(filePath));
+  for (const filePath of metadataFiles) {
+    validateJsonFile(ajv, schemaId, filePath);
+    const gameRoot = path.dirname(path.dirname(filePath));
+    const gameId = path.basename(gameRoot);
+    const metadata = JSON.parse(fs.readFileSync(filePath, "utf8"));
+    for (const bundle of metadata.bundles || []) {
+      if (bundle.gameId !== gameId) {
+        fail(`${relative(filePath)} bundle gameId must match ${gameId}`);
+      }
+      const bundlePath = path.resolve(gameRoot, bundle.filePath);
+      if (bundlePath === gameRoot || !bundlePath.startsWith(`${gameRoot}${path.sep}`)) {
+        fail(`${relative(filePath)} bundle filePath must stay inside the game root`);
+      }
+      if (!fs.existsSync(bundlePath)) {
+        fail(`${relative(filePath)} points to missing bundle ${bundle.filePath}`);
+      }
+      const bytes = fs.readFileSync(bundlePath);
+      const contentHash = createHash("sha256").update(bytes).digest("hex");
+      const integrity = `sha256-${createHash("sha256").update(bytes).digest("base64")}`;
+      if (contentHash !== bundle.contentHash) {
+        fail(`${relative(bundlePath)} contentHash does not match metadata`);
+      }
+      if (integrity !== bundle.integrity) {
+        fail(`${relative(bundlePath)} integrity does not match metadata`);
+      }
+    }
+  }
+}
+
+function validatePlatformOnlyPluginPackage(pluginManifestPath) {
+  const pluginRoot = path.dirname(pluginManifestPath);
+  const packagePath = path.join(pluginRoot, "package.json");
+  if (!fs.existsSync(packagePath)) {
+    return;
+  }
+
+  const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+  for (const field of ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"]) {
+    if (packageJson[field] && Object.keys(packageJson[field]).length > 0) {
+      fail(`${relative(packagePath)} must not declare ${field} while plugin dependenciesPolicy is platform-only`);
+    }
   }
 }
 
@@ -284,10 +415,28 @@ function validateCompilerDrift() {
   }
 }
 
+function validatePublishedPluginBundleDrift() {
+  try {
+    execFileSync(
+      process.execPath,
+      [path.join(repoRoot, "scripts", "manifest-tools", "build-player-web-plugin-bundles.cjs"), "--check", "--quiet"],
+      { cwd: repoRoot, stdio: "pipe" }
+    );
+  } catch (error) {
+    const stderr = error.stderr ? String(error.stderr).trim() : "";
+    const stdout = error.stdout ? String(error.stdout).trim() : "";
+    fail([stderr, stdout].filter(Boolean).join("\n") || error.message);
+  }
+}
+
 function main() {
   const ajv = buildAjv();
   validateAuthoringInputs(ajv);
+  validateAuthoringV2Examples(ajv);
+  validatePluginManifests(ajv);
+  validatePublishedPlayerWebPluginBundles(ajv);
   validateCompilerDrift();
+  validatePublishedPluginBundleDrift();
   validateGeneratedOutputs(ajv);
   validateSourceMapPointers();
   validateDanglingActionReferences();

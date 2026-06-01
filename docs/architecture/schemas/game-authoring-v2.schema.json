@@ -1,0 +1,283 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/game-authoring.v2.json",
+  "title": "Cubica Game Authoring Manifest V2",
+  "description": "Editable v2 source format for game authoring manifests. V2 stores real game entities under root and keeps _definitions as reusable prototypes only.",
+  "type": "object",
+  "required": [
+    "_schemaVersion",
+    "_manifestType",
+    "_definitions",
+    "root"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "_schemaVersion": {
+      "const": "2.0"
+    },
+    "_manifestType": {
+      "const": "game"
+    },
+    "_definitions": {
+      "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/definitionsMap"
+    },
+    "root": {
+      "$ref": "#/definitions/gameRoot"
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "gameRoot": {
+      "allOf": [
+        {
+          "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "meta",
+            "config",
+            "logic",
+            "state"
+          ],
+          "properties": {
+            "meta": {
+              "$ref": "#/definitions/gameMeta"
+            },
+            "config": {
+              "type": "object",
+              "description": "Runtime-facing player and locale settings compiled as game manifest config."
+            },
+            "engine": {
+              "type": "object",
+              "description": "Runtime-facing engine configuration compiled as game manifest engine."
+            },
+            "logic": {
+              "$ref": "#/definitions/gameLogic"
+            },
+            "state": {
+              "type": "object",
+              "required": [
+                "public"
+              ],
+              "properties": {
+                "public": {
+                  "type": "object"
+                },
+                "secret": {
+                  "type": "object"
+                }
+              },
+              "additionalProperties": false
+            },
+            "content": {
+              "type": "object",
+              "description": "Runtime-facing content references compiled as game manifest content.",
+              "additionalProperties": true
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "gameMeta": {
+      "type": "object",
+      "description": "Runtime-facing game metadata. Author-facing names still live in _label on semantic entities.",
+      "required": [
+        "id",
+        "version",
+        "name",
+        "description",
+        "schemaVersion"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
+        },
+        "version": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        },
+        "schemaVersion": {
+          "type": "string"
+        },
+        "minEngineVersion": {
+          "type": "string"
+        },
+        "training": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "gameLogic": {
+      "type": "object",
+      "description": "Authoring-only logical structure. The compiler maps actions/templates into runtime fields and keeps chronology for editor projections.",
+      "required": [
+        "actions"
+      ],
+      "properties": {
+        "entry": {
+          "type": "string"
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/gameFlow"
+          }
+        },
+        "systems": {
+          "type": "array",
+          "items": {
+            "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+          }
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+          }
+        },
+        "actions": {
+          "type": "array",
+          "description": "Authoring action entities. The compiler emits a runtime actions map keyed by action id.",
+          "items": {
+            "$ref": "#/definitions/gameAction"
+          }
+        },
+        "templates": {
+          "type": "object",
+          "description": "Optional runtime deterministic action templates.",
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "gameFlow": {
+      "allOf": [
+        {
+          "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "pattern",
+            "steps"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
+            },
+            "pattern": {
+              "type": "string",
+              "enum": [
+                "pearl-string",
+                "branching",
+                "systemic"
+              ]
+            },
+            "steps": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/gameFlowStep"
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "gameFlowStep": {
+      "allOf": [
+        {
+          "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
+            },
+            "screenId": {
+              "type": "string"
+            },
+            "actionIds": {
+              "type": "array",
+              "items": {
+                "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
+              }
+            },
+            "next": {
+              "type": "string"
+            },
+            "branches": {
+              "type": "array"
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "gameAction": {
+      "allOf": [
+        {
+          "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+        },
+        {
+          "type": "object",
+          "required": [
+            "id",
+            "handlerType"
+          ],
+          "properties": {
+            "id": {
+              "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
+            },
+            "handlerType": {
+              "type": "string"
+            },
+            "displayName": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "capability": {
+              "type": "string"
+            },
+            "capabilityFamily": {
+              "type": "string"
+            },
+            "deterministic": {
+              "type": "object"
+            },
+            "params": {
+              "type": "object"
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    }
+  }
+}

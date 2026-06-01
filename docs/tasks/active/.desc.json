@@ -11,5 +11,9 @@
   "TSK-20260521-antarctica-authoring-manifest-migration.md": "План миграции манифестов Antarctica на обязательный authoring-слой ADR-030 с сохранением runtime-поведения.",
   "TSK-20260521-antarctica-authoring-review-remediation.md": "План исправлений по результатам ревью миграции Antarctica на ADR-030: missing action, source maps и доказательная документация.",
   "TSK-20260521-game-agnostic-architecture-simplification.md": "План упрощения создания новых игр и снятия Antarctica-specific архитектурных утечек из платформенного слоя.",
-  "TSK-20260521-semantic-prototype-authoring-layer.md": "План внедрения обязательного authoring-слоя манифестов с компиляцией в runtime game/UI manifests."
+  "TSK-20260521-semantic-prototype-authoring-layer.md": "План внедрения обязательного authoring-слоя манифестов с компиляцией в runtime game/UI manifests.",
+  "TSK-20260522-editor-engine-authoring-manifest-editor.md": "План проектирования и реализации editor-engine для authoring-манифестов: graph projection, Monaco/JSON editor, floating property panel и reverse projection в JSON Patch.",
+  "TSK-20260522-editor-engine-json-tree-view.md": "План добавления JSON tree view как третьего целевого режима редактирования editor-engine рядом с flow-chart и Monaco.",
+  "TSK-20260522-editor-engine-progressive-graph-ux.md": "План следующего UX-среза editor-engine: прогрессивно раскрываемая семантическая диаграмма, разные типы узлов и сворачиваемые панели JSON/property.",
+  "TSK-20260527-editor-engine-preview-timeline-editor.md": "План архитектурного перехода editor-engine к preview-first редактору с timeline, semantic entity tree, renderer adapter и AI prompt surface."
 }

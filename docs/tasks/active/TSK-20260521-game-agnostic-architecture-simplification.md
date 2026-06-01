@@ -126,9 +126,9 @@ CI или canonical verification должны запускать минимум 
 
 ### Phase 3. Runtime Semantics Neutrality
 
-1. Разобрать поля `opening`, `card`, `teamSelection`, `team`, `boardCardUnlock`, `boardEntryAltCardSwap`, `boardThreshold` в `deterministicHandlers.ts`.
+1. Проверить, что runtime semantics описаны нейтральными guard/effect возможностями, а не полями под одну игру.
 2. Для каждого поля выбрать один путь:
-   - заменить на `stateConditions`, `statePatches`, `jsonLogic` или template params;
+   - заменить на `effects[]`, guard, JsonLogic или template params;
    - оформить как reusable named capability в schema/contracts;
    - зарегистрировать bounded legacy gap с plan removal.
 3. Убрать `any` там, где поле уже является частью manifest contract.
@@ -207,13 +207,13 @@ The final `rg` command is a review aid, not an automatic pass/fail gate. Expecte
 - Hardened `gameId` validation before local repository path resolution.
 - Added `scripts/ci/validate-game-agnostic.js` and included it in `npm run verify:canonical`.
 
-Runtime semantic field decisions:
+Runtime semantic decisions:
 
-| Field | Decision |
+| Area | Decision |
 | --- | --- |
-| `opening`, `card`, `team`, `teamSelection` guards | Registered in manifest contracts/schema as bounded reusable deterministic guard fields. |
-| `cardFlags`, `teamFlags`, `teamSelection` state updates | Registered in manifest contracts/schema as bounded reusable state update fields. |
-| `boardCardUnlock`, `boardEntryAltCardSwap`, `boardThreshold` | Kept as bounded reusable board/card deterministic state updates and typed in contracts/schema. |
+| Guard checks | Registered in manifest contracts/schema as bounded reusable deterministic guard fields. |
+| State changes | Migrated to schema-defined `effects[]`; runtime no longer carries the transitional state-update field set. |
+| Collection thresholds and branching | Expressed through generic `when` conditions plus allowed effects. |
 | `log.kind` display filtering | Replaced in generic journal by `log.entityType` and `log.displayMode`; Antarctica template now emits the neutral metadata. |
 
 Validation evidence:

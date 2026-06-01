@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   PlayerFacingContent,
+  PlayerWebPluginBundleReference,
   PlayerFacingMockup,
   GamePlayerUiContent
 } from "@cubica/contracts-manifest";
@@ -15,14 +16,17 @@ import type { ViewCommand } from "@cubica/sdk-core";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
-import { buildGameConfig } from "@/presenter/game-config-registry";
-import "@/plugins/register-games";
+import { buildGameConfig, resolveRegisteredGameConfigData } from "@/presenter/game-config-registry";
+import { loadPlayerWebPluginBundles } from "@/plugins/preview-plugin-loader";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { HintRenderer } from "@/components/panels/hint-renderer";
 import { JournalRenderer } from "@/components/panels/journal-renderer";
+import { useEditorPreviewBridge } from "@/components/editor-preview-bridge";
 
 export type { PlayerFacingMockup as GameMockup };
+
+const EMPTY_PLAYER_PLUGIN_BUNDLES: readonly PlayerWebPluginBundleReference[] = [];
 
 export type GamePlayerProps = {
   runtimeApiUrl: string;
@@ -31,6 +35,14 @@ export type GamePlayerProps = {
   gameUi?: GamePlayerUiContent;
   /** Serializable game configuration data (passed from Server Component). */
   config: GameConfigData;
+  /** Optional editor preview session created by runtime-api before opening player-web. */
+  initialSessionId?: string;
+  /** Enables metadata bridge from preview iframe back to editor-web. */
+  editorPreviewMode?: boolean;
+  /** Parent editor origin used as the target for preview postMessage calls. */
+  editorPreviewParentOrigin?: string;
+  /** Preview or published player-web plugin bundles served by runtime-api. */
+  playerPluginBundles?: readonly PlayerWebPluginBundleReference[];
 };
 
 /**
@@ -44,11 +56,37 @@ export type GamePlayerProps = {
  * а функциональные резолверы предоставляются через реестр
  * (game-config-registry) и объединяются с данными на клиенте.
  */
-export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: configData }: GamePlayerProps) {
+export function GamePlayer({
+  runtimeApiUrl,
+  content,
+  mockups,
+  gameUi,
+  config: configData,
+  initialSessionId,
+  editorPreviewMode = false,
+  editorPreviewParentOrigin,
+  playerPluginBundles = EMPTY_PLAYER_PLUGIN_BUNDLES
+}: GamePlayerProps) {
   const t = useLocale();
+  const playerPluginSignature = useMemo(
+    () => playerPluginBundles.map((bundle) => `${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`).join("|"),
+    [playerPluginBundles]
+  );
+  const [playerPluginState, setPlayerPluginState] = useState<{
+    readonly status: "loading" | "ready" | "error";
+    readonly key: string;
+    readonly message?: string;
+  }>(() => ({
+    status: playerPluginBundles.length > 0 ? "loading" : "ready",
+    key: playerPluginSignature
+  }));
+  const activeConfigData = useMemo(
+    () => resolveRegisteredGameConfigData(content, configData),
+    [content, configData, playerPluginState.key]
+  );
   const fullConfig = useMemo(
-    () => buildGameConfig(configData),
-    [configData]
+    () => buildGameConfig(activeConfigData),
+    [activeConfigData, playerPluginState.key]
   );
 
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
@@ -57,8 +95,52 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
   const [activePanel, setActivePanel] = useState<string | null>(null);
 
   const presenterRef = useRef<GamePresenter | null>(null);
+  const rootRef = useRef<HTMLElement | null>(null);
+  useEditorPreviewBridge(rootRef, {
+    enabled: editorPreviewMode,
+    parentOrigin: editorPreviewParentOrigin,
+    refreshSignal: `${screenKey ?? ""}:${layoutMode}:${activePanel ?? ""}:${playerState?.sessionId ?? ""}:${playerState?.log?.length ?? 0}`
+  });
 
   useEffect(() => {
+    if (playerPluginBundles.length === 0) {
+      setPlayerPluginState((current) =>
+        current.status === "ready" && current.key === playerPluginSignature
+          ? current
+          : { status: "ready", key: playerPluginSignature }
+      );
+      return;
+    }
+
+    let cancelled = false;
+    const allowedScopes = new Set<PlayerWebPluginBundleReference["scope"]>(editorPreviewMode ? ["preview"] : ["published"]);
+    setPlayerPluginState({ status: "loading", key: playerPluginSignature });
+    void loadPlayerWebPluginBundles({ runtimeApiUrl, bundles: playerPluginBundles, allowedScopes })
+      .then((key) => {
+        if (!cancelled) {
+          setPlayerPluginState({ status: "ready", key });
+        }
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setPlayerPluginState({
+            status: "error",
+            key: playerPluginSignature,
+            message: error instanceof Error ? error.message : "Player plugin load failed."
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [editorPreviewMode, playerPluginBundles, playerPluginSignature, runtimeApiUrl]);
+
+  useEffect(() => {
+    if (playerPluginState.status !== "ready") {
+      return;
+    }
+
     const gateway = new ReactViewGateway();
     const presenter = new GamePresenter({
       gateway,
@@ -67,6 +149,10 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
       config: fullConfig
     });
     presenterRef.current = presenter;
+
+    if (initialSessionId && typeof window !== "undefined") {
+      window.localStorage.setItem(fullConfig.storageKey, initialSessionId);
+    }
 
     const unsubscribe = gateway.subscribe((command: ViewCommand) => {
       switch (command.type) {
@@ -115,7 +201,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
       unsubscribe();
       presenterRef.current = null;
     };
-  }, [content, gameUi, fullConfig]);
+  }, [content, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
 
   const handleAction = (actionId: string, payload?: Record<string, unknown>) => {
     const presenter = presenterRef.current;
@@ -158,9 +244,17 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
 
   const state = playerState;
 
-  if (!state) {
+  if (playerPluginState.status === "error") {
     return (
-      <main className="shell game-player-root">
+      <main ref={rootRef} className="shell game-player-root">
+        <div className="error inline-error">{playerPluginState.message}</div>
+      </main>
+    );
+  }
+
+  if (!state || playerPluginState.status === "loading") {
+    return (
+      <main ref={rootRef} className="shell game-player-root">
         <div className="loading-state">
           <div className="loading-spinner" />
           <span>{t.loading}</span>
@@ -173,7 +267,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
   const log = state.log;
 
   return (
-    <main className="shell game-player-root">
+    <main ref={rootRef} className="shell game-player-root">
       {state.activePanel === "history" ? (
         <JournalRenderer
           metrics={metrics}
@@ -206,6 +300,7 @@ export function GamePlayer({ runtimeApiUrl, content, mockups, gameUi, config: co
           metricBackgroundImages={fullConfig.metricBackgroundImages}
           gameState={state as Record<string, unknown>}
           designArtifacts={gameUi?.designArtifacts}
+          editorPreviewMode={editorPreviewMode}
         />
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">

@@ -1,3 +1,4 @@
 {
-  ".": "Приложения и импортированные frontend-заготовки\\n"
+  ".": "Приложения и импортированные frontend-заготовки\\n",
+  "editor-web": "Next.js prototype for the Cubica authoring manifest editor, combining React Flow graph projection, Monaco JSON editing and a floating property panel."
 }

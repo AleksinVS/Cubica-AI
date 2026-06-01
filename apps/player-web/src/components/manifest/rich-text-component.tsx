@@ -3,6 +3,7 @@ import type {
   GameUiRichTextComponentProps
 } from "@cubica/contracts-manifest";
 import { resolveExpressions } from "@/lib/expression-resolver";
+import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
  * Рендерит richTextComponent — HTML или plain-text тело.
@@ -15,10 +16,12 @@ export function RichTextComponent({
   component,
   localContext,
   gameState,
+  previewAttributes,
 }: {
   component: GameUiComponent<GameUiRichTextComponentProps>;
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
+  previewAttributes?: PreviewElementAttributes;
 }) {
   const { html, cssClass } = component.props;
   const resolvedHtml = resolveExpressions(html, gameState ?? {}, localContext);
@@ -29,8 +32,8 @@ export function RichTextComponent({
   }
 
   if (normalized.includes("<")) {
-    return <div className={cssClass} dangerouslySetInnerHTML={{ __html: normalized }} />;
+    return <div {...previewAttributes} className={cssClass} dangerouslySetInnerHTML={{ __html: normalized }} />;
   }
 
-  return <p className={cssClass}>{normalized}</p>;
+  return <p {...previewAttributes} className={cssClass}>{normalized}</p>;
 }

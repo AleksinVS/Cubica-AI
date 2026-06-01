@@ -47,7 +47,7 @@ async function getSession(sessionId) {
   console.log("After card 2, log length:", s.state.public.log?.length ?? 0);
   console.log("Last log entry kind:", s.state.public.log?.[s.state.public.log.length - 1]?.kind);
 
-  // Advance info i7 (excludeFromLog)
+  // Advance info i7.
   await dispatch(sid, "opening.info.i7.advance");
   s = await getSession(sid);
   console.log("After info i7 advance, log length:", s.state.public.log?.length ?? 0);

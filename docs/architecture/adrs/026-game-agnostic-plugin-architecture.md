@@ -26,11 +26,11 @@ We adopt a **Game-Agnostic Plugin Architecture** built on the existing game conf
 ### 1. Type System Cleanup (Problems 3, 10)
 
 - `GameState = Record<string, unknown>` added to contracts as the generic platform state type
-- `AntarcticaGameState` moved to `plugins/antarctica/contracts.ts`
+- `AntarcticaGameState` moved to `games/antarctica/plugins/antarctica-player/src/contracts.ts`
 - `GameConfig`, `GameConfigResolvers`, `ResolverFactory` default to `GameState` — no game-specific generics in platform code
 - `PlayerState` is no longer generic — `Record<string, unknown> & { sessionId, metrics, screenKey, ... }`
 - `GamePresenter` is no longer generic
-- `game-content-resolvers.ts` split: generic utilities remain, Antarctica-specific moved to `plugins/antarctica/state-resolvers.ts`
+- `game-content-resolvers.ts` split: generic utilities remain, Antarctica-specific resolvers moved to `games/antarctica/plugins/antarctica-player/src/state-resolvers.ts`
 
 ### 2. Unified Rendering via SafeModeRenderer (Problems 1, 2)
 
@@ -96,6 +96,15 @@ We adopt a **Game-Agnostic Plugin Architecture** built on the existing game conf
 - `fallbackScreenBuilder` in plugin config adds complexity to the registration interface
 - `AntarcticaGameState` cast in `game-player.tsx` is temporary until all screens are manifest-driven
 
+## 2026-05-28 Amendment
+
+ADR-026 remains valid for the game-agnostic resolver pattern, but ADR-037 supersedes the target plugin location and lifecycle:
+
+- current `apps/player-web/src/plugins/*` is migration input, not the long-term home for user-editable plugins;
+- target user plugins live under `games/<gameId>/plugins/<pluginId>/`;
+- Antarctica plugin must migrate to `games/antarctica/plugins/antarctica-player`;
+- marketplace and runtime-api plugin targets require the sandbox-ready evolution described in ADR-037.
+
 ## Related ADRs
 
 - ADR-001: MVP and LLM-first game manifests
@@ -105,3 +114,4 @@ We adopt a **Game-Agnostic Plugin Architecture** built on the existing game conf
 - ADR-014: Viewers library architecture
 - ADR-018: Game logic source of truth is JSON manifest
 - ADR-019: Runtime-api owns content loading
+- ADR-037: Project-local plugins and marketplace-safe evolution

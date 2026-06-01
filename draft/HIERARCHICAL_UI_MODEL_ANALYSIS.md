@@ -27,7 +27,7 @@
 
 | # | Проблема | Где проявляется | Влияние на миграцию |
 |---|----------|-----------------|---------------------|
-| 1 | **FallbackRenderer жёстко привязан к Антарктике** | `fallback-renderer.tsx` — импортирует типы из `@/plugins/antarctica/contracts`, рендерит `currentBoard`, `cardFlags`, `teamFlags` напрямую | Новая игра не может использовать FallbackRenderer без переписывания |
+| 1 | **FallbackRenderer жёстко привязан к Антарктике** | `fallback-renderer.tsx` — на момент анализа импортировал типы из бывшего платформенного плагина и напрямую читал game-specific state | Новая игра не может использовать FallbackRenderer без переписывания |
 | 2 | **Два независимых рендеринг-пути** | `GamePlayer` выбирает: ManifestRenderer → FallbackRenderer → "booting" | Дублирование логики, расхождения между путями |
 | 3 | **GameState утекает в платформу** | `AntarcticaGameState` в `game-config.ts` (платформный файл) | Новая игра вынуждена модифицировать платформный код |
 | 4 | **Манифестный экшен-адаптер минимальный** | `manifest-action-adapter.ts` — всего 4 команды (`requestServer`, `showHistory`, `showHint`, `showScreenWithLeftSideBar`) | Большинство игровых действий не может пройти через манифестный путь |

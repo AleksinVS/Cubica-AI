@@ -1,0 +1,4 @@
+{
+  "summary": "Browser e2e tests for the authoring editor surface and its multi-service preview workflow.",
+  "owner": "editor-web"
+}

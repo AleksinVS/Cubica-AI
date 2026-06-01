@@ -11,11 +11,11 @@ This guide explains how to author game logic in Cubica manifests using the **Thr
   - [Parameter Substitution](#parameter-substitution)
   - [Action-Specific Overrides](#action-specific-overrides)
   - [Guard Evaluation](#guard-evaluation)
-  - [State Updates](#state-updates)
+  - [State Effects](#state-effects)
 - [Tier 2: JsonLogic Expressions](#tier-2-jsonlogic-expressions)
   - [Guard Conditions](#guard-conditions)
-  - [Computed Metric Deltas](#computed-metric-deltas)
-- [Tier 3: Script Actions](#tier-3-script-actions)
+  - [Computed Metric Changes](#computed-metric-changes)
+- [Tier 3: Declarative Effects](#tier-3-declarative-effects)
 - [Manifest Schema Reference](#manifest-schema-reference)
 
 ---
@@ -28,7 +28,7 @@ The Three-Tier Logic Model organizes game logic by complexity:
 |------|-----------|----------|----------|
 | **Tier 1** | Action Templates | Reusable deterministic patterns with per-action parameters | ~80% of actions |
 | **Tier 2** | JsonLogic | Declarative conditional expressions for guards and computed values | ~15% of actions |
-| **Tier 3** | Script Actions | Custom JavaScript for complex interactions | ~5% of actions |
+| **Tier 3** | Declarative Effects | Schema-validated UI/runtime effects for interactions that are not covered by templates alone | ~5% of actions |
 
 Each tier is strictly more powerful than the previous one. Prefer the lowest tier that satisfies your requirements.
 
@@ -54,21 +54,21 @@ Templates live in the `templates` section of the manifest (sibling to `actions`)
             "canAdvance": false
           }
         },
-        "metricDeltas": [],
-        "log": {
-          "kind": "opening-card-resolution",
-          "stageId": "stage_intro",
-          "cardId": "{{cardId}}",
-          "summary": "{{summary}}"
-        },
-        "stateUpdate": {
-          "timelineCanAdvance": false,
-          "cardFlags": {
+        "effects": [
+          { "op": "timeline.set", "canAdvance": false },
+          {
+            "op": "flag.set",
+            "path": "/public/flags/cards/{{cardId}}",
+            "values": { "selected": true, "resolved": true }
+          },
+          {
+            "op": "log.append",
+            "kind": "opening-card-resolution",
+            "stageId": "stage_intro",
             "cardId": "{{cardId}}",
-            "selected": true,
-            "resolved": true
+            "summary": "{{summary}}"
           }
-        }
+        ]
       }
     }
   }
@@ -87,8 +87,8 @@ Actions reference templates via `templateId`:
     "opening.card.1": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.1",
+      "capabilityFamily": "game.card.resolve",
+      "capability": "game.card.resolve",
       "displayName": "Select card 1",
       "description": "First card in the opening",
       "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
@@ -129,8 +129,8 @@ When an action needs fields not in the template, use `overrides.deterministic`:
     "opening.card.3": {
       "handlerType": "manifest-data",
       "templateId": "opening-card-resolution",
-      "capabilityFamily": "antarctica.opening",
-      "capability": "antarctica.opening.card.3",
+      "capabilityFamily": "game.card.resolve",
+      "capability": "game.card.resolve",
       "params": {
         "cardId": "3",
         "stepIndex": 9,
@@ -141,9 +141,9 @@ When an action needs fields not in the template, use `overrides.deterministic`:
           "guard": {
             "opening": { "selectedCardIdAbsent": true }
           },
-          "metricDeltas": [
-            { "metricId": "pro", "delta": 5 },
-            { "metricId": "rep", "delta": -2 }
+          "effects": [
+            { "op": "metric.add", "metricId": "pro", "delta": 5 },
+            { "op": "metric.add", "metricId": "rep", "delta": -2 }
           ]
         }
       }
@@ -153,8 +153,9 @@ When an action needs fields not in the template, use `overrides.deterministic`:
 ```
 
 **Merge behavior**: Action `overrides.deterministic` is deep-merged on top of the resolved template:
-- Top-level fields (`metricDeltas`, `conditionalMetricBonuses`, `conditionalLineSwitch`) replace template values
-- `guard` and `stateUpdate` are deep-merged (action fields override individual keys)
+- `guard` is deep-merged, so action fields override individual guard keys.
+- `effects[]` is concatenated in order: template effects first, then action-specific effects.
+- When a journal entry must include metric snapshots, put `metric.add` effects before `log.append` and set `auditMetrics: true` on `log.append`.
 
 ### Guard Evaluation
 
@@ -173,21 +174,19 @@ Guards are preconditions that must pass for an action to execute. The runtime ev
 
 All guard types in a single guard object must pass (logical AND).
 
-### State Updates
+### State Effects
 
-State updates modify the game state after an action executes. Common state update fields:
+State changes are expressed only through `effects[]`. The runtime validates every operation against the JSON Schema before applying it.
 
-| Field | Description |
+| Effect | Description |
 |-------|-------------|
-| `timelineCanAdvance` | Whether the timeline can advance |
-| `timelineStepIndex` | Next timeline step index |
-| `timelineStageId` | Timeline stage identifier |
-| `timelineScreenId` | Timeline screen identifier |
-| `activeInfoId` | Currently active info panel |
-| `selectedCardId` | Card selected in secret state |
-| `cardFlags` | Update card state (`{ cardId, selected, resolved, locked, available }`) |
-| `teamFlags` | Update team member state (`{ memberId, selected }`) |
-| `teamSelection` | Update team selection (`{ pickCountDelta, selectedMemberIdsAppend }`) |
+| `timeline.set` | Set timeline fields such as `stepIndex`, `stageId`, `screenId`, `activeInfoId`, `canAdvance` |
+| `state.patch` | Apply small JSON Patch-like changes under `/public` or `/secret` |
+| `flag.set` | Update a named flags object, for example `/public/flags/cards/1` |
+| `counter.add` | Add a number to a counter |
+| `collection.append` | Append an item to an array |
+| `metric.add` | Add to a numeric metric |
+| `log.append` | Append a runtime journal entry |
 
 ---
 
@@ -215,14 +214,15 @@ Add a `jsonLogic` field to the guard:
 
 The `var` operator accesses the runtime state using dot-delimited paths (e.g., `public.metrics.pro`).
 
-### Computed Metric Deltas
+### Computed Metric Changes
 
-Metric delta values can be JsonLogic expressions:
+`metric.add` values can be JsonLogic expressions:
 
 ```json
 {
-  "metricDeltas": [
+  "effects": [
     {
+      "op": "metric.add",
       "metricId": "score",
       "delta": {
         "*": [{ "var": "public.metrics.pro" }, 2]
@@ -240,24 +240,29 @@ Standard JsonLogic operators are available: `var`, `if`, `==`, `!=`, `>`, `<`, `
 
 ---
 
-## Tier 3: Script Actions
+## Tier 3: Declarative Effects
 
-Script actions are capability triggers for complex interactions that can't be expressed declaratively. They are defined with `handlerType: "script"`:
+Declarative effects are explicit JSON operations that the runtime validates and applies. They are used for small UI/runtime commands that should not become arbitrary JavaScript:
 
 ```json
 {
   "actions": {
     "showHint": {
-      "handlerType": "script",
+      "handlerType": "manifest-data",
       "capabilityFamily": "ui.panel",
-      "capability": "ui.panel.hint",
-      "function": "showHint"
+      "capability": "ui.panel.open",
+      "deterministic": {
+        "effects": [
+          { "op": "ui.panel.open", "panelId": "hint" },
+          { "op": "log.append", "kind": "ui-panel-open", "summary": "Hint panel opened" }
+        ]
+      }
     }
   }
 }
 ```
 
-Script actions are **capability triggers**, not sandboxed user scripts. They signal the runtime to perform a specific operation (show UI panel, request server action, etc.).
+Effects are **capability triggers**, not sandboxed user scripts. They signal the runtime to perform a specific allowed operation, for example show a UI panel, open a screen, request a server action, or append a log entry. Full runtime plugins are a separate architecture topic and must not be introduced by adding ad hoc `handlerType: "script"` actions.
 
 ---
 

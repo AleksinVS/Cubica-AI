@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "nodes": {
+    "/_definitions/game.OpeningCardResolutionAction": {
+      "position": {
+        "x": 766.875,
+        "y": -191.53124999999997
+      }
+    },
+    "/_definitions/game.ShowHint/handlerType": {
+      "position": {
+        "x": 1523.266579702365,
+        "y": -45.79661883630071
+      }
+    },
+    "/_definitions/game.OpeningInfoAdvanceAction": {
+      "position": {
+        "x": 1492.7459013808113,
+        "y": -278.879321243277
+      }
+    }
+  }
+}

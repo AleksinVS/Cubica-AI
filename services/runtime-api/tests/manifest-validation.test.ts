@@ -287,9 +287,7 @@ test("validateGameManifest rejects deterministic action with missing required pr
                 // missing required 'sourceFile' and 'legacyCardId'
               ],
               guard: {},
-              metricDeltas: [{ metricId: "score", delta: 10 }],
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {}
+              effects: [{ op: "log.append", kind: "test", summary: "test" }]
             }
           }
         }
@@ -375,13 +373,36 @@ test("validateGameManifest accepts deterministic action with empty provenance ar
         handlerType: "script",
         capabilityFamily: "ui.panel",
         capability: "ui.panel.hint",
-        function: "showHint",
+          function: "showHint",
+          deterministic: {
+            provenance: [],
+            guard: {},
+            effects: [
+              { op: "metric.add", metricId: "score", delta: 10 },
+              { op: "log.append", kind: "test", summary: "test", auditMetrics: true }
+            ]
+          }
+        }
+      }
+  }) as unknown as Record<string, unknown>;
+
+  const actions = manifest.actions as Record<string, unknown>;
+  assert.ok(actions?.showHint);
+});
+
+test("validateGameManifest accepts manifest-declared UI effects", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    actions: {
+      showHint: {
+        handlerType: "manifest-data",
+        capabilityFamily: "ui.panel",
+        capability: "ui.panel.open",
         deterministic: {
-          provenance: [],
-          guard: {},
-          metricDeltas: [{ metricId: "score", delta: 10 }],
-          log: { kind: "test", summary: "test" },
-          stateUpdate: {}
+          effects: [
+            { op: "ui.panel.open", panelId: "hint" },
+            { op: "log.append", kind: "ui-panel-open", summary: "Show hint" }
+          ]
         }
       }
     }
@@ -389,6 +410,211 @@ test("validateGameManifest accepts deterministic action with empty provenance ar
 
   const actions = manifest.actions as Record<string, unknown>;
   assert.ok(actions?.showHint);
+});
+
+test("validateGameManifest accepts manifest-declared timeline effects", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    actions: {
+      advanceTimeline: {
+        handlerType: "manifest-data",
+        capabilityFamily: "game.timeline.advance",
+        capability: "game.timeline.advance",
+        deterministic: {
+          effects: [
+            {
+              op: "timeline.set",
+              canAdvance: false,
+              stepIndex: 2,
+              stageId: "stage_intro",
+              screenId: "S1",
+              activeInfoId: "i2"
+            }
+          ]
+        }
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const actions = manifest.actions as Record<string, unknown>;
+  assert.ok(actions?.advanceTimeline);
+});
+
+test("validateGameManifest accepts generic manifest effects with conditions", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    actions: {
+      resolveCard: {
+        handlerType: "manifest-data",
+        capabilityFamily: "game.card.resolve",
+        capability: "game.card.resolve",
+        deterministic: {
+          effects: [
+            {
+              op: "flag.set",
+              path: "/public/flags/cards/1",
+              values: { selected: true, resolved: true }
+            },
+            {
+              op: "state.patch",
+              patches: [{ op: "replace", path: "/secret/opening/selectedCardId", value: "1" }]
+            },
+            {
+              op: "counter.add",
+              path: "/public/teamSelection/pickCount",
+              delta: 1
+            },
+            {
+              op: "collection.append",
+              path: "/public/teamSelection/selectedMemberIds",
+              value: "fedya"
+            },
+            {
+              op: "timeline.set",
+              canAdvance: true,
+              when: {
+                collectionCount: {
+                  path: "/public/flags/cards",
+                  ids: ["1", "2", "3"],
+                  field: "resolved",
+                  equals: true,
+                  countAtLeast: 2
+                }
+              }
+            },
+            {
+              op: "timeline.set",
+              activeInfoId: "i19_1",
+              when: {
+                metric: { metricId: "time", operator: "<", threshold: 54 },
+                readFrom: "preAction"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }) as unknown as Record<string, unknown>;
+
+  const actions = manifest.actions as Record<string, unknown>;
+  assert.ok(actions?.resolveCard);
+});
+
+test("validateGameManifest rejects malformed manifest-declared UI effects", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          showHint: {
+            handlerType: "manifest-data",
+            capabilityFamily: "ui.panel",
+            capability: "ui.panel.open",
+            deterministic: {
+              effects: [
+                { op: "ui.panel.open" }
+              ]
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects malformed manifest-declared timeline effects", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          advanceTimeline: {
+            handlerType: "manifest-data",
+            capabilityFamily: "game.timeline.advance",
+            capability: "game.timeline.advance",
+            deterministic: {
+              effects: [
+                { op: "timeline.set", stepIndex: "not-a-template" }
+              ]
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects empty timeline effects", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          advanceTimeline: {
+            handlerType: "manifest-data",
+            capabilityFamily: "game.timeline.advance",
+            capability: "game.timeline.advance",
+            deterministic: {
+              effects: [
+                { op: "timeline.set" }
+              ]
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects generic effects with unsafe write paths", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          resolveCard: {
+            handlerType: "manifest-data",
+            capabilityFamily: "game.card.resolve",
+            capability: "game.card.resolve",
+            deterministic: {
+              effects: [
+                {
+                  op: "state.patch",
+                  patches: [{ op: "replace", path: "/runtime/internal", value: true }]
+                }
+              ]
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects flag effects outside public flags", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          resolveCard: {
+            handlerType: "manifest-data",
+            capabilityFamily: "game.card.resolve",
+            capability: "game.card.resolve",
+            deterministic: {
+              effects: [
+                {
+                  op: "flag.set",
+                  path: "/public/cards/1",
+                  values: { resolved: true }
+                }
+              ]
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
 });
 
 test("validateGameManifest rejects deterministic action with invalid metric operator", () => {
@@ -409,15 +635,14 @@ test("validateGameManifest rejects deterministic action with invalid metric oper
               guard: {
                 timeline: { stepIndex: 5 }
               },
-              metricDeltas: [{ metricId: "score", delta: 10 }],
-              conditionalMetricBonuses: [
+              effects: [
                 {
-                  when: { metricId: "score", operator: "!=", threshold: 50 },
-                  metricDeltas: [{ metricId: "score", delta: 5 }]
+                  op: "metric.add",
+                  metricId: "score",
+                  delta: 10,
+                  when: { metric: { metricId: "score", operator: "!=", threshold: 50 } }
                 }
-              ],
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {}
+              ]
             }
           }
         }
@@ -454,7 +679,7 @@ test("validateGameManifest accepts team selection content under additionalProper
   assert.equal(data?.data?.teamSelections.length, 1);
 });
 
-test("validateGameManifest rejects deterministic action with invalid conditionalLineSwitch targetStepIndex", () => {
+test("validateGameManifest rejects deterministic action with invalid conditional timeline stepIndex", () => {
   assert.throws(
     () =>
       validateGameManifest({
@@ -472,15 +697,15 @@ test("validateGameManifest rejects deterministic action with invalid conditional
               guard: {
                 timeline: { stepIndex: 5 }
               },
-              metricDeltas: [{ metricId: "score", delta: 10 }],
-              conditionalLineSwitch: {
-                when: { metricId: "score", operator: ">", threshold: 50 },
-                targetLine: "main",
-                targetStepIndex: "not-a-number",
-                targetScreenId: "S1"
-              },
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {}
+              effects: [
+                {
+                  op: "timeline.set",
+                  line: "main",
+                  stepIndex: "not-a-number",
+                  screenId: "S1",
+                  when: { metric: { metricId: "score", operator: ">", threshold: 50 } }
+                }
+              ]
             }
           }
         }
@@ -509,9 +734,7 @@ test("validateGameManifest rejects deterministic action with malformed guard.boa
                   cardIds: ["1", 2, "3"]
                 }
               },
-              metricDeltas: [{ metricId: "score", delta: 10 }],
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {}
+              effects: [{ op: "log.append", kind: "test", summary: "test" }]
             }
           }
         }
@@ -520,7 +743,7 @@ test("validateGameManifest rejects deterministic action with malformed guard.boa
   );
 });
 
-test("validateGameManifest rejects deterministic action with boardThreshold resolvedCountAtLeast as string", () => {
+test("validateGameManifest rejects deterministic action with invalid collection count threshold", () => {
   assert.throws(
     () =>
       validateGameManifest({
@@ -536,14 +759,20 @@ test("validateGameManifest rejects deterministic action with boardThreshold reso
                 { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
               ],
               guard: {},
-              metricDeltas: [{ metricId: "score", delta: 10 }],
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {
-                boardThreshold: {
-                  cardIds: ["1", "2", "3"],
-                  resolvedCountAtLeast: "2"
+              effects: [
+                {
+                  op: "timeline.set",
+                  canAdvance: true,
+                  when: {
+                    collectionCount: {
+                      path: "/public/flags/cards",
+                      ids: ["1", "2", "3"],
+                      field: "resolved",
+                      countAtLeast: "2"
+                    }
+                  }
                 }
-              }
+              ]
             }
           }
         }
@@ -576,9 +805,7 @@ test("validateGameManifest rejects action referencing non-existent template", ()
           "my-template": {
             deterministic: {
               guard: {},
-              metricDeltas: [],
-              log: { kind: "test", summary: "test" },
-              stateUpdate: {}
+              effects: [{ op: "log.append", kind: "test", summary: "test" }]
             }
           }
         },
@@ -603,9 +830,7 @@ test("validateGameManifest accepts action referencing existing template", () => 
       "my-template": {
         deterministic: {
           guard: {},
-          metricDeltas: [],
-          log: { kind: "test", summary: "test" },
-          stateUpdate: {}
+          effects: [{ op: "log.append", kind: "test", summary: "test" }]
         }
       }
     },

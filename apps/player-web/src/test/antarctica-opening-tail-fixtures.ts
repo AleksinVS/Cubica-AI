@@ -11,7 +11,7 @@
  */
 
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
-import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerContent, GamePlayerInfoEntry } from "@/plugins/antarctica/contracts";
+import type { GamePlayerBoard, GamePlayerBoardCard, GamePlayerContent, GamePlayerInfoEntry } from "@cubica/antarctica-player-plugin/contracts";
 
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 

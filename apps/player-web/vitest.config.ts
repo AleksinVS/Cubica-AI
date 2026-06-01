@@ -22,8 +22,20 @@ export default defineConfig({
     setupFiles: [],
   },
   resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
+    alias: [
+      {
+        find: "@cubica/player-web/plugin-api",
+        replacement: path.resolve(__dirname, "./src/plugins/player-plugin-api.ts")
+      },
+      {
+        find: /^@cubica\/antarctica-player-plugin\/(.*)$/,
+        replacement: path.resolve(__dirname, "../../games/antarctica/plugins/antarctica-player/src/$1")
+      },
+      {
+        find: "@cubica/antarctica-player-plugin",
+        replacement: path.resolve(__dirname, "../../games/antarctica/plugins/antarctica-player/src/index.ts")
+      },
+      { find: "@", replacement: path.resolve(__dirname, "./src") },
+    ],
   },
 });

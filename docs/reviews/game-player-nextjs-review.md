@@ -103,18 +103,18 @@ game-player-nextjs/
 
 ### 3.2. Управление состоянием
 
-**Файлы:** `src/app/components/GameScreenRenderer.js`, `src/app/utils/applyStateUpdates.js`
+**Файлы:** `src/app/components/GameScreenRenderer.js`, `src/app/utils/statePatchMerge.js`
 
 **Проблемы:**
 - ❌ Собственный reducer вместо использования `SDK/react-sdk` (`useCubicaSession`)
 - ❌ Логика загрузки данных смешана с компонентом (нарушение MVP)
-- ⚠️ `applyStateUpdates` — хорошая реализация deep merge, но должна быть частью SDK/core
+- ⚠️ утилита глубокого merge для патчей состояния должна быть частью SDK/core
 - ❌ Нет обработки ошибок и retry-логики (должна быть в SDK/core)
 
 **Рекомендации:**
 - Использовать `useCubicaSession` из `SDK/react-sdk` для управления сессиями
 - Вынести логику загрузки в Presenter-слой
-- Интегрировать `applyStateUpdates` в SDK/core как утилиту для патчей состояния
+- Интегрировать общую утилиту для патчей состояния в SDK/core
 
 ### 3.3. Загрузка данных
 
@@ -390,6 +390,5 @@ game-player-nextjs/
 **Дата ревью:** 2025-01-27  
 **Ревьюер:** AI Agent  
 **Версия документа:** 1.0
-
 
 

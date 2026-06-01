@@ -1,0 +1,5 @@
+{
+  ".": "Service boundary for the future Cubica game editor. It contains authoring workspace documentation and will host editor-specific implementation when this boundary is activated.",
+  "DEV_GUIDE.md": "Development guide for the Game Editor service boundary, including current scope, planned editor-engine direction and testing expectations.",
+  "docs": "Project documentation for Game Editor features and editor-engine design."
+}

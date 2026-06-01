@@ -1,0 +1,85 @@
+{
+  "$schema": "https://cubica.platform/schemas/game-authoring.v2.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "game",
+  "_definitions": {},
+  "root": {
+    "_type": "game.Game",
+    "_label": "Минимальная игра v2",
+    "_semantics": "Минимальный game authoring v2 пример для проверки структуры логики и компилятора.",
+    "meta": {
+      "id": "authoring-v2-fixture",
+      "version": "1.0.0",
+      "name": "Authoring V2 Fixture",
+      "description": "Minimal game authoring v2 fixture.",
+      "author": "Cubica",
+      "schemaVersion": "1.1",
+      "minEngineVersion": "0.1.0",
+      "training": {
+        "format": "single"
+      }
+    },
+    "config": {
+      "players": {
+        "min": 1,
+        "max": 1
+      },
+      "settings": {
+        "mode": "singleplayer",
+        "locale": "ru-RU"
+      }
+    },
+    "logic": {
+      "entry": "opening",
+      "flows": [
+        {
+          "id": "opening",
+          "_type": "game.Flow",
+          "_label": "Открывающая цепочка",
+          "_semantics": "Линейный сценарный поток, из которого строится timeline редактора.",
+          "pattern": "pearl-string",
+          "steps": [
+            {
+              "id": "opening.intro",
+              "_type": "game.Step",
+              "_label": "Вступление",
+              "_semantics": "Первый шаг прохождения, связанный с начальным экраном.",
+              "screenId": "intro",
+              "actionIds": [
+                "choice.accept"
+              ]
+            }
+          ]
+        }
+      ],
+      "systems": [],
+      "rules": [],
+      "actions": [
+        {
+          "id": "choice.accept",
+          "_type": "game.Action",
+          "_label": "Принять решение",
+          "_semantics": "Действие игрока, доступное на начальном экране.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "authoring-v2.choice.accept",
+          "displayName": "Accept the choice",
+          "description": "Minimal action emitted from authoring v2 into the runtime action map."
+        }
+      ]
+    },
+    "state": {
+      "public": {
+        "timeline": {
+          "flowId": "opening",
+          "stepId": "opening.intro",
+          "screenId": "intro"
+        },
+        "metrics": {
+          "score": 0
+        }
+      },
+      "secret": {}
+    }
+  }
+}

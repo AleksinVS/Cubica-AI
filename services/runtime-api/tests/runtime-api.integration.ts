@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { after, before, test } from "node:test";
+import { fileURLToPath } from "node:url";
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
@@ -89,6 +93,8 @@ type ActionResponse = {
 
 const runtimeApi = createRuntimeApiServer({ port: 0 });
 let baseUrl = "";
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const previewContentRoot = path.join(repoRoot, ".tmp", "editor-worktrees", "runtime-content-source-test");
 
 const readJson = async <T>(response: Response): Promise<T> => {
   const text = await response.text();
@@ -147,6 +153,27 @@ const dispatchAction = async (
       payload
     })
   });
+
+const writePreviewContentRoot = async () => {
+  const sourceGameDir = path.join(repoRoot, "games", "simple-choice");
+  const targetGameDir = path.join(previewContentRoot, "games", "simple-choice");
+  await rm(previewContentRoot, { recursive: true, force: true });
+  await mkdir(path.join(targetGameDir, "ui", "web"), { recursive: true });
+
+  const gameManifest = JSON.parse(await readFile(path.join(sourceGameDir, "game.manifest.json"), "utf8")) as {
+    meta: { name: string };
+    state: { public: { choice?: { outcome?: string } } };
+  };
+  gameManifest.meta.name = "Simple Choice Preview Source";
+  gameManifest.state.public.choice = { ...(gameManifest.state.public.choice ?? {}), outcome: "preview-source" };
+
+  await writeFile(path.join(targetGameDir, "game.manifest.json"), `${JSON.stringify(gameManifest, null, 2)}\n`, "utf8");
+  await writeFile(
+    path.join(targetGameDir, "ui", "web", "ui.manifest.json"),
+    await readFile(path.join(sourceGameDir, "ui", "web", "ui.manifest.json"), "utf8"),
+    "utf8"
+  );
+};
 
 const OPENING_ACTIONS_TO_TEAM_SELECTION_BOUNDARY = [
   "opening.info.i0.advance",
@@ -374,6 +401,7 @@ before(async () => {
 
 after(async () => {
   await new Promise<void>((resolve) => runtimeApi.server.close(() => resolve()));
+  await rm(previewContentRoot, { recursive: true, force: true });
 });
 
 // ============================================================
@@ -555,7 +583,7 @@ test("POST /actions applies a deterministic runtime transition", async () => {
   assert.equal(action.state.runtime?.lastActionId, "showHint");
   assert.equal(action.state.runtime?.lastActionFunction, "showHint");
   assert.equal(action.state.runtime?.lastCapabilityFamily, "ui.panel");
-  assert.equal(action.state.runtime?.lastCapability, "ui.panel.hint");
+  assert.equal(action.state.runtime?.lastCapability, "ui.panel.open");
   assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.panel");
   assert.equal(action.state.public.ui?.activePanel, "hint");
 
@@ -563,7 +591,7 @@ test("POST /actions applies a deterministic runtime transition", async () => {
   assert.equal(log.length, 1);
   assert.equal(log[0].actionId, "showHint");
   assert.equal(log[0].capabilityFamily, "ui.panel");
-  assert.equal(log[0].capability, "ui.panel.hint");
+  assert.equal(log[0].capability, "ui.panel.open");
 
   const { response: getResponse, body: persisted } = await requestJson<SessionResponse>(`/sessions/${created.sessionId}`);
 
@@ -588,7 +616,7 @@ test("POST /actions routes different Antarctica actions through manifest capabil
 
   assert.equal(response.status, 200);
   assert.equal(action.state.runtime?.lastCapabilityFamily, "ui.screen");
-  assert.equal(action.state.runtime?.lastCapability, "ui.screen.left-sidebar");
+  assert.equal(action.state.runtime?.lastCapability, "ui.screen.open");
   assert.equal(action.state.public.ui?.activeScreen, "left-sidebar");
   assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
 });
@@ -609,6 +637,42 @@ test("GET /games/:id/player-content returns dataUi manifest for Antarctica", asy
   assert.equal(body.ui.screens["S1"].root.type, "screenComponent");
 });
 
+test("GET /games/:id/player-content returns published player-web plugin bundle references", async () => {
+  const { response, body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+  assert.equal(body.pluginBundles?.length, 1);
+  const bundle = body.pluginBundles?.[0];
+  assert.ok(bundle);
+  assert.equal(bundle.pluginId, "antarctica-player");
+  assert.equal(bundle.gameId, "antarctica");
+  assert.equal(bundle.apiVersion, "1.0");
+  assert.equal(bundle.target, "player-web");
+  assert.equal(bundle.scope, "published");
+  assert.match(bundle.contentHash, /^[a-f0-9]{64}$/u);
+  assert.match(bundle.integrity ?? "", /^sha256-/u);
+  assert.equal(
+    bundle.url,
+    `/published-plugin-bundles/antarctica/antarctica-player/${bundle.contentHash}.mjs`
+  );
+});
+
+test("GET /published-plugin-bundles serves immutable verified bundle bytes", async () => {
+  const { body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
+  const bundle = body.pluginBundles?.[0];
+  assert.ok(bundle);
+
+  const response = await fetch(`${baseUrl}${bundle.url}`);
+  const source = await response.text();
+  const contentHash = createHash("sha256").update(source, "utf8").digest("hex");
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
+  assert.equal(response.headers.get("content-type"), "text/javascript; charset=utf-8");
+  assert.equal(contentHash, bundle.contentHash);
+  assert.match(source, /export const activate = __entry\.activate/);
+});
+
 test("GET /games/:id/player-content returns simple-choice UI manifest", async () => {
   const { response, body } = await requestJson<PlayerFacingContent>("/games/simple-choice/player-content");
 
@@ -618,6 +682,39 @@ test("GET /games/:id/player-content returns simple-choice UI manifest", async ()
   assert.ok(body.ui?.screens.intro);
   assert.ok(body.ui?.screens.result);
   assert.equal(body.ui?.metricSpecs?.[0]?.id, "score");
+  assert.equal(body.pluginBundles, undefined);
+});
+
+test("editor preview content source serves generated manifests from a registered worktree", async () => {
+  await writePreviewContentRoot();
+
+  const sourceId = "runtime-content-source-test";
+  const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      contentSourceId: sourceId,
+      contentRoot: previewContentRoot
+    })
+  });
+  assert.equal(reloadResponse.status, 200);
+
+  const { response: contentResponse, body: content } = await requestJson<PlayerFacingContent>(
+    `/games/simple-choice/player-content?contentSourceId=${sourceId}`
+  );
+  assert.equal(contentResponse.status, 200);
+  assert.equal(content.name, "Simple Choice Preview Source");
+
+  const { response: sessionResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "preview-source-test",
+      contentSourceId: sourceId
+    })
+  });
+  assert.equal(sessionResponse.status, 201);
+  assert.equal((session.state.public as { choice?: { outcome?: string } }).choice?.outcome, "preview-source");
 });
 
 test("POST /actions progresses from first board through i7 to second board after opening.card.3", async () => {
@@ -2455,7 +2552,7 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.ok(showHintAction);
   assert.equal(showHintAction.displayName, "Show hint");
   assert.equal(showHintAction.capabilityFamily, "ui.panel");
-  assert.equal(showHintAction.capability, "ui.panel.hint");
+  assert.equal(showHintAction.capability, "ui.panel.open");
   assert.ok(Array.isArray(body.mockups));
   assert.ok(body.mockups.length > 0);
   const firstMockup = body.mockups[0];

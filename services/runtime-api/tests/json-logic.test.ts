@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createDeterministicHandler } from "../src/modules/runtime/deterministicHandlers.ts";
 import type { RuntimeActionContext } from "@cubica/contracts-runtime";
+import type { GameManifestTemplateMap } from "@cubica/contracts-manifest";
 
 const makeContext = (
   actionId: string,
@@ -27,12 +28,10 @@ const templates = {
   "json-guard-action": {
     deterministic: {
       guard: {},
-      metricDeltas: [],
-      log: { kind: "test", summary: "JsonLogic test" },
-      stateUpdate: {}
+      effects: [{ op: "log.append", kind: "test", summary: "JsonLogic test" }]
     }
   }
-};
+} satisfies GameManifestTemplateMap;
 
 test("JsonLogic guard passes when expression evaluates to true", async () => {
   const handler = createDeterministicHandler("runtime.server", {
@@ -145,21 +144,21 @@ test("JsonLogic guard coexists with hardcoded guards", async () => {
   assert.ok(!result2.ok, "JsonLogic guard fails even when timeline passes");
 });
 
-test("JsonLogic expression in metricDeltas computes dynamic value", async () => {
+test("JsonLogic expression in metric.add computes dynamic value", async () => {
   const handler = createDeterministicHandler("runtime.server", {
     mode: "manifest-action",
     templates: {
       "json-delta-action": {
         deterministic: {
           guard: {},
-          metricDeltas: [
+          effects: [
             {
+              op: "metric.add",
               metricId: "score",
               delta: { "*": [{ "var": "public.metrics.pro" }, 2] }
-            }
-          ],
-          log: { kind: "test", summary: "JsonLogic delta test" },
-          stateUpdate: {}
+            },
+            { op: "log.append", kind: "test", summary: "JsonLogic delta test" }
+          ]
         }
       }
     }

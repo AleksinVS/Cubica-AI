@@ -2,6 +2,7 @@ import type {
   GameUiComponent,
   GameUiImageComponentProps
 } from "@cubica/contracts-manifest";
+import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
  * Рендерит imageComponent — иллюстрации и декоративные изображения.
@@ -12,8 +13,10 @@ import type {
  */
 export function ImageComponent({
   component,
+  previewAttributes,
 }: {
   component: GameUiComponent<GameUiImageComponentProps>;
+  previewAttributes?: PreviewElementAttributes;
 }) {
   const { src, alt, cssClass } = component.props;
   const isDecorative = cssClass?.includes("illustration") || cssClass?.includes("decoration");
@@ -21,6 +24,7 @@ export function ImageComponent({
   if (isDecorative) {
     return (
       <div
+        {...previewAttributes}
         className={cssClass}
         style={{ backgroundImage: `url(${src})` }}
         role="img"
@@ -29,5 +33,5 @@ export function ImageComponent({
     );
   }
 
-  return <img src={src} alt={alt ?? ""} className={cssClass} />;
+  return <img {...previewAttributes} src={src} alt={alt ?? ""} className={cssClass} />;
 }

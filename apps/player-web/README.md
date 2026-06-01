@@ -63,7 +63,7 @@ The player-web supports two rendering paths:
    
    Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId`) following the typed DTOs in `packages/contracts/manifest` and `apps/player-web/src/types/`. When a screen is not in the manifest, the player falls back to the action catalog resolver.
 
-2. **Specialized Resolver Renderer**: For scenes outside the bounded manifest scope, the player uses registered game plugins (`src/plugins/antarctica/*`) and presenter configuration (`src/presenter/antarctica-config-data.ts`) to map session state to structured UI components (boards `1..70`, infos `i0..i21`, team-selection).
+2. **Specialized Resolver Renderer**: For scenes outside the bounded manifest scope, the player uses registered project-local game plugins such as `games/antarctica/plugins/antarctica-player` to map session state to structured UI components (boards `1..70`, infos `i0..i21`, team-selection). In editor preview, `player-web` loads session plugin bundles from `PlayerFacingContent.pluginBundles` and activates them through the public `@cubica/player-web/plugin-api` facade. Outside preview, `player-web` loads only published plugin bundle references generated under `games/<gameId>/published/`; it does not statically import game plugin source.
 
 For games without a registered plugin, `player-web` builds a default config from `PlayerFacingContent.ui`. The default path uses UI manifest `screen_routing`, `metric_specs`, and explicit `actionId` values in UI payloads.
 

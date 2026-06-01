@@ -54,6 +54,11 @@ export interface SessionRecord<TState = unknown> {
 export interface CreateSessionRequest {
   gameId?: string;
   playerId?: PlayerId;
+  /**
+   * Optional runtime content source for editor preview sessions.
+   * Normal player sessions omit it and use the canonical published content.
+   */
+  contentSourceId?: string;
 }
 
 export interface CreateSessionInput<TState = unknown> {

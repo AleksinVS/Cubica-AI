@@ -6,8 +6,11 @@ import type {
 } from "@cubica/contracts-runtime";
 import type {
   GameManifestDeterministicActionMetadata,
+  GameManifestDeterministicEffect,
+  GameManifestDeterministicEffectCondition,
   GameManifestDeterministicMetricCondition,
-  GameManifestDeterministicMetricDelta,
+  GameManifestDeterministicStateCondition,
+  GameManifestDeterministicStatePatch,
   GameManifestTemplateMap,
   JsonLogicExpression
 } from "@cubica/contracts-manifest";
@@ -15,7 +18,7 @@ import jsonLogic from "json-logic-js";
 
 type RuntimeState = Record<string, unknown>;
 
-type CapabilityFamily = "runtime.server" | "ui.panel" | "ui.screen" | "unknown";
+type CapabilityFamily = string;
 type DeterministicHandlerMode = "capability" | "manifest-action";
 
 interface DeterministicHandlerOptions {
@@ -101,15 +104,21 @@ const resolveTemplate = (
     mergedDeterministic.guard = actionGuard;
   }
 
-  // StateUpdate: deep merge so action can add/override individual fields
-  // (e.g., adding activeInfoId or selectedCardId).
-  const directStateUpdate = isObjectRecord(directDeterministic.stateUpdate) ? directDeterministic.stateUpdate : {};
-  const overrideStateUpdate = isObjectRecord(overrideDeterministic.stateUpdate) ? overrideDeterministic.stateUpdate : {};
-  const actionStateUpdate = { ...directStateUpdate, ...overrideStateUpdate };
-  if (isObjectRecord(templateDet.stateUpdate) && Object.keys(actionStateUpdate).length > 0) {
-    mergedDeterministic.stateUpdate = { ...templateDet.stateUpdate, ...actionStateUpdate };
-  } else if (Object.keys(actionStateUpdate).length > 0) {
-    mergedDeterministic.stateUpdate = actionStateUpdate;
+  // Effects are ordered operations, so template and action-level effects must
+  // be concatenated instead of object-merged. This lets a generic template set
+  // timeline coordinates while a concrete action adds a small extra effect such
+  // as activeInfoId without replacing the template effect.
+  const directEffects = Array.isArray(directDeterministic.effects)
+    ? directDeterministic.effects
+    : [];
+  const overrideEffects = Array.isArray(overrideDeterministic.effects)
+    ? overrideDeterministic.effects
+    : [];
+  const actionEffects = [...directEffects, ...overrideEffects];
+  if (Array.isArray(templateDet.effects) && actionEffects.length > 0) {
+    mergedDeterministic.effects = [...templateDet.effects, ...actionEffects];
+  } else if (actionEffects.length > 0) {
+    mergedDeterministic.effects = actionEffects;
   }
 
   return { deterministic: mergedDeterministic };
@@ -124,6 +133,9 @@ const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
 
 const resolveCapabilityFamily = (capabilityFamily?: string, capability?: string): CapabilityFamily => {
   const source = capabilityFamily ?? capability ?? "";
+  if (!source) {
+    return "unknown";
+  }
 
   if (source.startsWith("runtime.server")) {
     return "runtime.server";
@@ -137,7 +149,7 @@ const resolveCapabilityFamily = (capabilityFamily?: string, capability?: string)
     return "ui.screen";
   }
 
-  return "unknown";
+  return source;
 };
 
 const resolveCapabilityLeaf = (capability?: string, fallback?: string) => {
@@ -160,6 +172,177 @@ const ensureUiState = (state: RuntimeState) => {
   publicState.ui = uiState;
   state.public = publicState;
   return uiState;
+};
+
+const coerceManifestBoolean = (value: boolean | string): boolean =>
+  typeof value === "string" ? value === "true" : value;
+
+const coerceManifestNumber = (value: number | string): number =>
+  typeof value === "string" ? Number(value) : value;
+
+const decodeJsonPointerSegment = (segment: string) => segment.replace(/~1/g, "/").replace(/~0/g, "~");
+
+const splitJsonPointer = (path: string): Array<string> => {
+  if (!path.startsWith("/")) {
+    return [];
+  }
+  return path.split("/").slice(1).map(decodeJsonPointerSegment);
+};
+
+const readJsonPointer = (state: RuntimeState, path: string): unknown => {
+  const parts = splitJsonPointer(path);
+  if (parts.length === 0) {
+    return path === "" ? state : undefined;
+  }
+
+  let current: unknown = state;
+  for (const part of parts) {
+    if (current == null || typeof current !== "object") {
+      return undefined;
+    }
+    current = (current as Record<string, unknown>)[part];
+  }
+  return current;
+};
+
+const ensureJsonPointerParent = (state: RuntimeState, path: string): { parent: Record<string, unknown>; key: string } | null => {
+  const parts = splitJsonPointer(path);
+  if (parts.length === 0) {
+    return null;
+  }
+
+  let current: Record<string, unknown> = state;
+  for (const part of parts.slice(0, -1)) {
+    if (!isObjectRecord(current[part])) {
+      current[part] = {};
+    }
+    current = current[part] as Record<string, unknown>;
+  }
+
+  return { parent: current, key: parts[parts.length - 1] };
+};
+
+const canWriteManifestEffectPath = (path: string) =>
+  path.startsWith("/public/") || path.startsWith("/secret/");
+
+const assertWritableManifestEffectPath = (path: string) => {
+  if (!canWriteManifestEffectPath(path)) {
+    throw new Error(`Manifest effect cannot write to path "${path}"`);
+  }
+};
+
+const setJsonPointerValue = (state: RuntimeState, path: string, value: unknown) => {
+  assertWritableManifestEffectPath(path);
+  const target = ensureJsonPointerParent(state, path);
+  if (!target) {
+    throw new Error(`Manifest effect cannot write to path "${path}"`);
+  }
+  target.parent[target.key] = value;
+};
+
+const applyStatePatchEffect = (state: RuntimeState, patch: GameManifestDeterministicStatePatch) => {
+  assertWritableManifestEffectPath(patch.path);
+  const target = ensureJsonPointerParent(state, patch.path);
+  if (!target) {
+    throw new Error(`Manifest state.patch has invalid path "${patch.path}"`);
+  }
+
+  if (patch.op === "add" || patch.op === "replace") {
+    target.parent[target.key] = patch.value;
+  } else if (patch.op === "remove") {
+    delete target.parent[target.key];
+  } else if (patch.op === "increment") {
+    target.parent[target.key] = (Number(target.parent[target.key]) || 0) + Number(patch.value);
+  } else if (patch.op === "append") {
+    if (!Array.isArray(target.parent[target.key])) {
+      target.parent[target.key] = [];
+    }
+    (target.parent[target.key] as Array<unknown>).push(patch.value);
+  }
+};
+
+const evaluateStateConditionValue = (
+  value: unknown,
+  condition: Pick<GameManifestDeterministicStateCondition, "operator" | "value">
+) => {
+  switch (condition.operator) {
+    case "==":
+      return value === condition.value;
+    case "!=":
+      return value !== condition.value;
+    case ">":
+      return typeof value === "number" && typeof condition.value === "number" && value > condition.value;
+    case ">=":
+      return typeof value === "number" && typeof condition.value === "number" && value >= condition.value;
+    case "<":
+      return typeof value === "number" && typeof condition.value === "number" && value < condition.value;
+    case "<=":
+      return typeof value === "number" && typeof condition.value === "number" && value <= condition.value;
+    case "exists":
+      return value !== undefined && value !== null;
+    case "not_exists":
+      return value === undefined || value === null;
+  }
+};
+
+const evaluateStateCondition = (state: RuntimeState, condition: GameManifestDeterministicStateCondition) =>
+  evaluateStateConditionValue(readJsonPointer(state, condition.path), condition);
+
+const selectEffectConditionState = (
+  currentState: RuntimeState,
+  preActionState: RuntimeState,
+  readFrom?: "current" | "preAction"
+) => (readFrom === "preAction" ? preActionState : currentState);
+
+const evaluateEffectCondition = (
+  currentState: RuntimeState,
+  preActionState: RuntimeState,
+  condition: GameManifestDeterministicEffectCondition
+): boolean => {
+  if ("metric" in condition) {
+    return evaluateMetricCondition(
+      selectEffectConditionState(currentState, preActionState, condition.readFrom),
+      condition.metric
+    );
+  }
+
+  if ("state" in condition) {
+    return evaluateStateCondition(
+      selectEffectConditionState(currentState, preActionState, condition.readFrom),
+      condition.state
+    );
+  }
+
+  if ("collectionCount" in condition) {
+    const sourceState = selectEffectConditionState(currentState, preActionState, condition.readFrom);
+    const collection = readJsonPointer(sourceState, condition.collectionCount.path);
+    const expected = condition.collectionCount.equals ?? true;
+    const threshold = coerceManifestNumber(condition.collectionCount.countAtLeast);
+    let count = 0;
+    if (isObjectRecord(collection)) {
+      for (const id of condition.collectionCount.ids) {
+        const item = collection[id];
+        if (isObjectRecord(item) && item[condition.collectionCount.field] === expected) {
+          count += 1;
+        }
+      }
+    }
+    return count >= threshold;
+  }
+
+  if ("all" in condition) {
+    return condition.all.every((item) => evaluateEffectCondition(currentState, preActionState, item));
+  }
+
+  if ("any" in condition) {
+    return condition.any.some((item) => evaluateEffectCondition(currentState, preActionState, item));
+  }
+
+  if ("not" in condition) {
+    return !evaluateEffectCondition(currentState, preActionState, condition.not);
+  }
+
+  return true;
 };
 
 const setRuntimeMetadata = (
@@ -499,145 +682,68 @@ const evaluateManifestGuard = (
   return failures;
 };
 
-const applyMetricDeltas = (state: RuntimeState, deltas: Array<GameManifestDeterministicMetricDelta>) => {
+const readMetricSnapshot = (state: RuntimeState): Record<string, unknown> => {
+  const publicState = ensureObject(state.public);
+  return { ...ensureObject(publicState.metrics) };
+};
+
+const applyMetricChange = (
+  state: RuntimeState,
+  change: { metricId: string; delta: number | string | JsonLogicExpression }
+) => {
   const publicState = ensureObject(state.public);
   const metrics = ensureObject(publicState.metrics);
 
-  for (const delta of deltas) {
-    const current = typeof metrics[delta.metricId] === "number" ? (metrics[delta.metricId] as number) : 0;
-    // Resolve delta value: number literal, template string, or JsonLogic expression.
-    let deltaValue: number;
-    if (typeof delta.delta === "number") {
-      deltaValue = delta.delta;
-    } else if (typeof delta.delta === "string") {
-      deltaValue = Number(delta.delta);
-    } else if (typeof delta.delta === "object" && delta.delta !== null) {
-      // JsonLogic expression — evaluate against the current state.
-      deltaValue = Number(jsonLogic.apply(delta.delta as any, state)) || 0;
-    } else {
-      deltaValue = 0;
-    }
-    const nextValue = current + deltaValue;
-    metrics[delta.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
+  const current = typeof metrics[change.metricId] === "number" ? (metrics[change.metricId] as number) : 0;
+  // Resolve the addition value: number literal, template string, or JsonLogic expression.
+  let changeValue: number;
+  if (typeof change.delta === "number") {
+    changeValue = change.delta;
+  } else if (typeof change.delta === "string") {
+    changeValue = Number(change.delta);
+  } else if (typeof change.delta === "object" && change.delta !== null) {
+    // JsonLogic expression — evaluate against the current state.
+    changeValue = Number(jsonLogic.apply(change.delta as any, state)) || 0;
+  } else {
+    changeValue = 0;
   }
+  const nextValue = current + changeValue;
+  metrics[change.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
 
   publicState.metrics = metrics;
   state.public = publicState;
 };
 
-const applyManifestMetricDeltas = (
-  state: RuntimeState,
-  metadata: GameManifestDeterministicActionMetadata
-) => {
-  if (metadata.metricDeltas) {
-    applyMetricDeltas(state, metadata.metricDeltas);
-  }
-
-  for (const bonus of metadata.conditionalMetricBonuses ?? []) {
-    if (evaluateMetricCondition(state, bonus.when)) {
-      applyMetricDeltas(state, bonus.metricDeltas);
-    }
-  }
-
-  for (const bonus of metadata.conditionalStateBonuses ?? []) {
-    let allMet = true;
-    for (const condition of bonus.when) {
-      // Evaluate generic state condition
-      const pathParts = condition.path.split('/');
-      let current: unknown = state;
-      for (const part of pathParts) {
-        if (part === '') continue;
-        if (current == null || typeof current !== 'object') {
-          current = undefined;
-          break;
-        }
-        current = (current as Record<string, unknown>)[part];
-      }
-      
-      const value = current;
-      const expected = condition.value;
-      
-      let conditionMet = false;
-      switch (condition.operator) {
-        case "==": conditionMet = value === expected; break;
-        case "!=": conditionMet = value !== expected; break;
-        case ">": conditionMet = typeof value === 'number' && typeof expected === 'number' && value > expected; break;
-        case ">=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value >= expected; break;
-        case "<": conditionMet = typeof value === 'number' && typeof expected === 'number' && value < expected; break;
-        case "<=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value <= expected; break;
-        case "exists": conditionMet = value !== undefined && value !== null; break;
-        case "not_exists": conditionMet = value === undefined || value === null; break;
-      }
-      if (!conditionMet) {
-        allMet = false;
-        break;
-      }
-    }
-    if (allMet) {
-      applyMetricDeltas(state, bonus.metricDeltas);
-    }
-  }
-
-};
-
-const resolveConditionalLineSwitch = (
-  state: RuntimeState,
-  metadata: GameManifestDeterministicActionMetadata
-) => {
-  const lineSwitch = metadata.conditionalLineSwitch;
-  if (!lineSwitch) {
-    return null;
-  }
-
-  return evaluateMetricCondition(state, lineSwitch.when) ? lineSwitch : null;
-};
-
-const resolveConditionalInfoVariant = (
-  state: RuntimeState,
-  metadata: GameManifestDeterministicActionMetadata
-) => {
-  const infoVariant = metadata.conditionalInfoVariant;
-  if (!infoVariant) {
-    return null;
-  }
-
-  return evaluateMetricCondition(state, infoVariant.when) ? infoVariant : null;
-};
-
-const appendManifestLogEntry = (
+const appendStructuredLogEntry = (
   state: RuntimeState,
   context: RuntimeActionContext<RuntimeState>,
-  metadata: GameManifestDeterministicActionMetadata,
+  log: Extract<GameManifestDeterministicEffect, { op: "log.append" }>,
+  provenance: GameManifestDeterministicActionMetadata["provenance"] | undefined,
+  capabilityFamily: CapabilityFamily,
   metricsBefore?: Record<string, unknown>,
   metricsAfter?: Record<string, unknown>
 ) => {
-  const log = metadata.log;
   const logEntry: Record<string, unknown> = {
     actionId: context.actionId,
     kind: log?.kind,
     summary: log?.summary,
+    capability: context.manifestAction.capability,
+    capabilityFamily,
+    functionName: context.manifestAction.functionName ?? context.actionId,
     at: context.now.toISOString(),
-    legacyProvenance: metadata.provenance ? metadata.provenance.map((item) => ({ ...item })) : []
+    payload: context.payload ?? null,
+    legacyProvenance: provenance ? provenance.map((item) => ({ ...item })) : []
   };
 
-  if (log?.stageId !== undefined) {
-    logEntry.stageId = log.stageId;
+  if ("data" in log && isObjectRecord(log.data)) {
+    Object.assign(logEntry, log.data);
   }
 
-  if (log?.displayMode !== undefined) {
-    logEntry.displayMode = log.displayMode;
-  }
-
-  if (log?.entityType !== undefined) {
-    logEntry.entityType = log.entityType;
-  }
-
-  if (log?.cardId !== undefined) {
-    logEntry.cardId = log.cardId;
-  }
-
-  if (log?.backText !== undefined) {
-    logEntry.backText = log.backText;
+  const logRecord = log as unknown as Record<string, unknown>;
+  for (const field of ["stageId", "displayMode", "entityType", "cardId", "memberId", "backText"]) {
+    if (logRecord[field] !== undefined) {
+      logEntry[field] = logRecord[field];
+    }
   }
 
   if (metricsBefore) {
@@ -660,7 +766,7 @@ const appendManifestLogEntry = (
       }
     }
     if (deltas.length > 0) {
-      logEntry.metricDeltas = deltas;
+      logEntry.metricChanges = deltas;
     }
   }
 
@@ -669,205 +775,234 @@ const appendManifestLogEntry = (
   return logEntry;
 };
 
-const applyManifestStateUpdate = (
+const applyManifestEffects = (
   state: RuntimeState,
+  context: RuntimeActionContext<RuntimeState>,
   metadata: GameManifestDeterministicActionMetadata,
-  conditionalLineSwitch: GameManifestDeterministicActionMetadata["conditionalLineSwitch"] | null = null,
-  conditionalInfoVariant: GameManifestDeterministicActionMetadata["conditionalInfoVariant"] | null = null
-) => {
-  const stateUpdate = metadata.stateUpdate;
-  if (!stateUpdate) {
-    return;
-  }
+  capabilityFamily: CapabilityFamily,
+  preActionState: RuntimeState,
+  metricsBefore: Record<string, unknown>
+): Array<RuntimeActionEffect> => {
+  const declaredEffects = Array.isArray(metadata.effects) ? metadata.effects : [];
+  const runtimeEffects: Array<RuntimeActionEffect> = [];
 
-  // 1. Process Manual Updates (Timeline, etc.)
-  const publicState = ensureObject(state.public);
-  const timeline = ensureObject(publicState.timeline);
-
-  if (stateUpdate.timelineCanAdvance !== undefined) {
-    const nextCanAdvance = typeof stateUpdate.timelineCanAdvance === 'string' ? stateUpdate.timelineCanAdvance === 'true' : stateUpdate.timelineCanAdvance;
-    timeline.canAdvance = nextCanAdvance;
-  }
-  if (stateUpdate.timelineStepIndex !== undefined) {
-    const nextStepIndex = typeof stateUpdate.timelineStepIndex === 'string' ? Number(stateUpdate.timelineStepIndex) : stateUpdate.timelineStepIndex;
-    timeline.stepIndex = nextStepIndex;
-    timeline.step_index = nextStepIndex;
-  }
-  if (stateUpdate.timelineStageId !== undefined) {
-    timeline.stageId = stateUpdate.timelineStageId;
-    timeline.stage_id = stateUpdate.timelineStageId;
-  }
-  if (stateUpdate.timelineScreenId !== undefined) {
-    timeline.screenId = stateUpdate.timelineScreenId;
-    timeline.screen_id = stateUpdate.timelineScreenId;
-  }
-  if (stateUpdate.activeInfoId !== undefined) {
-    timeline.activeInfoId = stateUpdate.activeInfoId;
-  }
-
-  if (conditionalInfoVariant) {
-    timeline.activeInfoId = conditionalInfoVariant.activeInfoId;
-  }
-
-  if (conditionalLineSwitch) {
-    timeline.line = conditionalLineSwitch.targetLine;
-    timeline.stepIndex = conditionalLineSwitch.targetStepIndex;
-    timeline.step_index = conditionalLineSwitch.targetStepIndex;
-    if (conditionalLineSwitch.targetStageId !== undefined) {
-      timeline.stageId = conditionalLineSwitch.targetStageId;
-      timeline.stage_id = conditionalLineSwitch.targetStageId;
+  for (const effect of declaredEffects) {
+    if (effect.when && !evaluateEffectCondition(state, preActionState, effect.when)) {
+      continue;
     }
-    if (conditionalLineSwitch.targetScreenId !== undefined) {
-      timeline.screenId = conditionalLineSwitch.targetScreenId;
-      timeline.screen_id = conditionalLineSwitch.targetScreenId;
-    }
-    if (conditionalLineSwitch.targetInfoId !== undefined) {
-      timeline.activeInfoId = conditionalLineSwitch.targetInfoId;
-    }
-    if (conditionalLineSwitch.timelineCanAdvance !== undefined) {
-      timeline.canAdvance = conditionalLineSwitch.timelineCanAdvance;
-    }
-  }
 
-  // Sync references
-  publicState.timeline = timeline;
-  state.public = publicState;
+    // Effect means a schema-validated operation from the manifest, not code.
+    // This keeps UI/runtime command cleanup declarative and game-agnostic.
+    switch (effect.op) {
+      case "runtime.server.request": {
+        const uiState = ensureUiState(state);
+        uiState.serverRequested = true;
+        uiState.lastCapabilityFamily = capabilityFamily;
+        uiState.lastCapability = context.manifestAction.capability ?? effect.op;
+        runtimeEffects.push({
+          kind: "runtime",
+          target: "server",
+          value: "requested",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op
+          }
+        });
+        break;
+      }
+      case "timeline.set": {
+        const publicState = ensureObject(state.public);
+        const timeline = ensureObject(publicState.timeline);
+        const changedFields: Record<string, unknown> = {};
 
-  if (stateUpdate.selectedCardId !== undefined) {
-    const secretState = ensureObject(state.secret);
-    const opening = ensureObject(secretState.opening);
-    opening.selectedCardId = stateUpdate.selectedCardId;
-    secretState.opening = opening;
-    state.secret = secretState;
-  }
-
-  // 2. Process Generic State Patches
-  if (stateUpdate.statePatches) {
-    for (const patch of stateUpdate.statePatches) {
-      const pathParts = patch.path.split('/');
-      let current: Record<string, unknown> = state as Record<string, unknown>;
-      
-      for (let i = 0; i < pathParts.length - 1; i++) {
-        const part = pathParts[i];
-        if (part === '') continue;
-        if (typeof current[part] !== 'object' || current[part] === null) {
-          current[part] = {};
+        if (effect.line !== undefined) {
+          timeline.line = effect.line;
+          changedFields.line = effect.line;
         }
-        current = current[part] as Record<string, unknown>;
-      }
-      
-      const lastPart = pathParts[pathParts.length - 1];
-      if (lastPart === '') continue;
-      
-      if (patch.op === "add" || patch.op === "replace") {
-        current[lastPart] = patch.value;
-      } else if (patch.op === "remove") {
-        delete current[lastPart];
-      } else if (patch.op === "increment") {
-        current[lastPart] = (Number(current[lastPart]) || 0) + Number(patch.value);
-      } else if (patch.op === "append") {
-        if (!Array.isArray(current[lastPart])) {
-          current[lastPart] = [];
+        if (effect.stepIndex !== undefined) {
+          const stepIndex = coerceManifestNumber(effect.stepIndex);
+          timeline.stepIndex = stepIndex;
+          timeline.step_index = stepIndex;
+          changedFields.stepIndex = stepIndex;
         }
-        (current[lastPart] as Array<unknown>).push(patch.value);
+        if (effect.stageId !== undefined) {
+          timeline.stageId = effect.stageId;
+          timeline.stage_id = effect.stageId;
+          changedFields.stageId = effect.stageId;
+        }
+        if (effect.screenId !== undefined) {
+          timeline.screenId = effect.screenId;
+          timeline.screen_id = effect.screenId;
+          changedFields.screenId = effect.screenId;
+        }
+        if (effect.activeInfoId !== undefined) {
+          timeline.activeInfoId = effect.activeInfoId;
+          changedFields.activeInfoId = effect.activeInfoId;
+        }
+        if (effect.canAdvance !== undefined) {
+          const canAdvance = coerceManifestBoolean(effect.canAdvance);
+          timeline.canAdvance = canAdvance;
+          changedFields.canAdvance = canAdvance;
+        }
+
+        publicState.timeline = timeline;
+        state.public = publicState;
+        runtimeEffects.push({
+          kind: "state",
+          target: "public.timeline",
+          value: "set",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            fields: changedFields
+          }
+        });
+        break;
+      }
+      case "metric.add": {
+        applyMetricChange(state, { metricId: effect.metricId, delta: effect.delta });
+        runtimeEffects.push({
+          kind: "state",
+          target: `public.metrics.${effect.metricId}`,
+          value: "add",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            delta: effect.delta
+          }
+        });
+        break;
+      }
+      case "state.patch": {
+        for (const patch of effect.patches) {
+          applyStatePatchEffect(state, patch);
+        }
+        runtimeEffects.push({
+          kind: "state",
+          target: "state",
+          value: "patch",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            patchCount: effect.patches.length
+          }
+        });
+        break;
+      }
+      case "flag.set": {
+        const current = ensureObject(readJsonPointer(state, effect.path));
+        for (const [key, value] of Object.entries(effect.values)) {
+          current[key] = value;
+        }
+        setJsonPointerValue(state, effect.path, current);
+        runtimeEffects.push({
+          kind: "state",
+          target: effect.path,
+          value: "flag.set",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            values: effect.values
+          }
+        });
+        break;
+      }
+      case "counter.add": {
+        const current = readJsonPointer(state, effect.path);
+        const delta = coerceManifestNumber(effect.delta);
+        setJsonPointerValue(state, effect.path, (Number(current) || 0) + delta);
+        runtimeEffects.push({
+          kind: "state",
+          target: effect.path,
+          value: "counter.add",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            delta
+          }
+        });
+        break;
+      }
+      case "collection.append": {
+        const current = readJsonPointer(state, effect.path);
+        const collection = Array.isArray(current) ? [...current] : [];
+        collection.push(effect.value);
+        setJsonPointerValue(state, effect.path, collection);
+        runtimeEffects.push({
+          kind: "state",
+          target: effect.path,
+          value: "collection.append",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            value: effect.value
+          }
+        });
+        break;
+      }
+      case "ui.panel.open": {
+        const uiState = ensureUiState(state);
+        uiState.activePanel = effect.panelId;
+        uiState.lastCapabilityFamily = capabilityFamily;
+        uiState.lastCapability = context.manifestAction.capability ?? effect.op;
+        runtimeEffects.push({
+          kind: "ui",
+          target: "panel",
+          value: effect.panelId,
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op
+          }
+        });
+        break;
+      }
+      case "ui.screen.open": {
+        const uiState = ensureUiState(state);
+        uiState.activeScreen = effect.screenId;
+        if (effect.layoutId !== undefined) {
+          uiState.activeLayout = effect.layoutId;
+        }
+        uiState.lastCapabilityFamily = capabilityFamily;
+        uiState.lastCapability = context.manifestAction.capability ?? effect.op;
+        runtimeEffects.push({
+          kind: "ui",
+          target: "screen",
+          value: effect.screenId,
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            ...(effect.layoutId !== undefined ? { layoutId: effect.layoutId } : {})
+          }
+        });
+        break;
+      }
+      case "log.append": {
+        const metricsAfter = effect.auditMetrics ? readMetricSnapshot(state) : undefined;
+        const logEntry = appendStructuredLogEntry(
+          state,
+          context,
+          effect,
+          metadata.provenance,
+          capabilityFamily,
+          effect.auditMetrics ? metricsBefore : undefined,
+          metricsAfter
+        );
+        runtimeEffects.push({ kind: "log", target: "public.log", data: logEntry });
+        break;
       }
     }
   }
 
-  // 3. Process Semantic State Updates (cardFlags, teamFlags, teamSelection)
-  const publicStateFinal = ensureObject(state.public);
-  const flags = ensureObject(publicStateFinal.flags);
-  const cards = ensureObject(flags.cards);
-
-  // cardFlags: update card state in public.flags.cards[cardId]
-  if ((stateUpdate as any).cardFlags) {
-    const cf = (stateUpdate as any).cardFlags;
-    const cardId = cf.cardId;
-    if (cardId !== undefined) {
-      const cardState = ensureObject(cards[cardId]);
-      if (cf.selected !== undefined) cardState.selected = cf.selected;
-      if (cf.resolved !== undefined) cardState.resolved = cf.resolved;
-      if (cf.locked !== undefined) cardState.locked = cf.locked;
-      if (cf.available !== undefined) cardState.available = cf.available;
-      cards[cardId] = cardState;
-    }
-  }
-
-  // teamFlags: update team member state in public.flags.team[memberId]
-  if ((stateUpdate as any).teamFlags) {
-    const tf = (stateUpdate as any).teamFlags;
-    const memberId = tf.memberId;
-    if (memberId !== undefined) {
-      const team = ensureObject(flags.team);
-      const memberState = ensureObject(team[memberId]);
-      if (tf.selected !== undefined) memberState.selected = tf.selected;
-      team[memberId] = memberState;
-      flags.team = team;
-    }
-  }
-
-  // teamSelection: update pickCount and selectedMemberIds
-  if ((stateUpdate as any).teamSelection) {
-    const ts = (stateUpdate as any).teamSelection;
-    const teamSelection = ensureObject(publicStateFinal.teamSelection);
-    if (ts.pickCountDelta !== undefined) {
-      teamSelection.pickCount = (Number(teamSelection.pickCount) || 0) + Number(ts.pickCountDelta);
-    }
-    if (ts.selectedMemberIdsAppend !== undefined) {
-      if (!Array.isArray(teamSelection.selectedMemberIds)) {
-        teamSelection.selectedMemberIds = [];
-      }
-      (teamSelection.selectedMemberIds as Array<unknown>).push(ts.selectedMemberIdsAppend);
-    }
-    publicStateFinal.teamSelection = teamSelection;
-  }
-
-  if ((stateUpdate as any).boardCardUnlock) {
-    const board = (stateUpdate as any).boardCardUnlock;
-    const resolvedCount = countResolvedCards(cards, board.cardIds);
-
-    if (resolvedCount >= board.resolvedCountAtLeast) {
-      const unlessCardId = board.unlessCardAvailable;
-      const shouldUnlock = !unlessCardId || (cards[unlessCardId] && (cards[unlessCardId] as any).available !== true);
-      if (shouldUnlock) {
-        const unlockCardId = board.unlockCardId;
-        const unlockCardState = ensureObject(cards[unlockCardId]);
-        unlockCardState.locked = false;
-        unlockCardState.available = true;
-        cards[unlockCardId] = unlockCardState;
-      }
-    }
-  }
-
-  if (
-    (stateUpdate as any).boardEntryAltCardSwap &&
-    evaluateMetricCondition(state, (stateUpdate as any).boardEntryAltCardSwap.when)
-  ) {
-    const swap = (stateUpdate as any).boardEntryAltCardSwap;
-    const baseCardState = ensureObject(cards[swap.baseCardId]);
-    baseCardState.available = false;
-    cards[swap.baseCardId] = baseCardState;
-
-    const altCardState = ensureObject(cards[swap.altCardId]);
-    altCardState.locked = false;
-    altCardState.available = true;
-    cards[swap.altCardId] = altCardState;
-  }
-
-  if ((stateUpdate as any).boardThreshold) {
-    const board = (stateUpdate as any).boardThreshold;
-    const resolvedCount = countResolvedCards(cards, board.cardIds);
-
-    if (resolvedCount >= board.resolvedCountAtLeast) {
-      const timelineFinal = ensureObject(publicStateFinal.timeline);
-      timelineFinal.canAdvance = board.timelineCanAdvance ?? true;
-      publicStateFinal.timeline = timelineFinal;
-    }
-  }
-
-  flags.cards = cards;
-  publicStateFinal.flags = flags;
-  state.public = publicStateFinal;
+  return runtimeEffects;
 };
 
 const buildManifestActionTransition = (
@@ -912,29 +1047,29 @@ const buildManifestActionTransition = (
   }
 
   const nextState = cloneState(context.state);
-  const conditionalLineSwitch = resolveConditionalLineSwitch(context.state, metadata);
-  const conditionalInfoVariant = resolveConditionalInfoVariant(context.state, metadata);
+  const metricsBefore = readMetricSnapshot(nextState);
 
-  const publicStateBefore = ensureObject(nextState.public);
-  const metricsBefore = { ...ensureObject(publicStateBefore.metrics) };
-
-  applyManifestMetricDeltas(nextState, metadata);
-
-  const publicStateAfter = ensureObject(nextState.public);
-  const metricsAfter = { ...ensureObject(publicStateAfter.metrics) };
-
-  // `public.log` is the runtime audit trail used by integration checks and by
-  // presenters. Player-facing journal views filter card-resolution entries in
-  // the frontend, so runtime keeps every deterministic action auditable.
-  const skipLog = false;
-  let logEntry: Record<string, unknown> | null = null;
-  if (!skipLog) {
-    logEntry = appendManifestLogEntry(nextState, context, metadata, metricsBefore, metricsAfter);
+  let declaredEffects: Array<RuntimeActionEffect>;
+  try {
+    declaredEffects = applyManifestEffects(
+      nextState,
+      context,
+      metadata,
+      capabilityFamily,
+      context.state,
+      metricsBefore
+    );
+  } catch (error) {
+    return {
+      ok: false,
+      error: {
+        code: "RUNTIME_ACTION_EFFECT_FAILED",
+        message: error instanceof Error ? error.message : `Action "${context.actionId}" effect failed`
+      }
+    };
   }
 
-  applyManifestStateUpdate(nextState, metadata, conditionalLineSwitch, conditionalInfoVariant);
-
-  const effect: RuntimeActionEffect = {
+  const fallbackEffect: RuntimeActionEffect = {
     kind: "runtime",
     target: "deterministic",
     value: context.actionId,
@@ -943,13 +1078,11 @@ const buildManifestActionTransition = (
       family: capabilityFamily
     }
   };
+  const effect = declaredEffects.find((item) => item.kind !== "log") ?? fallbackEffect;
 
   setRuntimeMetadata(nextState, context, effect, capabilityFamily);
 
-  const effects: Array<RuntimeActionEffect> = [effect];
-  if (logEntry) {
-    effects.push({ kind: "log", target: "public.log", data: logEntry as Record<string, unknown> });
-  }
+  const effects: Array<RuntimeActionEffect> = declaredEffects.length > 0 ? declaredEffects : [fallbackEffect];
 
   return {
     ok: true,

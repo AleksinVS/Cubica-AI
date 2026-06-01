@@ -1,46 +1,28 @@
-# План исправления `runtime-api` после миграции манифеста Antarctica
+# Manifest Effects Migration Closeout
 
-## 1. Причина возникновения ошибок (Root Cause)
-После миграции манифеста на механизм шаблонов действий (Macros) были обновлены интерфейсы в пакете `@cubica/contracts-manifest` (в частности `GameManifestDeterministicGuard` и `GameManifestDeterministicStateUpdate`). 
+Этот документ заменяет прежний план аварийного исправления runtime-api после миграции manifest. План больше не является активной задачей: runtime-api, schema, contracts и манифесты `Antarctica`/`simple-choice` переведены на единый `effects[]` путь.
 
-В рамках этой миграции были **удалены** жестко закодированные специфичные для игры свойства:
-*   В `guard`: удалены `opening`, `card`, `teamSelection`, `team`, `board`. Оставлены только базовые проверки `timeline` и новый обобщенный массив `stateConditions`.
-*   В `stateUpdate`: удалены `cardFlags`, `teamFlags`, `boardCardUnlock`, `boardEntryAltCardSwap`, `boardThreshold`, `teamSelection`. Оставлены только базовые обновления `timeline` и новый обобщенный массив `statePatches`.
+## Статус
 
-**Проблема:** Файл движка `services/runtime-api/src/modules/runtime/deterministicHandlers.ts` не был обновлен в соответствии с новыми контрактами. Он всё ещё пытается обращаться к удаленным свойствам, что вызывает **192 ошибки TypeScript** (например, `Property 'cardFlags' does not exist on type 'GameManifestDeterministicStateUpdate'`) и приводит к падению сервиса `runtime-api` при сборке или выполнении. Из-за падения `runtime-api` фронтенд `player-web` не может получить данные игры и выдает ошибку `404/500`.
+Закрыто 2026-05-31.
 
-## 2. План исправления (Action Plan)
+Текущая форма deterministic-изменений:
 
-Для восстановления работоспособности необходимо отрефакторить файл `services/runtime-api/src/modules/runtime/deterministicHandlers.ts`:
+- `timeline.set` для переходов сценария;
+- `state.patch` для точечных патчей состояния;
+- `metric.add` для изменения метрик;
+- `flag.set`, `counter.add`, `collection.append` для игровых признаков, счетчиков и списков;
+- `log.append` для журнала, включая `auditMetrics` там, где журнал должен сохранить снимки метрик;
+- `ui.panel.open`, `ui.screen.open`, `runtime.server.request` для общих UI/runtime команд.
 
-### Шаг 1: Очистка `applyManifestStateUpdate`
-*   Удалить всю логику обработки устаревших свойств: `stateUpdate.cardFlags`, `stateUpdate.teamFlags`, `stateUpdate.boardCardUnlock`, `stateUpdate.boardEntryAltCardSwap`, `stateUpdate.boardThreshold`, `stateUpdate.teamSelection`.
-*   Убедиться, что применяется только логика обновления `timeline`, `selectedCardId`, `activeInfoId` и перебор массива `statePatches`.
+## Проверки
 
-### Шаг 2: Очистка `evaluateManifestGuard`
-*   Удалить всю логику валидации для устаревших свойств: `guard.opening`, `guard.card`, `guard.teamSelection`, `guard.team`, `guard.board`.
-*   Убедиться, что применяются только проверки `timeline` и перебор массива `guard.stateConditions`.
+Закрытие считается действительным только при успешных проверках:
 
-### Шаг 3: Удаление вспомогательных (dead code) функций
-*   Удалить функции, которые больше не используются после шагов 1 и 2, такие как `readTeamSelectionState` и другие специфичные ридеры, если на них больше нет ссылок.
-
-### Шаг 4: Валидация (Typecheck & Tests)
-*   Выполнить команду проверки типов:
-    ```bash
-    npm run typecheck --workspace services/runtime-api
-    ```
-    Убедиться, что количество ошибок равно 0.
-*   Выполнить тесты:
-    ```bash
-    npm test --workspace services/runtime-api
-    npm run smoke --workspace services/runtime-api
-    ```
-
-### Шаг 5: Перезапуск сервисов
-После успешной компиляции перезапустить сервисы для применения изменений:
 ```bash
-fuser -k 3000/tcp 3001/tcp
-npm run dev --workspace services/runtime-api &
-npm run dev --workspace @cubica/player-web
+npm run verify:runtime-api
+npm run verify:manifest-authoring
+npm run verify:game-agnostic
 ```
-После этого ошибка 404/500 в `player-web` должна исчезнуть, так как `runtime-api` сможет корректно распарсить обновленный манифест и отдать контент.
+
+Дополнительно выполняется статический scan на отсутствие прежних deterministic-полей в текущих manifest/schema/runtime/contracts/player/editor областях.

@@ -19,6 +19,10 @@ import { CardComponent } from "./card-component";
 import { ButtonComponent } from "./button-component";
 import { RichTextComponent } from "./rich-text-component";
 import { ImageComponent } from "./image-component";
+import {
+  childRuntimePointer,
+  createPreviewElementAttributes
+} from "./preview-metadata";
 
 const FORWARD_NAV_BUTTON_ID = "nav-right";
 const ADVANCE_BUTTON_IDS = new Set(["btn-advance", "btn-finish"]);
@@ -106,6 +110,8 @@ export function UiComponentNode({
   localContext,
   parentVisualMode,
   designArtifacts,
+  editorPreviewMode = false,
+  runtimePointer,
 }: {
   component: GameUiComponent;
   metrics: MetricsSnapshot;
@@ -121,9 +127,19 @@ export function UiComponentNode({
   parentVisualMode?: "image" | "style" | "auto";
   /** Registry дизайн-артефактов для разрешения designImageRef при visualMode="image". */
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
+  /** Enables runtime pointer metadata for editor preview inspection. */
+  editorPreviewMode?: boolean;
+  /** Runtime JSON Pointer for the current component in the generated UI manifest. */
+  runtimePointer?: string;
 }) {
   const children = moveAdvanceActionToForwardNavigation(component.children ?? []);
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
+  const previewAttributes = createPreviewElementAttributes({
+    enabled: editorPreviewMode,
+    component,
+    runtimePointer,
+    layer: screenKey
+  });
 
   // visualMode resolution: "auto" → "image" if designImageRef available, else "style"
   const resolvedDesignImage = resolveDesignImage(component.designImageRef, designArtifacts);
@@ -172,6 +188,8 @@ export function UiComponentNode({
                   localContext={itemLocalContext}
                   parentVisualMode={effectiveVisualMode}
                   designArtifacts={designArtifacts}
+                  editorPreviewMode={editorPreviewMode}
+                  runtimePointer={childRuntimePointer(runtimePointer, childIndex)}
                 />
               ))}
             </React.Fragment>
@@ -191,6 +209,7 @@ export function UiComponentNode({
       const areaBgImage = isImageMode && resolvedDesignImage ? resolvedDesignImage : undefined;
       return (
         <div
+          {...previewAttributes}
           className={component.type === "areaComponent" ? `game-area ${cssClass}` : `game-screen ${cssClass}`}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
         >
@@ -217,6 +236,7 @@ export function UiComponentNode({
         : props.backgroundImage;
       return (
         <div
+          {...previewAttributes}
           className={`game-screen ${cssClass}`}
           style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
         >
@@ -236,6 +256,8 @@ export function UiComponentNode({
               localContext={localContext}
               parentVisualMode={effectiveVisualMode}
               designArtifacts={designArtifacts}
+              editorPreviewMode={editorPreviewMode}
+              runtimePointer={childRuntimePointer(runtimePointer, index)}
             />
           ))}
         </div>
@@ -248,6 +270,7 @@ export function UiComponentNode({
       const areaBgImage = isImageMode && resolvedDesignImage ? resolvedDesignImage : undefined;
       return (
         <div
+          {...previewAttributes}
           className={`game-area ${resolveAreaCssClass(props.cssClass, screenKey, layoutMode)}`}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
         >
@@ -264,6 +287,8 @@ export function UiComponentNode({
               localContext={localContext}
               parentVisualMode={effectiveVisualMode}
               designArtifacts={designArtifacts}
+              editorPreviewMode={editorPreviewMode}
+              runtimePointer={childRuntimePointer(runtimePointer, index)}
             />
           ))}
         </div>
@@ -279,6 +304,7 @@ export function UiComponentNode({
           backgroundImage={props.backgroundImage}
           layoutMode={layoutMode}
           metricBackgroundImages={metricBackgroundImages}
+          previewAttributes={previewAttributes}
         />
       );
     }
@@ -290,6 +316,7 @@ export function UiComponentNode({
           onAction={onAction}
           localContext={localContext}
           gameState={gameState}
+          previewAttributes={previewAttributes}
         />
       );
     }
@@ -302,6 +329,7 @@ export function UiComponentNode({
           layoutMode={layoutMode}
           localContext={localContext}
           gameState={gameState}
+          previewAttributes={previewAttributes}
         />
       );
     }
@@ -312,6 +340,7 @@ export function UiComponentNode({
           component={component as GameUiComponent<GameUiRichTextComponentProps>}
           localContext={localContext}
           gameState={gameState}
+          previewAttributes={previewAttributes}
         />
       );
     }
@@ -320,6 +349,7 @@ export function UiComponentNode({
       return (
         <ImageComponent
           component={component as GameUiComponent<GameUiImageComponentProps>}
+          previewAttributes={previewAttributes}
         />
       );
     }
