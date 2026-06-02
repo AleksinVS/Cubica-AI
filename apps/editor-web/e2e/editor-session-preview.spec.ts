@@ -46,7 +46,7 @@ test.describe("editor-web session preview", () => {
       editorSessionId = sessionBody.session.sessionId;
       expect(sessionBody.session.branchName).toContain(`editor/session/${editorSessionId}`);
 
-      await expect(page.getByLabel("Editor toolbar")).toContainText(sessionBody.session.branchName);
+      await expect(page.getByLabel("Editor status")).toContainText(sessionBody.session.branchName);
       const previewButton = page.getByRole("button", { name: "Preview", exact: true });
       await expect(previewButton).toBeEnabled();
 
@@ -73,11 +73,12 @@ test.describe("editor-web session preview", () => {
       expect(contentResponse.status()).toBe(200);
 
       const previewStage = page.getByLabel("Game preview");
-      await expect(previewStage).toContainText("ready");
+      const editorStatus = page.getByLabel("Editor status");
+      await expect(editorStatus).toContainText("Preview:");
       const frame = page.frameLocator('iframe[title="Game preview"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(frame.locator("[data-preview-runtime-pointer]").first()).toBeVisible();
-      await expect(previewStage).toContainText(/[1-9][0-9]* selectable/);
+      await expect(editorStatus).toContainText(/[1-9][0-9]* selectable/);
     } finally {
       await page.close().catch(() => undefined);
       if (editorSessionId !== undefined) {
@@ -112,29 +113,28 @@ test.describe("editor-web session preview", () => {
       const previewBody = (await previewResponse.json()) as EditorPreviewResponse;
       expect(previewBody.ready, JSON.stringify(previewBody.diagnostics ?? [])).toBe(true);
 
-      const previewStage = page.getByLabel("Game preview");
       const frame = page.frameLocator('iframe[title="Game preview"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
-      await expect(page.getByLabel("Timeline")).toContainText("T0: Initial runtime state");
+      await page.getByRole("button", { name: "Timeline" }).click();
+      const timelinePanel = page.locator('aside[aria-label="Timeline"]');
+      await expect(timelinePanel).toContainText("T0");
+      await expect(timelinePanel).toContainText("Initial runtime state");
       const traceDetails = page.getByLabel("Preview trace details");
       await expect(traceDetails).toContainText("Current T0");
       await expect(traceDetails.getByRole("button", { name: "Reset to start" })).toBeVisible();
       await expect(traceDetails.getByRole("button", { name: "Replay current" })).toBeVisible();
 
-      await previewStage.getByRole("button", { name: "Inspect" }).click();
+      await expect(page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" })).toBeVisible();
       const floatingProperties = page.locator(".property-panel");
-      await floatingProperties.waitFor({ state: "visible", timeout: 1500 }).catch(() => undefined);
-      if (await floatingProperties.isVisible()) {
-        await floatingProperties.getByRole("button", { name: "Collapse" }).click();
-        await expect(floatingProperties).toBeHidden();
-      }
+      await expect(floatingProperties).toBeHidden();
       await frame.getByRole("button", { name: "Choose path" }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
-      await expect(page.getByLabel("Timeline")).toContainText("T1: choice.accept");
+      await expect(timelinePanel).toContainText("T1");
+      await expect(timelinePanel).toContainText("choice.accept");
       await expect(traceDetails).toContainText("Current T1");
       await expect(traceDetails.getByLabel("Selected trace event payload")).toContainText("choice.accept");
 
-      await page.getByLabel("Timeline").getByRole("button", { name: /T0: Initial runtime state/ }).click();
+      await timelinePanel.getByRole("button", { name: /T0.*Initial runtime state/ }).click();
       await expect(traceDetails).toContainText("T0: Initial runtime state");
       const rollbackResponsePromise = page.waitForResponse((response) =>
         response.url().endsWith("/api/editor/preview/rollback") && response.request().method() === "POST"
@@ -144,13 +144,13 @@ test.describe("editor-web session preview", () => {
       expect(rollbackResponse.status()).toBe(200);
 
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
-      await expect(page.getByLabel("Timeline")).not.toContainText("T1: choice.accept");
+      await expect(timelinePanel).not.toContainText("T1");
       await expect(traceDetails).toContainText("Current T0");
-      await expect(page.getByLabel("Editor toolbar")).toContainText("Clean");
+      await expect(page.getByLabel("Editor status")).toContainText("Clean");
 
       await frame.getByRole("button", { name: "Choose path" }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
-      await expect(page.getByLabel("Timeline").getByRole("button", { name: /T1: choice.accept/ })).toHaveCount(1);
+      await expect(timelinePanel.getByRole("button", { name: /T1.*choice.accept/ })).toHaveCount(1);
       await expect(traceDetails).toContainText("Current T1");
     } finally {
       await page.close().catch(() => undefined);

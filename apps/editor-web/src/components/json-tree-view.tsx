@@ -11,7 +11,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-import type { JsonValue, TreeViewModel, TreeViewNode } from "@cubica/editor-engine";
+import type { TreeViewModel, TreeViewNode } from "@cubica/editor-engine";
 
 type ToggleMode = "toggle" | "collapse" | "expand";
 
@@ -21,9 +21,6 @@ export interface JsonTreeViewProps {
   readonly collapsedPointers: ReadonlySet<string>;
   readonly onCollapsedPointersChange: (next: ReadonlySet<string>) => void;
   readonly onSelectPointer: (pointer: string) => void;
-  readonly onRevealPointerInJson: (pointer: string) => void;
-  readonly readValue: (pointer: string) => JsonValue | undefined;
-  readonly onSetScalarValue: (pointer: string, rawValue: string) => void;
 }
 
 /**
@@ -42,14 +39,9 @@ export function JsonTreeView({
   selectedPointer,
   collapsedPointers,
   onCollapsedPointersChange,
-  onSelectPointer,
-  onRevealPointerInJson,
-  readValue,
-  onSetScalarValue
+  onSelectPointer
 }: JsonTreeViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingPointer, setEditingPointer] = useState<string | undefined>(undefined);
-  const [draftScalarValue, setDraftScalarValue] = useState("");
   const listRef = useRef<HTMLDivElement | null>(null);
 
   const visiblePointers = useMemo(() => {
@@ -140,26 +132,6 @@ export function JsonTreeView({
     onCollapsedPointersChange(next);
   }
 
-  function beginScalarEdit(pointer: string) {
-    const current = readValue(pointer);
-    if (current === undefined || Array.isArray(current) || (typeof current === "object" && current !== null)) {
-      return;
-    }
-
-    setEditingPointer(pointer);
-    setDraftScalarValue(current === null ? "null" : String(current));
-  }
-
-  function cancelScalarEdit() {
-    setEditingPointer(undefined);
-    setDraftScalarValue("");
-  }
-
-  function applyScalarEdit(pointer: string) {
-    onSetScalarValue(pointer, draftScalarValue);
-    cancelScalarEdit();
-  }
-
   return (
     <section className="tree-panel" aria-label="Authoring JSON tree">
       <div className="tree-heading">
@@ -181,7 +153,6 @@ export function JsonTreeView({
           const isCollapsed = collapsedPointers.has(node.pointer);
           const indentStyle = { paddingLeft: `${depth * 14 + 10}px` };
           const hasDiagnostics = node.subtreeDiagnosticCount > 0;
-          const isEditing = editingPointer === node.pointer;
 
           return (
             <div
@@ -218,45 +189,9 @@ export function JsonTreeView({
 
                 <span className="tree-label">{node.label}</span>
                 <span className="tree-preview">{node.valuePreview}</span>
-                <span className="tree-type">{node.valueType}</span>
                 {node.childCount > 0 ? <span className="tree-count">{node.childCount}</span> : null}
                 {hasDiagnostics ? <span className="tree-diagnostics">{node.subtreeDiagnosticCount}</span> : null}
               </button>
-
-              <div className="tree-row-actions">
-                {node.actions.canSetValue ? (
-                  <button type="button" onClick={() => beginScalarEdit(node.pointer)} disabled={isEditing}>
-                    Edit
-                  </button>
-                ) : null}
-                <button type="button" onClick={() => onRevealPointerInJson(node.pointer)}>
-                  Open in JSON
-                </button>
-              </div>
-
-              {isEditing ? (
-                <div className="tree-inline-edit" aria-label="Scalar edit">
-                  <input
-                    value={draftScalarValue}
-                    onChange={(event) => setDraftScalarValue(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Escape") {
-                        cancelScalarEdit();
-                      }
-                      if (event.key === "Enter") {
-                        applyScalarEdit(node.pointer);
-                      }
-                    }}
-                    autoFocus
-                  />
-                  <button type="button" onClick={() => applyScalarEdit(node.pointer)}>
-                    Apply
-                  </button>
-                  <button type="button" onClick={cancelScalarEdit}>
-                    Cancel
-                  </button>
-                </div>
-              ) : null}
             </div>
           );
         })}

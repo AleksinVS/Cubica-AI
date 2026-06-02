@@ -16,7 +16,7 @@ import {
   type PreviewPoint,
   type PreviewRect
 } from "@cubica/editor-engine";
-import React, { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import React, { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent } from "react";
 
 export interface PreviewAiIntent {
   readonly id: string;
@@ -38,6 +38,7 @@ export interface PreviewSelectionOverlayProps {
   readonly disabled?: boolean;
   readonly entities: readonly PreviewEntityDescriptor[];
   readonly selectedEntityId: string | undefined;
+  readonly pointSelectionEnabled?: boolean;
   readonly promptContext: PreviewPromptContext | null;
   readonly proposedIntent: PreviewAiIntent | null;
   readonly unresolvedCount: number;
@@ -64,6 +65,7 @@ export function PreviewSelectionOverlay({
   disabled = false,
   entities,
   selectedEntityId,
+  pointSelectionEnabled = false,
   promptContext,
   proposedIntent,
   unresolvedCount,
@@ -77,7 +79,12 @@ export function PreviewSelectionOverlay({
   const dragStartRef = useRef<PreviewPoint | null>(null);
   const dragFrameRef = useRef<number | undefined>(undefined);
   const [dragRect, setDragRect] = useState<PreviewRect | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    readonly point: PreviewPoint;
+    readonly entities: readonly PreviewEntityDescriptor[];
+  } | null>(null);
   const selectedEntity = entities.find((entity) => entity.entityId === selectedEntityId);
+  const promptRegionRect = promptContext?.kind === "region" ? promptContext.rect : undefined;
 
   useEffect(() => {
     return () => {
@@ -87,11 +94,19 @@ export function PreviewSelectionOverlay({
     };
   }, []);
 
+  useEffect(() => {
+    if (disabled) {
+      setContextMenu(null);
+      setDragRect(null);
+    }
+  }, [disabled]);
+
   function handlePointerDown(event: PointerEvent<HTMLDivElement>) {
     if (disabled || event.button !== 0) {
       return;
     }
 
+    setContextMenu(null);
     dragStartRef.current = pointFromEvent(event);
     setDragRect(null);
     event.currentTarget.setPointerCapture(event.pointerId);
@@ -138,6 +153,11 @@ export function PreviewSelectionOverlay({
       return;
     }
 
+    if (!pointSelectionEnabled) {
+      onClearContext();
+      return;
+    }
+
     const result = hitTestPreviewPoint(entities, point);
     const topEntity = result.entities[0];
     if (topEntity === undefined) {
@@ -146,6 +166,26 @@ export function PreviewSelectionOverlay({
     }
 
     onSelectEntity(topEntity, point, result.entities);
+  }
+
+  function handleContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
+    if (disabled) {
+      return;
+    }
+
+    event.preventDefault();
+    setDragRect(null);
+    dragStartRef.current = null;
+
+    const point = pointFromMouseEvent(event);
+    const result = hitTestPreviewPoint(entities, point);
+    if (result.entities.length === 0) {
+      setContextMenu(null);
+      onClearContext();
+      return;
+    }
+
+    setContextMenu({ point, entities: result.entities });
   }
 
   function scheduleDragRect(start: PreviewPoint, current: PreviewPoint) {
@@ -166,19 +206,40 @@ export function PreviewSelectionOverlay({
     });
   }
 
+  if (disabled) {
+    return (
+      <div className="preview-overlay-root" aria-label="Preview selection layer">
+        <div className="preview-selection-hit-layer is-disabled" data-testid="preview-selection-overlay" />
+      </div>
+    );
+  }
+
   return (
-    <div className="preview-overlay-root" aria-label="Preview selection layer">
+    <div className={`preview-overlay-root ${contextMenu !== null ? "has-context-menu" : ""}`} aria-label="Preview selection layer">
       <div
-        className={`preview-selection-hit-layer ${disabled ? "is-disabled" : ""}`}
+        className="preview-selection-hit-layer"
         data-testid="preview-selection-overlay"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
+        onContextMenu={handleContextMenu}
       />
       {selectedEntity !== undefined ? <PreviewHighlightFrame entity={selectedEntity} /> : null}
       {dragRect !== null ? <PreviewRegionRect rect={dragRect} /> : null}
+      {dragRect === null && promptRegionRect !== undefined ? <PreviewRegionRect rect={promptRegionRect} /> : null}
       {unresolvedCount > 0 ? (
         <span className="preview-overlay-warning">{unresolvedCount} unmapped preview objects</span>
+      ) : null}
+      {contextMenu !== null ? (
+        <PreviewObjectContextMenu
+          point={contextMenu.point}
+          entities={contextMenu.entities}
+          onSelectEntity={(entity) => {
+            setContextMenu(null);
+            onSelectEntity(entity, contextMenu.point, contextMenu.entities);
+          }}
+          onClose={() => setContextMenu(null)}
+        />
       ) : null}
       {promptContext !== null ? (
         <PreviewPromptBox
@@ -208,6 +269,43 @@ function PreviewHighlightFrame({ entity }: { readonly entity: PreviewEntityDescr
 
 function PreviewRegionRect({ rect }: { readonly rect: PreviewRect }) {
   return <div className="preview-region-rect" style={rectStyle(rect)} aria-hidden="true" />;
+}
+
+function PreviewObjectContextMenu({
+  point,
+  entities,
+  onSelectEntity,
+  onClose
+}: {
+  readonly point: PreviewPoint;
+  readonly entities: readonly PreviewEntityDescriptor[];
+  readonly onSelectEntity: (entity: PreviewEntityDescriptor) => void;
+  readonly onClose: () => void;
+}) {
+  return (
+    <div
+      className="preview-object-context-menu"
+      style={{
+        left: Math.max(8, point.x + promptOffsetPx),
+        top: Math.max(8, point.y + promptOffsetPx)
+      }}
+      role="menu"
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="preview-object-context-menu-head">
+        <strong>Objects</strong>
+        <button type="button" onClick={onClose} aria-label="Close object menu">
+          Close
+        </button>
+      </div>
+      {entities.map((entity) => (
+        <button key={entity.entityId} type="button" role="menuitem" onClick={() => onSelectEntity(entity)}>
+          <span>{entity.semanticRole}</span>
+          <strong>{entity.label}</strong>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 function PreviewPromptBox({
@@ -289,6 +387,14 @@ function PreviewPromptBox({
 }
 
 function pointFromEvent(event: PointerEvent<HTMLDivElement>): PreviewPoint {
+  const rect = event.currentTarget.getBoundingClientRect();
+  return {
+    x: event.clientX - rect.left,
+    y: event.clientY - rect.top
+  };
+}
+
+function pointFromMouseEvent(event: ReactMouseEvent<HTMLDivElement>): PreviewPoint {
   const rect = event.currentTarget.getBoundingClientRect();
   return {
     x: event.clientX - rect.left,

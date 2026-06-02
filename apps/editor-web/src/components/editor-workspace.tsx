@@ -249,6 +249,8 @@ interface SemanticNodeData extends Record<string, unknown> {
 
 type SemanticFlowNode = Node<SemanticNodeData, "semantic">;
 type SemanticFlowEdge = Edge<{ readonly role: EditorViewEdge["role"]; readonly label?: string }, "semantic">;
+type LeftSidebarPanel = "tree" | "timeline" | "chat";
+type PreviewViewportMode = "desktop" | "tablet" | "mobile";
 
 const semanticNodeWidth = 250;
 const semanticNodeHeight = 132;
@@ -353,6 +355,7 @@ function PreviewTraceDetailPanel({
   snapshot,
   currentSequence,
   rollbackState,
+  variant = "floating",
   onRestore,
   onReset,
   onReplayCurrent
@@ -361,6 +364,7 @@ function PreviewTraceDetailPanel({
   snapshot: PreviewPlaythroughSnapshot | undefined;
   currentSequence: number | undefined;
   rollbackState: "idle" | "restoring" | "restored" | "blocked" | "error";
+  variant?: "floating" | "sidebar";
   onRestore: () => void;
   onReset: () => void;
   onReplayCurrent: () => void;
@@ -369,7 +373,7 @@ function PreviewTraceDetailPanel({
   const isRestoring = rollbackState === "restoring";
 
   return (
-    <aside className="preview-trace-detail" aria-label="Preview trace details">
+    <aside className={`preview-trace-detail preview-trace-detail-${variant}`} aria-label="Preview trace details">
       <div className="preview-trace-detail-head">
         <strong>Preview trace</strong>
         <span>Current {currentSequence === undefined ? "none" : `T${currentSequence}`}</span>
@@ -450,7 +454,10 @@ export function EditorWorkspace() {
   const [aiRedoJournal, setAiRedoJournal] = useState<readonly PatchJournalStep[]>([]);
   const [aiDiffSummary, setAiDiffSummary] = useState<readonly EditorDiffSummaryItem[]>([]);
   const [aiDiagnostics, setAiDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
-  const [previewInspectMode, setPreviewInspectMode] = useState(true);
+  const [previewInspectMode, setPreviewInspectMode] = useState(false);
+  const [altPlayActive, setAltPlayActive] = useState(false);
+  const [previewPointSelectionMode, setPreviewPointSelectionMode] = useState(false);
+  const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [editorLayout, setEditorLayout] = useState<EditorLayoutDocumentBody>(() => createEmptyEditorLayout());
   const [layoutVersionHash, setLayoutVersionHash] = useState<string | undefined>(undefined);
   const [localNodePositions, setLocalNodePositions] = useState<ReadonlyMap<string, { readonly x: number; readonly y: number }>>(
@@ -462,7 +469,7 @@ export function EditorWorkspace() {
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<ReadonlySet<string>>(() => new Set());
   const [surfaceMode, setSurfaceMode] = useState<"graph" | "tree">("tree");
   const [treeDetailMode, setTreeDetailMode] = useState<"entities" | "json">("entities");
-  const [manifestPanelOpen, setManifestPanelOpen] = useState(true);
+  const [leftSidebarPanel, setLeftSidebarPanel] = useState<LeftSidebarPanel | undefined>("tree");
   const [treeCollapsedPointers, setTreeCollapsedPointers] = useState<ReadonlySet<string>>(() => new Set());
   const [jsonPanelOpen, setJsonPanelOpen] = useState(true);
   const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
@@ -548,6 +555,9 @@ export function EditorWorkspace() {
   const selectedPreviewTraceSnapshot = selectedPreviewTraceEvent === undefined
     ? undefined
     : previewTrace.snapshots.find((snapshot) => snapshot.eventSequence === selectedPreviewTraceEvent.sequence);
+  const leftSidebarOpen = leftSidebarPanel !== undefined;
+  const effectivePreviewInspectMode = previewInspectMode && !altPlayActive;
+  const previewModeLabel = effectivePreviewInspectMode ? "Inspect" : "Play";
 
   const projectedNodes = useMemo<SemanticFlowNode[]>(
     () => {
@@ -647,7 +657,7 @@ export function EditorWorkspace() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [fitViewDependency, jsonPanelOpen, manifestPanelOpen, propertyPanelOpen, flowNodes.length]);
+  }, [fitViewDependency, jsonPanelOpen, leftSidebarOpen, propertyPanelOpen, flowNodes.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -807,6 +817,42 @@ export function EditorWorkspace() {
   }, [currentDocument.filePath, currentDocument.gameId, previewRuntimeSessionId, previewSourceMaps, previewUrl]);
 
   useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Alt") {
+        setAltPlayActive(true);
+      }
+
+      if (event.key === "Control") {
+        setPreviewPointSelectionMode(true);
+      }
+    }
+
+    function handleKeyUp(event: KeyboardEvent) {
+      if (event.key === "Alt") {
+        setAltPlayActive(false);
+      }
+
+      if (event.key === "Control") {
+        setPreviewPointSelectionMode(false);
+      }
+    }
+
+    function resetTransientModes() {
+      setAltPlayActive(false);
+      setPreviewPointSelectionMode(false);
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", resetTransientModes);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", resetTransientModes);
+    };
+  }, []);
+
+  useEffect(() => {
     if (selectedPreviewEntityId === undefined) {
       return;
     }
@@ -880,7 +926,7 @@ export function EditorWorkspace() {
     setSelectedPreviewEntityId(undefined);
     setPreviewPromptContext(null);
     setPreviewAiIntent(null);
-    setPreviewInspectMode(true);
+    setPreviewInspectMode(false);
     setPreviewTrace(createPreviewPlaythroughTrace({ traceId: "preview-trace-initial", gameId: currentDocument.gameId }));
     setSelectedPreviewTraceSequence(undefined);
     setPreviewRollbackState("idle");
@@ -959,34 +1005,6 @@ export function EditorWorkspace() {
       setPendingJsonRevealPointer(pointer);
       revealJsonPointer(pointer);
     }
-  }
-
-  function handleTreeSetScalar(pointer: string, rawValue: string) {
-    if (viewModel.snapshot.json === undefined) {
-      return;
-    }
-
-    const current = readJsonPointer(viewModel.snapshot.json, pointer);
-    if (current === undefined || Array.isArray(current) || (typeof current === "object" && current !== null)) {
-      return;
-    }
-
-    const trimmed = rawValue.trim();
-    const nextValue: JsonValue =
-      typeof current === "number"
-        ? Number.isFinite(Number(trimmed))
-          ? Number(trimmed)
-          : current
-        : typeof current === "boolean"
-          ? trimmed === "true"
-          : current === null
-            ? trimmed === "" || trimmed === "null"
-              ? null
-              : rawValue
-            : rawValue;
-
-    const result = applyPropertyEditResult(viewModel.snapshot, pointer, nextValue);
-    applyAuthoringEditResult(result, "property", pointer);
   }
 
   async function handleSave() {
@@ -1129,7 +1147,7 @@ export function EditorWorkspace() {
         setSelectedPreviewEntityId(undefined);
         setPreviewPromptContext(null);
         setPreviewAiIntent(null);
-        setPreviewInspectMode(true);
+        setPreviewInspectMode(false);
         setPreviewTrace(createPreviewPlaythroughTrace({
           traceId: runtimeSessionId === undefined ? `preview-${Date.now()}` : `preview-${runtimeSessionId}`,
           gameId: currentDocument.gameId
@@ -1287,12 +1305,8 @@ export function EditorWorkspace() {
   }
 
   function handlePreviewRegionSelect(entities: readonly PreviewEntityDescriptor[], rect: PreviewRect, point: PreviewPoint) {
-    const topEntity = entities[0];
-    if (topEntity !== undefined) {
-      setSelectedPreviewEntityId(topEntity.entityId);
-      selectAuthoringPointerFromPreview(topEntity);
-    }
-
+    setSelectedPreviewEntityId(undefined);
+    setPropertyPanelOpen(false);
     setPreviewPromptContext({
       kind: "region",
       point,
@@ -1774,10 +1788,44 @@ export function EditorWorkspace() {
       <header className="top-toolbar" aria-label="Editor toolbar">
         <div className="toolbar-title">
           <strong>Cubica Editor</strong>
-          <span>{currentDocument.source === "repository" ? `${currentDocument.gameId}/${currentDocument.filePath}` : "embedded sample"}</span>
-          {editorSession !== null ? <span>{editorSession.branchName}</span> : null}
         </div>
         <div className="toolbar-actions">
+          <div className="segmented-control" role="group" aria-label="Preview mode">
+            <button
+              type="button"
+              className={!effectivePreviewInspectMode ? "is-active" : ""}
+              aria-pressed={!effectivePreviewInspectMode}
+              onClick={() => {
+                setPreviewInspectMode(false);
+                setPreviewPromptContext(null);
+                setPreviewAiIntent(null);
+                setPropertyPanelOpen(false);
+              }}
+            >
+              Play
+            </button>
+            <button
+              type="button"
+              className={effectivePreviewInspectMode ? "is-active" : ""}
+              aria-pressed={effectivePreviewInspectMode}
+              onClick={() => setPreviewInspectMode(true)}
+            >
+              Inspect
+            </button>
+          </div>
+          <div className="segmented-control viewport-control" role="group" aria-label="Preview viewport">
+            {(["desktop", "tablet", "mobile"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                className={previewViewportMode === mode ? "is-active" : ""}
+                aria-pressed={previewViewportMode === mode}
+                onClick={() => setPreviewViewportMode(mode)}
+              >
+                {mode === "desktop" ? "Desktop" : mode === "tablet" ? "Tablet" : "Mobile"}
+              </button>
+            ))}
+          </div>
           <select
             aria-label="Game"
             disabled={availableGames.length === 0}
@@ -1821,10 +1869,10 @@ export function EditorWorkspace() {
             Save
           </button>
           <button type="button" onClick={handleUndoAiChange} disabled={aiPatchJournal.length === 0 || aiApplyState === "planning" || aiApplyState === "applying"}>
-            Undo AI
+            Undo
           </button>
           <button type="button" onClick={handleRedoAiChange} disabled={aiRedoJournal.length === 0 || aiApplyState === "planning" || aiApplyState === "applying"}>
-            Redo AI
+            Redo
           </button>
           <button type="button" onClick={handleValidate} disabled={currentDocument.source !== "repository" || workflowState === "validating"}>
             Validate
@@ -1855,90 +1903,67 @@ export function EditorWorkspace() {
           >
             Preview
           </button>
-          {previewUrl !== null ? (
-            <a href={previewUrl} target="_blank" rel="noreferrer">
-              Open preview
-            </a>
-          ) : null}
-          <span className={`sync-state ${hasBlockingDiagnostics || saveState === "error" || saveState === "conflict" ? "sync-invalid" : "sync-valid"}`}>
-            {syncLabel}
-          </span>
         </div>
       </header>
 
-      <section className="entity-toolbar" aria-label="Non-visual entities">
-        <strong>Entities</strong>
-        {nonVisualEntityCounts.map((item) => (
-          <button
-            key={item.role}
-            type="button"
-            onClick={() => {
-              setManifestPanelOpen(true);
-              setSurfaceMode("tree");
-            }}
-          >
-            <span>{item.role}</span>
-            <b>{item.count}</b>
-          </button>
-        ))}
-      </section>
-
-      <section className="timeline-band" aria-label="Timeline">
-        <strong>Timeline</strong>
-        <span>{viewModel.timeline.entries.length} chronology entries</span>
-        <span>{previewTrace.events.length} runtime events</span>
-        <span>{workflowState}</span>
-        <span>{previewRollbackState}</span>
-        <span>{selectedNode?.semanticTitle ?? "No selection"}</span>
-        {timelinePreviewEntries.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            onClick={() => {
-              const node = findNodeForPointer(viewModel.fullNodes, entry.pointer);
-              if (node !== undefined) {
-                selectPointerNode(node);
-              }
-            }}
-          >
-            {entry.order + 1}. {entry.label}
-          </button>
-        ))}
-        {previewTraceEntries.map((event) => (
-          <button
-            key={event.id}
-            type="button"
-            aria-pressed={selectedPreviewTraceEvent?.sequence === event.sequence}
-            className={[
-              "timeline-event",
-              currentPreviewTraceEvent?.sequence === event.sequence ? "is-current" : "",
-              selectedPreviewTraceEvent?.sequence === event.sequence ? "is-selected" : ""
-            ].filter(Boolean).join(" ")}
-            disabled={previewRollbackState === "restoring"}
-            title={`Inspect runtime preview event ${event.sequence}`}
-            onClick={() => setSelectedPreviewTraceSequence(event.sequence)}
-          >
-            <span>T{event.sequence}: {event.label}</span>
-            {currentPreviewTraceEvent?.sequence === event.sequence ? <b>Current</b> : null}
-          </button>
-        ))}
-      </section>
-
       <section
-        className={`workspace-grid ${jsonPanelOpen ? "" : "json-collapsed"} ${manifestPanelOpen ? "" : "manifest-collapsed"} ${previewUrl !== null && !previewInspectMode ? "preview-play-mode" : ""}`}
+        className={`workspace-grid ${jsonPanelOpen ? "" : "json-collapsed"} ${leftSidebarOpen ? "" : "left-sidebar-collapsed"} ${previewUrl !== null && !effectivePreviewInspectMode ? "preview-play-mode" : ""}`}
         aria-label="Authoring editor workspace"
       >
-        <aside className={`manifest-panel ${manifestPanelOpen ? "" : "is-collapsed"}`} aria-label="Manifest navigation">
-          {manifestPanelOpen ? (
-            <>
-              <div className="panel-heading manifest-heading">
-                <strong>Manifest</strong>
-                <button type="button" onClick={() => setManifestPanelOpen(false)}>
-                  Collapse
-                </button>
-              </div>
-              <div className="flow-surface">
-                <div className="flow-toolbar" aria-label="Manifest view controls">
+        <nav className="left-activity-bar" aria-label="Editor sidebars">
+          <button
+            type="button"
+            className={leftSidebarPanel === "tree" ? "is-active" : ""}
+            aria-pressed={leftSidebarPanel === "tree"}
+            aria-label="Tree"
+            title="Tree"
+            onClick={() => setLeftSidebarPanel((current) => (current === "tree" ? undefined : "tree"))}
+          >
+            <span aria-hidden="true">Tree</span>
+          </button>
+          <button
+            type="button"
+            className={leftSidebarPanel === "timeline" ? "is-active" : ""}
+            aria-pressed={leftSidebarPanel === "timeline"}
+            aria-label="Timeline"
+            title="Timeline"
+            onClick={() => setLeftSidebarPanel((current) => (current === "timeline" ? undefined : "timeline"))}
+          >
+            <span aria-hidden="true">Time</span>
+          </button>
+          <button
+            type="button"
+            className={leftSidebarPanel === "chat" ? "is-active" : ""}
+            aria-pressed={leftSidebarPanel === "chat"}
+            aria-label="AI chat"
+            title="AI chat"
+            onClick={() => setLeftSidebarPanel((current) => (current === "chat" ? undefined : "chat"))}
+          >
+            <span aria-hidden="true">AI</span>
+          </button>
+          <button
+            type="button"
+            className={jsonPanelOpen ? "is-active" : ""}
+            aria-pressed={jsonPanelOpen}
+            aria-label="JSON"
+            title="JSON"
+            onClick={() => {
+              if (!jsonPanelOpen) {
+                setPendingJsonRevealPointer(selectedNode?.pointer ?? "");
+              }
+              setJsonPanelOpen((current) => !current);
+            }}
+          >
+            <span aria-hidden="true">JSON</span>
+          </button>
+        </nav>
+
+        {leftSidebarOpen ? (
+          <aside className="left-sidebar-panel" aria-label={leftSidebarPanel === "timeline" ? "Timeline" : leftSidebarPanel === "chat" ? "AI chat" : "Manifest navigation"}>
+            {leftSidebarPanel === "tree" ? (
+              <>
+                <div className="panel-heading manifest-heading">
+                  <strong>Manifest</strong>
                   <div className="surface-tabs" role="tablist" aria-label="Manifest views">
                     <button
                       type="button"
@@ -1959,130 +1984,100 @@ export function EditorWorkspace() {
                       Graph
                     </button>
                   </div>
-                  <span>{getVisibleGraphBudgetLabel(viewModel)}</span>
-                  <span>{flowEdges.length} edges</span>
-                  {activeBranchRootId !== undefined ? (
-                    <span>Branch: {findEditorNodeById(viewModel.fullNodes, activeBranchRootId)?.semanticTitle ?? activeBranchRootId}</span>
-                  ) : null}
-                  {surfaceMode === "tree" ? (
-                    <div className="surface-tabs" role="tablist" aria-label="Tree detail">
-                      <button
-                        type="button"
-                        className={treeDetailMode === "entities" ? "is-active" : ""}
-                        role="tab"
-                        aria-selected={treeDetailMode === "entities"}
-                        onClick={() => {
-                          setTreeDetailMode("entities");
-                          setTreeCollapsedPointers(createDefaultCollapsedTreePointers(viewModel.tree));
-                        }}
-                      >
-                        Entities
-                      </button>
-                      <button
-                        type="button"
-                        className={treeDetailMode === "json" ? "is-active" : ""}
-                        role="tab"
-                        aria-selected={treeDetailMode === "json"}
-                        onClick={() => {
-                          setTreeDetailMode("json");
-                          setTreeCollapsedPointers(createDefaultCollapsedTreePointers(viewModel.jsonTree));
-                        }}
-                      >
-                        JSON
-                      </button>
-                    </div>
-                  ) : null}
+                  <button type="button" onClick={() => setLeftSidebarPanel(undefined)} aria-label="Collapse manifest panel">
+                    Collapse
+                  </button>
                 </div>
-                {surfaceMode === "graph" ? (
-                  <ReactFlow
-                    nodes={flowNodes}
-                    edges={flowEdges}
-                    nodeTypes={nodeTypes}
-                    edgeTypes={edgeTypes}
-                    fitView
-                    fitViewOptions={{ padding: 0.18 }}
-                    minZoom={0.35}
-                    maxZoom={1.6}
-                    nodesDraggable
-                    onlyRenderVisibleElements={flowNodes.length > 40}
-                    onInit={(instance) => {
-                      flowRef.current = instance;
-                    }}
-                    onNodesChange={onNodesChange}
-                    onNodeDragStop={(_, node) => void persistNodePosition(node)}
-                    onNodeClick={handleFlowNodeClick}
-                    colorMode="light"
-                  >
-                    <Background variant={BackgroundVariant.Lines} gap={28} color="#d6dde8" lineWidth={1} />
-                    <MiniMap pannable zoomable nodeStrokeWidth={2} maskColor="rgba(247, 249, 252, 0.7)" />
-                    <Controls showInteractive={false} />
-                  </ReactFlow>
-                ) : (
-                  <JsonTreeView
-                    tree={activeTree}
-                    selectedPointer={selectedNode?.pointer ?? ""}
-                    collapsedPointers={treeCollapsedPointers}
-                    onCollapsedPointersChange={setTreeCollapsedPointers}
-                    onSelectPointer={(pointer) => handleTreeSelectPointer(pointer)}
-                    onRevealPointerInJson={(pointer) => handleTreeSelectPointer(pointer, { openJson: true })}
-                    readValue={(pointer) => (viewModel.snapshot.json === undefined ? undefined : readJsonPointer(viewModel.snapshot.json, pointer))}
-                    onSetScalarValue={handleTreeSetScalar}
-                  />
-                )}
-              </div>
-            </>
-          ) : (
-            <button className="manifest-rail" type="button" onClick={() => setManifestPanelOpen(true)}>
-              <strong>Manifest</strong>
-              <span>{activeTree.flatNodes.length}</span>
-              <small>{selectedNode?.semanticTitle ?? "No selection"}</small>
-            </button>
-          )}
-        </aside>
+                <div className="flow-surface">
+                  {surfaceMode === "graph" ? (
+                    <ReactFlow
+                      nodes={flowNodes}
+                      edges={flowEdges}
+                      nodeTypes={nodeTypes}
+                      edgeTypes={edgeTypes}
+                      fitView
+                      fitViewOptions={{ padding: 0.18 }}
+                      minZoom={0.35}
+                      maxZoom={1.6}
+                      nodesDraggable
+                      onlyRenderVisibleElements={flowNodes.length > 40}
+                      onInit={(instance) => {
+                        flowRef.current = instance;
+                      }}
+                      onNodesChange={onNodesChange}
+                      onNodeDragStop={(_, node) => void persistNodePosition(node)}
+                      onNodeClick={handleFlowNodeClick}
+                      colorMode="light"
+                    >
+                      <Background variant={BackgroundVariant.Lines} gap={28} color="#d6dde8" lineWidth={1} />
+                      <MiniMap pannable zoomable nodeStrokeWidth={2} maskColor="rgba(247, 249, 252, 0.7)" />
+                      <Controls showInteractive={false} />
+                    </ReactFlow>
+                  ) : (
+                    <JsonTreeView
+                      tree={activeTree}
+                      selectedPointer={selectedNode?.pointer ?? ""}
+                      collapsedPointers={treeCollapsedPointers}
+                      onCollapsedPointersChange={setTreeCollapsedPointers}
+                      onSelectPointer={(pointer) => handleTreeSelectPointer(pointer)}
+                    />
+                  )}
+                </div>
+              </>
+            ) : leftSidebarPanel === "timeline" ? (
+              <TimelineSidebarPanel
+                timelineEntries={timelinePreviewEntries}
+                traceEntries={previewTraceEntries}
+                selectedTraceEvent={selectedPreviewTraceEvent}
+                selectedTraceSnapshot={selectedPreviewTraceSnapshot}
+                selectedTraceSequence={selectedPreviewTraceEvent?.sequence}
+                currentTraceSequence={currentPreviewTraceEvent?.sequence}
+                rollbackState={previewRollbackState}
+                onCollapse={() => setLeftSidebarPanel(undefined)}
+                onSelectTimelineEntry={(pointer) => {
+                  const node = findNodeForPointer(viewModel.fullNodes, pointer);
+                  if (node !== undefined) {
+                    selectPointerNode(node);
+                  }
+                }}
+                onSelectTraceSequence={setSelectedPreviewTraceSequence}
+                onRestoreSelectedTrace={() => {
+                  if (selectedPreviewTraceEvent !== undefined) {
+                    void handlePreviewRollback(selectedPreviewTraceEvent.sequence);
+                  }
+                }}
+                onReset={handlePreviewResetToStart}
+                onReplayCurrent={handlePreviewReplayCurrent}
+              />
+            ) : (
+              <AiChatSidebarPanel
+                proposedIntent={previewAiIntent}
+                aiApplyState={aiApplyState}
+                aiDiffSummary={aiDiffSummary}
+                selectedNodeTitle={selectedNode?.semanticTitle}
+                onCollapse={() => setLeftSidebarPanel(undefined)}
+              />
+            )}
+          </aside>
+        ) : null}
 
         <section className="preview-stage" aria-label="Game preview">
-          <div className="preview-stage-toolbar">
-            <strong>Preview</strong>
-            <span>{previewUrl === null ? "not prepared" : "ready"}</span>
-            {previewRuntimeSessionId !== undefined ? <span>session {previewRuntimeSessionId.slice(0, 18)}</span> : null}
-            {previewUrl !== null ? <span>{previewEntities.length} selectable</span> : null}
-            {previewUrl !== null ? <span>{previewTrace.events.length} trace events</span> : null}
+          <div className={`preview-frame-shell preview-viewport-${previewViewportMode}`}>
             {previewUrl !== null ? (
-              <button
-                type="button"
-                aria-pressed={previewInspectMode}
-                onClick={() => {
-                  if (previewInspectMode) {
-                    setPreviewPromptContext(null);
-                    setPreviewAiIntent(null);
-                    setPropertyPanelOpen(false);
-                  }
-                  setPreviewInspectMode((current) => !current);
-                }}
-              >
-                {previewInspectMode ? "Inspect" : "Play"}
-              </button>
-            ) : null}
-            {previewUrl !== null ? (
-              <a href={previewUrl} target="_blank" rel="noreferrer">
-                Open tab
-              </a>
-            ) : null}
-          </div>
-          <div className="preview-frame-shell">
-            {previewUrl !== null ? (
-              <>
+              <div className="preview-viewport-canvas">
                 <iframe ref={previewIframeRef} title="Game preview" src={previewUrl} allow="fullscreen" />
                 <PreviewSelectionOverlay
-                  disabled={!previewInspectMode}
+                  disabled={!effectivePreviewInspectMode}
                   entities={previewEntities}
                   selectedEntityId={selectedPreviewEntityId}
+                  pointSelectionEnabled={previewPointSelectionMode}
                   promptContext={previewPromptContext}
                   proposedIntent={previewAiIntent}
                   unresolvedCount={previewUnresolvedEntityCount}
                   onSelectEntity={handlePreviewEntitySelect}
                   onSelectRegion={handlePreviewRegionSelect}
                   onClearContext={() => {
+                    setSelectedPreviewEntityId(undefined);
                     setPreviewPromptContext(null);
                     setPreviewAiIntent(null);
                   }}
@@ -2095,18 +2090,7 @@ export function EditorWorkspace() {
                     setPreviewAiIntent(null);
                   }}
                 />
-                {selectedPreviewTraceEvent !== undefined ? (
-                  <PreviewTraceDetailPanel
-                    event={selectedPreviewTraceEvent}
-                    snapshot={selectedPreviewTraceSnapshot}
-                    currentSequence={currentPreviewTraceEvent?.sequence}
-                    rollbackState={previewRollbackState}
-                    onRestore={() => void handlePreviewRollback(selectedPreviewTraceEvent.sequence)}
-                    onReset={handlePreviewResetToStart}
-                    onReplayCurrent={handlePreviewReplayCurrent}
-                  />
-                ) : null}
-              </>
+              </div>
             ) : (
               <div className="preview-empty-state">
                 <strong>{selectedNode?.semanticTitle ?? "No selection"}</strong>
@@ -2129,50 +2113,35 @@ export function EditorWorkspace() {
           </div>
         </section>
 
-        <aside className={`json-panel ${jsonPanelOpen ? "" : "is-collapsed"}`} aria-label="Authoring JSON editor">
-          {jsonPanelOpen ? (
-            <>
-              <div className="panel-heading">
-                <strong>Authoring JSON</strong>
-                <span>{hasBlockingDiagnostics ? `${viewModel.diagnostics.length} diagnostics` : "No blocking diagnostics"}</span>
-                <button type="button" onClick={() => setJsonPanelOpen(false)}>
-                  Collapse
-                </button>
-              </div>
-              <Editor
-                height="100%"
-                language="json"
-                path={monacoModelUri}
-                value={jsonText}
-                theme="light"
-                beforeMount={(monaco) => configureMonacoJson(monaco as MonacoApi, monacoModelUri, schemaId)}
-                onMount={(editor, monaco) => handleEditorMount(editor as MonacoEditorInstance, monaco as MonacoApi)}
-                onChange={handleJsonChange}
-                options={{
-                  automaticLayout: true,
-                  fontSize: 13,
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  tabSize: 2,
-                  wordWrap: "on"
-                }}
-              />
-            </>
-          ) : (
-            <button
-              className="json-rail"
-              type="button"
-              onClick={() => {
-                setJsonPanelOpen(true);
-                setPendingJsonRevealPointer(selectedNode?.pointer ?? "");
+        {jsonPanelOpen ? (
+          <aside className="json-panel" aria-label="Authoring JSON editor">
+            <div className="panel-heading">
+              <strong>Authoring JSON</strong>
+              <span>{hasBlockingDiagnostics ? `${viewModel.diagnostics.length} diagnostics` : "No blocking diagnostics"}</span>
+              <button type="button" onClick={() => setJsonPanelOpen(false)}>
+                Collapse
+              </button>
+            </div>
+            <Editor
+              height="100%"
+              language="json"
+              path={monacoModelUri}
+              value={jsonText}
+              theme="light"
+              beforeMount={(monaco) => configureMonacoJson(monaco as MonacoApi, monacoModelUri, schemaId)}
+              onMount={(editor, monaco) => handleEditorMount(editor as MonacoEditorInstance, monaco as MonacoApi)}
+              onChange={handleJsonChange}
+              options={{
+                automaticLayout: true,
+                fontSize: 13,
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                tabSize: 2,
+                wordWrap: "on"
               }}
-            >
-              <strong>JSON</strong>
-              <span>{viewModel.diagnostics.length}</span>
-              <small>{selectedNode?.pointer || "/"}</small>
-            </button>
-          )}
-        </aside>
+            />
+          </aside>
+        ) : null}
 
         <PropertyPanel
           node={selectedNode}
@@ -2195,7 +2164,29 @@ export function EditorWorkspace() {
       </section>
 
       <footer className="diagnostics-strip" aria-label="Diagnostics">
-        <strong>Diagnostics</strong>
+        <div className="status-strip" aria-label="Editor status">
+          <strong>Status</strong>
+          <span className={hasBlockingDiagnostics || saveState === "error" || saveState === "conflict" ? "status-invalid" : "status-valid"}>
+            {syncLabel}
+          </span>
+          <span>{statusMessage}</span>
+          <span>Mode: {previewModeLabel}{altPlayActive ? " (Alt)" : ""}</span>
+          <span>Viewport: {previewViewportMode}</span>
+          <span>{previewUrl === null ? "Preview: not prepared" : `Preview: ${previewEntities.length} selectable`}</span>
+          <span>{previewTrace.events.length} trace events</span>
+          <span>Workflow: {workflowState}</span>
+          <span>Rollback: {previewRollbackState}</span>
+          <span>Selection: {selectedNode?.semanticTitle ?? "none"}</span>
+          <span>{getVisibleGraphBudgetLabel(viewModel)}</span>
+          <span>{flowEdges.length} edges</span>
+          {nonVisualEntityCounts.map((item) => (
+            <span key={item.role}>
+              {item.role}: {item.count}
+            </span>
+          ))}
+        </div>
+        <div className="diagnostics-items">
+          <strong>Diagnostics</strong>
         <PluginDiagnosticsJournal diagnostics={pluginDiagnostics} onSelectDiagnostic={handleDiagnosticClick} />
         {aiDiffSummary.length > 0 ? (
           <span className="ai-diff-summary" title={aiDiffSummary.map((item) => item.description).join("\n")}>
@@ -2220,8 +2211,159 @@ export function EditorWorkspace() {
             </button>
           ))
         )}
+        </div>
       </footer>
     </main>
+  );
+}
+
+function TimelineSidebarPanel({
+  timelineEntries,
+  traceEntries,
+  selectedTraceEvent,
+  selectedTraceSnapshot,
+  selectedTraceSequence,
+  currentTraceSequence,
+  rollbackState,
+  onCollapse,
+  onSelectTimelineEntry,
+  onSelectTraceSequence,
+  onRestoreSelectedTrace,
+  onReset,
+  onReplayCurrent
+}: {
+  readonly timelineEntries: readonly { readonly id: string; readonly order: number; readonly label: string; readonly pointer: string }[];
+  readonly traceEntries: readonly PreviewPlaythroughEvent[];
+  readonly selectedTraceEvent: PreviewPlaythroughEvent | undefined;
+  readonly selectedTraceSnapshot: PreviewPlaythroughSnapshot | undefined;
+  readonly selectedTraceSequence: number | undefined;
+  readonly currentTraceSequence: number | undefined;
+  readonly rollbackState: "idle" | "restoring" | "restored" | "blocked" | "error";
+  readonly onCollapse: () => void;
+  readonly onSelectTimelineEntry: (pointer: string) => void;
+  readonly onSelectTraceSequence: (sequence: number) => void;
+  readonly onRestoreSelectedTrace: () => void;
+  readonly onReset: () => void;
+  readonly onReplayCurrent: () => void;
+}) {
+  return (
+    <>
+      <div className="panel-heading">
+        <strong>Timeline</strong>
+        <button type="button" onClick={onCollapse}>
+          Collapse
+        </button>
+      </div>
+      <div className="timeline-sidebar-body">
+        <section className="timeline-sidebar-section" aria-label="Manifest chronology">
+          <div className="timeline-sidebar-section-heading">
+            <strong>Chronology</strong>
+            <span>{timelineEntries.length}</span>
+          </div>
+          {timelineEntries.length === 0 ? (
+            <p className="empty-state">No chronology entries</p>
+          ) : (
+            timelineEntries.map((entry) => (
+              <button key={entry.id} type="button" onClick={() => onSelectTimelineEntry(entry.pointer)}>
+                <span>{entry.order + 1}</span>
+                <strong>{entry.label}</strong>
+              </button>
+            ))
+          )}
+        </section>
+
+        <section className="timeline-sidebar-section" aria-label="Runtime trace">
+          <div className="timeline-sidebar-section-heading">
+            <strong>Runtime</strong>
+            <span>{traceEntries.length}</span>
+          </div>
+          {traceEntries.length === 0 ? (
+            <p className="empty-state">No runtime events</p>
+          ) : (
+            traceEntries.map((event) => (
+              <button
+                key={event.id}
+                type="button"
+                aria-pressed={selectedTraceSequence === event.sequence}
+                className={[
+                  "timeline-event",
+                  currentTraceSequence === event.sequence ? "is-current" : "",
+                  selectedTraceSequence === event.sequence ? "is-selected" : ""
+                ].filter(Boolean).join(" ")}
+                disabled={rollbackState === "restoring"}
+                title={`Inspect runtime preview event ${event.sequence}`}
+                onClick={() => onSelectTraceSequence(event.sequence)}
+              >
+                <span>T{event.sequence}</span>
+                <strong>{event.label}</strong>
+                {currentTraceSequence === event.sequence ? <b>Current</b> : null}
+              </button>
+            ))
+          )}
+        </section>
+        {selectedTraceEvent !== undefined ? (
+          <PreviewTraceDetailPanel
+            event={selectedTraceEvent}
+            snapshot={selectedTraceSnapshot}
+            currentSequence={currentTraceSequence}
+            rollbackState={rollbackState}
+            variant="sidebar"
+            onRestore={onRestoreSelectedTrace}
+            onReset={onReset}
+            onReplayCurrent={onReplayCurrent}
+          />
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function AiChatSidebarPanel({
+  proposedIntent,
+  aiApplyState,
+  aiDiffSummary,
+  selectedNodeTitle,
+  onCollapse
+}: {
+  readonly proposedIntent: PreviewAiIntent | null;
+  readonly aiApplyState: "idle" | "planning" | "applying" | "applied" | "blocked" | "error" | "undone";
+  readonly aiDiffSummary: readonly EditorDiffSummaryItem[];
+  readonly selectedNodeTitle: string | undefined;
+  readonly onCollapse: () => void;
+}) {
+  return (
+    <>
+      <div className="panel-heading">
+        <strong>AI Chat</strong>
+        <button type="button" onClick={onCollapse}>
+          Collapse
+        </button>
+      </div>
+      <div className="ai-sidebar-body">
+        <section>
+          <span>State</span>
+          <strong>{aiApplyState}</strong>
+        </section>
+        <section>
+          <span>Selection</span>
+          <strong>{selectedNodeTitle ?? "none"}</strong>
+        </section>
+        {proposedIntent !== null ? (
+          <section>
+            <span>Last prompt</span>
+            <p>{proposedIntent.prompt}</p>
+          </section>
+        ) : null}
+        {aiDiffSummary.length > 0 ? (
+          <section>
+            <span>Last diff</span>
+            {aiDiffSummary.slice(0, 5).map((item, index) => (
+              <p key={`${item.description}-${index}`}>{item.description}</p>
+            ))}
+          </section>
+        ) : null}
+      </div>
+    </>
   );
 }
 

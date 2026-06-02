@@ -66,6 +66,12 @@ Agents must always:
    - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
    - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`; task execution plans and handoffs go in `docs/tasks/active/`.
 
+7. **Manage subagent lifecycle**
+   - A subagent is a delegated worker process, thread, or external agent session started to perform a bounded part of the current task.
+   - After a subagent finishes its work and its result has been collected, the parent agent MUST explicitly close or terminate that subagent if it is no longer needed.
+   - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
+   - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
+
 9. **Manage architectural drift and legacy gaps**
     - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
     - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
