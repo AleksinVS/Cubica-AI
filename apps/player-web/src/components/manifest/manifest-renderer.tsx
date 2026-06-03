@@ -14,6 +14,7 @@ export function ManifestRenderer({
   metrics,
   onAction,
   screenKey,
+  rootRuntimePointer,
   layoutMode: layoutModeProp = "topbar",
   metricBackgroundImages,
   gameState,
@@ -24,6 +25,15 @@ export function ManifestRenderer({
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   screenKey?: string;
+  /**
+   * Root runtime JSON Pointer used by editor preview metadata.
+   *
+   * Normal UI-manifest screens use /screens/{screenKey}/root. Runtime-built
+   * fallback screens may point to the gameplay object that produced them, for
+   * example /content/data/infos/0, so the editor can map the preview selection
+   * back through the existing source map.
+   */
+  rootRuntimePointer?: string;
   layoutMode?: "leftsidebar" | "topbar";
   metricBackgroundImages?: Record<string, string>;
   /** Полное состояние игры для разрешения выражений и itemTemplate. */
@@ -52,7 +62,7 @@ export function ManifestRenderer({
         parentVisualMode={screenDefinition.root.visualMode}
         designArtifacts={designArtifacts}
         editorPreviewMode={editorPreviewMode}
-        runtimePointer={screenRootRuntimePointer(screenKey)}
+        runtimePointer={rootRuntimePointer ?? screenRootRuntimePointer(screenKey)}
       />
     </div>
   );

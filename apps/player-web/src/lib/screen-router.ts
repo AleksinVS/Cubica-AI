@@ -6,8 +6,8 @@ import type { ScreenRoutingEntry, GamePlayerUiContent } from "@cubica/contracts-
  * Screen routing priority (which resolver wins):
  *   1. Plugin's resolveScreenKey (game-specific logic in GameConfig)
  *   2. Manifest screenRouting entries (data-driven, this module)
- *   3. Direct screenId lookup in uiContent.screens
- *   4. activeInfoId disambiguation
+ *   3. activeInfoId disambiguation
+ *   4. Direct screenId lookup in uiContent.screens
  *   5. runtimeUi.activeScreen override (maps "left-sidebar" → leftsidebar layout)
  *
  * When a game plugin provides resolveScreenKey, the GamePresenter calls it
@@ -35,7 +35,7 @@ export function resolveScreenKey(
   // 1. Try routing entries from manifest
   if (screenRouting && screenRouting.length > 0) {
     for (const entry of screenRouting) {
-      if (matchesConditions(entry, screenId, stepIndex, activeInfoId)) {
+      if (matchesConditions(entry, screenId, stepIndex, activeInfoId, runtimeUi)) {
         // Check that the target screen exists in the manifest
         if (uiContent?.screens[entry.screenKey]) {
           return entry.screenKey;
@@ -44,14 +44,14 @@ export function resolveScreenKey(
     }
   }
 
-  // 2. Direct screenId lookup
-  if (screenId && uiContent?.screens[screenId]) {
-    return screenId;
-  }
-
-  // 3. Info screen disambiguation
+  // 2. Info screen disambiguation
   if (activeInfoId && uiContent?.screens[activeInfoId]) {
     return activeInfoId;
+  }
+
+  // 3. Direct screenId lookup
+  if (screenId && uiContent?.screens[screenId]) {
+    return screenId;
   }
 
   // 4. Layout override via runtimeUi
@@ -84,7 +84,8 @@ function matchesConditions(
   entry: ScreenRoutingEntry,
   screenId: string | null,
   stepIndex: number | null,
-  activeInfoId: string | null
+  activeInfoId: string | null,
+  runtimeUi: { activeScreen?: string } = {}
 ): boolean {
   const { conditions } = entry;
 
@@ -113,7 +114,24 @@ function matchesConditions(
     return false;
   }
 
+  // layoutMode is a runtime UI selector. Without this check, an alternate
+  // left-sidebar route can steal a normal topbar/info screen that has the same
+  // screenId and stepIndex.
+  if (conditions.layoutMode !== undefined && conditions.layoutMode !== normalizeActiveScreen(runtimeUi.activeScreen)) {
+    return false;
+  }
+
   return true;
+}
+
+function normalizeActiveScreen(activeScreen: string | undefined): "leftsidebar" | "topbar" | undefined {
+  if (activeScreen === "left-sidebar" || activeScreen === "leftsidebar") {
+    return "leftsidebar";
+  }
+  if (activeScreen === "topbar") {
+    return "topbar";
+  }
+  return undefined;
 }
 
 /**
@@ -130,7 +148,7 @@ export function resolveLayoutModeFromRouting(
 ): "leftsidebar" | "topbar" | null {
   if (screenRouting) {
     for (const entry of screenRouting) {
-      if (matchesConditions(entry, screenId, stepIndex, activeInfoId)) {
+      if (matchesConditions(entry, screenId, stepIndex, activeInfoId, runtimeUi)) {
         if (entry.conditions.layoutMode) {
           return entry.conditions.layoutMode;
         }

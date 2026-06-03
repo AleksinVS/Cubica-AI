@@ -19,6 +19,16 @@ test.describe("player-web e2e", () => {
     await expect(page.getByRole("button", { name: /Журнал ходов/i })).toBeVisible();
     await expect(page.getByRole("button", { name: /Подсказка/i })).toBeVisible();
     await expect(page.locator(".game-variable")).toHaveCount(8);
+    await expect(page.getByText('Корпорация "Антарктика"')).toBeVisible();
+    await expect(page.locator(".game-card")).toHaveCount(0);
+
+    const advanceResponse = page.waitForResponse((response) =>
+      response.url().endsWith("/api/runtime/actions") &&
+      response.request().method() === "POST"
+    );
+    await page.getByRole("button", { name: "Вперед" }).click();
+    expect((await advanceResponse).status()).toBe(200);
+    await expect(page.getByText("Мы находимся далеко-далеко на юге…")).toBeVisible();
 
     await page.getByRole("button", { name: /Подсказка/i }).click();
     await expect(page.locator(".hint-screen")).toBeVisible();

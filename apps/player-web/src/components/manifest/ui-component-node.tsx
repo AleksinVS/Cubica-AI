@@ -27,6 +27,18 @@ import {
 const FORWARD_NAV_BUTTON_ID = "nav-right";
 const ADVANCE_BUTTON_IDS = new Set(["btn-advance", "btn-finish"]);
 
+type PreviewRuntimePointerComponent = GameUiComponent & {
+  /**
+   * Runtime-only override for editor preview mapping.
+   *
+   * This field is intentionally not part of the serialized UI manifest schema.
+   * SafeModeRenderer builds some screens from gameplay state, not from
+   * /screens/* UI nodes, and uses this override to keep preview selections
+   * linked to the gameplay content that generated the visible element.
+   */
+  readonly previewRuntimePointer?: string;
+};
+
 /**
  * Переносит явное действие продолжения на стрелку "Вперед".
  *
@@ -134,10 +146,11 @@ export function UiComponentNode({
 }) {
   const children = moveAdvanceActionToForwardNavigation(component.children ?? []);
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
+  const componentRuntimePointer = resolvePreviewRuntimePointer(component, runtimePointer);
   const previewAttributes = createPreviewElementAttributes({
     enabled: editorPreviewMode,
     component,
-    runtimePointer,
+    runtimePointer: componentRuntimePointer,
     layer: screenKey
   });
 
@@ -189,7 +202,7 @@ export function UiComponentNode({
                   parentVisualMode={effectiveVisualMode}
                   designArtifacts={designArtifacts}
                   editorPreviewMode={editorPreviewMode}
-                  runtimePointer={childRuntimePointer(runtimePointer, childIndex)}
+                  runtimePointer={childRuntimePointer(componentRuntimePointer, childIndex)}
                 />
               ))}
             </React.Fragment>
@@ -257,7 +270,7 @@ export function UiComponentNode({
               parentVisualMode={effectiveVisualMode}
               designArtifacts={designArtifacts}
               editorPreviewMode={editorPreviewMode}
-              runtimePointer={childRuntimePointer(runtimePointer, index)}
+              runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
             />
           ))}
         </div>
@@ -288,7 +301,7 @@ export function UiComponentNode({
               parentVisualMode={effectiveVisualMode}
               designArtifacts={designArtifacts}
               editorPreviewMode={editorPreviewMode}
-              runtimePointer={childRuntimePointer(runtimePointer, index)}
+              runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
             />
           ))}
         </div>
@@ -358,4 +371,9 @@ export function UiComponentNode({
       // Неизвестный тип компонента — пропускаем, не бросаем ошибку
       return null;
   }
+}
+
+function resolvePreviewRuntimePointer(component: GameUiComponent, fallback: string | undefined): string | undefined {
+  const override = (component as PreviewRuntimePointerComponent).previewRuntimePointer;
+  return typeof override === "string" && override.trim() !== "" ? override : fallback;
 }

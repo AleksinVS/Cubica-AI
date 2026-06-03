@@ -56,6 +56,7 @@ export interface PreviewSelectionOverlayProps {
   readonly onPromptDraftChange: (draft: string) => void;
   readonly onPromptSubmit: () => void;
   readonly onPromptClose: () => void;
+  readonly onTemporaryPlayChange?: (active: boolean) => void;
 }
 
 const dragThresholdPx = 5;
@@ -74,9 +75,11 @@ export function PreviewSelectionOverlay({
   onClearContext,
   onPromptDraftChange,
   onPromptSubmit,
-  onPromptClose
+  onPromptClose,
+  onTemporaryPlayChange
 }: PreviewSelectionOverlayProps) {
   const dragStartRef = useRef<PreviewPoint | null>(null);
+  const dragStartedAsPointSelectionRef = useRef(false);
   const dragFrameRef = useRef<number | undefined>(undefined);
   const [dragRect, setDragRect] = useState<PreviewRect | null>(null);
   const [contextMenu, setContextMenu] = useState<{
@@ -107,12 +110,31 @@ export function PreviewSelectionOverlay({
     }
 
     setContextMenu(null);
+    if (event.altKey) {
+      dragStartRef.current = null;
+      dragStartedAsPointSelectionRef.current = false;
+      setDragRect(null);
+      onTemporaryPlayChange?.(true);
+      return;
+    }
+
     dragStartRef.current = pointFromEvent(event);
+    dragStartedAsPointSelectionRef.current = pointSelectionEnabled || hasSingleSelectModifier(event);
     setDragRect(null);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (event.altKey) {
+      dragStartRef.current = null;
+      dragStartedAsPointSelectionRef.current = false;
+      setDragRect(null);
+      onTemporaryPlayChange?.(true);
+      return;
+    }
+
+    onTemporaryPlayChange?.(false);
+
     const start = dragStartRef.current;
     if (disabled || start === null) {
       return;
@@ -132,7 +154,20 @@ export function PreviewSelectionOverlay({
       return;
     }
 
+    if (event.altKey) {
+      dragStartRef.current = null;
+      dragStartedAsPointSelectionRef.current = false;
+      setDragRect(null);
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      onTemporaryPlayChange?.(true);
+      return;
+    }
+
     dragStartRef.current = null;
+    const startedAsPointSelection = dragStartedAsPointSelectionRef.current;
+    dragStartedAsPointSelectionRef.current = false;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
@@ -153,13 +188,14 @@ export function PreviewSelectionOverlay({
       return;
     }
 
-    if (!pointSelectionEnabled) {
+    const result = hitTestPreviewPoint(entities, point);
+    const topEntity = result.entities[0];
+    const isPointSelection = startedAsPointSelection || pointSelectionEnabled || hasSingleSelectModifier(event);
+    if (!isPointSelection && topEntity === undefined) {
       onClearContext();
       return;
     }
 
-    const result = hitTestPreviewPoint(entities, point);
-    const topEntity = result.entities[0];
     if (topEntity === undefined) {
       onClearContext();
       return;
@@ -173,6 +209,11 @@ export function PreviewSelectionOverlay({
       return;
     }
 
+    if (event.altKey) {
+      onTemporaryPlayChange?.(true);
+      return;
+    }
+
     event.preventDefault();
     setDragRect(null);
     dragStartRef.current = null;
@@ -182,6 +223,12 @@ export function PreviewSelectionOverlay({
     if (result.entities.length === 0) {
       setContextMenu(null);
       onClearContext();
+      return;
+    }
+
+    if (hasSingleSelectModifier(event)) {
+      setContextMenu(null);
+      onSelectEntity(result.entities[0] as PreviewEntityDescriptor, point, result.entities);
       return;
     }
 
@@ -400,6 +447,10 @@ function pointFromMouseEvent(event: ReactMouseEvent<HTMLDivElement>): PreviewPoi
     x: event.clientX - rect.left,
     y: event.clientY - rect.top
   };
+}
+
+function hasSingleSelectModifier(event: Pick<PointerEvent<HTMLDivElement> | ReactMouseEvent<HTMLDivElement>, "ctrlKey" | "metaKey" | "getModifierState">): boolean {
+  return event.ctrlKey || event.metaKey || event.getModifierState("Control") || event.getModifierState("Meta");
 }
 
 function rectStyle(rect: PreviewRect): CSSProperties {

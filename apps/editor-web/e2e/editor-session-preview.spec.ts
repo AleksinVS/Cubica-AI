@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 import { appendFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -28,6 +28,31 @@ interface PlayerContentWithPlugins {
   }[];
 }
 
+async function centerOfFrameElement(locator: Locator): Promise<{ readonly x: number; readonly y: number }> {
+  const rect = await locator.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    return {
+      x: bounds.x,
+      y: bounds.y,
+      width: bounds.width,
+      height: bounds.height
+    };
+  });
+
+  expect(rect.width).toBeGreaterThan(0);
+  expect(rect.height).toBeGreaterThan(0);
+  return {
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2
+  };
+}
+
+async function expectLocatorWidthStable(locator: Locator, expectedWidth: number, tolerancePx = 2): Promise<void> {
+  const box = await locator.boundingBox();
+  expect(box).not.toBeNull();
+  expect(Math.abs((box?.width ?? 0) - expectedWidth)).toBeLessThanOrEqual(tolerancePx);
+}
+
 test.describe("editor-web session preview", () => {
   test("opens a session worktree and prepares player preview with contentSourceId", async ({ page, request }) => {
     let editorSessionId: string | undefined;
@@ -47,6 +72,42 @@ test.describe("editor-web session preview", () => {
       expect(sessionBody.session.branchName).toContain(`editor/session/${editorSessionId}`);
 
       await expect(page.getByLabel("Editor status")).toContainText(sessionBody.session.branchName);
+      const previewStage = page.locator('section[aria-label="Game preview"]');
+      const previewStageBeforeRightSidebar = await previewStage.boundingBox();
+      expect(previewStageBeforeRightSidebar).not.toBeNull();
+
+      await page.locator('aside[aria-label="Manifest navigation"] .tree-row-main').first().click();
+      const propertiesSidebar = page.locator('aside[aria-label="Selected node properties"]');
+      await expect(propertiesSidebar).toBeVisible();
+      await expect(propertiesSidebar.locator(".property-panel-sidebar")).toBeVisible();
+      await expectLocatorWidthStable(previewStage, previewStageBeforeRightSidebar?.width ?? 0);
+      await expect(page.locator('aside[aria-label="Authoring JSON editor"]')).toHaveCount(0);
+      await page.getByRole("button", { name: "JSON", exact: true }).click();
+      const jsonSidebar = page.locator('aside[aria-label="Authoring JSON editor"]');
+      await expect(jsonSidebar).toBeVisible();
+      await expectLocatorWidthStable(previewStage, previewStageBeforeRightSidebar?.width ?? 0);
+      await jsonSidebar.getByRole("button", { name: "Collapse" }).click();
+      await expect(jsonSidebar).toHaveCount(0);
+
+      const leftSidebar = page.locator('aside[aria-label="Manifest navigation"]');
+      const leftSidebarBeforeResize = await leftSidebar.boundingBox();
+      expect(leftSidebarBeforeResize).not.toBeNull();
+      const leftResizeHandle = page.getByTestId("left-sidebar-resize-handle");
+      const leftResizeHandleBox = await leftResizeHandle.boundingBox();
+      expect(leftResizeHandleBox).not.toBeNull();
+      await page.mouse.move(
+        (leftResizeHandleBox?.x ?? 0) + (leftResizeHandleBox?.width ?? 0) / 2,
+        (leftResizeHandleBox?.y ?? 0) + (leftResizeHandleBox?.height ?? 0) / 2
+      );
+      await page.mouse.down();
+      await page.mouse.move(
+        (leftResizeHandleBox?.x ?? 0) + (leftResizeHandleBox?.width ?? 0) / 2 + 80,
+        (leftResizeHandleBox?.y ?? 0) + (leftResizeHandleBox?.height ?? 0) / 2
+      );
+      await page.mouse.up();
+      const leftSidebarAfterResize = await leftSidebar.boundingBox();
+      expect(leftSidebarAfterResize?.width ?? 0).toBeGreaterThan((leftSidebarBeforeResize?.width ?? 0) + 50);
+
       const previewButton = page.getByRole("button", { name: "Preview", exact: true });
       await expect(previewButton).toBeEnabled();
 
@@ -72,13 +133,80 @@ test.describe("editor-web session preview", () => {
       );
       expect(contentResponse.status()).toBe(200);
 
-      const previewStage = page.getByLabel("Game preview");
       const editorStatus = page.getByLabel("Editor status");
       await expect(editorStatus).toContainText("Preview:");
       const frame = page.frameLocator('iframe[title="Game preview"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(frame.locator("[data-preview-runtime-pointer]").first()).toBeVisible();
       await expect(editorStatus).toContainText(/[1-9][0-9]* selectable/);
+
+      await page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" }).click();
+      const overlay = page.getByTestId("preview-selection-overlay");
+      const selectableMetric = frame.locator('[data-preview-semantic-role="gameVariableComponent"]').first();
+      await expect(selectableMetric).toBeVisible();
+      const targetPoint = await centerOfFrameElement(selectableMetric);
+      await overlay.click({ modifiers: ["Control"], position: targetPoint });
+      await expect(page.locator('aside[aria-label="Selected node properties"]')).toBeVisible();
+      await expect(page.locator(".preview-highlight-frame")).toBeVisible();
+      await overlay.click({ button: "right", position: targetPoint });
+      await expect(page.locator(".preview-object-context-menu")).toBeVisible();
+    } finally {
+      await page.close().catch(() => undefined);
+      if (editorSessionId !== undefined) {
+        await request.delete(`${editorUrl}/api/editor/session`, {
+          data: { sessionId: editorSessionId }
+        });
+      }
+    }
+  });
+
+  test("supports Inspect selection and context menu for Antarctica fallback preview", async ({ page, request }) => {
+    let editorSessionId: string | undefined;
+
+    try {
+      const sessionResponsePromise = page.waitForResponse((response) =>
+        response.url().endsWith("/api/editor/session") && response.request().method() === "POST"
+      );
+
+      await page.goto(`${editorUrl}/?gameId=antarctica&file=game.authoring.json`);
+      await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
+
+      const sessionResponse = await sessionResponsePromise;
+      expect(sessionResponse.status()).toBe(200);
+      const sessionBody = (await sessionResponse.json()) as EditorSessionListResponse;
+      editorSessionId = sessionBody.session.sessionId;
+
+      const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+      await expect(previewButton).toBeEnabled();
+      const previewResponsePromise = page.waitForResponse((response) =>
+        response.url().endsWith("/api/editor/preview") && response.request().method() === "POST"
+      );
+      await previewButton.click();
+      const previewResponse = await previewResponsePromise;
+      expect(previewResponse.status()).toBe(200);
+      const previewBody = (await previewResponse.json()) as EditorPreviewResponse;
+      expect(previewBody.ready, JSON.stringify(previewBody.diagnostics ?? [])).toBe(true);
+
+      const editorStatus = page.getByLabel("Editor status");
+      const frame = page.frameLocator('iframe[title="Game preview"]');
+      const titleEntity = frame.locator('[data-preview-runtime-pointer="/content/data/infos/0/title"]');
+      await expect(titleEntity).toBeVisible();
+      await expect(editorStatus).toContainText(/[1-9][0-9]* selectable/);
+
+      await page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" }).click();
+      const overlay = page.getByTestId("preview-selection-overlay");
+      const targetPoint = await centerOfFrameElement(titleEntity);
+      await overlay.click({ modifiers: ["Control"], position: targetPoint });
+
+      const propertiesSidebar = page.locator('aside[aria-label="Selected node properties"]');
+      await expect(propertiesSidebar).toBeVisible();
+      await expect(propertiesSidebar).toContainText("/root/content/data/infos/0/title");
+      await expect(page.locator(".preview-highlight-frame")).toContainText("info-title");
+
+      await overlay.click({ button: "right", position: targetPoint });
+      const contextMenu = page.locator(".preview-object-context-menu");
+      await expect(contextMenu).toBeVisible();
+      await expect(contextMenu).toContainText("info-title");
     } finally {
       await page.close().catch(() => undefined);
       if (editorSessionId !== undefined) {
@@ -117,6 +245,7 @@ test.describe("editor-web session preview", () => {
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await page.getByRole("button", { name: "Timeline" }).click();
       const timelinePanel = page.locator('aside[aria-label="Timeline"]');
+      await expect(timelinePanel).not.toContainText("Chronology");
       await expect(timelinePanel).toContainText("T0");
       await expect(timelinePanel).toContainText("Initial runtime state");
       const traceDetails = page.getByLabel("Preview trace details");

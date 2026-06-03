@@ -85,12 +85,14 @@ export function GamePlayer({
     key: playerPluginSignature
   }));
   const activeConfigData = useMemo(
-    () => resolveRegisteredGameConfigData(content, configData),
-    [content, configData, playerPluginState.key]
+    () => playerPluginState.status === "ready"
+      ? resolveRegisteredGameConfigData(content, configData)
+      : configData,
+    [content, configData, playerPluginState.key, playerPluginState.status]
   );
   const fullConfig = useMemo(
     () => buildGameConfig(activeConfigData),
-    [activeConfigData, playerPluginState.key]
+    [activeConfigData, playerPluginState.key, playerPluginState.status]
   );
 
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
@@ -352,6 +354,7 @@ export function GamePlayer({
           fallbackMetrics={fullConfig.fallbackMetrics}
           gameUi={gameUi}
           layoutMode={layoutMode}
+          screenKey={screenKey}
           dispatchAction={handleAction}
           fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}
           onManifestAction={handleManifestAction}
@@ -359,6 +362,7 @@ export function GamePlayer({
           onHint={() => handleAction(ManifestAction.SHOW_HINT)}
           isPending={state.isPending}
           sessionId={state.sessionId}
+          editorPreviewMode={editorPreviewMode}
         />
       )}
       {state.error ? <div className="error inline-error">{state.error}</div> : null}

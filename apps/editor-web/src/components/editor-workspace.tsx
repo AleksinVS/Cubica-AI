@@ -51,7 +51,17 @@ import {
   type PreviewRect,
   type TextRange
 } from "@cubica/editor-engine";
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { embeddedAuthoringSample } from "@/lib/authoring-sample";
@@ -250,6 +260,7 @@ interface SemanticNodeData extends Record<string, unknown> {
 type SemanticFlowNode = Node<SemanticNodeData, "semantic">;
 type SemanticFlowEdge = Edge<{ readonly role: EditorViewEdge["role"]; readonly label?: string }, "semantic">;
 type LeftSidebarPanel = "tree" | "timeline" | "chat";
+type RightSidebarPanel = "properties" | "json";
 type PreviewViewportMode = "desktop" | "tablet" | "mobile";
 
 const semanticNodeWidth = 250;
@@ -259,6 +270,13 @@ const semanticNodeRowsPerColumn = 8;
 const semanticNodeRowSpacing = 168;
 const semanticNodeColumnSpacing = 300;
 const semanticNodeDepthSpacing = 80;
+const defaultLeftSidebarWidth = 340;
+const defaultJsonSidebarWidth = 520;
+const leftSidebarWidthMin = 260;
+const leftSidebarWidthMax = 560;
+const jsonSidebarWidthMin = 360;
+const jsonSidebarWidthMax = 760;
+const temporaryPlayPassthroughMs = 900;
 const semanticNodeHandles: NonNullable<SemanticFlowNode["handles"]> = [
   {
     type: "target",
@@ -277,6 +295,12 @@ const semanticNodeHandles: NonNullable<SemanticFlowNode["handles"]> = [
     height: semanticHandleSize
   }
 ];
+
+interface SidebarResizeState {
+  readonly side: "left" | "json";
+  readonly startX: number;
+  readonly startWidth: number;
+}
 
 const SemanticGraphNode = memo(function SemanticGraphNode({ data, selected }: NodeProps<SemanticFlowNode>) {
   return (
@@ -456,6 +480,7 @@ export function EditorWorkspace() {
   const [aiDiagnostics, setAiDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [previewInspectMode, setPreviewInspectMode] = useState(false);
   const [altPlayActive, setAltPlayActive] = useState(false);
+  const [previewPointerPlayMode, setPreviewPointerPlayMode] = useState(false);
   const [previewPointSelectionMode, setPreviewPointSelectionMode] = useState(false);
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [editorLayout, setEditorLayout] = useState<EditorLayoutDocumentBody>(() => createEmptyEditorLayout());
@@ -472,12 +497,16 @@ export function EditorWorkspace() {
   const [leftSidebarPanel, setLeftSidebarPanel] = useState<LeftSidebarPanel | undefined>("tree");
   const [treeCollapsedPointers, setTreeCollapsedPointers] = useState<ReadonlySet<string>>(() => new Set());
   const [jsonPanelOpen, setJsonPanelOpen] = useState(true);
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(defaultLeftSidebarWidth);
+  const [jsonSidebarWidth, setJsonSidebarWidth] = useState(defaultJsonSidebarWidth);
+  const [sidebarResizeState, setSidebarResizeState] = useState<SidebarResizeState | null>(null);
   const [propertyPanelOpen, setPropertyPanelOpen] = useState(false);
   const [pendingJsonRevealPointer, setPendingJsonRevealPointer] = useState<string | undefined>(undefined);
   const [monacoApi, setMonacoApi] = useState<MonacoApi | null>(null);
   const editorRef = useRef<MonacoEditorInstance | null>(null);
   const flowRef = useRef<ReactFlowInstance<Node, SemanticFlowEdge> | null>(null);
   const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const previewPointerPlayResetRef = useRef<number | undefined>(undefined);
   const editorSessionRef = useRef<EditorSessionSummary | null>(null);
   const openingSessionRef = useRef<{
     readonly gameId: string | null;
@@ -544,7 +573,6 @@ export function EditorWorkspace() {
   );
   const isDirty = jsonText !== savedText;
   const nonVisualEntityCounts = useMemo(() => summarizeNonVisualEntities(viewModel.fullNodes), [viewModel.fullNodes]);
-  const timelinePreviewEntries = viewModel.timeline.entries.filter((entry) => entry.kind === "step").slice(0, 8);
   const previewTraceEntries = previewTrace.events.slice(-8);
   const currentPreviewTraceEvent = previewTrace.events.length === 0
     ? undefined
@@ -556,8 +584,14 @@ export function EditorWorkspace() {
     ? undefined
     : previewTrace.snapshots.find((snapshot) => snapshot.eventSequence === selectedPreviewTraceEvent.sequence);
   const leftSidebarOpen = leftSidebarPanel !== undefined;
-  const effectivePreviewInspectMode = previewInspectMode && !altPlayActive;
+  const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
+  const rightSidebarOpen = rightSidebarPanel !== undefined;
+  const effectivePreviewInspectMode = previewInspectMode && !altPlayActive && !previewPointerPlayMode;
   const previewModeLabel = effectivePreviewInspectMode ? "Inspect" : "Play";
+  const workspaceStyle = {
+    "--left-sidebar-width": `${leftSidebarOpen ? leftSidebarWidth : 0}px`,
+    "--json-sidebar-width": `${rightSidebarOpen ? jsonSidebarWidth : 0}px`
+  } as CSSProperties;
 
   const projectedNodes = useMemo<SemanticFlowNode[]>(
     () => {
@@ -657,7 +691,7 @@ export function EditorWorkspace() {
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [fitViewDependency, jsonPanelOpen, leftSidebarOpen, propertyPanelOpen, flowNodes.length]);
+  }, [fitViewDependency, leftSidebarOpen, rightSidebarOpen, flowNodes.length]);
 
   useEffect(() => {
     let cancelled = false;
@@ -732,6 +766,12 @@ export function EditorWorkspace() {
   }, [monacoApi, monacoModelUri, schemaId]);
 
   useEffect(() => {
+    if (rightSidebarPanel !== "json") {
+      editorRef.current = null;
+    }
+  }, [rightSidebarPanel]);
+
+  useEffect(() => {
     if (monacoApi === null || editorRef.current === null) {
       return;
     }
@@ -749,19 +789,19 @@ export function EditorWorkspace() {
   }, [monacoApi, monacoModelUri, viewModel.diagnostics]);
 
   useEffect(() => {
-    if (selectedNode !== undefined) {
+    if (rightSidebarPanel === "json" && selectedNode !== undefined) {
       revealJsonPointer(selectedNode.pointer);
     }
-  }, [selectedNode?.pointer, viewModel.snapshot.locationMap]);
+  }, [rightSidebarPanel, selectedNode?.pointer, viewModel.snapshot.locationMap]);
 
   useEffect(() => {
-    if (!jsonPanelOpen || pendingJsonRevealPointer === undefined || editorRef.current === null) {
+    if (rightSidebarPanel !== "json" || pendingJsonRevealPointer === undefined || editorRef.current === null) {
       return;
     }
 
     revealJsonPointer(pendingJsonRevealPointer);
     setPendingJsonRevealPointer(undefined);
-  }, [jsonPanelOpen, monacoApi, pendingJsonRevealPointer, viewModel.snapshot.locationMap]);
+  }, [monacoApi, pendingJsonRevealPointer, rightSidebarPanel, viewModel.snapshot.locationMap]);
 
   useEffect(() => {
     if (previewUrl === null) {
@@ -820,6 +860,7 @@ export function EditorWorkspace() {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Alt") {
         setAltPlayActive(true);
+        setPreviewPointerPlayMode(false);
       }
 
       if (event.key === "Control") {
@@ -830,6 +871,8 @@ export function EditorWorkspace() {
     function handleKeyUp(event: KeyboardEvent) {
       if (event.key === "Alt") {
         setAltPlayActive(false);
+        setPreviewPointerPlayMode(false);
+        clearPreviewPointerPlayReset();
       }
 
       if (event.key === "Control") {
@@ -839,7 +882,9 @@ export function EditorWorkspace() {
 
     function resetTransientModes() {
       setAltPlayActive(false);
+      setPreviewPointerPlayMode(false);
       setPreviewPointSelectionMode(false);
+      clearPreviewPointerPlayReset();
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -851,6 +896,54 @@ export function EditorWorkspace() {
       window.removeEventListener("blur", resetTransientModes);
     };
   }, []);
+
+  useEffect(() => {
+    return () => clearPreviewPointerPlayReset();
+  }, []);
+
+  useEffect(() => {
+    if (sidebarResizeState === null) {
+      return;
+    }
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function handlePointerMove(event: PointerEvent) {
+      if (sidebarResizeState === null) {
+        return;
+      }
+
+      const deltaX = event.clientX - sidebarResizeState.startX;
+      if (sidebarResizeState.side === "left") {
+        setLeftSidebarWidth(
+          clampNumber(sidebarResizeState.startWidth + deltaX, leftSidebarWidthMin, leftSidebarWidthMax)
+        );
+        return;
+      }
+
+      setJsonSidebarWidth(
+        clampNumber(sidebarResizeState.startWidth - deltaX, jsonSidebarWidthMin, jsonSidebarWidthMax)
+      );
+    }
+
+    function stopResize() {
+      setSidebarResizeState(null);
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("blur", stopResize);
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResize);
+      window.removeEventListener("blur", stopResize);
+    };
+  }, [sidebarResizeState]);
 
   useEffect(() => {
     if (selectedPreviewEntityId === undefined) {
@@ -871,6 +964,14 @@ export function EditorWorkspace() {
     const entity = previewEntities.find((candidate) => candidate.authoringPointer === pointer);
     if (entity !== undefined && entity.entityId !== selectedPreviewEntityId) {
       setSelectedPreviewEntityId(entity.entityId);
+      return;
+    }
+
+    if (entity === undefined && selectedPreviewEntityId !== undefined) {
+      const selectedEntity = previewEntities.find((candidate) => candidate.entityId === selectedPreviewEntityId);
+      if (selectedEntity === undefined || selectedEntity.authoringPointer !== pointer) {
+        setSelectedPreviewEntityId(undefined);
+      }
     }
   }, [previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
 
@@ -888,6 +989,55 @@ export function EditorWorkspace() {
       return nextPositions;
     });
   }, []);
+
+  function clearPreviewPointerPlayReset() {
+    if (previewPointerPlayResetRef.current === undefined) {
+      return;
+    }
+
+    window.clearTimeout(previewPointerPlayResetRef.current);
+    previewPointerPlayResetRef.current = undefined;
+  }
+
+  function handlePreviewTemporaryPlayChange(active: boolean) {
+    clearPreviewPointerPlayReset();
+    setPreviewPointerPlayMode(active);
+    if (!active) {
+      return;
+    }
+
+    /*
+     * When focus is inside the preview iframe, the parent window may not receive
+     * the Alt keyup. A short timeout prevents the inspect overlay from getting
+     * stuck in pass-through mode after an Alt-assisted preview gesture.
+     */
+    previewPointerPlayResetRef.current = window.setTimeout(() => {
+      previewPointerPlayResetRef.current = undefined;
+      setPreviewPointerPlayMode(false);
+    }, temporaryPlayPassthroughMs);
+  }
+
+  function handleSidebarResizeStart(side: SidebarResizeState["side"], event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setSidebarResizeState({
+      side,
+      startX: event.clientX,
+      startWidth: side === "left" ? leftSidebarWidth : jsonSidebarWidth
+    });
+  }
+
+  function openPropertiesSidebar() {
+    setJsonPanelOpen(false);
+    setPropertyPanelOpen(true);
+  }
+
+  function openJsonSidebar(pointer: string | undefined = selectedNode?.pointer) {
+    setPropertyPanelOpen(false);
+    setJsonPanelOpen(true);
+    if (pointer !== undefined) {
+      setPendingJsonRevealPointer(pointer);
+    }
+  }
 
   function handleEditorMount(editor: MonacoEditorInstance, monaco: MonacoApi) {
     editorRef.current = editor;
@@ -927,6 +1077,10 @@ export function EditorWorkspace() {
     setPreviewPromptContext(null);
     setPreviewAiIntent(null);
     setPreviewInspectMode(false);
+    setAltPlayActive(false);
+    setPreviewPointerPlayMode(false);
+    setPreviewPointSelectionMode(false);
+    clearPreviewPointerPlayReset();
     setPreviewTrace(createPreviewPlaythroughTrace({ traceId: "preview-trace-initial", gameId: currentDocument.gameId }));
     setSelectedPreviewTraceSequence(undefined);
     setPreviewRollbackState("idle");
@@ -998,13 +1152,13 @@ export function EditorWorkspace() {
     if (graphNode !== undefined) {
       updateActiveBranchForSelection(graphNode.id);
     }
-    setPropertyPanelOpen(true);
 
     if (options.openJson) {
-      setJsonPanelOpen(true);
-      setPendingJsonRevealPointer(pointer);
-      revealJsonPointer(pointer);
+      openJsonSidebar(pointer);
+      return;
     }
+
+    openPropertiesSidebar();
   }
 
   async function handleSave() {
@@ -1148,6 +1302,10 @@ export function EditorWorkspace() {
         setPreviewPromptContext(null);
         setPreviewAiIntent(null);
         setPreviewInspectMode(false);
+        setAltPlayActive(false);
+        setPreviewPointerPlayMode(false);
+        setPreviewPointSelectionMode(false);
+        clearPreviewPointerPlayReset();
         setPreviewTrace(createPreviewPlaythroughTrace({
           traceId: runtimeSessionId === undefined ? `preview-${Date.now()}` : `preview-${runtimeSessionId}`,
           gameId: currentDocument.gameId
@@ -1277,15 +1435,14 @@ export function EditorWorkspace() {
 
   function selectPointerNode(node: EditorViewNode, options: { readonly openJson?: boolean } = {}) {
     setSelectedNodeId(node.id);
-    setPropertyPanelOpen(true);
     updateActiveBranchForSelection(node.id);
 
     if (options.openJson === true) {
-      setJsonPanelOpen(true);
-      setPendingJsonRevealPointer(node.pointer);
+      openJsonSidebar(node.pointer);
+      return;
     }
 
-    revealJsonPointer(node.pointer);
+    openPropertiesSidebar();
   }
 
   function handlePreviewEntitySelect(
@@ -1542,10 +1699,7 @@ export function EditorWorkspace() {
       return;
     }
 
-    setPropertyPanelOpen(true);
-    setJsonPanelOpen(true);
-    setPendingJsonRevealPointer(pointer);
-    revealJsonPointer(pointer);
+    openJsonSidebar(pointer);
   }
 
   function handleFlowNodeClick(event: ReactMouseEvent, node: Node) {
@@ -1618,9 +1772,7 @@ export function EditorWorkspace() {
       return;
     }
 
-    setJsonPanelOpen(true);
-    setPendingJsonRevealPointer(diagnostic.pointer);
-    revealJsonPointer(diagnostic.pointer);
+    openJsonSidebar(diagnostic.pointer);
   }
 
   function replaceUrlState(gameId: string, filePath: string) {
@@ -1726,7 +1878,9 @@ export function EditorWorkspace() {
     setWorkflowState("idle");
     setLastEditSource(source);
     setSaveState("idle");
-    revealJsonPointer(pointer);
+    if (rightSidebarPanel === "json") {
+      revealJsonPointer(pointer);
+    }
   }
 
   async function persistNodePosition(node: Node) {
@@ -1797,6 +1951,10 @@ export function EditorWorkspace() {
               aria-pressed={!effectivePreviewInspectMode}
               onClick={() => {
                 setPreviewInspectMode(false);
+                setAltPlayActive(false);
+                setPreviewPointerPlayMode(false);
+                setPreviewPointSelectionMode(false);
+                clearPreviewPointerPlayReset();
                 setPreviewPromptContext(null);
                 setPreviewAiIntent(null);
                 setPropertyPanelOpen(false);
@@ -1808,7 +1966,11 @@ export function EditorWorkspace() {
               type="button"
               className={effectivePreviewInspectMode ? "is-active" : ""}
               aria-pressed={effectivePreviewInspectMode}
-              onClick={() => setPreviewInspectMode(true)}
+              onClick={() => {
+                setPreviewPointerPlayMode(false);
+                clearPreviewPointerPlayReset();
+                setPreviewInspectMode(true);
+              }}
             >
               Inspect
             </button>
@@ -1907,7 +2069,8 @@ export function EditorWorkspace() {
       </header>
 
       <section
-        className={`workspace-grid ${jsonPanelOpen ? "" : "json-collapsed"} ${leftSidebarOpen ? "" : "left-sidebar-collapsed"} ${previewUrl !== null && !effectivePreviewInspectMode ? "preview-play-mode" : ""}`}
+        className={`workspace-grid ${rightSidebarOpen ? "" : "json-collapsed"} ${leftSidebarOpen ? "" : "left-sidebar-collapsed"} ${previewUrl !== null && !effectivePreviewInspectMode ? "preview-play-mode" : ""} ${sidebarResizeState !== null ? "is-resizing" : ""}`}
+        style={workspaceStyle}
         aria-label="Authoring editor workspace"
       >
         <nav className="left-activity-bar" aria-label="Editor sidebars">
@@ -1943,15 +2106,17 @@ export function EditorWorkspace() {
           </button>
           <button
             type="button"
-            className={jsonPanelOpen ? "is-active" : ""}
-            aria-pressed={jsonPanelOpen}
+            className={rightSidebarPanel === "json" ? "is-active" : ""}
+            aria-pressed={rightSidebarPanel === "json"}
             aria-label="JSON"
             title="JSON"
             onClick={() => {
-              if (!jsonPanelOpen) {
-                setPendingJsonRevealPointer(selectedNode?.pointer ?? "");
+              if (rightSidebarPanel === "json") {
+                setJsonPanelOpen(false);
+                return;
               }
-              setJsonPanelOpen((current) => !current);
+
+              openJsonSidebar(selectedNode?.pointer ?? "");
             }}
           >
             <span aria-hidden="true">JSON</span>
@@ -2026,7 +2191,6 @@ export function EditorWorkspace() {
               </>
             ) : leftSidebarPanel === "timeline" ? (
               <TimelineSidebarPanel
-                timelineEntries={timelinePreviewEntries}
                 traceEntries={previewTraceEntries}
                 selectedTraceEvent={selectedPreviewTraceEvent}
                 selectedTraceSnapshot={selectedPreviewTraceSnapshot}
@@ -2034,12 +2198,6 @@ export function EditorWorkspace() {
                 currentTraceSequence={currentPreviewTraceEvent?.sequence}
                 rollbackState={previewRollbackState}
                 onCollapse={() => setLeftSidebarPanel(undefined)}
-                onSelectTimelineEntry={(pointer) => {
-                  const node = findNodeForPointer(viewModel.fullNodes, pointer);
-                  if (node !== undefined) {
-                    selectPointerNode(node);
-                  }
-                }}
                 onSelectTraceSequence={setSelectedPreviewTraceSequence}
                 onRestoreSelectedTrace={() => {
                   if (selectedPreviewTraceEvent !== undefined) {
@@ -2058,6 +2216,14 @@ export function EditorWorkspace() {
                 onCollapse={() => setLeftSidebarPanel(undefined)}
               />
             )}
+            <div
+              className="sidebar-resize-handle sidebar-resize-handle-left"
+              data-testid="left-sidebar-resize-handle"
+              role="separator"
+              aria-label="Resize left sidebar"
+              aria-orientation="vertical"
+              onPointerDown={(event) => handleSidebarResizeStart("left", event)}
+            />
           </aside>
         ) : null}
 
@@ -2089,6 +2255,7 @@ export function EditorWorkspace() {
                     setPreviewPromptContext(null);
                     setPreviewAiIntent(null);
                   }}
+                  onTemporaryPlayChange={handlePreviewTemporaryPlayChange}
                 />
               </div>
             ) : (
@@ -2113,54 +2280,66 @@ export function EditorWorkspace() {
           </div>
         </section>
 
-        {jsonPanelOpen ? (
-          <aside className="json-panel" aria-label="Authoring JSON editor">
-            <div className="panel-heading">
-              <strong>Authoring JSON</strong>
-              <span>{hasBlockingDiagnostics ? `${viewModel.diagnostics.length} diagnostics` : "No blocking diagnostics"}</span>
-              <button type="button" onClick={() => setJsonPanelOpen(false)}>
-                Collapse
-              </button>
-            </div>
-            <Editor
-              height="100%"
-              language="json"
-              path={monacoModelUri}
-              value={jsonText}
-              theme="light"
-              beforeMount={(monaco) => configureMonacoJson(monaco as MonacoApi, monacoModelUri, schemaId)}
-              onMount={(editor, monaco) => handleEditorMount(editor as MonacoEditorInstance, monaco as MonacoApi)}
-              onChange={handleJsonChange}
-              options={{
-                automaticLayout: true,
-                fontSize: 13,
-                minimap: { enabled: false },
-                scrollBeyondLastLine: false,
-                tabSize: 2,
-                wordWrap: "on"
-              }}
+        {rightSidebarPanel !== undefined ? (
+          <aside
+            className={`right-sidebar-panel right-sidebar-panel-${rightSidebarPanel}`}
+            aria-label={rightSidebarPanel === "json" ? "Authoring JSON editor" : "Selected node properties"}
+          >
+            <div
+              className="sidebar-resize-handle sidebar-resize-handle-json"
+              data-testid="json-sidebar-resize-handle"
+              role="separator"
+              aria-label="Resize right sidebar"
+              aria-orientation="vertical"
+              onPointerDown={(event) => handleSidebarResizeStart("json", event)}
             />
+            {rightSidebarPanel === "json" ? (
+              <>
+                <div className="panel-heading">
+                  <strong>Authoring JSON</strong>
+                  <span>{hasBlockingDiagnostics ? `${viewModel.diagnostics.length} diagnostics` : "No blocking diagnostics"}</span>
+                  <button type="button" onClick={() => setJsonPanelOpen(false)}>
+                    Collapse
+                  </button>
+                </div>
+                <Editor
+                  height="100%"
+                  language="json"
+                  path={monacoModelUri}
+                  value={jsonText}
+                  theme="light"
+                  beforeMount={(monaco) => configureMonacoJson(monaco as MonacoApi, monacoModelUri, schemaId)}
+                  onMount={(editor, monaco) => handleEditorMount(editor as MonacoEditorInstance, monaco as MonacoApi)}
+                  onChange={handleJsonChange}
+                  options={{
+                    automaticLayout: true,
+                    fontSize: 13,
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    tabSize: 2,
+                    wordWrap: "on"
+                  }}
+                />
+              </>
+            ) : (
+              <PropertyPanel
+                node={selectedNode}
+                open
+                variant="sidebar"
+                properties={properties}
+                diagnostics={viewModel.diagnostics}
+                onChange={handlePropertyChange}
+                onJsonChange={handlePropertyJsonChange}
+                onGraphOperation={handleWritableGraphOperation}
+                onCollapse={() => setPropertyPanelOpen(false)}
+                onOpen={openPropertiesSidebar}
+                onReveal={openJsonSidebar}
+                selectedValue={selectedValue}
+                targetNodes={graphTargetNodes}
+              />
+            )}
           </aside>
         ) : null}
-
-        <PropertyPanel
-          node={selectedNode}
-          open={propertyPanelOpen}
-          properties={properties}
-          diagnostics={viewModel.diagnostics}
-          onChange={handlePropertyChange}
-          onJsonChange={handlePropertyJsonChange}
-          onGraphOperation={handleWritableGraphOperation}
-          onCollapse={() => setPropertyPanelOpen(false)}
-          onOpen={() => setPropertyPanelOpen(true)}
-          onReveal={(pointer) => {
-            setJsonPanelOpen(true);
-            setPendingJsonRevealPointer(pointer);
-            revealJsonPointer(pointer);
-          }}
-          selectedValue={selectedValue}
-          targetNodes={graphTargetNodes}
-        />
       </section>
 
       <footer className="diagnostics-strip" aria-label="Diagnostics">
@@ -2170,7 +2349,7 @@ export function EditorWorkspace() {
             {syncLabel}
           </span>
           <span>{statusMessage}</span>
-          <span>Mode: {previewModeLabel}{altPlayActive ? " (Alt)" : ""}</span>
+          <span>Mode: {previewModeLabel}{altPlayActive || previewPointerPlayMode ? " (Alt)" : ""}</span>
           <span>Viewport: {previewViewportMode}</span>
           <span>{previewUrl === null ? "Preview: not prepared" : `Preview: ${previewEntities.length} selectable`}</span>
           <span>{previewTrace.events.length} trace events</span>
@@ -2218,7 +2397,6 @@ export function EditorWorkspace() {
 }
 
 function TimelineSidebarPanel({
-  timelineEntries,
   traceEntries,
   selectedTraceEvent,
   selectedTraceSnapshot,
@@ -2226,13 +2404,11 @@ function TimelineSidebarPanel({
   currentTraceSequence,
   rollbackState,
   onCollapse,
-  onSelectTimelineEntry,
   onSelectTraceSequence,
   onRestoreSelectedTrace,
   onReset,
   onReplayCurrent
 }: {
-  readonly timelineEntries: readonly { readonly id: string; readonly order: number; readonly label: string; readonly pointer: string }[];
   readonly traceEntries: readonly PreviewPlaythroughEvent[];
   readonly selectedTraceEvent: PreviewPlaythroughEvent | undefined;
   readonly selectedTraceSnapshot: PreviewPlaythroughSnapshot | undefined;
@@ -2240,7 +2416,6 @@ function TimelineSidebarPanel({
   readonly currentTraceSequence: number | undefined;
   readonly rollbackState: "idle" | "restoring" | "restored" | "blocked" | "error";
   readonly onCollapse: () => void;
-  readonly onSelectTimelineEntry: (pointer: string) => void;
   readonly onSelectTraceSequence: (sequence: number) => void;
   readonly onRestoreSelectedTrace: () => void;
   readonly onReset: () => void;
@@ -2255,23 +2430,6 @@ function TimelineSidebarPanel({
         </button>
       </div>
       <div className="timeline-sidebar-body">
-        <section className="timeline-sidebar-section" aria-label="Manifest chronology">
-          <div className="timeline-sidebar-section-heading">
-            <strong>Chronology</strong>
-            <span>{timelineEntries.length}</span>
-          </div>
-          {timelineEntries.length === 0 ? (
-            <p className="empty-state">No chronology entries</p>
-          ) : (
-            timelineEntries.map((entry) => (
-              <button key={entry.id} type="button" onClick={() => onSelectTimelineEntry(entry.pointer)}>
-                <span>{entry.order + 1}</span>
-                <strong>{entry.label}</strong>
-              </button>
-            ))
-          )}
-        </section>
-
         <section className="timeline-sidebar-section" aria-label="Runtime trace">
           <div className="timeline-sidebar-section-heading">
             <strong>Runtime</strong>
@@ -2370,6 +2528,7 @@ function AiChatSidebarPanel({
 function PropertyPanel({
   node,
   open,
+  variant = "floating",
   selectedValue,
   properties,
   diagnostics,
@@ -2383,6 +2542,7 @@ function PropertyPanel({
 }: {
   node: EditorViewNode | undefined;
   open: boolean;
+  variant?: "floating" | "sidebar";
   selectedValue: JsonValue | undefined;
   properties: readonly EditorProperty[];
   diagnostics: readonly RoutedEditorDiagnostic[];
@@ -2399,6 +2559,10 @@ function PropertyPanel({
   const defaultAddJson = formatPropertyJson(safeDefaultCollectionValue(selectedValue));
 
   if (!open) {
+    if (variant === "sidebar") {
+      return null;
+    }
+
     return (
       <aside className="property-rail" aria-label="Selected node properties">
         <button type="button" onClick={onOpen}>
@@ -2410,7 +2574,7 @@ function PropertyPanel({
   }
 
   return (
-    <aside className="property-panel" aria-label="Selected node properties">
+    <div className={`property-panel ${variant === "sidebar" ? "property-panel-sidebar" : ""}`}>
       <div className="panel-heading">
         <strong>Properties</strong>
         <span>{node?.semanticRole ?? "No selection"}</span>
@@ -2456,7 +2620,7 @@ function PropertyPanel({
           onReveal={onReveal}
         />
       ) : null}
-    </aside>
+    </div>
   );
 }
 
@@ -2488,7 +2652,6 @@ function PropertyField({
         <select
           value={property.value}
           disabled={!property.editable}
-          onFocus={() => onReveal(property.pointer)}
           onChange={(event) => onChange(property, event.target.value)}
         >
           {property.enumValues.map((option) => (
@@ -2502,7 +2665,6 @@ function PropertyField({
           type="checkbox"
           checked={property.value === true}
           disabled={!property.editable}
-          onFocus={() => onReveal(property.pointer)}
           onChange={(event) => onChange(property, event.target.checked ? "true" : "false")}
         />
       ) : property.valueType === "number" ? (
@@ -2510,7 +2672,6 @@ function PropertyField({
           type="number"
           value={String(property.value)}
           disabled={!property.editable}
-          onFocus={() => onReveal(property.pointer)}
           onChange={(event) => onChange(property, event.target.value)}
         />
       ) : complexValue ? (
@@ -2519,7 +2680,6 @@ function PropertyField({
             value={draftJson}
             disabled={!property.editable}
             rows={Math.min(8, Math.max(3, draftJson.split("\n").length))}
-            onFocus={() => onReveal(property.pointer)}
             onChange={(event) => setDraftJson(event.target.value)}
           />
           <button type="button" disabled={!property.editable} onClick={() => onJsonChange(property, draftJson)}>
@@ -2530,7 +2690,6 @@ function PropertyField({
         <input
           value={String(property.value)}
           disabled={!property.editable}
-          onFocus={() => onReveal(property.pointer)}
           onChange={(event) => onChange(property, event.target.value)}
         />
       )}
@@ -3157,6 +3316,10 @@ function parentPointer(pointer: string): string | undefined {
 
 function isPlainJsonObject(value: JsonValue | undefined): value is { readonly [key: string]: JsonValue } {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function clampNumber(value: number, minimum: number, maximum: number): number {
+  return Math.min(maximum, Math.max(minimum, value));
 }
 
 function firstConnectableTargetPointer(nodes: readonly EditorViewNode[]): string {

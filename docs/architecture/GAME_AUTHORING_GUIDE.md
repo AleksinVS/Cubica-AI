@@ -16,6 +16,7 @@ This guide explains how to author game logic in Cubica manifests using the **Thr
   - [Guard Conditions](#guard-conditions)
   - [Computed Metric Changes](#computed-metric-changes)
 - [Tier 3: Declarative Effects](#tier-3-declarative-effects)
+- [Gameplay Object State](#gameplay-object-state)
 - [Manifest Schema Reference](#manifest-schema-reference)
 
 ---
@@ -187,6 +188,11 @@ State changes are expressed only through `effects[]`. The runtime validates ever
 | `collection.append` | Append an item to an array |
 | `metric.add` | Add to a numeric metric |
 | `log.append` | Append a runtime journal entry |
+| `object.create` | Create a dynamic gameplay object during a session |
+| `object.state.set` | Set one state facet on a gameplay object |
+| `object.attribute.patch` | Patch mutable object attributes |
+
+`object.*` effects are accepted target capabilities from ADR-041. They must be implemented through `TSK-20260603-gameplay-object-state-model` before authors can rely on them in runtime games.
 
 ---
 
@@ -266,6 +272,87 @@ Effects are **capability triggers**, not sandboxed user scripts. They signal the
 
 ---
 
+## Gameplay Object State
+
+Gameplay object state is the authoritative state of a game object inside session state.
+It is not frontend-local state.
+
+Authoring manifests should describe object types and state facets through `objectTypes`.
+The compiler emits runtime `objectModels`.
+
+Example authoring shape:
+
+```json
+{
+  "objectTypes": {
+    "card.basic": {
+      "collection": "cards",
+      "idField": "cardId",
+      "scope": "session",
+      "facets": {
+        "face": {
+          "initial": "front",
+          "values": {
+            "front": { "view": { "summaryFrom": "summary" } },
+            "back": { "view": { "summaryFrom": "backText", "visualState": "resolved" } }
+          }
+        },
+        "availability": {
+          "initial": "available",
+          "values": {
+            "available": { "visible": true, "interactive": true },
+            "locked": { "visible": true, "interactive": false }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Use object effects for object state changes:
+
+```json
+{
+  "effects": [
+    {
+      "op": "object.state.set",
+      "visibility": "public",
+      "collection": "cards",
+      "objectId": "{{cardId}}",
+      "facet": "face",
+      "value": "back"
+    }
+  ]
+}
+```
+
+Use `object.create` for dynamic resources:
+
+```json
+{
+  "op": "object.create",
+  "visibility": "public",
+  "collection": "resources",
+  "objectId": "fuel-1",
+  "objectType": "resource.supply",
+  "facets": { "availability": "available" },
+  "attributes": { "title": "Emergency fuel", "amount": 3 }
+}
+```
+
+State is separate from logic:
+
+- object state definitions list valid facets and values;
+- guards and JsonLogic read object state;
+- effects change object state;
+- Presenter builds UI-ready object views;
+- React components render projected props and do not decide gameplay rules.
+
+See [ADR-041](adrs/041-gameplay-object-state-model.md) for the accepted architecture.
+
+---
+
 ## Manifest Schema Reference
 
 The full JSON Schema is at [`docs/architecture/schemas/game-manifest.schema.json`](schemas/game-manifest.schema.json).
@@ -277,3 +364,4 @@ Key schema types:
 - `GameManifestDeterministicGuard` — guard conditions (timeline, board, card, opening, team, teamSelection, stateConditions, jsonLogic)
 - `GameManifestDeterministicActionMetadata` — full deterministic action metadata
 - `JsonLogicExpression` — recursive JsonLogic operator expression
+- `objectModels` — compiled runtime object-state model emitted from authoring `objectTypes`

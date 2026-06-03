@@ -6,7 +6,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { GamePlayer } from "./game-player";
-import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
+import type { PlayerFacingContent, GamePlayerUiContent, PlayerWebPluginBundleReference } from "@cubica/contracts-manifest";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -479,6 +479,138 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(screen.getByRole("button", { name: /Журнал ходов/i })).toBeDefined();
       expect(screen.getByRole("button", { name: /Подсказка/i })).toBeDefined();
     });
+  });
+
+  it("uses config registered by an asynchronously loaded player plugin before booting the presenter", async () => {
+    const gameId = "async-plugin-game";
+    const pluginSource = `
+      export function activate(api) {
+        api.registerGameConfigData({
+          gameId: "${gameId}",
+          playerId: "plugin-player",
+          storageKey: "async-plugin-session-id",
+          fallbackMetrics: [],
+          topbarScreenKeys: [],
+          metricBackgroundImages: {}
+        });
+        api.registerGameConfigFactory("${gameId}", function createAsyncPluginConfig(data) {
+          return {
+            ...data,
+            topbarScreenKeys: new Set(data.topbarScreenKeys),
+            resolveScreenKey() {
+              return null;
+            },
+            resolveLayoutMode() {
+              return "topbar";
+            },
+            resolveGameState() {
+              return {
+                currentInfo: {
+                  id: "i0",
+                  title: "Plugin info screen",
+                  body: "Rendered through the async plugin resolver.",
+                  advanceActionId: "intro.advance",
+                  advanceLabel: "Continue"
+                }
+              };
+            },
+            createManifestActionAdapter(_content, _gameState, dispatchAction) {
+              return (_command, payload) => dispatchAction(String(payload.advanceActionId ?? "noop"), payload);
+            }
+          };
+        });
+      }
+    `;
+    const bundle: PlayerWebPluginBundleReference = {
+      pluginId: "async-plugin",
+      gameId,
+      apiVersion: "1.0",
+      target: "player-web",
+      scope: "published",
+      contentHash: "d".repeat(64),
+      url: `data:text/javascript;base64,${Buffer.from(pluginSource, "utf8").toString("base64")}`
+    };
+    const content: PlayerFacingContent = {
+      gameId,
+      version: "1.0.0",
+      name: "Async Plugin Game",
+      description: "A game that needs an async plugin resolver.",
+      playerConfig: { min: 1, max: 1 },
+      locale: "en-US",
+      actions: [],
+      mockups: [],
+      content: { data: {} }
+    };
+    const gameUi: GamePlayerUiContent = {
+      id: "async-plugin-game.ui.web",
+      version: "1.0.0",
+      gameId,
+      entryPoint: "S1",
+      screens: {
+        S1: {
+          type: "screen",
+          title: "Wrong manifest screen",
+          layoutMode: "topbar",
+          root: {
+            type: "screenComponent",
+            props: {},
+            children: [
+              {
+                type: "cardComponent",
+                id: "wrong-card",
+                props: { text: "Wrong card screen" },
+              }
+            ]
+          }
+        }
+      }
+    };
+    const session = {
+      sessionId: "async-plugin-session",
+      gameId,
+      version: { sessionId: "async-plugin-session", stateVersion: 1, lastEventSequence: 0 },
+      state: {
+        public: {
+          metrics: {},
+          timeline: { screenId: "S1", stepIndex: 0, activeInfoId: "i0" }
+        },
+        secret: {}
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(session)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer
+        config={{
+          gameId,
+          playerId: "fallback-player",
+          storageKey: "fallback-session-id",
+          fallbackMetrics: [],
+          topbarScreenKeys: ["S1"],
+          metricBackgroundImages: {}
+        }}
+        runtimeApiUrl="http://localhost:8080"
+        content={content}
+        mockups={[]}
+        gameUi={gameUi}
+        playerPluginBundles={[bundle]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Plugin info screen")).toBeDefined();
+      expect(screen.getByText("Rendered through the async plugin resolver.")).toBeDefined();
+    });
+    expect(screen.queryByText("Wrong card screen")).toBeNull();
   });
 
   it("uses the latest info screen as the default hint when no dedicated hint exists", async () => {

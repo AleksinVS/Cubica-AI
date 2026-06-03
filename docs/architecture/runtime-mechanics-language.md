@@ -15,8 +15,9 @@
 - [7. Эффекты](#7-эффекты)
 - [8. Добавление новой возможности](#8-добавление-новой-возможности)
 - [9. Как это ложится на Antarctica](#9-как-это-ложится-на-antarctica)
-- [10. Чего не делаем сейчас](#10-чего-не-делаем-сейчас)
-- [11. Источники](#11-источники)
+- [10. Gameplay Object State Model](#10-gameplay-object-state-model)
+- [11. Чего не делаем сейчас](#11-чего-не-делаем-сейчас)
+- [12. Источники](#12-источники)
 
 ## 1. Назначение
 
@@ -163,8 +164,12 @@
 | `timeline.set` | Изменить текущую сцену, экран или шаг | перейти к следующему инфо-экрану |
 | `log.append` | Добавить запись в журнал | выбор игрока или итог действия |
 | `event.emit` | Создать доменное событие для последующей обработки | future integration/event flow |
+| `object.create` | Создать динамический игровой объект во время сессии | добавить новый ресурс |
+| `object.state.set` | Изменить фасет состояния объекта | перевернуть карточку или заблокировать задачу |
+| `object.attribute.patch` | Изменить изменяемые атрибуты объекта | уменьшить количество ресурса |
 
 Не все операции нужно реализовывать сразу. На 2026-05-31 реализованы проверяемые эффекты `runtime.server.request`, `ui.panel.open`, `ui.screen.open`, `log.append`, `timeline.set`, `state.patch`, `flag.set`, `counter.add`, `collection.append` и `metric.add`.
+На 2026-06-03 ADR-041 принимает Object State Model как целевое расширение; `object.create`, `object.state.set` и `object.attribute.patch` пока являются проектируемыми операциями и должны быть добавлены через JSON Schema, contracts, runtime handlers и тесты.
 
 Для условного эффекта используется поле `when`. Условие может смотреть на метрику, состояние или количество элементов коллекции. По умолчанию условие читает текущее состояние после предыдущих effects. Если нужно сохранить старую семантику "проверить до действия", используется `readFrom: "preAction"`.
 
@@ -217,7 +222,50 @@
 
 Подробная миграционная документация: `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/antarctica-plugin-migration.md`.
 
-## 10. Чего не делаем сейчас
+## 10. Gameplay Object State Model
+
+ADR-041 вводит **игровое состояние объекта** - авторитетное состояние предметной игровой сущности в session state.
+Это не UI state и не локальный React state.
+
+Target model:
+
+- authoring-манифест описывает `objectTypes`: коллекцию, тип объекта, фасеты состояния и правила проекции для View;
+- runtime-манифест получает compiled `objectModels`, валидные по JSON Schema;
+- session state хранит object instances в `state.public.objects` или `state.secret.objects`;
+- Presenter строит object views для UI из static content, object state и projection rules;
+- динамические ресурсы создаются через `object.create`;
+- `Antarctica` должна мигрировать с `state.public.flags.cards` на `state.public.objects.cards` без постоянного dual path.
+
+Пример состояния карточки:
+
+```json
+{
+  "public": {
+    "objects": {
+      "cards": {
+        "1": {
+          "objectType": "card.basic",
+          "facets": {
+            "face": "front",
+            "availability": "available",
+            "resolution": "idle"
+          },
+          "attributes": {}
+        }
+      }
+    }
+  }
+}
+```
+
+Состояние отделено от логики:
+
+- state model перечисляет допустимые фасеты и хранит текущие значения;
+- guards и JsonLogic читают состояние;
+- effects меняют состояние;
+- разрешенные переходы описываются действиями и templates, а не отдельным workflow engine.
+
+## 11. Чего не делаем сейчас
 
 - Не строим полноценный workflow engine.
 - Не добавляем произвольный JavaScript в manifest.
@@ -225,12 +273,15 @@
 - Не делаем marketplace runtime-плагины без песочницы.
 - Не вводим внешние сетевые вызовы в обработку действия игрока.
 - Не переписываем весь `Antarctica` manifest ради красивой абстракции.
+- Не оставляем постоянный legacy fallback от Object State Model к `flags.cards` после миграции `Antarctica`.
 
-## 11. Источники
+## 12. Источники
 
 - ADR-025: JSON Schema как единый источник истины для manifest validation.
 - ADR-029: Three-Tier Logic Model, где templates и декларативная логика выбираются до скриптов.
+- ADR-030: authoring-манифесты компилируются в runtime-манифесты.
 - ADR-040: политика расширения `runtime-api` и порядок выбора runtime-плагинов.
+- ADR-041: Gameplay Object State Model.
 - JSON Patch RFC 6902: https://www.rfc-editor.org/rfc/rfc6902
 - JsonLogic: https://jsonlogic.com/
 - Common Expression Language as inspiration, not current dependency: https://cel.dev/

@@ -139,21 +139,27 @@ textarea {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 48px 340px minmax(420px, 1fr) 42%;
+  grid-template-columns: 48px var(--left-sidebar-width, 340px) minmax(420px, 1fr);
   min-height: 0;
+  overflow: hidden;
   position: relative;
 }
 
 .workspace-grid.json-collapsed {
-  grid-template-columns: 48px 340px minmax(560px, 1fr) 0;
+  grid-template-columns: 48px var(--left-sidebar-width, 340px) minmax(420px, 1fr);
 }
 
 .workspace-grid.left-sidebar-collapsed {
-  grid-template-columns: 48px 0 minmax(560px, 1fr) 42%;
+  grid-template-columns: 48px 0 minmax(560px, 1fr);
 }
 
 .workspace-grid.left-sidebar-collapsed.json-collapsed {
-  grid-template-columns: 48px 0 minmax(720px, 1fr) 0;
+  grid-template-columns: 48px 0 minmax(560px, 1fr);
+}
+
+.workspace-grid.is-resizing,
+.workspace-grid.is-resizing * {
+  user-select: none;
 }
 
 .left-activity-bar {
@@ -200,6 +206,40 @@ textarea {
   grid-column: 2;
   min-width: 0;
   overflow: hidden;
+  position: relative;
+}
+
+.sidebar-resize-handle {
+  cursor: col-resize;
+  display: block;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 9px;
+  z-index: 8;
+}
+
+.sidebar-resize-handle::after {
+  background: transparent;
+  border-radius: 999px;
+  content: "";
+  display: block;
+  height: 100%;
+  margin: 0 auto;
+  width: 2px;
+}
+
+.sidebar-resize-handle:hover::after,
+.workspace-grid.is-resizing .sidebar-resize-handle::after {
+  background: #7aa2d8;
+}
+
+.sidebar-resize-handle-left {
+  right: 0;
+}
+
+.sidebar-resize-handle-json {
+  left: 0;
 }
 
 .manifest-heading {
@@ -897,14 +937,30 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.right-sidebar-panel,
 .json-panel {
   background: #ffffff;
+  border-left: 1px solid #d9dee7;
+  bottom: 0;
+  box-shadow: -12px 0 28px rgba(20, 33, 53, 0.12);
   display: grid;
-  grid-column: 4;
-  grid-template-rows: 42px minmax(0, 1fr);
+  min-height: 0;
   min-width: 0;
-  position: relative;
-  z-index: 1;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: min(var(--json-sidebar-width, 520px), calc(100% - 48px));
+  z-index: 12;
+}
+
+.right-sidebar-panel-json,
+.json-panel {
+  grid-template-rows: 42px minmax(0, 1fr);
+}
+
+.right-sidebar-panel-properties {
+  grid-template-rows: minmax(0, 1fr);
 }
 
 .json-panel.is-collapsed {
@@ -974,30 +1030,43 @@ textarea {
   grid-template-rows: 42px auto minmax(0, 1fr) auto;
   left: auto;
   max-height: calc(100% - 32px);
+  min-height: 0;
   position: absolute;
-  right: calc(42% + 16px);
+  right: calc(var(--json-sidebar-width, 520px) + 16px);
   top: 16px;
   width: 320px;
   z-index: 5;
 }
 
+.property-panel-sidebar {
+  background: #ffffff;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  height: 100%;
+  left: auto;
+  max-height: none;
+  min-height: 0;
+  overflow: hidden;
+  position: static;
+  right: auto;
+  top: auto;
+  width: auto;
+  z-index: auto;
+}
+
 .property-rail {
   left: auto;
   position: absolute;
-  right: calc(42% + 16px);
+  right: calc(var(--json-sidebar-width, 520px) + 16px);
   top: 16px;
   width: 240px;
   z-index: 5;
 }
 
-.workspace-grid.json-collapsed .property-panel,
+.workspace-grid.json-collapsed .property-panel:not(.property-panel-sidebar),
 .workspace-grid.json-collapsed .property-rail {
   right: 16px;
-}
-
-.workspace-grid.preview-play-mode .property-panel,
-.workspace-grid.preview-play-mode .property-rail {
-  display: none;
 }
 
 .property-rail button {
@@ -1056,6 +1125,7 @@ textarea {
 .property-list {
   display: grid;
   gap: 10px;
+  min-height: 0;
   overflow: auto;
   padding: 12px;
 }
@@ -1569,12 +1639,12 @@ button.diagnostic strong {
   .workspace-grid.left-sidebar-collapsed,
   .workspace-grid.left-sidebar-collapsed.json-collapsed {
     grid-template-columns: 48px minmax(0, 1fr);
-    grid-template-rows: minmax(220px, 30%) minmax(320px, 1fr) minmax(260px, 32%);
+    grid-template-rows: minmax(220px, 30%) minmax(320px, 1fr);
   }
 
   .left-activity-bar {
     grid-column: 1;
-    grid-row: 1 / 4;
+    grid-row: 1 / 3;
   }
 
   .left-sidebar-panel {
@@ -1589,12 +1659,12 @@ button.diagnostic strong {
     grid-row: 2;
   }
 
+  .right-sidebar-panel,
   .json-panel {
-    grid-column: 2;
-    grid-row: 3;
+    width: min(var(--json-sidebar-width, 520px), calc(100% - 48px));
   }
 
-  .property-panel {
+  .property-panel:not(.property-panel-sidebar) {
     right: 16px;
     width: min(320px, calc(100% - 32px));
   }

@@ -70,6 +70,7 @@ export function SafeModeRenderer({
   fallbackMetrics,
   gameUi,
   layoutMode,
+  screenKey,
   dispatchAction,
   fallbackScreenBuilder,
   onManifestAction,
@@ -77,6 +78,7 @@ export function SafeModeRenderer({
   onHint,
   isPending,
   sessionId,
+  editorPreviewMode = false,
 }: {
   content: PlayerFacingContent;
   gameState: Record<string, unknown>;
@@ -84,6 +86,8 @@ export function SafeModeRenderer({
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>;
   gameUi: GamePlayerUiContent | undefined;
   layoutMode: "leftsidebar" | "topbar";
+  /** Best known routed screen key. Fallback screens may not have one. */
+  screenKey?: string;
   dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void;
   /** Game plugin can provide custom builder for fallback screens */
   fallbackScreenBuilder?: (
@@ -104,8 +108,14 @@ export function SafeModeRenderer({
   isPending?: boolean;
   /** Current session ID */
   sessionId?: string | null;
+  /** Enables editor preview metadata for fallback-rendered screens. */
+  editorPreviewMode?: boolean;
 }) {
   const t = useLocale();
+  const state = gameState;
+  const disabled = isPending || !sessionId;
+  const previewPointers = buildSafeModePreviewPointers(state, content);
+
   // 1. Try game-specific builder from plugin → ManifestRenderer
   if (fallbackScreenBuilder) {
     const screen = fallbackScreenBuilder(gameState, content, layoutMode, fallbackMetrics, metrics, (actionId) => dispatchAction(actionId));
@@ -115,58 +125,67 @@ export function SafeModeRenderer({
           screenDefinition={screen}
           metrics={metrics}
           onAction={onManifestAction ?? ((command, payload) => dispatchAction(payload.cardId ? String(payload.cardId) : command))}
+          screenKey={screenKey}
+          rootRuntimePointer={previewPointers.root}
           layoutMode={layoutMode}
           metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
           gameState={gameState}
           designArtifacts={gameUi?.designArtifacts}
+          editorPreviewMode={editorPreviewMode}
         />
       );
     }
   }
 
   // 2. Convention-based генерация GameUiScreenDefinition → ManifestRenderer
-  const state = gameState;
-  const disabled = isPending || !sessionId;
-
   if (state.currentInfo) {
-    const screenDef = buildInfoScreenDefinition(state, layoutMode, fallbackMetrics, disabled, t);
+    const screenDef = buildInfoScreenDefinition(state, layoutMode, fallbackMetrics, disabled, t, previewPointers);
     return (
       <ManifestRenderer
         screenDefinition={screenDef}
         metrics={metrics}
         onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+        screenKey={screenKey}
+        rootRuntimePointer={previewPointers.root}
         layoutMode={layoutMode}
         metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
         gameState={gameState}
+        editorPreviewMode={editorPreviewMode}
       />
     );
   }
 
   if (state.currentBoard) {
-    const screenDef = buildBoardScreenDefinition(state, content, layoutMode, fallbackMetrics, disabled, t);
+    const screenDef = buildBoardScreenDefinition(state, content, layoutMode, fallbackMetrics, disabled, t, previewPointers);
     return (
       <ManifestRenderer
         screenDefinition={screenDef}
         metrics={metrics}
         onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+        screenKey={screenKey}
+        rootRuntimePointer={previewPointers.root}
         layoutMode={layoutMode}
         metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
         gameState={gameState}
+        editorPreviewMode={editorPreviewMode}
       />
     );
   }
 
   if (state.currentTeamSelection) {
-    const screenDef = buildTeamSelectionScreenDefinition(state, layoutMode, fallbackMetrics, disabled, t);
+    const screenDef = buildTeamSelectionScreenDefinition(state, layoutMode, fallbackMetrics, disabled, t, previewPointers);
     if (screenDef) {
       return (
         <ManifestRenderer
           screenDefinition={screenDef}
           metrics={metrics}
           onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+          screenKey={screenKey}
+          rootRuntimePointer={previewPointers.root}
           layoutMode={layoutMode}
           metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
           gameState={gameState}
+          editorPreviewMode={editorPreviewMode}
         />
       );
     }
@@ -179,9 +198,12 @@ export function SafeModeRenderer({
       screenDefinition={fallbackScreenDef}
       metrics={metrics}
       onAction={onManifestAction ?? createConventionActionAdapter(dispatchAction)}
+      screenKey={screenKey}
+      rootRuntimePointer="/actions"
       layoutMode={layoutMode}
       metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
       gameState={gameState}
+      editorPreviewMode={editorPreviewMode}
     />
   );
 }
@@ -226,23 +248,29 @@ function buildMetricGameVariableComponents(
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
   layoutMode: "leftsidebar" | "topbar"
 ): Array<GameUiComponent> {
-  return fallbackMetrics.map((metric) => ({
-    type: "gameVariableComponent" as GameUiComponentType,
-    id: metric.id,
-    props: {
-      caption: metric.caption,
-      description: metric.description,
-      backgroundImage: layoutMode === "topbar" ? metric.topbarImage : metric.sidebarImage,
-      value: `{{game.state.public.metrics.${metric.id}}}`,
-    },
-  }));
+  return fallbackMetrics.map((metric) =>
+    withPreviewRuntimePointer(
+      {
+        type: "gameVariableComponent" as GameUiComponentType,
+        id: metric.id,
+        props: {
+          caption: metric.caption,
+          description: metric.description,
+          backgroundImage: layoutMode === "topbar" ? metric.topbarImage : metric.sidebarImage,
+          value: `{{game.state.public.metrics.${metric.id}}}`,
+        },
+      },
+      `/state/public/metrics/${escapeJsonPointerSegment(metric.id)}`
+    )
+  );
 }
 
 function buildPanelButtonsArea(
   layoutMode: "leftsidebar" | "topbar",
   disabled: boolean,
   t: LocaleStrings,
-  forwardAction?: { command: string; payload: Record<string, unknown> }
+  forwardAction?: { command: string; payload: Record<string, unknown> },
+  forwardActionRuntimePointer?: string
 ): GameUiComponent {
   return {
     type: "areaComponent",
@@ -265,12 +293,15 @@ function buildPanelButtonsArea(
         id: "nav-left",
         props: { caption: t.back, variant: "nav" as const, disabled: true },
       },
-      {
-        type: "buttonComponent",
-        id: "nav-right",
-        props: { caption: t.forward, variant: "nav" as const, disabled: disabled || !forwardAction },
-        ...(forwardAction ? { actions: { onClick: forwardAction } } : {}),
-      },
+      withPreviewRuntimePointer(
+        {
+          type: "buttonComponent",
+          id: "nav-right",
+          props: { caption: t.forward, variant: "nav" as const, disabled: disabled || !forwardAction },
+          ...(forwardAction ? { actions: { onClick: forwardAction } } : {}),
+        },
+        forwardActionRuntimePointer
+      ),
     ],
   };
 }
@@ -280,7 +311,8 @@ function buildInfoScreenDefinition(
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
   disabled: boolean,
-  t: LocaleStrings
+  t: LocaleStrings,
+  previewPointers: SafeModePreviewPointers = {}
 ): GameUiScreenDefinition {
   const info = state.currentInfo as Record<string, unknown> | undefined;
   const advanceActionId = info?.advanceActionId as string | undefined;
@@ -318,14 +350,24 @@ function buildInfoScreenDefinition(
                   props: { cssClass: "info-event-text" },
                   children: [
                     ...(infoTitle ? [{
-                      type: "richTextComponent" as GameUiComponentType,
-                      id: "info-title",
-                      props: { html: infoTitle, cssClass: "fallback-card-head" },
+                      ...withPreviewRuntimePointer(
+                        {
+                          type: "richTextComponent" as GameUiComponentType,
+                          id: "info-title",
+                          props: { html: infoTitle, cssClass: "fallback-card-head" },
+                        },
+                        previewPointers.title
+                      ),
                     }] : []),
                     ...(infoBody ? [{
-                      type: "richTextComponent" as GameUiComponentType,
-                      id: "info-body",
-                      props: { html: infoBody, cssClass: "fallback-copy" },
+                      ...withPreviewRuntimePointer(
+                        {
+                          type: "richTextComponent" as GameUiComponentType,
+                          id: "info-body",
+                          props: { html: infoBody, cssClass: "fallback-copy" },
+                        },
+                        previewPointers.body
+                      ),
                     }] : []),
                   ],
                 },
@@ -343,7 +385,8 @@ function buildInfoScreenDefinition(
       t,
       advanceActionId
         ? { command: ManifestAction.ADVANCE, payload: { advanceActionId } }
-        : undefined
+        : undefined,
+      previewPointers.forwardAction
     ),
   ];
 
@@ -351,11 +394,14 @@ function buildInfoScreenDefinition(
     type: "screen",
     title: infoTitle ?? t.information,
     layoutMode,
-    root: {
-      type: "screenComponent",
-      props: { cssClass: shellCssClass },
-      children,
-    },
+    root: withPreviewRuntimePointer(
+      {
+        type: "screenComponent",
+        props: { cssClass: shellCssClass },
+        children,
+      },
+      previewPointers.root
+    ),
   };
 }
 
@@ -365,7 +411,8 @@ function buildBoardScreenDefinition(
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
   disabled: boolean,
-  t: LocaleStrings
+  t: LocaleStrings,
+  previewPointers: SafeModePreviewPointers = {}
 ): GameUiScreenDefinition {
   const board = state.currentBoard as Record<string, unknown> | undefined;
   const canAdvance = state.canAdvance === true;
@@ -374,16 +421,26 @@ function buildBoardScreenDefinition(
   const boardHeaderChildren: Array<GameUiComponent> = [];
   if (board?.title) {
     boardHeaderChildren.push({
-      type: "cardComponent",
-      id: "board-title",
-      props: { text: board.title as string },
+      ...withPreviewRuntimePointer(
+        {
+          type: "cardComponent",
+          id: "board-title",
+          props: { text: board.title as string },
+        },
+        previewPointers.title
+      ),
     });
   }
   if (board?.body) {
     boardHeaderChildren.push({
-      type: "richTextComponent",
-      id: "board-body",
-      props: { html: board.body as string, cssClass: "fallback-copy" },
+      ...withPreviewRuntimePointer(
+        {
+          type: "richTextComponent",
+          id: "board-body",
+          props: { html: board.body as string, cssClass: "fallback-copy" },
+        },
+        previewPointers.body
+      ),
     });
   }
 
@@ -422,43 +479,47 @@ function buildBoardScreenDefinition(
     type: "screen",
     title: (board?.title as string) ?? content.name,
     layoutMode,
-    root: {
-      type: "screenComponent",
-      props: { cssClass: "game-screen topbar-screen-shell" },
-      children: [
-        // Metrics
-        {
-          type: "areaComponent",
-          props: { cssClass: "game-variables-container topbar-variables-container" },
-          children: buildMetricGameVariableComponents(fallbackMetrics, "topbar"),
-        },
-        // Main content
-        {
-          type: "areaComponent",
-          props: { cssClass: "game-area main-content-area topbar-main-content" },
-          children: [
-            // Board header
-            ...(boardHeaderChildren.length > 0 ? [{
-              type: "areaComponent" as GameUiComponentType,
-              props: { cssClass: "game-area topbar-board-header" },
-              children: boardHeaderChildren,
-            }] : []),
-            // Cards
-            cardsArea,
-          ],
-        },
-        // Panel buttons. "Вперед" активируется тем же canAdvance-состоянием,
-        // при котором раньше появлялась отдельная кнопка "Продолжить".
-        buildPanelButtonsArea(
-          "topbar",
-          disabled,
-          t,
-          selectedCardAdvanceActionId
-            ? { command: ManifestAction.ADVANCE, payload: { advanceActionId: selectedCardAdvanceActionId } }
-            : undefined
-        ),
-      ],
-    },
+    root: withPreviewRuntimePointer(
+      {
+        type: "screenComponent",
+        props: { cssClass: "game-screen topbar-screen-shell" },
+        children: [
+          // Metrics
+          {
+            type: "areaComponent",
+            props: { cssClass: "game-variables-container topbar-variables-container" },
+            children: buildMetricGameVariableComponents(fallbackMetrics, "topbar"),
+          },
+          // Main content
+          {
+            type: "areaComponent",
+            props: { cssClass: "game-area main-content-area topbar-main-content" },
+            children: [
+              // Board header
+              ...(boardHeaderChildren.length > 0 ? [{
+                type: "areaComponent" as GameUiComponentType,
+                props: { cssClass: "game-area topbar-board-header" },
+                children: boardHeaderChildren,
+              }] : []),
+              // Cards
+              cardsArea,
+            ],
+          },
+          // Panel buttons. "Вперед" активируется тем же canAdvance-состоянием,
+          // при котором раньше появлялась отдельная кнопка "Продолжить".
+          buildPanelButtonsArea(
+            "topbar",
+            disabled,
+            t,
+            selectedCardAdvanceActionId
+              ? { command: ManifestAction.ADVANCE, payload: { advanceActionId: selectedCardAdvanceActionId } }
+              : undefined,
+            previewPointers.forwardAction
+          ),
+        ],
+      },
+      previewPointers.root
+    ),
   };
 }
 
@@ -467,7 +528,8 @@ function buildTeamSelectionScreenDefinition(
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
   disabled: boolean,
-  t: LocaleStrings
+  t: LocaleStrings,
+  previewPointers: SafeModePreviewPointers = {}
 ): GameUiScreenDefinition | null {
   const teamSelection = state.currentTeamSelection as Record<string, unknown> | undefined;
   if (!teamSelection) return null;
@@ -479,7 +541,7 @@ function buildTeamSelectionScreenDefinition(
     type: "screen",
     title: (teamSelection.title as string) ?? t.teamSelection,
     layoutMode,
-    root: {
+    root: withPreviewRuntimePointer({
       type: "screenComponent",
       props: { cssClass: layoutMode === "leftsidebar" ? "leftsidebar-screen" : "info-screen-shell" },
       children: [
@@ -522,26 +584,34 @@ function buildTeamSelectionScreenDefinition(
               props: { cssClass: "bottom-controls-container team-controls" },
               children: [
                 {
-                  type: "cardComponent",
-                  props: {
-                    text: (teamSelection.title as string) ?? "",
-                    chips: [
-                      `team-selection: ${teamSelection.id as string}`,
-                      `picked: ${pickCount}/${requiredPickCount}`,
-                    ],
-                  },
+                  ...withPreviewRuntimePointer(
+                    {
+                      type: "cardComponent",
+                      props: {
+                        text: (teamSelection.title as string) ?? "",
+                        chips: [
+                          `team-selection: ${teamSelection.id as string}`,
+                          `picked: ${pickCount}/${requiredPickCount}`,
+                        ],
+                      },
+                    },
+                    previewPointers.title
+                  ),
                 },
-                {
-                  type: "buttonComponent",
-                  props: {
-                    caption: (teamSelection.confirmLabel as string) ?? t.confirm,
-                    variant: "action" as const,
-                    disabled: disabled || pickCount !== requiredPickCount,
+                withPreviewRuntimePointer(
+                  {
+                    type: "buttonComponent",
+                    props: {
+                      caption: (teamSelection.confirmLabel as string) ?? t.confirm,
+                      variant: "action" as const,
+                      disabled: disabled || pickCount !== requiredPickCount,
+                    },
+                    actions: {
+                      onClick: { command: ManifestAction.REQUEST_SERVER, payload: { actionId: teamSelection.confirmActionId as string } },
+                    },
                   },
-                  actions: {
-                    onClick: { command: ManifestAction.REQUEST_SERVER, payload: { actionId: teamSelection.confirmActionId as string } },
-                  },
-                },
+                  previewPointers.forwardAction
+                ),
               ],
             },
           ],
@@ -549,7 +619,7 @@ function buildTeamSelectionScreenDefinition(
         // Panel buttons
         buildPanelButtonsArea(layoutMode, disabled, t),
       ],
-    },
+    }, previewPointers.root),
   };
 }
 
@@ -624,4 +694,147 @@ function buildMetricBackgroundMap(fallbackMetrics: ReadonlyArray<FallbackMetricS
     map[metric.id] = metric.topbarImage;
   }
   return map;
+}
+
+interface SafeModePreviewPointers {
+  readonly root?: string;
+  readonly title?: string;
+  readonly body?: string;
+  readonly forwardAction?: string;
+}
+
+type PreviewRuntimePointerComponent = GameUiComponent & {
+  /**
+   * Runtime-only editor preview pointer. It is never serialized into
+   * authoring manifests; it only helps the preview bridge map fallback UI
+   * elements back to gameplay content through the existing source map.
+   */
+  readonly previewRuntimePointer?: string;
+};
+
+function withPreviewRuntimePointer(component: GameUiComponent, pointer: string | undefined): GameUiComponent {
+  if (pointer === undefined) {
+    return component;
+  }
+
+  return {
+    ...component,
+    previewRuntimePointer: pointer,
+  } as PreviewRuntimePointerComponent;
+}
+
+function buildSafeModePreviewPointers(
+  state: Record<string, unknown>,
+  content: PlayerFacingContent
+): SafeModePreviewPointers {
+  const currentInfo = asRecord(state.currentInfo);
+  if (currentInfo !== undefined) {
+    const root = findContentDataItemPointer(content, ["infos", "infoEntries"], currentInfo);
+    return {
+      root,
+      title: childDataPointer(root, "title"),
+      body: childDataPointer(root, "body"),
+      forwardAction: actionRuntimePointer(readString(currentInfo.advanceActionId)),
+    };
+  }
+
+  const currentBoard = asRecord(state.currentBoard);
+  if (currentBoard !== undefined) {
+    const root = findContentDataItemPointer(content, ["boards"], currentBoard);
+    const selectedCard = asRecord(state.selectedCard);
+    return {
+      root,
+      title: childDataPointer(root, "title"),
+      body: childDataPointer(root, "body"),
+      forwardAction: actionRuntimePointer(readString(selectedCard?.advanceActionId)),
+    };
+  }
+
+  const currentTeamSelection = asRecord(state.currentTeamSelection);
+  if (currentTeamSelection !== undefined) {
+    const root = findContentDataItemPointer(content, ["teamSelections"], currentTeamSelection);
+    return {
+      root,
+      title: childDataPointer(root, "title"),
+      forwardAction: actionRuntimePointer(readString(currentTeamSelection.confirmActionId)),
+    };
+  }
+
+  return {};
+}
+
+function findContentDataItemPointer(
+  content: PlayerFacingContent,
+  collectionNames: readonly string[],
+  expected: Record<string, unknown>
+): string | undefined {
+  const data = asRecord(asRecord(content.content)?.data);
+  if (data === undefined) {
+    return undefined;
+  }
+
+  for (const collectionName of collectionNames) {
+    const collection = data[collectionName];
+    if (!Array.isArray(collection)) {
+      continue;
+    }
+
+    const index = collection.findIndex((candidate) => itemMatchesExpected(candidate, expected));
+    if (index !== -1) {
+      return `/content/data/${escapeJsonPointerSegment(collectionName)}/${index}`;
+    }
+  }
+
+  return undefined;
+}
+
+function itemMatchesExpected(candidate: unknown, expected: Record<string, unknown>): boolean {
+  const item = asRecord(candidate);
+  if (item === undefined) {
+    return false;
+  }
+
+  const expectedId = readItemId(expected);
+  if (expectedId !== undefined && readItemId(item) === expectedId) {
+    return true;
+  }
+
+  const expectedStepIndex = readNumber(expected.stepIndex);
+  const expectedScreenId = readString(expected.screenId);
+  return (
+    expectedStepIndex !== undefined &&
+    expectedScreenId !== undefined &&
+    readNumber(item.stepIndex) === expectedStepIndex &&
+    readString(item.screenId) === expectedScreenId
+  );
+}
+
+function readItemId(record: Record<string, unknown>): string | undefined {
+  return readString(record.id) ?? readString(record.cardId);
+}
+
+function childDataPointer(root: string | undefined, fieldName: string): string | undefined {
+  return root === undefined ? undefined : `${root}/${escapeJsonPointerSegment(fieldName)}`;
+}
+
+function actionRuntimePointer(actionId: string | undefined): string | undefined {
+  return actionId === undefined ? undefined : `/actions/${escapeJsonPointerSegment(actionId)}`;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+function escapeJsonPointerSegment(segment: string): string {
+  return segment.replaceAll("~", "~0").replaceAll("/", "~1");
 }
