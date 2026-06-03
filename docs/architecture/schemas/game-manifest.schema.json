@@ -20,6 +20,9 @@
         "meta": {
           "$ref": "#/definitions/GameManifestMeta"
         },
+        "objectModels": {
+          "$ref": "#/definitions/GameManifestObjectModelMap"
+        },
         "state": {
           "$ref": "#/definitions/GameManifestState%3Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%2Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%3E"
         },
@@ -312,6 +315,20 @@
               ]
             }
           }
+        },
+        "object": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/GameManifestObjectStateGuard"
+            },
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/GameManifestObjectStateGuard"
+              }
+            }
+          ]
         },
         "stateConditions": {
           "items": {
@@ -876,6 +893,138 @@
         {
           "additionalProperties": false,
           "properties": {
+            "attributes": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "collection": {
+              "type": "string"
+            },
+            "facets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/GameManifestObjectFacetValue"
+              },
+              "type": "object"
+            },
+            "objectId": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "objectType": {
+              "type": "string"
+            },
+            "op": {
+              "const": "object.create"
+            },
+            "visibility": {
+              "$ref": "#/definitions/GameManifestObjectVisibility"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "visibility",
+            "collection",
+            "objectId",
+            "objectType"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "facet": {
+              "type": "string"
+            },
+            "objectId": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "op": {
+              "const": "object.state.set"
+            },
+            "value": {
+              "$ref": "#/definitions/GameManifestObjectFacetValue"
+            },
+            "visibility": {
+              "$ref": "#/definitions/GameManifestObjectVisibility"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "visibility",
+            "collection",
+            "objectId",
+            "facet",
+            "value"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "objectId": {
+              "oneOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "op": {
+              "const": "object.attribute.patch"
+            },
+            "patches": {
+              "items": {
+                "$ref": "#/definitions/GameManifestObjectAttributePatch"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "visibility": {
+              "$ref": "#/definitions/GameManifestObjectVisibility"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "visibility",
+            "collection",
+            "objectId",
+            "patches"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "op": {
               "const": "ui.panel.open"
             },
@@ -1021,6 +1170,232 @@
         "path"
       ],
       "type": "object"
+    },
+    "GameManifestObjectAttributePatch": {
+      "additionalProperties": false,
+      "properties": {
+        "op": {
+          "enum": [
+            "add",
+            "replace",
+            "remove",
+            "increment",
+            "append"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "pattern": "^/",
+          "type": "string"
+        },
+        "value": {}
+      },
+      "required": [
+        "op",
+        "path"
+      ],
+      "type": "object"
+    },
+    "GameManifestObjectFacetModel": {
+      "additionalProperties": false,
+      "properties": {
+        "initial": {
+          "$ref": "#/definitions/GameManifestObjectFacetValue"
+        },
+        "values": {
+          "items": {
+            "$ref": "#/definitions/GameManifestObjectFacetValue"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "initial",
+        "values"
+      ],
+      "type": "object"
+    },
+    "GameManifestObjectFacetValue": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "GameManifestObjectModel": {
+      "additionalProperties": false,
+      "properties": {
+        "collection": {
+          "type": "string"
+        },
+        "facets": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GameManifestObjectFacetModel"
+          },
+          "minProperties": 1,
+          "type": "object"
+        },
+        "idField": {
+          "type": "string"
+        },
+        "scope": {
+          "$ref": "#/definitions/GameManifestObjectScope"
+        },
+        "view": {
+          "additionalProperties": false,
+          "properties": {
+            "facets": {
+              "additionalProperties": {
+                "$ref": "#/definitions/GameManifestObjectViewRule"
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "collection",
+        "scope",
+        "facets"
+      ],
+      "type": "object"
+    },
+    "GameManifestObjectModelMap": {
+      "additionalProperties": {
+        "$ref": "#/definitions/GameManifestObjectModel"
+      },
+      "type": "object"
+    },
+    "GameManifestObjectScope": {
+      "enum": [
+        "session"
+      ],
+      "type": "string"
+    },
+    "GameManifestObjectState": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "facets": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GameManifestObjectFacetValue"
+          },
+          "type": "object"
+        },
+        "objectType": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "objectType",
+        "facets"
+      ],
+      "type": "object"
+    },
+    "GameManifestObjectStateCollection": {
+      "additionalProperties": {
+        "$ref": "#/definitions/GameManifestObjectState"
+      },
+      "type": "object"
+    },
+    "GameManifestObjectStateGuard": {
+      "additionalProperties": false,
+      "properties": {
+        "attributes": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "facets": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GameManifestObjectFacetValue"
+          },
+          "type": "object"
+        },
+        "objectId": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "number"
+            }
+          ]
+        },
+        "objectType": {
+          "type": "string"
+        },
+        "visibility": {
+          "$ref": "#/definitions/GameManifestObjectVisibility"
+        }
+      },
+      "required": [
+        "collection",
+        "objectId"
+      ],
+      "type": "object"
+    },
+    "GameManifestObjectStateMap": {
+      "additionalProperties": {
+        "$ref": "#/definitions/GameManifestObjectStateCollection"
+      },
+      "type": "object"
+    },
+    "GameManifestObjectViewRule": {
+      "additionalProperties": false,
+      "properties": {
+        "actionIdFrom": {
+          "type": "string"
+        },
+        "fields": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "interactive": {
+          "type": "boolean"
+        },
+        "selectLabelFrom": {
+          "type": "string"
+        },
+        "summaryFrom": {
+          "type": "string"
+        },
+        "textFrom": {
+          "type": "string"
+        },
+        "titleFrom": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "visualState": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "GameManifestObjectVisibility": {
+      "enum": [
+        "public",
+        "secret"
+      ],
+      "type": "string"
     },
     "GameManifestDocumentRef": {
       "additionalProperties": false,

@@ -234,6 +234,40 @@
         "children": {
           "type": "array",
           "items": { "$ref": "#/definitions/uiComponent" }
+        },
+        "designImageRef": {
+          "type": "string"
+        },
+        "itemTemplate": {
+          "$ref": "#/definitions/uiItemTemplate"
+        },
+        "visualMode": {
+          "enum": [
+            "image",
+            "style",
+            "auto"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "uiItemTemplate": {
+      "type": "object",
+      "description": "Declarative collection iteration for manifest-rendered components.",
+      "required": [
+        "collection",
+        "itemKey"
+      ],
+      "properties": {
+        "collection": {
+          "type": "string"
+        },
+        "filter": {
+          "type": "string"
+        },
+        "itemKey": {
+          "type": "string"
         }
       },
       "additionalProperties": false

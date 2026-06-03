@@ -1,4 +1,13 @@
-import type { GamePlayerUiContent, PlayerFacingContent, GameState, MetricConfigSpec } from "@cubica/contracts-manifest";
+import type {
+  GameManifestObjectModel,
+  GameManifestObjectModelMap,
+  GameManifestObjectState,
+  GameManifestObjectViewRule,
+  GamePlayerUiContent,
+  PlayerFacingContent,
+  GameState,
+  MetricConfigSpec
+} from "@cubica/contracts-manifest";
 
 import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
@@ -251,6 +260,198 @@ const collectTopbarScreenKeys = (
   return [...keys];
 };
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+const splitJsonPointer = (path: string): Array<string> =>
+  path.startsWith("/")
+    ? path.slice(1).split("/").map((segment) => segment.replace(/~1/g, "/").replace(/~0/g, "~"))
+    : [];
+
+const readProjectedSource = (source: Record<string, unknown>, path: string): unknown => {
+  if (path.startsWith("/")) {
+    let current: unknown = source;
+    for (const segment of splitJsonPointer(path)) {
+      if (!isRecord(current)) {
+        return undefined;
+      }
+      current = current[segment];
+    }
+    return current;
+  }
+
+  let current: unknown = source;
+  for (const segment of path.split(".")) {
+    if (!isRecord(current)) {
+      return undefined;
+    }
+    current = current[segment];
+  }
+  return current;
+};
+
+const modelForCollection = (
+  objectModels: GameManifestObjectModelMap,
+  collection: string
+): GameManifestObjectModel | undefined =>
+  Object.values(objectModels).find((model) => model.collection === collection);
+
+const objectTypeForCollection = (
+  objectModels: GameManifestObjectModelMap,
+  collection: string
+): string | undefined =>
+  Object.entries(objectModels).find(([, model]) => model.collection === collection)?.[0];
+
+const defaultObjectFacets = (model: GameManifestObjectModel | undefined): Record<string, unknown> => {
+  const facets: Record<string, unknown> = {};
+  for (const [facetId, facet] of Object.entries(model?.facets ?? {})) {
+    facets[facetId] = facet.initial;
+  }
+  return facets;
+};
+
+const applyObjectViewRule = (
+  view: Record<string, unknown>,
+  source: Record<string, unknown>,
+  rule: GameManifestObjectViewRule
+) => {
+  if (rule.visible !== undefined) {
+    view.visible = rule.visible;
+  }
+  if (rule.interactive !== undefined) {
+    view.interactive = rule.interactive;
+  }
+  if (rule.visualState !== undefined) {
+    view.visualState = rule.visualState;
+  }
+
+  const mappedFields: Array<[string, string | undefined]> = [
+    ["title", rule.titleFrom],
+    ["summary", rule.summaryFrom],
+    ["text", rule.textFrom],
+    ["actionId", rule.actionIdFrom],
+    ["selectLabel", rule.selectLabelFrom],
+  ];
+
+  for (const [targetField, sourceField] of mappedFields) {
+    if (!sourceField) {
+      continue;
+    }
+    const value = readProjectedSource(source, sourceField);
+    if (value !== undefined) {
+      view[targetField] = value;
+    }
+  }
+
+  for (const [targetField, sourceField] of Object.entries(rule.fields ?? {})) {
+    const value = readProjectedSource(source, sourceField);
+    if (value !== undefined) {
+      view[targetField] = value;
+    }
+  }
+};
+
+const projectObjectViews = (
+  objectModels: GameManifestObjectModelMap | undefined,
+  contentData: unknown,
+  publicState: Record<string, unknown>
+): Record<string, Array<Record<string, unknown>>> => {
+  if (!objectModels || Object.keys(objectModels).length === 0) {
+    return {};
+  }
+
+  const contentCollections = isRecord(contentData) ? contentData : {};
+  const stateObjects = isRecord(publicState.objects) ? publicState.objects : {};
+  const collections = new Set<string>([
+    ...Object.values(objectModels).map((model) => model.collection),
+    ...Object.keys(stateObjects)
+  ]);
+  const projected: Record<string, Array<Record<string, unknown>>> = {};
+
+  for (const collectionId of collections) {
+    const staticItems = Array.isArray(contentCollections[collectionId])
+      ? contentCollections[collectionId] as Array<unknown>
+      : [];
+    const staticById = new Map<string, Record<string, unknown>>();
+    const fallbackModel = modelForCollection(objectModels, collectionId);
+    const idField = fallbackModel?.idField ?? "id";
+
+    for (const item of staticItems) {
+      if (!isRecord(item)) {
+        continue;
+      }
+      const itemId = item[idField] ?? item.id;
+      if (typeof itemId === "string" || typeof itemId === "number") {
+        staticById.set(String(itemId), item);
+      }
+    }
+
+    const stateCollection = isRecord(stateObjects[collectionId]) ? stateObjects[collectionId] : {};
+    const objectIds = new Set<string>([
+      ...staticById.keys(),
+      ...Object.keys(stateCollection)
+    ]);
+    const collectionViews: Array<Record<string, unknown>> = [];
+
+    for (const objectId of objectIds) {
+      const rawInstance = isRecord(stateCollection[objectId])
+        ? stateCollection[objectId] as unknown as GameManifestObjectState
+        : undefined;
+      const staticData = staticById.get(objectId) ?? {};
+      const objectType = rawInstance?.objectType ?? objectTypeForCollection(objectModels, collectionId);
+      const model = objectType ? objectModels[objectType] : fallbackModel;
+      const facets = {
+        ...defaultObjectFacets(model),
+        ...(isRecord(rawInstance?.facets) ? rawInstance?.facets : {})
+      };
+      const attributes = isRecord(rawInstance?.attributes) ? rawInstance.attributes : {};
+      const source: Record<string, unknown> = {
+        ...staticData,
+        ...attributes,
+        collection: collectionId,
+        objectId,
+        objectType,
+        facets,
+        attributes,
+        data: staticData
+      };
+      const view: Record<string, unknown> = {
+        collection: collectionId,
+        objectId,
+        objectType,
+        facets,
+        attributes,
+        data: staticData,
+        visible: true,
+        interactive: true,
+        title: source.title,
+        summary: source.summary,
+        text: source.text,
+        backText: source.backText,
+        actionId: source.actionId ?? source.selectActionId,
+        selectLabel: source.selectLabel,
+        chips: source.chips,
+        visualState: "default"
+      };
+
+      for (const [facetId, value] of Object.entries(facets)) {
+        const rule = model?.view?.facets?.[`${facetId}.${String(value)}`];
+        if (rule) {
+          applyObjectViewRule(view, source, rule);
+        }
+      }
+
+      if (view.visible !== false) {
+        collectionViews.push(view);
+      }
+    }
+
+    projected[collectionId] = collectionViews;
+  }
+
+  return projected;
+};
+
 /**
  * Builds the serializable player config for games that do not need a custom
  * web plugin. The source of truth is player-facing content projected by
@@ -297,11 +498,14 @@ export function createDefaultGameConfig(data: GameConfigData): GameConfig {
       const state = session?.state as Record<string, unknown> | undefined;
       const publicState = (state?.public ?? {}) as Record<string, unknown>;
       const secretState = (state?.secret ?? {}) as Record<string, unknown>;
+      const contentData = content.content?.data ?? content.content ?? null;
 
       return {
         public: publicState,
         secret: secretState,
-        content: content.content?.data ?? content.content ?? null,
+        content: contentData,
+        objectModels: content.objectModels ?? {},
+        objectViews: projectObjectViews(content.objectModels, contentData, publicState),
         actions: content.actions,
       };
     },

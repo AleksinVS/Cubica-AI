@@ -202,6 +202,7 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
     training: manifest.meta.training,
     actions,
     mockups: [],
+    objectModels: manifest.objectModels ? structuredClone(manifest.objectModels) : undefined,
     // Return content under the same key it was found, or default to 'data' for the projection
     content: gameSpecificContent ? { data: structuredClone(gameSpecificContent) } : undefined,
     ui: gameUi

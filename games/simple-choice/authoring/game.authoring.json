@@ -50,9 +50,89 @@
             "id": "accept",
             "title": "Take the clear path",
             "summary": "Choose the option with the visible tradeoff.",
+            "backText": "The choice is resolved and the session gained a supply token.",
             "actionId": "choice.accept"
           }
         ]
+      }
+    },
+    "objectTypes": {
+      "choice.card": {
+        "_type": "game.ObjectType",
+        "_label": "Choice card object state",
+        "_semantics": "Generic object state model for a selectable choice card.",
+        "collection": "choices",
+        "idField": "id",
+        "scope": "session",
+        "facets": {
+          "face": {
+            "initial": "front",
+            "values": {
+              "front": {
+                "view": {
+                  "summaryFrom": "summary",
+                  "visualState": "default"
+                }
+              },
+              "back": {
+                "view": {
+                  "summaryFrom": "backText",
+                  "visualState": "resolved"
+                }
+              }
+            }
+          },
+          "availability": {
+            "initial": "available",
+            "values": {
+              "available": {
+                "interactive": true,
+                "visible": true
+              },
+              "locked": {
+                "interactive": false,
+                "visible": true,
+                "view": {
+                  "visualState": "locked"
+                }
+              },
+              "hidden": {
+                "visible": false
+              }
+            }
+          }
+        }
+      },
+      "resource.supply": {
+        "_type": "game.ObjectType",
+        "_label": "Supply resource object state",
+        "_semantics": "Generic dynamic resource object created during a game session.",
+        "collection": "resources",
+        "idField": "id",
+        "scope": "session",
+        "facets": {
+          "availability": {
+            "initial": "available",
+            "values": {
+              "available": {
+                "interactive": false,
+                "visible": true,
+                "view": {
+                  "summaryFrom": "title",
+                  "visualState": "default"
+                }
+              },
+              "spent": {
+                "interactive": false,
+                "visible": true,
+                "view": {
+                  "summaryFrom": "title",
+                  "visualState": "locked"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "engine": {
@@ -78,6 +158,19 @@
         },
         "flags": {
           "cards": {}
+        },
+        "objects": {
+          "choices": {
+            "accept": {
+              "objectType": "choice.card",
+              "facets": {
+                "face": "front",
+                "availability": "available"
+              },
+              "attributes": {}
+            }
+          },
+          "resources": {}
         },
         "ui": {},
         "log": []
@@ -127,6 +220,16 @@
                 "line": "main",
                 "stepIndex": 0,
                 "canAdvance": false
+              },
+              "object": {
+                "visibility": "public",
+                "collection": "choices",
+                "objectId": "accept",
+                "objectType": "choice.card",
+                "facets": {
+                  "face": "front",
+                  "availability": "available"
+                }
               }
             },
             "effects": [
@@ -134,6 +237,42 @@
                 "op": "metric.add",
                 "metricId": "score",
                 "delta": 1
+              },
+              {
+                "op": "object.state.set",
+                "visibility": "public",
+                "collection": "choices",
+                "objectId": "accept",
+                "facet": "face",
+                "value": "back"
+              },
+              {
+                "op": "object.attribute.patch",
+                "visibility": "public",
+                "collection": "choices",
+                "objectId": "accept",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/selectedAtStep",
+                    "value": 0
+                  }
+                ]
+              },
+              {
+                "op": "object.create",
+                "visibility": "public",
+                "collection": "resources",
+                "objectId": "supply-1",
+                "objectType": "resource.supply",
+                "facets": {
+                  "availability": "available"
+                },
+                "attributes": {
+                  "id": "supply-1",
+                  "title": "Supply token",
+                  "amount": 1
+                }
               },
               {
                 "op": "timeline.set",

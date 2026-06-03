@@ -159,6 +159,74 @@ describe("ManifestRenderer", () => {
     expect(mockOnAction).toHaveBeenCalledWith("requestServer", { id: 1 });
   });
 
+  it("renders projected object view cards and obeys interactive props", () => {
+    render(
+      <ManifestRenderer
+        screenDefinition={{
+          type: "screen",
+          title: "Object Views",
+          root: {
+            type: "screenComponent",
+            props: {},
+            children: [
+              {
+                type: "areaComponent",
+                props: {},
+                itemTemplate: {
+                  collection: "{{objectViews.choices}}",
+                  itemKey: "choice",
+                },
+                children: [
+                  {
+                    type: "cardComponent",
+                    id: "choice-card",
+                    props: {
+                      title: "{{choice.title}}",
+                      summary: "{{choice.summary}}",
+                      visualState: "{{choice.visualState}}",
+                      interactive: "{{choice.interactive}}",
+                      selectLabel: "Choose",
+                    },
+                    actions: {
+                      onClick: {
+                        command: "requestServer",
+                        payload: { actionId: "{{choice.actionId}}" },
+                      },
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        }}
+        metrics={mockMetrics}
+        onAction={mockOnAction}
+        gameState={{
+          objectViews: {
+            choices: [
+              {
+                title: "Take the clear path",
+                summary: "Back text",
+                visualState: "locked",
+                interactive: false,
+                actionId: "choice.accept",
+              },
+            ],
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByText("Back text")).toBeDefined();
+    expect(document.querySelector(".fallback-card-locked")).not.toBeNull();
+    const button = screen.getByRole("button", { name: "Choose" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+
+    fireEvent.click(button);
+
+    expect(mockOnAction).not.toHaveBeenCalledWith("requestServer", { actionId: "choice.accept" });
+  });
+
   it("renders bottom buttons and dispatches action", () => {
     render(
       <ManifestRenderer

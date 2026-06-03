@@ -25,8 +25,137 @@
     },
     "root": {
       "type": "object",
-      "description": "Authoring root that resolves into the runtime game manifest."
+      "description": "Authoring root that resolves into the runtime game manifest.",
+      "properties": {
+        "objectTypes": {
+          "$ref": "#/definitions/gameObjectTypeMap"
+        }
+      },
+      "additionalProperties": true
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "definitions": {
+    "gameObjectFacet": {
+      "type": "object",
+      "required": [
+        "initial",
+        "values"
+      ],
+      "properties": {
+        "initial": {
+          "$ref": "#/definitions/gameObjectFacetValue"
+        },
+        "values": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/definitions/gameObjectFacetValueDefinition"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "gameObjectFacetValue": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "gameObjectFacetValueDefinition": {
+      "type": "object",
+      "properties": {
+        "interactive": {
+          "type": "boolean"
+        },
+        "view": {
+          "$ref": "#/definitions/gameObjectViewRule"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gameObjectType": {
+      "type": "object",
+      "required": [
+        "collection",
+        "scope",
+        "facets"
+      ],
+      "properties": {
+        "collection": {
+          "type": "string"
+        },
+        "facets": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/definitions/gameObjectFacet"
+          }
+        },
+        "idField": {
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "session",
+            "player"
+          ],
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "gameObjectTypeMap": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/gameObjectType"
+      }
+    },
+    "gameObjectViewRule": {
+      "type": "object",
+      "properties": {
+        "actionIdFrom": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "interactive": {
+          "type": "boolean"
+        },
+        "selectLabelFrom": {
+          "type": "string"
+        },
+        "summaryFrom": {
+          "type": "string"
+        },
+        "textFrom": {
+          "type": "string"
+        },
+        "titleFrom": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "visualState": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
 }

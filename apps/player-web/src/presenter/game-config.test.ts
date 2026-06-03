@@ -120,4 +120,92 @@ describe("default game config", () => {
       },
     ]);
   });
+
+  it("projects gameplay object state into UI-ready object views", () => {
+    const data = createDefaultGameConfigData(simpleChoiceContent);
+    const config = createDefaultGameConfig(data);
+    const content: PlayerFacingContent = {
+      ...simpleChoiceContent,
+      objectModels: {
+        "choice.card": {
+          collection: "choices",
+          idField: "id",
+          scope: "session",
+          facets: {
+            face: {
+              initial: "front",
+              values: ["front", "back"],
+            },
+            availability: {
+              initial: "available",
+              values: ["available", "locked", "hidden"],
+            },
+          },
+          view: {
+            facets: {
+              "face.front": { summaryFrom: "summary", visualState: "default" },
+              "face.back": { summaryFrom: "backText", visualState: "resolved" },
+              "availability.locked": { interactive: false, visualState: "locked" },
+              "availability.hidden": { visible: false },
+            },
+          },
+        },
+      },
+      content: {
+        data: {
+          choices: [
+            {
+              id: "accept",
+              title: "Take the clear path",
+              summary: "Front text",
+              backText: "Back text",
+              actionId: "choice.accept",
+            },
+            {
+              id: "hidden",
+              title: "Hidden choice",
+              summary: "Should not render",
+              actionId: "choice.hidden",
+            },
+          ],
+        },
+      },
+    };
+
+    const state = config.resolveGameState(content, {
+      sessionId: "s1",
+      gameId: "simple-choice",
+      version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
+      state: {
+        public: {
+          objects: {
+            choices: {
+              accept: {
+                objectType: "choice.card",
+                facets: { face: "back", availability: "locked" },
+                attributes: {},
+              },
+              hidden: {
+                objectType: "choice.card",
+                facets: { face: "front", availability: "hidden" },
+                attributes: {},
+              },
+            },
+          },
+        },
+        secret: {},
+      },
+    }) as Record<string, unknown>;
+
+    const objectViews = state.objectViews as { choices: Array<Record<string, unknown>> };
+    expect(objectViews.choices).toHaveLength(1);
+    expect(objectViews.choices[0]).toMatchObject({
+      objectId: "accept",
+      title: "Take the clear path",
+      summary: "Back text",
+      actionId: "choice.accept",
+      visualState: "locked",
+      interactive: false,
+    });
+  });
 });

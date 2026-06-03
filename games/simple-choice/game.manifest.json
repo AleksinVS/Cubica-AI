@@ -39,9 +39,88 @@
           "id": "accept",
           "title": "Take the clear path",
           "summary": "Choose the option with the visible tradeoff.",
+          "backText": "The choice is resolved and the session gained a supply token.",
           "actionId": "choice.accept"
         }
       ]
+    }
+  },
+  "objectModels": {
+    "choice.card": {
+      "collection": "choices",
+      "scope": "session",
+      "facets": {
+        "face": {
+          "initial": "front",
+          "values": [
+            "front",
+            "back"
+          ]
+        },
+        "availability": {
+          "initial": "available",
+          "values": [
+            "available",
+            "locked",
+            "hidden"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "face.front": {
+            "summaryFrom": "summary",
+            "visualState": "default"
+          },
+          "face.back": {
+            "summaryFrom": "backText",
+            "visualState": "resolved"
+          },
+          "availability.available": {
+            "visible": true,
+            "interactive": true
+          },
+          "availability.locked": {
+            "visualState": "locked",
+            "visible": true,
+            "interactive": false
+          },
+          "availability.hidden": {
+            "visible": false
+          }
+        }
+      }
+    },
+    "resource.supply": {
+      "collection": "resources",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "available",
+          "values": [
+            "available",
+            "spent"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.available": {
+            "summaryFrom": "title",
+            "visualState": "default",
+            "visible": true,
+            "interactive": false
+          },
+          "availability.spent": {
+            "summaryFrom": "title",
+            "visualState": "locked",
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
     }
   },
   "engine": {
@@ -68,6 +147,19 @@
       "flags": {
         "cards": {}
       },
+      "objects": {
+        "choices": {
+          "accept": {
+            "objectType": "choice.card",
+            "facets": {
+              "face": "front",
+              "availability": "available"
+            },
+            "attributes": {}
+          }
+        },
+        "resources": {}
+      },
       "ui": {},
       "log": []
     },
@@ -85,6 +177,16 @@
             "line": "main",
             "stepIndex": 0,
             "canAdvance": false
+          },
+          "object": {
+            "visibility": "public",
+            "collection": "choices",
+            "objectId": "accept",
+            "objectType": "choice.card",
+            "facets": {
+              "face": "front",
+              "availability": "available"
+            }
           }
         },
         "effects": [
@@ -92,6 +194,42 @@
             "op": "metric.add",
             "metricId": "score",
             "delta": 1
+          },
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "choices",
+            "objectId": "accept",
+            "facet": "face",
+            "value": "back"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "choices",
+            "objectId": "accept",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/selectedAtStep",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "op": "object.create",
+            "visibility": "public",
+            "collection": "resources",
+            "objectId": "supply-1",
+            "objectType": "resource.supply",
+            "facets": {
+              "availability": "available"
+            },
+            "attributes": {
+              "id": "supply-1",
+              "title": "Supply token",
+              "amount": 1
+            }
           },
           {
             "op": "timeline.set",

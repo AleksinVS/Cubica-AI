@@ -28,6 +28,7 @@ const createRegistryMap = (bundle: GameBundle) => {
         definition.actionId,
         createDeterministicHandler(capabilityFamily, {
           mode: "manifest-action",
+          objectModels: bundle.manifest.objectModels,
           templates: bundle.manifest.templates
         })
       );

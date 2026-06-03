@@ -121,6 +121,70 @@ export interface GameManifestState<TPublicState = Record<string, unknown>, TSecr
   secret?: TSecretState;
 }
 
+export type GameManifestObjectScope = "session";
+export type GameManifestObjectVisibility = "public" | "secret";
+export type GameManifestObjectFacetValue = string | number | boolean;
+
+/**
+ * Runtime shape of one object instance stored in session state.
+ *
+ * Gameplay object means an authoritative in-session entity such as a card,
+ * resource, character or board cell. Static text stays in content data; mutable
+ * data lives in facets and attributes.
+ */
+export interface GameManifestObjectState {
+  objectType: string;
+  facets: Record<string, GameManifestObjectFacetValue>;
+  attributes?: Record<string, unknown>;
+}
+
+export type GameManifestObjectStateCollection = Record<string, GameManifestObjectState>;
+export type GameManifestObjectStateMap = Record<string, GameManifestObjectStateCollection>;
+
+export interface GameManifestObjectFacetModel {
+  initial: GameManifestObjectFacetValue;
+  values: Array<GameManifestObjectFacetValue>;
+}
+
+/**
+ * Presenter rule for deriving UI-ready fields from content plus object state.
+ *
+ * `summaryFrom` and related fields name a source property in the merged object
+ * data. The Presenter resolves the source and passes plain props to React.
+ */
+export interface GameManifestObjectViewRule {
+  visible?: boolean;
+  interactive?: boolean;
+  titleFrom?: string;
+  summaryFrom?: string;
+  textFrom?: string;
+  visualState?: string;
+  actionIdFrom?: string;
+  selectLabelFrom?: string;
+  fields?: Record<string, string>;
+}
+
+export interface GameManifestObjectModel {
+  collection: string;
+  idField?: string;
+  scope: GameManifestObjectScope;
+  facets: Record<string, GameManifestObjectFacetModel>;
+  view?: {
+    facets?: Record<string, GameManifestObjectViewRule>;
+  };
+}
+
+export type GameManifestObjectModelMap = Record<string, GameManifestObjectModel>;
+
+export interface GameManifestObjectStateGuard {
+  visibility?: GameManifestObjectVisibility;
+  collection: string;
+  objectId: string | number;
+  objectType?: string;
+  facets?: Record<string, GameManifestObjectFacetValue>;
+  attributes?: Record<string, unknown>;
+}
+
 /**
  * Links deterministic metadata back to the exact legacy artifact used for extraction.
  */
@@ -170,6 +234,11 @@ export interface GameManifestDeterministicGuard {
     cardIds: Array<string>;
     resolvedCountAtLeast: number;
   };
+  /**
+   * Generic object-state guards. These check authoritative object state in
+   * state.public.objects or state.secret.objects without game-specific code.
+   */
+  object?: GameManifestObjectStateGuard | Array<GameManifestObjectStateGuard>;
   stateConditions?: Array<GameManifestDeterministicStateCondition>;
   jsonLogic?: JsonLogicExpression;
   [key: string]: unknown;
@@ -266,6 +335,30 @@ export type GameManifestDeterministicEffect =
       value: unknown;
     })
   | (GameManifestDeterministicEffectBase & {
+      op: "object.create";
+      visibility: GameManifestObjectVisibility;
+      collection: string;
+      objectId: string | number;
+      objectType: string;
+      facets?: Record<string, GameManifestObjectFacetValue>;
+      attributes?: Record<string, unknown>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "object.state.set";
+      visibility: GameManifestObjectVisibility;
+      collection: string;
+      objectId: string | number;
+      facet: string;
+      value: GameManifestObjectFacetValue;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "object.attribute.patch";
+      visibility: GameManifestObjectVisibility;
+      collection: string;
+      objectId: string | number;
+      patches: Array<GameManifestObjectAttributePatch>;
+    })
+  | (GameManifestDeterministicEffectBase & {
       op: "ui.panel.open";
       panelId: string;
     })
@@ -291,6 +384,12 @@ export type GameManifestDeterministicEffect =
     });
 
 export interface GameManifestDeterministicStatePatch {
+  op: "add" | "replace" | "remove" | "increment" | "append";
+  path: string;
+  value?: unknown;
+}
+
+export interface GameManifestObjectAttributePatch {
   op: "add" | "replace" | "remove" | "increment" | "append";
   path: string;
   value?: unknown;
@@ -332,6 +431,7 @@ export interface GameManifest<
   engine?: GameManifestEngineConfig;
   state: GameManifestState<TPublicState, TSecretState>;
   actions: TActions;
+  objectModels?: GameManifestObjectModelMap;
   templates?: GameManifestTemplateMap;
 }
 
@@ -437,6 +537,10 @@ export interface GameUiCardComponentProps {
   selectLabel?: string;
   /** Visual state for CSS class selection. */
   visualState?: "default" | "selected" | "locked" | "resolved" | string;
+  /** Presenter-derived visibility flag. Components obey it but do not derive it. */
+  visible?: boolean | string;
+  /** Presenter-derived interactivity flag. Components obey it but do not derive it. */
+  interactive?: boolean | string;
 }
 
 /**
@@ -735,6 +839,8 @@ export interface PlayerFacingContent {
   training?: GameManifestTraining;
   actions: Array<PlayerFacingAction>;
   mockups: Array<PlayerFacingMockup>;
+  /** Runtime object models used by generic Presenter projection. */
+  objectModels?: GameManifestObjectModelMap;
   /** Game-specific gameplay content keyed by gameId. */
   content?: Record<string, unknown>;
   /** Multi-screen UI manifest projection for manifest-driven rendering. */

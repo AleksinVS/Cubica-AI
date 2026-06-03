@@ -98,7 +98,7 @@
     - **Tier 2 — JsonLogic**: Декларативные выражения для guard-условий и вычисляемых значений метрик. Покрывает ~15% действий.
     - **Tier 3 — Script Actions**: Скриптовые действия для сложных интеракций. Покрывает ~5% действий.
     - Подробное руководство: [`docs/architecture/GAME_AUTHORING_GUIDE.md`](docs/architecture/GAME_AUTHORING_GUIDE.md).
-  - **Gameplay Object State Model (ADR-041)**: игровые объекты (карточки, ресурсы, персонажи, клетки, задачи) получают authoring-first модель состояния. Authoring-манифест описывает типы объектов и фасеты состояния, runtime state хранит object instances, а Presenter строит player-facing projection для UI. Динамические ресурсы создаются через общие object effects; `Antarctica` должна мигрировать с `flags.cards` на object state без постоянного legacy fallback.
+  - **Gameplay Object State Model (ADR-041)**: игровые объекты (карточки, ресурсы, персонажи, клетки, задачи) получают authoring-first модель состояния. Authoring-манифест описывает типы объектов и фасеты состояния, runtime state хранит object instances, а Presenter строит player-facing projection для UI. Общие object effects/guards и fixture proof на `simple-choice` реализованы; `Antarctica` еще должна мигрировать с `flags.cards` на object state без постоянного legacy fallback.
   - **Semantic Prototype Authoring Layer (ADR-030, Draft)**: целевой authoring-слой для game/UI manifests должен стать обязательным редактируемым источником для новых и изменяемых манифестов; runtime/player продолжают получать generated JSON, валидный по runtime JSON Schema.
   - **Структура манифеста может различаться у разных игр**.
     - Базовая структура манифеста и принципы описаны в `docs/architecture/schemas/manifest-structure.md`.

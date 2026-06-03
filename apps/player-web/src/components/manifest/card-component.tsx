@@ -2,7 +2,7 @@ import type {
   GameUiComponent,
   GameUiCardComponentProps
 } from "@cubica/contracts-manifest";
-import { resolveExpression, resolvePayloadExpressions } from "@/lib/expression-resolver";
+import { resolveExpression, resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import { useLocale } from "@/lib/locale";
 import type { PreviewElementAttributes } from "./preview-metadata";
 
@@ -28,7 +28,7 @@ export function CardComponent({
   previewAttributes?: PreviewElementAttributes;
 }) {
   const t = useLocale();
-  const { text, title, summary, chips, selectLabel, visualState } = component.props;
+  const { text, title, summary, chips, selectLabel, visualState, visible, interactive } = component.props;
   const command = (component as GameUiComponent).actions?.onClick?.command;
   const componentId = (component as GameUiComponent).id ?? "";
   const cardIdMatch = componentId.match(/^card-(\d+)$/);
@@ -41,15 +41,23 @@ export function CardComponent({
   const actionPayload: Record<string, unknown> = isPayloadEmpty && cardIdFromComponent
     ? { cardId: cardIdFromComponent }
     : resolvedPayload;
+  const resolvedVisible = resolveBooleanProp(visible, true, gameState, localContext);
+  const resolvedInteractive = resolveBooleanProp(interactive, true, gameState, localContext);
+  const resolvedVisualState = resolveStringProp(visualState, gameState, localContext) ?? "default";
+  const isDisabled = resolvedInteractive === false || resolvedVisualState === "locked";
+
+  if (!resolvedVisible) {
+    return null;
+  }
 
   const handleCardClick = () => {
-    if (command) {
+    if (command && !isDisabled) {
       onAction(command, actionPayload);
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (command && (e.key === "Enter" || e.key === " ")) {
+    if (command && !isDisabled && (e.key === "Enter" || e.key === " ")) {
       e.preventDefault();
       onAction(command, actionPayload);
     }
@@ -71,7 +79,8 @@ export function CardComponent({
         onClick={command ? handleCardClick : undefined}
         onKeyDown={command ? handleKeyDown : undefined}
         role={command ? "button" : undefined}
-        tabIndex={command ? 0 : undefined}
+        tabIndex={command && !isDisabled ? 0 : undefined}
+        aria-disabled={isDisabled || undefined}
         aria-label={resolvedText ?? undefined}
       >
         <p className="game-card-text">{resolvedText}</p>
@@ -79,7 +88,8 @@ export function CardComponent({
           <button
             className="action-button"
             type="button"
-            onClick={(e) => { e.stopPropagation(); onAction(command, actionPayload); }}
+            onClick={(e) => { e.stopPropagation(); if (!isDisabled) onAction(command, actionPayload); }}
+            disabled={isDisabled}
             tabIndex={-1}
           >
             {t.selectCard}
@@ -100,11 +110,9 @@ export function CardComponent({
     ? resolveExpression(selectLabel, gameState ?? {}, localContext)
     : selectLabel;
 
-  const visualStateClass = visualState && visualState !== "default"
-    ? ` fallback-card-${visualState}`
+  const visualStateClass = resolvedVisualState && resolvedVisualState !== "default"
+    ? ` fallback-card-${resolvedVisualState}`
     : "";
-
-  const isDisabled = visualState === "locked";
 
   return (
     <article
@@ -131,7 +139,7 @@ export function CardComponent({
         <button
           className="action-button"
           type="button"
-          onClick={(e) => { e.stopPropagation(); onAction(command, actionPayload); }}
+          onClick={(e) => { e.stopPropagation(); if (!isDisabled) onAction(command, actionPayload); }}
           disabled={isDisabled}
           tabIndex={-1}
         >
@@ -140,4 +148,42 @@ export function CardComponent({
       )}
     </article>
   );
+}
+
+function resolveStringProp(
+  value: string | undefined,
+  gameState: Record<string, unknown> | undefined,
+  localContext: Record<string, unknown> | undefined
+): string | undefined {
+  if (!value) {
+    return value;
+  }
+  if (!value.includes("{{")) {
+    return value;
+  }
+  return String(resolveExpressions(value, gameState ?? {}, localContext));
+}
+
+function resolveBooleanProp(
+  value: boolean | string | undefined,
+  fallback: boolean,
+  gameState: Record<string, unknown> | undefined,
+  localContext: Record<string, unknown> | undefined
+): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  const resolved = value.includes("{{")
+    ? resolveExpressions(value, gameState ?? {}, localContext)
+    : value;
+  if (typeof resolved === "boolean") {
+    return resolved;
+  }
+  if (typeof resolved === "string") {
+    return resolved !== "false";
+  }
+  return Boolean(resolved);
 }

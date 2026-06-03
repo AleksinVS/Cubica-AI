@@ -425,6 +425,164 @@ function copyIfPresent(target, mappings, compiled, sourceFile, source, key) {
   }
 }
 
+function normalizeFacetValue(rawValue, initialValue) {
+  if (typeof initialValue === "boolean") {
+    if (rawValue === "true") {
+      return true;
+    }
+    if (rawValue === "false") {
+      return false;
+    }
+  }
+
+  if (typeof initialValue === "number" && rawValue !== "") {
+    const numericValue = Number(rawValue);
+    if (Number.isFinite(numericValue)) {
+      return numericValue;
+    }
+  }
+
+  return rawValue;
+}
+
+function sameFacetValue(left, right) {
+  return left === right;
+}
+
+function buildObjectViewRule(valueDefinition) {
+  const view = hasPlainObject(valueDefinition.view) ? clone(valueDefinition.view) : {};
+  if (Object.prototype.hasOwnProperty.call(valueDefinition, "visible")) {
+    view.visible = valueDefinition.visible;
+  }
+  if (Object.prototype.hasOwnProperty.call(valueDefinition, "interactive")) {
+    view.interactive = valueDefinition.interactive;
+  }
+  return Object.keys(view).length > 0 ? view : null;
+}
+
+function appendObjectModelsRuntimeField(manifest, mappings, compiledRoot, sourceFile, objectTypesValue) {
+  const objectTypes = ensureObject(objectTypesValue, sourceFile, "/root/objectTypes", "game v2 root.objectTypes");
+  const objectModels = {};
+
+  for (const [objectTypeId, objectType] of Object.entries(objectTypes)) {
+    const objectTypePointer = joinPointer("/root/objectTypes", objectTypeId);
+    const objectTypeObject = ensureObject(objectType, sourceFile, objectTypePointer, "game v2 object type");
+
+    if (objectTypeObject.scope !== "session") {
+      throw new CompileError(
+        `Object type "${objectTypeId}" uses unsupported scope "${String(objectTypeObject.scope)}"; only "session" is implemented`,
+        sourceFile,
+        joinPointer(objectTypePointer, "scope")
+      );
+    }
+
+    const facetsSource = ensureObject(
+      objectTypeObject.facets,
+      sourceFile,
+      joinPointer(objectTypePointer, "facets"),
+      `game v2 object type "${objectTypeId}" facets`
+    );
+    const facets = {};
+    const viewFacets = {};
+
+    for (const [facetId, facet] of Object.entries(facetsSource)) {
+      const facetPointer = joinPointer(joinPointer(objectTypePointer, "facets"), facetId);
+      const facetObject = ensureObject(facet, sourceFile, facetPointer, `game v2 object type "${objectTypeId}" facet "${facetId}"`);
+      const valuesSource = ensureObject(
+        facetObject.values,
+        sourceFile,
+        joinPointer(facetPointer, "values"),
+        `game v2 object type "${objectTypeId}" facet "${facetId}" values`
+      );
+      const values = Object.keys(valuesSource).map((valueKey) => normalizeFacetValue(valueKey, facetObject.initial));
+
+      if (!values.some((value) => sameFacetValue(value, facetObject.initial))) {
+        throw new CompileError(
+          `Facet "${facetId}" initial value "${String(facetObject.initial)}" is not listed in values`,
+          sourceFile,
+          joinPointer(facetPointer, "initial")
+        );
+      }
+
+      facets[facetId] = {
+        initial: facetObject.initial,
+        values
+      };
+
+      for (const [valueKey, valueDefinition] of Object.entries(valuesSource)) {
+        const valueObject = ensureObject(
+          valueDefinition,
+          sourceFile,
+          joinPointer(joinPointer(facetPointer, "values"), valueKey),
+          `game v2 object type "${objectTypeId}" facet "${facetId}" value "${valueKey}"`
+        );
+        const viewRule = buildObjectViewRule(valueObject);
+        if (viewRule) {
+          viewFacets[`${facetId}.${String(normalizeFacetValue(valueKey, facetObject.initial))}`] = viewRule;
+        }
+      }
+    }
+
+    const model = {
+      collection: objectTypeObject.collection,
+      scope: objectTypeObject.scope,
+      facets
+    };
+
+    if (typeof objectTypeObject.idField === "string") {
+      model.idField = objectTypeObject.idField;
+    }
+
+    if (Object.keys(viewFacets).length > 0) {
+      model.view = { facets: viewFacets };
+    }
+
+    objectModels[objectTypeId] = model;
+
+    addRuntimeMapping(mappings, joinPointer("/objectModels", objectTypeId), compiledRoot, sourceFile, objectTypePointer);
+    addRuntimeMapping(mappings, joinPointer(joinPointer("/objectModels", objectTypeId), "collection"), compiledRoot, sourceFile, joinPointer(objectTypePointer, "collection"));
+    addRuntimeMapping(mappings, joinPointer(joinPointer("/objectModels", objectTypeId), "scope"), compiledRoot, sourceFile, joinPointer(objectTypePointer, "scope"));
+    if (typeof objectTypeObject.idField === "string") {
+      addRuntimeMapping(mappings, joinPointer(joinPointer("/objectModels", objectTypeId), "idField"), compiledRoot, sourceFile, joinPointer(objectTypePointer, "idField"));
+    }
+    addRuntimeMapping(mappings, joinPointer(joinPointer("/objectModels", objectTypeId), "facets"), compiledRoot, sourceFile, joinPointer(objectTypePointer, "facets"));
+    for (const [facetId, facet] of Object.entries(facets)) {
+      const facetPointer = joinPointer(joinPointer(objectTypePointer, "facets"), facetId);
+      const targetFacetPointer = joinPointer(joinPointer(joinPointer("/objectModels", objectTypeId), "facets"), facetId);
+      addRuntimeMapping(mappings, targetFacetPointer, compiledRoot, sourceFile, facetPointer);
+      addRuntimeMapping(mappings, joinPointer(targetFacetPointer, "initial"), compiledRoot, sourceFile, joinPointer(facetPointer, "initial"));
+      addRuntimeMapping(mappings, joinPointer(targetFacetPointer, "values"), compiledRoot, sourceFile, joinPointer(facetPointer, "values"));
+      facet.values.forEach((value, index) => {
+        addRuntimeMapping(
+          mappings,
+          joinPointer(joinPointer(targetFacetPointer, "values"), index),
+          compiledRoot,
+          sourceFile,
+          joinPointer(joinPointer(facetPointer, "values"), String(value))
+        );
+      });
+    }
+
+    if (Object.keys(viewFacets).length > 0) {
+      addRuntimeMapping(mappings, joinPointer(joinPointer("/objectModels", objectTypeId), "view"), compiledRoot, sourceFile, objectTypePointer);
+      addRuntimeMapping(mappings, joinPointer(joinPointer(joinPointer("/objectModels", objectTypeId), "view"), "facets"), compiledRoot, sourceFile, joinPointer(objectTypePointer, "facets"));
+      for (const [viewKey] of Object.entries(viewFacets)) {
+        const [facetId, valueKey] = viewKey.split(".");
+        addRuntimeMapping(
+          mappings,
+          joinPointer(joinPointer(joinPointer(joinPointer("/objectModels", objectTypeId), "view"), "facets"), viewKey),
+          compiledRoot,
+          sourceFile,
+          joinPointer(joinPointer(joinPointer(joinPointer(objectTypePointer, "facets"), facetId), "values"), valueKey)
+        );
+      }
+    }
+  }
+
+  manifest.objectModels = objectModels;
+  addRuntimeMapping(mappings, "/objectModels", compiledRoot, sourceFile, "/root/objectTypes");
+}
+
 function appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFile, logic) {
   if (Object.prototype.hasOwnProperty.call(logic, "actions")) {
     const actions = {};
@@ -464,6 +622,8 @@ function compileGameAuthoringV2(job, compiledRoot) {
   for (const [key, value] of Object.entries(root)) {
     if (key === "logic") {
       appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFile, value);
+    } else if (key === "objectTypes") {
+      appendObjectModelsRuntimeField(manifest, mappings, compiledRoot, sourceFile, value);
     } else {
       copyIfPresent(manifest, mappings, compiledRoot, sourceFile, root, key);
     }

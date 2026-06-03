@@ -73,20 +73,37 @@
                 }
               },
               {
-                "type": "buttonComponent",
-                "id": "choice-accept",
+                "type": "areaComponent",
+                "id": "choice-object-list",
                 "props": {
-                  "caption": "Choose path",
-                  "variant": "action"
+                  "cssClass": "cards-container"
                 },
-                "actions": {
-                  "onClick": {
-                    "command": "requestServer",
-                    "payload": {
-                      "actionId": "choice.accept"
+                "itemTemplate": {
+                  "collection": "{{objectViews.choices}}",
+                  "itemKey": "choice"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "choice-card",
+                    "props": {
+                      "title": "{{choice.title}}",
+                      "summary": "{{choice.summary}}",
+                      "selectLabel": "{{choice.selectLabel || 'Choose'}}",
+                      "visualState": "{{choice.visualState}}",
+                      "visible": "{{choice.visible}}",
+                      "interactive": "{{choice.interactive}}"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "choice.accept"
+                        }
+                      }
                     }
                   }
-                }
+                ]
               }
             ]
           }
@@ -131,6 +148,51 @@
                 "props": {
                   "html": "<h1>Result</h1><p>Outcome: {{game.state.public.choice.outcome}}</p>"
                 }
+              },
+              {
+                "type": "areaComponent",
+                "id": "result-choice-object-list",
+                "props": {
+                  "cssClass": "cards-container"
+                },
+                "itemTemplate": {
+                  "collection": "{{objectViews.choices}}",
+                  "itemKey": "choice"
+                },
+                "children": [
+                  {
+                    "type": "cardComponent",
+                    "id": "result-choice-card",
+                    "props": {
+                      "title": "{{choice.title}}",
+                      "summary": "{{choice.summary}}",
+                      "selectLabel": "{{choice.selectLabel || 'Done'}}",
+                      "visualState": "{{choice.visualState}}",
+                      "visible": "{{choice.visible}}",
+                      "interactive": "{{choice.interactive}}"
+                    }
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "id": "resource-object-list",
+                "props": {
+                  "cssClass": "cards-container"
+                },
+                "itemTemplate": {
+                  "collection": "{{objectViews.resources}}",
+                  "itemKey": "resource"
+                },
+                "children": [
+                  {
+                    "type": "richTextComponent",
+                    "id": "resource-text",
+                    "props": {
+                      "html": "<p>{{resource.summary}}: {{resource.attributes.amount}}</p>"
+                    }
+                  }
+                ]
               }
             ]
           }

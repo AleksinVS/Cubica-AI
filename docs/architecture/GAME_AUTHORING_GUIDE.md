@@ -192,7 +192,7 @@ State changes are expressed only through `effects[]`. The runtime validates ever
 | `object.state.set` | Set one state facet on a gameplay object |
 | `object.attribute.patch` | Patch mutable object attributes |
 
-`object.*` effects are accepted target capabilities from ADR-041. They must be implemented through `TSK-20260603-gameplay-object-state-model` before authors can rely on them in runtime games.
+`object.*` effects are implemented for session-scoped object state. `scope: "player"` is reserved for a future per-player slice and is intentionally rejected by the current runtime manifest schema.
 
 ---
 
@@ -344,6 +344,7 @@ Use `object.create` for dynamic resources:
 State is separate from logic:
 
 - object state definitions list valid facets and values;
+- `guard.object` checks object type, facets and attributes before an action runs;
 - guards and JsonLogic read object state;
 - effects change object state;
 - Presenter builds UI-ready object views;

@@ -17,7 +17,7 @@
 
 ## Status
 
-planned
+implemented
 
 ## Why
 
@@ -59,7 +59,7 @@ If implementation needs a new architectural decision beyond ADR-041, update or a
 - Per-player state is not needed soon, but `scope` must leave a simple extension path.
 - State is separate from logic; guards/effects/templates define logic that reads or changes state.
 - First implementation proof uses a fixture game.
-- `Antarctica` migration replaces `flags.cards`; no permanent legacy fallback is accepted.
+- `Antarctica` migration replaces `flags.cards`; no permanent legacy fallback is accepted. Execution is tracked separately in `docs/tasks/active/TSK-20260603-antarctica-object-state-migration.md`.
 
 ## Scope
 
@@ -76,8 +76,9 @@ In scope:
   - object-state guards;
 - add Presenter-level object view projection for `player-web`;
 - add a small fixture game that uses object state without a custom plugin;
-- migrate `Antarctica` from `state.public.flags.cards` to `state.public.objects.cards`;
 - update tests and documentation.
+
+Moved out of this package: `Antarctica` migration from `state.public.flags.cards` to `state.public.objects.cards` is now owned by `docs/tasks/active/TSK-20260603-antarctica-object-state-migration.md`.
 
 Out of scope unless a separate ADR/task is created:
 
@@ -138,16 +139,7 @@ Out of scope unless a separate ADR/task is created:
 3. Support `itemTemplate` binding to projected object views.
 4. Add tests for visible/interactive/visualState/text projection.
 
-### Phase 6. Antarctica Migration
-
-1. Convert `Antarctica` authoring manifests to object-state definitions.
-2. Replace generated `state.public.flags.cards` with `state.public.objects.cards`.
-3. Convert card guards/effects to object-state guards/effects.
-4. Update Antarctica plugin or remove card flag assumptions where generic projection can cover them.
-5. Remove permanent fallback reads from `flags.cards`.
-6. Run runtime and player e2e coverage for existing Antarctica flows.
-
-### Phase 7. Documentation And Governance
+### Phase 6. Documentation And Governance
 
 1. Update `docs/architecture/GAME_AUTHORING_GUIDE.md`.
 2. Update `PROJECT_OVERVIEW.md` and `docs/architecture/PROJECT_ARCHITECTURE.md` if canonical behavior changes.
@@ -161,7 +153,7 @@ Out of scope unless a separate ADR/task is created:
 - Fixture game runs without a custom plugin and proves static object state plus dynamic resource creation.
 - Runtime supports object-state effects and guards with no game-specific branches.
 - Presenter builds UI-ready object views; React components do not contain object-state gameplay rules.
-- `Antarctica` no longer relies on `state.public.flags.cards` after migration.
+- `Antarctica` migration has a separate execution package and is not required for this package acceptance.
 - Per-player state is not implemented, but schema has an explicit `scope` path that can be extended later.
 - `npm run verify:canonical` passes or any failure is documented with a concrete unrelated cause.
 
@@ -184,8 +176,9 @@ The final `rg` command is a review aid. After full `Antarctica` migration, remai
 
 Planned artifacts:
 
-- `docs/tasks/artifacts/TSK-20260603-gameplay-object-state-model/fixture-proof.md`
-- `docs/tasks/artifacts/TSK-20260603-gameplay-object-state-model/antarctica-migration-map.md`
+- `docs/tasks/artifacts/TSK-20260603-gameplay-object-state-model/fixture-proof.md` - created
+- `docs/tasks/active/TSK-20260603-antarctica-object-state-migration.md` - separate execution package for `Antarctica` migration
+- `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/migration-map.md` - migration map artifact
 
 ## Handoff Log
 
@@ -194,3 +187,20 @@ Planned artifacts:
 - Created execution task from the accepted ADR-041 decisions.
 - Bound implementation order to fixture-first proof and then full `Antarctica` migration.
 - Next safe step: implement Phase 1 schema and contract baseline before writing runtime handlers.
+
+### 2026-06-03 - Codex Implementation
+
+- Implemented authoring `objectTypes` schema support and runtime `objectModels` schema support.
+- Added manifest contracts for object models, session object state, `guard.object`, `object.create`, `object.state.set` and `object.attribute.patch`.
+- Extended the authoring compiler to emit `objectModels` from authoring `root.objectTypes` with source-map entries back to authoring pointers.
+- Updated `simple-choice` as the fixture proof: one static choice object, one dynamic `resources` object created during the session, object-state guard/effects and UI bound to Presenter-projected `objectViews`.
+- Added runtime handlers and neutral tests for object guards/effects across two collections.
+- Added generic Presenter projection in `player-web` default config and renderer tests for projected object props.
+- Left `Antarctica` migration untouched by request; next safe step is Phase 6 migration from `flags.cards` to `objects.cards` with no permanent fallback.
+
+### 2026-06-03 - Codex Documentation Split
+
+- Moved `Antarctica` migration out of this generic platform package.
+- Created `docs/tasks/active/TSK-20260603-antarctica-object-state-migration.md`.
+- Created migration artifacts under `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/`.
+- This package now owns only the implemented generic Object State Model platform path and fixture proof.

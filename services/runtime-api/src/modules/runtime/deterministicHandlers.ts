@@ -11,6 +11,11 @@ import type {
   GameManifestDeterministicMetricCondition,
   GameManifestDeterministicStateCondition,
   GameManifestDeterministicStatePatch,
+  GameManifestObjectAttributePatch,
+  GameManifestObjectFacetValue,
+  GameManifestObjectModelMap,
+  GameManifestObjectState,
+  GameManifestObjectStateGuard,
   GameManifestTemplateMap,
   JsonLogicExpression
 } from "@cubica/contracts-manifest";
@@ -23,6 +28,7 @@ type DeterministicHandlerMode = "capability" | "manifest-action";
 
 interface DeterministicHandlerOptions {
   mode?: DeterministicHandlerMode;
+  objectModels?: GameManifestObjectModelMap;
   templates?: GameManifestTemplateMap;
 }
 
@@ -238,6 +244,164 @@ const setJsonPointerValue = (state: RuntimeState, path: string, value: unknown) 
     throw new Error(`Manifest effect cannot write to path "${path}"`);
   }
   target.parent[target.key] = value;
+};
+
+const buildManifestParameterScope = (context: RuntimeActionContext<RuntimeState>): Record<string, unknown> => {
+  const raw = isObjectRecord(context.manifestAction.raw) ? context.manifestAction.raw : {};
+  return {
+    ...(isObjectRecord(raw.params) ? raw.params : {}),
+    ...(isObjectRecord(context.manifestAction.params) ? context.manifestAction.params : {}),
+    ...(isObjectRecord(context.payload) ? context.payload : {})
+  };
+};
+
+const objectVisibilityRoot = (
+  state: RuntimeState,
+  visibility: "public" | "secret"
+): Record<string, unknown> => ensureObject(state[visibility]);
+
+const readObjectInstance = (
+  state: RuntimeState,
+  input: { visibility?: "public" | "secret"; collection: string; objectId: string | number }
+): GameManifestObjectState | undefined => {
+  const visibility = input.visibility ?? "public";
+  const root = objectVisibilityRoot(state, visibility);
+  const objects = ensureObject(root.objects);
+  const collection = ensureObject(objects[input.collection]);
+  const instance = collection[String(input.objectId)];
+  return isObjectRecord(instance) ? instance as unknown as GameManifestObjectState : undefined;
+};
+
+const ensureObjectStateCollection = (
+  state: RuntimeState,
+  visibility: "public" | "secret",
+  collectionId: string
+): Record<string, unknown> => {
+  const root = objectVisibilityRoot(state, visibility);
+  const objects = ensureObject(root.objects);
+  const collection = ensureObject(objects[collectionId]);
+  objects[collectionId] = collection;
+  root.objects = objects;
+  state[visibility] = root;
+  return collection;
+};
+
+const sameManifestValue = (left: unknown, right: unknown): boolean => {
+  if (left === right) {
+    return true;
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    return false;
+  }
+  if (isObjectRecord(left) && isObjectRecord(right)) {
+    const leftKeys = Object.keys(left);
+    const rightKeys = Object.keys(right);
+    return leftKeys.length === rightKeys.length &&
+      leftKeys.every((key) => Object.prototype.hasOwnProperty.call(right, key) && sameManifestValue(left[key], right[key]));
+  }
+  return false;
+};
+
+const assertSessionObjectModel = (
+  objectModels: GameManifestObjectModelMap | undefined,
+  objectType: string,
+  expectedCollection: string
+) => {
+  const model = objectModels?.[objectType];
+  if (!model) {
+    throw new Error(`Object type "${objectType}" is not declared in manifest objectModels`);
+  }
+  if (model.scope !== "session") {
+    throw new Error(`Object type "${objectType}" uses unsupported scope "${model.scope}"`);
+  }
+  if (model.collection !== expectedCollection) {
+    throw new Error(`Object type "${objectType}" belongs to collection "${model.collection}", not "${expectedCollection}"`);
+  }
+  return model;
+};
+
+const assertFacetValueAllowed = (
+  objectModels: GameManifestObjectModelMap | undefined,
+  objectType: string,
+  collection: string,
+  facetId: string,
+  value: unknown
+) => {
+  const model = assertSessionObjectModel(objectModels, objectType, collection);
+  const facet = model.facets[facetId];
+  if (!facet) {
+    throw new Error(`Object type "${objectType}" does not declare facet "${facetId}"`);
+  }
+  if (!facet.values.some((allowedValue) => sameManifestValue(allowedValue, value))) {
+    throw new Error(`Facet "${facetId}" for object type "${objectType}" does not allow value "${String(value)}"`);
+  }
+};
+
+const buildInitialObjectFacets = (
+  objectModels: GameManifestObjectModelMap | undefined,
+  objectType: string,
+  collection: string,
+  declaredFacets: Record<string, unknown> | undefined
+): Record<string, GameManifestObjectFacetValue> => {
+  const model = assertSessionObjectModel(objectModels, objectType, collection);
+  const facets: Record<string, GameManifestObjectFacetValue> = {};
+
+  for (const [facetId, facet] of Object.entries(model.facets)) {
+    facets[facetId] = facet.initial;
+  }
+
+  for (const [facetId, value] of Object.entries(declaredFacets ?? {})) {
+    assertFacetValueAllowed(objectModels, objectType, collection, facetId, value);
+    facets[facetId] = value as GameManifestObjectFacetValue;
+  }
+
+  return facets;
+};
+
+const ensureLocalPointerParent = (
+  target: Record<string, unknown>,
+  path: string
+): { parent: Record<string, unknown>; key: string } | null => {
+  const parts = splitJsonPointer(path);
+  if (parts.length === 0) {
+    return null;
+  }
+
+  let current = target;
+  for (const part of parts.slice(0, -1)) {
+    if (!isObjectRecord(current[part])) {
+      current[part] = {};
+    }
+    current = current[part] as Record<string, unknown>;
+  }
+
+  return { parent: current, key: parts[parts.length - 1] };
+};
+
+const applyObjectAttributePatch = (
+  attributes: Record<string, unknown>,
+  patch: GameManifestObjectAttributePatch
+) => {
+  if (!patch.path.startsWith("/")) {
+    throw new Error(`object.attribute.patch path must start with "/": "${patch.path}"`);
+  }
+  const target = ensureLocalPointerParent(attributes, patch.path);
+  if (!target) {
+    throw new Error(`object.attribute.patch has invalid path "${patch.path}"`);
+  }
+
+  if (patch.op === "add" || patch.op === "replace") {
+    target.parent[target.key] = patch.value;
+  } else if (patch.op === "remove") {
+    delete target.parent[target.key];
+  } else if (patch.op === "increment") {
+    target.parent[target.key] = (Number(target.parent[target.key]) || 0) + Number(patch.value);
+  } else if (patch.op === "append") {
+    if (!Array.isArray(target.parent[target.key])) {
+      target.parent[target.key] = [];
+    }
+    (target.parent[target.key] as Array<unknown>).push(patch.value);
+  }
 };
 
 const applyStatePatchEffect = (state: RuntimeState, patch: GameManifestDeterministicStatePatch) => {
@@ -524,9 +688,53 @@ const evaluateMetricCondition = (
   return metricValue === threshold;
 };
 
+const evaluateObjectStateGuard = (
+  state: RuntimeState,
+  guard: GameManifestObjectStateGuard
+): Array<string> => {
+  const visibility = guard.visibility ?? "public";
+  const objectId = String(guard.objectId);
+  const instance = readObjectInstance(state, {
+    visibility,
+    collection: guard.collection,
+    objectId
+  });
+  const prefix = `${visibility}.objects.${guard.collection}.${objectId}`;
+  const failures: Array<string> = [];
+
+  if (!instance) {
+    return [`${prefix} expected to exist`];
+  }
+
+  if (guard.objectType !== undefined && instance.objectType !== guard.objectType) {
+    failures.push(`${prefix}.objectType expected "${guard.objectType}"`);
+  }
+
+  if (guard.facets) {
+    const facets = isObjectRecord(instance.facets) ? instance.facets : {};
+    for (const [facetId, expectedValue] of Object.entries(guard.facets)) {
+      if (!sameManifestValue(facets[facetId], expectedValue)) {
+        failures.push(`${prefix}.facets.${facetId} expected ${String(expectedValue)} (actual: ${String(facets[facetId])})`);
+      }
+    }
+  }
+
+  if (guard.attributes) {
+    const attributes = isObjectRecord(instance.attributes) ? instance.attributes : {};
+    for (const [attributeId, expectedValue] of Object.entries(guard.attributes)) {
+      if (!sameManifestValue(attributes[attributeId], expectedValue)) {
+        failures.push(`${prefix}.attributes.${attributeId} expected ${String(expectedValue)} (actual: ${String(attributes[attributeId])})`);
+      }
+    }
+  }
+
+  return failures;
+};
+
 const evaluateManifestGuard = (
   state: RuntimeState,
-  metadata: GameManifestDeterministicActionMetadata
+  metadata: GameManifestDeterministicActionMetadata,
+  params: Record<string, unknown> = {}
 ): Array<string> => {
   const failures: Array<string> = [];
   const guard = metadata.guard;
@@ -623,6 +831,16 @@ const evaluateManifestGuard = (
     }
     if (cardGuard.available !== undefined && cardState.available !== cardGuard.available) {
       failures.push(`card[${cardGuard.id}].available expected ${cardGuard.available}`);
+    }
+  }
+
+  if ((guard as any).object) {
+    const objectGuards = Array.isArray((guard as any).object)
+      ? (guard as any).object
+      : [(guard as any).object];
+    for (const objectGuard of objectGuards) {
+      const resolvedGuard = resolveValue(objectGuard, params) as GameManifestObjectStateGuard;
+      failures.push(...evaluateObjectStateGuard(state, resolvedGuard));
     }
   }
 
@@ -781,12 +999,15 @@ const applyManifestEffects = (
   metadata: GameManifestDeterministicActionMetadata,
   capabilityFamily: CapabilityFamily,
   preActionState: RuntimeState,
-  metricsBefore: Record<string, unknown>
+  metricsBefore: Record<string, unknown>,
+  objectModels?: GameManifestObjectModelMap
 ): Array<RuntimeActionEffect> => {
   const declaredEffects = Array.isArray(metadata.effects) ? metadata.effects : [];
   const runtimeEffects: Array<RuntimeActionEffect> = [];
+  const params = buildManifestParameterScope(context);
 
-  for (const effect of declaredEffects) {
+  for (const declaredEffect of declaredEffects) {
+    const effect = resolveValue(declaredEffect, params) as GameManifestDeterministicEffect;
     if (effect.when && !evaluateEffectCondition(state, preActionState, effect.when)) {
       continue;
     }
@@ -947,6 +1168,102 @@ const applyManifestEffects = (
         });
         break;
       }
+      case "object.create": {
+        const collection = ensureObjectStateCollection(state, effect.visibility, effect.collection);
+        const objectId = String(effect.objectId);
+        if (collection[objectId] !== undefined) {
+          throw new Error(`Object "${effect.collection}.${objectId}" already exists in ${effect.visibility} state`);
+        }
+
+        const facets = buildInitialObjectFacets(
+          objectModels,
+          effect.objectType,
+          effect.collection,
+          isObjectRecord(effect.facets) ? effect.facets : undefined
+        );
+        const attributes = isObjectRecord(effect.attributes) ? effect.attributes : {};
+        collection[objectId] = {
+          objectType: effect.objectType,
+          facets,
+          attributes
+        } satisfies GameManifestObjectState;
+        runtimeEffects.push({
+          kind: "state",
+          target: `${effect.visibility}.objects.${effect.collection}.${objectId}`,
+          value: "object.create",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            objectType: effect.objectType
+          }
+        });
+        break;
+      }
+      case "object.state.set": {
+        const objectId = String(effect.objectId);
+        const instance = readObjectInstance(state, {
+          visibility: effect.visibility,
+          collection: effect.collection,
+          objectId
+        });
+        if (!instance) {
+          throw new Error(`Object "${effect.collection}.${objectId}" does not exist in ${effect.visibility} state`);
+        }
+
+        assertFacetValueAllowed(
+          objectModels,
+          instance.objectType,
+          effect.collection,
+          effect.facet,
+          effect.value
+        );
+        instance.facets = {
+          ...(isObjectRecord(instance.facets) ? instance.facets : {}),
+          [effect.facet]: effect.value
+        };
+        runtimeEffects.push({
+          kind: "state",
+          target: `${effect.visibility}.objects.${effect.collection}.${objectId}.facets.${effect.facet}`,
+          value: "object.state.set",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            facet: effect.facet,
+            nextValue: effect.value
+          }
+        });
+        break;
+      }
+      case "object.attribute.patch": {
+        const objectId = String(effect.objectId);
+        const instance = readObjectInstance(state, {
+          visibility: effect.visibility,
+          collection: effect.collection,
+          objectId
+        });
+        if (!instance) {
+          throw new Error(`Object "${effect.collection}.${objectId}" does not exist in ${effect.visibility} state`);
+        }
+
+        instance.attributes = isObjectRecord(instance.attributes) ? instance.attributes : {};
+        for (const patch of effect.patches) {
+          applyObjectAttributePatch(instance.attributes, patch);
+        }
+        runtimeEffects.push({
+          kind: "state",
+          target: `${effect.visibility}.objects.${effect.collection}.${objectId}.attributes`,
+          value: "object.attribute.patch",
+          data: {
+            capability: context.manifestAction.capability,
+            family: capabilityFamily,
+            op: effect.op,
+            patchCount: effect.patches.length
+          }
+        });
+        break;
+      }
       case "ui.panel.open": {
         const uiState = ensureUiState(state);
         uiState.activePanel = effect.panelId;
@@ -1008,7 +1325,8 @@ const applyManifestEffects = (
 const buildManifestActionTransition = (
   context: RuntimeActionContext<RuntimeState>,
   capabilityFamily: CapabilityFamily,
-  templates?: GameManifestTemplateMap
+  templates?: GameManifestTemplateMap,
+  objectModels?: GameManifestObjectModelMap
 ): RuntimeActionResult<RuntimeState> => {
   if (
     context.manifestAction.handlerType !== "manifest-data" &&
@@ -1035,7 +1353,7 @@ const buildManifestActionTransition = (
     };
   }
 
-  const guardFailures = evaluateManifestGuard(context.state, metadata);
+  const guardFailures = evaluateManifestGuard(context.state, metadata, buildManifestParameterScope(context));
   if (guardFailures.length > 0) {
     return {
       ok: false,
@@ -1057,7 +1375,8 @@ const buildManifestActionTransition = (
       metadata,
       capabilityFamily,
       context.state,
-      metricsBefore
+      metricsBefore,
+      objectModels
     );
   } catch (error) {
     return {
@@ -1099,7 +1418,7 @@ export function createDeterministicHandler(
 ): RuntimeActionHandler<RuntimeState> {
   const mode = options.mode ?? "capability";
   if (mode === "manifest-action") {
-    return (context) => buildManifestActionTransition(context, capabilityFamily, options.templates);
+    return (context) => buildManifestActionTransition(context, capabilityFamily, options.templates, options.objectModels);
   }
 
   return (context) => buildTransition(context, capabilityFamily);

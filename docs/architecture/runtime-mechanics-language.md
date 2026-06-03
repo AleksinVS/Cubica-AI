@@ -169,7 +169,7 @@
 | `object.attribute.patch` | Изменить изменяемые атрибуты объекта | уменьшить количество ресурса |
 
 Не все операции нужно реализовывать сразу. На 2026-05-31 реализованы проверяемые эффекты `runtime.server.request`, `ui.panel.open`, `ui.screen.open`, `log.append`, `timeline.set`, `state.patch`, `flag.set`, `counter.add`, `collection.append` и `metric.add`.
-На 2026-06-03 ADR-041 принимает Object State Model как целевое расширение; `object.create`, `object.state.set` и `object.attribute.patch` пока являются проектируемыми операциями и должны быть добавлены через JSON Schema, contracts, runtime handlers и тесты.
+На 2026-06-03 реализован общий путь Object State Model для `object.create`, `object.state.set` и `object.attribute.patch`: операции описаны в JSON Schema, contracts, runtime handlers и нейтральных runtime tests. Полная миграция `Antarctica` на `state.public.objects.cards` остается отдельной фазой TSK-20260603.
 
 Для условного эффекта используется поле `when`. Условие может смотреть на метрику, состояние или количество элементов коллекции. По умолчанию условие читает текущее состояние после предыдущих effects. Если нужно сохранить старую семантику "проверить до действия", используется `readFrom: "preAction"`.
 
@@ -227,14 +227,15 @@
 ADR-041 вводит **игровое состояние объекта** - авторитетное состояние предметной игровой сущности в session state.
 Это не UI state и не локальный React state.
 
-Target model:
+Implemented model:
 
 - authoring-манифест описывает `objectTypes`: коллекцию, тип объекта, фасеты состояния и правила проекции для View;
 - runtime-манифест получает compiled `objectModels`, валидные по JSON Schema;
 - session state хранит object instances в `state.public.objects` или `state.secret.objects`;
 - Presenter строит object views для UI из static content, object state и projection rules;
 - динамические ресурсы создаются через `object.create`;
-- `Antarctica` должна мигрировать с `state.public.flags.cards` на `state.public.objects.cards` без постоянного dual path.
+- `simple-choice` служит fixture proof для static object state, dynamic resource creation и Presenter-projected UI без custom player plugin;
+- `Antarctica` должна мигрировать с `state.public.flags.cards` на `state.public.objects.cards` без постоянного dual path в следующей фазе.
 
 Пример состояния карточки:
 

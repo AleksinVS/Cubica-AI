@@ -57,6 +57,9 @@
             "logic": {
               "$ref": "#/definitions/gameLogic"
             },
+            "objectTypes": {
+              "$ref": "#/definitions/gameObjectTypeMap"
+            },
             "state": {
               "type": "object",
               "required": [
@@ -278,6 +281,140 @@
           "additionalProperties": true
         }
       ]
+    },
+    "gameObjectFacet": {
+      "type": "object",
+      "description": "Authoring definition of one independent object state axis.",
+      "required": [
+        "initial",
+        "values"
+      ],
+      "properties": {
+        "initial": {
+          "$ref": "#/definitions/gameObjectFacetValue"
+        },
+        "values": {
+          "type": "object",
+          "description": "Allowed facet values keyed by their runtime value.",
+          "minProperties": 1,
+          "additionalProperties": {
+            "$ref": "#/definitions/gameObjectFacetValueDefinition"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "gameObjectFacetValue": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    },
+    "gameObjectFacetValueDefinition": {
+      "type": "object",
+      "description": "Authoring metadata for one allowed facet value.",
+      "properties": {
+        "interactive": {
+          "type": "boolean"
+        },
+        "view": {
+          "$ref": "#/definitions/gameObjectViewRule"
+        },
+        "visible": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "gameObjectType": {
+      "allOf": [
+        {
+          "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/semanticEntity"
+        },
+        {
+          "type": "object",
+          "description": "Authoring object state model compiled into runtime objectModels.",
+          "required": [
+            "collection",
+            "scope",
+            "facets"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "facets": {
+              "type": "object",
+              "minProperties": 1,
+              "additionalProperties": {
+                "$ref": "#/definitions/gameObjectFacet"
+              }
+            },
+            "idField": {
+              "type": "string"
+            },
+            "scope": {
+              "enum": [
+                "session",
+                "player"
+              ],
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      ]
+    },
+    "gameObjectTypeMap": {
+      "type": "object",
+      "description": "Authoring registry of gameplay object state models keyed by object type id.",
+      "additionalProperties": {
+        "$ref": "#/definitions/gameObjectType"
+      }
+    },
+    "gameObjectViewRule": {
+      "type": "object",
+      "description": "Presenter projection rule for one object facet value.",
+      "properties": {
+        "actionIdFrom": {
+          "type": "string"
+        },
+        "fields": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "interactive": {
+          "type": "boolean"
+        },
+        "selectLabelFrom": {
+          "type": "string"
+        },
+        "summaryFrom": {
+          "type": "string"
+        },
+        "textFrom": {
+          "type": "string"
+        },
+        "titleFrom": {
+          "type": "string"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "visualState": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
     }
   }
 }
