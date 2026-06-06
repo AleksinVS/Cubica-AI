@@ -1,0 +1,212 @@
+# ADR-042: Editor Session Versioning And Lifecycle
+
+- **Дата**: 2026-06-05
+- **Статус**: Accepted
+- **Авторы**: Codex
+- **Компоненты**: Editor Web, Player Web, Runtime API, Game Projects, Plugin Validation, Deployment
+- **Связанные решения**: ADR-030, ADR-036, ADR-037, ADR-039, ADR-041
+
+## Оглавление
+
+- [1. Понимание решения](#1-понимание-решения)
+- [2. Контекст](#2-контекст)
+- [3. Термины](#3-термины)
+- [4. Решение](#4-решение)
+- [5. Версионирование платформы](#5-версионирование-платформы)
+- [6. Жизненный цикл сессии](#6-жизненный-цикл-сессии)
+- [7. Production-модель](#7-production-модель)
+- [8. Инварианты](#8-инварианты)
+- [9. Альтернативы](#9-альтернативы)
+- [10. Последствия](#10-последствия)
+- [11. Связанные артефакты](#11-связанные-артефакты)
+
+## 1. Понимание решения
+
+Решение понято так: editor session worktree уже доказал ценность как изолированная рабочая копия проекта для authoring edits, preview and Save commits. Но текущая реализация имеет два архитектурных разрыва:
+
+1. открытая editor-сессия может сломаться после обновления `player-web`, `runtime-api`, compiler or plugin API, потому что session plugin source проверяется против текущей платформы, а не против той версии, на которой сессия была создана;
+2. editor-сессии создаются без строгого жизненного цикла, из-за чего накапливаются десятки worktree and metadata files.
+
+Этот ADR фиксирует целевую модель: editor-сессия должна быть версионированным объектом с явным lifecycle, а обновление платформы должно происходить через controlled upgrade, not implicit breakage.
+
+## 2. Контекст
+
+ADR-036 ввел preview-first editor and session-backed workflow. ADR-037 and ADR-039 moved game-specific `player-web` plugins into `games/<gameId>/plugins/<pluginId>/` and made local preview load session-scoped plugin bundles through `contentSourceId`.
+
+The recent `Antarctica` object-state migration exposed a missing compatibility rule:
+
+- current platform API changed from `readCardFlags` to `readCardObjects`;
+- old editor worktrees still contained plugin source importing `readCardFlags`;
+- plugin validation compiled old session source against current platform API and failed before preview could start.
+
+This is not only a local bug. In production, users may keep editor sessions open while Cubica deploys new platform releases. Those sessions must remain usable, safely upgradeable or explicitly closed with a clear reason.
+
+## 3. Термины
+
+- **Editor session** - авторская сессия редактирования одного проекта или игры. Она имеет metadata, status, owner and working files.
+- **Worktree** - отдельная рабочая копия Git-репозитория, связанная с тем же `.git`, но расположенная в отдельной папке. В Cubica worktree используется как изолированная копия проекта для editor-сессии.
+- **Platform release** - неизменяемая версия платформенных компонентов: `editor-web`, `player-web`, `runtime-api`, compiler, JSON Schemas and plugin API facade.
+- **Release pinning** - привязка editor-сессии к конкретному `platformReleaseId`, чтобы preview and validation used the same platform contract until explicit upgrade.
+- **Session upgrade** - явная операция переноса editor-сессии на новый `platformReleaseId` with migrations and validation.
+- **Garbage collection** - управляемая очистка устаревших session metadata, worktrees and generated preview artifacts.
+- **Dirty session** - editor-сессия with unsaved authoring/plugin/layout changes compared with its base commit.
+
+## 4. Решение
+
+Cubica adopts a versioned editor session model.
+
+1. Every editor session must store:
+   - `sessionId`;
+   - `userId` or local developer identity;
+   - `projectId` or project root;
+   - `gameId`;
+   - `baseCommit`;
+   - `branchName`;
+   - `worktreePath`;
+   - `platformReleaseId`;
+   - `pluginApiVersion`;
+   - `status`;
+   - `createdAt`, `lastUsedAt`, `expiresAt`;
+   - dirty/saved summary.
+2. Preview, validation and compile must resolve session metadata first and use its `platformReleaseId` as part of the execution context.
+3. New platform releases must not silently change the validation/runtime contract of already open sessions.
+4. A session can move to a new platform release only through explicit `Upgrade session`.
+5. Session creation must be controlled: the default action reuses an active compatible session for the same `userId + projectId + gameId`.
+6. Creating an additional session requires an explicit user action and a human-readable label or reason.
+7. Session cleanup is mandatory platform behavior, not a manual developer habit.
+
+## 5. Версионирование платформы
+
+Each deployable platform build must produce or expose a `platformReleaseId`. The id must cover at least:
+
+- `editor-web` version;
+- `player-web` version;
+- `runtime-api` version;
+- authoring compiler version;
+- runtime manifest schema version;
+- plugin schema version;
+- `PlayerPluginApi` version.
+
+The first implementation may represent this as a local JSON metadata file. Production should treat it as release metadata generated by deployment.
+
+Preview routing rules:
+
+1. If `session.platformReleaseId` equals current platform release, run preview normally.
+2. If an older compatible release is still available, route validation/preview to that release.
+3. If the old release is no longer available but still within retention, block preview with a clear `upgrade required` diagnostic.
+4. If the session expired, block preview and require restore/clone from saved changes or close.
+
+Plugin API rule:
+
+- Minor additions are allowed inside the same `pluginApiVersion`.
+- Removing or renaming public exports is a breaking change and requires a new major `pluginApiVersion`.
+- Deprecated exports must remain until the old major version is retired through a documented migration window.
+
+## 6. Жизненный цикл сессии
+
+Session status values:
+
+- `active` - currently usable and recently touched.
+- `idle` - usable but not recently touched.
+- `dirty` - contains unsaved changes.
+- `saved` - Save commit was created and no unsaved changes remain.
+- `closed` - explicitly closed by user or API.
+- `expired` - past retention policy; cannot be used without restore/upgrade.
+- `orphaned` - metadata or worktree exists without the other side and must be cleaned.
+
+Default deduplication rule:
+
+```text
+one active non-expired session per userId + projectId + gameId + platformReleaseId
+```
+
+If a matching session exists, `POST /api/editor/session` should return it instead of creating another worktree.
+
+Lifecycle operations:
+
+- `touch` updates `lastUsedAt` for file, layout, compile, validate, preview and save actions.
+- `close` removes the worktree, removes metadata and prunes Git worktree admin files.
+- `save` creates a commit inside the session branch and marks the session clean.
+- `upgrade` creates a safe upgrade attempt, runs migrations and validation, then switches `platformReleaseId` only after success.
+- `garbage collect` cleans expired and orphaned sessions according to policy.
+
+Retention policy must distinguish clean and dirty sessions:
+
+- clean idle sessions may expire quickly;
+- dirty sessions require longer retention and a visible warning before cleanup;
+- closed sessions are removed immediately or during the next cleanup job;
+- orphaned worktrees and orphaned metadata are always cleanup candidates.
+
+## 7. Production-модель
+
+Production must not store editor worktrees in the same mutable directory model used by local development. The target model is:
+
+1. Session metadata is stored in a durable database table or service-owned store.
+2. Worktree or workspace storage is isolated per project/session and not exposed to production player requests directly.
+3. Preview content source registration is scoped to editor preview only and cannot be used by public player sessions.
+4. Platform releases are immutable. Runtime preview can route to a compatible release or require session upgrade.
+5. Background cleanup runs as a scheduled job with metrics and audit logs.
+6. Manual cleanup remains available for operators, but routine cleanup is automatic.
+
+The current `.tmp/editor-worktrees` and `.tmp/editor-sessions` layout remains a local-development implementation of the same model, not the production storage contract.
+
+## 8. Инварианты
+
+Mandatory invariants:
+
+1. Runtime/player production mode must not load editor worktree code.
+2. Editor preview must not run plugin validation against an incompatible plugin API without reporting a version mismatch.
+3. Public plugin API must be backward-compatible within the same major version.
+4. Opening the same game repeatedly must not create unbounded duplicate worktrees.
+5. Every session must have a cleanup path.
+6. Worktree deletion must go through `git worktree remove --force` where possible, followed by `git worktree prune`.
+7. Cleanup must never remove the main repository worktree.
+8. Dirty session cleanup must be policy-controlled and visible to the user or operator.
+
+## 9. Альтернативы
+
+### A. Always use current platform for all sessions
+
+Rejected. This is the current failure mode: platform API changes can break old session plugin code without user action.
+
+### B. Never allow old sessions after deploy
+
+Rejected. This protects the platform but loses user work and makes deploys disruptive.
+
+### C. Copy platform source into every editor worktree
+
+Rejected. This duplicates platform code, makes security updates harder and blurs project/plugin boundaries.
+
+### D. Remove worktree sessions and write directly to main checkout
+
+Rejected. It removes isolation, makes preview edits unsafe and conflicts with the Project Git Workspace direction from ADR-036.
+
+### E. Keep cleanup as a manual developer command
+
+Rejected. The observed accumulation of 72 editor worktrees shows that manual cleanup is not a reliable lifecycle model.
+
+## 10. Последствия
+
+Positive consequences:
+
+- platform deploys become safer for open editor sessions;
+- plugin API compatibility is explicit and testable;
+- duplicate sessions are controlled;
+- cleanup becomes observable and automatic;
+- production and local development share the same conceptual session model.
+
+Costs and risks:
+
+- session metadata schema must grow;
+- preview routing needs a release-resolution layer;
+- production needs durable session metadata and scheduled cleanup;
+- upgrade workflows need clear UI and diagnostics;
+- old platform releases require retention policy and operational ownership.
+
+## 11. Связанные артефакты
+
+- `docs/tasks/active/TSK-20260605-editor-session-versioning-and-gc.md` - execution plan for this ADR.
+- `docs/architecture/adrs/036-semantic-authoring-and-preview-timeline-editor.md` - preview-first editor baseline.
+- `docs/architecture/adrs/037-project-local-plugins-and-marketplace-safe-evolution.md` - project-local plugin boundary.
+- `docs/architecture/adrs/039-player-web-plugin-bundle-handoff.md` - preview and published plugin bundle handoff.
+- `docs/architecture/adrs/041-gameplay-object-state-model.md` - object-state migration context that exposed plugin API compatibility risk.

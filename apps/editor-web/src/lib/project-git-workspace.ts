@@ -28,6 +28,21 @@ export interface ProjectGitSession {
   readonly baseCommit: string;
 }
 
+export interface ProjectGitStatusSummary {
+  readonly isDirty: boolean;
+  readonly changedPaths: readonly string[];
+}
+
+export interface ProjectGitWorktreeSummary {
+  readonly worktreePath: string;
+  readonly head?: string;
+  readonly branch?: string;
+  readonly detached: boolean;
+  readonly bare: boolean;
+  readonly locked: boolean;
+  readonly prunable: boolean;
+}
+
 export interface CreateProjectGitSessionInput {
   readonly projectRoot: string;
   readonly gameId: string;
@@ -61,7 +76,7 @@ export interface PluginValidationResult {
 
 export async function createProjectGitSession(input: CreateProjectGitSessionInput): Promise<ProjectGitSession> {
   validateGameId(input.gameId);
-  const projectRoot = await resolveGitProjectRoot(input.projectRoot);
+  const projectRoot = await resolveProjectGitRoot(input.projectRoot);
   const sessionId = input.sessionId ?? createSessionId(input.gameId);
   validateSessionId(sessionId);
   const branchName = `editor/session/${sessionId}`;
@@ -82,11 +97,47 @@ export async function createProjectGitSession(input: CreateProjectGitSessionInpu
 }
 
 export async function removeProjectGitSession(session: Pick<ProjectGitSession, "projectRoot" | "worktreePath">): Promise<void> {
-  const projectRoot = await resolveGitProjectRoot(session.projectRoot);
+  const projectRoot = await resolveProjectGitRoot(session.projectRoot);
   await git(projectRoot, ["worktree", "remove", "--force", session.worktreePath]).catch(async () => {
     await rm(session.worktreePath, { recursive: true, force: true });
   });
-  await git(projectRoot, ["worktree", "prune"]).catch(() => undefined);
+  await pruneProjectGitWorktrees(projectRoot);
+}
+
+export async function pruneProjectGitWorktrees(projectRoot: string): Promise<void> {
+  const resolvedProjectRoot = await resolveProjectGitRoot(projectRoot);
+  await git(resolvedProjectRoot, ["worktree", "prune"]).catch(() => undefined);
+}
+
+/**
+ * Returns the current Git status for an editor worktree.
+ *
+ * The editor session store uses this as the source of truth for whether a
+ * session is dirty (contains uncommitted changes). This avoids guessing from
+ * editor actions and also catches plugin/layout changes written by tooling.
+ */
+export async function getProjectGitStatusSummary(worktreePath: string): Promise<ProjectGitStatusSummary> {
+  const resolvedWorktreePath = await resolveExistingDirectory(worktreePath);
+  const output = await git(resolvedWorktreePath, ["status", "--porcelain=v1", "-z"]);
+  const changedPaths = parsePorcelainStatusPaths(output);
+
+  return {
+    isDirty: changedPaths.length > 0,
+    changedPaths
+  };
+}
+
+/**
+ * Lists Git worktrees in porcelain format for lifecycle cleanup.
+ *
+ * Porcelain output is a stable machine-readable format documented by Git. The
+ * session GC uses it to distinguish linked editor worktrees from the main
+ * checkout and from arbitrary directories under `.tmp`.
+ */
+export async function listProjectGitWorktrees(projectRoot: string): Promise<readonly ProjectGitWorktreeSummary[]> {
+  const resolvedProjectRoot = await resolveProjectGitRoot(projectRoot);
+  const output = await git(resolvedProjectRoot, ["worktree", "list", "--porcelain"]);
+  return parseWorktreeList(output);
 }
 
 export async function saveProjectGitSession(input: SaveProjectGitSessionInput): Promise<ProjectGitCommitResult> {
@@ -191,7 +242,7 @@ function collectChangeSetFilePaths(changeSet: EditorChangeSet): readonly string[
   ];
 }
 
-async function resolveGitProjectRoot(projectRoot: string): Promise<string> {
+export async function resolveProjectGitRoot(projectRoot: string): Promise<string> {
   const root = await resolveExistingDirectory(projectRoot);
   const topLevel = (await git(root, ["rev-parse", "--show-toplevel"])).trim();
   return realpath(topLevel);
@@ -210,6 +261,74 @@ async function resolveExistingDirectory(directory: string): Promise<string> {
 async function stagedChangedPaths(worktreePath: string): Promise<readonly string[]> {
   const output = await git(worktreePath, ["diff", "--cached", "--name-only", "-z"]);
   return output.split("\0").filter((item) => item !== "");
+}
+
+function parsePorcelainStatusPaths(output: string): readonly string[] {
+  const entries = output.split("\0").filter((entry) => entry !== "");
+  const paths: string[] = [];
+
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    if (entry.length < 4) {
+      continue;
+    }
+
+    const statusCode = entry.slice(0, 2);
+    paths.push(normalizeProjectRelativePath(entry.slice(3)));
+    if ((statusCode.includes("R") || statusCode.includes("C")) && index + 1 < entries.length) {
+      index += 1;
+    }
+  }
+
+  return paths.sort();
+}
+
+function parseWorktreeList(output: string): readonly ProjectGitWorktreeSummary[] {
+  const records = output.split(/\n\s*\n/u).map((record) => record.trim()).filter((record) => record !== "");
+  const worktrees: ProjectGitWorktreeSummary[] = [];
+
+  for (const record of records) {
+    const lines = record.split("\n");
+    const firstLine = lines[0];
+    if (!firstLine.startsWith("worktree ")) {
+      continue;
+    }
+
+    let head: string | undefined;
+    let branch: string | undefined;
+    let detached = false;
+    let bare = false;
+    let locked = false;
+    let prunable = false;
+
+    for (const line of lines.slice(1)) {
+      if (line.startsWith("HEAD ")) {
+        head = line.slice("HEAD ".length);
+      } else if (line.startsWith("branch ")) {
+        branch = line.slice("branch ".length);
+      } else if (line === "detached") {
+        detached = true;
+      } else if (line === "bare") {
+        bare = true;
+      } else if (line.startsWith("locked")) {
+        locked = true;
+      } else if (line.startsWith("prunable")) {
+        prunable = true;
+      }
+    }
+
+    worktrees.push({
+      worktreePath: firstLine.slice("worktree ".length),
+      head,
+      branch,
+      detached,
+      bare,
+      locked,
+      prunable
+    });
+  }
+
+  return worktrees;
 }
 
 async function git(cwd: string, args: readonly string[], env: Record<string, string | undefined> = {}): Promise<string> {
@@ -271,7 +390,7 @@ function isPathAllowedByPrefixes(filePath: string, allowedPaths: ReadonlySet<str
 }
 
 function createSessionId(gameId: string): string {
-  return `${gameId}-${Date.now().toString(36)}`;
+  return `${gameId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 function validateSessionId(sessionId: string): void {

@@ -7,7 +7,7 @@
  */
 import { compileGameForEditor } from "@/lib/compiler-workflow";
 import { EditorRepositoryError } from "@/lib/editor-repository";
-import { repoRootForSession } from "@/lib/editor-session-store";
+import { repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import { validateAndBundleProjectPlugins } from "@/lib/project-plugin-validation";
 
@@ -34,6 +34,9 @@ export async function POST(request: Request) {
     });
 
     if (!compile.ok || session === undefined) {
+      if (session !== undefined) {
+        await touchEditorSession(session.sessionId);
+      }
       return Response.json(compile);
     }
 
@@ -41,6 +44,8 @@ export async function POST(request: Request) {
       gameId: body.gameId,
       repoRoot: session.worktreePath
     });
+
+    await touchEditorSession(session.sessionId);
 
     return Response.json({
       ...compile,

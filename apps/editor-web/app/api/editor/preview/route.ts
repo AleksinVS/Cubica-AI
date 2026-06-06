@@ -13,7 +13,7 @@ import {
   type EditorCompilerDiagnostic
 } from "@/lib/compiler-workflow";
 import { EditorRepositoryError } from "@/lib/editor-repository";
-import { repoRootForSession } from "@/lib/editor-session-store";
+import { evaluateEditorSessionCompatibility, repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import {
   validateAndBundleProjectPlugins,
@@ -37,9 +37,25 @@ export async function POST(request: Request) {
     }
 
     const { repoRoot, session } = await repoRootForSession(body.sessionId, body.gameId);
+    if (session !== undefined) {
+      const compatibility = evaluateEditorSessionCompatibility(session);
+      if (!compatibility.ok) {
+        return Response.json({
+          ok: false,
+          ready: false,
+          gameId: body.gameId,
+          diagnostics: compatibility.diagnostics.map((message) => previewReadinessDiagnostic(`upgrade required: ${message}`)),
+          artifacts: []
+        });
+      }
+    }
+
     const workflowRepoRoot = repoRoot ?? configuredEditorProjectRoot();
     const compile = await compileGameForEditor({ gameId: body.gameId, checkOnly: false, repoRoot: workflowRepoRoot });
     if (!compile.ok) {
+      if (session !== undefined) {
+        await touchEditorSession(session.sessionId);
+      }
       return Response.json({
         ok: false,
         ready: false,
@@ -53,6 +69,9 @@ export async function POST(request: Request) {
       ? { ok: true, diagnostics: [], playerWebBundles: [] }
       : await validateAndBundleProjectPlugins({ gameId: body.gameId, repoRoot: session.worktreePath });
     if (!pluginValidation.ok) {
+      if (session !== undefined) {
+        await touchEditorSession(session.sessionId);
+      }
       return Response.json({
         ok: false,
         ready: false,
@@ -69,6 +88,9 @@ export async function POST(request: Request) {
           contentRoot: session.worktreePath,
           pluginBundles: pluginValidation.playerWebBundles
         });
+    if (session !== undefined) {
+      await touchEditorSession(session.sessionId);
+    }
     const sourceMaps = readiness.ready ? await loadPreviewSelectionSourceMaps(body.gameId, workflowRepoRoot) : [];
     return Response.json({
       ok: readiness.ready,

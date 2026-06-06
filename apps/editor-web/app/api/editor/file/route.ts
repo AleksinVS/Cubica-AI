@@ -6,7 +6,7 @@
  * escape checks before any file read or write.
  */
 import { EditorRepositoryError, openAuthoringFile, saveAuthoringFile } from "@/lib/editor-repository";
-import { repoRootForSession } from "@/lib/editor-session-store";
+import { markEditorSessionSaved, repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
 import { allowedSavePathsForGame, saveProjectGitSession } from "@/lib/project-git-workspace";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import { validateAndBundleProjectPlugins } from "@/lib/project-plugin-validation";
@@ -63,6 +63,7 @@ export async function PUT(request: NextRequest) {
       repoRoot: session.session.worktreePath
     });
     if (!pluginValidation.ok) {
+      await touchEditorSession(session.session.sessionId);
       return Response.json({
         ...saved,
         sessionId: session.session.sessionId,
@@ -74,6 +75,10 @@ export async function PUT(request: NextRequest) {
       worktreePath: session.session.worktreePath,
       message: body.commitMessage ?? `Save ${body.gameId}/${body.filePath}`,
       allowedPaths: allowedSavePathsForGame({ gameId: body.gameId })
+    });
+    await markEditorSessionSaved({
+      sessionId: session.session.sessionId,
+      commitHash: commit.commitHash
     });
 
     return Response.json({

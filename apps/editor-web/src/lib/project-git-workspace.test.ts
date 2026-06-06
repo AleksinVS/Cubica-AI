@@ -9,6 +9,8 @@ import type { EditorChangeSet } from "@cubica/editor-engine";
 import {
   allowedSavePathsForGame,
   createProjectGitSession,
+  getProjectGitStatusSummary,
+  listProjectGitWorktrees,
   removeProjectGitSession,
   restoreSavedVersion,
   saveProjectGitSession,
@@ -56,6 +58,29 @@ describe("project Git workspace", () => {
     expect(result.committed).toBe(true);
     expect(result.changedPaths).toEqual(["games/simple-choice/authoring/game.authoring.json"]);
     expect(result.commitHash).toMatch(/^[0-9a-f]{40}$/u);
+
+    const worktrees = await listProjectGitWorktrees(repoRoot);
+    expect(worktrees.some((worktree) => worktree.worktreePath === session.worktreePath)).toBe(true);
+
+    await removeProjectGitSession(session);
+  });
+
+  it("reports dirty paths for an editor worktree", async () => {
+    const session = await createProjectGitSession({
+      projectRoot: repoRoot,
+      gameId: "simple-choice",
+      sessionId: "simple-choice-status"
+    });
+
+    await writeFile(
+      path.join(session.worktreePath, "games", "simple-choice", "authoring", "game.authoring.json"),
+      "{\"title\":\"Dirty\"}\n",
+      "utf8"
+    );
+
+    const status = await getProjectGitStatusSummary(session.worktreePath);
+    expect(status.isDirty).toBe(true);
+    expect(status.changedPaths).toEqual(["games/simple-choice/authoring/game.authoring.json"]);
 
     await removeProjectGitSession(session);
   });

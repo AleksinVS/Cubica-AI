@@ -4,14 +4,30 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { closeEditorSession, createEditorSession, repoRootForSession } from "./editor-session-store";
+import {
+  closeEditorSession,
+  createEditorSession,
+  garbageCollectEditorSessions,
+  markEditorSessionSaved,
+  planEditorSessionUpgrade,
+  readEditorSession,
+  repoRootForSession,
+  touchEditorSession,
+  type EditorSessionDocument
+} from "./editor-session-store";
 import { openAuthoringFile, saveAuthoringFile } from "./editor-repository";
+import { allowedSavePathsForGame, saveProjectGitSession } from "./project-git-workspace";
 
 const execFileAsync = promisify(execFile);
 const repoRoot = path.resolve(process.cwd(), ".tmp", "editor-session-store-tests");
+const workspaceRoot = path.resolve(process.cwd(), "../..");
+const metadataRoot = path.join(workspaceRoot, ".tmp", "editor-sessions");
 
 describe("editor session store", () => {
+  const createdSessionIds = new Set<string>();
+
   beforeEach(async () => {
+    createdSessionIds.clear();
     await rm(repoRoot, { recursive: true, force: true });
     await mkdir(path.join(repoRoot, "games", "simple-choice", "authoring"), { recursive: true });
     await writeFile(path.join(repoRoot, "PROJECT_STRUCTURE.yaml"), "test: true\n", "utf8");
@@ -24,11 +40,14 @@ describe("editor session store", () => {
   });
 
   afterEach(async () => {
+    for (const sessionId of createdSessionIds) {
+      await closeEditorSession(sessionId).catch(() => undefined);
+    }
     await rm(repoRoot, { recursive: true, force: true });
   });
 
   it("creates a reusable worktree-backed session for repository adapters", async () => {
-    const opened = await createEditorSession({ gameId: "simple-choice", repoRoot });
+    const opened = await createTestSession();
     expect(opened.session.branchName).toMatch(/^editor\/session\//u);
     expect(opened.files.map((file) => file.filePath)).toEqual(["game.authoring.json"]);
 
@@ -56,10 +75,120 @@ describe("editor session store", () => {
     expect(mainDocument.text).toBe("{\"title\":\"Old\"}\n");
 
     await closeEditorSession(opened.session.sessionId);
+    createdSessionIds.delete(opened.session.sessionId);
   });
+
+  it("reuses a compatible active session by default and supports explicit new drafts", async () => {
+    const first = await createTestSession("reuse-user");
+    const second = await createTestSession("reuse-user");
+    const forced = await createTestSession("reuse-user", true);
+
+    expect(second.session.sessionId).toBe(first.session.sessionId);
+    expect(second.session.reused).toBe(true);
+    expect(forced.session.sessionId).not.toBe(first.session.sessionId);
+    expect(forced.session.reused).toBe(false);
+
+    const sessions = [first.session.sessionId, forced.session.sessionId];
+    for (const sessionId of sessions) {
+      await closeEditorSession(sessionId);
+      createdSessionIds.delete(sessionId);
+    }
+  });
+
+  it("stores v2 lifecycle metadata and records dirty versus saved state", async () => {
+    const opened = await createTestSession("dirty-user");
+    const session = await readEditorSession(opened.session.sessionId);
+
+    expect(session.schemaVersion).toBe(2);
+    expect(session.platformReleaseId).toBe("local-dev");
+    expect(session.pluginApiVersion).toBe("1.0");
+    expect(session.status).toBe("active");
+
+    const filePath = path.join(session.worktreePath, "games", "simple-choice", "authoring", "game.authoring.json");
+    await writeFile(filePath, "{\"title\":\"Dirty\"}\n", "utf8");
+
+    const dirty = await touchEditorSession(session.sessionId);
+    expect(dirty.status).toBe("dirty");
+    expect(dirty.dirtySummary.changedPaths).toEqual(["games/simple-choice/authoring/game.authoring.json"]);
+
+    const commit = await saveProjectGitSession({
+      worktreePath: session.worktreePath,
+      message: "Save dirty test",
+      allowedPaths: allowedSavePathsForGame({ gameId: "simple-choice" })
+    });
+    const saved = await markEditorSessionSaved({
+      sessionId: session.sessionId,
+      commitHash: commit.commitHash
+    });
+
+    expect(saved.status).toBe("saved");
+    expect(saved.dirtySummary.isDirty).toBe(false);
+    expect(saved.lastSavedCommit).toBe(commit.commitHash);
+
+    await closeEditorSession(session.sessionId);
+    createdSessionIds.delete(session.sessionId);
+  });
+
+  it("plans an upgrade when stored platform metadata is incompatible", async () => {
+    const opened = await createTestSession("upgrade-user");
+    const session = await readEditorSession(opened.session.sessionId);
+    await writeSessionMetadata({
+      ...session,
+      platformReleaseId: "old-release",
+      pluginApiVersion: "0.9"
+    });
+
+    const plan = await planEditorSessionUpgrade({ sessionId: session.sessionId });
+
+    expect(plan.dryRun).toBe(true);
+    expect(plan.requiresUpgrade).toBe(true);
+    expect(plan.ok).toBe(false);
+    expect(plan.diagnostics.join("\n")).toContain("Run session upgrade before preview");
+
+    await closeEditorSession(session.sessionId);
+    createdSessionIds.delete(session.sessionId);
+  });
+
+  it("garbage-collects expired clean sessions and keeps close idempotent", async () => {
+    const opened = await createTestSession("gc-user");
+    const session = await readEditorSession(opened.session.sessionId);
+    const expired = new Date(Date.now() - 60_000).toISOString();
+    await writeSessionMetadata({
+      ...session,
+      status: "expired",
+      expiresAt: expired,
+      updatedAt: expired,
+      lastUsedAt: expired
+    });
+
+    const dryRun = await garbageCollectEditorSessions({ dryRun: true });
+    expect(dryRun.removedSessions).toContain(session.sessionId);
+
+    const applied = await garbageCollectEditorSessions({ dryRun: false });
+    expect(applied.removedSessions).toContain(session.sessionId);
+    createdSessionIds.delete(session.sessionId);
+
+    const secondClose = await closeEditorSession(session.sessionId);
+    expect(secondClose.ok).toBe(true);
+    expect(secondClose.removed).toBe(false);
+  });
+
+  async function createTestSession(userId = "test-user", forceNew = false) {
+    const opened = await createEditorSession({ gameId: "simple-choice", repoRoot, userId, forceNew });
+    createdSessionIds.add(opened.session.sessionId);
+    return opened;
+  }
 });
 
 async function git(cwd: string, args: readonly string[]): Promise<string> {
   const result = await execFileAsync("git", [...args], { cwd });
   return result.stdout;
+}
+
+async function writeSessionMetadata(session: EditorSessionDocument): Promise<void> {
+  await writeFile(
+    path.join(metadataRoot, `${session.sessionId}.json`),
+    `${JSON.stringify(session, null, 2)}\n`,
+    "utf8"
+  );
 }

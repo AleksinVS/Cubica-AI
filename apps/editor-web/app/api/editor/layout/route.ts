@@ -6,7 +6,7 @@
  * and applies the same traversal and symlink guards used for authoring files.
  */
 import { EditorRepositoryError, openEditorLayout, saveEditorLayout, type EditorLayoutDocumentBody } from "@/lib/editor-repository";
-import { repoRootForSession } from "@/lib/editor-session-store";
+import { repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import { type NextRequest } from "next/server";
 
@@ -41,15 +41,19 @@ export async function PUT(request: NextRequest) {
       throw new EditorRepositoryError("Layout versionHash must be a string when provided.", 400);
     }
 
-    return Response.json(
-      await saveEditorLayout({
-        gameId: body.gameId,
-        authoringFilePath: body.filePath,
-        layout: body.layout,
-        versionHash: body.versionHash,
-        repoRoot: (await repoRootForSession(body.sessionId, body.gameId)).repoRoot ?? configuredEditorProjectRoot()
-      })
-    );
+    const session = await repoRootForSession(body.sessionId, body.gameId);
+    const saved = await saveEditorLayout({
+      gameId: body.gameId,
+      authoringFilePath: body.filePath,
+      layout: body.layout,
+      versionHash: body.versionHash,
+      repoRoot: session.repoRoot ?? configuredEditorProjectRoot()
+    });
+    if (session.session !== undefined) {
+      await touchEditorSession(session.session.sessionId);
+    }
+
+    return Response.json(saved);
   } catch (error) {
     return errorResponse(error);
   }
