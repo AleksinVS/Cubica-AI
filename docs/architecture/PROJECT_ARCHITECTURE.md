@@ -2,6 +2,8 @@
 
 Документ описывает целевую и фактическую архитектуру платформы Cubica на уровне сервисов, SDK и данных. Он дополняет `PROJECT_OVERVIEW.md` (бизнес‑и логический обзор) и ADR‑решения в `docs/architecture/adrs/` и помогает быстро понять, как концепции отражены в структуре репозитория.
 
+Для общего понимания архитектуры этот файл является обязательной краткой выжимкой ADR: сами ADR нужно читать только для дополнительного контекста, альтернатив или глубокого разбора решения.
+
 > Термины:
 > - **LLM** — Large Language Model, «большая языковая модель», используемая как игровой движок.
 > - **SDK** — Software Development Kit, набор библиотек и утилит для интеграции с платформой.
@@ -283,6 +285,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - **ADR-011 (Multiplayer):** Free-form модель с очередью событий для поддержки нескольких игроков в сессии, явной версионностью состояния (`state_version`) и последовательностью событий (`sequence`), а также правилами обработки зависших и ошибочных событий.
 - **ADR-012 (Training Metadata):** Обучающие метаданные и методические материалы в манифесте игры.
 - **ADR-013 (Text Anchors & Manifest Split):** Текстовые якоря для синхронизации с источниками и разделение логического и UI-манифестов.
+- **ADR-014 (Viewers Library Architecture):** proposed путь для библиотеки viewers в `SDK/viewers/` и проверенных клиентских скриптов: игры хранят контент, viewer выбирается через `meta.viewer`, а клиентские скрипты загружаются только из проверенного реестра с подписью, хешем и CSP-ограничениями.
 - **ADR-015 (Extension Packs):** Историческая архитектура пакетов расширений и гибридная модель движка; текущая runtime-api политика уточнена ADR-040.
 - **ADR-016 (Design Artifacts):** Дизайн-артефакты для ИИ-агентов в UI-манифесте — JSON-описания изображений с семантической разметкой и дизайн-токенами.
 - **ADR-017 (Modular Monolith Transition):** Ближайшая backend‑фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
@@ -311,6 +314,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - **ADR-044 (Переносимость Agent UI и границы протоколов):** фиксирует CopilotKit как заменяемый UI/runtime-адаптер, AG-UI как заменяемый адаптер внешнего протокола и Cubica agent contracts как долговременную границу для инструментов, контекста, валидации, аудита и production LLM backend.
 - **ADR-045 (Cubica-Owned Generative UI And MVP CopilotKit Adapter):** фиксирует CopilotKit как MVP-адаптер первого этапа, целевой собственный compatible Cubica Agent UI и Cubica Surface Protocol for declarative Generative UI.
 - **ADR-046 (AI-Driven Game Runtime Mode):** фиксирует `ai-driven` и `hybrid` execution modes, где Agent Runtime может быть обязательной частью игрового исполнения, а агент возвращает валидируемые state effects, actions and Cubica Surface.
+- **ADR-047 (AI Agent Safety Remediation Gates):** accepted safety gates перед production Agent Runtime: human approval хранится как Cubica approval envelope, rejected Agent Turn не применяет effects, `allowedCapabilities` является исполняемым runtime allowlist, Surface actions проверяются channel policy, а non-Web projections fail closed.
 
 
 ---
@@ -407,4 +411,12 @@ Live LLM, реальные платежи и внешние сети не вхо
 - `docs/tasks/artifacts/` — постоянные артефакты рабочих задач.
 - `docs/tasks/archive/` — архив старой системы `milestones/`, `epics/`, `features/`, `content-packs/`.
 
-ADR‑файлы в `docs/architecture/adrs/` фиксируют архитектурные решения. `PROJECT_ARCHITECTURE.md` должен оставаться согласованным с актуальными ADR, `NEXT_STEPS.md` и активными задачами.
+ADR‑файлы в `docs/architecture/adrs/` фиксируют архитектурные решения. `PROJECT_ARCHITECTURE.md` является обязательной краткой выжимкой этих решений и должен оставаться согласованным с актуальными ADR, `NEXT_STEPS.md` и активными задачами.
+
+Правило синхронизации:
+
+- любое добавление или изменение ADR должно в том же изменении обновлять `PROJECT_ARCHITECTURE.md`;
+- в `PROJECT_ARCHITECTURE.md` должны быть отражены все текущие активные и перспективные ADR, включая `Accepted`, `Proposed` и `Draft`, если они описывают живое или возможное направление архитектуры;
+- описание решения должно быть минимально необходимым и достаточным: суть решения, ключевые ограничения, инварианты и последствия, без планов исполнения и без дублирования всего ADR;
+- агенты должны проверять актуальность `PROJECT_ARCHITECTURE.md` при изменении статуса, области действия, ограничений или последствий ADR;
+- для общего понимания архитектуры достаточно `PROJECT_ARCHITECTURE.md`; отдельные ADR читаются только для дополнительного контекста, альтернатив или глубокого разбора.
