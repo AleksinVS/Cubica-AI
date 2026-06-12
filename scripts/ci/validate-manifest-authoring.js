@@ -17,7 +17,19 @@ const { compileAuthoringFile, validateRuntimeManifest } = require("../manifest-t
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
-const authoringOnlyKeys = new Set(["_type", "_extends", "_label", "_definitions", "_semantics", "_schemaVersion", "_manifestType", "_channel", "_source_trace"]);
+const authoringOnlyKeys = new Set([
+  "_type",
+  "_extends",
+  "_label",
+  "_definitions",
+  "_semantics",
+  "_prompt",
+  "_promptTemplate",
+  "_schemaVersion",
+  "_manifestType",
+  "_channel",
+  "_source_trace"
+]);
 
 function fail(message) {
   console.error(`validate-manifest-authoring: ${message}`);

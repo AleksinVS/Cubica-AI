@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createSchemaRegistry } from "@cubica/editor-engine";
 
 import { embeddedAuthoringSample } from "./authoring-sample";
-import { registerLocalAuthoringSchemas, gameAuthoringSchemaId } from "./editor-json-schema";
+import { registerLocalAuthoringSchemas, gameAuthoringSchemaId, uiAuthoringSchemaId } from "./editor-json-schema";
 import {
   applyJsonPropertyEditResult,
   applyPropertyEdit,
@@ -107,6 +107,144 @@ describe("editor web adapter", () => {
     expect(viewModel.diagnostics.some((diagnostic) => diagnostic.source === "semantic")).toBe(true);
     expect(viewModel.diagnostics.every((diagnostic) => diagnostic.label.length > 0)).toBe(true);
     expect(viewModel.tree.root.subtreeDiagnosticCount).toBeGreaterThan(0);
+  });
+
+  it("accepts element prompts in local game and UI authoring schemas", () => {
+    const registry = createSchemaRegistry();
+    registerLocalAuthoringSchemas(registry);
+
+    const cases = [
+      {
+        schemaId: gameAuthoringSchemaId,
+        filePath: "game.authoring.json",
+        promptOwnerPointer: "/root/logic/actions/0",
+        promptStatusPointer: "/root/logic/actions/0/_prompt/status",
+        document: {
+          $schema: gameAuthoringSchemaId,
+          _schemaVersion: "2.0",
+          _manifestType: "game",
+          _definitions: {
+            "game.PromptedActionPrototype": {
+              _semantics: "Reusable prototype that proves prompt templates are valid in game authoring.",
+              _promptTemplate: {
+                raw: "Describe the player choice, state effects and methodology.",
+                language: "en",
+                appliesTo: "game.PromptedActionPrototype"
+              }
+            }
+          },
+          root: {
+            _type: "game.Game",
+            _label: "Prompted Game",
+            meta: {
+              id: "prompted-game",
+              version: "1.0.0",
+              name: "Prompted Game",
+              description: "Fixture that validates element prompt fields.",
+              schemaVersion: "1.1"
+            },
+            config: {},
+            logic: {
+              actions: [
+                {
+                  id: "choice.accept",
+                  _type: "game.Action",
+                  _label: "Accept choice",
+                  _prompt: {
+                    status: "confirmed",
+                    raw: "The player accepts a generic choice and receives one score point.",
+                    normalized: "Create a generic accept-choice action that adds one score point.",
+                    source: "user",
+                    language: "en",
+                    updatedAt: "2026-06-12T00:00:00Z"
+                  },
+                  handlerType: "manifest-data"
+                }
+              ]
+            },
+            state: {
+              public: {}
+            }
+          }
+        }
+      },
+      {
+        schemaId: uiAuthoringSchemaId,
+        filePath: "ui/web.authoring.json",
+        promptOwnerPointer: "/root/screens/0/root",
+        promptStatusPointer: "/root/screens/0/root/_prompt/status",
+        document: {
+          $schema: uiAuthoringSchemaId,
+          _schemaVersion: "2.0",
+          _manifestType: "ui",
+          _channel: "web",
+          _definitions: {
+            "ui.PromptedButtonPrototype": {
+              _semantics: "Reusable prototype that proves prompt templates are valid in UI authoring.",
+              _promptTemplate: {
+                raw: "Describe button text, onClick action and expected player result.",
+                language: "en",
+                appliesTo: "ui.PromptedButtonPrototype"
+              }
+            }
+          },
+          root: {
+            _type: "ui.Manifest",
+            _label: "Prompted UI",
+            meta: {
+              id: "prompted-game.ui.web",
+              version: "1.0.0",
+              game_id: "prompted-game"
+            },
+            entry_point: "intro",
+            screens: [
+              {
+                id: "intro",
+                _type: "ui.Screen",
+                _label: "Intro",
+                root: {
+                  id: "intro.accept",
+                  _type: "ui.Component",
+                  _label: "Accept button",
+                  _prompt: {
+                    status: "confirmed",
+                    raw: "Show a button that sends the choice.accept action.",
+                    normalized: "Create a button that sends the runtime action choice.accept.",
+                    source: "user",
+                    language: "en",
+                    updatedAt: "2026-06-12T00:00:00Z"
+                  },
+                  type: "buttonComponent",
+                  actions: {
+                    onClick: {
+                      command: "requestServer",
+                      payload: {
+                        actionId: "choice.accept"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      }
+    ] as const;
+
+    for (const item of cases) {
+      const viewModel = createEditorViewModel(JSON.stringify(item.document), {
+        filePath: item.filePath,
+        schemaRegistry: registry,
+        schemaId: item.schemaId
+      });
+      const promptProperty = selectProperties(viewModel.snapshot, item.promptOwnerPointer).find(
+        (property) => property.label === "_prompt"
+      );
+
+      expect(viewModel.diagnostics.filter((diagnostic) => diagnostic.source === "schema")).toEqual([]);
+      expect(viewModel.jsonTree.nodeByPointer.get(item.promptStatusPointer)).toBeDefined();
+      expect(promptProperty).toMatchObject({ label: "_prompt", editable: true, valueType: "object" });
+    }
   });
 
   it("can resolve tree nodes for deep pointers and their ancestors", () => {

@@ -4,5 +4,6 @@
   "044-agent-ui-portability-and-protocol-boundaries.md": "ADR-044: переносимость Agent UI и протокольные границы, защищающие Cubica от жесткой привязки к CopilotKit, AG-UI и production LLM backend.",
   "045-cubica-owned-generative-ui-and-mvp-copilotkit.md": "ADR-045: Cubica-owned Generative UI direction, где CopilotKit является MVP-адаптером, а целевой слой - собственный совместимый Cubica Agent UI и Surface Protocol.",
   "046-ai-driven-game-runtime-mode.md": "ADR-046: AI-driven game runtime mode, где манифест может объявить Agent Runtime обязательной частью исполнения игры.",
-  "047-ai-agent-safety-remediation-gates.md": "ADR-047: proposed safety gates for AI agent remediation: approval envelope, rejected Agent Turn semantics, capability enforcement, channel action policy and production backend auth."
+  "047-ai-agent-safety-remediation-gates.md": "ADR-047: proposed safety gates for AI agent remediation: approval envelope, rejected Agent Turn semantics, capability enforcement, channel action policy and production backend auth.",
+  "048-element-authoring-prompt-contract.md": "ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах."
 }

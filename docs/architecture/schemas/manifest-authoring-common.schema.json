@@ -24,6 +24,117 @@
       "minLength": 1,
       "description": "Plain-language explanation of what this entity means in game logic or UI."
     },
+    "promptStatus": {
+      "type": "string",
+      "description": "Lifecycle state of a saved element prompt. Draft stores unconfirmed author input, normalized stores agent-prepared text awaiting confirmation, and confirmed is the target saved state.",
+      "enum": [
+        "draft",
+        "normalized",
+        "confirmed"
+      ]
+    },
+    "promptSource": {
+      "type": "string",
+      "description": "Origin of the saved prompt text.",
+      "enum": [
+        "template",
+        "user",
+        "agent",
+        "imported",
+        "migration"
+      ]
+    },
+    "promptLanguage": {
+      "type": "string",
+      "description": "BCP-47-like language tag used for the prompt text, for example ru or en-US.",
+      "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"
+    },
+    "isoDateTimeString": {
+      "type": "string",
+      "description": "UTC timestamp for authoring metadata. The schema uses a pattern instead of format so validation stays local and does not depend on optional Ajv format plugins.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d{3})?Z$"
+    },
+    "elementPrompt": {
+      "type": "object",
+      "description": "Saved authoring-only prompt for one concrete game/UI entity. It captures author intent for content, behavior, state effects and methodology; it must not leak into generated runtime manifests.",
+      "required": [
+        "status",
+        "raw",
+        "source",
+        "language",
+        "updatedAt"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/promptStatus"
+        },
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Original user text or text copied from a prototype prompt template."
+        },
+        "normalized": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Agent-structured wording that preserves the raw prompt meaning and can be shown to the user for confirmation."
+        },
+        "source": {
+          "$ref": "#/definitions/promptSource"
+        },
+        "language": {
+          "$ref": "#/definitions/promptLanguage"
+        },
+        "updatedAt": {
+          "$ref": "#/definitions/isoDateTimeString"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "normalized",
+                  "confirmed"
+                ]
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "normalized"
+            ]
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "promptTemplate": {
+      "type": "object",
+      "description": "Authoring-only prompt template stored on reusable prototypes. Editors copy raw template text into a new instance _prompt.raw before the user edits and confirms it.",
+      "required": [
+        "raw",
+        "language"
+      ],
+      "properties": {
+        "raw": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Prompt starter copied into a concrete element when the prototype is used."
+        },
+        "language": {
+          "$ref": "#/definitions/promptLanguage"
+        },
+        "appliesTo": {
+          "$ref": "#/definitions/semanticType",
+          "description": "Optional semantic type that this template is designed to create or refine."
+        }
+      },
+      "additionalProperties": false
+    },
     "semanticEntity": {
       "type": "object",
       "description": "Base metadata for a real authoring entity shown by the editor entity tree. The authoring JSON remains the source of truth; this metadata must not leak into generated runtime manifests.",
@@ -43,6 +154,9 @@
         },
         "_semantics": {
           "$ref": "#/definitions/semanticDescription"
+        },
+        "_prompt": {
+          "$ref": "#/definitions/elementPrompt"
         }
       },
       "additionalProperties": true
@@ -64,6 +178,9 @@
         "_label": {
           "$ref": "#/definitions/editorLabel",
           "description": "Optional editor-facing name for a reusable prototype. Real entity labels belong on root-owned entities."
+        },
+        "_promptTemplate": {
+          "$ref": "#/definitions/promptTemplate"
         }
       },
       "additionalProperties": true

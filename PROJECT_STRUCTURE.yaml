@@ -26,6 +26,7 @@ docs: # Архитектура, задачи, планирование
       045-cubica-owned-generative-ui-and-mvp-copilotkit.md: file # ADR-045: Cubica-owned Generative UI direction, где CopilotKit является MVP-адаптером, а целевой слой - собственный совместимый Cubica Agent UI и Surface Protocol.
       046-ai-driven-game-runtime-mode.md: file # ADR-046: AI-driven game runtime mode, где манифест может объявить Agent Runtime обязательной частью исполнения игры.
       047-ai-agent-safety-remediation-gates.md: file # ADR-047: proposed safety gates for AI agent remediation: approval envelope, rejected Agent Turn semantics, capability enforcement, channel action policy and production backend auth.
+      048-element-authoring-prompt-contract.md: file # ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
@@ -35,6 +36,7 @@ docs: # Архитектура, задачи, планирование
     agent-ui-foundation.md: file # Проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI: границы, контекст, инструменты, безопасность и future assistant surfaces.
     agent-ui-portability-and-risk-controls.md: file # Проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест вокруг CopilotKit, AG-UI и production LLM backend.
     ai-agent-safety-remediation.md: file # Проектная документация по исправлению review findings миграции Cubica Surface и AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel policies and production backend auth.
+    element-prompt-contract.md: file # Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.
     generative-ui-surface-protocol.md: file # Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
   legacy:
     debt-log.csv: file # Центральный реестр долга (tech debt).
@@ -64,6 +66,7 @@ docs: # Архитектура, задачи, планирование
       TSK-20260611-ai-agent-safety-remediation.md: file # План исправления review findings по AI agent safety: approval envelope, Agent Turn rejection semantics, capability gates, channel policies and production backend auth.
       TSK-20260611-ai-driven-game-runtime-mode.md: file # План внедрения AI-driven game runtime mode: manifest execution mode, Agent Turn contract, readiness/failure policy, validated agent effects и primary CubicaSurface gameplay UI.
       TSK-20260611-ai-driven-surface-architecture-migration.md: file # Главный план миграции к Cubica Surface и AI-driven runtime: фазы, зависимости, проверки, риски, renderer strategy и сохранение deterministic canonical slice.
+      TSK-20260612-element-authoring-prompt-contract.md: file # План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.

@@ -14,7 +14,18 @@ const Ajv = require("ajv");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
-const AUTHORING_KEYS = new Set(["_type", "_extends", "_label", "_semantics", "_definitions", "_schemaVersion", "_manifestType", "_channel"]);
+const AUTHORING_KEYS = new Set([
+  "_type",
+  "_extends",
+  "_label",
+  "_semantics",
+  "_prompt",
+  "_promptTemplate",
+  "_definitions",
+  "_schemaVersion",
+  "_manifestType",
+  "_channel"
+]);
 const MAX_EXTENDS_DEPTH = 5;
 
 class CompileError extends Error {

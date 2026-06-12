@@ -2,7 +2,17 @@
   "$schema": "https://cubica.platform/schemas/game-authoring.v2.json",
   "_schemaVersion": "2.0",
   "_manifestType": "game",
-  "_definitions": {},
+  "_definitions": {
+    "game.ChoiceCardPrototype": {
+      "_semantics": "Переиспользуемый прототип карточного решения для проверки _promptTemplate.",
+      "_label": "Прототип карточного решения",
+      "_promptTemplate": {
+        "raw": "Опишите карточку решения: лицевую сторону, оборотную сторону, действие при выборе, изменения метрик и методический смысл.",
+        "language": "ru",
+        "appliesTo": "game.ChoiceCardPrototype"
+      }
+    }
+  },
   "root": {
     "_type": "game.Game",
     "_label": "Минимальная игра v2",
@@ -60,6 +70,14 @@
           "_type": "game.Action",
           "_label": "Принять решение",
           "_semantics": "Действие игрока, доступное на начальном экране.",
+          "_prompt": {
+            "status": "confirmed",
+            "raw": "Это универсальная карточка решения. На лицевой стороне коротко показан выбор игрока. При выборе карточки игра фиксирует решение и увеличивает счет на 1.",
+            "normalized": "Создать универсальную карточку решения. Лицевая сторона кратко показывает выбор игрока. При выборе карточки нужно выполнить действие choice.accept и увеличить метрику score на 1.",
+            "source": "user",
+            "language": "ru",
+            "updatedAt": "2026-06-12T00:00:00Z"
+          },
           "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "authoring-v2.choice.accept",

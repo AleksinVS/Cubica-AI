@@ -12,6 +12,7 @@
 > - **CopilotKit** — React/Next.js-фреймворк для встраивания ИИ-помощников в приложения; в Cubica это текущий адаптер UI для Agent UI.
 > - **AG-UI** — Agent-User Interaction protocol, событийный протокол между пользовательскими приложениями и backend-сервисами ИИ-агентов.
 > - **Generative UI** — подход, при котором ИИ-агент выбирает, описывает или обновляет часть интерфейса во время работы.
+> - **Элементный промт** — сохраненный authoring-промт конкретного элемента манифеста: описание намерения, содержимого и поведения экземпляра, из которого агент может строить или проверять структурированные поля.
 > - **A2UI** — декларативная JSONL-спецификация UI-поверхностей, которую Cubica рассматривает как внешний compatibility reference, а не как источник истины.
 > - **Cubica Surface Protocol** — собственный протокол Cubica для описания ограниченных UI-поверхностей помощника: словаря компонентов, модели данных, действий и проверок.
 > - **AI-driven game** — игра, где ИИ-агент является обязательной частью runtime и управляет ходом, состоянием шага и UI-поверхностью через валидируемые контракты Cubica.
@@ -37,6 +38,7 @@
 - `docs/architecture/agent-ui-portability-and-risk-controls.md` и ADR-044 - слой переносимости Agent UI: CopilotKit и AG-UI считаются заменяемыми адаптерами, production LLM backend не получает прямую запись в состояние Cubica, а новые помощники проходят через собственные Cubica-контракты, контроль рисков и планы миграции.
 - `docs/architecture/generative-ui-surface-protocol.md` и ADR-045 - целевая архитектура Cubica-owned Generative UI: CopilotKit является MVP-адаптером первого этапа, будущий самописный совместимый Cubica Agent UI потребляет те же Cubica-контракты, а декларативные поверхности UI описываются как Cubica Surface specs вместо сохранения CopilotKit/AG-UI/A2UI state в предметных данных.
 - `docs/architecture/ai-agent-safety-remediation.md` и ADR-047 - accepted remediation layer после review миграции: approval envelope, rejected Agent Turn semantics, manifest capability gates, channel action policies and production backend auth readiness.
+- `docs/architecture/element-prompt-contract.md` и ADR-048 - accepted контракт элементного промта: первый срез реализовал `_prompt` для authoring-экземпляров, `_promptTemplate` для прототипов, compiler stripping и editor schema readiness; `generation.prompt` остается только metadata визуальной генерации для design artifacts. Механизм синхронизации промта и структуры манифеста вынесен в следующий этап.
 - ADR-046 - целевой AI-driven game runtime mode: манифест может объявить `ai-driven` или `hybrid` execution mode, Agent Runtime становится обязательной runtime-зависимостью этой игры, а агент возвращает валидируемые state effects, available actions and Cubica Surface.
 - `docs/architecture/runtime-mechanics-language.md` - проектное описание минимального декларативного псевдоязыка механик: action, guard/when, effects, state paths, журнал и правила расширения `runtime-api` без веток под конкретную игру.
 - `draft/cubica-portal-nextjs/` - current portal draft for test launch analysis; портал должен стать launch surface для покупок, ссылок и игровых сессий, но не runtime source of truth (ADR-032).
@@ -152,6 +154,10 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 - граф связей и историю версий артефактов (`design-history.json`).
 
 Это позволяет ИИ-агентам понимать структуру макетов, генерировать UI-код по описаниям и отслеживать эволюцию дизайна от концепта до финального asset.
+
+**Элементные промты (ADR-048, Accepted):**
+
+Authoring-экземпляры получают отдельное поле `_prompt`, а прототипы - `_promptTemplate`. Эти поля описывают авторское намерение конкретного элемента: содержимое, поведение, связи с состоянием, переходы и методический смысл. Они не заменяют `generation.prompt` из design artifacts, потому что `generation.prompt` описывает визуальную генерацию изображения или региона. Первый срез реализован в `manifest-authoring-common.schema.json`, authoring v2 examples, compiler stripping rules и editor schema readiness. Reverse-sync и механизм синхронизации промта со структурой остаются отдельной последующей проработкой.
 
 Текстовые источники и якоря из более ранней manifest-lineage остаются историческим направлением (см. ADR-013), но не считаются текущей канонической truth model для `Antarctica`. В текущем срезе narrative/extraction artifacts могут существовать как reference material или migration input, но не как runtime source of truth.
 
@@ -315,6 +321,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - **ADR-045 (Cubica-Owned Generative UI And MVP CopilotKit Adapter):** фиксирует CopilotKit как MVP-адаптер первого этапа, целевой собственный compatible Cubica Agent UI и Cubica Surface Protocol for declarative Generative UI.
 - **ADR-046 (AI-Driven Game Runtime Mode):** фиксирует `ai-driven` и `hybrid` execution modes, где Agent Runtime может быть обязательной частью игрового исполнения, а агент возвращает валидируемые state effects, actions and Cubica Surface.
 - **ADR-047 (AI Agent Safety Remediation Gates):** accepted safety gates перед production Agent Runtime: human approval хранится как Cubica approval envelope, rejected Agent Turn не применяет effects, `allowedCapabilities` является исполняемым runtime allowlist, Surface actions проверяются channel policy, а non-Web projections fail closed.
+- **ADR-048 (Element Authoring Prompt Contract):** принятый контракт `_prompt` для authoring-экземпляров и `_promptTemplate` для прототипов; фиксирует отличие элементного промта от `generation.prompt`, `_semantics` и временных editor prompts. Обратная синхронизация и механизм синхронизации промта со структурой остаются отдельной последующей проработкой.
 
 
 ---

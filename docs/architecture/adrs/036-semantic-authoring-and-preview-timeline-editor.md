@@ -87,6 +87,8 @@ Authoring schema v2 должна добавить обязательные autho
 - `_label` - отображаемое в редакторе имя, в UI называется "Синоним";
 - `_semantics` - короткое объяснение смысла объекта, где это нужно для автора, схемы или AI assistant.
 
+ADR-048 расширяет эти author-facing metadata полем `_prompt` для конкретных authoring-экземпляров и `_promptTemplate` для прототипов. Первый срез реализован в authoring JSON Schema и compiler stripping rules; автоматическая синхронизация промта со структурой остается отдельной последующей задачей.
+
 Кириллица допустима и желательна в `_label`, `title`, `name`, `description` and `_semantics`. Технические `id`, object keys, `_type` и reference keys должны оставаться ASCII-first, чтобы ссылки, JSON Pointer, diffs and CI checks были устойчивыми.
 
 Default entity tree должен брать отображаемое имя узла из `_label`. До полного ручного выравнивания authoring-контента редактор может показывать fallback из `title`, `name` или `id`, но такой fallback не считается выполнением контракта: отсутствие `_label` у смысловой сущности должно давать диагностику authoring validation.
