@@ -1,0 +1,319 @@
+{
+  "version": 1,
+  "generatedFile": "games/ai-driven-choice/ui/web/ui.manifest.json",
+  "sourceFile": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/id"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/version"
+      }
+    ],
+    "/meta/game_id": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/game_id"
+      }
+    ],
+    "/entry_point": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/entry_point"
+      }
+    ],
+    "/metric_specs/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0"
+      }
+    ],
+    "/metric_specs/0/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0/id"
+      }
+    ],
+    "/metric_specs/0/caption": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0/caption"
+      }
+    ],
+    "/metric_specs/0/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0/value"
+      }
+    ],
+    "/metric_specs/0/aliases/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0/aliases/0"
+      }
+    ],
+    "/metric_specs/0/aliases": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0/aliases"
+      }
+    ],
+    "/metric_specs/0/layout": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs/0/layout"
+      }
+    ],
+    "/metric_specs": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/metric_specs"
+      }
+    ],
+    "/screen_routing/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0"
+      }
+    ],
+    "/screen_routing/0/screenKey": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/screenKey"
+      }
+    ],
+    "/screen_routing/0/conditions": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions"
+      }
+    ],
+    "/screen_routing/0/conditions/screenId": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions/screenId"
+      }
+    ],
+    "/screen_routing/0/conditions/layoutMode": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions/layoutMode"
+      }
+    ],
+    "/screen_routing": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing"
+      }
+    ],
+    "/screens/agent": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0"
+      }
+    ],
+    "/screens/agent/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/id"
+      }
+    ],
+    "/screens/agent/title": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/title"
+      }
+    ],
+    "/screens/agent/layout_mode": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/layout_mode"
+      }
+    ],
+    "/screens/agent/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root"
+      }
+    ],
+    "/screens/agent/root/type": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/type"
+      }
+    ],
+    "/screens/agent/root/props": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props"
+      }
+    ],
+    "/screens/agent/root/props/cssClass": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props/cssClass"
+      }
+    ],
+    "/screens/agent/root/props/backgroundImage": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props/backgroundImage"
+      }
+    ],
+    "/screens/agent/root/children/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0"
+      }
+    ],
+    "/screens/agent/root/children/0/type": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/type"
+      }
+    ],
+    "/screens/agent/root/children/0/props": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props"
+      }
+    ],
+    "/screens/agent/root/children/0/props/cssClass": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props/cssClass"
+      }
+    ],
+    "/screens/agent/root/children/0/children/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0"
+      }
+    ],
+    "/screens/agent/root/children/0/children/0/type": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/type"
+      }
+    ],
+    "/screens/agent/root/children/0/children/0/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/id"
+      }
+    ],
+    "/screens/agent/root/children/0/children/0/props": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props"
+      }
+    ],
+    "/screens/agent/root/children/0/children/0/props/caption": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props/caption"
+      }
+    ],
+    "/screens/agent/root/children/0/children/0/props/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props/value"
+      }
+    ],
+    "/screens/agent/root/children/0/children": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children"
+      }
+    ],
+    "/screens/agent/root/children/1": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1"
+      }
+    ],
+    "/screens/agent/root/children/1/type": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/type"
+      }
+    ],
+    "/screens/agent/root/children/1/props": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props"
+      }
+    ],
+    "/screens/agent/root/children/1/props/cssClass": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props/cssClass"
+      }
+    ],
+    "/screens/agent/root/children/1/children/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0"
+      }
+    ],
+    "/screens/agent/root/children/1/children/0/type": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/type"
+      }
+    ],
+    "/screens/agent/root/children/1/children/0/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/id"
+      }
+    ],
+    "/screens/agent/root/children/1/children/0/props": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props"
+      }
+    ],
+    "/screens/agent/root/children/1/children/0/props/html": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/html"
+      }
+    ],
+    "/screens/agent/root/children/1/children": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children"
+      }
+    ],
+    "/screens/agent/root/children": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children"
+      }
+    ],
+    "/screens": [
+      {
+        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens"
+      }
+    ]
+  }
+}

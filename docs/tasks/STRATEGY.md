@@ -42,6 +42,7 @@ Cubica должна стать платформой, где:
 
 - игру можно описать как данные в `games/<id>/game.manifest.json`;
 - runtime стабильно исполняет игру через `services/runtime-api`;
+- игра может выбрать deterministic, hybrid или AI-driven runtime mode без game-specific hacks в платформенном ядре;
 - игрок получает интерфейс через `apps/player-web` и будущие каналы доставки;
 - новые игры добавляются без game-specific hacks в платформенном ядре;
 - архитектурные разрывы фиксируются явно и закрываются раньше, чем поверх них строится новая функциональность.
@@ -81,6 +82,34 @@ Cubica должна стать платформой, где:
 
 Портал в этой теме рассматривается как launch surface: он управляет покупками, ссылками и доступом к игровым сессиям. Игровая логика остается в `games/antarctica`, `services/runtime-api`, `apps/player-web` и `packages/contracts/*`.
 
+### 4.7. Agent UI Foundation
+
+CopilotKit/AG-UI is the MVP-stage Agent UI foundation for Cubica assistants, while the target direction is a custom compatible Cubica Agent UI owned by the platform.
+
+Цель темы:
+
+- дать редактору полноценный AI assistant UI without replacing `editor-engine`;
+- обеспечить единый protocol and UI pattern for future portal, facilitator, player and admin assistants;
+- сохранить Cubica contracts, JSON Schema validation and runtime/session ownership as the only durable state boundaries;
+- require human-in-the-loop approval for risky or mutating assistant tools;
+- develop Cubica Surface Protocol as the internal declarative Generative UI contract inspired by A2UI but owned by Cubica.
+
+This theme is strategic because one-off assistant integrations would quickly create duplicate state, duplicate tool policies and inconsistent safety behavior across apps.
+
+### 4.8. AI-Driven Game Runtime
+
+Cubica must support AI-driven games as a first-class runtime mode, not only AI helpers around deterministic games.
+
+Цель темы:
+
+- allow game manifests to declare `deterministic`, `hybrid` or `ai-driven` execution mode;
+- let Agent Runtime drive game flow and primary `CubicaSurface` UI for declared AI-driven games;
+- keep deterministic games playable without Agent Runtime;
+- validate all agent effects before state persistence;
+- require readiness, failure policy, replay and evaluation gates for production AI-driven games.
+
+This theme is strategic because it determines whether Cubica can host games where the agent is the game engine instead of only an assistant.
+
 ## 5. Правила приоритизации
 
 Работа получает более высокий приоритет, если она:
@@ -91,6 +120,8 @@ Cubica должна стать платформой, где:
 - защищает manifest SSOT и JSON Schema validation;
 - уменьшает зависимость от legacy/draft артефактов;
 - улучшает передачу контекста между агентами и разработчиками;
+- развивает общий Agent UI foundation без нарушения canonical state boundaries;
+- развивает AI-driven runtime mode through manifest/contracts instead of game-specific runtime branches;
 - нужна для безопасного добавления следующей игры или канала доставки.
 
 Работа получает более низкий приоритет, если она:

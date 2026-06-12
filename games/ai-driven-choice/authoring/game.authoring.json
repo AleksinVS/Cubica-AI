@@ -1,0 +1,139 @@
+{
+  "$schema": "../../../docs/architecture/schemas/game-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "game",
+  "_definitions": {},
+  "root": {
+    "_type": "game.Game",
+    "_label": "AI-Driven Choice fixture",
+    "_semantics": "Minimal AI-driven game used to prove Agent Runtime session launch and Agent Turn execution.",
+    "meta": {
+      "id": "ai-driven-choice",
+      "version": "1.0.0",
+      "name": "AI-Driven Choice",
+      "description": "Minimal AI-driven fixture for Agent Runtime and Cubica Surface migration tests.",
+      "author": "Cubica",
+      "schemaVersion": "1.1",
+      "minEngineVersion": "0.1.0",
+      "training": {
+        "format": "single",
+        "duration": {
+          "minMinutes": 1,
+          "maxMinutes": 3
+        },
+        "competencies": [
+          {
+            "id": "agent-mediated-decision",
+            "name": "Agent-mediated decision",
+            "description": "The session progresses through validated Agent Turn output."
+          }
+        ]
+      }
+    },
+    "config": {
+      "players": {
+        "min": 1,
+        "max": 1
+      },
+      "settings": {
+        "mode": "singleplayer",
+        "locale": "en-US"
+      }
+    },
+    "executionMode": "ai-driven",
+    "agentRuntime": {
+      "agentId": "scenario-agent",
+      "runtimeId": "mock",
+      "required": true,
+      "allowedCapabilities": [
+        "advanceStep"
+      ],
+      "allowedTools": [
+        "agent.nextTurn"
+      ],
+      "surfaceCatalog": [
+        "cubica.choiceList"
+      ],
+      "failurePolicy": "pause",
+      "contextExposurePolicy": {
+        "publicState": true,
+        "secretState": "none",
+        "manifestProjection": [
+          "/meta",
+          "/actions"
+        ]
+      }
+    },
+    "content": {
+      "data": {
+        "choices": [
+          {
+            "_type": "game.Choice",
+            "_label": "Continue through agent",
+            "_semantics": "A fixture choice whose next step is produced by Agent Runtime.",
+            "id": "continue",
+            "title": "Continue through agent",
+            "summary": "Ask the scenario agent to produce the next validated UI surface.",
+            "actionId": "agent.continue"
+          }
+        ]
+      }
+    },
+    "engine": {
+      "systemPrompt": "Run the AI-driven choice game through Agent Runtime and validated Cubica Surface output."
+    },
+    "state": {
+      "public": {
+        "timeline": {
+          "line": "main",
+          "stepIndex": 0,
+          "step_index": 0,
+          "stageId": "stage_ai_driven",
+          "stage_id": "stage_ai_driven",
+          "screenId": "agent",
+          "screen_id": "agent",
+          "canAdvance": false
+        },
+        "metrics": {
+          "turns": 0
+        },
+        "choice": {
+          "outcome": "pending"
+        },
+        "flags": {
+          "cards": {}
+        },
+        "ui": {},
+        "log": []
+      },
+      "secret": {}
+    },
+    "logic": {
+      "_type": "game.Logic",
+      "_label": "AI-driven fixture logic",
+      "_semantics": "This fixture intentionally has no deterministic gameplay actions; Agent Runtime owns progression.",
+      "flows": [
+        {
+          "id": "main",
+          "_type": "game.Flow",
+          "_label": "Agent-driven flow",
+          "_semantics": "A single entry step whose progression comes from Agent Runtime.",
+          "pattern": "systemic",
+          "steps": [
+            {
+              "id": "main.agent",
+              "_type": "game.Step",
+              "_label": "Agent surface",
+              "_semantics": "Initial state before the first Agent Turn.",
+              "screenId": "agent",
+              "actionIds": []
+            }
+          ]
+        }
+      ],
+      "systems": [],
+      "rules": [],
+      "actions": []
+    }
+  }
+}

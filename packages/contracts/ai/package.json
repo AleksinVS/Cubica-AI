@@ -2,14 +2,21 @@
   "name": "@cubica/contracts-ai",
   "version": "0.0.0",
   "private": true,
-  "description": "AI task, result and eval contracts for Cubica.",
+  "description": "AI task, result, surface, agent turn and eval contracts for Cubica.",
   "type": "module",
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"TODO: add contracts-ai build\" && exit 1",
-    "test": "echo \"TODO: add contracts-ai tests\" && exit 1",
-    "lint": "echo \"TODO: add contracts-ai lint\" && exit 1"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "npm run typecheck",
+    "lint": "npm run typecheck"
+  },
+  "dependencies": {
+    "ajv": "^8.20.0"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
   },
   "engines": {
     "node": ">=18"

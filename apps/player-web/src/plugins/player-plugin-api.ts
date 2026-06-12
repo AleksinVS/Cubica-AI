@@ -28,6 +28,7 @@ export {
   getFallbackActionEntries,
   readCanAdvance,
   readCardFlags,
+  readCardObjects,
   readScreenId,
   readSelectedCardId,
   readStepIndex,

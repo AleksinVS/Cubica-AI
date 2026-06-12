@@ -52,6 +52,12 @@ import {
   type TextRange
 } from "@cubica/editor-engine";
 import {
+  validateAgentApprovalEnvelope,
+  type CubicaAgentApprovalEnvelope,
+  type CubicaSurface,
+  type CubicaSurfaceComponent
+} from "@cubica/contracts-ai";
+import {
   memo,
   useCallback,
   useEffect,
@@ -107,6 +113,14 @@ import {
   type PlayerPreviewSessionSnapshotMessage,
   type PreviewSelectionSourceMap
 } from "@/lib/preview-message-adapter";
+import { buildEditorAgentContextProjection } from "@/lib/agent-context-projection";
+import {
+  EditorAgentRuntimeHooks,
+  EditorCopilotChatPanel,
+  useEditorAgentConnection,
+  type EditorAgentToolResult,
+  type EditorAgentTools
+} from "@/components/editor-agent-ui";
 
 interface AuthoringFileSummary {
   readonly gameId: string;
@@ -202,6 +216,24 @@ interface AiPatchPlanResponse {
   readonly changeSet?: EditorChangeSet;
   readonly diagnostics?: readonly DocumentDiagnostic[];
 }
+
+interface PlannedAiChangeSet {
+  readonly intent: EditorPatchIntent;
+  readonly changeSet: EditorChangeSet;
+  readonly diagnostics: readonly DocumentDiagnostic[];
+  readonly targetPointers: readonly string[];
+}
+
+type PlanCurrentAiChangeSetResult =
+  | {
+      readonly ok: true;
+      readonly plan: PlannedAiChangeSet;
+    }
+  | {
+      readonly ok: false;
+      readonly diagnostics: readonly RoutedEditorDiagnostic[];
+      readonly summary: string;
+    };
 
 interface MonacoModel {
   readonly uri: unknown;
@@ -478,6 +510,7 @@ export function EditorWorkspace() {
   const [aiRedoJournal, setAiRedoJournal] = useState<readonly PatchJournalStep[]>([]);
   const [aiDiffSummary, setAiDiffSummary] = useState<readonly EditorDiffSummaryItem[]>([]);
   const [aiDiagnostics, setAiDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
+  const [agentPlannedChangeSet, setAgentPlannedChangeSet] = useState<PlannedAiChangeSet | null>(null);
   const [previewInspectMode, setPreviewInspectMode] = useState(false);
   const [altPlayActive, setAltPlayActive] = useState(false);
   const [previewPointerPlayMode, setPreviewPointerPlayMode] = useState(false);
@@ -583,6 +616,80 @@ export function EditorWorkspace() {
   const selectedPreviewTraceSnapshot = selectedPreviewTraceEvent === undefined
     ? undefined
     : previewTrace.snapshots.find((snapshot) => snapshot.eventSequence === selectedPreviewTraceEvent.sequence);
+  const agentConnection = useEditorAgentConnection();
+  const agentSelectedPointers = useMemo(() => {
+    const pointers = new Set<string>();
+    if (selectedNode?.pointer !== undefined && selectedNode.pointer !== "") {
+      pointers.add(selectedNode.pointer);
+    }
+    for (const entity of previewPromptContext?.entities ?? []) {
+      if (entity.authoringPointer !== "") {
+        pointers.add(entity.authoringPointer);
+      }
+    }
+    return [...pointers];
+  }, [previewPromptContext?.entities, selectedNode?.pointer]);
+  const agentSelectedPreviewEntities = useMemo(
+    () =>
+      (previewPromptContext?.entities ?? (selectedPreviewEntityId === undefined ? [] : previewEntities.filter((entity) => entity.entityId === selectedPreviewEntityId))).map(
+        (entity) => ({
+          entityId: entity.entityId,
+          label: entity.label,
+          semanticRole: entity.semanticRole,
+          authoringPointer: entity.authoringPointer
+        })
+      ),
+    [previewEntities, previewPromptContext?.entities, selectedPreviewEntityId]
+  );
+  const editorAgentContext = useMemo(
+    () =>
+      buildEditorAgentContextProjection({
+        sessionId: editorSession?.sessionId,
+        gameId: currentDocument.gameId,
+        activeFilePath: currentDocument.filePath,
+        activeFileVersionHash: currentDocument.versionHash,
+        document: viewModel.snapshot.json,
+        selectedPointers: agentSelectedPointers,
+        selectedPreviewEntities: agentSelectedPreviewEntities,
+        diagnostics: viewModel.documentDiagnostics,
+        previewTraceSummary:
+          previewTrace.events.length === 0
+            ? undefined
+            : {
+                traceId: previewTrace.traceId,
+                eventCount: previewTrace.events.length,
+                currentEventLabel: currentPreviewTraceEvent?.label,
+                selectedEventLabel: selectedPreviewTraceEvent?.label
+              }
+      }),
+    [
+      agentSelectedPointers,
+      agentSelectedPreviewEntities,
+      currentDocument.filePath,
+      currentDocument.gameId,
+      currentDocument.versionHash,
+      currentPreviewTraceEvent?.label,
+      editorSession?.sessionId,
+      previewTrace.events.length,
+      previewTrace.traceId,
+      selectedPreviewTraceEvent?.label,
+      viewModel.documentDiagnostics,
+      viewModel.snapshot.json
+    ]
+  );
+  const editorAgentSurface = useMemo(
+    () =>
+      buildEditorAgentSurface({
+        aiApplyState,
+        aiDiffSummary,
+        aiDiagnostics,
+        hasPlannedChangeSet: agentPlannedChangeSet !== null,
+        hasUndoPatch: aiPatchJournal.length > 0,
+        applyApprovalScopeHash: editorApplyApprovalScope(agentPlannedChangeSet),
+        undoApprovalScopeHash: editorUndoApprovalScope(aiPatchJournal.length)
+      }),
+    [agentPlannedChangeSet, aiApplyState, aiDiagnostics, aiDiffSummary, aiPatchJournal.length]
+  );
   const leftSidebarOpen = leftSidebarPanel !== undefined;
   const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
   const rightSidebarOpen = rightSidebarPanel !== undefined;
@@ -592,6 +699,35 @@ export function EditorWorkspace() {
     "--left-sidebar-width": `${leftSidebarOpen ? leftSidebarWidth : 0}px`,
     "--json-sidebar-width": `${rightSidebarOpen ? jsonSidebarWidth : 0}px`
   } as CSSProperties;
+  const editorAgentTools: EditorAgentTools = {
+    planChangeSet: (input) => runAgentPlanTool(input.prompt),
+    dryRunChangeSet: (input) => runAgentDryRunTool(input.prompt),
+    applyChangeSet: (input) => runAgentApplyTool(input.prompt, input.approval),
+    undoLastPatch: async (input) => runAgentUndoTool(input?.approval),
+    preparePreview: async () => {
+      await handlePreview();
+      return {
+        ok: true,
+        summary: "Preview preparation requested through the existing editor preview route."
+      };
+    },
+    saveSession: async (input) => {
+      const approvalError = validateEditorAgentApproval(
+        input.approval,
+        "editor.saveSession",
+        editorSaveApprovalScope(currentDocument.versionHash ?? "no-version-hash", editorSession?.sessionId)
+      );
+      if (approvalError !== null) {
+        return approvalError;
+      }
+
+      await handleSave();
+      return {
+        ok: true,
+        summary: "Save requested through the existing editor file route."
+      };
+    }
+  };
 
   const projectedNodes = useMemo<SemanticFlowNode[]>(
     () => {
@@ -1092,6 +1228,7 @@ export function EditorWorkspace() {
     setAiRedoJournal([]);
     setAiDiffSummary([]);
     setAiDiagnostics([]);
+    setAgentPlannedChangeSet(null);
   }
 
   function clearWorkflowAndPluginDiagnostics() {
@@ -1480,108 +1617,318 @@ export function EditorWorkspace() {
       return;
     }
 
-    if (viewModel.snapshot.json === undefined) {
-      setAiApplyState("blocked");
-      setStatusMessage("AI ChangeSet was not applied because the active JSON is invalid.");
-      return;
+    try {
+      const planned = await planCurrentAiChangeSet(context.draft.trim());
+      if (!planned.ok) {
+        setAiDiagnostics(planned.diagnostics);
+        setAiApplyState("blocked");
+        setStatusMessage(planned.summary);
+        return;
+      }
+
+      applyPlannedAiChangeSet(planned.plan);
+    } catch (error) {
+      setAiApplyState("error");
+      setStatusMessage(error instanceof Error ? error.message : "AI ChangeSet apply failed.");
+    }
+  }
+
+  async function runAgentPlanTool(prompt: string | undefined): Promise<EditorAgentToolResult> {
+    const planned = await planCurrentAiChangeSet(prompt);
+    if (!planned.ok) {
+      return {
+        ok: false,
+        summary: planned.summary,
+        diagnostics: planned.diagnostics.map(toAgentDiagnostic)
+      };
     }
 
-    const targetPointers = [...new Set(context.entities.map((entity) => entity.authoringPointer))];
+    return {
+      ok: true,
+      summary: planned.plan.changeSet.summary,
+      diagnostics: planned.plan.diagnostics.map(toAgentDiagnostic),
+      changeSetId: planned.plan.changeSet.id
+    };
+  }
+
+  async function runAgentDryRunTool(prompt: string | undefined): Promise<EditorAgentToolResult> {
+    let planned = agentPlannedChangeSet;
+    if (prompt !== undefined && prompt.trim() !== "") {
+      const plannedFromPrompt = await planCurrentAiChangeSet(prompt);
+      if (!plannedFromPrompt.ok) {
+        return {
+          ok: false,
+          summary: plannedFromPrompt.summary,
+          diagnostics: plannedFromPrompt.diagnostics.map(toAgentDiagnostic)
+        };
+      }
+      planned = plannedFromPrompt.plan;
+    }
+
+    if (planned === null) {
+      return {
+        ok: false,
+        summary: "Dry-run requires a planned ChangeSet or a prompt for the current selection."
+      };
+    }
+
+    const dryRun = dryRunPlannedAiChangeSet(planned);
+    setAiDiagnostics(dryRun.diagnostics.map(toRoutedDiagnostic));
+    setAiDiffSummary(dryRun.diffSummary);
+    setStatusMessage(dryRun.ok ? `Dry-run passed: ${planned.changeSet.summary}` : "AI ChangeSet failed dry-run validation.");
+
+    return {
+      ok: dryRun.ok,
+      summary: dryRun.ok ? `Dry-run passed: ${planned.changeSet.summary}` : "AI ChangeSet failed dry-run validation.",
+      diagnostics: dryRun.diagnostics.map(toAgentDiagnostic),
+      diffSummary: dryRun.diffSummary.map((item) => item.description),
+      changeSetId: planned.changeSet.id
+    };
+  }
+
+  async function runAgentApplyTool(
+    prompt: string | undefined,
+    approval: CubicaAgentApprovalEnvelope | undefined
+  ): Promise<EditorAgentToolResult> {
+    if (prompt !== undefined && prompt.trim() !== "") {
+      return {
+        ok: false,
+        summary: "Apply requires an already planned ChangeSet. Plan and dry-run first, then approve the returned ChangeSet scope."
+      };
+    }
+
+    const planned = agentPlannedChangeSet;
+    if (planned === null) {
+      return {
+        ok: false,
+        summary: "Apply requires a planned ChangeSet or a prompt for the current selection."
+      };
+    }
+
+    const approvalError = validateEditorAgentApproval(
+      approval,
+      "editor.applyChangeSet",
+      editorApplyApprovalScope(planned)
+    );
+    if (approvalError !== null) {
+      return approvalError;
+    }
+
+    const applied = applyPlannedAiChangeSet(planned);
+    return {
+      ok: applied.ok,
+      summary: applied.summary,
+      diagnostics: applied.diagnostics?.map(toAgentDiagnostic),
+      diffSummary: applied.diffSummary,
+      changeSetId: planned.changeSet.id
+    };
+  }
+
+  function runAgentUndoTool(approval: CubicaAgentApprovalEnvelope | undefined): EditorAgentToolResult {
+    const step = aiPatchJournal.at(-1);
+    if (step === undefined) {
+      return {
+        ok: false,
+        summary: "No AI patch is available to undo."
+      };
+    }
+
+    const approvalError = validateEditorAgentApproval(
+      approval,
+      "editor.undoLastPatch",
+      editorUndoApprovalScope(aiPatchJournal.length)
+    );
+    if (approvalError !== null) {
+      return approvalError;
+    }
+
+    handleUndoAiChange();
+    return {
+      ok: true,
+      summary: `Undo requested for ${step.summary}.`
+    };
+  }
+
+  async function requirePlannedAiChangeSet(prompt: string): Promise<PlannedAiChangeSet | null> {
+    const planned = await planCurrentAiChangeSet(prompt);
+    return planned.ok ? planned.plan : null;
+  }
+
+  async function planCurrentAiChangeSet(promptOverride?: string): Promise<PlanCurrentAiChangeSetResult> {
+    if (viewModel.snapshot.json === undefined) {
+      return rejectedPlan("AI ChangeSet was not planned because the active JSON is invalid.");
+    }
+
+    const prompt = (promptOverride ?? previewPromptContext?.draft ?? "").trim();
+    if (prompt === "") {
+      return rejectedPlan("AI ChangeSet planning requires a prompt for the current selection.");
+    }
+
+    const context = buildCurrentAiPlanContext(prompt);
+    if (!context.ok) {
+      return {
+        ok: false,
+        diagnostics: context.diagnostics,
+        summary: context.summary
+      };
+    }
+
+    setPreviewAiIntent(context.previewIntent);
+    setAiApplyState("planning");
+    setAiDiagnostics([]);
+    setStatusMessage(`Planning AI ChangeSet for ${context.targets.length} target pointer${context.targets.length === 1 ? "" : "s"}...`);
+
+    const response = await requestAiChangeSet(context.intent, context.targets);
+    if (!response.ok || response.changeSet === undefined) {
+      const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+      return {
+        ok: false,
+        diagnostics,
+        summary: diagnostics[0]?.message ?? "AI planner did not return an applicable ChangeSet."
+      };
+    }
+
+    const plan: PlannedAiChangeSet = {
+      intent: context.intent,
+      changeSet: response.changeSet,
+      diagnostics: response.diagnostics ?? [],
+      targetPointers: context.intent.targetPointers
+    };
+    setAgentPlannedChangeSet(plan);
+    setAiApplyState("idle");
+    setStatusMessage(`Planned AI ChangeSet: ${response.changeSet.summary}`);
+    return { ok: true, plan };
+  }
+
+  function buildCurrentAiPlanContext(prompt: string):
+    | {
+        readonly ok: true;
+        readonly intent: EditorPatchIntent;
+        readonly previewIntent: PreviewAiIntent;
+        readonly targets: ReturnType<typeof buildAiPatchTargetContexts>;
+      }
+    | {
+        readonly ok: false;
+        readonly diagnostics: readonly RoutedEditorDiagnostic[];
+        readonly summary: string;
+      } {
     const now = new Date().toISOString();
+    const targetPointers = [...new Set((previewPromptContext?.entities.map((entity) => entity.authoringPointer) ?? [selectedNode?.pointer ?? ""]).filter((pointer) => pointer !== ""))];
+    const previewKind = previewPromptContext?.kind ?? "entity";
     const previewIntent: PreviewAiIntent = {
       id: `preview-ai-${Date.now()}`,
-      kind: context.kind,
-      prompt: context.draft.trim(),
+      kind: previewKind,
+      prompt,
       targetPointers,
       createdAt: now
     };
     const intent: EditorPatchIntent = {
       id: previewIntent.id,
-      kind: "preview-prompt",
-      prompt: previewIntent.prompt,
+      kind: previewPromptContext === null ? "property-prompt" : "preview-prompt",
+      prompt,
       activeFilePath: currentDocument.filePath,
       targetPointers,
       createdAt: now,
-      selectionKind: context.kind
+      selectionKind: previewPromptContext?.kind ?? "entity"
     };
-    const targets = buildAiPatchTargetContexts(context.entities, currentDocument.gameId, currentDocument.filePath, viewModel.snapshot.json);
+    const targets =
+      previewPromptContext === null
+        ? buildSelectedNodeAiPatchTargetContext(currentDocument.filePath, selectedNode, selectedValue)
+        : buildAiPatchTargetContexts(previewPromptContext.entities, currentDocument.gameId, currentDocument.filePath, viewModel.snapshot.json as JsonValue);
 
     if (targets.length === 0) {
+      return rejectedPlanContext("No active-file target was available for AI editing.");
+    }
+
+    return { ok: true, intent, previewIntent, targets };
+  }
+
+  function dryRunPlannedAiChangeSet(plan: PlannedAiChangeSet) {
+    return dryRunEditorChangeSet({
+      snapshot: viewModel.snapshot,
+      changeSet: plan.changeSet,
+      schemaRegistry,
+      schemaId,
+      includeSemanticDiagnostics: true
+    });
+  }
+
+  function applyPlannedAiChangeSet(plan: PlannedAiChangeSet): EditorAgentToolResult {
+    setAiApplyState("applying");
+    const dryRun = dryRunPlannedAiChangeSet(plan);
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    if (!dryRun.ok || dryRun.after === undefined || dryRun.inverseChangeSet === undefined) {
       setAiApplyState("blocked");
-      setAiDiagnostics([
-        {
-          severity: "error",
-          source: "ai-planner",
-          pointer: "",
-          label: "/",
-          message: "No target entities from the active authoring file were available for AI editing.",
-          range: undefined
-        }
-      ]);
-      setStatusMessage("AI ChangeSet was not applied because no active-file targets were found.");
-      return;
+      const summary = routedDiagnostics[0]?.message ?? "AI ChangeSet failed dry-run validation.";
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary,
+        diagnostics: routedDiagnostics.map(toAgentDiagnostic)
+      };
     }
 
-    setPreviewAiIntent(previewIntent);
-    setAiApplyState("planning");
-    setAiDiagnostics([]);
-    setStatusMessage(`Planning AI ChangeSet for ${targets.length} target pointer${targets.length === 1 ? "" : "s"}...`);
+    const step = createPatchJournalStep({
+      id: `patch-step-${Date.now()}`,
+      createdAt: plan.intent.createdAt,
+      intent: plan.intent,
+      forward: plan.changeSet,
+      inverse: dryRun.inverseChangeSet,
+      beforeText: viewModel.snapshot.text,
+      afterText: dryRun.after.text,
+      diffSummary: dryRun.diffSummary,
+      diagnostics: dryRun.diagnostics
+    });
 
-    try {
-      const plan = await requestAiChangeSet(intent, targets);
-      if (!plan.ok || plan.changeSet === undefined) {
-        const diagnostics = (plan.diagnostics ?? []).map(toRoutedDiagnostic);
-        setAiDiagnostics(diagnostics);
-        setAiApplyState("blocked");
-        setStatusMessage(diagnostics[0]?.message ?? "AI planner did not return an applicable ChangeSet.");
-        return;
-      }
+    setJsonText(dryRun.after.text);
+    setAiPatchJournal((current) => [...current, step]);
+    setAiRedoJournal([]);
+    setAiDiffSummary(dryRun.diffSummary);
+    setAgentPlannedChangeSet(null);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("applied");
+    setStatusMessage(`Applied AI ChangeSet: ${plan.changeSet.summary}`);
+    selectFirstPointerAfterAiApply(plan.targetPointers);
 
-      setAiApplyState("applying");
-      const dryRun = dryRunEditorChangeSet({
-        snapshot: viewModel.snapshot,
-        changeSet: plan.changeSet,
-        schemaRegistry,
-        schemaId,
-        includeSemanticDiagnostics: true
-      });
-      const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
-      setAiDiagnostics(routedDiagnostics);
-      if (!dryRun.ok || dryRun.after === undefined || dryRun.inverseChangeSet === undefined) {
-        setAiApplyState("blocked");
-        setStatusMessage(routedDiagnostics[0]?.message ?? "AI ChangeSet failed dry-run validation.");
-        return;
-      }
+    return {
+      ok: true,
+      summary: `Applied AI ChangeSet: ${plan.changeSet.summary}`,
+      diagnostics: dryRun.diagnostics.map(toAgentDiagnostic),
+      diffSummary: dryRun.diffSummary.map((item) => item.description),
+      changeSetId: plan.changeSet.id
+    };
+  }
 
-      const step = createPatchJournalStep({
-        id: `patch-step-${Date.now()}`,
-        createdAt: now,
-        intent,
-        forward: plan.changeSet,
-        inverse: dryRun.inverseChangeSet,
-        beforeText: viewModel.snapshot.text,
-        afterText: dryRun.after.text,
-        diffSummary: dryRun.diffSummary,
-        diagnostics: dryRun.diagnostics
-      });
+  function rejectedPlan(summary: string): PlanCurrentAiChangeSetResult {
+    const diagnostics = [
+      {
+        severity: "error",
+        source: "ai-planner",
+        pointer: "",
+        label: "/",
+        message: summary,
+        range: undefined
+      } satisfies RoutedEditorDiagnostic
+    ];
+    setAiDiagnostics(diagnostics);
+    setAiApplyState("blocked");
+    setStatusMessage(summary);
+    return { ok: false, diagnostics, summary };
+  }
 
-      setJsonText(dryRun.after.text);
-      setAiPatchJournal((current) => [...current, step]);
-      setAiRedoJournal([]);
-      setAiDiffSummary(dryRun.diffSummary);
-      clearWorkflowAndPluginDiagnostics();
-      setReverseDiagnostics([]);
-      clearPreparedPreview();
-      setWorkflowState("idle");
-      setLastEditSource("ai");
-      setSaveState("idle");
-      setAiApplyState("applied");
-      setStatusMessage(`Applied AI ChangeSet: ${plan.changeSet.summary}`);
-      selectFirstPointerAfterAiApply(targetPointers);
-    } catch (error) {
-      setAiApplyState("error");
-      setStatusMessage(error instanceof Error ? error.message : "AI ChangeSet apply failed.");
+  function rejectedPlanContext(summary: string): Extract<PlanCurrentAiChangeSetResult, { readonly ok: false }> {
+    const rejected = rejectedPlan(summary);
+    if (!rejected.ok) {
+      return rejected;
     }
+
+    throw new Error("Unexpected successful rejected plan.");
   }
 
   function selectFirstPointerAfterAiApply(targetPointers: readonly string[]) {
@@ -1939,6 +2286,7 @@ export function EditorWorkspace() {
 
   return (
     <main className="editor-shell">
+      <EditorAgentRuntimeHooks enabled={agentConnection.copilotReady} context={editorAgentContext} tools={editorAgentTools} />
       <header className="top-toolbar" aria-label="Editor toolbar">
         <div className="toolbar-title">
           <strong>Cubica Editor</strong>
@@ -2208,12 +2556,21 @@ export function EditorWorkspace() {
                 onReplayCurrent={handlePreviewReplayCurrent}
               />
             ) : (
-              <AiChatSidebarPanel
-                proposedIntent={previewAiIntent}
-                aiApplyState={aiApplyState}
-                aiDiffSummary={aiDiffSummary}
-                selectedNodeTitle={selectedNode?.semanticTitle}
+              <EditorCopilotChatPanel
+                enabled={agentConnection.copilotReady}
+                connection={agentConnection}
                 onCollapse={() => setLeftSidebarPanel(undefined)}
+                surface={editorAgentSurface}
+                tools={editorAgentTools}
+                fallback={
+                  <AiChatSidebarPanel
+                    proposedIntent={previewAiIntent}
+                    aiApplyState={aiApplyState}
+                    aiDiffSummary={aiDiffSummary}
+                    selectedNodeTitle={selectedNode?.semanticTitle}
+                    onCollapse={() => setLeftSidebarPanel(undefined)}
+                  />
+                }
               />
             )}
             <div
@@ -2866,6 +3223,203 @@ function buildAiPatchTargetContexts(
   }
 
   return targets;
+}
+
+function buildSelectedNodeAiPatchTargetContext(
+  activeFilePath: string,
+  selectedNode: EditorViewNode | undefined,
+  selectedValue: JsonValue | undefined
+): ReturnType<typeof buildAiPatchTargetContexts> {
+  if (selectedNode === undefined || selectedNode.pointer === "" || selectedValue === undefined) {
+    return [];
+  }
+
+  return [
+    {
+      filePath: activeFilePath,
+      pointer: selectedNode.pointer,
+      label: selectedNode.semanticTitle,
+      value: selectedValue
+    }
+  ];
+}
+
+function toAgentDiagnostic(diagnostic: { readonly severity: string; readonly source: string; readonly pointer: string; readonly message: string }) {
+  return {
+    severity: diagnostic.severity,
+    source: diagnostic.source,
+    pointer: diagnostic.pointer,
+    message: diagnostic.message
+  };
+}
+
+type MutatingEditorToolName = "editor.applyChangeSet" | "editor.undoLastPatch" | "editor.saveSession";
+
+function editorApplyApprovalScope(planned: PlannedAiChangeSet | null): string {
+  return planned === null ? "editor.applyChangeSet:none" : `editor.applyChangeSet:${planned.changeSet.id}`;
+}
+
+function editorUndoApprovalScope(patchJournalLength: number): string {
+  return `editor.undoLastPatch:${patchJournalLength}`;
+}
+
+function editorSaveApprovalScope(documentVersionHash: string, sessionId: string | undefined): string {
+  return `editor.saveSession:${documentVersionHash}:${sessionId ?? "no-session"}`;
+}
+
+function validateEditorAgentApproval(
+  approval: CubicaAgentApprovalEnvelope | undefined,
+  toolName: MutatingEditorToolName,
+  scopeHash: string
+): EditorAgentToolResult | null {
+  if (approval === undefined) {
+    return {
+      ok: false,
+      summary: `${toolName} requires a Cubica approval envelope created by the editor UI.`
+    };
+  }
+
+  const validation = validateAgentApprovalEnvelope(approval, {
+    expectedToolName: toolName,
+    expectedScopeHash: scopeHash,
+    requireApproved: true
+  });
+
+  if (validation.ok) {
+    return null;
+  }
+
+  return {
+    ok: false,
+    summary: `${toolName} approval envelope is missing, expired or scoped to another operation.`,
+    diagnostics: validation.diagnostics.map((diagnostic) => ({
+      severity: diagnostic.severity,
+      source: diagnostic.source,
+      pointer: diagnostic.pointer,
+      message: diagnostic.message
+    }))
+  };
+}
+
+function buildEditorAgentSurface(input: {
+  readonly aiApplyState: "idle" | "planning" | "applying" | "applied" | "blocked" | "error" | "undone";
+  readonly aiDiffSummary: readonly EditorDiffSummaryItem[];
+  readonly aiDiagnostics: readonly RoutedEditorDiagnostic[];
+  readonly hasPlannedChangeSet: boolean;
+  readonly hasUndoPatch: boolean;
+  readonly applyApprovalScopeHash: string;
+  readonly undoApprovalScopeHash: string;
+}): CubicaSurface {
+  const children: CubicaSurfaceComponent[] = [
+    {
+      id: "editor-agent-progress",
+      kind: "cubica.text",
+      props: {
+        text: `Tool state: ${input.aiApplyState}`
+      }
+    }
+  ];
+
+  if (input.aiDiagnostics.length > 0) {
+    children.push({
+      id: "editor-agent-diagnostics",
+      kind: "cubica.diagnosticList",
+      props: {
+        title: "Diagnostics",
+        items: input.aiDiagnostics.slice(0, 5).map((diagnostic) => `${diagnostic.source} ${diagnostic.pointer}: ${diagnostic.message}`)
+      }
+    });
+  }
+
+  if (input.aiDiffSummary.length > 0) {
+    children.push({
+      id: "editor-agent-diff",
+      kind: "cubica.diffSummary",
+      props: {
+        title: "Diff summary",
+        entries: input.aiDiffSummary.slice(0, 5).map((item) => item.description)
+      }
+    });
+  }
+
+  if (input.hasPlannedChangeSet) {
+    children.push({
+      id: "editor-agent-dry-run",
+      kind: "cubica.button",
+      props: {
+        label: "Dry run"
+      },
+      actions: [
+        {
+          id: "editor-agent-dry-run-action",
+          kind: "editorTool",
+          label: "Dry run",
+          target: "editor.dryRunChangeSet",
+          sideEffectPolicy: "system-approved"
+        }
+      ]
+    });
+    children.push({
+      id: "editor-agent-apply",
+      kind: "cubica.button",
+      props: {
+        label: "Apply approved ChangeSet"
+      },
+      actions: [
+        {
+          id: "editor-agent-apply-action",
+          kind: "editorTool",
+          label: "Apply approved ChangeSet",
+          target: "editor.applyChangeSet",
+          sideEffectPolicy: "human-approved",
+          requiresApproval: true,
+          metadata: {
+            approvalScopeHash: input.applyApprovalScopeHash
+          }
+        }
+      ]
+    });
+  }
+
+  if (input.hasUndoPatch) {
+    children.push({
+      id: "editor-agent-undo",
+      kind: "cubica.button",
+      props: {
+        label: "Undo last AI patch"
+      },
+      actions: [
+        {
+          id: "editor-agent-undo-action",
+          kind: "editorTool",
+          label: "Undo last AI patch",
+          target: "editor.undoLastPatch",
+          sideEffectPolicy: "human-approved",
+          requiresApproval: true,
+          metadata: {
+            approvalScopeHash: input.undoApprovalScopeHash
+          }
+        }
+      ]
+    });
+  }
+
+  return {
+    schemaVersion: "1.0.0",
+    surfaceId: "editor-agent-sidebar-surface",
+    catalogVersion: "2026-06-11",
+    mode: "helper",
+    title: "Assistant surface",
+    root: {
+      id: "editor-agent-surface-root",
+      kind: "cubica.approvalCard",
+      props: {
+        title: "Assistant surface",
+        summary: "Agent tool output is shown through Cubica Surface and actions stay behind editor tools."
+      },
+      children
+    }
+  };
 }
 
 async function fetchAuthoringList(gameId: string | null, sessionId?: string): Promise<AuthoringListResult> {

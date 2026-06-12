@@ -189,9 +189,9 @@ const createAntarcticaConfig = (data) => {
             const currentInfo = (0, state_resolvers_1.resolveCurrentInfoEntry)(gameContent, publicState);
             const currentBoard = (0, state_resolvers_1.resolveCurrentBoard)(gameContent, publicState);
             const currentTeamSelection = (0, state_resolvers_1.resolveCurrentTeamSelectionScene)(gameContent, publicState);
-            const cardFlags = (0, state_resolvers_1.readCardFlags)(session);
+            const cardObjects = (0, state_resolvers_1.readCardObjects)(session);
             const selectedCardId = (0, state_resolvers_1.readSelectedCardId)(session);
-            const boardCards = (0, state_resolvers_1.resolveBoardCards)(gameContent, currentBoard, cardFlags);
+            const boardCards = (0, state_resolvers_1.resolveBoardCards)(gameContent, currentBoard, cardObjects);
             const teamFlags = (0, state_resolvers_1.readTeamFlags)(session);
             const teamSelectionState = (0, state_resolvers_1.readTeamSelection)(session);
             const canAdvance = (0, state_resolvers_1.readCanAdvance)(session);
@@ -208,7 +208,7 @@ const createAntarcticaConfig = (data) => {
                 currentInfo,
                 currentBoard,
                 currentTeamSelection,
-                cardFlags,
+                cardObjects,
                 selectedCardId,
                 selectedCard,
                 boardCards,
@@ -273,7 +273,7 @@ exports.resolveCurrentBoard = resolveCurrentBoard;
 exports.resolveCurrentTeamSelectionScene = resolveCurrentTeamSelectionScene;
 exports.resolveBoardCards = resolveBoardCards;
 exports.resolveLastInfoHintText = resolveLastInfoHintText;
-exports.readCardFlags = readCardFlags;
+exports.readCardObjects = readCardObjects;
 exports.readTeamFlags = readTeamFlags;
 exports.readTeamSelection = readTeamSelection;
 exports.readCanAdvance = readCanAdvance;
@@ -342,9 +342,9 @@ function resolveCurrentTeamSelectionScene(gameContent, publicState) {
     return (gameContent.teamSelections.find((scene) => scene.stepIndex === stepIndex && scene.screenId === screenId) ?? null);
 }
 /**
- * Resolves visible cards for the current board by card ids and session flags.
+ * Resolves visible cards for the current board by card ids and session object state.
  */
-function resolveBoardCards(gameContent, board, cardFlags) {
+function resolveBoardCards(gameContent, board, cardObjects) {
     if (!gameContent || !board) {
         return [];
     }
@@ -356,8 +356,12 @@ function resolveBoardCards(gameContent, board, cardFlags) {
             return false;
         }
         const contentAvailable = card.available;
-        const cardState = cardFlags?.[card.cardId];
-        return contentAvailable !== false && cardState?.available !== false;
+        const cardState = cardObjects?.[card.cardId];
+        // Hidden cards are not visible
+        if (cardState?.facets?.availability === "hidden") {
+            return false;
+        }
+        return contentAvailable !== false;
     });
 }
 /**
@@ -381,8 +385,8 @@ function resolveLastInfoHintText(gameContent, gameState) {
     }
     return [lastInfo.title, lastInfo.body].filter(Boolean).join("\n\n");
 }
-function readCardFlags(session) {
-    return (0, plugin_api_1.readCardFlags)(session);
+function readCardObjects(session) {
+    return (0, plugin_api_1.readCardObjects)(session);
 }
 function readTeamFlags(session) {
     return (0, plugin_api_1.readTeamFlags)(session);

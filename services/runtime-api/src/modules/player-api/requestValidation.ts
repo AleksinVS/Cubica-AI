@@ -3,6 +3,7 @@ import type {
   DispatchActionInput,
   RestorePreviewSessionRequest
 } from "@cubica/contracts-session";
+import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
 import { RequestValidationError } from "../errors.ts";
 
 type JsonRecord = Record<string, unknown>;
@@ -73,6 +74,20 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
   assertOptionalString(body.playerId, "playerId");
 
   return body as unknown as DispatchActionInput;
+};
+
+export const parseAgentTurnRequest = (body: unknown): AgentTurnRequest => {
+  assertRecord(body, "POST /agent-turns body");
+  assertRequiredString(body.sessionId, "sessionId");
+  assertOptionalString(body.playerId, "playerId");
+  assertOptionalString(body.actionId, "actionId");
+
+  return {
+    sessionId: body.sessionId,
+    playerId: typeof body.playerId === "string" ? body.playerId : undefined,
+    actionId: typeof body.actionId === "string" ? body.actionId : undefined,
+    payload: body.payload
+  };
 };
 
 export const parseRestorePreviewSessionRequest = (

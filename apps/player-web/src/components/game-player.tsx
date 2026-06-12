@@ -20,6 +20,8 @@ import { buildGameConfig, resolveRegisteredGameConfigData } from "@/presenter/ga
 import { loadPlayerWebPluginBundles } from "@/plugins/preview-plugin-loader";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
+import { CubicaSurfaceRenderer } from "@/components/surface/cubica-surface-renderer";
+import { RuntimeStatusPanel } from "@/components/runtime-status-panel";
 import { HintRenderer } from "@/components/panels/hint-renderer";
 import { JournalRenderer } from "@/components/panels/journal-renderer";
 import {
@@ -47,6 +49,8 @@ export type GamePlayerProps = {
   editorPreviewParentOrigin?: string;
   /** Preview or published player-web plugin bundles served by runtime-api. */
   playerPluginBundles?: readonly PlayerWebPluginBundleReference[];
+  /** Optional generated content source used by editor preview sessions. */
+  contentSourceId?: string;
 };
 
 /**
@@ -69,7 +73,8 @@ export function GamePlayer({
   initialSessionId,
   editorPreviewMode = false,
   editorPreviewParentOrigin,
-  playerPluginBundles = EMPTY_PLAYER_PLUGIN_BUNDLES
+  playerPluginBundles = EMPTY_PLAYER_PLUGIN_BUNDLES,
+  contentSourceId
 }: GamePlayerProps) {
   const t = useLocale();
   const playerPluginSignature = useMemo(
@@ -170,7 +175,8 @@ export function GamePlayer({
       gateway,
       content,
       gameUi,
-      config: fullConfig
+      config: fullConfig,
+      contentSourceId
     });
     presenterRef.current = presenter;
 
@@ -225,7 +231,7 @@ export function GamePlayer({
       unsubscribe();
       presenterRef.current = null;
     };
-  }, [content, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
+  }, [content, contentSourceId, gameUi, fullConfig, initialSessionId, playerPluginState.status]);
 
   const handleAction = async (actionId: string, payload?: Record<string, unknown>) => {
     const presenter = presenterRef.current;
@@ -281,6 +287,18 @@ export function GamePlayer({
     });
   };
 
+  const handleRetryBoot = () => {
+    const presenter = presenterRef.current;
+    if (!presenter) return;
+    void presenter.boot();
+  };
+
+  const handleSurfaceAction = (action: Parameters<GamePresenter["handleSurfaceAction"]>[0]) => {
+    const presenter = presenterRef.current;
+    if (!presenter) return;
+    void presenter.handleSurfaceAction(action);
+  };
+
   const state = playerState;
 
   if (playerPluginState.status === "error") {
@@ -298,6 +316,20 @@ export function GamePlayer({
           <div className="loading-spinner" />
           <span>{t.loading}</span>
         </div>
+      </main>
+    );
+  }
+
+  if (state.runtimeStatus !== "ready") {
+    return (
+      <main ref={rootRef} className="shell game-player-root">
+        <RuntimeStatusPanel
+          status={state.runtimeStatus}
+          reason={state.runtimeStatusReason ?? state.error}
+          failurePolicy={state.runtimeFailurePolicy}
+          agentRuntimeRequired={state.agentRuntimeRequired}
+          onRetry={handleRetryBoot}
+        />
       </main>
     );
   }
@@ -328,6 +360,12 @@ export function GamePlayer({
           onClose={() => handleDismissPanel("hint")}
           fallbackMetrics={fullConfig.fallbackMetrics}
           defaultHintText={fullConfig.resolveHintText?.(content, state as Record<string, unknown>) ?? null}
+        />
+      ) : state.agentSurface ? (
+        <CubicaSurfaceRenderer
+          surface={state.agentSurface}
+          isPending={state.isPending}
+          onAction={handleSurfaceAction}
         />
       ) : screenKey && gameUi?.screens[screenKey] ? (
         <ManifestRenderer

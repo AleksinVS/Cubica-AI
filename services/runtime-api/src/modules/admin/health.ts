@@ -12,8 +12,15 @@
  * - Background workers (none exist in this block)
  */
 
-import { contentService } from "../content/contentService.ts";
+import type { GameManifestExecutionMode } from "@cubica/contracts-manifest";
 import type { SessionStorePort } from "@cubica/contracts-session";
+import {
+  buildAgentRuntimeUnavailableMessage,
+  checkAgentRuntimeReadiness,
+  type AgentRuntimeReadinessResult
+} from "../ai/agentRuntimeReadiness.ts";
+import { loadGameManifest } from "../content/contentService.ts";
+import { HttpError } from "../errors.ts";
 
 /**
  * Result of a single dependency check.
@@ -34,6 +41,20 @@ export interface ReadinessResponse {
     sessionStore: DependencyCheckResult & {
       mode: "in-memory";
     };
+  };
+}
+
+export interface GameReadinessResponse {
+  ready: boolean;
+  service: "runtime-api";
+  gameId: string;
+  contentSourceId?: string;
+  executionMode?: GameManifestExecutionMode;
+  dependencies: ReadinessResponse["dependencies"] & {
+    gameContent: DependencyCheckResult & {
+      gameId: string;
+    };
+    agentRuntime: AgentRuntimeReadinessResult;
   };
 }
 
@@ -107,4 +128,87 @@ export async function buildReadinessResponse(
       }
     }
   };
+}
+
+export async function buildGameReadinessResponse(input: {
+  sessionStore: SessionStorePort<unknown>;
+  gameId: string;
+  contentSourceId?: string;
+}): Promise<GameReadinessResponse> {
+  const [contentCheck, sessionStoreCheck] = await Promise.all([
+    checkContentSubsystem(),
+    Promise.resolve(checkSessionStore(input.sessionStore))
+  ]);
+
+  const baseDependencies = {
+    content: {
+      status: contentCheck.status,
+      ready: contentCheck.ready
+    },
+    sessionStore: {
+      status: sessionStoreCheck.status,
+      mode: sessionStoreCheck.mode
+    }
+  };
+
+  try {
+    const manifest = await loadGameManifest(input.gameId, input.contentSourceId);
+    const executionMode = manifest.executionMode ?? "deterministic";
+    const agentRuntime = checkAgentRuntimeReadiness(manifest.agentRuntime);
+    const ready = calculateReadiness(contentCheck, sessionStoreCheck) && agentRuntime.status === "ok";
+
+    return {
+      ready,
+      service: "runtime-api",
+      gameId: input.gameId,
+      contentSourceId: input.contentSourceId,
+      executionMode,
+      dependencies: {
+        ...baseDependencies,
+        gameContent: {
+          status: "ok",
+          gameId: input.gameId
+        },
+        agentRuntime
+      }
+    };
+  } catch (error) {
+    return {
+      ready: false,
+      service: "runtime-api",
+      gameId: input.gameId,
+      contentSourceId: input.contentSourceId,
+      dependencies: {
+        ...baseDependencies,
+        gameContent: {
+          status: "error",
+          gameId: input.gameId,
+          message: error instanceof Error ? error.message : String(error)
+        },
+        agentRuntime: {
+          status: "ok",
+          required: false,
+          mode: "not-required"
+        }
+      }
+    };
+  }
+}
+
+export async function assertGameLaunchReady(input: {
+  gameId: string;
+  contentSourceId?: string;
+}): Promise<void> {
+  const manifest = await loadGameManifest(input.gameId, input.contentSourceId);
+  const agentRuntime = checkAgentRuntimeReadiness(manifest.agentRuntime);
+  if (agentRuntime.status !== "ok") {
+    if (
+      manifest.agentRuntime?.failurePolicy === "deterministicFallback" &&
+      typeof manifest.agentRuntime.deterministicFallbackActionId === "string" &&
+      manifest.agentRuntime.deterministicFallbackActionId.length > 0
+    ) {
+      return;
+    }
+    throw new HttpError(503, buildAgentRuntimeUnavailableMessage(input.gameId, agentRuntime));
+  }
 }

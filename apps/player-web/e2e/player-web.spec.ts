@@ -94,7 +94,8 @@ test.describe("player-web e2e", () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Choose path" })).toBeVisible();
+    const chooseOption = page.getByRole("button", { name: "Choose the option with the visible tradeoff." });
+    await expect(chooseOption).toBeVisible();
 
     const createSessionResponse = await createSession;
     expect(createSessionResponse.status()).toBe(201);
@@ -103,11 +104,26 @@ test.describe("player-web e2e", () => {
       response.url().endsWith("/api/runtime/actions") &&
       response.request().method() === "POST"
     );
-    await page.getByRole("button", { name: "Choose path" }).click();
+    await chooseOption.click();
     expect((await actionResponse).status()).toBe(200);
 
     await expect(page.getByRole("heading", { name: "Result" })).toBeVisible();
     await expect(page.getByText("Outcome: accepted")).toBeVisible();
-    await expect(page.getByText("1")).toBeVisible();
+    await expect(page.getByText("Supply token: 1")).toBeVisible();
+  });
+
+  test("shows paused state for AI-driven game when Agent Runtime is unavailable", async ({ page }) => {
+    const readinessResponse = page.waitForResponse((response) =>
+      response.url().includes("/api/runtime/games/ai-driven-choice/readiness") &&
+      response.request().method() === "GET"
+    );
+
+    await page.goto("/?gameId=ai-driven-choice");
+
+    expect((await readinessResponse).status()).toBe(503);
+    await expect(page.locator(".game-player-root")).toBeVisible();
+    await expect(page.locator(".loading-state")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Игра поставлена на паузу" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Повторить" })).toBeVisible();
   });
 });

@@ -1,5 +1,6 @@
 {
   ".": "JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.",
+  "game-manifest.schema.json": "Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.",
   "game-authoring.schema.json": "JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.",
   "manifest-authoring-common.schema.json": "Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.",
   "manifest-source-map.schema.json": "JSON Schema for tooling-only source map companion files generated next to runtime manifests.",

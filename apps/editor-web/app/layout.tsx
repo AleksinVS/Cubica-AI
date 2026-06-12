@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "@copilotkit/react-core/v2/styles.css";
 import "@xyflow/react/dist/style.css";
 import "./globals.css";
 

@@ -43,9 +43,11 @@ import {
 } from "@/test/antarctica-opening-tail-fixtures";
 
 import {
+  readCardFlags,
   readSelectedCardId,
   readCanAdvance,
 } from "@/lib/game-content-resolvers";
+import * as playerPluginApiModule from "@/plugins/player-plugin-api";
 import {
   resolveAntarcticaContent,
   resolveCurrentBoard,
@@ -144,7 +146,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
       expect(nonGoCards.map((c) => c.cardId)).toEqual(["56", "59"]);
     });
 
-    it("filters out unavailable cards based on cardFlags", () => {
+    it("filters out hidden cards based on cardObjects", () => {
       const antarctica = openingTailStep30AntarcticaContent;
       const board: GamePlayerBoard = {
         id: "opening.board.55_60",
@@ -152,12 +154,20 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
         screenId: "S2",
         cardIds: ["55", "56", "57", "58", "59", "60"],
       };
-      const cardFlags = {
-        "56": { available: false },
-        "59": { available: false },
+      const cardObjects = {
+        "56": {
+          objectType: "antarctica.card",
+          facets: { availability: "hidden" as const },
+          attributes: {},
+        },
+        "59": {
+          objectType: "antarctica.card",
+          facets: { availability: "hidden" as const },
+          attributes: {},
+        },
       };
 
-      const cards = resolveBoardCards(antarctica, board, cardFlags);
+      const cards = resolveBoardCards(antarctica, board, cardObjects);
 
       expect(cards).toHaveLength(4);
       expect(cards.map((c) => c.cardId)).toEqual(["55", "57", "58", "60"]);
@@ -191,6 +201,13 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   });
 
   describe("session snapshot readers", () => {
+    it("keeps legacy player plugin API exports available in the 1.x line", () => {
+      expect(typeof playerPluginApiModule.readCardFlags).toBe("function");
+      expect(typeof playerPluginApiModule.readCardObjects).toBe("function");
+      expect(typeof playerPluginApiModule.createManifestActionAdapter).toBe("function");
+      expect(typeof playerPluginApiModule.playerPluginApi.registerGameConfigFactory).toBe("function");
+    });
+
     it("readSelectedCardId returns null when no card is selected", () => {
       const selectedCardId = readSelectedCardId(openingTailStep30SessionSnapshot);
       expect(selectedCardId).toBeNull();
@@ -209,6 +226,24 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
     it("readCanAdvance returns true when canAdvance is set after go-card selection", () => {
       const canAdvance = readCanAdvance(openingTailStep30WithSelectedCardSessionSnapshot);
       expect(canAdvance).toBe(true);
+    });
+
+    it("readCardFlags preserves legacy preview plugin compatibility", () => {
+      const session = {
+        state: {
+          public: {
+            flags: {
+              cards: {
+                "56": { available: false, locked: true },
+              },
+            },
+          },
+        },
+      };
+
+      expect(readCardFlags(session as unknown as typeof openingTailStep30SessionSnapshot)).toEqual({
+        "56": { available: false, locked: true },
+      });
     });
   });
 
@@ -336,23 +371,23 @@ describe("slice-step32-33-render: Board 61_66 and Info i18", () => {
   describe("locked-card behavior for card 66", () => {
     it("card 66 is locked initially at step 32", () => {
       const publicState = openingTailStep32BoardSessionSnapshot.state.public as Record<string, unknown>;
-      const cardFlags = (publicState.flags as Record<string, Record<string, { locked?: boolean }>> | undefined)?.cards;
+      const cardObjects = (publicState.objects as Record<string, Record<string, { facets?: { availability?: string } }>> | undefined)?.cards;
 
-      expect(cardFlags).toBeDefined();
-      expect(cardFlags?.["66"]).toBeDefined();
-      expect(cardFlags?.["66"]?.locked).toBe(true);
+      expect(cardObjects).toBeDefined();
+      expect(cardObjects?.["66"]).toBeDefined();
+      expect(cardObjects?.["66"]?.facets?.availability).toBe("locked");
     });
 
     it("card 66 is unlocked after cards 62/63 are resolved", () => {
       const publicState = openingTailStep32WithUnlockedCard66SessionSnapshot.state.public as Record<string, unknown>;
-      const cardFlags = (publicState.flags as Record<string, Record<string, { locked?: boolean }>> | undefined)?.cards;
+      const cardObjects = (publicState.objects as Record<string, Record<string, { facets?: { availability?: string } }>> | undefined)?.cards;
 
-      expect(cardFlags).toBeDefined();
-      expect(cardFlags?.["66"]).toBeDefined();
-      expect(cardFlags?.["66"]?.locked).toBe(false);
+      expect(cardObjects).toBeDefined();
+      expect(cardObjects?.["66"]).toBeDefined();
+      expect(cardObjects?.["66"]?.facets?.availability).toBe("available");
       // Cards 62/63 are resolved, triggering the board-local unlock hook
-      expect(cardFlags?.["62"]?.locked).toBe(false);
-      expect(cardFlags?.["63"]?.locked).toBe(false);
+      expect(cardObjects?.["62"]?.facets?.availability).toBe("available");
+      expect(cardObjects?.["63"]?.facets?.availability).toBe("available");
     });
 
     it("selected card 66 can advance after unlock", () => {

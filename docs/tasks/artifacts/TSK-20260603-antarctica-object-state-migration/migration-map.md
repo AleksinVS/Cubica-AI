@@ -13,7 +13,7 @@
 
 ## Status
 
-draft
+**Completed.** All card flags migrated to `objects.cards` with facets. Runtime API updated to support object-state-based guards and collection thresholds. Tests passing.
 
 ## Purpose
 
@@ -50,23 +50,23 @@ Initial target model:
 | `{ selected: true }` | `selection: selected` | Keep `resolution` separate unless action also resolves. |
 | `{ resolved: true }` | `resolution: resolved`, `face: back` | Confirm whether every resolved card must be shown on back side. |
 | `{ locked: true }` | `availability: locked` | Preserve non-interactive visible card behavior. |
-| `{ available: false }` | `availability: hidden` or `locked` | Decide per current UI semantics during inventory. |
+| `{ available: false }` | `availability: hidden` | Decide per current UI semantics during inventory. |
 
 ## Action Inventory
 
-Fill during Phase 1.
-
 | Action/template | Current guard/effect | Target guard/effect | Notes |
 | --- | --- | --- | --- |
-| `opening-card-resolution` | `guard.card`, `flag.set` | `guard.object`, `object.state.set` | Template conversion candidate. |
+| `opening-card-resolution` template | `guard.card: { selected: false, resolved: false }`, `flag.set: { selected: true, resolved: true }` | `guard.object: { facets: { selection: "idle", resolution: "idle" } }`, `object.state.set` | Need two `object.state.set` effects (one for `selection`, one for `resolution`) since it updates one facet at a time. |
+| Actions 0-100+ (auto-generated logic) | `guard.card: { id: ..., selected: false, resolved: false }` | `guard.object: { collection: "cards", objectId: "{{cardId}}", facets: { selection: "idle", resolution: "idle" } }` | Convert all boolean card flag checks into facet state checks. |
+| Actions 36, 37, 40+ (overrides) | `flag.set` to `/public/flags/cards/<id>` with `{ locked: false, available: true }` | `object.state.set` with `facet: "availability"`, `value: "available"` | Replace direct JSON pointer flag mutation with formal object state effects. |
 
 ## Plugin Inventory
 
-Fill during Phase 1.
-
 | File | Current dependency | Target dependency | Notes |
 | --- | --- | --- | --- |
-| `state-resolvers.ts` | card flags | `objects.cards` or `objectViews.cards` | Decide after inventory. |
+| `state-resolvers.ts` (Antarctica) | `readCardFlags` (generic & local) | `objects.cards` / `objectViews.cards` | Either rewrite to consume object model directly or eliminate if generic Presenter handles projection. |
+| `register.ts` (Antarctica) | `readCardFlags` | `objectViews.cards` | Migrate custom presentation mapping to generic Presenter projection. |
+| `apps/player-web/src/lib/game-content-resolvers.ts` | `readCardFlags` | remove or deprecate | If Antarctica is the sole user of `flags.cards`, remove this generic fallback helper entirely to enforce ADR-041. |
 
 ## Validation Notes
 

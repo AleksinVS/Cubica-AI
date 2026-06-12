@@ -1,0 +1,3 @@
+{
+  "description": "Editor-local AI agent backend routes. These routes expose AG-UI protocol endpoints for the authoring assistant without giving the browser direct access to backend secrets."
+}

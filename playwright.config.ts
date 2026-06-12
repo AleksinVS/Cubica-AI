@@ -44,6 +44,7 @@ export default defineConfig({
       url: `${runtimeUrl}/health`,
       env: {
         PORT: String(runtimePort),
+        CUBICA_ENABLE_MOCK_AGENT_RUNTIME: "false",
         EDITOR_PREVIEW_WORKTREES_ROOTS: [
           path.join(process.cwd(), ".tmp", "editor-worktrees"),
           path.join(editorProjectRoot, ".tmp", "editor-worktrees")

@@ -13,6 +13,7 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     include: [
+      "app/**/*.test.ts",
       "src/**/*.test.ts",
       "src/**/*.test.tsx"
     ]

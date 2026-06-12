@@ -15,6 +15,7 @@ type SessionVersion = {
 };
 
 type PublicState = {
+  objects?: { cards?: Record<string, { facets?: { selection?: string; resolution?: string; availability?: string } }> };
   metrics?: {
     score?: number;
     time?: number;
@@ -91,6 +92,26 @@ type ActionResponse = {
   state: SessionState;
 };
 
+type AgentTurnResponse = {
+  sessionId: string;
+  version: SessionVersion;
+  state: SessionState;
+  agentTurn: {
+    ok: boolean;
+    narration?: string;
+    audit: {
+      source: string;
+      runId?: string;
+    };
+    surface?: {
+      surfaceId: string;
+      root: {
+        kind: string;
+      };
+    };
+  };
+};
+
 const runtimeApi = createRuntimeApiServer({ port: 0 });
 let baseUrl = "";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -154,18 +175,34 @@ const dispatchAction = async (
     })
   });
 
-const writePreviewContentRoot = async () => {
+const runAgentTurn = async (
+  sessionId: string,
+  playerId: string,
+  actionId?: string,
+  payload?: unknown
+) =>
+  requestJson<AgentTurnResponse | { error: string }>("/agent-turns", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId,
+      playerId,
+      actionId,
+      payload
+    })
+  });
+
+const writePreviewContentRoot = async (
+  transformManifest: (manifest: Record<string, any>) => void = () => {}
+) => {
   const sourceGameDir = path.join(repoRoot, "games", "simple-choice");
   const targetGameDir = path.join(previewContentRoot, "games", "simple-choice");
   await rm(previewContentRoot, { recursive: true, force: true });
   await mkdir(path.join(targetGameDir, "ui", "web"), { recursive: true });
 
-  const gameManifest = JSON.parse(await readFile(path.join(sourceGameDir, "game.manifest.json"), "utf8")) as {
-    meta: { name: string };
-    state: { public: { choice?: { outcome?: string } } };
-  };
+  const gameManifest = JSON.parse(await readFile(path.join(sourceGameDir, "game.manifest.json"), "utf8")) as Record<string, any>;
   gameManifest.meta.name = "Simple Choice Preview Source";
   gameManifest.state.public.choice = { ...(gameManifest.state.public.choice ?? {}), outcome: "preview-source" };
+  transformManifest(gameManifest);
 
   await writeFile(path.join(targetGameDir, "game.manifest.json"), `${JSON.stringify(gameManifest, null, 2)}\n`, "utf8");
   await writeFile(
@@ -467,6 +504,531 @@ test("GET /readiness has machine-readable payload", async () => {
   assert.equal(typeof body.dependencies, "object");
   assert.equal(typeof body.dependencies.content, "object");
   assert.equal(typeof body.dependencies.sessionStore, "object");
+});
+
+test("GET /games/:id/readiness keeps deterministic games independent from Agent Runtime", async () => {
+  const { response, body } = await requestJson<{
+    ready: boolean;
+    executionMode: string;
+    dependencies: {
+      gameContent: { status: string };
+      agentRuntime: { status: string; required: boolean; mode: string };
+    };
+  }>("/games/antarctica/readiness");
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ready, true);
+  assert.equal(body.executionMode, "deterministic");
+  assert.equal(body.dependencies.gameContent.status, "ok");
+  assert.equal(body.dependencies.agentRuntime.status, "ok");
+  assert.equal(body.dependencies.agentRuntime.required, false);
+  assert.equal(body.dependencies.agentRuntime.mode, "not-required");
+});
+
+test("GET /games/:id/readiness reports required Agent Runtime as unavailable for AI-driven preview content", async () => {
+  await writePreviewContentRoot((gameManifest) => {
+    gameManifest.executionMode = "ai-driven";
+    gameManifest.agentRuntime = {
+      agentId: "scenario-agent",
+      required: true,
+      allowedCapabilities: ["advanceStep"],
+      allowedTools: ["agent.nextTurn"],
+      surfaceCatalog: ["cubica.choiceList"],
+      failurePolicy: "pause",
+      contextExposurePolicy: {
+        publicState: true,
+        secretState: "none"
+      }
+    };
+  });
+
+  const sourceId = "runtime-ai-readiness-test";
+  const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      contentSourceId: sourceId,
+      contentRoot: previewContentRoot
+    })
+  });
+  assert.equal(reloadResponse.status, 200);
+
+  const { response, body } = await requestJson<{
+    ready: boolean;
+    executionMode: string;
+    dependencies: {
+      agentRuntime: {
+        status: string;
+        required: boolean;
+        mode: string;
+        agentId: string;
+        failurePolicy: string;
+      };
+    };
+  }>(`/games/simple-choice/readiness?contentSourceId=${sourceId}`);
+
+  assert.equal(response.status, 503);
+  assert.equal(body.ready, false);
+  assert.equal(body.executionMode, "ai-driven");
+  assert.equal(body.dependencies.agentRuntime.status, "error");
+  assert.equal(body.dependencies.agentRuntime.required, true);
+  assert.equal(body.dependencies.agentRuntime.mode, "missing");
+  assert.equal(body.dependencies.agentRuntime.agentId, "scenario-agent");
+  assert.equal(body.dependencies.agentRuntime.failurePolicy, "pause");
+});
+
+test("POST /sessions rejects AI-driven game launch when required Agent Runtime is unavailable", async () => {
+  await writePreviewContentRoot((gameManifest) => {
+    gameManifest.executionMode = "ai-driven";
+    gameManifest.agentRuntime = {
+      agentId: "scenario-agent",
+      required: true,
+      allowedCapabilities: ["advanceStep"],
+      surfaceCatalog: ["cubica.choiceList"],
+      failurePolicy: "pause"
+    };
+  });
+
+  const sourceId = "runtime-ai-session-gate-test";
+  const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      contentSourceId: sourceId,
+      contentRoot: previewContentRoot
+    })
+  });
+  assert.equal(reloadResponse.status, 200);
+
+  const { response, body } = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "ai-driven-launch",
+      contentSourceId: sourceId
+    })
+  });
+
+  assert.equal(response.status, 503);
+  assert.match(body.error, /requires Agent Runtime/);
+  assert.match(body.error, /scenario-agent/);
+});
+
+test("POST /sessions allows explicit deterministic fallback when Agent Runtime is unavailable", async () => {
+  await writePreviewContentRoot((gameManifest) => {
+    gameManifest.executionMode = "ai-driven";
+    gameManifest.agentRuntime = {
+      agentId: "scenario-agent",
+      required: true,
+      allowedCapabilities: ["advanceStep"],
+      surfaceCatalog: ["cubica.choiceList"],
+      failurePolicy: "deterministicFallback",
+      deterministicFallbackActionId: "choose.option"
+    };
+  });
+
+  const sourceId = "runtime-ai-deterministic-fallback-test";
+  const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      contentSourceId: sourceId,
+      contentRoot: previewContentRoot
+    })
+  });
+  assert.equal(reloadResponse.status, 200);
+
+  const { response, body } = await requestJson<SessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "ai-driven-fallback-launch",
+      contentSourceId: sourceId
+    })
+  });
+
+  assert.equal(response.status, 201);
+  assert.equal(body.gameId, "simple-choice");
+});
+
+test("POST /agent-turns rejects invalid request bodies", async () => {
+  const missingSessionId = await requestJson<{ error: string }>("/agent-turns", {
+    method: "POST",
+    body: JSON.stringify({
+      actionId: "agent.continue"
+    })
+  });
+
+  assert.equal(missingSessionId.response.status, 400);
+  assert.match(missingSessionId.body.error, /sessionId is required/);
+
+  const invalidActionId = await requestJson<{ error: string }>("/agent-turns", {
+    method: "POST",
+    body: JSON.stringify({
+      sessionId: "session-test",
+      actionId: 42
+    })
+  });
+
+  assert.equal(invalidActionId.response.status, 400);
+  assert.match(invalidActionId.body.error, /actionId must be a non-empty string/);
+});
+
+test("POST /agent-turns returns 404 for unknown sessions", async () => {
+  const { response, body } = await runAgentTurn("session-does-not-exist", "unknown-session", "agent.continue");
+
+  assert.equal(response.status, 404);
+  assert.match((body as { error: string }).error, /was not found/);
+});
+
+test("POST /agent-turns rejects deterministic sessions", async () => {
+  const { response: createResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({
+      gameId: "simple-choice",
+      playerId: "deterministic-agent-turn"
+    })
+  });
+
+  assert.equal(createResponse.status, 201);
+
+  const { response, body } = await runAgentTurn(session.sessionId, "deterministic-agent-turn", "agent.continue");
+
+  assert.equal(response.status, 400);
+  assert.match((body as { error: string }).error, /only for hybrid or AI-driven games/);
+});
+
+test("POST /agent-turns rejects mock Agent Runtime when the opt-in flag is disabled", async () => {
+  const previousMockFlag = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+
+  try {
+    await writePreviewContentRoot((gameManifest) => {
+      gameManifest.executionMode = "ai-driven";
+      gameManifest.agentRuntime = {
+        agentId: "scenario-agent",
+        runtimeId: "mock",
+        required: true,
+        allowedCapabilities: ["advanceStep"],
+        surfaceCatalog: ["cubica.choiceList"],
+        failurePolicy: "pause"
+      };
+    });
+
+    const sourceId = "runtime-ai-mock-disabled-turn-test";
+    const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "simple-choice",
+        contentSourceId: sourceId,
+        contentRoot: previewContentRoot
+      })
+    });
+    assert.equal(reloadResponse.status, 200);
+
+    const { response: createResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "simple-choice",
+        playerId: "ai-driven-mock-disabled",
+        contentSourceId: sourceId
+      })
+    });
+    assert.equal(createResponse.status, 201);
+
+    delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+
+    const { response, body } = await runAgentTurn(session.sessionId, "ai-driven-mock-disabled", "agent.continue");
+
+    assert.equal(response.status, 503);
+    assert.match((body as { error: string }).error, /requires Agent Runtime/);
+  } finally {
+    if (previousMockFlag === undefined) {
+      delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    } else {
+      process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockFlag;
+    }
+  }
+});
+
+test("POST /agent-turns executes an opt-in mock Agent Runtime turn for AI-driven preview content", async () => {
+  const previousMockFlag = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+
+  try {
+    await writePreviewContentRoot((gameManifest) => {
+      gameManifest.executionMode = "ai-driven";
+      gameManifest.agentRuntime = {
+        agentId: "scenario-agent",
+        runtimeId: "mock",
+        required: true,
+        allowedCapabilities: ["advanceStep"],
+        allowedTools: ["agent.nextTurn"],
+        surfaceCatalog: ["cubica.choiceList"],
+        failurePolicy: "pause",
+        contextExposurePolicy: {
+          publicState: true,
+          secretState: "none"
+        }
+      };
+    });
+
+    const sourceId = "runtime-ai-mock-turn-test";
+    const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "simple-choice",
+        contentSourceId: sourceId,
+        contentRoot: previewContentRoot
+      })
+    });
+    assert.equal(reloadResponse.status, 200);
+
+    const { response: readinessResponse, body: readiness } = await requestJson<{
+      ready: boolean;
+      dependencies: {
+        agentRuntime: {
+          status: string;
+          mode: string;
+          runtimeId: string;
+        };
+      };
+    }>(`/games/simple-choice/readiness?contentSourceId=${sourceId}`);
+
+    assert.equal(readinessResponse.status, 200);
+    assert.equal(readiness.ready, true);
+    assert.equal(readiness.dependencies.agentRuntime.status, "ok");
+    assert.equal(readiness.dependencies.agentRuntime.mode, "configured");
+    assert.equal(readiness.dependencies.agentRuntime.runtimeId, "mock");
+
+    const { response: createResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "simple-choice",
+        playerId: "ai-driven-mock",
+        contentSourceId: sourceId
+      })
+    });
+    assert.equal(createResponse.status, 201);
+    assert.equal(session.version.stateVersion, 0);
+    assert.deepEqual(session.state.public.log, []);
+
+    const { response: turnResponse, body: agentTurn } = await runAgentTurn(
+      session.sessionId,
+      "ai-driven-mock",
+      "agent.continue",
+      { choiceId: "continue" }
+    );
+
+    assert.equal(turnResponse.status, 200);
+    const turnBody = agentTurn as AgentTurnResponse;
+    assert.equal(turnBody.sessionId, session.sessionId);
+    assert.equal(turnBody.version.stateVersion, 1);
+    assert.equal(turnBody.version.lastEventSequence, 1);
+    assert.equal(turnBody.agentTurn.ok, true);
+    assert.equal(turnBody.agentTurn.audit.source, "mock");
+    assert.equal(turnBody.agentTurn.surface?.root.kind, "cubica.choiceList");
+    assert.equal(turnBody.state.public.log.length, 1);
+    assert.equal(turnBody.state.public.log[0].kind, "agent-turn");
+    assert.equal(turnBody.state.public.log[0].source, "mock");
+
+    const { response: getResponse, body: persisted } = await requestJson<SessionResponse>(`/sessions/${session.sessionId}`);
+
+    assert.equal(getResponse.status, 200);
+    assert.equal(persisted.version.stateVersion, 1);
+    assert.equal(persisted.state.public.log.length, 1);
+    assert.equal(persisted.state.public.log[0].kind, "agent-turn");
+  } finally {
+    if (previousMockFlag === undefined) {
+      delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    } else {
+      process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockFlag;
+    }
+  }
+});
+
+test("POST /agent-turns rejects Agent Runtime effects outside manifest allowedCapabilities", async () => {
+  const previousMockFlag = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+
+  try {
+    await writePreviewContentRoot((gameManifest) => {
+      gameManifest.executionMode = "ai-driven";
+      gameManifest.agentRuntime = {
+        agentId: "scenario-agent",
+        runtimeId: "mock",
+        required: true,
+        allowedCapabilities: ["unknownCapability"],
+        surfaceCatalog: ["cubica.choiceList"],
+        failurePolicy: "pause",
+        contextExposurePolicy: {
+          publicState: true,
+          secretState: "none"
+        }
+      };
+    });
+
+    const sourceId = "runtime-ai-capability-gate-test";
+    const { response: reloadResponse } = await requestJson<{ ok: boolean }>("/content/reload", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "simple-choice",
+        contentSourceId: sourceId,
+        contentRoot: previewContentRoot
+      })
+    });
+    assert.equal(reloadResponse.status, 200);
+
+    const { response: createResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "simple-choice",
+        playerId: "ai-driven-capability-gate",
+        contentSourceId: sourceId
+      })
+    });
+    assert.equal(createResponse.status, 201);
+    assert.equal(session.version.stateVersion, 0);
+    assert.deepEqual(session.state.public.log, []);
+
+    const { response: turnResponse, body: turnBody } = await runAgentTurn(
+      session.sessionId,
+      "ai-driven-capability-gate",
+      "agent.continue",
+      { choiceId: "continue" }
+    );
+
+    assert.equal(turnResponse.status, 502);
+    assert.match((turnBody as { error: string }).error, /exceeded manifest allowedCapabilities/);
+
+    const { response: getResponse, body: persisted } = await requestJson<SessionResponse>(`/sessions/${session.sessionId}`);
+    assert.equal(getResponse.status, 200);
+    assert.equal(persisted.version.stateVersion, 0);
+    assert.deepEqual(persisted.state.public.log, []);
+  } finally {
+    if (previousMockFlag === undefined) {
+      delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    } else {
+      process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockFlag;
+    }
+  }
+});
+
+test("committed ai-driven-choice fixture reports Agent Runtime unavailable until mock is enabled", async () => {
+  const previousMockFlag = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+
+  try {
+    const { response: readinessResponse, body: readiness } = await requestJson<{
+      ready: boolean;
+      executionMode: string;
+      dependencies: {
+        agentRuntime: {
+          status: string;
+          mode: string;
+          runtimeId: string;
+          reason?: string;
+        };
+      };
+    }>("/games/ai-driven-choice/readiness");
+
+    assert.equal(readinessResponse.status, 503);
+    assert.equal(readiness.ready, false);
+    assert.equal(readiness.executionMode, "ai-driven");
+    assert.equal(readiness.dependencies.agentRuntime.status, "error");
+    assert.equal(readiness.dependencies.agentRuntime.mode, "missing");
+    assert.equal(readiness.dependencies.agentRuntime.runtimeId, "mock");
+    assert.match(readiness.dependencies.agentRuntime.reason ?? "", /CUBICA_ENABLE_MOCK_AGENT_RUNTIME/);
+
+    const { response: sessionResponse, body: sessionError } = await requestJson<{ error: string }>("/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "ai-driven-choice",
+        playerId: "ai-driven-fixture-disabled"
+      })
+    });
+
+    assert.equal(sessionResponse.status, 503);
+    assert.match(sessionError.error, /requires Agent Runtime/);
+  } finally {
+    if (previousMockFlag === undefined) {
+      delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    } else {
+      process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockFlag;
+    }
+  }
+});
+
+test("committed ai-driven-choice fixture launches and runs Agent Turn when mock is enabled", async () => {
+  const previousMockFlag = process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+  process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = "true";
+
+  try {
+    const { response: readinessResponse, body: readiness } = await requestJson<{
+      ready: boolean;
+      executionMode: string;
+      dependencies: {
+        agentRuntime: {
+          status: string;
+          mode: string;
+          runtimeId: string;
+        };
+      };
+    }>("/games/ai-driven-choice/readiness");
+
+    assert.equal(readinessResponse.status, 200);
+    assert.equal(readiness.ready, true);
+    assert.equal(readiness.executionMode, "ai-driven");
+    assert.equal(readiness.dependencies.agentRuntime.status, "ok");
+    assert.equal(readiness.dependencies.agentRuntime.mode, "configured");
+    assert.equal(readiness.dependencies.agentRuntime.runtimeId, "mock");
+
+    const { response: contentResponse, body: content } = await requestJson<PlayerFacingContent>(
+      "/games/ai-driven-choice/player-content"
+    );
+    assert.equal(contentResponse.status, 200);
+    assert.equal(content.gameId, "ai-driven-choice");
+    assert.equal(content.executionMode, "ai-driven");
+    assert.equal(content.agentRuntime?.required, true);
+    assert.equal(content.agentRuntime?.failurePolicy, "pause");
+    assert.deepEqual(content.agentRuntime?.surfaceCatalog, ["cubica.choiceList"]);
+    assert.equal(content.ui?.entryPoint, "agent");
+    assert.ok(content.ui?.screens.agent);
+
+    const { response: createResponse, body: session } = await requestJson<SessionResponse>("/sessions", {
+      method: "POST",
+      body: JSON.stringify({
+        gameId: "ai-driven-choice",
+        playerId: "ai-driven-fixture"
+      })
+    });
+
+    assert.equal(createResponse.status, 201);
+    assert.equal(session.gameId, "ai-driven-choice");
+    assert.equal(session.state.public.timeline.screenId, "agent");
+    assert.deepEqual(session.state.public.log, []);
+
+    const { response: turnResponse, body: agentTurn } = await runAgentTurn(
+      session.sessionId,
+      "ai-driven-fixture",
+      "agent.continue",
+      { choiceId: "continue" }
+    );
+
+    assert.equal(turnResponse.status, 200);
+    const turnBody = agentTurn as AgentTurnResponse;
+    assert.equal(turnBody.version.stateVersion, 1);
+    assert.equal(turnBody.agentTurn.audit.source, "mock");
+    assert.equal(turnBody.agentTurn.surface?.root.kind, "cubica.choiceList");
+    assert.equal(turnBody.state.public.log.length, 1);
+    assert.equal(turnBody.state.public.log[0].kind, "agent-turn");
+  } finally {
+    if (previousMockFlag === undefined) {
+      delete process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME;
+    } else {
+      process.env.CUBICA_ENABLE_MOCK_AGENT_RUNTIME = previousMockFlag;
+    }
+  }
 });
 
 test("POST /sessions creates an antarctica session", async () => {
@@ -837,7 +1399,7 @@ test("POST /actions progresses from first board through i7 to second board after
 
   assert.equal(cardResponse.status, 200);
   const cardAction = cardBody as ActionResponse;
-  const cardState = (cardAction.state.public.flags.cards["3"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const cardState = (cardAction.state.public.objects!.cards!["3"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   const lastLogEntry = cardAction.state.public.log[cardAction.state.public.log.length - 1] ?? {};
 
   assert.equal(cardAction.state.public.timeline.stepIndex, 9);
@@ -847,8 +1409,8 @@ test("POST /actions progresses from first board through i7 to second board after
   assert.equal(cardAction.state.public.timeline.screenId, "S2");
   assert.equal(cardAction.state.public.timeline.screen_id, "S2");
   assert.equal(cardAction.state.public.timeline.canAdvance, true);
-  assert.equal(cardState.selected, true);
-  assert.equal(cardState.resolved, true);
+  assert.equal(cardState?.facets?.selection, "selected");
+  assert.equal(cardState?.facets?.resolution, "resolved");
   assert.equal(cardAction.state.secret?.opening?.selectedCardId, "3");
   assert.equal(cardAction.state.public.metrics?.time, 1);
   // score is client-side derived: assert.equal(cardAction.state.public.metrics?.score, 59);
@@ -935,7 +1497,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   );
   assert.equal(card4Response.status, 200);
   const card4Action = card4Body as ActionResponse;
-  const card4State = (card4Action.state.public.flags.cards["4"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card4State = (card4Action.state.public.objects!.cards!["4"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   const lastCard4LogEntry = card4Action.state.public.log[card4Action.state.public.log.length - 1] ?? {};
 
   assert.equal(card4Action.state.public.timeline.stepIndex, 9);
@@ -946,8 +1508,8 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   assert.equal(card4Action.state.public.metrics?.rep, 0);
   assert.equal(card4Action.state.public.metrics?.time, 3);
   // score is client-side derived: assert.equal(card4Action.state.public.metrics?.score, 57);
-  assert.equal(card4State.selected, true);
-  assert.equal(card4State.resolved, true);
+  assert.equal(card4State?.facets?.selection, "selected");
+  assert.equal(card4State?.facets?.resolution, "resolved");
   assert.equal(lastCard4LogEntry.actionId, "opening.card.4");
   assert.equal(lastCard4LogEntry.kind, "opening-card-resolution");
   assert.equal(lastCard4LogEntry.cardId, "4");
@@ -968,7 +1530,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   );
   assert.equal(card3Response.status, 200);
   const card3Action = card3Body as ActionResponse;
-  const card3State = (card3Action.state.public.flags.cards["3"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card3State = (card3Action.state.public.objects!.cards!["3"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
 
   assert.equal(card3Action.state.public.timeline.stepIndex, 9);
   assert.equal(card3Action.state.public.timeline.step_index, 9);
@@ -980,8 +1542,8 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   assert.equal(card3Action.state.public.metrics?.stat, 1);
   assert.equal(card3Action.state.public.metrics?.time, 4);
   // score is client-side derived: assert.equal(card3Action.state.public.metrics?.score, 56);
-  assert.equal(card3State.selected, true);
-  assert.equal(card3State.resolved, true);
+  assert.equal(card3State?.facets?.selection, "selected");
+  assert.equal(card3State?.facets?.resolution, "resolved");
 });
 
 test("POST /actions allows second-board non-go opening.card.12 before go opening.card.9 and rejects replay", async () => {
@@ -1013,7 +1575,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   );
   assert.equal(card12Response.status, 200);
   const card12Action = card12Body as ActionResponse;
-  const card12State = (card12Action.state.public.flags.cards["12"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card12State = (card12Action.state.public.objects!.cards!["12"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   const card12LogEntry = card12Action.state.public.log[card12Action.state.public.log.length - 1] ?? {};
 
   assert.equal(card12Action.state.public.timeline.stepIndex, 11);
@@ -1024,8 +1586,8 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card12Action.state.public.metrics?.rep, 1);
   assert.equal(card12Action.state.public.metrics?.time, 2);
   // score is client-side derived: assert.equal(card12Action.state.public.metrics?.score, 58);
-  assert.equal(card12State.selected, true);
-  assert.equal(card12State.resolved, true);
+  assert.equal(card12State?.facets?.selection, "selected");
+  assert.equal(card12State?.facets?.resolution, "resolved");
   assert.equal(card12LogEntry.actionId, "opening.card.12");
   assert.equal(card12LogEntry.kind, "opening-card-resolution");
   assert.equal(card12LogEntry.cardId, "12");
@@ -1046,7 +1608,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   );
   assert.equal(card9Response.status, 200);
   const card9Action = card9Body as ActionResponse;
-  const card9State = (card9Action.state.public.flags.cards["9"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card9State = (card9Action.state.public.objects!.cards!["9"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   const card9LogEntry = card9Action.state.public.log[card9Action.state.public.log.length - 1] ?? {};
 
   assert.equal(card9Action.state.public.timeline.stepIndex, 11);
@@ -1057,8 +1619,8 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card9Action.state.public.metrics?.rep, 3);
   assert.equal(card9Action.state.public.metrics?.time, 4);
   // score is client-side derived: assert.equal(card9Action.state.public.metrics?.score, 56);
-  assert.equal(card9State.selected, true);
-  assert.equal(card9State.resolved, true);
+  assert.equal(card9State?.facets?.selection, "selected");
+  assert.equal(card9State?.facets?.resolution, "resolved");
   assert.equal(card9LogEntry.actionId, "opening.card.9");
   assert.equal(card9LogEntry.kind, "opening-card-resolution");
   assert.equal(card9LogEntry.cardId, "9");
@@ -1093,7 +1655,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   );
   assert.equal(card9Response.status, 200);
   const card9Action = card9Body as ActionResponse;
-  const card9State = (card9Action.state.public.flags.cards["9"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card9State = (card9Action.state.public.objects!.cards!["9"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   const card9LogEntry = card9Action.state.public.log[card9Action.state.public.log.length - 1] ?? {};
 
   assert.equal(card9Action.state.public.timeline.stepIndex, 11);
@@ -1104,8 +1666,8 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card9Action.state.public.metrics?.rep, 4);
   assert.equal(card9Action.state.public.metrics?.time, 3);
   // score is client-side derived: assert.equal(card9Action.state.public.metrics?.score, 57);
-  assert.equal(card9State.selected, true);
-  assert.equal(card9State.resolved, true);
+  assert.equal(card9State?.facets?.selection, "selected");
+  assert.equal(card9State?.facets?.resolution, "resolved");
   assert.equal(card9LogEntry.actionId, "opening.card.9");
   assert.equal(card9LogEntry.kind, "opening-card-resolution");
   assert.equal(card9LogEntry.cardId, "9");
@@ -1159,9 +1721,8 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   );
   assert.equal(card13Response.status, 200);
   const card13Action = card13Body as ActionResponse;
-  const card13State = (card13Action.state.public.flags.cards["13"] ?? {}) as {
-    selected?: boolean;
-    resolved?: boolean;
+  const card13State = (card13Action.state.public.objects!.cards!["13"] ?? {}) as {
+    facets?: { selection?: string; resolution?: string; availability?: string };
   };
   const card13LogEntry = card13Action.state.public.log[card13Action.state.public.log.length - 1] ?? {};
 
@@ -1173,8 +1734,8 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card13Action.state.public.metrics?.rep, -1);
   assert.equal(card13Action.state.public.metrics?.time, 6);
   // score is client-side derived: assert.equal(card13Action.state.public.metrics?.score, 54);
-  assert.equal(card13State.selected, true);
-  assert.equal(card13State.resolved, true);
+  assert.equal(card13State?.facets?.selection, "selected");
+  assert.equal(card13State?.facets?.resolution, "resolved");
   assert.equal(card13LogEntry.actionId, "opening.card.13");
   assert.equal(card13LogEntry.kind, "opening-card-resolution");
   assert.equal(card13LogEntry.cardId, "13");
@@ -1195,9 +1756,8 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   );
   assert.equal(card18Response.status, 200);
   const card18Action = card18Body as ActionResponse;
-  const card18State = (card18Action.state.public.flags.cards["18"] ?? {}) as {
-    selected?: boolean;
-    resolved?: boolean;
+  const card18State = (card18Action.state.public.objects!.cards!["18"] ?? {}) as {
+    facets?: { selection?: string; resolution?: string; availability?: string };
   };
   const card18LogEntry = card18Action.state.public.log[card18Action.state.public.log.length - 1] ?? {};
 
@@ -1209,8 +1769,8 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card18Action.state.public.metrics?.rep, 1);
   assert.equal(card18Action.state.public.metrics?.time, 7);
   // score is client-side derived: assert.equal(card18Action.state.public.metrics?.score, 53);
-  assert.equal(card18State.selected, true);
-  assert.equal(card18State.resolved, true);
+  assert.equal(card18State?.facets?.selection, "selected");
+  assert.equal(card18State?.facets?.resolution, "resolved");
   assert.equal(card18LogEntry.actionId, "opening.card.18");
   assert.equal(card18LogEntry.kind, "opening-card-resolution");
   assert.equal(card18LogEntry.cardId, "18");
@@ -1457,9 +2017,9 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   assert.equal(card21Action.state.public.timeline.screenId, "S2");
   assert.equal(card21Action.state.public.timeline.canAdvance, false);
   assert.equal(card21Action.state.secret?.opening?.selectedCardId, "18");
-  const card21Flags = card21Action.state.public.flags.cards["21"] as { selected?: boolean; resolved?: boolean } | undefined;
-  assert.equal(card21Flags?.selected, true);
-  assert.equal(card21Flags?.resolved, true);
+  const card21Flags = card21Action.state.public.objects!.cards!["21"] as { facets?: { selection?: string; resolution?: string; availability?: string } } | undefined;
+  assert.equal(card21Flags?.facets?.selection, "selected");
+  assert.equal(card21Flags?.facets?.resolution, "resolved");
 
   const { response: card21ReplayResponse, body: card21ReplayBody } = await dispatchAction(
     created.sessionId,
@@ -1531,14 +2091,14 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(card25Response.status, 200);
   const card25Action = card25Body as ActionResponse;
-  const card25State = (card25Action.state.public.flags.cards["25"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card25State = (card25Action.state.public.objects!.cards!["25"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   assert.equal(card25Action.state.public.timeline.stepIndex, 19);
   assert.equal(card25Action.state.public.timeline.step_index, 19);
   assert.equal(card25Action.state.public.timeline.screenId, "S2");
   assert.equal(card25Action.state.public.timeline.screen_id, "S2");
   assert.equal(card25Action.state.public.timeline.canAdvance, false);
-  assert.equal(card25State.selected, true);
-  assert.equal(card25State.resolved, true);
+  assert.equal(card25State?.facets?.selection, "selected");
+  assert.equal(card25State?.facets?.resolution, "resolved");
 
   const { response: card26Response, body: card26Body } = await dispatchAction(
     created.sessionId,
@@ -1547,14 +2107,14 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(card26Response.status, 200);
   const card26Action = card26Body as ActionResponse;
-  const card26State = (card26Action.state.public.flags.cards["26"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card26State = (card26Action.state.public.objects!.cards!["26"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   assert.equal(card26Action.state.public.timeline.stepIndex, 19);
   assert.equal(card26Action.state.public.timeline.step_index, 19);
   assert.equal(card26Action.state.public.timeline.screenId, "S2");
   assert.equal(card26Action.state.public.timeline.screen_id, "S2");
   assert.equal(card26Action.state.public.timeline.canAdvance, false);
-  assert.equal(card26State.selected, true);
-  assert.equal(card26State.resolved, true);
+  assert.equal(card26State?.facets?.selection, "selected");
+  assert.equal(card26State?.facets?.resolution, "resolved");
 
   const { response: advanceBeforeThresholdResponse, body: advanceBeforeThresholdBody } = await dispatchAction(
     created.sessionId,
@@ -1572,14 +2132,14 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(card27Response.status, 200);
   const card27Action = card27Body as ActionResponse;
-  const card27State = (card27Action.state.public.flags.cards["27"] ?? {}) as { selected?: boolean; resolved?: boolean };
+  const card27State = (card27Action.state.public.objects!.cards!["27"] ?? {}) as { facets?: { selection?: string; resolution?: string; availability?: string } };
   assert.equal(card27Action.state.public.timeline.stepIndex, 19);
   assert.equal(card27Action.state.public.timeline.step_index, 19);
   assert.equal(card27Action.state.public.timeline.screenId, "S2");
   assert.equal(card27Action.state.public.timeline.screen_id, "S2");
   assert.equal(card27Action.state.public.timeline.canAdvance, true);
-  assert.equal(card27State.selected, true);
-  assert.equal(card27State.resolved, true);
+  assert.equal(card27State?.facets?.selection, "selected");
+  assert.equal(card27State?.facets?.resolution, "resolved");
 
   const { response: replayCard26Response, body: replayCard26Body } = await dispatchAction(
     created.sessionId,
@@ -1643,7 +2203,7 @@ test("POST /actions resolves opening.card.31 with a post-base conditional bonus 
   );
   assert.equal(card31Response.status, 200);
   const card31Action = card31Body as ActionResponse;
-  const card31Flags = card31Action.state.public.flags.cards["31"] as { selected?: boolean; resolved?: boolean } | undefined;
+  const card31Flags = card31Action.state.public.objects!.cards!["31"] as { facets?: { selection?: string; resolution?: string; availability?: string } } | undefined;
 
   assert.equal(card31Action.state.public.timeline.line, "main");
   assert.equal(card31Action.state.public.timeline.stepIndex, 21);
@@ -1654,8 +2214,8 @@ test("POST /actions resolves opening.card.31 with a post-base conditional bonus 
   assert.equal(card31Action.state.public.metrics?.time, beforeCard31Time + 2);
   // score is client-side derived: assert.equal(card31Action.state.public.metrics?.score, 60 - (beforeCard31Time + 2));
   assert.equal(card31Action.state.secret?.opening?.selectedCardId, "31");
-  assert.equal(card31Flags?.selected, true);
-  assert.equal(card31Flags?.resolved, true);
+  assert.equal(card31Flags?.facets?.selection, "selected");
+  assert.equal(card31Flags?.facets?.resolution, "resolved");
 
   const { response: card31AdvanceResponse, body: card31AdvanceBody } = await dispatchAction(
     created.sessionId,
@@ -1722,7 +2282,7 @@ test("POST /actions sends opening.card.34 to the loss line when pre-action stat 
   );
   assert.equal(card34Response.status, 200);
   const card34Action = card34Body as ActionResponse;
-  const card34Flags = card34Action.state.public.flags.cards["34"] as { selected?: boolean; resolved?: boolean } | undefined;
+  const card34Flags = card34Action.state.public.objects!.cards!["34"] as { facets?: { selection?: string; resolution?: string; availability?: string } } | undefined;
 
   assert.equal(card34Action.state.public.timeline.line, "loss");
   assert.equal(card34Action.state.public.timeline.stepIndex, 0);
@@ -1738,8 +2298,8 @@ test("POST /actions sends opening.card.34 to the loss line when pre-action stat 
   assert.equal(card34Action.state.public.metrics?.time, beforeCard34Time + 2);
   // score is client-side derived: assert.equal(card34Action.state.public.metrics?.score, 60 - (beforeCard34Time + 2));
   assert.equal(card34Action.state.secret?.opening?.selectedCardId, "34");
-  assert.equal(card34Flags?.selected, true);
-  assert.equal(card34Flags?.resolved, true);
+  assert.equal(card34Flags?.facets?.selection, "selected");
+  assert.equal(card34Flags?.facets?.resolution, "resolved");
 
   const { response: i34AdvanceResponse, body: i34AdvanceBody } = await dispatchAction(
     created.sessionId,
@@ -1802,9 +2362,7 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
   assert.equal(step23Action.state.public.timeline.screen_id, "S2");
   assert.equal(step23Action.state.public.timeline.canAdvance, false);
   assert.ok(Number(step23Action.state.public.metrics?.pro ?? 0) <= 40);
-  assert.equal(step23Action.state.public.flags.cards["39"]?.locked, true);
-  assert.equal(step23Action.state.public.flags.cards["39"]?.available, false);
-  assert.equal(step23Action.state.public.flags.cards["3902"]?.available, false);
+  assert.equal(step23Action.state.public.objects!.cards!["39"]?.facets?.availability, "hidden");
 
   const { response: locked39Response, body: locked39Body } = await dispatchAction(
     created.sessionId,
@@ -1820,8 +2378,7 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
     const action = body as ActionResponse;
     assert.equal(action.state.public.timeline.stepIndex, 23);
     assert.equal(action.state.public.timeline.canAdvance, false);
-    assert.equal(action.state.public.flags.cards["39"]?.locked, true);
-    assert.equal(action.state.public.flags.cards["39"]?.available, false);
+        assert.equal(action.state.public.objects!.cards!["39"]?.facets?.availability, "hidden");
   }
 
   const { response: thirdCardResponse, body: thirdCardBody } = await dispatchAction(
@@ -1832,10 +2389,9 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
   assert.equal(thirdCardResponse.status, 200);
   const thirdCardAction = thirdCardBody as ActionResponse;
 
-  assert.equal(thirdCardAction.state.public.flags.cards["40"]?.selected, true);
-  assert.equal(thirdCardAction.state.public.flags.cards["40"]?.resolved, true);
-  assert.equal(thirdCardAction.state.public.flags.cards["39"]?.locked, false);
-  assert.equal(thirdCardAction.state.public.flags.cards["39"]?.available, true);
+  assert.equal(thirdCardAction.state.public.objects!.cards!["40"]?.facets?.selection, "selected");
+  assert.equal(thirdCardAction.state.public.objects!.cards!["40"]?.facets?.resolution, "resolved");
+    assert.equal(thirdCardAction.state.public.objects!.cards!["39"]?.facets?.availability, "available");
 
   const beforeCard39Time = Number(thirdCardAction.state.public.metrics?.time ?? 0);
   const { response: card39Response, body: card39Body } = await dispatchAction(
@@ -1851,8 +2407,8 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
   assert.equal(card39Action.state.public.timeline.canAdvance, true);
   assert.equal(card39Action.state.public.metrics?.time, beforeCard39Time + 1);
   // score is client-side derived: assert.equal(card39Action.state.public.metrics?.score, 60 - (beforeCard39Time + 1));
-  assert.equal(card39Action.state.public.flags.cards["39"]?.selected, true);
-  assert.equal(card39Action.state.public.flags.cards["39"]?.resolved, true);
+  assert.equal(card39Action.state.public.objects!.cards!["39"]?.facets?.selection, "selected");
+  assert.equal(card39Action.state.public.objects!.cards!["39"]?.facets?.resolution, "resolved");
   assert.equal(card39Action.state.secret?.opening?.selectedCardId, "39");
   assert.equal(card39LogEntry.actionId, "opening.card.39");
   assert.equal(card39LogEntry.cardId, "39");
@@ -1921,10 +2477,8 @@ test("POST /actions exposes opening.card.3902 immediately on a high-pro step-23 
   assert.equal(step23Action.state.public.timeline.line, "main");
   assert.equal(step23Action.state.public.timeline.stepIndex, 23);
   assert.ok(Number(step23Action.state.public.metrics?.pro ?? 0) > 40);
-  assert.equal(step23Action.state.public.flags.cards["39"]?.locked, true);
-  assert.equal(step23Action.state.public.flags.cards["39"]?.available, false);
-  assert.equal(step23Action.state.public.flags.cards["3902"]?.locked, false);
-  assert.equal(step23Action.state.public.flags.cards["3902"]?.available, true);
+    assert.equal(step23Action.state.public.objects!.cards!["39"]?.facets?.availability, "hidden");
+    assert.equal(step23Action.state.public.objects!.cards!["3902"]?.facets?.availability, "available");
 
   const { response: base39Response, body: base39Body } = await dispatchAction(
     created.sessionId,
@@ -1948,8 +2502,8 @@ test("POST /actions exposes opening.card.3902 immediately on a high-pro step-23 
   assert.equal(card3902Action.state.public.timeline.canAdvance, true);
   assert.equal(card3902Action.state.public.metrics?.time, beforeCard3902Time + 1);
   // score is client-side derived: assert.equal(card3902Action.state.public.metrics?.score, 60 - (beforeCard3902Time + 1));
-  assert.equal(card3902Action.state.public.flags.cards["3902"]?.selected, true);
-  assert.equal(card3902Action.state.public.flags.cards["3902"]?.resolved, true);
+  assert.equal(card3902Action.state.public.objects!.cards!["3902"]?.facets?.selection, "selected");
+  assert.equal(card3902Action.state.public.objects!.cards!["3902"]?.facets?.resolution, "resolved");
   assert.equal(card3902Action.state.secret?.opening?.selectedCardId, "3902");
   assert.equal(card3902LogEntry.actionId, "opening.card.3902");
   assert.equal(card3902LogEntry.cardId, "3902");
@@ -2020,8 +2574,8 @@ test("POST /actions keeps canAdvance false for non-go opening.card.44 on the ste
   assert.equal(card44Action.state.public.timeline.canAdvance, false);
   assert.equal(card44Action.state.public.metrics?.time, previousTime + 1);
   assert.equal(card44Action.state.public.metrics?.rep, previousRep < 15 ? previousRep - 8 : previousRep - 3);
-  assert.equal(card44Action.state.public.flags.cards["44"]?.selected, true);
-  assert.equal(card44Action.state.public.flags.cards["44"]?.resolved, true);
+  assert.equal(card44Action.state.public.objects!.cards!["44"]?.facets?.selection, "selected");
+  assert.equal(card44Action.state.public.objects!.cards!["44"]?.facets?.resolution, "resolved");
   assert.equal(card44Action.state.secret?.opening?.selectedCardId, "3902");
   assert.equal(card44LogEntry.actionId, "opening.card.44");
   assert.equal(card44LogEntry.cardId, "44");
@@ -2052,8 +2606,8 @@ test("POST /actions resolves opening.card.48 with its bounded rep hook and reach
   assert.equal(card48Action.state.public.metrics?.cont, previousCont - 5);
   assert.equal(card48Action.state.public.metrics?.rep, previousRep < 15 ? previousRep - 5 : previousRep);
   assert.equal(card48Action.state.public.metrics?.time, previousTime + 2);
-  assert.equal(card48Action.state.public.flags.cards["48"]?.selected, true);
-  assert.equal(card48Action.state.public.flags.cards["48"]?.resolved, true);
+  assert.equal(card48Action.state.public.objects!.cards!["48"]?.facets?.selection, "selected");
+  assert.equal(card48Action.state.public.objects!.cards!["48"]?.facets?.resolution, "resolved");
   assert.equal(card48Action.state.secret?.opening?.selectedCardId, "48");
   assert.equal(card48LogEntry.actionId, "opening.card.48");
   assert.equal(card48LogEntry.cardId, "48");
@@ -2119,8 +2673,8 @@ test("POST /actions resolves opening.card.49 with its bounded cont hook and reac
   assert.equal(card49Action.state.public.metrics?.rep, previousRep + 2);
   assert.equal(card49Action.state.public.metrics?.constr, previousConstr + 1);
   assert.equal(card49Action.state.public.metrics?.time, previousTime + (previousCont < 10 ? 4 : 2));
-  assert.equal(card49Action.state.public.flags.cards["49"]?.selected, true);
-  assert.equal(card49Action.state.public.flags.cards["49"]?.resolved, true);
+  assert.equal(card49Action.state.public.objects!.cards!["49"]?.facets?.selection, "selected");
+  assert.equal(card49Action.state.public.objects!.cards!["49"]?.facets?.resolution, "resolved");
   assert.equal(card49Action.state.secret?.opening?.selectedCardId, "49");
   assert.equal(card49LogEntry.actionId, "opening.card.49");
   assert.equal(card49LogEntry.cardId, "49");
@@ -2185,8 +2739,8 @@ test("POST /actions keeps canAdvance false for non-go opening.card.56 on the ste
   assert.equal(card56Action.state.public.metrics?.man, previousMan + 2);
   assert.equal(card56Action.state.public.metrics?.constr, previousConstr + 2);
   assert.equal(card56Action.state.public.metrics?.time, previousTime + 1);
-  assert.equal(card56Action.state.public.flags.cards["56"]?.selected, true);
-  assert.equal(card56Action.state.public.flags.cards["56"]?.resolved, true);
+  assert.equal(card56Action.state.public.objects!.cards!["56"]?.facets?.selection, "selected");
+  assert.equal(card56Action.state.public.objects!.cards!["56"]?.facets?.resolution, "resolved");
   assert.equal(card56Action.state.secret?.opening?.selectedCardId, "49");
   assert.equal(card56LogEntry.actionId, "opening.card.56");
   assert.equal(card56LogEntry.cardId, "56");
@@ -2231,8 +2785,8 @@ test("POST /actions resolves opening.card.60 with bounded time gates and reaches
   assert.equal(card60Action.state.public.metrics?.rep, previousRep + 1);
   assert.equal(card60Action.state.public.metrics?.constr, previousConstr + 2);
   assert.equal(card60Action.state.public.metrics?.time, previousTime + 2 + extraTime);
-  assert.equal(card60Action.state.public.flags.cards["60"]?.selected, true);
-  assert.equal(card60Action.state.public.flags.cards["60"]?.resolved, true);
+  assert.equal(card60Action.state.public.objects!.cards!["60"]?.facets?.selection, "selected");
+  assert.equal(card60Action.state.public.objects!.cards!["60"]?.facets?.resolution, "resolved");
   assert.equal(card60Action.state.secret?.opening?.selectedCardId, "60");
   assert.equal(card60LogEntry.actionId, "opening.card.60");
   assert.equal(card60LogEntry.cardId, "60");
@@ -2280,8 +2834,7 @@ test("POST /actions unlocks opening.card.66 after opening.card.62 on the step-32
   assert.equal(step32Action.state.public.timeline.screenId, "S2");
   assert.equal(step32Action.state.public.timeline.canAdvance, false);
   assert.equal(step32Action.state.secret?.opening?.selectedCardId, "60");
-  assert.equal(step32Action.state.public.flags.cards["66"]?.locked, true);
-  assert.equal(step32Action.state.public.flags.cards["66"]?.available, false);
+  assert.equal(step32Action.state.public.objects!.cards!["66"]?.facets?.availability, "hidden");
 
   const previousTime = Number(step32Action.state.public.metrics?.time ?? 0);
 
@@ -2297,10 +2850,9 @@ test("POST /actions unlocks opening.card.66 after opening.card.62 on the step-32
   assert.equal(card62Action.state.public.timeline.stepIndex, 32);
   assert.equal(card62Action.state.public.timeline.canAdvance, false);
   assert.equal(card62Action.state.public.metrics?.time, previousTime + 1);
-  assert.equal(card62Action.state.public.flags.cards["62"]?.selected, true);
-  assert.equal(card62Action.state.public.flags.cards["62"]?.resolved, true);
-  assert.equal(card62Action.state.public.flags.cards["66"]?.locked, false);
-  assert.equal(card62Action.state.public.flags.cards["66"]?.available, true);
+  assert.equal(card62Action.state.public.objects!.cards!["62"]?.facets?.selection, "selected");
+  assert.equal(card62Action.state.public.objects!.cards!["62"]?.facets?.resolution, "resolved");
+  assert.equal(card62Action.state.public.objects!.cards!["66"]?.facets?.availability, "available");
   assert.equal(card62Action.state.secret?.opening?.selectedCardId, "60");
   assert.equal(card62LogEntry.actionId, "opening.card.62");
   assert.equal(card62LogEntry.cardId, "62");
@@ -2345,10 +2897,9 @@ test("POST /actions resolves opening.card.66 with bounded card-history bonuses a
   assert.equal(card66Action.state.public.timeline.stepIndex, 32);
   assert.equal(card66Action.state.public.timeline.canAdvance, true);
   assert.equal(card66Action.state.public.metrics?.time, previousTime + 6 + extraTime);
-  assert.equal(card66Action.state.public.flags.cards["66"]?.selected, true);
-  assert.equal(card66Action.state.public.flags.cards["66"]?.resolved, true);
-  assert.equal(card66Action.state.public.flags.cards["66"]?.locked, false);
-  assert.equal(card66Action.state.public.flags.cards["66"]?.available, true);
+  assert.equal(card66Action.state.public.objects!.cards!["66"]?.facets?.selection, "selected");
+  assert.equal(card66Action.state.public.objects!.cards!["66"]?.facets?.resolution, "resolved");
+  assert.equal(card66Action.state.public.objects!.cards!["66"]?.facets?.availability, "available");
   assert.equal(card66Action.state.secret?.opening?.selectedCardId, "66");
   assert.equal(card66LogEntry.actionId, "opening.card.66");
   assert.equal(card66LogEntry.cardId, "66");
@@ -2411,8 +2962,8 @@ test("POST /actions routes opening.card.68 to fast-variant i19_1 and reaches i21
 
   assert.equal(card68Action.state.public.timeline.stepIndex, 34);
   assert.equal(card68Action.state.public.timeline.canAdvance, true);
-  assert.equal(card68Action.state.public.flags.cards["68"]?.selected, true);
-  assert.equal(card68Action.state.public.flags.cards["68"]?.resolved, true);
+  assert.equal(card68Action.state.public.objects!.cards!["68"]?.facets?.selection, "selected");
+  assert.equal(card68Action.state.public.objects!.cards!["68"]?.facets?.resolution, "resolved");
   assert.equal(card68Action.state.secret?.opening?.selectedCardId, "68");
 
   const { response: card68AdvanceResponse, body: card68AdvanceBody } = await dispatchAction(

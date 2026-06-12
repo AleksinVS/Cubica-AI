@@ -1,3 +1,8 @@
 {
-  ".": "Архитектурные документы, ADR, схемы"
+  ".": "Архитектурные документы, ADR, схемы",
+  "adrs": "Architecture Decision Records: принятые, отклоненные и замененные архитектурные решения платформы.",
+  "ai-agent-safety-remediation.md": "Проектная документация по исправлению review findings миграции Cubica Surface и AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel policies and production backend auth.",
+  "agent-ui-foundation.md": "Проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI: границы, контекст, инструменты, безопасность и future assistant surfaces.",
+  "agent-ui-portability-and-risk-controls.md": "Проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест вокруг CopilotKit, AG-UI и production LLM backend.",
+  "generative-ui-surface-protocol.md": "Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces."
 }
