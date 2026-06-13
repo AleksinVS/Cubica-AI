@@ -20,12 +20,16 @@ describe("Cubica assistant registry", () => {
       status: "implemented"
     });
     expect(assistant?.allowedTools).toContain("editor.planChangeSet");
+    expect(assistant?.allowedTools).toContain("editor.proposePrototypeExtraction");
+    expect(assistant?.allowedTools).toContain("editor.preparePrototypeChangeSet");
     expect(assistant?.allowedTools).toContain("editor.applyChangeSet");
     expect(assistant?.allowedContext).not.toContain("publicSessionState");
   });
 
   it("keeps only allowlisted tools callable per assistant", () => {
     expect(() => assertAssistantToolAllowed(EDITOR_AUTHORING_ASSISTANT_ID, "editor.planChangeSet")).not.toThrow();
+    expect(() => assertAssistantToolAllowed(EDITOR_AUTHORING_ASSISTANT_ID, "editor.proposePrototypeExtraction")).not.toThrow();
+    expect(() => assertAssistantToolAllowed(EDITOR_AUTHORING_ASSISTANT_ID, "editor.preparePrototypeChangeSet")).not.toThrow();
     expect(() => assertAssistantToolAllowed(EDITOR_AUTHORING_ASSISTANT_ID, "portal.searchCatalog")).toThrow(
       /not allowed/
     );

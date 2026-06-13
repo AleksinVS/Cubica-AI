@@ -13,10 +13,20 @@ import { pathToFileURL } from "node:url";
 
 import {
   createDocumentStore,
+  createPrototypeExtractionProposal,
   createSchemaRegistry,
+  discoverPrototypeExtractionCandidates,
+  dryRunEditorChangeSet,
+  readJsonPointer,
   validateDocument,
   type DiagnosticSeverity,
+  type DocumentDiagnostic,
   type DocumentSnapshot,
+  type EditorDiffSummaryItem,
+  type JsonObject,
+  type JsonValue,
+  type PrototypeExtractionClassification,
+  type PrototypeExtractionProposal,
   type TextRange
 } from "@cubica/editor-engine";
 
@@ -71,6 +81,24 @@ export interface EditorCompileResult {
   readonly gameId: string;
   readonly checkOnly: boolean;
   readonly diagnostics: readonly EditorCompilerDiagnostic[];
+  readonly artifacts: readonly EditorCompileArtifact[];
+}
+
+export interface EditorPrototypeExtractionGate {
+  readonly id: string;
+  readonly label: string;
+  readonly ok: boolean;
+  readonly diagnostics: readonly EditorCompilerDiagnostic[];
+}
+
+export interface EditorPrototypeExtractionResult {
+  readonly ok: boolean;
+  readonly gameId: string;
+  readonly filePath: string;
+  readonly proposal?: PrototypeExtractionProposal;
+  readonly diagnostics: readonly EditorCompilerDiagnostic[];
+  readonly diffSummary: readonly EditorDiffSummaryItem[];
+  readonly gates: readonly EditorPrototypeExtractionGate[];
   readonly artifacts: readonly EditorCompileArtifact[];
 }
 
@@ -216,6 +244,120 @@ export async function compileGameForEditor(input: {
   };
 }
 
+export async function planPrototypeExtractionForEditor(input: {
+  readonly gameId: string;
+  readonly filePath: string;
+  readonly text: string;
+  readonly sourcePointers?: readonly string[];
+  readonly definitionType?: string;
+  readonly definitionSemantics?: string;
+  readonly promptTemplate?: JsonObject;
+  readonly classification?: Exclude<PrototypeExtractionClassification, "rejected-over-extraction">;
+  readonly knownVariantKeys?: readonly string[];
+  readonly repoRoot?: string;
+}): Promise<EditorPrototypeExtractionResult> {
+  const filePath = normalizeAuthoringFilePath(input.filePath);
+  const snapshot = createDocumentStore({ filePath, text: input.text }).snapshot();
+  const diagnostics: EditorCompilerDiagnostic[] = [];
+  const gates: EditorPrototypeExtractionGate[] = [];
+  const artifacts: EditorCompileArtifact[] = [];
+
+  const selectedSources = selectPrototypeSourcePointers(snapshot, input.sourcePointers);
+  if (!selectedSources.ok) {
+    diagnostics.push(...selectedSources.diagnostics.map((diagnostic) => documentDiagnosticToCompilerDiagnostic(diagnostic, filePath)));
+    gates.push(makeGate("candidate-selection", "Candidate selection", diagnostics));
+    return prototypeExtractionResult(input.gameId, filePath, undefined, diagnostics, [], gates, artifacts);
+  }
+
+  const definitionType = input.definitionType?.trim() || inferPrototypeDefinitionType(snapshot, selectedSources.sourcePointers);
+  const proposalResult = createPrototypeExtractionProposal({
+    snapshot,
+    sourcePointers: selectedSources.sourcePointers,
+    definitionType,
+    definitionSemantics: input.definitionSemantics?.trim() || "Local prototype extracted from repeated authoring elements.",
+    promptTemplate: input.promptTemplate,
+    classification: input.classification,
+    knownVariantKeys: input.knownVariantKeys
+  });
+  if (!proposalResult.ok) {
+    diagnostics.push(...proposalResult.diagnostics.map((diagnostic) => documentDiagnosticToCompilerDiagnostic(diagnostic, filePath)));
+    gates.push(makeGate("proposal", "Prototype proposal", diagnostics));
+    return prototypeExtractionResult(input.gameId, filePath, undefined, diagnostics, [], gates, artifacts);
+  }
+
+  gates.push(makeGate("proposal", "Prototype proposal", []));
+
+  const registry = createSchemaRegistry();
+  registerLocalAuthoringSchemas(registry);
+  const dryRun = dryRunEditorChangeSet({
+    snapshot,
+    changeSet: proposalResult.proposal.changeSet,
+    schemaRegistry: registry,
+    schemaId: schemaIdForAuthoringDocument(filePath, snapshot.json),
+    includeSemanticDiagnostics: true
+  });
+  const dryRunDiagnostics = dryRun.diagnostics.map((diagnostic) => documentDiagnosticToCompilerDiagnostic(diagnostic, filePath));
+  diagnostics.push(...dryRunDiagnostics);
+  gates.push(makeGate("editor-dry-run", "Editor ChangeSet dry-run", dryRunDiagnostics));
+  if (!dryRun.ok || dryRun.after?.json === undefined) {
+    return prototypeExtractionResult(input.gameId, filePath, proposalResult.proposal, diagnostics, dryRun.diffSummary, gates, artifacts);
+  }
+
+  const compiler = await getCompiler(input.repoRoot);
+  const job = findJob(compiler, input.gameId, filePath);
+  artifacts.push(toArtifact(compiler, job));
+  const ajv = compiler.buildAjv();
+
+  let beforeOutput: CompilerOutput;
+  let afterOutput: CompilerOutput;
+  try {
+    const compiledBefore = compiler.compileAuthoringText(job, input.text, ajv);
+    const compiledAfter = compiler.compileAuthoringText(job, dryRun.after.text, ajv);
+    beforeOutput = compiledBefore;
+    afterOutput = compiledAfter;
+    const runtimeErrors = compiler.validateRuntimeManifest(job, compiledAfter.manifest, ajv).errors;
+    const runtimeDiagnosticsAfter = runtimeErrors.map((error) => runtimeErrorToDiagnostic(compiler, job, compiledAfter.sourceMap, error));
+    diagnostics.push(...runtimeDiagnosticsAfter);
+    gates.push(makeGate("runtime-schema", "Generated runtime schema", runtimeDiagnosticsAfter));
+  } catch (error) {
+    const compileDiagnostic = compileErrorToDiagnostic(compiler, error, dryRun.after, filePath);
+    diagnostics.push(compileDiagnostic);
+    gates.push(makeGate("compiler-dry-run", "Compiler dry-run", [compileDiagnostic]));
+    return prototypeExtractionResult(input.gameId, filePath, proposalResult.proposal, diagnostics, dryRun.diffSummary, gates, artifacts);
+  }
+
+  gates.push(makeGate("compiler-dry-run", "Compiler dry-run", []));
+
+  const runtimeDiffDiagnostics =
+    proposalResult.proposal.expectedRuntimeDiff === "must-be-zero" && !stableJsonEqual(beforeOutput.manifest, afterOutput.manifest)
+      ? [
+          {
+            severity: "error" as const,
+            source: "prototype-extraction",
+            pointer: "",
+            label: "/",
+            message: "Prototype extraction changed generated runtime manifest output; move this change to a separate migration task.",
+            filePath
+          }
+        ]
+      : [];
+  diagnostics.push(...runtimeDiffDiagnostics);
+  gates.push(makeGate("canonical-runtime-diff", "Canonical runtime diff", runtimeDiffDiagnostics));
+
+  const sourceMapDiagnostics = sourceMapPointerDiagnostics({
+    compiler,
+    job,
+    afterJson: dryRun.after.json,
+    sourceMap: afterOutput.sourceMap,
+    proposal: proposalResult.proposal,
+    filePath
+  });
+  diagnostics.push(...sourceMapDiagnostics);
+  gates.push(makeGate("source-map-pointer-existence", "Source map pointer existence", sourceMapDiagnostics));
+
+  return prototypeExtractionResult(input.gameId, filePath, proposalResult.proposal, diagnostics, dryRun.diffSummary, gates, artifacts);
+}
+
 export function mapGeneratedPointerToAuthoring(
   sourceMap: CompilerSourceMap,
   generatedPointer: string
@@ -291,6 +433,200 @@ function collectAuthoringDiagnostics(snapshot: DocumentSnapshot, filePath: strin
     range: diagnostic.range,
     filePath
   }));
+}
+
+function selectPrototypeSourcePointers(
+  snapshot: DocumentSnapshot,
+  requestedPointers: readonly string[] | undefined
+):
+  | {
+      readonly ok: true;
+      readonly sourcePointers: readonly string[];
+    }
+  | {
+      readonly ok: false;
+      readonly diagnostics: readonly DocumentDiagnostic[];
+    } {
+  const explicitPointers = [...new Set((requestedPointers ?? []).map((pointer) => pointer.trim()).filter(Boolean))];
+  if (explicitPointers.length >= 2) {
+    return { ok: true, sourcePointers: explicitPointers };
+  }
+
+  const discovered = discoverPrototypeExtractionCandidates({ snapshot, rootPointer: "/root" });
+  if (!discovered.ok) {
+    return { ok: false, diagnostics: discovered.diagnostics };
+  }
+
+  const candidate = discovered.candidates[0];
+  if (candidate === undefined) {
+    return {
+      ok: false,
+      diagnostics: [
+        {
+          severity: "error",
+          source: "prototype-extraction",
+          pointer: "",
+          message: "No repeated authoring object candidate was found for prototype extraction."
+        }
+      ]
+    };
+  }
+
+  return { ok: true, sourcePointers: candidate.pointers };
+}
+
+function inferPrototypeDefinitionType(snapshot: DocumentSnapshot, sourcePointers: readonly string[]): string {
+  const firstValue = sourcePointers[0] === undefined ? undefined : readJsonPointer(snapshot.json as JsonValue, sourcePointers[0]);
+  const typePrefix = inferPrototypePrefix(snapshot.filePath, firstValue);
+  const sourceType = firstValue !== undefined && typeof firstValue === "object" && firstValue !== null && !Array.isArray(firstValue)
+    ? typeof (firstValue as { readonly _type?: unknown })._type === "string"
+      ? (firstValue as { readonly _type: string })._type
+      : undefined
+    : undefined;
+  const baseName = sourceType?.split(".").at(-1) ?? "ExtractedPrototype";
+  const suffix = hashString(sourcePointers.join("\n")).slice(0, 6);
+  return `${typePrefix}.${toDefinitionSegment(`Local${baseName}${suffix}`)}`;
+}
+
+function inferPrototypePrefix(filePath: string, value: JsonValue | undefined): "game" | "ui" {
+  if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+    const type = (value as { readonly _type?: unknown })._type;
+    if (typeof type === "string" && type.startsWith("game.")) {
+      return "game";
+    }
+    if (typeof type === "string" && type.startsWith("ui.")) {
+      return "ui";
+    }
+  }
+  return filePath.includes("/ui/") || filePath.includes("ui/") ? "ui" : "game";
+}
+
+function toDefinitionSegment(value: string): string {
+  const normalized = value
+    .replace(/[^a-zA-Z0-9]+/gu, " ")
+    .trim()
+    .split(/\s+/u)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+  return /^[A-Z]/u.test(normalized) ? normalized : `Prototype${normalized}`;
+}
+
+function documentDiagnosticToCompilerDiagnostic(diagnostic: DocumentDiagnostic, filePath: string): EditorCompilerDiagnostic {
+  return {
+    severity: diagnostic.severity,
+    source: diagnostic.source,
+    pointer: diagnostic.pointer,
+    label: diagnostic.pointer === "" ? "/" : diagnostic.pointer,
+    message: diagnostic.message,
+    range: diagnostic.range,
+    filePath
+  };
+}
+
+function makeGate(
+  id: string,
+  label: string,
+  diagnostics: readonly EditorCompilerDiagnostic[]
+): EditorPrototypeExtractionGate {
+  return {
+    id,
+    label,
+    ok: !hasErrors(diagnostics),
+    diagnostics
+  };
+}
+
+function prototypeExtractionResult(
+  gameId: string,
+  filePath: string,
+  proposal: PrototypeExtractionProposal | undefined,
+  diagnostics: readonly EditorCompilerDiagnostic[],
+  diffSummary: readonly EditorDiffSummaryItem[],
+  gates: readonly EditorPrototypeExtractionGate[],
+  artifacts: readonly EditorCompileArtifact[]
+): EditorPrototypeExtractionResult {
+  return {
+    ok: !hasErrors(diagnostics),
+    gameId,
+    filePath,
+    proposal,
+    diagnostics,
+    diffSummary,
+    gates,
+    artifacts
+  };
+}
+
+function sourceMapPointerDiagnostics(input: {
+  readonly compiler: AuthoringCompilerModule;
+  readonly job: CompilerJob;
+  readonly afterJson: JsonValue;
+  readonly sourceMap: CompilerSourceMap;
+  readonly proposal: PrototypeExtractionProposal;
+  readonly filePath: string;
+}): readonly EditorCompilerDiagnostic[] {
+  const diagnostics: EditorCompilerDiagnostic[] = [];
+  const sourceFile = input.compiler.relativePath(input.job.sourceFile);
+  const requiredPointers = new Set(input.proposal.sourceMapImpact.affectedPointers);
+
+  for (const pointer of requiredPointers) {
+    if (readJsonPointer(input.afterJson, pointer) === undefined) {
+      diagnostics.push({
+        severity: "error",
+        source: "source-map",
+        pointer,
+        label: pointer === "" ? "/" : pointer,
+        message: `Affected authoring pointer no longer exists after prototype extraction: ${pointer || "/"}.`,
+        filePath: input.filePath
+      });
+    }
+  }
+
+  for (const sources of Object.values(input.sourceMap.mappings)) {
+    for (const source of sources) {
+      if (source.file !== sourceFile || readJsonPointer(input.afterJson, source.pointer) !== undefined) {
+        continue;
+      }
+
+      diagnostics.push({
+        severity: "error",
+        source: "source-map",
+        pointer: source.pointer,
+        label: source.pointer === "" ? "/" : source.pointer,
+        message: `Generated source map points to a missing authoring pointer: ${source.pointer || "/"}.`,
+        filePath: input.filePath,
+        generatedFile: input.sourceMap.generatedFile
+      });
+    }
+  }
+
+  return diagnostics;
+}
+
+function stableJsonEqual(left: unknown, right: unknown): boolean {
+  return stableStringify(left) === stableStringify(right);
+}
+
+function stableStringify(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value !== null && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>)
+      .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+      .map(([key, child]) => `${JSON.stringify(key)}:${stableStringify(child)}`)
+      .join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+function hashString(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
 function runtimeDiagnostics(

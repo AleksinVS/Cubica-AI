@@ -10,6 +10,8 @@ import type { CubicaAgentAuditLevel, CubicaAgentSideEffectPolicy, CubicaAgentToo
 
 export type EditorAssistantToolName =
   | "editor.planChangeSet"
+  | "editor.proposePrototypeExtraction"
+  | "editor.preparePrototypeChangeSet"
   | "editor.dryRunChangeSet"
   | "editor.requestHumanApproval"
   | "editor.applyChangeSet"
@@ -29,6 +31,20 @@ export const editorAgentToolCatalog = {
     name: "editor.planChangeSet",
     description: "Plan a bounded EditorChangeSet for the selected authoring pointers without applying it.",
     sideEffectPolicy: "read-only",
+    auditLevel: "read",
+    requiresApproval: false
+  },
+  "editor.proposePrototypeExtraction": {
+    name: "editor.proposePrototypeExtraction",
+    description: "Build a read-only ADR-050 prototype extraction proposal with compiler, runtime diff and source-map gates, without applying it.",
+    sideEffectPolicy: "read-only",
+    auditLevel: "read",
+    requiresApproval: false
+  },
+  "editor.preparePrototypeChangeSet": {
+    name: "editor.preparePrototypeChangeSet",
+    description: "Convert the latest approved prototype proposal into the editor's planned ChangeSet state without applying it.",
+    sideEffectPolicy: "system-approved",
     auditLevel: "read",
     requiresApproval: false
   },

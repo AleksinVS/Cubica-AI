@@ -1,0 +1,5 @@
+{
+  ".": "Поддерживаемые процессы разработки и сопровождения Cubica: работа с промтами, review, incident response, structure governance и promotion workflows.",
+  "authoring-prototype-promotion.md": "Процесс ручного повышения game-level authoring-прототипа в platform-level prototype по ADR-050 без автоматического platform catalog write.",
+  "editor-prompts.md": "Правила работы с промтами Game Editor, включая элементные промты ADR-048 и целевую dynamic prompt projection ADR-049."
+}

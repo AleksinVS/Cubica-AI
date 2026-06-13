@@ -10,6 +10,8 @@ const baseInput: RunAgentInput = {
   messages: [],
   tools: [
     { name: "editor.planChangeSet", description: "Plan", parameters: {} },
+    { name: "editor.proposePrototypeExtraction", description: "Prototype", parameters: {} },
+    { name: "editor.preparePrototypeChangeSet", description: "Prepare prototype proposal", parameters: {} },
     { name: "editor.dryRunChangeSet", description: "Dry-run", parameters: {} },
     { name: "editor.preparePreview", description: "Preview", parameters: {} }
   ],
@@ -41,6 +43,38 @@ describe("local editor AG-UI backend", () => {
     expect(events[5]).toMatchObject({
       type: EventType.TOOL_CALL_ARGS,
       delta: JSON.stringify({ prompt: "Измени заголовок выбранного узла" })
+    });
+  });
+
+  it("routes prototype extraction requests to the read-only prototype proposal tool", () => {
+    const events = createLocalEditorAgentEvents({
+      ...baseInput,
+      messages: [{ id: "user-1", role: "user", content: "Извлеки прототип из повторяющихся элементов" }]
+    });
+
+    expect(events[4]).toMatchObject({
+      type: EventType.TOOL_CALL_START,
+      toolCallName: "editor.proposePrototypeExtraction"
+    });
+    expect(events[5]).toMatchObject({
+      type: EventType.TOOL_CALL_ARGS,
+      delta: JSON.stringify({ prompt: "Извлеки прототип из повторяющихся элементов" })
+    });
+  });
+
+  it("routes explicit prototype proposal preparation to the planned ChangeSet tool", () => {
+    const events = createLocalEditorAgentEvents({
+      ...baseInput,
+      messages: [{ id: "user-1", role: "user", content: "Используй прототип как planned ChangeSet" }]
+    });
+
+    expect(events[4]).toMatchObject({
+      type: EventType.TOOL_CALL_START,
+      toolCallName: "editor.preparePrototypeChangeSet"
+    });
+    expect(events[5]).toMatchObject({
+      type: EventType.TOOL_CALL_ARGS,
+      delta: JSON.stringify({})
     });
   });
 

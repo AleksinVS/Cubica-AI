@@ -31,14 +31,30 @@ export interface EditorAgentToolResult extends Omit<CubicaAgentToolResult<Editor
   readonly diagnostics?: readonly { readonly severity: string; readonly source: string; readonly pointer: string; readonly message: string }[];
   readonly diffSummary?: readonly string[];
   readonly changeSetId?: string;
+  readonly data?: EditorAgentToolData;
 }
 
 interface EditorAgentToolData {
   readonly changeSetId?: string;
+  readonly prototypeProposal?: {
+    readonly id: string;
+    readonly definitionType: string;
+    readonly definitionPointer: string;
+    readonly sourcePointers: readonly string[];
+    readonly gates: readonly { readonly id: string; readonly label: string; readonly ok: boolean }[];
+    readonly expectedRuntimeDiff: string;
+  };
 }
 
 export interface EditorAgentTools {
   readonly planChangeSet: (input: { readonly prompt?: string }) => Promise<EditorAgentToolResult>;
+  readonly proposePrototypeExtraction: (input: {
+    readonly prompt?: string;
+    readonly sourcePointers?: readonly string[];
+    readonly definitionType?: string;
+    readonly definitionSemantics?: string;
+  }) => Promise<EditorAgentToolResult>;
+  readonly preparePrototypeChangeSet: () => Promise<EditorAgentToolResult>;
   readonly dryRunChangeSet: (input: { readonly prompt?: string }) => Promise<EditorAgentToolResult>;
   readonly applyChangeSet: (input: { readonly prompt?: string; readonly approval?: CubicaAgentApprovalEnvelope }) => Promise<EditorAgentToolResult>;
   readonly undoLastPatch: (input?: { readonly approval?: CubicaAgentApprovalEnvelope }) => Promise<EditorAgentToolResult>;
@@ -317,6 +333,12 @@ function handleEditorSurfaceAction(action: CubicaSurfaceAction, tools: EditorAge
     case "editor.planChangeSet":
       void tools.planChangeSet({ prompt });
       return;
+    case "editor.proposePrototypeExtraction":
+      void tools.proposePrototypeExtraction({ prompt });
+      return;
+    case "editor.preparePrototypeChangeSet":
+      void tools.preparePrototypeChangeSet();
+      return;
     case "editor.dryRunChangeSet":
       void tools.dryRunChangeSet({ prompt });
       return;
@@ -353,6 +375,13 @@ const promptParameters = z.object({
   prompt: z.string().trim().min(1).max(800).optional().describe("Optional editor request. If omitted, the current preview prompt draft is used.")
 });
 
+const prototypeExtractionParameters = z.object({
+  prompt: z.string().trim().min(1).max(800).optional().describe("Optional explanation for the prototype proposal."),
+  sourcePointers: z.array(z.string().trim().min(1).max(400)).min(2).max(24).optional().describe("Optional authoring JSON Pointers to extract. If omitted, the editor searches for the best local candidate."),
+  definitionType: z.string().trim().min(3).max(160).optional().describe("Optional local prototype type, for example ui.LocalScreenShell."),
+  definitionSemantics: z.string().trim().min(3).max(1000).optional().describe("Optional _semantics text for the local prototype.")
+});
+
 const mutatingToolParameters = z.object({
   prompt: z.string().trim().min(1).max(800).optional().describe("Optional editor request. If omitted, the latest planned ChangeSet is used."),
   approvalId: z.string().trim().min(1).max(160).optional().describe("Approval id returned by editor.requestHumanApproval.")
@@ -384,6 +413,27 @@ function EditorAgentRuntimeHooksInner({
       description: getEditorAgentToolDefinition("editor.planChangeSet").description,
       parameters: promptParameters,
       handler: async ({ prompt }) => toCubicaToolResult("editor.planChangeSet", await tools.planChangeSet({ prompt }))
+    },
+    [tools]
+  );
+
+  useFrontendTool(
+    {
+      name: getEditorAgentToolDefinition("editor.proposePrototypeExtraction").name,
+      description: getEditorAgentToolDefinition("editor.proposePrototypeExtraction").description,
+      parameters: prototypeExtractionParameters,
+      handler: async ({ prompt, sourcePointers, definitionType, definitionSemantics }) =>
+        toCubicaToolResult("editor.proposePrototypeExtraction", await tools.proposePrototypeExtraction({ prompt, sourcePointers, definitionType, definitionSemantics }))
+    },
+    [tools]
+  );
+
+  useFrontendTool(
+    {
+      name: getEditorAgentToolDefinition("editor.preparePrototypeChangeSet").name,
+      description: getEditorAgentToolDefinition("editor.preparePrototypeChangeSet").description,
+      parameters: z.object({}),
+      handler: async () => toCubicaToolResult("editor.preparePrototypeChangeSet", await tools.preparePrototypeChangeSet())
     },
     [tools]
   );
@@ -553,12 +603,13 @@ function toJsonSerializable(value: EditorAgentContextProjection): JsonSerializab
 
 function toCubicaToolResult(toolName: EditorAssistantToolName, result: EditorAgentToolResult): CubicaAgentToolResult<EditorAgentToolData> {
   getEditorAgentToolDefinition(toolName);
+  const fallbackData = result.changeSetId === undefined ? undefined : { changeSetId: result.changeSetId };
   return {
     ok: result.ok,
     toolName,
     summary: result.summary,
     diagnostics: result.diagnostics,
     diffSummary: result.diffSummary,
-    data: result.changeSetId === undefined ? undefined : { changeSetId: result.changeSetId }
+    data: result.data ?? fallbackData
   };
 }

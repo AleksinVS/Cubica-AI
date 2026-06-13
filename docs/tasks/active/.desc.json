@@ -22,5 +22,6 @@
   "TSK-20260611-ai-driven-surface-architecture-migration.md": "Главный план миграции к Cubica Surface и AI-driven runtime: фазы, зависимости, проверки, риски, renderer strategy и сохранение deterministic canonical slice.",
   "TSK-20260611-ai-driven-game-runtime-mode.md": "План внедрения AI-driven game runtime mode: manifest execution mode, Agent Turn contract, readiness/failure policy, validated agent effects и primary CubicaSurface gameplay UI.",
   "TSK-20260611-ai-agent-safety-remediation.md": "План исправления review findings по AI agent safety: approval envelope, Agent Turn rejection semantics, capability gates, channel policies and production backend auth.",
-  "TSK-20260612-element-authoring-prompt-contract.md": "План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync."
+  "TSK-20260612-element-authoring-prompt-contract.md": "План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.",
+  "TSK-20260613-authoring-prototype-extraction-and-promotion.md": "Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow."
 }

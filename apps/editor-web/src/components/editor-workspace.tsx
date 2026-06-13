@@ -49,6 +49,7 @@ import {
   type PreviewPlaythroughSnapshot,
   type PreviewPlaythroughTrace,
   type PreviewRect,
+  type PrototypeExtractionProposal,
   type TextRange
 } from "@cubica/editor-engine";
 import {
@@ -191,6 +192,28 @@ interface EditorWorkflowResponse {
   readonly playerUrl?: string;
   readonly sessionId?: string;
   readonly sourceMaps?: readonly PreviewSelectionSourceMap[];
+}
+
+interface PrototypeExtractionGate {
+  readonly id: string;
+  readonly label: string;
+  readonly ok: boolean;
+  readonly diagnostics: readonly RoutedEditorDiagnostic[];
+}
+
+interface PrototypeExtractionWorkflowResponse {
+  readonly ok: boolean;
+  readonly diagnostics?: readonly RoutedEditorDiagnostic[];
+  readonly proposal?: PrototypeExtractionProposal;
+  readonly diffSummary?: readonly EditorDiffSummaryItem[];
+  readonly gates?: readonly PrototypeExtractionGate[];
+}
+
+interface PlannedPrototypeExtractionProposal {
+  readonly proposal: PrototypeExtractionProposal;
+  readonly diagnostics: readonly RoutedEditorDiagnostic[];
+  readonly diffSummary: readonly EditorDiffSummaryItem[];
+  readonly gates: readonly PrototypeExtractionGate[];
 }
 
 interface EditorPreviewRollbackResponse {
@@ -511,6 +534,7 @@ export function EditorWorkspace() {
   const [aiDiffSummary, setAiDiffSummary] = useState<readonly EditorDiffSummaryItem[]>([]);
   const [aiDiagnostics, setAiDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [agentPlannedChangeSet, setAgentPlannedChangeSet] = useState<PlannedAiChangeSet | null>(null);
+  const [prototypeExtractionProposal, setPrototypeExtractionProposal] = useState<PlannedPrototypeExtractionProposal | null>(null);
   const [previewInspectMode, setPreviewInspectMode] = useState(false);
   const [altPlayActive, setAltPlayActive] = useState(false);
   const [previewPointerPlayMode, setPreviewPointerPlayMode] = useState(false);
@@ -683,12 +707,13 @@ export function EditorWorkspace() {
         aiApplyState,
         aiDiffSummary,
         aiDiagnostics,
+        prototypeExtractionProposal,
         hasPlannedChangeSet: agentPlannedChangeSet !== null,
         hasUndoPatch: aiPatchJournal.length > 0,
         applyApprovalScopeHash: editorApplyApprovalScope(agentPlannedChangeSet),
         undoApprovalScopeHash: editorUndoApprovalScope(aiPatchJournal.length)
       }),
-    [agentPlannedChangeSet, aiApplyState, aiDiagnostics, aiDiffSummary, aiPatchJournal.length]
+    [agentPlannedChangeSet, aiApplyState, aiDiagnostics, aiDiffSummary, aiPatchJournal.length, prototypeExtractionProposal]
   );
   const leftSidebarOpen = leftSidebarPanel !== undefined;
   const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
@@ -701,6 +726,8 @@ export function EditorWorkspace() {
   } as CSSProperties;
   const editorAgentTools: EditorAgentTools = {
     planChangeSet: (input) => runAgentPlanTool(input.prompt),
+    proposePrototypeExtraction: (input) => runAgentPrototypeExtractionTool(input),
+    preparePrototypeChangeSet: () => runAgentPreparePrototypeChangeSetTool(),
     dryRunChangeSet: (input) => runAgentDryRunTool(input.prompt),
     applyChangeSet: (input) => runAgentApplyTool(input.prompt, input.approval),
     undoLastPatch: async (input) => runAgentUndoTool(input?.approval),
@@ -1634,6 +1661,7 @@ export function EditorWorkspace() {
   }
 
   async function runAgentPlanTool(prompt: string | undefined): Promise<EditorAgentToolResult> {
+    setPrototypeExtractionProposal(null);
     const planned = await planCurrentAiChangeSet(prompt);
     if (!planned.ok) {
       return {
@@ -1648,6 +1676,156 @@ export function EditorWorkspace() {
       summary: planned.plan.changeSet.summary,
       diagnostics: planned.plan.diagnostics.map(toAgentDiagnostic),
       changeSetId: planned.plan.changeSet.id
+    };
+  }
+
+  async function runAgentPrototypeExtractionTool(input: {
+    readonly prompt?: string;
+    readonly sourcePointers?: readonly string[];
+    readonly definitionType?: string;
+    readonly definitionSemantics?: string;
+  }): Promise<EditorAgentToolResult> {
+    if (currentDocument.source !== "repository") {
+      return {
+        ok: false,
+        summary: "Prototype extraction proposals are available only for repository-backed authoring files."
+      };
+    }
+
+    if (viewModel.snapshot.json === undefined) {
+      return {
+        ok: false,
+        summary: "Prototype extraction proposal requires valid authoring JSON."
+      };
+    }
+
+    setAiApplyState("planning");
+    setAiDiagnostics([]);
+    setAgentPlannedChangeSet(null);
+    setStatusMessage("Planning prototype extraction proposal...");
+
+    try {
+      const response = await requestPrototypeExtractionProposal({
+        gameId: currentDocument.gameId,
+        filePath: currentDocument.filePath,
+        text: jsonText,
+        sessionId: editorSession?.sessionId,
+        sourcePointers: input.sourcePointers ?? currentPrototypeExtractionSourcePointers(),
+        definitionType: input.definitionType,
+        definitionSemantics: input.definitionSemantics ?? prototypeSemanticsFromPrompt(input.prompt)
+      });
+      const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+      const diffSummary = response.diffSummary ?? [];
+      setAiDiagnostics(diagnostics);
+      setAiDiffSummary(diffSummary);
+
+      if (!response.ok || response.proposal === undefined) {
+        setPrototypeExtractionProposal(null);
+        setAiApplyState("blocked");
+        const summary = diagnostics[0]?.message ?? "Prototype extraction proposal was blocked by validation gates.";
+        setStatusMessage(summary);
+        return {
+          ok: false,
+          summary,
+          diagnostics: diagnostics.map(toAgentDiagnostic),
+          diffSummary: diffSummary.map((item) => item.description)
+        };
+      }
+
+      const plannedProposal: PlannedPrototypeExtractionProposal = {
+        proposal: response.proposal,
+        diagnostics,
+        diffSummary,
+        gates: response.gates ?? []
+      };
+      setPrototypeExtractionProposal(plannedProposal);
+      setAiApplyState("idle");
+      setStatusMessage(`Prototype proposal ready: ${response.proposal.definitionType}`);
+
+      return {
+        ok: true,
+        summary: `Prototype proposal ready: ${response.proposal.definitionType}. Apply is intentionally not automatic.`,
+        diagnostics: diagnostics.map(toAgentDiagnostic),
+        diffSummary: [
+          ...diffSummary.map((item) => item.description),
+          ...(response.gates ?? []).map((gate) => `${gate.label}: ${gate.ok ? "OK" : "blocked"}`)
+        ],
+        changeSetId: response.proposal.changeSet.id,
+        data: {
+          changeSetId: response.proposal.changeSet.id,
+          prototypeProposal: {
+            id: response.proposal.id,
+            definitionType: response.proposal.definitionType,
+            definitionPointer: response.proposal.definitionPointer,
+            sourcePointers: response.proposal.sourcePointers,
+            gates: (response.gates ?? []).map((gate) => ({ id: gate.id, label: gate.label, ok: gate.ok })),
+            expectedRuntimeDiff: response.proposal.expectedRuntimeDiff
+          }
+        }
+      };
+    } catch (error) {
+      setPrototypeExtractionProposal(null);
+      setAiApplyState("error");
+      const summary = error instanceof Error ? error.message : "Prototype extraction proposal failed.";
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary
+      };
+    }
+  }
+
+  async function runAgentPreparePrototypeChangeSetTool(): Promise<EditorAgentToolResult> {
+    const plannedProposal = prototypeExtractionProposal;
+    if (plannedProposal === null) {
+      return {
+        ok: false,
+        summary: "Prototype ChangeSet preparation requires a current prototype proposal."
+      };
+    }
+
+    if (!prototypeProposalGatesPassed(plannedProposal)) {
+      const blocked = plannedProposal.gates.filter((gate) => !gate.ok).map((gate) => `${gate.label}: blocked`);
+      const summary = blocked[0] ?? "Prototype proposal gates are not complete.";
+      setAiApplyState("blocked");
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary,
+        diagnostics: plannedProposal.diagnostics.map(toAgentDiagnostic),
+        diffSummary: blocked
+      };
+    }
+
+    const plan = prototypeProposalToPlannedChangeSet(plannedProposal.proposal, currentDocument.filePath);
+    const dryRun = dryRunPlannedAiChangeSet(plan);
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    setAiDiffSummary(dryRun.diffSummary);
+
+    if (!dryRun.ok) {
+      const summary = routedDiagnostics[0]?.message ?? "Prototype proposal is no longer applicable to the current document.";
+      setAiApplyState("blocked");
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary,
+        diagnostics: routedDiagnostics.map(toAgentDiagnostic),
+        diffSummary: dryRun.diffSummary.map((item) => item.description),
+        changeSetId: plan.changeSet.id
+      };
+    }
+
+    setAgentPlannedChangeSet(plan);
+    setPrototypeExtractionProposal(null);
+    setAiApplyState("idle");
+    setStatusMessage(`Prototype proposal prepared as planned ChangeSet: ${plan.changeSet.summary}`);
+    return {
+      ok: true,
+      summary: `Prototype proposal prepared as planned ChangeSet: ${plan.changeSet.summary}`,
+      diagnostics: routedDiagnostics.map(toAgentDiagnostic),
+      diffSummary: dryRun.diffSummary.map((item) => item.description),
+      changeSetId: plan.changeSet.id
     };
   }
 
@@ -1841,6 +2019,41 @@ export function EditorWorkspace() {
     }
 
     return { ok: true, intent, previewIntent, targets };
+  }
+
+  function currentPrototypeExtractionSourcePointers(): readonly string[] | undefined {
+    const previewPointers = previewPromptContext?.entities
+      .map((entity) => entity.authoringPointer)
+      .filter((pointer) => pointer !== "") ?? [];
+    const selectedPointer = selectedNode?.pointer !== undefined && selectedNode.pointer !== "" ? [selectedNode.pointer] : [];
+    const uniquePointers = [...new Set([...previewPointers, ...selectedPointer])];
+    return uniquePointers.length >= 2 ? uniquePointers : undefined;
+  }
+
+  function prototypeProposalToPlannedChangeSet(
+    proposal: PrototypeExtractionProposal,
+    activeFilePath: string
+  ): PlannedAiChangeSet {
+    const createdAt = new Date().toISOString();
+    const intent: EditorPatchIntent = {
+      id: `${proposal.id}:manual-review:${Date.now()}`,
+      kind: "prototype-extraction-review",
+      prompt: `Use prototype extraction proposal ${proposal.definitionType}.`,
+      activeFilePath,
+      targetPointers: [...new Set([...proposal.sourcePointers, proposal.definitionPointer])],
+      createdAt,
+      selectionKind: "document"
+    };
+
+    return {
+      intent,
+      changeSet: {
+        ...proposal.changeSet,
+        intentId: intent.id
+      },
+      diagnostics: [],
+      targetPointers: proposal.sourcePointers
+    };
   }
 
   function dryRunPlannedAiChangeSet(plan: PlannedAiChangeSet) {
@@ -2567,7 +2780,11 @@ export function EditorWorkspace() {
                     proposedIntent={previewAiIntent}
                     aiApplyState={aiApplyState}
                     aiDiffSummary={aiDiffSummary}
+                    prototypeExtractionProposal={prototypeExtractionProposal}
                     selectedNodeTitle={selectedNode?.semanticTitle}
+                    onUsePrototypeProposal={() => {
+                      void runAgentPreparePrototypeChangeSetTool();
+                    }}
                     onCollapse={() => setLeftSidebarPanel(undefined)}
                   />
                 }
@@ -2753,6 +2970,15 @@ export function EditorWorkspace() {
   );
 }
 
+function prototypeSemanticsFromPrompt(prompt: string | undefined): string | undefined {
+  const trimmed = prompt?.trim();
+  if (trimmed === undefined || trimmed === "") {
+    return undefined;
+  }
+
+  return trimmed.length <= 240 ? trimmed : trimmed.slice(0, 237).trimEnd() + "...";
+}
+
 function TimelineSidebarPanel({
   traceEntries,
   selectedTraceEvent,
@@ -2837,15 +3063,21 @@ function AiChatSidebarPanel({
   proposedIntent,
   aiApplyState,
   aiDiffSummary,
+  prototypeExtractionProposal,
   selectedNodeTitle,
+  onUsePrototypeProposal,
   onCollapse
 }: {
   readonly proposedIntent: PreviewAiIntent | null;
   readonly aiApplyState: "idle" | "planning" | "applying" | "applied" | "blocked" | "error" | "undone";
   readonly aiDiffSummary: readonly EditorDiffSummaryItem[];
+  readonly prototypeExtractionProposal: PlannedPrototypeExtractionProposal | null;
   readonly selectedNodeTitle: string | undefined;
+  readonly onUsePrototypeProposal: () => void;
   readonly onCollapse: () => void;
 }) {
+  const prototypeProposalReady = prototypeExtractionProposal === null ? false : prototypeProposalGatesPassed(prototypeExtractionProposal);
+
   return (
     <>
       <div className="panel-heading">
@@ -2875,6 +3107,25 @@ function AiChatSidebarPanel({
             {aiDiffSummary.slice(0, 5).map((item, index) => (
               <p key={`${item.description}-${index}`}>{item.description}</p>
             ))}
+          </section>
+        ) : null}
+        {prototypeExtractionProposal !== null ? (
+          <section>
+            <span>Prototype proposal</span>
+            <strong>{prototypeExtractionProposal.proposal.definitionType}</strong>
+            <p>{prototypeExtractionProposal.proposal.definitionPointer}</p>
+            {prototypeExtractionProposal.gates.slice(0, 6).map((gate) => (
+              <p key={gate.id}>{gate.label}: {gate.ok ? "OK" : "blocked"}</p>
+            ))}
+            <div className="ai-sidebar-actions">
+              <button
+                type="button"
+                disabled={!prototypeProposalReady || aiApplyState === "planning" || aiApplyState === "applying"}
+                onClick={onUsePrototypeProposal}
+              >
+                Use as planned ChangeSet
+              </button>
+            </div>
           </section>
         ) : null}
       </div>
@@ -3259,6 +3510,10 @@ function editorApplyApprovalScope(planned: PlannedAiChangeSet | null): string {
   return planned === null ? "editor.applyChangeSet:none" : `editor.applyChangeSet:${planned.changeSet.id}`;
 }
 
+function prototypeProposalGatesPassed(plannedProposal: PlannedPrototypeExtractionProposal): boolean {
+  return plannedProposal.gates.length > 0 && plannedProposal.gates.every((gate) => gate.ok);
+}
+
 function editorUndoApprovalScope(patchJournalLength: number): string {
   return `editor.undoLastPatch:${patchJournalLength}`;
 }
@@ -3305,6 +3560,7 @@ function buildEditorAgentSurface(input: {
   readonly aiApplyState: "idle" | "planning" | "applying" | "applied" | "blocked" | "error" | "undone";
   readonly aiDiffSummary: readonly EditorDiffSummaryItem[];
   readonly aiDiagnostics: readonly RoutedEditorDiagnostic[];
+  readonly prototypeExtractionProposal: PlannedPrototypeExtractionProposal | null;
   readonly hasPlannedChangeSet: boolean;
   readonly hasUndoPatch: boolean;
   readonly applyApprovalScopeHash: string;
@@ -3340,6 +3596,45 @@ function buildEditorAgentSurface(input: {
         entries: input.aiDiffSummary.slice(0, 5).map((item) => item.description)
       }
     });
+  }
+
+  if (input.prototypeExtractionProposal !== null) {
+    children.push({
+      id: "editor-agent-prototype-proposal",
+      kind: "cubica.text",
+      props: {
+        text: `Prototype proposal: ${input.prototypeExtractionProposal.proposal.definitionType} (${input.prototypeExtractionProposal.proposal.sourcePointers.length} sources)`
+      }
+    });
+    children.push({
+      id: "editor-agent-prototype-gates",
+      kind: "cubica.diagnosticList",
+      props: {
+        title: "Prototype gates",
+        items: input.prototypeExtractionProposal.gates
+          .slice(0, 6)
+          .map((gate) => `${gate.label}: ${gate.ok ? "OK" : "blocked"}`)
+      }
+    });
+
+    if (prototypeProposalGatesPassed(input.prototypeExtractionProposal)) {
+      children.push({
+        id: "editor-agent-use-prototype-proposal",
+        kind: "cubica.button",
+        props: {
+          label: "Use as planned ChangeSet"
+        },
+        actions: [
+          {
+            id: "editor-agent-use-prototype-proposal-action",
+            kind: "editorTool",
+            label: "Use as planned ChangeSet",
+            target: "editor.preparePrototypeChangeSet",
+            sideEffectPolicy: "system-approved"
+          }
+        ]
+      });
+    }
   }
 
   if (input.hasPlannedChangeSet) {
@@ -3474,6 +3769,28 @@ async function requestAiChangeSet(
   }
 
   return (await response.json()) as AiPatchPlanResponse;
+}
+
+async function requestPrototypeExtractionProposal(input: {
+  readonly gameId: string;
+  readonly filePath: string;
+  readonly text: string;
+  readonly sessionId?: string;
+  readonly sourcePointers?: readonly string[];
+  readonly definitionType?: string;
+  readonly definitionSemantics?: string;
+}): Promise<PrototypeExtractionWorkflowResponse> {
+  const response = await fetch("/api/editor/prototype-extraction", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { readonly error?: string };
+    throw new Error(payload.error ?? `Prototype extraction proposal failed with HTTP ${response.status}.`);
+  }
+
+  return (await response.json()) as PrototypeExtractionWorkflowResponse;
 }
 
 async function fetchAuthoringFile(gameId: string, filePath: string, sessionId?: string): Promise<AuthoringFileDocument> {

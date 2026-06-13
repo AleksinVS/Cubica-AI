@@ -17,6 +17,8 @@
 > - **Cubica Surface Protocol** — собственный протокол Cubica для описания ограниченных UI-поверхностей помощника: словаря компонентов, модели данных, действий и проверок.
 > - **AI-driven game** — игра, где ИИ-агент является обязательной частью runtime и управляет ходом, состоянием шага и UI-поверхностью через валидируемые контракты Cubica.
 > - **Agent Runtime** — backend-граница, которая выполняет шаг агента, вызывает модель или локального агента и возвращает структурированный результат для runtime validation.
+> - **Game-level prototype** — authoring-прототип, принадлежащий конкретной игре и допускающий локальные предметные детали.
+> - **Platform-level prototype** — authoring-прототип платформы Cubica, предназначенный для класса игр или UI-паттернов и не содержащий game-specific деталей.
 
 ## Текущий канонический срез
 
@@ -158,6 +160,14 @@ Outside the current canonical `runtime-api` slice, most service folders remain s
 **Элементные промты (ADR-048, Accepted):**
 
 Authoring-экземпляры получают отдельное поле `_prompt`, а прототипы - `_promptTemplate`. Эти поля описывают авторское намерение конкретного элемента: содержимое, поведение, связи с состоянием, переходы и методический смысл. Они не заменяют `generation.prompt` из design artifacts, потому что `generation.prompt` описывает визуальную генерацию изображения или региона. Первый срез реализован в `manifest-authoring-common.schema.json`, authoring v2 examples, compiler stripping rules и editor schema readiness. Reverse-sync и механизм синхронизации промта со структурой остаются отдельной последующей проработкой.
+
+**Dynamic element prompts, хранение и drift diagnostics (ADR-049, Accepted):**
+
+Принятое направление объединяет storage и A + B lite sync вокруг динамического compiled prompt. `_prompt` должен хранить только static residue - невосстановимое авторское намерение, которое агент не смог надежно сопоставить со структурированными полями. Динамическая часть prompt пересобирается из выбранного game/UI JSON-узла и связанных узлов как YAML-проекция с русскими названиями полей. Русские названия берутся из JSON Schema annotations и authoring/editor field dictionary, а не записываются в каждый элемент. Reverse direction идет через ИИ-агента, который получает compiled prompt, schema context, dictionary и projection source map и возвращает только `EditorChangeSet` с dry-run, validation и подтверждением пользователя. Канонические manifests остаются JSON; YAML используется как presentation format для prompt projection.
+
+**Извлечение и повышение authoring-прототипов (ADR-050, Accepted):**
+
+Cubica принимает три направления для прототипов: локальное извлечение повторяющихся game/UI authoring-элементов в `_definitions` конкретной игры; двухуровневую модель, где локальный game-level prototype может вручную повышаться до platform-level prototype; и AI-assisted prototype designer, который предлагает имя, параметры, `_semantics`, `_promptTemplate` и `EditorChangeSet`, но не применяет изменения напрямую. Platform-level prototype является authoring-only артефактом, не попадает в runtime-api/player-web и не может содержать game-specific id, тексты, метрики или правила. Полностью автоматическое повышение в платформенный каталог отклонено.
 
 Текстовые источники и якоря из более ранней manifest-lineage остаются историческим направлением (см. ADR-013), но не считаются текущей канонической truth model для `Antarctica`. В текущем срезе narrative/extraction artifacts могут существовать как reference material или migration input, но не как runtime source of truth.
 
@@ -323,6 +333,8 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - **ADR-047 (AI Agent Safety Remediation Gates):** accepted safety gates перед production Agent Runtime: human approval хранится как Cubica approval envelope, rejected Agent Turn не применяет effects, `allowedCapabilities` является исполняемым runtime allowlist, Surface actions проверяются channel policy, а non-Web projections fail closed.
 - **ADR-048 (Element Authoring Prompt Contract):** принятый контракт `_prompt` для authoring-экземпляров и `_promptTemplate` для прототипов; фиксирует отличие элементного промта от `generation.prompt`, `_semantics` и временных editor prompts. Обратная синхронизация и механизм синхронизации промта со структурой остаются отдельной последующей проработкой.
 
+- **ADR-049 (Dynamic Element Prompt Projection And Sync Strategy):** accepted направление: `_prompt` хранит только невосстановимый static residue, dynamic YAML projection строится из текущего JSON-узла с русскими field labels из schema annotations/field dictionary, reverse direction идет через agent-produced `EditorChangeSet`, optional Markdown refs разрешены для длинного static residue, covered pointers/hash дают `prompt-stale`, а canonical manifests остаются JSON.
+- **ADR-050 (Authoring Prototype Extraction And Promotion):** accepted модель локального извлечения прототипов, ручного повышения game-level prototype до platform-level prototype и AI-assisted designer; runtime/player не резолвят эти прототипы, а platform-level catalog остается authoring-only слоем с явными gates против game-specific drift.
 
 ---
  

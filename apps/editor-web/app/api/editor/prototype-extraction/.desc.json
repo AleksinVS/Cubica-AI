@@ -1,0 +1,3 @@
+{
+  "description": "Read-only editor API route that plans ADR-050 authoring prototype extraction proposals and validates their compiler/source-map gates before the editor applies any ChangeSet."
+}

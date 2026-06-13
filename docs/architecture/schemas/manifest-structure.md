@@ -326,7 +326,7 @@ In practice, the presenter/router layer:
 
 ## Element Prompts (элементные промты)
 
-ADR-048 фиксирует отдельный принятый контракт элементного промта для authoring-манифестов.
+ADR-048 фиксирует отдельный принятый контракт элементного промта для authoring-манифестов. ADR-049 уточняет целевую модель: `_prompt` хранит только невосстановимую статическую часть авторского намерения, а полный текст, который видит пользователь, собирается редактором из `_prompt` и dynamic YAML projection текущего JSON-узла.
 
 Это не то же самое, что `generation.prompt` в design artifacts:
 
@@ -335,6 +335,8 @@ ADR-048 фиксирует отдельный принятый контракт 
 - `generation.prompt` относится к изображению или визуальному региону design artifact и описывает, как воспроизвести или доработать визуальный asset.
 
 Authoring v2 schemas проверяют `_prompt` и `_promptTemplate` через `manifest-authoring-common.schema.json`. Runtime-схемы намеренно не принимают эти поля: compiler stripping rules удаляют их из generated runtime manifests, а доступ runtime/player к промтам потребует отдельного runtime-контракта.
+
+Канонические manifests остаются JSON. YAML используется только как временное человеко-читаемое представление в редакторе: field dictionary сопоставляет schema pointers или semantic type paths с русскими названиями, редактор строит YAML projection для пользователя, а обратное преобразование в JSON выполняется только через агента и `EditorChangeSet`.
 
 ## Design Artifacts (Дизайн-артефакты для ИИ-агентов)
 

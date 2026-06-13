@@ -1052,6 +1052,30 @@ textarea {
   overflow-wrap: anywhere;
 }
 
+.ai-sidebar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.ai-sidebar-actions button {
+  background: #ffffff;
+  border: 1px solid #b8c2d3;
+  border-radius: 6px;
+  color: #1e2a3b;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  min-height: 30px;
+  padding: 5px 8px;
+}
+
+.ai-sidebar-actions button:disabled {
+  color: #8b96a8;
+  cursor: not-allowed;
+}
+
 .right-sidebar-panel,
 .json-panel {
   background: #ffffff;

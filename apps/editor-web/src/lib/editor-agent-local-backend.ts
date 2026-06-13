@@ -140,6 +140,28 @@ function chooseTool(tools: readonly Tool[], latestUserText: string): LocalToolCh
     };
   }
 
+  if (
+    toolNames.has("editor.preparePrototypeChangeSet") &&
+    includesAny(lowerPrompt, ["use proposal", "use prototype", "prepare prototype", "используй proposal", "используй прототип", "подготовь прототип", "запланируй прототип"])
+  ) {
+    return {
+      toolName: "editor.preparePrototypeChangeSet",
+      args: {},
+      intro: "Готовлю последний prototype proposal как planned ChangeSet без применения изменений."
+    };
+  }
+
+  if (
+    toolNames.has("editor.proposePrototypeExtraction") &&
+    includesAny(lowerPrompt, ["prototype", "прототип", "extract", "extraction", "извлеч", "выдели повтор", "повторяющ"])
+  ) {
+    return {
+      toolName: "editor.proposePrototypeExtraction",
+      args: prompt === "" ? {} : { prompt },
+      intro: "Готовлю read-only proposal для извлечения authoring-прототипа через editor.proposePrototypeExtraction."
+    };
+  }
+
   if (toolNames.has("editor.requestHumanApproval") && includesAny(lowerPrompt, ["approved=true", "approved: true"])) {
     return {
       toolName: "editor.requestHumanApproval",

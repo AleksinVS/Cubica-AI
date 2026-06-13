@@ -5,5 +5,7 @@
   "045-cubica-owned-generative-ui-and-mvp-copilotkit.md": "ADR-045: Cubica-owned Generative UI direction, где CopilotKit является MVP-адаптером, а целевой слой - собственный совместимый Cubica Agent UI и Surface Protocol.",
   "046-ai-driven-game-runtime-mode.md": "ADR-046: AI-driven game runtime mode, где манифест может объявить Agent Runtime обязательной частью исполнения игры.",
   "047-ai-agent-safety-remediation-gates.md": "ADR-047: proposed safety gates for AI agent remediation: approval envelope, rejected Agent Turn semantics, capability enforcement, channel action policy and production backend auth.",
-  "048-element-authoring-prompt-contract.md": "ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах."
+  "048-element-authoring-prompt-contract.md": "ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах.",
+  "049-dynamic-element-prompt-projection-and-sync-strategy.md": "ADR-049: принятая стратегия dynamic element prompts: static residue в _prompt, YAML projection из JSON-узла, field dictionary, Markdown refs и diagnostic-first sync.",
+  "050-authoring-prototype-extraction-and-promotion.md": "ADR-050: принятый механизм локального извлечения authoring-прототипов, ручного повышения в платформенный каталог и AI-assisted prototype designer."
 }
