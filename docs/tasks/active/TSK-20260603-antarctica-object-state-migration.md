@@ -17,7 +17,7 @@
 
 ## Status
 
-planned
+**Completed.** Antarctica card state fully migrated to object model. Targeted player-web review checks passing.
 
 ## Why
 
@@ -163,3 +163,9 @@ The final `rg` command is a review aid. After migration, `flags.cards` hits must
 - Split `Antarctica` migration out of `TSK-20260603-gameplay-object-state-model`.
 - Created this dedicated execution package for the migration from `flags.cards` to `objects.cards`.
 - Next safe step: build the migration map before editing `games/antarctica/authoring/game.authoring.json`.
+
+### 2026-06-03 - Codex follow-up
+
+- Updated player-web Antarctica opening-tail fixtures to use `public.objects.cards` and kept locked/selected/resolved semantics aligned with the object model.
+- Renamed the player-web test case to reflect hidden-card filtering under object state.
+- Verified `npm test --workspace @cubica/player-web -- src/components/game-player.test.tsx` and `git diff --check`.

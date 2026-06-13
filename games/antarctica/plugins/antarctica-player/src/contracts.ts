@@ -77,7 +77,7 @@ export interface AntarcticaGameState {
   currentInfo: GamePlayerInfoEntry | null;
   currentBoard: GamePlayerBoard | null;
   currentTeamSelection: GamePlayerTeamSelectionScene | null;
-  cardFlags: Record<string, { selected?: boolean; resolved?: boolean; locked?: boolean; available?: boolean }>;
+  cardObjects: Record<string, { facets?: { selection?: string; resolution?: string; availability?: string; face?: string } }>;
   selectedCardId: string | null;
   selectedCard: GamePlayerBoardCard | null;
   boardCards: Array<GamePlayerBoardCard>;

@@ -116,6 +116,32 @@ export interface GameManifestEngineConfig {
   };
 }
 
+export type GameManifestExecutionMode = "deterministic" | "hybrid" | "ai-driven";
+export type GameManifestAgentFailurePolicy = "pause" | "retry" | "deterministicFallback" | "facilitatorTakeover";
+
+/**
+ * Agent Runtime dependency declared by a game manifest.
+ *
+ * Agent Runtime means the server-side boundary that executes one AI agent turn.
+ * The manifest declares only allowed Cubica capabilities and catalogs; provider
+ * SDK details stay outside the manifest and outside player clients.
+ */
+export interface GameManifestAgentRuntimeConfig {
+  agentId: string;
+  runtimeId?: string;
+  required: boolean;
+  allowedCapabilities: Array<string>;
+  allowedTools?: Array<string>;
+  surfaceCatalog: Array<string>;
+  failurePolicy: GameManifestAgentFailurePolicy;
+  deterministicFallbackActionId?: string;
+  contextExposurePolicy?: {
+    publicState: boolean;
+    secretState?: "none" | "role-scoped";
+    manifestProjection?: Array<string>;
+  };
+}
+
 export interface GameManifestState<TPublicState = Record<string, unknown>, TSecretState = Record<string, unknown>> {
   public: TPublicState;
   secret?: TSecretState;
@@ -429,6 +455,8 @@ export interface GameManifest<
   config: GameManifestConfig;
   content?: GameManifestContent;
   engine?: GameManifestEngineConfig;
+  executionMode?: GameManifestExecutionMode;
+  agentRuntime?: GameManifestAgentRuntimeConfig;
   state: GameManifestState<TPublicState, TSecretState>;
   actions: TActions;
   objectModels?: GameManifestObjectModelMap;
@@ -837,6 +865,22 @@ export interface PlayerFacingContent {
   locale: GameManifestLocale;
   playerConfig: GameManifestPlayerConfig;
   training?: GameManifestTraining;
+  /**
+   * Public gameplay execution mode.
+   *
+   * Player channels use this only to choose the transport boundary:
+   * deterministic actions still go through `/actions`, while AI-driven games
+   * request validated Agent Turns through `/agent-turns`.
+   */
+  executionMode?: GameManifestExecutionMode;
+  /**
+   * Public Agent Runtime declaration.
+   *
+   * This intentionally omits prompt/context exposure policy details. The
+   * browser only needs to know whether Agent Runtime is required and how to
+   * present a pause/retry state when it is unavailable.
+   */
+  agentRuntime?: PlayerFacingAgentRuntimeConfig;
   actions: Array<PlayerFacingAction>;
   mockups: Array<PlayerFacingMockup>;
   /** Runtime object models used by generic Presenter projection. */
@@ -853,6 +897,15 @@ export interface PlayerFacingContent {
    * runtime-api only passes references and never executes browser plugin code.
    */
   pluginBundles?: Array<PlayerWebPluginBundleReference>;
+}
+
+export interface PlayerFacingAgentRuntimeConfig {
+  agentId?: string;
+  runtimeId?: string;
+  required: boolean;
+  failurePolicy: GameManifestAgentFailurePolicy;
+  deterministicFallbackActionId?: string;
+  surfaceCatalog: Array<string>;
 }
 
 export type PlayerWebPluginBundleScope = "preview" | "published";

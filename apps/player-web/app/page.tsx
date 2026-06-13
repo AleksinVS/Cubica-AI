@@ -43,6 +43,7 @@ export default async function Page({ searchParams }: PageProps) {
       editorPreviewMode={previewSessionId !== undefined}
       editorPreviewParentOrigin={editorPreviewParentOrigin}
       playerPluginBundles={content.pluginBundles ?? []}
+      contentSourceId={previewContentSourceId}
     />
   );
 }

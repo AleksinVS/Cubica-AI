@@ -17,6 +17,12 @@
         "engine": {
           "$ref": "#/definitions/GameManifestEngineConfig"
         },
+        "executionMode": {
+          "$ref": "#/definitions/GameManifestExecutionMode"
+        },
+        "agentRuntime": {
+          "$ref": "#/definitions/GameManifestAgentRuntimeConfig"
+        },
         "meta": {
           "$ref": "#/definitions/GameManifestMeta"
         },
@@ -39,6 +45,72 @@
         "config",
         "state",
         "actions"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "executionMode": {
+                "enum": [
+                  "hybrid",
+                  "ai-driven"
+                ]
+              }
+            },
+            "required": [
+              "executionMode"
+            ]
+          },
+          "then": {
+            "required": [
+              "agentRuntime"
+            ],
+            "properties": {
+              "agentRuntime": {
+                "required": [
+                  "required"
+                ],
+                "properties": {
+                  "required": {
+                    "const": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "agentRuntime": {
+                "properties": {
+                  "required": {
+                    "const": true
+                  }
+                },
+                "required": [
+                  "required"
+                ]
+              }
+            },
+            "required": [
+              "agentRuntime"
+            ]
+          },
+          "then": {
+            "required": [
+              "executionMode"
+            ],
+            "properties": {
+              "executionMode": {
+                "enum": [
+                  "hybrid",
+                  "ai-driven"
+                ]
+              }
+            }
+          }
+        }
       ],
       "type": "object"
     },
@@ -1445,6 +1517,94 @@
       },
       "required": [
         "systemPrompt"
+      ],
+      "type": "object"
+    },
+    "GameManifestExecutionMode": {
+      "enum": [
+        "deterministic",
+        "hybrid",
+        "ai-driven"
+      ],
+      "type": "string"
+    },
+    "GameManifestAgentFailurePolicy": {
+      "enum": [
+        "pause",
+        "retry",
+        "deterministicFallback",
+        "facilitatorTakeover"
+      ],
+      "type": "string"
+    },
+    "GameManifestAgentRuntimeConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "agentId": {
+          "type": "string"
+        },
+        "runtimeId": {
+          "type": "string"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "allowedCapabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "allowedTools": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "surfaceCatalog": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "failurePolicy": {
+          "$ref": "#/definitions/GameManifestAgentFailurePolicy"
+        },
+        "deterministicFallbackActionId": {
+          "type": "string"
+        },
+        "contextExposurePolicy": {
+          "additionalProperties": false,
+          "properties": {
+            "publicState": {
+              "type": "boolean"
+            },
+            "secretState": {
+              "enum": [
+                "none",
+                "role-scoped"
+              ],
+              "type": "string"
+            },
+            "manifestProjection": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "publicState"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "agentId",
+        "required",
+        "allowedCapabilities",
+        "surfaceCatalog",
+        "failurePolicy"
       ],
       "type": "object"
     },

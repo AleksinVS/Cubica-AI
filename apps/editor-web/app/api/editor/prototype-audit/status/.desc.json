@@ -1,0 +1,5 @@
+{
+  ".": "Read-only Next.js route that exposes the latest ADR-050 prototype audit status to editor-web.",
+  "route.ts": "GET route that reads the latest prototype audit status record and returns a fail-open nonblocking editor notification model.",
+  "route.test.ts": "Vitest coverage for the prototype audit status route, including missing status records and completed weekly status records."
+}

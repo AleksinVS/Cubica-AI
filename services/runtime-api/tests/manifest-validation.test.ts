@@ -1,8 +1,13 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { test } from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { ManifestValidationError } from "../src/modules/errors.ts";
 import { validateGameManifest } from "../src/modules/content/manifestValidation.ts";
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
 const validManifest = {
   meta: {
@@ -182,6 +187,81 @@ test("validateGameManifest rejects actions with invalid handlerType", () => {
             capability: "ui.panel.hint",
             function: "showHint"
           }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest accepts deterministic execution mode without Agent Runtime", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    executionMode: "deterministic"
+  }) as unknown as typeof validManifest & { executionMode: string };
+
+  assert.equal(manifest.executionMode, "deterministic");
+});
+
+test("validateGameManifest accepts AI-driven execution mode with Agent Runtime policy", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    executionMode: "ai-driven",
+    agentRuntime: {
+      agentId: "scenario-agent",
+      required: true,
+      allowedCapabilities: ["advanceStep", "setMetric"],
+      allowedTools: ["agent.nextTurn"],
+      surfaceCatalog: ["cubica.choiceList", "cubica.metricsBar"],
+      failurePolicy: "pause",
+      contextExposurePolicy: {
+        publicState: true,
+        secretState: "none",
+        manifestProjection: ["/meta", "/actions"]
+      }
+    }
+  }) as unknown as typeof validManifest & { executionMode: string; agentRuntime: { failurePolicy: string } };
+
+  assert.equal(manifest.executionMode, "ai-driven");
+  assert.equal(manifest.agentRuntime.failurePolicy, "pause");
+});
+
+test("validateGameManifest accepts committed ai-driven-choice fixture", () => {
+  const raw = readFileSync(path.join(repoRoot, "games", "ai-driven-choice", "game.manifest.json"), "utf8");
+  const manifest = validateGameManifest(JSON.parse(raw)) as {
+    meta: { id: string };
+    executionMode?: string;
+    agentRuntime?: { runtimeId?: string; failurePolicy?: string; surfaceCatalog?: string[] };
+  };
+
+  assert.equal(manifest.meta.id, "ai-driven-choice");
+  assert.equal(manifest.executionMode, "ai-driven");
+  assert.equal(manifest.agentRuntime?.runtimeId, "mock");
+  assert.equal(manifest.agentRuntime?.failurePolicy, "pause");
+  assert.deepEqual(manifest.agentRuntime?.surfaceCatalog, ["cubica.choiceList"]);
+});
+
+test("validateGameManifest rejects AI-driven execution mode without Agent Runtime", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        executionMode: "ai-driven"
+      }),
+    ManifestValidationError
+  );
+});
+
+test("validateGameManifest rejects required Agent Runtime without agent execution mode", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        agentRuntime: {
+          agentId: "scenario-agent",
+          required: true,
+          allowedCapabilities: ["advanceStep"],
+          surfaceCatalog: ["cubica.choiceList"],
+          failurePolicy: "pause"
         }
       }),
     ManifestValidationError

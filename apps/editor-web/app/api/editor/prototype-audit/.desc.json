@@ -1,0 +1,4 @@
+{
+  ".": "Editor API routes for reading ADR-050 prototype audit status without applying authoring changes.",
+  "status": "Read-only route exposing the latest prototype audit status to editor-web for nonblocking user notifications."
+}

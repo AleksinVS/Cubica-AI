@@ -9,6 +9,8 @@
  */
 import dynamic from "next/dynamic";
 
+import { EditorAgentProvider } from "@/components/editor-agent-ui";
+
 const EditorWorkspace = dynamic(
   () => import("@/components/editor-workspace").then((module) => module.EditorWorkspace),
   {
@@ -18,5 +20,9 @@ const EditorWorkspace = dynamic(
 );
 
 export function ClientOnlyEditor() {
-  return <EditorWorkspace />;
+  return (
+    <EditorAgentProvider>
+      <EditorWorkspace />
+    </EditorAgentProvider>
+  );
 }

@@ -12,6 +12,30 @@ export const ru = {
   /** Loading indicator */
   loading: "Загрузка...",
 
+  /** Retry button label */
+  retry: "Повторить",
+
+  /** Runtime dependency state label */
+  runtimeStatusKicker: "Состояние запуска",
+
+  /** AI-driven game is paused by declared failure policy */
+  runtimePausedTitle: "Игра поставлена на паузу",
+
+  /** AI-driven game can be retried by the player */
+  runtimeRetryTitle: "Ожидаем сервис ИИ-агента",
+
+  /** Runtime dependency is unavailable */
+  runtimeUnavailableTitle: "Запуск недоступен",
+
+  /** AI-driven game requires an agent backend before a session can start */
+  runtimeAgentRequiredDescription: "Для этой игры нужен серверный ИИ-агент. Он сейчас не готов, поэтому сессия не создаётся.",
+
+  /** Generic runtime unavailable description */
+  runtimeGenericUnavailableDescription: "Игровой сервер сейчас не готов принять сессию.",
+
+  /** Failure policy label */
+  runtimeFailurePolicy: "Политика отказа",
+
   /** Card selection button label */
   selectCard: "Выбрать",
 

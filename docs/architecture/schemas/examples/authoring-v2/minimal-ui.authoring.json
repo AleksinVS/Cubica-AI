@@ -3,7 +3,17 @@
   "_schemaVersion": "2.0",
   "_manifestType": "ui",
   "_channel": "web",
-  "_definitions": {},
+  "_definitions": {
+    "ui.PromptedButtonPrototype": {
+      "_semantics": "Переиспользуемый прототип кнопки действия для проверки _promptTemplate в UI authoring.",
+      "_label": "Прототип кнопки действия",
+      "_promptTemplate": {
+        "raw": "Опишите назначение кнопки, видимый текст, действие onClick и ожидаемый результат для игрока.",
+        "language": "ru",
+        "appliesTo": "ui.PromptedButtonPrototype"
+      }
+    }
+  },
   "root": {
     "_type": "ui.Manifest",
     "_label": "Web UI v2",
@@ -51,6 +61,14 @@
               "_type": "ui.Component",
               "_label": "Кнопка решения",
               "_semantics": "Кнопка вызывает игровое действие choice.accept.",
+              "_prompt": {
+                "status": "confirmed",
+                "raw": "Это кнопка выбора на стартовом экране. Текст кнопки: \"Принять решение\". При нажатии она отправляет действие choice.accept в runtime.",
+                "normalized": "Создать кнопку выбора на стартовом экране. Видимый текст: \"Принять решение\". При нажатии отправить runtime-действие choice.accept.",
+                "source": "user",
+                "language": "ru",
+                "updatedAt": "2026-06-12T00:00:00Z"
+              },
               "type": "buttonComponent",
               "props": {
                 "caption": "Принять решение",

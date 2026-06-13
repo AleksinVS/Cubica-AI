@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HttpError } from "../errors.ts";
+import { AgentTurnService } from "../ai/agentRuntime.ts";
 import { SessionService } from "../session/session.service.ts";
 import { RuntimeService } from "../runtime/runtime.service.ts";
 import {
@@ -14,10 +15,11 @@ import {
   registerLocalPlayerFacingContentSourceWithPlugins,
   type LocalPlayerWebPluginBundle
 } from "../content/contentService.ts";
-import { buildReadinessResponse } from "../admin/health.ts";
+import { buildGameReadinessResponse, buildReadinessResponse } from "../admin/health.ts";
 import {
   assertContentSourceId,
   assertGameId,
+  parseAgentTurnRequest,
   parseCreateSessionRequest,
   parseDispatchActionRequest,
   parseRestorePreviewSessionRequest
@@ -29,6 +31,7 @@ interface RuntimeApiServerOptions {
 
 const sessionService = new SessionService();
 const runtimeService = new RuntimeService();
+const agentTurnService = new AgentTurnService();
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
 const defaultEditorWorktreesRoot = path.join(repositoryRoot, ".tmp", "editor-worktrees");
 // Keep editor preview content local-only while allowing e2e or desktop editor
@@ -148,6 +151,24 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       }
 
       const playerContentMatch = request.method === "GET" && requestUrl.pathname.match(/^\/games\/([^/]+)\/player-content$/);
+      const gameReadinessMatch = request.method === "GET" && requestUrl.pathname.match(/^\/games\/([^/]+)\/readiness$/);
+      if (gameReadinessMatch) {
+        const gameId = gameReadinessMatch[1];
+        assertGameId(gameId, "gameId");
+        const contentSourceId = requestUrl.searchParams.get("contentSourceId") ?? undefined;
+        if (contentSourceId !== undefined) {
+          assertContentSourceId(contentSourceId, "contentSourceId");
+        }
+        const readinessResponse = await buildGameReadinessResponse({
+          sessionStore: sessionService.getSessionStore(),
+          gameId,
+          contentSourceId
+        });
+        const statusCode = readinessResponse.ready ? 200 : 503;
+        sendJson(response, statusCode, readinessResponse);
+        return;
+      }
+
       if (playerContentMatch) {
         const gameId = playerContentMatch[1];
         assertGameId(gameId, "gameId");
@@ -216,6 +237,19 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         });
 
         sendJson(response, 200, dispatchResponse);
+        return;
+      }
+
+      if (request.method === "POST" && requestUrl.pathname === "/agent-turns") {
+        const body = await readJsonBody(request);
+        const requestBody = parseAgentTurnRequest(body);
+        const agentTurnResponse = await agentTurnService.runTurn({
+          sessionStore: sessionService.getSessionStore(),
+          contentSourceId: sessionService.getContentSourceId(requestBody.sessionId),
+          request: requestBody
+        });
+
+        sendJson(response, 200, agentTurnResponse);
         return;
       }
 

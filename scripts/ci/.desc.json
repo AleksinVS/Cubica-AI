@@ -1,5 +1,7 @@
 {
   ".": "Cross-platform CI validation scripts that enforce repository governance rules before merge.",
+  "validate-agent-ui-boundaries.js": "Node.js validator for ADR-044 Agent UI import boundaries: CopilotKit and AG-UI imports are allowed only in approved adapter files.",
+  "validate-prototype-audit-status.js": "Node.js validator for ADR-050 prototype audit status records emitted by the weekly audit workflow.",
   "validate-legacy.js": "Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.",
   "validate-legacy.ps1": "PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.",
   "validate-manifest-authoring.js": "Node.js validator for ADR-030 authoring manifest compilation, generated drift and authoring-only key leakage."

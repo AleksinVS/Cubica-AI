@@ -19,6 +19,8 @@ import {
   createPreviewPlaythroughTrace,
   createSchemaRegistry,
   createStaticPreviewRendererAdapter,
+  createPrototypeExtractionProposal,
+  discoverPrototypeExtractionCandidates,
   dryRunEditorChangeSet,
   hashEditorText,
   decodeJsonPointerSegment,
@@ -144,6 +146,182 @@ describe("JSON Patch utilities", () => {
 
     expect(journalStep.beforeHash).toBe(hashEditorText(snapshot.text));
     expect(journalStep.affectedFiles).toEqual(["doc.authoring.json"]);
+  });
+});
+
+describe("prototype extraction proposals", () => {
+  it("discovers repeated authoring objects and builds a local prototype ChangeSet", () => {
+    const authoring = {
+      $schema: "schema:ui-authoring",
+      _schemaVersion: "2.0",
+      _manifestType: "ui",
+      _definitions: {
+        "ui.Button": {
+          _semantics: "Base button."
+        }
+      },
+      root: {
+        _type: "ui.Manifest",
+        _label: "Web UI",
+        screens: [
+          {
+            id: "main",
+            _type: "ui.Screen",
+            _label: "Main",
+            root: {
+              id: "continue",
+              _type: "ui.Button",
+              _label: "Continue",
+              kind: "button",
+              props: {
+                variant: "primary",
+                text: "Continue"
+              },
+              action: {
+                type: "navigate",
+                target: "details"
+              }
+            }
+          },
+          {
+            id: "details",
+            _type: "ui.Screen",
+            _label: "Details",
+            root: {
+              id: "back",
+              _type: "ui.Button",
+              _label: "Back",
+              kind: "button",
+              props: {
+                variant: "primary",
+                text: "Back"
+              },
+              action: {
+                type: "navigate",
+                target: "main"
+              }
+            }
+          }
+        ]
+      }
+    } satisfies JsonValue;
+    const snapshot = createDocumentStore({
+      filePath: "ui/web.authoring.json",
+      text: JSON.stringify(authoring, null, 2)
+    }).snapshot();
+
+    const discovery = discoverPrototypeExtractionCandidates({ snapshot, rootPointer: "/root" });
+    expect(discovery.ok).toBe(true);
+    expect(
+      discovery.candidates.some(
+        (candidate) =>
+          candidate.pointers.includes("/root/screens/0/root") && candidate.pointers.includes("/root/screens/1/root")
+      )
+    ).toBe(true);
+
+    const proposalResult = createPrototypeExtractionProposal({
+      snapshot,
+      sourcePointers: ["/root/screens/0/root", "/root/screens/1/root"],
+      definitionType: "ui.PrimaryNavigationButton",
+      definitionSemantics: "Reusable primary navigation button for this game UI.",
+      promptTemplate: {
+        raw: "Опишите текст кнопки и целевой экран перехода.",
+        language: "ru",
+        appliesTo: "ui.PrimaryNavigationButton"
+      }
+    });
+
+    expect(proposalResult.ok).toBe(true);
+    if (!proposalResult.ok) {
+      throw new Error("Expected prototype extraction proposal to be created.");
+    }
+    const proposal = proposalResult.proposal;
+    expect(proposal.definitionPointer).toBe("/_definitions/ui.PrimaryNavigationButton");
+    expect(proposal.definition).toEqual({
+      _semantics: "Reusable primary navigation button for this game UI.",
+      _extends: "ui.Button",
+      _promptTemplate: {
+        raw: "Опишите текст кнопки и целевой экран перехода.",
+        language: "ru",
+        appliesTo: "ui.PrimaryNavigationButton"
+      },
+      action: {
+        type: "navigate"
+      },
+      kind: "button",
+      props: {
+        variant: "primary"
+      }
+    });
+    expect(proposal.instanceOverrides[0]?.replacement).toEqual({
+      _type: "ui.PrimaryNavigationButton",
+      id: "continue",
+      _label: "Continue",
+      kind: "button",
+      props: {
+        variant: "primary",
+        text: "Continue"
+      },
+      action: {
+        type: "navigate",
+        target: "details"
+      }
+    });
+    expect(proposal.validationGates).toContain("canonical-runtime-diff");
+    expect(proposal.sourceMapImpact.affectedPointers).toEqual(["/root/screens/0/root", "/root/screens/1/root"]);
+
+    const dryRun = dryRunEditorChangeSet({
+      snapshot,
+      changeSet: proposal.changeSet,
+      includeSemanticDiagnostics: false
+    });
+    expect(dryRun.ok).toBe(true);
+    expect(readJsonPointer(dryRun.after?.json as JsonValue, "/_definitions/ui.PrimaryNavigationButton")).toEqual(
+      proposal.definition
+    );
+    expect(readJsonPointer(dryRun.after?.json as JsonValue, "/root/screens/1/root")).toEqual({
+      _type: "ui.PrimaryNavigationButton",
+      id: "back",
+      _label: "Back",
+      kind: "button",
+      props: {
+        variant: "primary",
+        text: "Back"
+      },
+      action: {
+        type: "navigate",
+        target: "main"
+      }
+    });
+  });
+
+  it("rejects sources with mixed _type values so extraction cannot hide semantic differences", () => {
+    const snapshot = createDocumentStore({
+      filePath: "game.authoring.json",
+      text: JSON.stringify(
+        {
+          _definitions: {},
+          root: {
+            actions: [
+              { id: "one", _type: "game.ChoiceAction", handler: "choice.select" },
+              { id: "two", _type: "game.MetricAction", handler: "choice.select" }
+            ]
+          }
+        },
+        null,
+        2
+      )
+    }).snapshot();
+
+    const proposal = createPrototypeExtractionProposal({
+      snapshot,
+      sourcePointers: ["/root/actions/0", "/root/actions/1"],
+      definitionType: "game.SharedAction",
+      definitionSemantics: "Shared action."
+    });
+
+    expect(proposal.ok).toBe(false);
+    expect(proposal.diagnostics[0]?.message).toMatch(/different _type/u);
   });
 });
 

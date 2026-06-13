@@ -7,12 +7,13 @@ import type {
   MetricsSnapshot,
   RuntimeUiState
 } from "@/types/game-state";
-import type { SessionSnapshot, ActionSnapshot } from "@/lib/game-content-resolvers";
-import { resolveMetricValueByAliases } from "@/lib/metric-resolvers";
 import {
-  createNewSession,
+  createNewSessionWithOptions,
   resumeSession,
-  dispatchAction as dispatchRuntimeAction
+  dispatchAction as dispatchRuntimeAction,
+  getGameReadiness,
+  runAgentTurn as runRuntimeAgentTurn,
+  RuntimeClientError
 } from "@/presenter/runtime-client";
 import {
   bindPortalLaunchSession,
@@ -24,7 +25,9 @@ import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import type { GameConfig } from "@/presenter/game-config";
 import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting } from "@/lib/screen-router";
 import type { ClientRequest } from "@/presenter/types";
-import type { PlayerState } from "@/presenter/types";
+import type { PlayerRuntimeStatus, PlayerState } from "@/presenter/types";
+import type { CubicaJsonValue, CubicaSurface, CubicaSurfaceAction } from "@cubica/contracts-ai";
+import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
 
@@ -50,21 +53,30 @@ export class GamePresenter {
   private session: GameSession | null = null;
   private booting = true;
   private isPending = false;
+  private runtimeStatus: PlayerRuntimeStatus = "booting";
+  private runtimeStatusReason: string | null = null;
+  private runtimeFailurePolicy: GameManifestAgentFailurePolicy | null = null;
   private error: string | null = null;
+  private errorStatus: number | null = null;
+  private agentSurface: CubicaSurface | null = null;
   private dismissedPanel: string | null = null;
   private currentActivePanel: string | null = null;
   private launchContext: PortalLaunchContext | null = null;
+  private contentSourceId: string | undefined;
+  private deterministicFallbackActive = false;
 
   constructor(options: {
     gateway: ReactViewGateway;
     content: PlayerFacingContent;
     gameUi?: GamePlayerUiContent;
     config: GameConfig;
+    contentSourceId?: string;
   }) {
     this.gateway = options.gateway;
     this.content = options.content;
     this.gameUi = options.gameUi;
     this.config = options.config;
+    this.contentSourceId = options.contentSourceId;
   }
 
   /**
@@ -140,9 +152,15 @@ export class GamePresenter {
       screenKey,
       layoutMode,
       activePanel,
+      runtimeStatus: this.runtimeStatus,
+      runtimeStatusReason: this.runtimeStatusReason,
+      runtimeFailurePolicy: this.runtimeFailurePolicy,
+      agentRuntimeRequired: this.content.agentRuntime?.required === true,
       error: this.error,
+      errorStatus: this.errorStatus,
       booting: this.booting,
       isPending: this.isPending,
+      agentSurface: this.agentSurface,
       log: Array.isArray(publicState?.log) ? (publicState?.log as Array<Record<string, unknown>>) : [],
     };
   }
@@ -151,7 +169,19 @@ export class GamePresenter {
    * Выполняет начальную загрузку сессии.
    */
   async boot(): Promise<void> {
+    this.booting = true;
+    this.runtimeStatus = "booting";
+    this.runtimeStatusReason = null;
+    this.runtimeFailurePolicy = null;
+    this.deterministicFallbackActive = false;
+    this.clearError();
+    await this.syncView();
+
     try {
+      if (!(await this.ensureLaunchReady())) {
+        return;
+      }
+
       const portalLaunchContext = readPortalLaunchContext();
 
       if (portalLaunchContext) {
@@ -164,7 +194,8 @@ export class GamePresenter {
             data.sessionId
           );
         }
-        this.error = null;
+        this.clearError();
+        await this.ensureAiDrivenSurface();
         return;
       }
 
@@ -177,27 +208,39 @@ export class GamePresenter {
         try {
           const data = await resumeSession(storedSessionId);
           this.session = { ...data, gameId: this.config.gameId };
-          this.error = null;
-        } catch {
-          const data = await createNewSession(this.config.gameId, this.config.playerId);
+          this.agentSurface = null;
+          this.clearError();
+          await this.ensureAiDrivenSurface();
+        } catch (error) {
+          if (!(error instanceof RuntimeClientError) || error.statusCode !== 404) {
+            throw error;
+          }
+          const data = await this.createSession();
           this.session = { ...data, gameId: this.config.gameId };
           if (typeof window !== "undefined") {
             window.localStorage.setItem(this.config.storageKey, data.sessionId);
           }
-          this.error = null;
+          this.agentSurface = null;
+          this.clearError();
+          await this.ensureAiDrivenSurface();
         }
       } else {
-        const data = await createNewSession(this.config.gameId, this.config.playerId);
+        const data = await this.createSession();
         this.session = { ...data, gameId: this.config.gameId };
         if (typeof window !== "undefined") {
           window.localStorage.setItem(this.config.storageKey, data.sessionId);
         }
-        this.error = null;
+        this.agentSurface = null;
+        this.clearError();
+        await this.ensureAiDrivenSurface();
       }
     } catch (err) {
-      this.error = err instanceof Error ? err.message : "Failed to initialize player";
+      this.captureError(err, "Failed to initialize player");
     } finally {
       this.booting = false;
+      if (this.runtimeStatus === "booting") {
+        this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+      }
       await this.syncView();
     }
   }
@@ -207,7 +250,12 @@ export class GamePresenter {
    */
   async resetGame(): Promise<void> {
     this.booting = true;
-    this.error = null;
+    this.runtimeStatus = "booting";
+    this.runtimeStatusReason = null;
+    this.runtimeFailurePolicy = null;
+    this.deterministicFallbackActive = false;
+    this.clearError();
+    this.agentSurface = null;
     if (typeof window !== "undefined") {
       const storageKey = this.launchContext
         ? launchScopedStorageKey(this.config.storageKey, this.launchContext)
@@ -215,9 +263,12 @@ export class GamePresenter {
       window.localStorage.removeItem(storageKey);
     }
     try {
+      if (!(await this.ensureLaunchReady())) {
+        return;
+      }
       const data = this.launchContext
         ? await bindPortalLaunchSession(this.launchContext, this.config.playerId)
-        : await createNewSession(this.config.gameId, this.config.playerId);
+        : await this.createSession();
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
       if (typeof window !== "undefined") {
         const storageKey = this.launchContext
@@ -225,11 +276,15 @@ export class GamePresenter {
           : this.config.storageKey;
         window.localStorage.setItem(storageKey, data.sessionId);
       }
-      this.error = null;
+      this.clearError();
+      await this.ensureAiDrivenSurface();
     } catch (err) {
-      this.error = err instanceof Error ? err.message : "Failed to reset player";
+      this.captureError(err, "Failed to reset player");
     } finally {
       this.booting = false;
+      if (this.runtimeStatus === "booting") {
+        this.runtimeStatus = this.session === null ? "unavailable" : "ready";
+      }
       await this.syncView();
     }
   }
@@ -243,6 +298,7 @@ export class GamePresenter {
     }
 
     this.isPending = true;
+    this.clearError();
     await this.syncView();
 
     try {
@@ -284,9 +340,59 @@ export class GamePresenter {
       ) as unknown as GameSession;
 
       this.session = merged;
-      this.error = null;
+      this.agentSurface = null;
+      this.clearError();
     } catch (err) {
-      this.error = err instanceof Error ? err.message : "Action dispatch failed";
+      this.captureError(err, "Action dispatch failed");
+    } finally {
+      this.isPending = false;
+      await this.syncView();
+    }
+  }
+
+  /**
+   * Handles a command emitted by a validated `CubicaSurface`.
+   *
+   * A surface action is only player intent. The Presenter routes it through
+   * runtime-api, where Agent Runtime output and state effects are validated
+   * before the next snapshot is accepted.
+   */
+  async handleSurfaceAction(action: CubicaSurfaceAction): Promise<void> {
+    if (this.booting || !this.session) {
+      return;
+    }
+
+    if (action.kind === "noop") {
+      return;
+    }
+
+    if (!isSupportedPlayerSurfaceAction(action)) {
+      this.captureError(new Error(`Surface action kind "${action.kind}" is not supported by player-web.`), "Surface action rejected");
+      await this.syncView();
+      return;
+    }
+
+    this.isPending = true;
+    this.clearError();
+    await this.syncView();
+
+    try {
+      if (action.kind === "agentTurn") {
+        await this.runAgentTurn(action.id, action.payload);
+      } else {
+        const actionId = action.target ?? action.id;
+        const next = await dispatchRuntimeAction(
+          this.session.sessionId,
+          this.config.playerId,
+          actionId,
+          surfacePayloadToRecord(action.payload)
+        );
+        this.session = { ...next, gameId: this.config.gameId };
+        this.agentSurface = null;
+      }
+      this.clearError();
+    } catch (err) {
+      this.captureError(err, "Surface action failed");
     } finally {
       this.isPending = false;
       await this.syncView();
@@ -336,4 +442,129 @@ export class GamePresenter {
       await this.gateway.dispatch(command);
     }
   }
+
+  private async ensureLaunchReady(): Promise<boolean> {
+    if (!this.requiresAgentRuntime()) {
+      return true;
+    }
+
+    const readiness = await getGameReadiness(this.config.gameId, this.contentSourceId);
+    if (readiness.ready) {
+      this.runtimeStatus = "booting";
+      this.runtimeStatusReason = null;
+      this.runtimeFailurePolicy = null;
+      return true;
+    }
+
+    const agentRuntime = readiness.dependencies.agentRuntime;
+    const failurePolicy = agentRuntime?.failurePolicy ?? this.content.agentRuntime?.failurePolicy ?? null;
+    const fallbackActionId = this.content.agentRuntime?.deterministicFallbackActionId;
+    if (failurePolicy === "deterministicFallback" && typeof fallbackActionId === "string" && fallbackActionId.length > 0) {
+      this.deterministicFallbackActive = true;
+      this.runtimeStatus = "booting";
+      this.runtimeStatusReason = agentRuntime?.reason ?? "Agent Runtime unavailable; deterministic fallback is enabled.";
+      this.runtimeFailurePolicy = failurePolicy;
+      return true;
+    }
+    const reason =
+      agentRuntime?.reason ??
+      readiness.dependencies.gameContent?.message ??
+      "Required Agent Runtime is unavailable.";
+
+    this.error = reason;
+    this.errorStatus = readiness.statusCode;
+    this.runtimeStatus = statusForFailurePolicy(failurePolicy);
+    this.runtimeStatusReason = reason;
+    this.runtimeFailurePolicy = failurePolicy;
+    return false;
+  }
+
+  private requiresAgentRuntime(): boolean {
+    return this.content.agentRuntime?.required === true &&
+      (this.content.executionMode === "ai-driven" || this.content.executionMode === "hybrid");
+  }
+
+  private createSession(): Promise<GameSession> {
+    return createNewSessionWithOptions({
+      gameId: this.config.gameId,
+      playerId: this.config.playerId,
+      contentSourceId: this.contentSourceId
+    }) as Promise<GameSession>;
+  }
+
+  private async ensureAiDrivenSurface(): Promise<void> {
+    if (this.session === null) {
+      return;
+    }
+    if (this.content.executionMode !== "ai-driven" || this.content.agentRuntime?.required !== true) {
+      return;
+    }
+    if (this.deterministicFallbackActive) {
+      return;
+    }
+    await this.runAgentTurn(undefined, {});
+  }
+
+  private async runAgentTurn(actionId: string | undefined, payload: unknown): Promise<void> {
+    if (this.session === null) {
+      return;
+    }
+    const next = await runRuntimeAgentTurn(this.session.sessionId, this.config.playerId, actionId, payload);
+    this.session = {
+      sessionId: next.sessionId,
+      gameId: this.config.gameId,
+      version: next.version,
+      state: next.state
+    };
+    this.agentSurface = next.agentTurn.surface ?? null;
+    this.runtimeStatus = "ready";
+    this.runtimeStatusReason = null;
+    this.runtimeFailurePolicy = null;
+  }
+
+  private clearError(): void {
+    this.error = null;
+    this.errorStatus = null;
+  }
+
+  private captureError(error: unknown, fallback: string): void {
+    this.error = error instanceof Error ? error.message : fallback;
+    this.errorStatus = error instanceof RuntimeClientError ? error.statusCode : null;
+    this.runtimeStatusReason = this.error;
+    if (error instanceof RuntimeClientError && error.statusCode === 503 && this.requiresAgentRuntime()) {
+      const failurePolicy = this.content.agentRuntime?.failurePolicy ?? null;
+      this.runtimeStatus = statusForFailurePolicy(failurePolicy);
+      this.runtimeFailurePolicy = failurePolicy;
+      return;
+    }
+    if (this.session === null || this.booting) {
+      this.runtimeStatus = "unavailable";
+    }
+  }
+}
+
+function surfacePayloadToRecord(payload: CubicaJsonValue | undefined): Record<string, unknown> {
+  if (payload === undefined || payload === null) {
+    return {};
+  }
+  if (typeof payload === "object" && !Array.isArray(payload)) {
+    return payload as Record<string, unknown>;
+  }
+  return { value: payload };
+}
+
+function isSupportedPlayerSurfaceAction(
+  action: CubicaSurfaceAction
+): action is CubicaSurfaceAction & { readonly kind: "agentTurn" | "runtimeAction" } {
+  return action.kind === "agentTurn" || action.kind === "runtimeAction";
+}
+
+function statusForFailurePolicy(policy: GameManifestAgentFailurePolicy | null): PlayerRuntimeStatus {
+  if (policy === "pause") {
+    return "paused";
+  }
+  if (policy === "retry") {
+    return "retry";
+  }
+  return "unavailable";
 }

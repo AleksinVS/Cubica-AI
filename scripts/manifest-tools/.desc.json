@@ -1,4 +1,5 @@
 {
   ".": "Manifest transformation and generation tools used by development and CI workflows.",
+  "audit-prototype-candidates.cjs": "Read-only ADR-050 prototype candidate audit CLI for local, PR, weekly, LLM-semantic and platform promotion backlog workflows.",
   "compile-authoring-manifests.cjs": "Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files."
 }

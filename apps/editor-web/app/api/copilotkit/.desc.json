@@ -1,0 +1,3 @@
+{
+  "description": "App-local CopilotKit runtime endpoint for the editor assistant. It keeps AG-UI agent backend configuration and secrets on the server side."
+}

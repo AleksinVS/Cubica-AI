@@ -15,5 +15,13 @@
   "TSK-20260522-editor-engine-authoring-manifest-editor.md": "План проектирования и реализации editor-engine для authoring-манифестов: graph projection, Monaco/JSON editor, floating property panel и reverse projection в JSON Patch.",
   "TSK-20260522-editor-engine-json-tree-view.md": "План добавления JSON tree view как третьего целевого режима редактирования editor-engine рядом с flow-chart и Monaco.",
   "TSK-20260522-editor-engine-progressive-graph-ux.md": "План следующего UX-среза editor-engine: прогрессивно раскрываемая семантическая диаграмма, разные типы узлов и сворачиваемые панели JSON/property.",
-  "TSK-20260527-editor-engine-preview-timeline-editor.md": "План архитектурного перехода editor-engine к preview-first редактору с timeline, semantic entity tree, renderer adapter и AI prompt surface."
+  "TSK-20260527-editor-engine-preview-timeline-editor.md": "План архитектурного перехода editor-engine к preview-first редактору с timeline, semantic entity tree, renderer adapter и AI prompt surface.",
+  "TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md": "План внедрения CopilotKit/AG-UI как общей основы UI ИИ-агентов для редактора и будущих помощников платформы.",
+  "TSK-20260610-agent-ui-portability-and-risk-controls.md": "План закрепления переносимости Agent UI через Cubica-контракты, import-boundary проверки, protocol transcript тесты и production backend handoff gates.",
+  "TSK-20260610-cubica-generative-ui-surface-protocol.md": "План внедрения Cubica-owned Generative UI Surface Protocol: контракты, JSON Schema, каталог компонентов, A2UI-like adapter mapping, renderer slice и checklist замены CopilotKit.",
+  "TSK-20260611-ai-driven-surface-architecture-migration.md": "Главный план миграции к Cubica Surface и AI-driven runtime: фазы, зависимости, проверки, риски, renderer strategy и сохранение deterministic canonical slice.",
+  "TSK-20260611-ai-driven-game-runtime-mode.md": "План внедрения AI-driven game runtime mode: manifest execution mode, Agent Turn contract, readiness/failure policy, validated agent effects и primary CubicaSurface gameplay UI.",
+  "TSK-20260611-ai-agent-safety-remediation.md": "План исправления review findings по AI agent safety: approval envelope, Agent Turn rejection semantics, capability gates, channel policies and production backend auth.",
+  "TSK-20260612-element-authoring-prompt-contract.md": "План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.",
+  "TSK-20260613-authoring-prototype-extraction-and-promotion.md": "Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow."
 }

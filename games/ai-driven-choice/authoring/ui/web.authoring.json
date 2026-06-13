@@ -1,0 +1,103 @@
+{
+  "$schema": "../../../../docs/architecture/schemas/ui-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "ui",
+  "_channel": "web",
+  "_definitions": {},
+  "root": {
+    "_type": "ui.Manifest",
+    "_label": "AI-Driven Choice Web UI",
+    "_semantics": "Minimal fallback web UI for the AI-driven fixture before the Cubica Surface renderer becomes the active player screen.",
+    "meta": {
+      "id": "ai-driven-choice.ui.web",
+      "version": "1.0.0",
+      "game_id": "ai-driven-choice"
+    },
+    "entry_point": "agent",
+    "metric_specs": [
+      {
+        "id": "turns",
+        "caption": "Turns",
+        "value": "{{game.state.public.metrics.turns}}",
+        "aliases": [
+          "turns"
+        ],
+        "layout": "prominent"
+      }
+    ],
+    "screen_routing": [
+      {
+        "screenKey": "agent",
+        "conditions": {
+          "screenId": "agent",
+          "layoutMode": "topbar"
+        }
+      }
+    ],
+    "screens": [
+      {
+        "id": "agent",
+        "_type": "ui.Screen",
+        "_label": "Agent screen",
+        "_semantics": "Fallback screen shown before a channel renderer consumes the Agent Turn Cubica Surface.",
+        "title": "AI-Driven Choice",
+        "layout_mode": "topbar",
+        "root": {
+          "_type": "ui.Component",
+          "_label": "Root container",
+          "_semantics": "UI component of type screenComponent.",
+          "type": "screenComponent",
+          "props": {
+            "cssClass": "topbar-screen-shell",
+            "backgroundImage": "/images/arctic-background.png"
+          },
+          "children": [
+            {
+              "_type": "ui.Component",
+              "_label": "Metrics area",
+              "_semantics": "UI component of type areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "topbar-metrics"
+              },
+              "children": [
+                {
+                  "_type": "ui.Component",
+                  "_label": "Turns",
+                  "_semantics": "UI component of type gameVariableComponent.",
+                  "type": "gameVariableComponent",
+                  "id": "turns",
+                  "props": {
+                    "caption": "Turns",
+                    "value": "{{game.state.public.metrics.turns}}"
+                  }
+                }
+              ]
+            },
+            {
+              "_type": "ui.Component",
+              "_label": "Main content area",
+              "_semantics": "UI component of type areaComponent.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "info-main-content"
+              },
+              "children": [
+                {
+                  "_type": "ui.Component",
+                  "_label": "AI-driven fixture description",
+                  "_semantics": "UI component of type richTextComponent.",
+                  "type": "richTextComponent",
+                  "id": "agent-text",
+                  "props": {
+                    "html": "<h1>AI-Driven Choice</h1><p>This fixture launches only when Agent Runtime is configured. The active gameplay surface is returned by <code>POST /agent-turns</code>.</p>"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

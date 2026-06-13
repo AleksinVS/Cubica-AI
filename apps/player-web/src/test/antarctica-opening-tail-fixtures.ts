@@ -131,7 +131,7 @@ export const openingTailStep30SessionSnapshot: SessionSnapshot = {
         screenId: "S2",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {},
       },
       log: [],
@@ -152,9 +152,17 @@ export const openingTailStep30WithSelectedCardSessionSnapshot: SessionSnapshot =
         screenId: "S2",
         canAdvance: true,
       },
-      flags: {
+      objects: {
         cards: {
-          "55": { selected: true, resolved: false, locked: false, available: true },
+          "55": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -181,9 +189,17 @@ export const openingTailStep31InfoSessionSnapshot: SessionSnapshot = {
         activeInfoId: "i17",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "55": { selected: true, resolved: true, locked: false, available: true },
+          "55": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -317,10 +333,18 @@ export const openingTailStep32BoardSessionSnapshot: SessionSnapshot = {
         screenId: "S2",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
           // Card 66 starts locked - unlocked through board-local hook on cards 62/63
-          "66": { selected: false, resolved: false, locked: true, available: true },
+          "66": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "idle",
+              availability: "locked",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -341,9 +365,17 @@ export const openingTailStep32WithSelectedGoCard61SessionSnapshot: SessionSnapsh
         screenId: "S2",
         canAdvance: true,
       },
-      flags: {
+      objects: {
         cards: {
-          "61": { selected: true, resolved: false, locked: false, available: true },
+          "61": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -369,12 +401,36 @@ export const openingTailStep32WithUnlockedCard66SessionSnapshot: SessionSnapshot
         screenId: "S2",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
           // Cards 62/63 resolved - unlocks card 66 via board-local hook
-          "62": { selected: false, resolved: true, locked: false, available: true },
-          "63": { selected: false, resolved: true, locked: false, available: true },
-          "66": { selected: false, resolved: false, locked: false, available: true },
+          "62": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "63": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "66": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "idle",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -395,11 +451,35 @@ export const openingTailStep32WithSelectedGoCard66SessionSnapshot: SessionSnapsh
         screenId: "S2",
         canAdvance: true,
       },
-      flags: {
+      objects: {
         cards: {
-          "62": { selected: false, resolved: true, locked: false, available: true },
-          "63": { selected: false, resolved: true, locked: false, available: true },
-          "66": { selected: true, resolved: false, locked: false, available: true },
+          "62": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "63": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "66": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -426,9 +506,17 @@ export const openingTailStep33InfoSessionSnapshot: SessionSnapshot = {
         activeInfoId: "i18",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "61": { selected: true, resolved: true, locked: false, available: true },
+          "61": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -598,7 +686,7 @@ export const openingTailStep34BoardSessionSnapshot: SessionSnapshot = {
         screenId: "S2",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {},
       },
       log: [],
@@ -619,9 +707,17 @@ export const openingTailStep34WithSelectedGoCard68SessionSnapshot: SessionSnapsh
         screenId: "S2",
         canAdvance: true,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: false, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -648,9 +744,17 @@ export const openingTailStep35InfoI19SessionSnapshot: SessionSnapshot = {
         activeInfoId: "i19",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: true, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -672,9 +776,17 @@ export const openingTailStep35InfoI19_1SessionSnapshot: SessionSnapshot = {
         activeInfoId: "i19_1",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: true, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -695,9 +807,17 @@ export const openingTailStep36BoardSessionSnapshot: SessionSnapshot = {
         screenId: "S2",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: true, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -718,10 +838,26 @@ export const openingTailStep36WithSelectedGoCard69SessionSnapshot: SessionSnapsh
         screenId: "S2",
         canAdvance: true,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: true, locked: false, available: true },
-          "69": { selected: true, resolved: false, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "69": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -748,10 +884,26 @@ export const openingTailStep37InfoI20SessionSnapshot: SessionSnapshot = {
         activeInfoId: "i20",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: true, locked: false, available: true },
-          "69": { selected: true, resolved: true, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "69": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],
@@ -773,10 +925,26 @@ export const openingTailStep38InfoI21SessionSnapshot: SessionSnapshot = {
         activeInfoId: "i21",
         canAdvance: false,
       },
-      flags: {
+      objects: {
         cards: {
-          "68": { selected: true, resolved: true, locked: false, available: true },
-          "69": { selected: true, resolved: true, locked: false, available: true },
+          "68": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
+          "69": {
+            objectType: "antarctica.card",
+            facets: {
+              selection: "selected",
+              resolution: "resolved",
+              availability: "available",
+            },
+            attributes: {},
+          },
         },
       },
       log: [],

@@ -60,6 +60,9 @@ type PublicState = {
     cards?: Record<string, CardFlagState>;
     team?: Record<string, TeamFlagState>;
   };
+  objects?: {
+    cards?: Record<string, any>;
+  };
   teamSelection?: TeamSelectionState;
   ui?: {
     activePanel?: string;
@@ -200,19 +203,30 @@ export function readRuntimeUi(session: SessionSnapshot | null): {
 }
 
 /**
- * Читает card flags из session snapshot.
+ * Читает team flags из session snapshot.
  * Обобщённая утилита для плагинов.
+ */
+export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
+  return readPublicState(session)?.flags?.team ?? {};
+}
+
+/**
+ * Читает legacy card flags из session snapshot.
+ *
+ * Deprecated: новые плагины должны читать object-state через readCardObjects().
+ * Этот экспорт оставлен для уже открытых editor preview worktree-сессий,
+ * где старый plugin source ещё компилируется против текущего player-web API.
  */
 export function readCardFlags(session: SessionSnapshot | null): Record<string, CardFlagState> {
   return readPublicState(session)?.flags?.cards ?? {};
 }
 
 /**
- * Читает team flags из session snapshot.
+ * Читает card objects из session snapshot.
  * Обобщённая утилита для плагинов.
  */
-export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
-  return readPublicState(session)?.flags?.team ?? {};
+export function readCardObjects(session: SessionSnapshot | null): Record<string, any> {
+  return readPublicState(session)?.objects?.cards ?? {};
 }
 
 /**

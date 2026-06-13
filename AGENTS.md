@@ -9,6 +9,7 @@ This file defines global rules for AI agents working in this repository.
 - [1. Scope and precedence of `AGENTS.md`](#1-scope-and-precedence-of-agentsmd)
 - [2. General rules for agents](#2-general-rules-for-agents)
 - [2.1 Workflow role compatibility (`wf-*`)](#21-workflow-role-compatibility-wf-)
+- [2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization](#22-adr-and-project_architecturemd-synchronization)
 - [3. Key project documents to read first](#3-key-project-documents-to-read-first)
 - [4. Work with temporary files](#4-work-with-temporary-files)
 
@@ -103,6 +104,15 @@ When using the `wf-*` workflow skills, follow their role boundaries in addition 
 - Architect (`wf-architect`) owns block selection, methodology choice, and architecture decisions (and records durable decisions in ADRs).
 - Orchestrator (`wf-orchestrator`) routes work mechanically and must not rewrite the architect plan.
 - Executor owns `task_acceptance`; PM owns `block_acceptance` (per the `wf-*` contracts).
+
+## 2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization
+
+When adding or changing any ADR, agents must update `docs/architecture/PROJECT_ARCHITECTURE.md` in the same change.
+
+- The accepted, proposed, or draft decision from the ADR must be reflected in `PROJECT_ARCHITECTURE.md` with the minimum sufficient description: the essence of the decision, key constraints, invariants, and consequences needed to understand the platform architecture unambiguously.
+- `PROJECT_ARCHITECTURE.md` must cover all current active and prospective ADRs. This includes `Accepted`, `Proposed`, and `Draft` ADRs that still describe a live or possible architecture direction.
+- Agents must keep `PROJECT_ARCHITECTURE.md` current when ADR status, scope, constraints, or consequences change.
+- For general architecture understanding, `PROJECT_ARCHITECTURE.md` should be enough. Read individual ADR files only when additional context, detailed alternatives, or deeper reasoning is needed.
 
 ## 3. Key project documents to read first
 

@@ -1,6 +1,7 @@
 import { ANTARCTICA_GAME_CONFIG_DATA } from "@cubica/antarctica-player-plugin/config-data";
 import { activate as activateAntarcticaPlayer } from "@cubica/antarctica-player-plugin";
 import { buildGameConfig } from "@/presenter/game-config-registry";
+import { createDefaultGameConfigData } from "@/presenter/game-config";
 import { playerPluginApi } from "@/plugins/player-plugin-api";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
@@ -39,6 +40,54 @@ const mockContent: PlayerFacingContent = {
       boards: [],
       teamSelections: [],
       cards: []
+    }
+  }
+};
+
+const aiDrivenContent: PlayerFacingContent = {
+  gameId: "ai-driven-choice",
+  version: "1.0.0",
+  name: "AI-Driven Choice",
+  description: "Minimal AI-driven fixture",
+  playerConfig: { min: 1, max: 1 },
+  locale: "en-US",
+  executionMode: "ai-driven",
+  agentRuntime: {
+    agentId: "scenario-agent",
+    runtimeId: "mock",
+    required: true,
+    failurePolicy: "pause",
+    surfaceCatalog: ["cubica.choiceList"]
+  },
+  actions: [],
+  mockups: [],
+  content: {
+    data: {
+      choices: [
+        {
+          id: "continue",
+          title: "Continue through agent",
+          actionId: "agent.continue"
+        }
+      ]
+    }
+  }
+};
+
+const aiDrivenSession = {
+  sessionId: "ai-driven-session-id",
+  gameId: "ai-driven-choice",
+  version: {
+    sessionId: "ai-driven-session-id",
+    stateVersion: 0,
+    lastEventSequence: 0
+  },
+  state: {
+    public: {
+      metrics: { turns: 0 },
+      timeline: { screenId: "agent", stepIndex: 0 },
+      ui: {},
+      log: []
     }
   }
 };
@@ -194,6 +243,203 @@ describe("GamePlayer S1 DOM Rendering", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     localStorage.clear();
+  });
+
+  it("shows a paused runtime status when required Agent Runtime is unavailable", async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/runtime/games/ai-driven-choice/readiness")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ready: false,
+          service: "runtime-api",
+          gameId: "ai-driven-choice",
+          executionMode: "ai-driven",
+          dependencies: {
+            agentRuntime: {
+              status: "error",
+              required: true,
+              mode: "missing",
+              runtimeId: "mock",
+              failurePolicy: "pause",
+              reason: "Mock Agent Runtime requires CUBICA_ENABLE_MOCK_AGENT_RUNTIME=true."
+            }
+          }
+        }), { status: 503 }));
+      }
+
+      if (url.includes("/api/runtime/sessions")) {
+        throw new Error("AI-driven session should not be created when readiness is paused.");
+      }
+
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+    (global.fetch as any).mockImplementation(fetchMock);
+
+    render(
+      <GamePlayer
+        config={createDefaultGameConfigData(aiDrivenContent)}
+        runtimeApiUrl="http://localhost:8080"
+        content={aiDrivenContent}
+        mockups={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Игра поставлена на паузу")).toBeDefined();
+    });
+    expect(screen.getByRole("button", { name: "Повторить" })).toBeDefined();
+    expect(screen.queryByText(/Загрузка/i)).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/runtime/sessions", expect.anything());
+  });
+
+  it("uses explicit deterministic fallback without calling Agent Turn", async () => {
+    const fallbackContent: PlayerFacingContent = {
+      ...aiDrivenContent,
+      agentRuntime: {
+        ...aiDrivenContent.agentRuntime!,
+        failurePolicy: "deterministicFallback",
+        deterministicFallbackActionId: "choose.option"
+      }
+    };
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/runtime/games/ai-driven-choice/readiness")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ready: false,
+          service: "runtime-api",
+          gameId: "ai-driven-choice",
+          executionMode: "ai-driven",
+          dependencies: {
+            agentRuntime: {
+              status: "error",
+              required: true,
+              mode: "missing",
+              runtimeId: "mock",
+              failurePolicy: "deterministicFallback",
+              reason: "Agent Runtime unavailable; deterministic fallback is enabled."
+            }
+          }
+        }), { status: 503 }));
+      }
+
+      if (url === "/api/runtime/sessions") {
+        return Promise.resolve(new Response(JSON.stringify(aiDrivenSession), { status: 201 }));
+      }
+
+      if (url === "/api/runtime/agent-turns") {
+        throw new Error("Agent Turn should not run while deterministic fallback is active.");
+      }
+
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+    (global.fetch as any).mockImplementation(fetchMock);
+
+    render(
+      <GamePlayer
+        config={createDefaultGameConfigData(fallbackContent)}
+        runtimeApiUrl="http://localhost:8080"
+        content={fallbackContent}
+        mockups={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/runtime/sessions", expect.anything());
+    });
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/runtime/agent-turns", expect.anything());
+    expect(screen.queryByText("Игра поставлена на паузу")).toBeNull();
+  });
+
+  it("renders a validated Cubica choice list returned by an Agent Turn", async () => {
+    const fetchMock = vi.fn((url: string) => {
+      if (url.includes("/api/runtime/games/ai-driven-choice/readiness")) {
+        return Promise.resolve(new Response(JSON.stringify({
+          ready: true,
+          service: "runtime-api",
+          gameId: "ai-driven-choice",
+          executionMode: "ai-driven",
+          dependencies: {
+            agentRuntime: {
+              status: "ok",
+              required: true,
+              mode: "configured",
+              runtimeId: "mock",
+              failurePolicy: "pause"
+            }
+          }
+        }), { status: 200 }));
+      }
+
+      if (url === "/api/runtime/sessions") {
+        return Promise.resolve(new Response(JSON.stringify(aiDrivenSession), { status: 201 }));
+      }
+
+      if (url === "/api/runtime/agent-turns") {
+        return Promise.resolve(new Response(JSON.stringify({
+          sessionId: aiDrivenSession.sessionId,
+          version: {
+            sessionId: aiDrivenSession.sessionId,
+            stateVersion: 1,
+            lastEventSequence: 1
+          },
+          state: {
+            public: {
+              ...aiDrivenSession.state.public,
+              log: [{ kind: "agent-turn", summary: "Agent Runtime prepared the next AI-driven turn." }]
+            }
+          },
+          agentTurn: {
+            schemaVersion: "1.0.0",
+            turnId: "turn-web-test",
+            agentId: "scenario-agent",
+            ok: true,
+            narration: "Agent Runtime prepared the next AI-driven turn.",
+            surface: {
+              schemaVersion: "1.0.0",
+              surfaceId: "surface-web-test",
+              catalogVersion: "2026-06-11",
+              mode: "primary-gameplay",
+              title: "Agent turn",
+              root: {
+                id: "root",
+                kind: "cubica.choiceList",
+                props: {
+                  label: "Agent Runtime prepared the next AI-driven turn.",
+                  choices: [{ id: "continue", label: "Continue" }]
+                },
+                actions: [{
+                  id: "agent.continue",
+                  kind: "agentTurn",
+                  label: "Continue",
+                  payload: { choiceId: "continue" },
+                  sideEffectPolicy: "system-approved"
+                }]
+              }
+            },
+            audit: {
+              source: "mock",
+              createdAt: "2026-06-11T00:00:00.000Z"
+            }
+          }
+        }), { status: 200 }));
+      }
+
+      return Promise.resolve(new Response(JSON.stringify({}), { status: 200 }));
+    });
+    (global.fetch as any).mockImplementation(fetchMock);
+
+    render(
+      <GamePlayer
+        config={createDefaultGameConfigData(aiDrivenContent)}
+        runtimeApiUrl="http://localhost:8080"
+        content={aiDrivenContent}
+        mockups={[]}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Agent turn")).toBeDefined();
+      expect(screen.getByRole("button", { name: "Continue" })).toBeDefined();
+    });
+    expect(document.querySelector(".cubica-surface")).toBeDefined();
   });
 
   it("renders the S1 manifest-driven UI when at screen S1 and hides top metrics", async () => {

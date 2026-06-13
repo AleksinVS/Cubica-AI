@@ -6,6 +6,7 @@ import type {
   RestorePreviewSessionResponse,
   SessionId
 } from "@cubica/contracts-session";
+import { assertGameLaunchReady } from "../admin/health.ts";
 import { contentService } from "../content/contentService.ts";
 import { HttpError, NotFoundError } from "../errors.ts";
 import { InMemorySessionStore } from "./inMemorySessionStore.ts";
@@ -31,6 +32,8 @@ export class SessionService {
       throw new Error("gameId is required to create a session");
     }
     const playerId: PlayerId | undefined = request.playerId;
+
+    await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
 
     const initialState = (await contentService.getInitialState(gameId, request.contentSourceId)) as RuntimeState;
 

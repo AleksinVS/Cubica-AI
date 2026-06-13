@@ -1639,298 +1639,6 @@
           "activeScreen": "topbar"
         },
         "flags": {
-          "cards": {
-            "1": {
-              "selected": false,
-              "resolved": false
-            },
-            "2": {
-              "selected": false,
-              "resolved": false
-            },
-            "3": {
-              "selected": false,
-              "resolved": false
-            },
-            "4": {
-              "selected": false,
-              "resolved": false
-            },
-            "5": {
-              "selected": false,
-              "resolved": false
-            },
-            "6": {
-              "selected": false,
-              "resolved": false
-            },
-            "7": {
-              "selected": false,
-              "resolved": false
-            },
-            "8": {
-              "selected": false,
-              "resolved": false
-            },
-            "9": {
-              "selected": false,
-              "resolved": false
-            },
-            "10": {
-              "selected": false,
-              "resolved": false
-            },
-            "11": {
-              "selected": false,
-              "resolved": false
-            },
-            "12": {
-              "selected": false,
-              "resolved": false
-            },
-            "13": {
-              "selected": false,
-              "resolved": false
-            },
-            "14": {
-              "selected": false,
-              "resolved": false
-            },
-            "15": {
-              "selected": false,
-              "resolved": false
-            },
-            "16": {
-              "selected": false,
-              "resolved": false
-            },
-            "17": {
-              "selected": false,
-              "resolved": false
-            },
-            "18": {
-              "selected": false,
-              "resolved": false
-            },
-            "19": {
-              "selected": false,
-              "resolved": false
-            },
-            "20": {
-              "selected": false,
-              "resolved": false
-            },
-            "21": {
-              "selected": false,
-              "resolved": false
-            },
-            "22": {
-              "selected": false,
-              "resolved": false
-            },
-            "23": {
-              "selected": false,
-              "resolved": false
-            },
-            "24": {
-              "selected": false,
-              "resolved": false
-            },
-            "25": {
-              "selected": false,
-              "resolved": false
-            },
-            "26": {
-              "selected": false,
-              "resolved": false
-            },
-            "27": {
-              "selected": false,
-              "resolved": false
-            },
-            "28": {
-              "selected": false,
-              "resolved": false
-            },
-            "29": {
-              "selected": false,
-              "resolved": false
-            },
-            "30": {
-              "selected": false,
-              "resolved": false
-            },
-            "31": {
-              "selected": false,
-              "resolved": false
-            },
-            "32": {
-              "selected": false,
-              "resolved": false
-            },
-            "33": {
-              "selected": false,
-              "resolved": false
-            },
-            "34": {
-              "selected": false,
-              "resolved": false
-            },
-            "35": {
-              "selected": false,
-              "resolved": false
-            },
-            "36": {
-              "selected": false,
-              "resolved": false
-            },
-            "37": {
-              "selected": false,
-              "resolved": false
-            },
-            "38": {
-              "selected": false,
-              "resolved": false
-            },
-            "39": {
-              "selected": false,
-              "resolved": false,
-              "locked": true,
-              "available": false
-            },
-            "40": {
-              "selected": false,
-              "resolved": false
-            },
-            "41": {
-              "selected": false,
-              "resolved": false
-            },
-            "42": {
-              "selected": false,
-              "resolved": false
-            },
-            "43": {
-              "selected": false,
-              "resolved": false
-            },
-            "44": {
-              "selected": false,
-              "resolved": false
-            },
-            "45": {
-              "selected": false,
-              "resolved": false
-            },
-            "46": {
-              "selected": false,
-              "resolved": false
-            },
-            "47": {
-              "selected": false,
-              "resolved": false
-            },
-            "48": {
-              "selected": false,
-              "resolved": false
-            },
-            "49": {
-              "selected": false,
-              "resolved": false
-            },
-            "50": {
-              "selected": false,
-              "resolved": false
-            },
-            "51": {
-              "selected": false,
-              "resolved": false
-            },
-            "52": {
-              "selected": false,
-              "resolved": false
-            },
-            "53": {
-              "selected": false,
-              "resolved": false
-            },
-            "54": {
-              "selected": false,
-              "resolved": false
-            },
-            "55": {
-              "selected": false,
-              "resolved": false
-            },
-            "56": {
-              "selected": false,
-              "resolved": false
-            },
-            "57": {
-              "selected": false,
-              "resolved": false
-            },
-            "58": {
-              "selected": false,
-              "resolved": false
-            },
-            "59": {
-              "selected": false,
-              "resolved": false
-            },
-            "60": {
-              "selected": false,
-              "resolved": false
-            },
-            "61": {
-              "selected": false,
-              "resolved": false
-            },
-            "62": {
-              "selected": false,
-              "resolved": false
-            },
-            "63": {
-              "selected": false,
-              "resolved": false
-            },
-            "64": {
-              "selected": false,
-              "resolved": false
-            },
-            "65": {
-              "selected": false,
-              "resolved": false
-            },
-            "66": {
-              "selected": false,
-              "resolved": false,
-              "locked": true,
-              "available": false
-            },
-            "67": {
-              "selected": false,
-              "resolved": false
-            },
-            "68": {
-              "selected": false,
-              "resolved": false
-            },
-            "69": {
-              "selected": false,
-              "resolved": false
-            },
-            "70": {
-              "selected": false,
-              "resolved": false
-            },
-            "3902": {
-              "selected": false,
-              "resolved": false,
-              "locked": false,
-              "available": false
-            }
-          },
           "team": {
             "fedya": {
               "selected": false
@@ -1967,6 +1675,720 @@
         "teamSelection": {
           "pickCount": 0,
           "selectedMemberIds": []
+        },
+        "objects": {
+          "cards": {
+            "1": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "2": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "3": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "4": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "5": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "6": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "7": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "8": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "9": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "10": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "11": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "12": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "13": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "14": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "15": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "16": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "17": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "18": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "19": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "20": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "21": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "22": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "23": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "24": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "25": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "26": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "27": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "28": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "29": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "30": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "31": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "32": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "33": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "34": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "35": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "36": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "37": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "38": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "39": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "hidden",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "40": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "41": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "42": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "43": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "44": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "45": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "46": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "47": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "48": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "49": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "50": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "51": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "52": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "53": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "54": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "55": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "56": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "57": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "58": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "59": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "60": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "61": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "62": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "63": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "64": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "65": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "66": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "hidden",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "67": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "68": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "69": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "70": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "available",
+                "face": "front"
+              },
+              "attributes": {}
+            },
+            "3902": {
+              "objectType": "antarctica.card",
+              "facets": {
+                "selection": "idle",
+                "resolution": "idle",
+                "availability": "hidden",
+                "face": "front"
+              },
+              "attributes": {}
+            }
+          }
         }
       },
       "secret": {
@@ -2309,10 +2731,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "1",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "1",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2380,10 +2805,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "2",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "2",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2444,10 +2872,13 @@
                 "opening": {
                   "selectedCardIdAbsent": true
                 },
-                "card": {
-                  "id": "3",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "3",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2529,10 +2960,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "4",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "4",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2590,10 +3024,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "5",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "5",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2651,10 +3088,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "6",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "6",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2715,10 +3155,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "7",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "7",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2774,10 +3217,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "8",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "8",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2833,10 +3279,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "9",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "9",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2911,10 +3360,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "10",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "10",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -2970,10 +3422,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "11",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "11",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3029,10 +3484,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "12",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "12",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3093,10 +3551,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "13",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "13",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3152,10 +3613,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "14",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "14",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3211,10 +3675,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "15",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "15",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3270,10 +3737,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "16",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "16",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3329,10 +3799,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "17",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "17",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3393,10 +3866,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "18",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "18",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3471,10 +3947,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "19",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "19",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3530,10 +4009,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "20",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "20",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3594,10 +4076,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "21",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "21",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3648,10 +4133,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "22",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "22",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3731,10 +4219,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "23",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "23",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3809,10 +4300,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "24",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "24",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3860,10 +4354,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "25",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "25",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3892,7 +4389,7 @@
                   "canAdvance": true,
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "25",
                         "26",
@@ -3901,8 +4398,8 @@
                         "29",
                         "30"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 3
                     }
                   }
@@ -3936,10 +4433,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "26",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "26",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -3978,7 +4478,7 @@
                   "canAdvance": true,
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "25",
                         "26",
@@ -3987,8 +4487,8 @@
                         "29",
                         "30"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 3
                     }
                   }
@@ -4022,10 +4522,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "27",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "27",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4064,7 +4567,7 @@
                   "canAdvance": true,
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "25",
                         "26",
@@ -4073,8 +4576,8 @@
                         "29",
                         "30"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 3
                     }
                   }
@@ -4108,10 +4611,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "28",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "28",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4140,7 +4646,7 @@
                   "canAdvance": true,
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "25",
                         "26",
@@ -4149,8 +4655,8 @@
                         "29",
                         "30"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 3
                     }
                   }
@@ -4184,10 +4690,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "29",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "29",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4226,7 +4735,7 @@
                   "canAdvance": true,
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "25",
                         "26",
@@ -4235,8 +4744,8 @@
                         "29",
                         "30"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 3
                     }
                   }
@@ -4270,10 +4779,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "30",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "30",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4302,7 +4814,7 @@
                   "canAdvance": true,
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "25",
                         "26",
@@ -4311,8 +4823,8 @@
                         "29",
                         "30"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 3
                     }
                   }
@@ -4346,10 +4858,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "31",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "31",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4433,10 +4948,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "32",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "32",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4515,10 +5033,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "33",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "33",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4608,10 +5129,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "34",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "34",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4701,10 +5225,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "35",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "35",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4788,10 +5315,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "36",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "36",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4866,10 +5396,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "37",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "37",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4894,17 +5427,17 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/39",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "all": [
                       {
                         "collectionCount": {
-                          "path": "/public/flags/cards",
+                          "path": "/public/objects/cards",
                           "ids": [
                             "37",
                             "38",
@@ -4913,17 +5446,17 @@
                             "41",
                             "42"
                           ],
-                          "field": "resolved",
-                          "equals": true,
+                          "field": "facets/resolution",
+                          "equals": "resolved",
                           "countAtLeast": 3
                         }
                       },
                       {
                         "not": {
                           "state": {
-                            "path": "/public/flags/cards/3902/available",
+                            "path": "/public/objects/cards/3902/facets/availability",
                             "operator": "==",
-                            "value": true
+                            "value": "available"
                           }
                         }
                       }
@@ -4960,10 +5493,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "38",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "38",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -4988,17 +5524,17 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/39",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "all": [
                       {
                         "collectionCount": {
-                          "path": "/public/flags/cards",
+                          "path": "/public/objects/cards",
                           "ids": [
                             "37",
                             "38",
@@ -5007,17 +5543,17 @@
                             "41",
                             "42"
                           ],
-                          "field": "resolved",
-                          "equals": true,
+                          "field": "facets/resolution",
+                          "equals": "resolved",
                           "countAtLeast": 3
                         }
                       },
                       {
                         "not": {
                           "state": {
-                            "path": "/public/flags/cards/3902/available",
+                            "path": "/public/objects/cards/3902/facets/availability",
                             "operator": "==",
-                            "value": true
+                            "value": "available"
                           }
                         }
                       }
@@ -5054,12 +5590,14 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "39",
-                  "selected": false,
-                  "resolved": false,
-                  "locked": false,
-                  "available": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle",
+                    "availability": "available"
+                  }
                 }
               },
               "effects": [
@@ -5122,12 +5660,14 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "3902",
-                  "selected": false,
-                  "resolved": false,
-                  "locked": false,
-                  "available": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "3902",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle",
+                    "availability": "available"
+                  }
                 }
               },
               "effects": [
@@ -5190,10 +5730,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "40",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "40",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5218,17 +5761,17 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/39",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "all": [
                       {
                         "collectionCount": {
-                          "path": "/public/flags/cards",
+                          "path": "/public/objects/cards",
                           "ids": [
                             "37",
                             "38",
@@ -5237,17 +5780,17 @@
                             "41",
                             "42"
                           ],
-                          "field": "resolved",
-                          "equals": true,
+                          "field": "facets/resolution",
+                          "equals": "resolved",
                           "countAtLeast": 3
                         }
                       },
                       {
                         "not": {
                           "state": {
-                            "path": "/public/flags/cards/3902/available",
+                            "path": "/public/objects/cards/3902/facets/availability",
                             "operator": "==",
-                            "value": true
+                            "value": "available"
                           }
                         }
                       }
@@ -5284,10 +5827,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "41",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "41",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5312,17 +5858,17 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/39",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "all": [
                       {
                         "collectionCount": {
-                          "path": "/public/flags/cards",
+                          "path": "/public/objects/cards",
                           "ids": [
                             "37",
                             "38",
@@ -5331,17 +5877,17 @@
                             "41",
                             "42"
                           ],
-                          "field": "resolved",
-                          "equals": true,
+                          "field": "facets/resolution",
+                          "equals": "resolved",
                           "countAtLeast": 3
                         }
                       },
                       {
                         "not": {
                           "state": {
-                            "path": "/public/flags/cards/3902/available",
+                            "path": "/public/objects/cards/3902/facets/availability",
                             "operator": "==",
-                            "value": true
+                            "value": "available"
                           }
                         }
                       }
@@ -5378,10 +5924,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "42",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "42",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5411,17 +5960,17 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/39",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "all": [
                       {
                         "collectionCount": {
-                          "path": "/public/flags/cards",
+                          "path": "/public/objects/cards",
                           "ids": [
                             "37",
                             "38",
@@ -5430,17 +5979,17 @@
                             "41",
                             "42"
                           ],
-                          "field": "resolved",
-                          "equals": true,
+                          "field": "facets/resolution",
+                          "equals": "resolved",
                           "countAtLeast": 3
                         }
                       },
                       {
                         "not": {
                           "state": {
-                            "path": "/public/flags/cards/3902/available",
+                            "path": "/public/objects/cards/3902/facets/availability",
                             "operator": "==",
-                            "value": true
+                            "value": "available"
                           }
                         }
                       }
@@ -5477,10 +6026,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "43",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "43",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5560,10 +6112,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "44",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "44",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5629,10 +6184,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "45",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "45",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5712,10 +6270,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "46",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "46",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5769,10 +6330,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "47",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "47",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5840,10 +6404,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "48",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "48",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -5923,10 +6490,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "49",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "49",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6011,10 +6581,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "50",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "50",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6087,10 +6660,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "51",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "51",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6175,10 +6751,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "52",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "52",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6246,10 +6825,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "53",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "53",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6317,10 +6899,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "54",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "54",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6388,10 +6973,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "55",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "55",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6505,10 +7093,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "56",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "56",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6567,10 +7158,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "57",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "57",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6650,10 +7244,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "58",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "58",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6750,10 +7347,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "59",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "59",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6865,10 +7465,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "60",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "60",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -6982,10 +7585,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "61",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "61",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7072,10 +7678,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "62",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "62",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7095,21 +7704,21 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/66",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "66",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "62",
                         "63"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 1
                     }
                   }
@@ -7144,10 +7753,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "63",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "63",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7167,21 +7779,21 @@
                   "auditMetrics": true
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/66",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "66",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "collectionCount": {
-                      "path": "/public/flags/cards",
+                      "path": "/public/objects/cards",
                       "ids": [
                         "62",
                         "63"
                       ],
-                      "field": "resolved",
-                      "equals": true,
+                      "field": "facets/resolution",
+                      "equals": "resolved",
                       "countAtLeast": 1
                     }
                   }
@@ -7216,10 +7828,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "64",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "64",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7295,10 +7910,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "65",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "65",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7375,12 +7993,14 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "66",
-                  "selected": false,
-                  "resolved": false,
-                  "locked": false,
-                  "available": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "66",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle",
+                    "availability": "available"
+                  }
                 }
               },
               "effects": [
@@ -7421,17 +8041,17 @@
                     "all": [
                       {
                         "state": {
-                          "path": "/public/flags/cards/62/resolved",
+                          "path": "/public/objects/cards/62/facets/resolution",
                           "operator": "==",
-                          "value": true
+                          "value": "resolved"
                         },
                         "readFrom": "preAction"
                       },
                       {
                         "state": {
-                          "path": "/public/flags/cards/63/resolved",
+                          "path": "/public/objects/cards/63/facets/resolution",
                           "operator": "!=",
-                          "value": true
+                          "value": "resolved"
                         },
                         "readFrom": "preAction"
                       }
@@ -7444,9 +8064,9 @@
                   "delta": 10,
                   "when": {
                     "state": {
-                      "path": "/public/flags/cards/63/resolved",
+                      "path": "/public/objects/cards/63/facets/resolution",
                       "operator": "==",
-                      "value": true
+                      "value": "resolved"
                     },
                     "readFrom": "preAction"
                   }
@@ -7505,10 +8125,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "67",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "67",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7557,10 +8180,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "68",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "68",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7647,10 +8273,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "69",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "69",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7713,10 +8342,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "card": {
-                  "id": "70",
-                  "selected": false,
-                  "resolved": false
+                "object": {
+                  "collection": "cards",
+                  "objectId": "70",
+                  "facets": {
+                    "selection": "idle",
+                    "resolution": "idle"
+                  }
                 }
               },
               "effects": [
@@ -7769,10 +8401,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3"
                 },
-                "card": {
-                  "id": "3",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "3",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -7822,10 +8457,13 @@
                 "opening": {
                   "selectedCardIdEquals": "9"
                 },
-                "card": {
-                  "id": "9",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "9",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -7875,10 +8513,13 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "card": {
-                  "id": "18",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "18",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -7928,10 +8569,13 @@
                 "opening": {
                   "selectedCardIdEquals": "22"
                 },
-                "card": {
-                  "id": "22",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "22",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -7981,10 +8625,13 @@
                 "opening": {
                   "selectedCardIdEquals": "23"
                 },
-                "card": {
-                  "id": "23",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "23",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8030,10 +8677,13 @@
                 "opening": {
                   "selectedCardIdEquals": "31"
                 },
-                "card": {
-                  "id": "31",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "31",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8083,10 +8733,13 @@
                 "opening": {
                   "selectedCardIdEquals": "32"
                 },
-                "card": {
-                  "id": "32",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "32",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8132,10 +8785,13 @@
                 "opening": {
                   "selectedCardIdEquals": "33"
                 },
-                "card": {
-                  "id": "33",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "33",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8181,10 +8837,13 @@
                 "opening": {
                   "selectedCardIdEquals": "35"
                 },
-                "card": {
-                  "id": "35",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "35",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8230,10 +8889,13 @@
                 "opening": {
                   "selectedCardIdEquals": "36"
                 },
-                "card": {
-                  "id": "36",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "36",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8279,10 +8941,13 @@
                 "opening": {
                   "selectedCardIdEquals": "39"
                 },
-                "card": {
-                  "id": "39",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8328,10 +8993,13 @@
                 "opening": {
                   "selectedCardIdEquals": "3902"
                 },
-                "card": {
-                  "id": "3902",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "3902",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8381,10 +9049,13 @@
                 "opening": {
                   "selectedCardIdEquals": "43"
                 },
-                "card": {
-                  "id": "43",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "43",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8430,10 +9101,13 @@
                 "opening": {
                   "selectedCardIdEquals": "45"
                 },
-                "card": {
-                  "id": "45",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "45",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8479,10 +9153,13 @@
                 "opening": {
                   "selectedCardIdEquals": "47"
                 },
-                "card": {
-                  "id": "47",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "47",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8528,10 +9205,13 @@
                 "opening": {
                   "selectedCardIdEquals": "48"
                 },
-                "card": {
-                  "id": "48",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "48",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8581,10 +9261,13 @@
                 "opening": {
                   "selectedCardIdEquals": "49"
                 },
-                "card": {
-                  "id": "49",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "49",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8634,10 +9317,13 @@
                 "opening": {
                   "selectedCardIdEquals": "50"
                 },
-                "card": {
-                  "id": "50",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "50",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8683,10 +9369,13 @@
                 "opening": {
                   "selectedCardIdEquals": "51"
                 },
-                "card": {
-                  "id": "51",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "51",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8732,10 +9421,13 @@
                 "opening": {
                   "selectedCardIdEquals": "52"
                 },
-                "card": {
-                  "id": "52",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "52",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8781,10 +9473,13 @@
                 "opening": {
                   "selectedCardIdEquals": "53"
                 },
-                "card": {
-                  "id": "53",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "53",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8830,10 +9525,13 @@
                 "opening": {
                   "selectedCardIdEquals": "54"
                 },
-                "card": {
-                  "id": "54",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "54",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8879,10 +9577,13 @@
                 "opening": {
                   "selectedCardIdEquals": "55"
                 },
-                "card": {
-                  "id": "55",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "55",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8928,10 +9629,13 @@
                 "opening": {
                   "selectedCardIdEquals": "57"
                 },
-                "card": {
-                  "id": "57",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "57",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -8977,10 +9681,13 @@
                 "opening": {
                   "selectedCardIdEquals": "58"
                 },
-                "card": {
-                  "id": "58",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "58",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -9026,10 +9733,13 @@
                 "opening": {
                   "selectedCardIdEquals": "60"
                 },
-                "card": {
-                  "id": "60",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "60",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -9079,10 +9789,13 @@
                 "opening": {
                   "selectedCardIdEquals": "61"
                 },
-                "card": {
-                  "id": "61",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "61",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -9129,10 +9842,13 @@
                 "opening": {
                   "selectedCardIdEquals": "66"
                 },
-                "card": {
-                  "id": "66",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "66",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -9178,10 +9894,13 @@
                 "opening": {
                   "selectedCardIdEquals": "68"
                 },
-                "card": {
-                  "id": "68",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "68",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -9260,10 +9979,13 @@
                 "opening": {
                   "selectedCardIdEquals": "69"
                 },
-                "card": {
-                  "id": "69",
-                  "selected": true,
-                  "resolved": true
+                "object": {
+                  "collection": "cards",
+                  "objectId": "69",
+                  "facets": {
+                    "selection": "selected",
+                    "resolution": "resolved"
+                  }
                 }
               },
               "effects": [
@@ -9979,11 +10701,12 @@
             "deterministic": {
               "effects": [
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/39",
-                  "values": {
-                    "available": false
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "39",
+                  "facet": "availability",
+                  "value": "hidden",
                   "when": {
                     "metric": {
                       "metricId": "pro",
@@ -9993,12 +10716,12 @@
                   }
                 },
                 {
-                  "op": "flag.set",
-                  "path": "/public/flags/cards/3902",
-                  "values": {
-                    "locked": false,
-                    "available": true
-                  },
+                  "op": "object.state.set",
+                  "visibility": "public",
+                  "collection": "cards",
+                  "objectId": "3902",
+                  "facet": "availability",
+                  "value": "available",
                   "when": {
                     "metric": {
                       "metricId": "pro",
@@ -11624,12 +12347,20 @@
                 "canAdvance": false
               },
               {
-                "op": "flag.set",
-                "path": "/public/flags/cards/{{cardId}}",
-                "values": {
-                  "selected": true,
-                  "resolved": true
-                }
+                "op": "object.state.set",
+                "visibility": "public",
+                "collection": "cards",
+                "objectId": "{{cardId}}",
+                "facet": "selection",
+                "value": "selected"
+              },
+              {
+                "op": "object.state.set",
+                "visibility": "public",
+                "collection": "cards",
+                "objectId": "{{cardId}}",
+                "facet": "resolution",
+                "value": "resolved"
               }
             ]
           }
@@ -11652,6 +12383,56 @@
                 "canAdvance": false
               }
             ]
+          }
+        }
+      }
+    },
+    "objectTypes": {
+      "antarctica.card": {
+        "_type": "game.ObjectType",
+        "_label": "Antarctica card object state",
+        "_semantics": "Object state model for an Antarctica card.",
+        "collection": "cards",
+        "idField": "id",
+        "scope": "session",
+        "facets": {
+          "selection": {
+            "initial": "idle",
+            "values": {
+              "idle": {},
+              "selected": {}
+            }
+          },
+          "resolution": {
+            "initial": "idle",
+            "values": {
+              "idle": {},
+              "resolved": {}
+            }
+          },
+          "availability": {
+            "initial": "available",
+            "values": {
+              "available": {
+                "visible": true,
+                "interactive": true
+              },
+              "locked": {
+                "visible": true,
+                "interactive": false
+              },
+              "hidden": {
+                "visible": false,
+                "interactive": false
+              }
+            }
+          },
+          "face": {
+            "initial": "front",
+            "values": {
+              "front": {},
+              "back": {}
+            }
           }
         }
       }

@@ -1,4 +1,6 @@
 import type { ActionEntry } from "@/lib/game-content-resolvers";
+import type { AgentSurfaceState } from "@/types/game-state";
+import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
 
 /**
  * Запрос от View или системы к Presenter.
@@ -25,6 +27,8 @@ export interface ClientRequest {
   timestamp: string;
 }
 
+export type PlayerRuntimeStatus = "booting" | "ready" | "paused" | "retry" | "unavailable";
+
 /**
  * Публичное состояние игрока, которое Presenter синхронизирует с View.
  *
@@ -40,9 +44,15 @@ export type PlayerState = Record<string, unknown> & {
   screenKey: string | null;
   layoutMode: "leftsidebar" | "topbar";
   activePanel: string | null;
+  runtimeStatus: PlayerRuntimeStatus;
+  runtimeStatusReason: string | null;
+  runtimeFailurePolicy: GameManifestAgentFailurePolicy | null;
+  agentRuntimeRequired: boolean;
   error: string | null;
+  errorStatus: number | null;
   booting: boolean;
   isPending: boolean;
+  agentSurface: AgentSurfaceState;
 
   /* Runtime log entries for journal renderer */
   log: Array<Record<string, unknown>>;

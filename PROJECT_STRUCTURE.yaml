@@ -9,6 +9,7 @@
 .github: # GitHub repository automation configuration, including required CI workflows.
   workflows: # GitHub Actions workflows for canonical validation and legacy/stub governance gates.
     ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
+    prototype-audit.yml: file # ADR-050 prototype candidate audit workflow for PR deterministic scans, weekly full scans, optional LLM semantic audit and platform promotion backlog reporting.
   required-checks.md: file # Repository ruleset and branch protection notes for required CI checks.
 apps: # Приложения и импортированные frontend-заготовки 
   editor-web: directory... # Next.js App Router prototype for ADR-034 authoring manifest editing with a synchronized graph canvas, JSON editor, property panel and diagnostics strip.
@@ -20,15 +21,34 @@ archive: directory... # Архив старых документов и черн
 data: directory... # Фикстуры и моки данных 
 docs: # Архитектура, задачи, планирование 
   architecture: # Архитектурные документы, ADR, схемы
+    adrs: # Architecture Decision Records: принятые, отклоненные и замененные архитектурные решения платформы.
+      043-copilotkit-ag-ui-agent-ui-foundation.md: file # ADR-043: принятие CopilotKit и AG-UI как общей основы UI ИИ-агентов для редактора и будущих помощников платформы.
+      044-agent-ui-portability-and-protocol-boundaries.md: file # ADR-044: переносимость Agent UI и протокольные границы, защищающие Cubica от жесткой привязки к CopilotKit, AG-UI и production LLM backend.
+      045-cubica-owned-generative-ui-and-mvp-copilotkit.md: file # ADR-045: Cubica-owned Generative UI direction, где CopilotKit является MVP-адаптером, а целевой слой - собственный совместимый Cubica Agent UI и Surface Protocol.
+      046-ai-driven-game-runtime-mode.md: file # ADR-046: AI-driven game runtime mode, где манифест может объявить Agent Runtime обязательной частью исполнения игры.
+      047-ai-agent-safety-remediation-gates.md: file # ADR-047: proposed safety gates for AI agent remediation: approval envelope, rejected Agent Turn semantics, capability enforcement, channel action policy and production backend auth.
+      048-element-authoring-prompt-contract.md: file # ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах.
+      049-dynamic-element-prompt-projection-and-sync-strategy.md: file # ADR-049: принятая стратегия dynamic element prompts: static residue в _prompt, YAML projection из JSON-узла, field dictionary, Markdown refs и diagnostic-first sync.
+      050-authoring-prototype-extraction-and-promotion.md: file # ADR-050: принятый механизм локального извлечения authoring-прототипов, ручного повышения в платформенный каталог и AI-assisted prototype designer.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
+      game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
       manifest-authoring-common.schema.json: file # Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.
       manifest-source-map.schema.json: file # JSON Schema for tooling-only source map companion files generated next to runtime manifests.
       ui-authoring.schema.json: file # JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.
+    agent-ui-foundation.md: file # Проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI: границы, контекст, инструменты, безопасность и future assistant surfaces.
+    agent-ui-portability-and-risk-controls.md: file # Проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест вокруг CopilotKit, AG-UI и production LLM backend.
+    ai-agent-safety-remediation.md: file # Проектная документация по исправлению review findings миграции Cubica Surface и AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel policies and production backend auth.
+    element-prompt-contract.md: file # Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.
+    generative-ui-surface-protocol.md: file # Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
   legacy:
     debt-log.csv: file # Центральный реестр долга (tech debt).
     stub-marker-allowlist.json: file # Документированные исключения для CI-проверки маркеров заглушек с владельцем, причиной и сроком пересмотра.
     stubs-register.md: file # Реестр временных заглушек.
+  processes: # Поддерживаемые процессы разработки и сопровождения Cubica: работа с промтами, review, incident response, structure governance и promotion workflows.
+    authoring-prototype-audit.md: file # Регулярный процесс поиска кандидатов в authoring-прототипы: PR-аудит, недельный LLM-семантический аудит, suppression и promotion backlog.
+    authoring-prototype-promotion.md: file # Процесс ручного повышения game-level authoring-прототипа в platform-level prototype по ADR-050 без автоматического platform catalog write.
+    editor-prompts.md: file # Правила работы с промтами Game Editor, включая элементные промты ADR-048 и целевую dynamic prompt projection ADR-049.
   tasks: # Легковесная система задач и планов: текущие рабочие задачи, архив старой иерархии и постоянные артефакты задач.
     active: # Активные рабочие задачи проекта. Каждый TSK-файл объединяет план, критерии приемки, проверки, артефакты и журнал передачи.
       TSK-20260518-architecture-repair-and-task-system-migration.md: file # Активный план восстановления архитектурных проверок и завершения миграции системы задач на ADR-031.
@@ -47,6 +67,14 @@ docs: # Архитектура, задачи, планирование
       TSK-20260522-editor-engine-json-tree-view.md: file # План добавления JSON tree view как третьего целевого режима редактирования editor-engine рядом с flow-chart и Monaco.
       TSK-20260522-editor-engine-progressive-graph-ux.md: file # План следующего UX-среза editor-engine: прогрессивно раскрываемая семантическая диаграмма, разные типы узлов и сворачиваемые панели JSON/property.
       TSK-20260527-editor-engine-preview-timeline-editor.md: file # План архитектурного перехода editor-engine к preview-first редактору с timeline, semantic entity tree, renderer adapter и AI prompt surface.
+      TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md: file # План внедрения CopilotKit/AG-UI как общей основы UI ИИ-агентов для редактора и будущих помощников платформы.
+      TSK-20260610-agent-ui-portability-and-risk-controls.md: file # План закрепления переносимости Agent UI через Cubica-контракты, import-boundary проверки, protocol transcript тесты и production backend handoff gates.
+      TSK-20260610-cubica-generative-ui-surface-protocol.md: file # План внедрения Cubica-owned Generative UI Surface Protocol: контракты, JSON Schema, каталог компонентов, A2UI-like adapter mapping, renderer slice и checklist замены CopilotKit.
+      TSK-20260611-ai-agent-safety-remediation.md: file # План исправления review findings по AI agent safety: approval envelope, Agent Turn rejection semantics, capability gates, channel policies and production backend auth.
+      TSK-20260611-ai-driven-game-runtime-mode.md: file # План внедрения AI-driven game runtime mode: manifest execution mode, Agent Turn contract, readiness/failure policy, validated agent effects и primary CubicaSurface gameplay UI.
+      TSK-20260611-ai-driven-surface-architecture-migration.md: file # Главный план миграции к Cubica Surface и AI-driven runtime: фазы, зависимости, проверки, риски, renderer strategy и сохранение deterministic canonical slice.
+      TSK-20260612-element-authoring-prompt-contract.md: file # План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.
+      TSK-20260613-authoring-prototype-extraction-and-promotion.md: file # Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
@@ -54,6 +82,9 @@ docs: # Архитектура, задачи, планирование
     ROADMAP.md: file # Историческая дорожная карта старой системы планирования; не используется как текущая доска.
     STRATEGY.md: file # Стратегический слой планирования: горизонты, стратегические темы и правила приоритизации.
 games: # Пакеты игр и связанные ресурсы 
+  ai-driven-choice: # Minimal AI-driven fixture used to prove the runtime Agent Turn path without game-specific runtime branches.
+    authoring: # Editable ADR-030 authoring manifests for the ai-driven-choice fixture. Runtime manifests are generated from these files and should not be edited directly.
+      game.authoring.json: file # Authoring source for the generated ai-driven-choice game manifest.
   antarctica: # Пакет игры «Antarctica» (канонический content layer)
     plugins: directory... # Project-local plugins for the Antarctica game. These plugins belong to the game project, not to the shared platform apps.
   simple-choice: # Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.
@@ -61,18 +92,21 @@ games: # Пакеты игр и связанные ресурсы
       game.authoring.json: file # Authoring source for the generated simple-choice game manifest.
 packages: # Переиспользуемые платформенные пакеты (contracts) 
   contracts: # Слой общих контрактов между сервисами 
-    ai: directory... # AI task, result and eval contracts for Cubica.
+    ai: directory... # AI task, result, Cubica Surface, Agent Turn, execution-mode and Agent UI boundary contracts owned by Cubica rather than CopilotKit or AG-UI.
     manifest: directory... # Manifest and content contracts for Cubica.
     runtime: directory... # Runtime execution contracts for Cubica.
     session: directory... # Session lifecycle and player API contracts for Cubica.
   editor-engine: directory... # Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers.
 scripts: # Скрипты разработки и индексирования 
   ci: # Cross-platform CI validation scripts that enforce repository governance rules before merge.
+    validate-agent-ui-boundaries.js: file # Node.js validator for ADR-044 Agent UI import boundaries: CopilotKit and AG-UI imports are allowed only in approved adapter files.
     validate-legacy.js: file # Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.
     validate-legacy.ps1: file # PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.
     validate-manifest-authoring.js: file # Node.js validator for ADR-030 authoring manifest compilation, generated drift and authoring-only key leakage.
+    validate-prototype-audit-status.js: file # Node.js validator for ADR-050 prototype audit status records emitted by the weekly audit workflow.
   debug: directory... # Поддерживаемые debug-скрипты для локальной проверки UI, журналов и визуального сравнения. Скрипты не являются частью canonical verification и используются вручную при расследовании регрессий.
   manifest-tools: # Manifest transformation and generation tools used by development and CI workflows.
+    audit-prototype-candidates.cjs: file # Read-only ADR-050 prototype candidate audit CLI for local, PR, weekly, LLM-semantic and platform promotion backlog workflows.
     compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 

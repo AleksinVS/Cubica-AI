@@ -486,7 +486,12 @@ const evaluateEffectCondition = (
     if (isObjectRecord(collection)) {
       for (const id of condition.collectionCount.ids) {
         const item = collection[id];
-        if (isObjectRecord(item) && item[condition.collectionCount.field] === expected) {
+        const value = isObjectRecord(item) && condition.collectionCount.field.includes("/")
+          ? readJsonPointer(item, `/${condition.collectionCount.field}`)
+          : isObjectRecord(item)
+          ? item[condition.collectionCount.field]
+          : undefined;
+        if (value === expected) {
           count += 1;
         }
       }
@@ -639,18 +644,12 @@ const readManifestDeterministicMetadata = (
   return resolved.deterministic as unknown as GameManifestDeterministicActionMetadata;
 };
 
-const readCardState = (state: RuntimeState, cardId: string) => {
-  const publicState = ensureObject(state.public);
-  const flags = ensureObject(publicState.flags);
-  const cards = ensureObject(flags.cards);
-  return ensureObject(cards[cardId]);
-};
-
 const countResolvedCards = (cards: Record<string, any>, cardIds: Array<string>) => {
   let resolvedCount = 0;
   for (const cardId of cardIds) {
     const cardState = ensureObject(cards[cardId]);
-    if (cardState.resolved === true) {
+    const facets = ensureObject(cardState.facets);
+    if (facets.resolution === "resolved") {
       resolvedCount++;
     }
   }
@@ -765,8 +764,8 @@ const evaluateManifestGuard = (
   }
 
   if ((guard as any).board) {
-    const flags = ensureObject(ensureObject(state.public).flags);
-    const cards = ensureObject(flags.cards);
+    const objects = ensureObject(ensureObject(state.public).objects);
+    const cards = ensureObject(objects.cards);
     const resolvedCount = countResolvedCards(cards, (guard as any).board.cardIds);
 
     if (
@@ -774,7 +773,7 @@ const evaluateManifestGuard = (
       resolvedCount < (guard as any).board.resolvedCountAtLeast
     ) {
       failures.push(
-        `public.flags.cards resolved count for board [${(guard as any).board.cardIds.join(", ")}] expected >= ${(guard as any).board.resolvedCountAtLeast} (got ${resolvedCount})`
+        `public.objects.cards resolved count for board [${(guard as any).board.cardIds.join(", ")}] expected >= ${(guard as any).board.resolvedCountAtLeast} (got ${resolvedCount})`
       );
     }
   }

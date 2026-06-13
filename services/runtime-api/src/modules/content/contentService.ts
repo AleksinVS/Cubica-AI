@@ -200,6 +200,17 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
     locale: manifest.config.settings.locale,
     playerConfig: manifest.config.players,
     training: manifest.meta.training,
+    executionMode: manifest.executionMode,
+    agentRuntime: manifest.agentRuntime === undefined
+      ? undefined
+      : {
+          agentId: manifest.agentRuntime.agentId,
+          runtimeId: manifest.agentRuntime.runtimeId,
+          required: manifest.agentRuntime.required,
+          failurePolicy: manifest.agentRuntime.failurePolicy,
+          deterministicFallbackActionId: manifest.agentRuntime.deterministicFallbackActionId,
+          surfaceCatalog: [...manifest.agentRuntime.surfaceCatalog]
+        },
     actions,
     mockups: [],
     objectModels: manifest.objectModels ? structuredClone(manifest.objectModels) : undefined,
@@ -283,6 +294,22 @@ export class ContentService {
     const bundle = await loadGameBundle(gameId, this.repositoryForSource(contentSourceId));
     this.bundleCache.set(cacheKey, bundle);
     return bundle;
+  }
+
+  async getGameManifest(gameId: string, contentSourceId?: string): Promise<GameBundle["manifest"]> {
+    try {
+      return (await this.getBundle(gameId, contentSourceId)).manifest;
+    } catch (error) {
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "code" in error &&
+        (error as { code: string }).code === "ENOENT"
+      ) {
+        throw new NotFoundError(`Game "${gameId}" was not found`);
+      }
+      throw error;
+    }
   }
 
   /**
@@ -518,6 +545,10 @@ export function registerLocalPlayerFacingContentSourceWithPlugins(
   pluginBundles: readonly LocalPlayerWebPluginBundle[]
 ): void {
   contentService.registerLocalContentRoot(sourceId, contentRoot, pluginBundles);
+}
+
+export async function loadGameManifest(gameId: string, contentSourceId?: string): Promise<GameBundle["manifest"]> {
+  return contentService.getGameManifest(gameId, contentSourceId);
 }
 
 export function getPlayerWebPluginBundleFile(input: {

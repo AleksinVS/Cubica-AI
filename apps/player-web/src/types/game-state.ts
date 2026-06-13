@@ -2,6 +2,7 @@ import type {
   PlayerFacingContent,
   PlayerFacingMockup
 } from "@cubica/contracts-manifest";
+import type { CubicaSurface } from "@cubica/contracts-ai";
 import type { ActionSnapshot, SessionSnapshot } from "@/lib/game-content-resolvers";
 
 
@@ -45,6 +46,14 @@ export type RuntimeUiState = {
   lastCapability?: string;
   serverRequested?: boolean;
 };
+
+/**
+ * Client-side state for the last validated AI-driven gameplay surface.
+ *
+ * Runtime-api validates `CubicaSurface` before returning it. The player keeps it
+ * as transient view state; it does not mutate canonical game state in React.
+ */
+export type AgentSurfaceState = CubicaSurface | null;
 
 export type MetricSpec = {
   id: string;

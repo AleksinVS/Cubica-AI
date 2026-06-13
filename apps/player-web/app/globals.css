@@ -1503,6 +1503,157 @@ select {
   to { transform: rotate(360deg); }
 }
 
+.runtime-status-panel {
+  align-self: center;
+  justify-self: center;
+  width: min(720px, calc(100vw - 32px));
+  display: grid;
+  gap: 22px;
+  padding: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 211, 106, 0.34);
+  background: rgba(9, 23, 35, 0.88);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.34);
+  z-index: 1;
+}
+
+.runtime-status-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.runtime-status-kicker {
+  color: var(--warning);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.runtime-status-panel h1 {
+  margin: 0;
+  font-size: 1.75rem;
+  line-height: 1.15;
+}
+
+.runtime-status-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.runtime-status-policy,
+.runtime-status-reason {
+  font-size: 0.92rem;
+}
+
+.runtime-status-reason {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(170, 227, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  overflow-wrap: anywhere;
+}
+
+.runtime-status-retry {
+  justify-self: start;
+}
+
+.cubica-surface {
+  align-self: stretch;
+  justify-self: stretch;
+  min-height: calc(100vh - 40px);
+  display: grid;
+  align-content: center;
+  gap: 24px;
+  padding: clamp(24px, 5vw, 64px);
+  border-radius: 8px;
+  border: 1px solid rgba(170, 227, 255, 0.16);
+  background: rgba(6, 17, 31, 0.72);
+  z-index: 1;
+}
+
+.cubica-surface h1,
+.cubica-hint-panel h2 {
+  margin: 0;
+}
+
+.cubica-surface-text,
+.cubica-choice-list-label,
+.cubica-hint-panel p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.cubica-choice-list,
+.cubica-hint-panel {
+  display: grid;
+  gap: 18px;
+}
+
+.cubica-choice-list-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.cubica-metrics-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 0;
+}
+
+.cubica-metric-item {
+  min-width: 132px;
+  padding: 12px 14px;
+  border: 1px solid rgba(170, 227, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.cubica-metric-item dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.cubica-metric-item dd {
+  margin: 4px 0 0;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.cubica-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.cubica-surface-card {
+  display: grid;
+  gap: 8px;
+  min-height: 132px;
+  padding: 16px;
+  text-align: left;
+  color: var(--text);
+  border: 1px solid rgba(170, 227, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+}
+
+.cubica-surface-card span,
+.cubica-surface-diagnostic {
+  color: var(--muted);
+}
+
+.cubica-surface-diagnostic {
+  padding: 12px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 211, 106, 0.28);
+  background: rgba(255, 211, 106, 0.08);
+}
+
 .game-renderer,
 .fallback-renderer {
   width: 100%;
@@ -3319,4 +3470,3 @@ select {
 .game-renderer:has(.journal-screen) .game-variables-container {
   display: none !important;
 }
-

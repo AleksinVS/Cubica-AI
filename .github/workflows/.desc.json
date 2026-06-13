@@ -1,4 +1,5 @@
 {
   ".": "GitHub Actions workflows for canonical validation and legacy/stub governance gates.",
-  "ci.yml": "Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests."
+  "ci.yml": "Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.",
+  "prototype-audit.yml": "ADR-050 prototype candidate audit workflow for PR deterministic scans, weekly full scans, optional LLM semantic audit and platform promotion backlog reporting."
 }

@@ -20,17 +20,26 @@
 - **Бизнес-консультантам** — покупать лицензии на игры, проводить игровые тренинги с компаниями-заказчиками.
 - **Игрокам** (сотрудникам компаний) — участвовать в интерактивных бизнес-играх в разных форматах (браузер, мобильное приложение, Telegram-чат, canvas-игры на PhaserJS и т.п.).
 
-Игры могут быть **однопользовательскими** (состояние хранится на уровне устройства) и **многопользовательскими** (состояние синхронизируется на уровне игровой сессии).
+Игры могут быть **однопользовательскими** (состояние хранится на уровне устройства) и **многопользовательскими** (состояние синхронизируется на уровне игровой сессии). По runtime-модели игры могут быть deterministic, hybrid или AI-driven: в AI-driven игре ИИ-агент является обязательной частью исполнения и управляет ходом через валидируемые контракты Cubica.
 
 Платформа обеспечивает полный цикл: от разработки игры до проведения игровых сессий и анализа.  
 
 ### Текущий канонический срез
 - `games/antarctica/game.manifest.json` - источник истины для исполнимой логики `Antarctica`.
 - `games/simple-choice/` - минимальная вторая игра для проверки game-agnostic runtime/player path без custom web plugin.
+- `games/ai-driven-choice/` - минимальная AI-driven fixture-игра для проверки Agent Runtime readiness, opt-in mock adapter, `POST /agent-turns`, Web `CubicaSurface` rendering, deterministic fallback behavior and replay/eval/audit contract gates.
 - `games/antarctica/design/mockups/` - источник истины для UI-намерения и экранных макетов.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
-- `apps/player-web/` - канонический web delivery слой; сложные игры могут подключать plugin, а простые используют default config из `PlayerFacingContent.ui`.
-- `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI.
+- `apps/player-web/` - канонический web delivery слой; сложные игры могут подключать plugin, простые используют default config из `PlayerFacingContent.ui`, а AI-driven игры получают pause/retry/unavailable state и validated `CubicaSurface` renderer.
+- `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI; `packages/contracts/ai` содержит Cubica Surface, Agent Turn, channel projection, plugin contribution, A2UI-like adapter, operation-policy, replay transcript and evaluation fixture contracts.
+- `docs/architecture/agent-ui-foundation.md` и ADR-043 - источник истины для UI ИИ-агентов на CopilotKit/AG-UI; baseline внедрён в `apps/editor-web` как выключенная по умолчанию оболочка помощника, app-local маршрут `/api/copilotkit`, встроенный локальный AG-UI backend, ограниченная проекция контекста и frontend tools поверх `EditorChangeSet`; этот слой обслуживает редактор и будущих помощников платформы, но не владеет runtime/game state.
+- `docs/architecture/agent-ui-portability-and-risk-controls.md` и ADR-044 - источник истины для переносимости Agent UI: CopilotKit и AG-UI остаются заменяемыми адаптерами, production LLM backend подключается через шлюз и инструменты Cubica, а прямые записи в манифесты, runtime state, portal data или рабочие копии редактора запрещены.
+- `docs/architecture/generative-ui-surface-protocol.md` и ADR-045 - источник истины для Cubica-owned Generative UI direction: CopilotKit является MVP-адаптером первого этапа, целевой слой - собственный совместимый Cubica Agent UI, а декларативные UI-поверхности описываются через Cubica Surface contracts (собственные контракты Cubica для ограниченных UI-поверхностей) вместо сохранения CopilotKit/AG-UI/A2UI (декларативная JSONL-спецификация UI-поверхностей) state как предметного состояния.
+- `docs/architecture/ai-agent-safety-remediation.md` и ADR-047 - accepted remediation source для review findings миграции: human approval работает через Cubica approval envelope, rejected Agent Turn не применяет effects, `allowedCapabilities` является runtime gate, а channel projections fail closed для unsupported actions.
+- `docs/architecture/element-prompt-contract.md` и ADR-048 - accepted source для элементного промта: первый срез реализовал `_prompt` для authoring-экземпляров, `_promptTemplate` для прототипов, compiler stripping и editor schema readiness; `generation.prompt` остается промтом визуальной генерации для design artifacts. Механизм синхронизации промта и структуры манифеста вынесен в следующий этап.
+- ADR-050 - accepted source для извлечения, регулярного аудита и повышения authoring-прототипов: повторяющиеся game/UI authoring-элементы сначала выносятся в локальные game-level prototypes, проверенные локальные прототипы могут вручную повышаться до platform-level catalog, PR-аудит остается быстрым deterministic scan, недельный аудит запускается через scheduled CI и добавляет LLM-семантический поиск кандидатов, editor surface показывает пропущенные weekly audits, а AI-assisted designer только предлагает `EditorChangeSet` и не применяет изменения напрямую.
+- `apps/editor-web` уже потребляет helper `CubicaSurface` для tool progress, diagnostics, diff summary and approved editor-tool actions while CopilotKit remains the MVP shell.
+- ADR-046 - источник истины для AI-driven game runtime mode: игра может объявить ИИ-агента обязательной частью runtime, а ход игры, состояние шага и UI-поверхность возвращаются агентом через валидируемые Cubica-контракты.
 - `draft/cubica-portal-nextjs/` - текущий draft портала для следующего test VPS launch; он управляет будущими покупками/ссылками/игровыми сессиями, но не является source of truth для runtime-логики.
 - `draft/Antarctica/GameFull.html` - текущий factual extraction source для сценария и механики `Antarctica` на время миграции; это состояние миграции, а не новое архитектурное решение; анализировать его нужно через scripts и targeted extraction, а не читать целиком как основной документ.
 - `draft/antarctica-nextjs-player/`, `apps/portal-nextjs/` и `services/portal-backend/` - draft-артефакты и прототипы, не целевая архитектура.
@@ -60,7 +69,9 @@
 - **Game-Agnostic Default Path** — простая игра должна запускаться из `games/<id>/game.manifest.json` и `games/<id>/ui/web/ui.manifest.json` без правок generic runtime/player layers.
 - **Security & Privacy** — секреты хранятся вне кода, доступы разграничены RBAC, данные пользователей минимальны.
 - **Trunk-based development** — короткие feature-ветки, обязательные проверки и ревью, единая ветка `main`.
-- **MVP + LLM-first** — исторический target для более ранней версии платформы; текущий canonical slice использует deterministic runtime и JSON‑manifest source of truth, а LLM остаётся будущим capability layer для авторинга и расширения.
+- **MVP + LLM-first** — текущий canonical slice использует deterministic runtime и JSON‑manifest source of truth, но целевая платформа поддерживает два класса игр: deterministic games без обязательного agent backend и AI-driven games по ADR-046, где Agent Runtime является объявленной частью игрового исполнения.
+- **Agent UI foundation** — пользовательские ИИ-помощники на первом MVP-этапе строятся через CopilotKit и AG-UI, но все долговременные изменения проходят через контракты Cubica, JSON Schema validation, Presenter/runtime boundaries и аудит. ADR-044 требует, чтобы CopilotKit/AG-UI не попадали в предметные пакеты, а ADR-045 задаёт целевой путь к собственному совместимому Cubica Agent UI и Cubica Surface Protocol.
+- **AI Agent safety gates** — ADR-047 remediation реализован для MVP: подтверждение человека не доверяется model arguments, failed Agent Turn не меняет session state, manifest capabilities исполняются как allowlist, а каждый delivery channel получает только поддержанные actions.
 
 ## 3. Логическая архитектура
 
@@ -87,7 +98,7 @@
 
 ### Target LLM-first архитектура и игровые манифесты
 
-Целевой игровой слой Cubica сохраняет LLM-first направление для авторинга, генерации и расширения игр. Текущий canonical slice исполняет `Antarctica` детерминированно через JSON‑манифест, `services/runtime-api` и `apps/player-web`; LLM остаётся будущим capability layer и не является текущим runtime engine.
+Целевой игровой слой Cubica сохраняет LLM-first направление для авторинга, генерации и исполнения игр. Текущий canonical slice исполняет `Antarctica` детерминированно через JSON‑манифест, `services/runtime-api` и `apps/player-web`; это не отменяет целевой AI-driven runtime mode по ADR-046, где Agent Runtime является обязательной частью игры, если манифест явно объявляет такой режим.
 
 Основные положения:
 
@@ -100,6 +111,7 @@
     - Подробное руководство: [`docs/architecture/GAME_AUTHORING_GUIDE.md`](docs/architecture/GAME_AUTHORING_GUIDE.md).
   - **Gameplay Object State Model (ADR-041)**: игровые объекты (карточки, ресурсы, персонажи, клетки, задачи) получают authoring-first модель состояния. Authoring-манифест описывает типы объектов и фасеты состояния, runtime state хранит object instances, а Presenter строит player-facing projection для UI. Общие object effects/guards и fixture proof на `simple-choice` реализованы; `Antarctica` еще должна мигрировать с `flags.cards` на object state без постоянного legacy fallback.
   - **Semantic Prototype Authoring Layer (ADR-030, Draft)**: целевой authoring-слой для game/UI manifests должен стать обязательным редактируемым источником для новых и изменяемых манифестов; runtime/player продолжают получать generated JSON, валидный по runtime JSON Schema.
+  - **Authoring prototype extraction and promotion (ADR-050, Accepted)**: локальные прототипы игры являются первым уровнем дедупликации authoring-структур; платформенные прототипы появляются только через ручное повышение после проверки универсальности, версии, примеров и validation gates. Регулярный аудит разделен на быстрый deterministic PR scan и недельный LLM-семантический поиск смысловых кандидатов, который запускается по расписанию в CI, не применяет изменения и не заменяет deterministic gates; редактор должен предупреждать о пропущенном, просроченном или частичном weekly audit.
   - **Структура манифеста может различаться у разных игр**.
     - Базовая структура манифеста и принципы описаны в `docs/architecture/schemas/manifest-structure.md`.
     - **Важно:** Единым источником истины (SSOT) для структуры манифеста является кроссплатформенная JSON-схема: `docs/architecture/schemas/game-manifest.schema.json` (согласно ADR-025).
@@ -114,10 +126,16 @@
 - **Разделение манифестов (ADR-013)**:
   - **Логический манифест** описывает метаданные, сценарий, правила, начальное состояние и реестр действий. Это "чистая" модель игры.
   - **UI-манифест** описывает экраны, макеты (Layouts) и привязку событий UI к действиям логического манифеста. Это позволяет менять интерфейс (Web, Mobile, Telegram) без изменения логики игры.
+- **Элементный промт (ADR-048, Accepted)**: authoring-элементы должны хранить подтвержденный `_prompt`, описывающий содержимое, поведение и методический смысл конкретного экземпляра, а прототипы должны хранить `_promptTemplate`. Это не то же самое, что `generation.prompt` дизайн-артефакта.
 - **Манифест содержит системный промт для LLM**, задающий роль модели (игровой «движок»), допустимые действия и формат ответов. Этот промт рассматривается как часть контрактов между Presenter и LLM.
-- **В целевой LLM-first модели LLM может выступать игровым движком**: на вход она получает (через Router/Game Engine) JSON‑манифест соответствующей игры, текущее состояние игры и контекст сессии, а на выход возвращает указания Presenter:
+- **AI-driven runtime mode (ADR-046)**: манифест может объявить режим `ai-driven` или `hybrid`, где Agent Runtime является обязательной runtime-зависимостью. Такая игра не обязана проходиться без agent backend, но должна иметь явную failure policy: pause, retry, deterministic fallback или facilitator takeover.
+- **В целевой LLM-first модели LLM может выступать игровым движком**: на вход она получает (через Router/Game Engine/Agent Runtime) JSON‑манифест соответствующей игры, текущее состояние игры и контекст сессии, а на выход возвращает валидируемые указания runtime и Presenter:
   - какие изменения нужно внести в Model (обновлённое состояние или патчи);
-  - какие события/изменения нужно отразить во View (например, переключить экран, показать подсказку, обновить набор интерактивных элементов).
+  - какие события/изменения нужно отразить во View (например, переключить экран, показать подсказку, обновить набор интерактивных элементов);
+  - какую `CubicaSurface` показать как вспомогательную или основную игровую UI-поверхность;
+  - какие действия игроку доступны на следующем шаге.
+
+Для Telegram и Phaser целевой путь строится через framework-neutral Surface projections: общий контракт превращается в сообщения/inline keyboard data или HUD-like элементы/interactive zones, а конкретные клиенты уже рендерят эти данные без прямых provider payloads.
 
 Таким образом, для каждой игры в системе существует связка из: (1) JSON‑манифеста, (2) его схемы, (3) конкретных реализаций Model/View/Presenter, которые соблюдают общие принципы MVP и LLM-first архитектуры.
 
@@ -173,6 +191,7 @@
   - создание игр по текстовому описанию;
   - тестирование и предварительный просмотр игр;
   - публикация игр в каталоге. 
+- UI ИИ-помощника редактора на MVP-этапе строится на CopilotKit/AG-UI по ADR-043, ограничениям переносимости ADR-044 и целевой траектории ADR-045. Текущий baseline выключен по умолчанию через флаги, но уже регистрирует ограниченный контекст и frontend tools; помощник может предлагать bounded changes, а сохранение и применение проходят через `EditorChangeSet`, dry-run, JSON Schema validation и undo journal. Production LLM backend не получает прямой записи в файлы или состояние Cubica: он выбирает инструменты, а применяет изменения только проверенный Cubica flow. Будущие декларативные поверхности помощника должны идти через Cubica Surface Protocol и сохранять возможность замены CopilotKit на собственный compatible UI.
 
 #### 6. Game Templates (Игровые шаблоны)
 - Набор предзаготовленных игр, доступных на портале.  
@@ -202,6 +221,7 @@
 
 ### Внешние интеграции
 - LLM-провайдеры (OpenAI, Anthropic и др.) — используются Game Engine через адаптеры и политик ретраев.
+- CopilotKit/AG-UI — базовая UI/protocol foundation для пользовательских ИИ-помощников; production-интеграции проходят через server-side runtime endpoints с auth, redaction и audit.
 - Object Storage/CDN — хранение ассетов, манифестов и статики.
 - OAuth/IDP (например, Keycloak) — единая аутентификация для портала и авторских инструментов.
 
@@ -231,6 +251,7 @@
 На данный момент есть:
 - Канонический content bundle `games/antarctica/` с `game.manifest.json`, `ui.manifest.json` и design mockups.
 - Минимальный content bundle `games/simple-choice/`, который подтверждает запуск второй игры через generic `runtime-api` и `player-web` без custom plugin.
+- Минимальный AI-driven content bundle `games/ai-driven-choice/`, который подтверждает manifest-declared Agent Runtime dependency, readiness failure без mock adapter и Agent Turn execution при явном local mock opt-in.
 - Канонический backend runtime `services/runtime-api/` с bounded validation, capability routing и deterministic handlers.
 - Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/*` и `packages/contracts/*`; для сложных игр он использует plugin, для простых - default config builder.
 - `draft/cubica-portal-nextjs/` как текущий вариант портала для анализа, доработки и тестового запуска `Antarctica` через launch links.

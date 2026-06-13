@@ -18,7 +18,7 @@ import type { AntarcticaGameState } from "./contracts";
 import {
   getFallbackActionEntries,
   readCanAdvance,
-  readCardFlags,
+  readCardObjects,
   readSelectedCardId,
   readTeamFlags,
   readTeamSelection,
@@ -110,9 +110,9 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       const currentInfo = resolveCurrentInfoEntry(gameContent, publicState);
       const currentBoard = resolveCurrentBoard(gameContent, publicState);
       const currentTeamSelection = resolveCurrentTeamSelectionScene(gameContent, publicState);
-      const cardFlags = readCardFlags(session);
+      const cardObjects = readCardObjects(session);
       const selectedCardId = readSelectedCardId(session);
-      const boardCards = resolveBoardCards(gameContent, currentBoard, cardFlags);
+      const boardCards = resolveBoardCards(gameContent, currentBoard, cardObjects);
       const teamFlags = readTeamFlags(session);
       const teamSelectionState = readTeamSelection(session);
       const canAdvance = readCanAdvance(session);
@@ -132,7 +132,7 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
         currentInfo,
         currentBoard,
         currentTeamSelection,
-        cardFlags,
+        cardObjects,
         selectedCardId,
         selectedCard,
         boardCards,

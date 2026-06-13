@@ -1,0 +1,74 @@
+name: Prototype Candidate Audit
+
+on:
+  pull_request:
+    paths:
+      - "games/**/authoring/**/*.json"
+      - "scripts/manifest-tools/audit-prototype-candidates.cjs"
+      - "scripts/ci/validate-prototype-audit-status.js"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Audit mode"
+        required: true
+        default: "weekly"
+        type: choice
+        options:
+          - deterministic
+          - semantic-llm
+          - weekly
+          - promotion-backlog
+      include_llm:
+        description: "Run configured LLM semantic pass"
+        required: true
+        default: true
+        type: boolean
+  schedule:
+    - cron: "37 3 * * 1"
+
+jobs:
+  prototype-audit:
+    name: prototype candidate audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run PR deterministic audit
+        if: github.event_name == 'pull_request'
+        run: |
+          mkdir -p .tmp/prototype-audit
+          npm run audit:prototype-candidates -- --changed origin/${{ github.base_ref }} --mode deterministic --format markdown --output .tmp/prototype-audit/pr-report.md
+
+      - name: Run weekly/manual audit
+        if: github.event_name != 'pull_request'
+        env:
+          PROTOTYPE_AUDIT_LLM_COMMAND: ${{ secrets.PROTOTYPE_AUDIT_LLM_COMMAND }}
+          AUDIT_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'weekly' }}
+          AUDIT_INCLUDE_LLM: ${{ github.event_name == 'schedule' || inputs.include_llm }}
+        run: |
+          mkdir -p .tmp/prototype-audit
+          EXTRA_ARGS=""
+          if [ "$AUDIT_INCLUDE_LLM" = "true" ]; then
+            EXTRA_ARGS="--include-llm"
+          fi
+          node scripts/manifest-tools/audit-prototype-candidates.cjs --mode "$AUDIT_MODE" --scope all --format markdown --output .tmp/prototype-audit/weekly-report.md --status-output .tmp/prototype-audit/status.json $EXTRA_ARGS
+          node scripts/ci/validate-prototype-audit-status.js .tmp/prototype-audit/status.json
+
+      - name: Upload prototype audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: prototype-audit-${{ github.event_name }}
+          path: .tmp/prototype-audit/
+          if-no-files-found: error

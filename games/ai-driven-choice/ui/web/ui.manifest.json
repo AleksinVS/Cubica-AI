@@ -1,0 +1,74 @@
+{
+  "meta": {
+    "id": "ai-driven-choice.ui.web",
+    "version": "1.0.0",
+    "game_id": "ai-driven-choice"
+  },
+  "entry_point": "agent",
+  "metric_specs": [
+    {
+      "id": "turns",
+      "caption": "Turns",
+      "value": "{{game.state.public.metrics.turns}}",
+      "aliases": [
+        "turns"
+      ],
+      "layout": "prominent"
+    }
+  ],
+  "screen_routing": [
+    {
+      "screenKey": "agent",
+      "conditions": {
+        "screenId": "agent",
+        "layoutMode": "topbar"
+      }
+    }
+  ],
+  "screens": {
+    "agent": {
+      "title": "AI-Driven Choice",
+      "layout_mode": "topbar",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "topbar-screen-shell",
+          "backgroundImage": "/images/arctic-background.png"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "topbar-metrics"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "turns",
+                "props": {
+                  "caption": "Turns",
+                  "value": "{{game.state.public.metrics.turns}}"
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "info-main-content"
+            },
+            "children": [
+              {
+                "type": "richTextComponent",
+                "id": "agent-text",
+                "props": {
+                  "html": "<h1>AI-Driven Choice</h1><p>This fixture launches only when Agent Runtime is configured. The active gameplay surface is returned by <code>POST /agent-turns</code>.</p>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

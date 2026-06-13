@@ -20,7 +20,7 @@ import type { SessionSnapshot } from "@cubica/player-web/plugin-api";
 import {
   getFallbackActionEntries,
   readCanAdvance as readCanAdvanceGeneric,
-  readCardFlags as readCardFlagsGeneric,
+  readCardObjects as readCardObjectsGeneric,
   readScreenId,
   readSelectedCardId as readSelectedCardIdGeneric,
   readStepIndex,
@@ -29,11 +29,14 @@ import {
   resolveGameContent
 } from "@cubica/player-web/plugin-api";
 
-type CardFlagState = {
-  selected?: boolean;
-  resolved?: boolean;
-  locked?: boolean;
-  available?: boolean;
+type CardObjectState = {
+  objectType: string;
+  facets: {
+    selection?: "idle" | "selected";
+    resolution?: "idle" | "resolved";
+    availability?: "available" | "locked" | "hidden";
+    face?: "front" | "back";
+  };
 };
 
 /**
@@ -139,12 +142,12 @@ export function resolveCurrentTeamSelectionScene(
 }
 
 /**
- * Resolves visible cards for the current board by card ids and session flags.
+ * Resolves visible cards for the current board by card ids and session object state.
  */
 export function resolveBoardCards(
   gameContent: GamePlayerContent | null,
   board: GamePlayerBoard | null,
-  cardFlags?: Record<string, CardFlagState>
+  cardObjects?: Record<string, CardObjectState>
 ): Array<GamePlayerBoardCard> {
   if (!gameContent || !board) {
     return [];
@@ -159,8 +162,14 @@ export function resolveBoardCards(
       }
 
       const contentAvailable = (card as GamePlayerBoardCard & { available?: boolean }).available;
-      const cardState = cardFlags?.[card.cardId];
-      return contentAvailable !== false && cardState?.available !== false;
+      const cardState = cardObjects?.[card.cardId];
+
+      // Hidden cards are not visible
+      if (cardState?.facets?.availability === "hidden") {
+        return false;
+      }
+
+      return contentAvailable !== false;
     });
 }
 
@@ -193,8 +202,8 @@ export function resolveLastInfoHintText(
   return [lastInfo.title, lastInfo.body].filter(Boolean).join("\n\n");
 }
 
-export function readCardFlags(session: SessionSnapshot | null): Record<string, CardFlagState> {
-  return readCardFlagsGeneric(session) as Record<string, CardFlagState>;
+export function readCardObjects(session: SessionSnapshot | null): Record<string, CardObjectState> {
+  return readCardObjectsGeneric(session) as Record<string, CardObjectState>;
 }
 
 export function readTeamFlags(session: SessionSnapshot | null) {
