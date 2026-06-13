@@ -1487,6 +1487,101 @@ button.diagnostic strong {
   color: #fff3d6;
 }
 
+.prototype-audit-notice {
+  flex: 0 0 auto;
+  max-width: min(340px, 36vw);
+  min-width: 0;
+  position: relative;
+}
+
+.prototype-audit-notice summary {
+  background: #6f4d13;
+  border-radius: 4px;
+  color: #fff3d6;
+  cursor: pointer;
+  display: block;
+  font-size: 12px;
+  line-height: 20px;
+  overflow: hidden;
+  padding: 2px 8px;
+  text-overflow: ellipsis;
+}
+
+.prototype-audit-notice summary::-webkit-details-marker {
+  display: none;
+}
+
+.prototype-audit-notice-failed summary {
+  background: #7c2f25;
+  color: #ffe0dc;
+}
+
+.prototype-audit-notice-popover {
+  background: #ffffff;
+  border: 1px solid #cfd6e2;
+  border-radius: 6px;
+  bottom: calc(100% + 8px);
+  box-shadow: 0 14px 34px rgba(20, 33, 53, 0.2);
+  color: #1e2a3b;
+  display: grid;
+  gap: 8px;
+  left: 0;
+  min-width: 320px;
+  padding: 10px;
+  position: absolute;
+  white-space: normal;
+  z-index: 20;
+}
+
+.prototype-audit-notice-popover p {
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.prototype-audit-notice-popover dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+
+.prototype-audit-notice-popover dl div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+
+.prototype-audit-notice-popover dt,
+.prototype-audit-notice-popover dd {
+  font-size: 12px;
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.prototype-audit-notice-popover dt {
+  color: #5d6878;
+}
+
+.prototype-audit-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.prototype-audit-notice-actions a,
+.prototype-audit-notice-actions button {
+  background: #f8fafc;
+  border: 1px solid #cfd6e2;
+  border-radius: 4px;
+  color: #1e2a3b;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 18px;
+  padding: 3px 7px;
+  text-decoration: none;
+}
+
 .plugin-diagnostics-list {
   background: #ffffff;
   border: 1px solid #cfd6e2;

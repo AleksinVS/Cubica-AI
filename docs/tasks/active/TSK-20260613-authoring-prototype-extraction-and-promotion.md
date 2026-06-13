@@ -20,7 +20,7 @@
 
 ## Status
 
-implemented-third-slice
+implemented-fourth-slice-audit
 
 ## Implemented First Slice
 
@@ -54,6 +54,25 @@ implemented-third-slice
 - read-only/system-approved assistant tool `editor.preparePrototypeChangeSet`, который переводит последний проверенный proposal в обычный planned `EditorChangeSet`, но не применяет его;
 - повторный editor dry-run на текущем документе перед подготовкой planned ChangeSet, чтобы stale proposal не прошел в apply-flow;
 - сброс старого `agentPlannedChangeSet` при создании нового prototype proposal, чтобы кнопка Apply не относилась к предыдущему плану.
+
+Принятое расширение процесса добавило:
+
+- регулярный deterministic audit для PR/измененных authoring-файлов;
+- недельный полный deterministic scan всех authoring-файлов;
+- недельный LLM-семантический audit для смысловых дублей, которые не совпадают по JSON-форме;
+- promotion backlog review в том же недельном цикле;
+- suppression records с причиной, владельцем и датой пересмотра;
+- editor notification для пропущенного, просроченного, упавшего или частичного weekly audit;
+- отдельный process doc `docs/processes/authoring-prototype-audit.md`.
+
+Четвертый срез реализовал:
+
+- CLI `audit:prototype-candidates` для deterministic, changed-file, weekly, semantic-llm and promotion backlog modes;
+- GitHub Actions workflow `prototype-audit.yml` для PR deterministic audit, weekly scheduled audit and manual rerun;
+- status JSON contract and validator `validate-prototype-audit-status.js`;
+- pluggable LLM semantic pass through `PROTOTYPE_AUDIT_LLM_COMMAND`;
+- editor-web route `/api/editor/prototype-audit/status`;
+- nonblocking editor footer notice for `missing`, `stale`, `failed`, `partial` and `outdated-report`.
 
 ## Understanding
 
@@ -115,6 +134,7 @@ implemented-third-slice
 - описать и реализовать ручной promotion checklist для platform-level prototype;
 - подготовить контракт будущего platform-level catalog без включения его в runtime layer;
 - добавить AI-assisted designer как suggestion layer, который формирует proposal, но не применяет его напрямую;
+- добавить регулярный audit process: PR deterministic scan, weekly deterministic scan, weekly LLM-семантический scan и promotion backlog review;
 - добавить тестовые fixtures на game authoring и UI authoring;
 - обновить документацию после фактической реализации.
 
@@ -186,6 +206,21 @@ implemented-third-slice
 3. [x] Обновить `PROJECT_STRUCTURE.yaml`, если появятся новые значимые каталоги или `.desc.json`.
 4. [x] Записать handoff: измененные файлы, проверки, что сделано, что осталось и следующий безопасный шаг.
 
+### Phase 7. Regular Prototype Candidate Audit
+
+1. [x] Зафиксировать архитектурное решение в ADR-050: PR deterministic audit, weekly deterministic scan, weekly LLM-семантический audit и promotion backlog review.
+2. [x] Создать process doc для регулярного аудита кандидатов.
+3. [x] Реализовать CLI `audit:prototype-candidates` поверх deterministic normalized comparison. Скрипт живет в `scripts/manifest-tools/audit-prototype-candidates.cjs`.
+4. [x] Добавить changed-file режим для PR-аудита через `--changed <base-ref>`.
+5. [x] Добавить weekly report формат со stable candidate ids, summary, local prototypes and promotion backlog.
+6. [x] Добавить LLM-семантический weekly pass, который получает compact context и возвращает только candidate records. Provider подключается через `PROTOTYPE_AUDIT_LLM_COMMAND`; отсутствие provider дает `llmStatus=skipped`.
+7. [x] Добавить CI workflow с `pull_request`, `workflow_dispatch` и weekly `schedule` triggers.
+8. [x] Добавить review handoff из weekly audit в promotion backlog через секцию `promotionBacklog` в report.
+9. [x] Добавить audit status record с `lastStartedAt`, `lastCompletedAt`, `status`, `llmStatus`, `reportPath`, summary и commit metadata.
+10. [x] Добавить editor-web route для чтения audit status.
+11. [x] Добавить неблокирующее уведомление в редакторе для статусов `missing`, `stale`, `failed`, `partial` и `outdated-report`.
+12. [x] Добавить ручное действие "Open audit workflow" или "Snooze for session" в notice surface. Прямой `workflow_dispatch` из editor-web остается future backend integration.
+
 ## Acceptance
 
 1. Есть proposal format, понятный редактору, агенту и review flow.
@@ -198,6 +233,10 @@ implemented-third-slice
 8. AI-assisted designer может предложить prototype proposal, но не может применить его напрямую или повысить прототип.
 9. JSON Schema остается источником истины для authoring/runtime структур; TypeScript не заменяет schema validation.
 10. Не добавлены game-specific ветки в `runtime-api`, `player-web` или contracts layer.
+11. PR-аудит кандидатов работает в deterministic mode и не вызывает LLM по умолчанию.
+12. Недельный LLM-семантический аудит возвращает только candidate records и требует deterministic gates перед любым proposal/apply.
+13. Suppression records имеют причину, владельца и дату пересмотра.
+14. Редактор показывает неблокирующее уведомление, если weekly audit отсутствует, просрочен, завершился ошибкой, прошел без LLM-семантической части или относится к устаревшему commit.
 
 ## Validation
 
@@ -236,6 +275,7 @@ npm run compile:manifests -- --check
 ## Artifacts
 
 - `docs/architecture/adrs/050-authoring-prototype-extraction-and-promotion.md` - принятое архитектурное решение.
+- `docs/processes/authoring-prototype-audit.md` - поддерживаемый процесс регулярного deterministic/LLM-аудита кандидатов в прототипы.
 - `docs/processes/authoring-prototype-promotion.md` - поддерживаемый процесс ручного повышения локального прототипа в platform-level prototype.
 - `docs/tasks/artifacts/TSK-20260613-authoring-prototype-extraction-and-promotion/execution-matrix.md` - матрица исполнения по вариантам A, B и D.
 - `docs/tasks/active/TSK-20260613-authoring-prototype-extraction-and-promotion.md` - этот исполнительный план.
@@ -247,6 +287,8 @@ npm run compile:manifests -- --check
 - **Runtime leakage**: authoring-only поля могут попасть в generated manifests. Контроль: compiler stripping rules и leakage scan.
 - **Source map drift**: preview/editor selection может потерять связь с исходным узлом. Контроль: source map pointer existence check.
 - **AI overreach**: AI может предложить слишком общий или небезопасный patch. Контроль: AI возвращает только proposal, применение идет через стандартный approval flow.
+- **LLM false positives**: смысловой аудит может найти похожие по описанию, но разные по назначению элементы. Контроль: LLM создает только candidate records, а deterministic gates остаются обязательными.
+- **Audit noise**: регулярные отчеты могут стать слишком шумными. Контроль: stable candidate ids, suppression с причиной и датой пересмотра, PR-аудит сначала в advisory mode.
 
 ## Handoff Log
 
@@ -355,3 +397,81 @@ npm run compile:manifests -- --check
 - Осталось: dedicated review surface с группами источников/параметрами, browser/e2e proof preview selection after extraction, future platform catalog task.
 - Следующий безопасный шаг: добавить e2e/visual proof для proposal -> planned ChangeSet -> Apply -> preview source-map selection на `simple-choice`.
 - Риски: кнопка пока показывает summary/gates, а не полный табличный review common body/overrides; для массовой миграции прототипов нужен отдельный полноценный review экран.
+
+### 2026-06-13 - Regular Prototype Audit Documentation Accepted
+
+- Изменено:
+  - `docs/architecture/adrs/050-authoring-prototype-extraction-and-promotion.md`
+  - `docs/architecture/PROJECT_ARCHITECTURE.md`
+  - `PROJECT_OVERVIEW.md`
+  - `docs/processes/authoring-prototype-audit.md`
+  - `docs/processes/authoring-prototype-promotion.md`
+  - `docs/processes/.desc.json`
+  - `docs/tasks/active/TSK-20260613-authoring-prototype-extraction-and-promotion.md`
+  - `docs/tasks/artifacts/TSK-20260613-authoring-prototype-extraction-and-promotion/execution-matrix.md`
+  - `NEXT_STEPS.md`
+  - `PROJECT_STRUCTURE.yaml`
+- Сделано: принята и задокументирована регулярная процедура поиска кандидатов: PR deterministic audit, weekly deterministic scan, weekly LLM-семантический audit, suppression и promotion backlog review.
+- Сделано в следующем срезе: реализованы CLI `audit:prototype-candidates`, CI workflow, weekly report/status storage, LLM compact-context runner и editor notification для пропущенных weekly audits.
+- Следующий безопасный шаг: подключить production `PROTOTYPE_AUDIT_LLM_COMMAND`, добавить persistent suppression store и browser/e2e proof для editor notice.
+- Риски: LLM-аудит не должен запускаться на каждый PR и не должен создавать `EditorChangeSet`; он возвращает только candidate records для последующей deterministic проверки.
+
+### 2026-06-13 - Missed Weekly Audit Notification Added To Plan
+
+- Изменено:
+  - `docs/architecture/adrs/050-authoring-prototype-extraction-and-promotion.md`
+  - `docs/architecture/PROJECT_ARCHITECTURE.md`
+  - `PROJECT_OVERVIEW.md`
+  - `docs/processes/authoring-prototype-audit.md`
+  - `docs/tasks/active/TSK-20260613-authoring-prototype-extraction-and-promotion.md`
+  - `docs/tasks/artifacts/TSK-20260613-authoring-prototype-extraction-and-promotion/execution-matrix.md`
+  - `NEXT_STEPS.md`
+- Сделано: добавлено требование editor notification для weekly audit statuses `missing`, `stale`, `failed`, `partial` и `outdated-report`.
+- Сделано: уточнен запуск weekly audit: GitHub Actions `schedule` на default branch, ручной `workflow_dispatch` для перезапуска и отдельный PR deterministic trigger.
+- Осталось: подключить production LLM provider command, решить постоянный home для audit history/suppressions и добавить browser e2e для notice в editor shell.
+- Следующий безопасный шаг: добавить suppression store and review UI для weekly report, затем dedicated prototype review UI с группами источников/параметрами.
+
+### 2026-06-13 - Prototype Audit Implementation
+
+- Изменено:
+  - `.github/workflows/prototype-audit.yml`
+  - `.github/workflows/.desc.json`
+  - `package.json`
+  - `scripts/manifest-tools/audit-prototype-candidates.cjs`
+  - `scripts/manifest-tools/.desc.json`
+  - `scripts/ci/validate-prototype-audit-status.js`
+  - `scripts/ci/.desc.json`
+  - `apps/editor-web/app/api/editor/prototype-audit/.desc.json`
+  - `apps/editor-web/app/api/editor/prototype-audit/status/.desc.json`
+  - `apps/editor-web/app/api/editor/prototype-audit/status/route.ts`
+  - `apps/editor-web/src/lib/prototype-audit-status.ts`
+  - `apps/editor-web/src/lib/prototype-audit-status.test.ts`
+  - `apps/editor-web/src/components/prototype-audit-notice.tsx`
+  - `apps/editor-web/src/components/prototype-audit-notice.test.tsx`
+  - `apps/editor-web/src/components/editor-workspace.tsx`
+  - `apps/editor-web/app/globals.css`
+  - `docs/processes/authoring-prototype-audit.md`
+  - `docs/tasks/active/TSK-20260613-authoring-prototype-extraction-and-promotion.md`
+  - `docs/tasks/artifacts/TSK-20260613-authoring-prototype-extraction-and-promotion/execution-matrix.md`
+  - `NEXT_STEPS.md`
+  - `PROJECT_STRUCTURE.yaml`
+- Сделано: реализованы deterministic local/changed/full audit modes, pluggable LLM semantic mode, weekly report/status output, promotion backlog generation, CI workflow and editor missed-audit notice.
+- Проверки:
+  - `npm run audit:prototype-candidates -- --scope all --mode deterministic --format json --output .tmp/prototype-audit/deterministic-report.json --status-output .tmp/prototype-audit/status.json` - OK.
+  - `npm run audit:prototype-candidates -- --scope all --mode promotion-backlog --format json --output .tmp/prototype-audit/promotion-report.json --status-output .tmp/prototype-audit/promotion-status.json` - OK.
+  - `node scripts/manifest-tools/audit-prototype-candidates.cjs --changed HEAD --mode deterministic --format markdown --output .tmp/prototype-audit/changed-report.md` - OK.
+  - `npm run audit:prototype-candidates -- --scope all --mode weekly --format markdown --output .tmp/prototype-audit/weekly-report.md --status-output .tmp/prototype-audit/status.json` - OK; local LLM provider отсутствует, поэтому `llmStatus=skipped`.
+  - `node scripts/ci/validate-prototype-audit-status.js .tmp/prototype-audit/status.json` - OK.
+  - `PROTOTYPE_AUDIT_LLM_COMMAND='<test runner>' node scripts/manifest-tools/audit-prototype-candidates.cjs --scope all --mode semantic-llm --format json --output .tmp/prototype-audit/semantic-report.json --status-output .tmp/prototype-audit/semantic-status.json --require-llm` - OK.
+  - `node scripts/ci/validate-prototype-audit-status.js .tmp/prototype-audit/semantic-status.json` - OK.
+  - `node scripts/ci/validate-prototype-audit-status.js .tmp/prototype-audit/promotion-status.json` - OK.
+  - `npm test --workspace @cubica/editor-web -- --run src/lib/prototype-audit-status.test.ts src/components/prototype-audit-notice.test.tsx` - OK.
+  - `npm test --workspace @cubica/editor-web -- --run` - OK.
+  - `npm run typecheck --workspace @cubica/editor-web` - OK.
+  - `npm test --workspace @cubica/editor-engine -- --run` - OK.
+  - `npm run verify:manifest-authoring` - OK.
+  - `npm run compile:manifests -- --check` - OK.
+  - `node scripts/dev/generate-structure.js` - OK.
+  - `git diff --check` - OK.
+- Осталось: production LLM command/provider, persistent suppression storage, browser/e2e proof for editor notice, dedicated weekly report review surface.
+- Риски: deterministic audit currently reports many low-level repeated prop objects; suppression/review UI should be the next UX control before turning PR advisory into a soft gate.

@@ -9,6 +9,7 @@
 .github: # GitHub repository automation configuration, including required CI workflows.
   workflows: # GitHub Actions workflows for canonical validation and legacy/stub governance gates.
     ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
+    prototype-audit.yml: file # ADR-050 prototype candidate audit workflow for PR deterministic scans, weekly full scans, optional LLM semantic audit and platform promotion backlog reporting.
   required-checks.md: file # Repository ruleset and branch protection notes for required CI checks.
 apps: # Приложения и импортированные frontend-заготовки 
   editor-web: directory... # Next.js App Router prototype for ADR-034 authoring manifest editing with a synchronized graph canvas, JSON editor, property panel and diagnostics strip.
@@ -45,6 +46,7 @@ docs: # Архитектура, задачи, планирование
     stub-marker-allowlist.json: file # Документированные исключения для CI-проверки маркеров заглушек с владельцем, причиной и сроком пересмотра.
     stubs-register.md: file # Реестр временных заглушек.
   processes: # Поддерживаемые процессы разработки и сопровождения Cubica: работа с промтами, review, incident response, structure governance и promotion workflows.
+    authoring-prototype-audit.md: file # Регулярный процесс поиска кандидатов в authoring-прототипы: PR-аудит, недельный LLM-семантический аудит, suppression и promotion backlog.
     authoring-prototype-promotion.md: file # Процесс ручного повышения game-level authoring-прототипа в platform-level prototype по ADR-050 без автоматического platform catalog write.
     editor-prompts.md: file # Правила работы с промтами Game Editor, включая элементные промты ADR-048 и целевую dynamic prompt projection ADR-049.
   tasks: # Легковесная система задач и планов: текущие рабочие задачи, архив старой иерархии и постоянные артефакты задач.
@@ -101,8 +103,10 @@ scripts: # Скрипты разработки и индексирования
     validate-legacy.js: file # Node.js validator for legacy debt rows, stub register consistency, stub marker governance and .desc.json parsing.
     validate-legacy.ps1: file # PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.
     validate-manifest-authoring.js: file # Node.js validator for ADR-030 authoring manifest compilation, generated drift and authoring-only key leakage.
+    validate-prototype-audit-status.js: file # Node.js validator for ADR-050 prototype audit status records emitted by the weekly audit workflow.
   debug: directory... # Поддерживаемые debug-скрипты для локальной проверки UI, журналов и визуального сравнения. Скрипты не являются частью canonical verification и используются вручную при расследовании регрессий.
   manifest-tools: # Manifest transformation and generation tools used by development and CI workflows.
+    audit-prototype-candidates.cjs: file # Read-only ADR-050 prototype candidate audit CLI for local, PR, weekly, LLM-semantic and platform promotion backlog workflows.
     compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 

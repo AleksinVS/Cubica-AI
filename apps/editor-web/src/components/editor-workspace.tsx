@@ -103,6 +103,11 @@ import {
 import { createDefaultCollapsedTreePointers, JsonTreeView } from "@/components/json-tree-view";
 import { PluginDiagnosticsJournal } from "@/components/plugin-diagnostics-journal";
 import {
+  PrototypeAuditNotice,
+  type PrototypeAuditNoticeKind,
+  type PrototypeAuditNoticeRecord
+} from "@/components/prototype-audit-notice";
+import {
   PreviewSelectionOverlay,
   type PreviewAiIntent,
   type PreviewPromptContext
@@ -207,6 +212,20 @@ interface PrototypeExtractionWorkflowResponse {
   readonly proposal?: PrototypeExtractionProposal;
   readonly diffSummary?: readonly EditorDiffSummaryItem[];
   readonly gates?: readonly PrototypeExtractionGate[];
+}
+
+interface PrototypeAuditStatusResponse {
+  readonly ok: boolean;
+  readonly notification: PrototypeAuditNoticeKind | null;
+  readonly message: string;
+  readonly status: {
+    readonly lastCompletedAt?: string;
+    readonly llmStatus?: string;
+    readonly reportUrl?: string;
+    readonly reportPath?: string;
+    readonly workflowUrl?: string;
+    readonly summary?: PrototypeAuditNoticeRecord["summary"];
+  } | null;
 }
 
 interface PlannedPrototypeExtractionProposal {
@@ -515,6 +534,8 @@ export function EditorWorkspace() {
   const [reverseDiagnostics, setReverseDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [workflowDiagnostics, setWorkflowDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
   const [pluginDiagnostics, setPluginDiagnostics] = useState<readonly RoutedEditorDiagnostic[]>([]);
+  const [prototypeAuditNotice, setPrototypeAuditNotice] = useState<PrototypeAuditNoticeRecord | null>(null);
+  const [prototypeAuditSnoozed, setPrototypeAuditSnoozed] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewRuntimeSessionId, setPreviewRuntimeSessionId] = useState<string | undefined>(undefined);
   const [previewSourceMaps, setPreviewSourceMaps] = useState<readonly PreviewSelectionSourceMap[]>([]);
@@ -919,6 +940,41 @@ export function EditorWorkspace() {
       cancelled = true;
     };
   }, [requestedFilePath, requestedGameId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrototypeAuditStatus() {
+      if (currentDocument.source !== "repository") {
+        setPrototypeAuditNotice(null);
+        setPrototypeAuditSnoozed(false);
+        return;
+      }
+
+      try {
+        const response = await fetchPrototypeAuditStatus();
+        if (cancelled) {
+          return;
+        }
+        setPrototypeAuditNotice(toPrototypeAuditNotice(response));
+        setPrototypeAuditSnoozed(false);
+      } catch {
+        if (!cancelled) {
+          setPrototypeAuditNotice({
+            notification: "missing",
+            message: "Weekly prototype audit status is unavailable."
+          });
+          setPrototypeAuditSnoozed(false);
+        }
+      }
+    }
+
+    void loadPrototypeAuditStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDocument.filePath, currentDocument.source, currentDocument.versionHash]);
 
   useEffect(() => {
     if (monacoApi === null) {
@@ -2941,6 +2997,10 @@ export function EditorWorkspace() {
         <div className="diagnostics-items">
           <strong>Diagnostics</strong>
         <PluginDiagnosticsJournal diagnostics={pluginDiagnostics} onSelectDiagnostic={handleDiagnosticClick} />
+        <PrototypeAuditNotice
+          notice={prototypeAuditSnoozed ? null : prototypeAuditNotice}
+          onSnooze={() => setPrototypeAuditSnoozed(true)}
+        />
         {aiDiffSummary.length > 0 ? (
           <span className="ai-diff-summary" title={aiDiffSummary.map((item) => item.description).join("\n")}>
             AI {aiApplyState}: {aiDiffSummary.slice(0, 2).map((item) => humanizeDiffSummaryItem(item, viewModel.fullNodes)).join("; ")}
@@ -3791,6 +3851,33 @@ async function requestPrototypeExtractionProposal(input: {
   }
 
   return (await response.json()) as PrototypeExtractionWorkflowResponse;
+}
+
+async function fetchPrototypeAuditStatus(): Promise<PrototypeAuditStatusResponse> {
+  const response = await fetch("/api/editor/prototype-audit/status", { cache: "no-store" });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as { readonly error?: string };
+    throw new Error(payload.error ?? `Prototype audit status failed with HTTP ${response.status}.`);
+  }
+
+  return (await response.json()) as PrototypeAuditStatusResponse;
+}
+
+function toPrototypeAuditNotice(response: PrototypeAuditStatusResponse): PrototypeAuditNoticeRecord | null {
+  if (response.notification === null) {
+    return null;
+  }
+
+  return {
+    notification: response.notification,
+    message: response.message,
+    lastCompletedAt: response.status?.lastCompletedAt,
+    llmStatus: response.status?.llmStatus,
+    reportUrl: response.status?.reportUrl,
+    reportPath: response.status?.reportPath,
+    workflowUrl: response.status?.workflowUrl,
+    summary: response.status?.summary
+  };
 }
 
 async function fetchAuthoringFile(gameId: string, filePath: string, sessionId?: string): Promise<AuthoringFileDocument> {
