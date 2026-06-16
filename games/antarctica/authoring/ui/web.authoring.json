@@ -3,7 +3,365 @@
   "_schemaVersion": "2.0",
   "_manifestType": "ui",
   "_channel": "web",
-  "_definitions": {},
+  "_definitions": {
+    "ui.AntarcticaShowPanelButton": {
+      "_label": "Кнопка открытия панели Antarctica",
+      "_semantics": "Локальный UI-прототип кнопки, которая открывает game-defined панель Antarctica через команду showPanel.",
+      "_promptTemplate": {
+        "raw": "Создай кнопку-помощник Antarctica, которая открывает указанную UI-панель и сохраняет вариант helper.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaShowPanelButton"
+      },
+      "type": "buttonComponent",
+      "props": {
+        "variant": "helper"
+      },
+      "actions": {
+        "onClick": {
+          "command": "showPanel"
+        }
+      }
+    },
+    "ui.AntarcticaClosePanelButton": {
+      "_label": "Кнопка закрытия панели Antarctica",
+      "_semantics": "Локальный UI-прототип кнопки, которая закрывает активную game-defined панель Antarctica через команду closePanel.",
+      "_promptTemplate": {
+        "raw": "Создай кнопку-помощник Antarctica, которая закрывает указанную UI-панель и сохраняет вариант helper.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaClosePanelButton"
+      },
+      "type": "buttonComponent",
+      "props": {
+        "variant": "helper"
+      },
+      "actions": {
+        "onClick": {
+          "command": "closePanel"
+        }
+      }
+    },
+    "ui.AntarcticaNavButton": {
+      "_label": "Навигационная кнопка Antarctica",
+      "_semantics": "Локальный UI-прототип кнопки навигации Antarctica; экземпляр задает направление, подпись и при необходимости disabled.",
+      "_promptTemplate": {
+        "raw": "Создай навигационную кнопку Antarctica для перехода назад или вперед; подпись и disabled задаются экземпляром.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaNavButton"
+      },
+      "type": "buttonComponent",
+      "props": {
+        "variant": "nav"
+      }
+    },
+    "ui.AntarcticaRequestServerCard": {
+      "_label": "Статическая карточка Antarctica с серверным выбором",
+      "_semantics": "Локальный UI-прототип статической карточки Antarctica, которая отправляет requestServer без дополнительного payload.",
+      "_promptTemplate": {
+        "raw": "Создай статическую карточку Antarctica: текст остается на экземпляре, а клик отправляет requestServer без payload.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaRequestServerCard"
+      },
+      "type": "cardComponent",
+      "actions": {
+        "onClick": {
+          "command": "requestServer",
+          "payload": {}
+        }
+      }
+    },
+    "ui.AntarcticaBoardChoiceCard": {
+      "_label": "Карточка выбора на доске Antarctica",
+      "_semantics": "Локальный UI-прототип динамической карточки доски Antarctica, которая берет данные из boardCards itemTemplate.",
+      "_promptTemplate": {
+        "raw": "Создай карточку выбора для текущей доски Antarctica с title, summary, selectLabel, visualState и requestServer payload.cardId.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaBoardChoiceCard"
+      },
+      "type": "cardComponent",
+      "props": {
+        "title": "{{card.title}}",
+        "summary": "{{card.summary}}",
+        "selectLabel": "{{card.selectLabel || \"Выбрать\"}}",
+        "visualState": "{{card.visualState || \"default\"}}"
+      },
+      "actions": {
+        "onClick": {
+          "command": "requestServer",
+          "payload": {
+            "cardId": "{{card.cardId}}"
+          }
+        }
+      }
+    },
+    "ui.AntarcticaTopbarMetricBadge": {
+      "_label": "Метрика верхней панели Antarctica",
+      "_semantics": "Базовый локальный UI-прототип метрики верхней панели Antarctica; конкретная метрика наследует id, caption, image и value.",
+      "_promptTemplate": {
+        "raw": "Создай бейдж метрики верхней панели Antarctica; конкретная метрика задает id, подпись, изображение и binding значения.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarMetricBadge"
+      },
+      "type": "gameVariableComponent"
+    },
+    "ui.AntarcticaTopbarScoreMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика остатка дней Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики остатка дней Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику остатка дней Antarctica с prominent layout.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarScoreMetric"
+      },
+      "id": "score",
+      "props": {
+        "caption": "Остаток дней",
+        "backgroundImage": "/images/top-sidebar/days-top.png",
+        "value": "{{game.state.public.metrics.score}}",
+        "layout": "prominent"
+      }
+    },
+    "ui.AntarcticaTopbarProMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика знаний Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики знаний Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику знаний Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarProMetric"
+      },
+      "id": "pro",
+      "props": {
+        "caption": "Знания",
+        "backgroundImage": "/images/top-sidebar/znaniya.png",
+        "value": "{{game.state.public.metrics.pro}}"
+      }
+    },
+    "ui.AntarcticaTopbarRepMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика доверия Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики доверия Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику доверия Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarRepMetric"
+      },
+      "id": "rep",
+      "props": {
+        "caption": "Доверие",
+        "backgroundImage": "/images/top-sidebar/doverie.png",
+        "value": "{{game.state.public.metrics.rep}}"
+      }
+    },
+    "ui.AntarcticaTopbarLidMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика энергии Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики энергии Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику энергии Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarLidMetric"
+      },
+      "id": "lid",
+      "props": {
+        "caption": "Энергия",
+        "backgroundImage": "/images/top-sidebar/energia.png",
+        "value": "{{game.state.public.metrics.lid}}"
+      }
+    },
+    "ui.AntarcticaTopbarManMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика контроля Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики контроля Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику контроля Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarManMetric"
+      },
+      "id": "man",
+      "props": {
+        "caption": "Контроль",
+        "backgroundImage": "/images/top-sidebar/kontrol.png",
+        "value": "{{game.state.public.metrics.man}}"
+      }
+    },
+    "ui.AntarcticaTopbarStatMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика статуса Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики статуса Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику статуса Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarStatMetric"
+      },
+      "id": "stat",
+      "props": {
+        "caption": "Статус",
+        "backgroundImage": "/images/top-sidebar/status.png",
+        "value": "{{game.state.public.metrics.stat}}"
+      }
+    },
+    "ui.AntarcticaTopbarContMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика контакта Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики контакта Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику контакта Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarContMetric"
+      },
+      "id": "cont",
+      "props": {
+        "caption": "Контакт",
+        "backgroundImage": "/images/top-sidebar/kontakt.png",
+        "value": "{{game.state.public.metrics.cont}}"
+      }
+    },
+    "ui.AntarcticaTopbarConstrMetric": {
+      "_extends": "ui.AntarcticaTopbarMetricBadge",
+      "_label": "Метрика конструктива Antarctica",
+      "_semantics": "Локальный прототип topbar-метрики конструктива Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай topbar-метрику конструктива Antarctica.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaTopbarConstrMetric"
+      },
+      "id": "constr",
+      "props": {
+        "caption": "Конструктив",
+        "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+        "value": "{{game.state.public.metrics.constr}}"
+      }
+    },
+    "ui.AntarcticaScreenRoot": {
+      "_label": "Корневой экранный контейнер Antarctica",
+      "_semantics": "Локальный UI-прототип корневого screenComponent для экранов Antarctica с общим арктическим фоном.",
+      "_promptTemplate": {
+        "raw": "Создай корневой контейнер экрана Antarctica с общим фоновым изображением; cssClass задается экземпляром.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaScreenRoot"
+      },
+      "type": "screenComponent",
+      "props": {
+        "backgroundImage": "/images/arctic-background.png"
+      }
+    },
+    "ui.AntarcticaOverlayPanel": {
+      "_label": "Overlay-панель Antarctica",
+      "_semantics": "Локальный UI-прототип game-defined overlay панели Antarctica; заголовок, design artifact и контент задаются экземпляром.",
+      "_promptTemplate": {
+        "raw": "Создай overlay-панель Antarctica с mode overlay и topbar layout; содержимое задается экземпляром.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaOverlayPanel"
+      },
+      "type": "panel",
+      "mode": "overlay",
+      "layout_mode": "topbar"
+    },
+    "ui.AntarcticaPanelButtonContainer": {
+      "_label": "Контейнер кнопок панели Antarctica",
+      "_semantics": "Локальный UI-прототип контейнера кнопок внутри game-defined панели Antarctica.",
+      "_promptTemplate": {
+        "raw": "Создай контейнер кнопок панели Antarctica с классами button-container panel-buttons.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaPanelButtonContainer"
+      },
+      "type": "areaComponent",
+      "props": {
+        "cssClass": "button-container panel-buttons"
+      }
+    },
+    "ui.AntarcticaFallbackHeadText": {
+      "_label": "Заголовочный rich text Antarctica",
+      "_semantics": "Локальный UI-прототип rich text заголовка Antarctica с fallback-card-head классом.",
+      "_promptTemplate": {
+        "raw": "Создай rich text заголовка Antarctica; html задается экземпляром.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaFallbackHeadText"
+      },
+      "type": "richTextComponent",
+      "props": {
+        "cssClass": "fallback-card-head"
+      }
+    },
+    "ui.AntarcticaFallbackCopyText": {
+      "_label": "Основной rich text Antarctica",
+      "_semantics": "Локальный UI-прототип rich text основного текста Antarctica с fallback-copy классом.",
+      "_promptTemplate": {
+        "raw": "Создай rich text основного текста Antarctica; html задается экземпляром.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaFallbackCopyText"
+      },
+      "type": "richTextComponent",
+      "props": {
+        "cssClass": "fallback-copy"
+      }
+    },
+    "ui.AntarcticaDefaultBottomControls": {
+      "_label": "Нижние стандартные кнопки Antarctica",
+      "_semantics": "Локальный UI-прототип стандартного ряда кнопок: журнал, подсказка, назад, вперед.",
+      "_promptTemplate": {
+        "raw": "Создай стандартный нижний ряд кнопок Antarctica: журнал, подсказка, назад и вперед.",
+        "language": "ru",
+        "appliesTo": "ui.AntarcticaDefaultBottomControls"
+      },
+      "type": "areaComponent",
+      "props": {
+        "cssClass": "bottom-controls-container"
+      },
+      "children": [
+        {
+          "_type": "ui.AntarcticaShowPanelButton",
+          "_label": "Журнал ходов",
+          "_semantics": "Кнопка открывает панель журнала ходов.",
+          "id": "btn-journal",
+          "props": {
+            "caption": "Журнал ходов"
+          },
+          "actions": {
+            "onClick": {
+              "payload": {
+                "panelId": "history"
+              }
+            }
+          }
+        },
+        {
+          "_type": "ui.AntarcticaShowPanelButton",
+          "_label": "Подсказка",
+          "_semantics": "Кнопка открывает панель подсказки.",
+          "id": "btn-hint",
+          "props": {
+            "caption": "Подсказка"
+          },
+          "actions": {
+            "onClick": {
+              "payload": {
+                "panelId": "hint"
+              }
+            }
+          }
+        },
+        {
+          "_type": "ui.AntarcticaNavButton",
+          "_label": "Назад",
+          "_semantics": "Кнопка навигации назад.",
+          "id": "nav-left",
+          "props": {
+            "caption": "Назад"
+          }
+        },
+        {
+          "_type": "ui.AntarcticaNavButton",
+          "_label": "Вперед",
+          "_semantics": "Кнопка навигации вперед.",
+          "id": "nav-right",
+          "props": {
+            "caption": "Вперед"
+          }
+        }
+      ]
+    }
+  },
   "root": {
     "_type": "ui.Manifest",
     "_label": "Web-интерфейс: Антарктическая корпорация",
@@ -62,12 +420,10 @@
         "type": "screen",
         "layout_mode": "topbar",
         "root": {
-          "_type": "ui.Component",
+          "_type": "ui.AntarcticaScreenRoot",
           "_label": "Корневой контейнер",
           "_semantics": "UI-компонент типа screenComponent.",
-          "type": "screenComponent",
           "props": {
-            "backgroundImage": "/images/arctic-background.png",
             "cssClass": "main-screen topbar-screen-shell"
           },
           "children": [
@@ -81,109 +437,76 @@
               },
               "children": [
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarScoreMetric",
                   "_label": "Остаток дней",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "score",
                   "props": {
-                    "caption": "Остаток дней",
-                    "backgroundImage": "/images/top-sidebar/days-top.png",
-                    "value": "{{game.state.public.metrics.score}}",
-                    "layout": "prominent",
                     "description": "Оставшееся время в игре. Основной параметр."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarProMetric",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "pro",
                   "props": {
-                    "caption": "Знания",
-                    "backgroundImage": "/images/top-sidebar/znaniya.png",
-                    "value": "{{game.state.public.metrics.pro}}",
                     "description": "Уровень знаний, который игрок может использовать для решения задач."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarRepMetric",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "rep",
                   "props": {
-                    "caption": "Доверие",
-                    "backgroundImage": "/images/top-sidebar/doverie.png",
-                    "value": "{{game.state.public.metrics.rep}}",
                     "description": "Уровень доверия команды и окружения к игроку."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarLidMetric",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "lid",
                   "props": {
-                    "caption": "Энергия",
-                    "backgroundImage": "/images/top-sidebar/energia.png",
-                    "value": "{{game.state.public.metrics.lid}}",
                     "description": "Ресурс на действия и принятие решений."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarManMetric",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "man",
                   "props": {
-                    "caption": "Контроль",
-                    "backgroundImage": "/images/top-sidebar/kontrol.png",
-                    "value": "{{game.state.public.metrics.man}}",
                     "description": "Способность управлять ситуацией и направлением изменений."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarStatMetric",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "stat",
                   "props": {
-                    "caption": "Статус",
-                    "backgroundImage": "/images/top-sidebar/status.png",
-                    "value": "{{game.state.public.metrics.stat}}",
                     "description": "Положение игрока в системе и степень влияния."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarContMetric",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "cont",
                   "props": {
-                    "caption": "Контакт",
-                    "backgroundImage": "/images/top-sidebar/kontakt.png",
-                    "value": "{{game.state.public.metrics.cont}}",
                     "description": "Доступность связей и поддержки вокруг игрока."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarConstrMetric",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "constr",
                   "props": {
-                    "caption": "Конструктив",
-                    "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                    "value": "{{game.state.public.metrics.constr}}",
                     "description": "Нацеленность на результат без пустых конфликтов."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.Component",
@@ -215,173 +538,72 @@
                   },
                   "children": [
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 1",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-1",
                       "props": {
                         "text": "Антарктика — это огромный мир, скрытый под толщей льда. Мы живем здесь тысячелетиями, но мир меняется."
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 2",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-2",
                       "props": {
                         "text": "Наши предки оставили нам легенды об устойчивости айсберга, но Федор заметил неладное. Трещина растет."
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 3",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-3",
                       "props": {
                         "text": "Совет пингвинов пока спорит, но время уходит. Нужно действовать быстро, пока лед не тронулся."
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 4",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-4",
                       "props": {
                         "text": "Мы можем попытаться укрепить наш дом, но Профессор считает, что это лишь отсрочит неизбежное."
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 5",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-5",
                       "props": {
                         "text": "Слухи о чайках и новых землях кажутся сказкой, но что если это наш единственный шанс на спасение?"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 6",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-6",
                       "props": {
                         "text": "Каждый пингвин должен сделать выбор. Остаться и верить в чудо, или отправиться в неизвестность."
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     }
                   ]
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaDefaultBottomControls",
                   "_label": "Область bottom controls container",
                   "_semantics": "UI-компонент типа areaComponent.",
-                  "type": "areaComponent",
-                  "props": {
-                    "cssClass": "bottom-controls-container"
-                  },
-                  "children": [
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Журнал ходов",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "btn-journal",
-                      "props": {
-                        "caption": "Журнал ходов",
-                        "variant": "helper"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "showPanel",
-                          "payload": {
-                            "panelId": "history"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Подсказка",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "btn-hint",
-                      "props": {
-                        "caption": "Подсказка",
-                        "variant": "helper"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "showPanel",
-                          "payload": {
-                            "panelId": "hint"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Назад",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "nav-left",
-                      "props": {
-                        "caption": "Назад",
-                        "variant": "nav"
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Вперед",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "nav-right",
-                      "props": {
-                        "caption": "Вперед",
-                        "variant": "nav"
-                      }
-                    }
-                  ]
+                  "type": "areaComponent"
                 }
               ]
             },
@@ -394,7 +616,8 @@
                 "cssClass": "additional-background"
               }
             }
-          ]
+          ],
+          "type": "screenComponent"
         },
         "title": "Antarctica",
         "layout_id": "layout.web.s1"
@@ -407,12 +630,10 @@
         "type": "screen",
         "layout_mode": "topbar",
         "root": {
-          "_type": "ui.Component",
+          "_type": "ui.AntarcticaScreenRoot",
           "_label": "Корневой контейнер",
           "_semantics": "UI-компонент типа screenComponent.",
-          "type": "screenComponent",
           "props": {
-            "backgroundImage": "/images/arctic-background.png",
             "cssClass": "main-screen topbar-screen-shell"
           },
           "children": [
@@ -426,102 +647,55 @@
               },
               "children": [
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarScoreMetric",
                   "_label": "Остаток дней",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "score",
                   "props": {
-                    "caption": "Остаток дней",
-                    "backgroundImage": "/images/top-sidebar/days-top.png",
-                    "value": "{{game.state.public.metrics.score}}",
-                    "layout": "prominent",
                     "description": "Оставшееся время в игре."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarProMetric",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "pro",
-                  "props": {
-                    "caption": "Знания",
-                    "backgroundImage": "/images/top-sidebar/znaniya.png",
-                    "value": "{{game.state.public.metrics.pro}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarRepMetric",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "rep",
-                  "props": {
-                    "caption": "Доверие",
-                    "backgroundImage": "/images/top-sidebar/doverie.png",
-                    "value": "{{game.state.public.metrics.rep}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarLidMetric",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "lid",
-                  "props": {
-                    "caption": "Энергия",
-                    "backgroundImage": "/images/top-sidebar/energia.png",
-                    "value": "{{game.state.public.metrics.lid}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarManMetric",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "man",
-                  "props": {
-                    "caption": "Контроль",
-                    "backgroundImage": "/images/top-sidebar/kontrol.png",
-                    "value": "{{game.state.public.metrics.man}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarStatMetric",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "stat",
-                  "props": {
-                    "caption": "Статус",
-                    "backgroundImage": "/images/top-sidebar/status.png",
-                    "value": "{{game.state.public.metrics.stat}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarContMetric",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "cont",
-                  "props": {
-                    "caption": "Контакт",
-                    "backgroundImage": "/images/top-sidebar/kontakt.png",
-                    "value": "{{game.state.public.metrics.cont}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarConstrMetric",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "constr",
-                  "props": {
-                    "caption": "Конструктив",
-                    "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                    "value": "{{game.state.public.metrics.constr}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.Component",
@@ -562,24 +736,22 @@
                       },
                       "children": [
                         {
-                          "_type": "ui.Component",
+                          "_type": "ui.AntarcticaFallbackHeadText",
                           "_label": "Заголовок текущей доски",
                           "_semantics": "Заголовок берется из currentBoard в player-facing projection.",
-                          "type": "richTextComponent",
                           "props": {
-                            "html": "{{currentBoard.title}}",
-                            "cssClass": "fallback-card-head"
-                          }
+                            "html": "{{currentBoard.title}}"
+                          },
+                          "type": "richTextComponent"
                         },
                         {
-                          "_type": "ui.Component",
+                          "_type": "ui.AntarcticaFallbackCopyText",
                           "_label": "Описание текущей доски",
                           "_semantics": "Описание берется из currentBoard в player-facing projection.",
-                          "type": "richTextComponent",
                           "props": {
-                            "html": "{{currentBoard.body}}",
-                            "cssClass": "fallback-copy"
-                          }
+                            "html": "{{currentBoard.body}}"
+                          },
+                          "type": "richTextComponent"
                         }
                       ]
                     }
@@ -599,98 +771,19 @@
                   },
                   "children": [
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaBoardChoiceCard",
                       "_label": "Карточка текущей доски",
                       "_semantics": "Данные карточки и action id берутся из boardCards.",
-                      "type": "cardComponent",
-                      "props": {
-                        "title": "{{card.title}}",
-                        "summary": "{{card.summary}}",
-                        "selectLabel": "{{card.selectLabel || \"Выбрать\"}}",
-                        "visualState": "{{card.visualState || \"default\"}}"
-                      },
                       "id": "board-card",
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {
-                            "cardId": "{{card.cardId}}"
-                          }
-                        }
-                      }
+                      "type": "cardComponent"
                     }
                   ]
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaDefaultBottomControls",
                   "_label": "Область bottom controls container",
                   "_semantics": "UI-компонент типа areaComponent.",
-                  "type": "areaComponent",
-                  "props": {
-                    "cssClass": "bottom-controls-container"
-                  },
-                  "children": [
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Журнал ходов",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "btn-journal",
-                      "props": {
-                        "caption": "Журнал ходов",
-                        "variant": "helper"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "showPanel",
-                          "payload": {
-                            "panelId": "history"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Подсказка",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "btn-hint",
-                      "props": {
-                        "caption": "Подсказка",
-                        "variant": "helper"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "showPanel",
-                          "payload": {
-                            "panelId": "hint"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Назад",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "nav-left",
-                      "props": {
-                        "caption": "Назад",
-                        "variant": "nav"
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Вперед",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "nav-right",
-                      "props": {
-                        "caption": "Вперед",
-                        "variant": "nav"
-                      }
-                    }
-                  ]
+                  "type": "areaComponent"
                 }
               ]
             },
@@ -703,7 +796,8 @@
                 "cssClass": "additional-background"
               }
             }
-          ]
+          ],
+          "type": "screenComponent"
         },
         "title": "Доска выбора действий",
         "layout_id": "layout.web.board"
@@ -716,12 +810,10 @@
         "type": "screen",
         "layout_mode": "topbar",
         "root": {
-          "_type": "ui.Component",
+          "_type": "ui.AntarcticaScreenRoot",
           "_label": "Корневой контейнер",
           "_semantics": "UI-компонент типа screenComponent.",
-          "type": "screenComponent",
           "props": {
-            "backgroundImage": "/images/arctic-background.png",
             "cssClass": "main-screen info-screen-shell topbar-screen-shell"
           },
           "children": [
@@ -735,102 +827,55 @@
               },
               "children": [
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarScoreMetric",
                   "_label": "Остаток дней",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "score",
                   "props": {
-                    "caption": "Остаток дней",
-                    "backgroundImage": "/images/top-sidebar/days-top.png",
-                    "value": "{{game.state.public.metrics.score}}",
-                    "layout": "prominent",
                     "description": "Оставшееся время в игре."
-                  }
+                  },
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarProMetric",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "pro",
-                  "props": {
-                    "caption": "Знания",
-                    "backgroundImage": "/images/top-sidebar/znaniya.png",
-                    "value": "{{game.state.public.metrics.pro}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarRepMetric",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "rep",
-                  "props": {
-                    "caption": "Доверие",
-                    "backgroundImage": "/images/top-sidebar/doverie.png",
-                    "value": "{{game.state.public.metrics.rep}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarLidMetric",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "lid",
-                  "props": {
-                    "caption": "Энергия",
-                    "backgroundImage": "/images/top-sidebar/energia.png",
-                    "value": "{{game.state.public.metrics.lid}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarManMetric",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "man",
-                  "props": {
-                    "caption": "Контроль",
-                    "backgroundImage": "/images/top-sidebar/kontrol.png",
-                    "value": "{{game.state.public.metrics.man}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarStatMetric",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "stat",
-                  "props": {
-                    "caption": "Статус",
-                    "backgroundImage": "/images/top-sidebar/status.png",
-                    "value": "{{game.state.public.metrics.stat}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarContMetric",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "cont",
-                  "props": {
-                    "caption": "Контакт",
-                    "backgroundImage": "/images/top-sidebar/kontakt.png",
-                    "value": "{{game.state.public.metrics.cont}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaTopbarConstrMetric",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "type": "gameVariableComponent",
-                  "id": "constr",
-                  "props": {
-                    "caption": "Конструктив",
-                    "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                    "value": "{{game.state.public.metrics.constr}}"
-                  }
+                  "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.Component",
@@ -892,26 +937,24 @@
                           },
                           "children": [
                             {
-                              "_type": "ui.Component",
+                              "_type": "ui.AntarcticaFallbackHeadText",
                               "_label": "Заголовок текущей информации",
                               "_semantics": "Заголовок берется из currentInfo.",
-                              "type": "richTextComponent",
                               "props": {
-                                "html": "{{currentInfo.title}}",
-                                "cssClass": "fallback-card-head"
+                                "html": "{{currentInfo.title}}"
                               },
-                              "id": "info-title"
+                              "id": "info-title",
+                              "type": "richTextComponent"
                             },
                             {
-                              "_type": "ui.Component",
+                              "_type": "ui.AntarcticaFallbackCopyText",
                               "_label": "Текст текущей информации",
                               "_semantics": "Текст берется из currentInfo.",
-                              "type": "richTextComponent",
                               "props": {
-                                "html": "{{currentInfo.body}}",
-                                "cssClass": "fallback-copy"
+                                "html": "{{currentInfo.body}}"
                               },
-                              "id": "info-body"
+                              "id": "info-body",
+                              "type": "richTextComponent"
                             }
                           ]
                         }
@@ -946,64 +989,58 @@
                       }
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaNavButton",
                       "_label": "Назад",
                       "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
                       "id": "nav-left",
                       "props": {
-                        "caption": "Назад",
-                        "variant": "nav"
-                      }
+                        "caption": "Назад"
+                      },
+                      "type": "buttonComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaNavButton",
                       "_label": "Вперед",
                       "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
                       "id": "nav-right",
                       "props": {
-                        "caption": "Вперед",
-                        "variant": "nav"
-                      }
+                        "caption": "Вперед"
+                      },
+                      "type": "buttonComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaShowPanelButton",
                       "_label": "Журнал ходов",
                       "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
                       "id": "btn-journal",
                       "props": {
-                        "caption": "Журнал ходов",
-                        "variant": "helper"
+                        "caption": "Журнал ходов"
                       },
                       "actions": {
                         "onClick": {
-                          "command": "showPanel",
                           "payload": {
                             "panelId": "history"
                           }
                         }
-                      }
+                      },
+                      "type": "buttonComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaShowPanelButton",
                       "_label": "Подсказка",
                       "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
                       "id": "btn-hint",
                       "props": {
-                        "caption": "Подсказка",
-                        "variant": "helper"
+                        "caption": "Подсказка"
                       },
                       "actions": {
                         "onClick": {
-                          "command": "showPanel",
                           "payload": {
                             "panelId": "hint"
                           }
                         }
-                      }
+                      },
+                      "type": "buttonComponent"
                     }
                   ]
                 }
@@ -1018,7 +1055,8 @@
                 "cssClass": "additional-background"
               }
             }
-          ]
+          ],
+          "type": "screenComponent"
         },
         "title": "Информационный экран",
         "layout_id": "layout.web.info"
@@ -1031,12 +1069,10 @@
         "type": "screen",
         "layout_mode": "leftsidebar",
         "root": {
-          "_type": "ui.Component",
+          "_type": "ui.AntarcticaScreenRoot",
           "_label": "Корневой контейнер",
           "_semantics": "UI-компонент типа screenComponent.",
-          "type": "screenComponent",
           "props": {
-            "backgroundImage": "/images/arctic-background.png",
             "cssClass": "main-screen leftsidebar-screen"
           },
           "children": [
@@ -1184,173 +1220,72 @@
                   },
                   "children": [
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 1",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-1",
                       "props": {
                         "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 2",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-2",
                       "props": {
                         "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 3",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-3",
                       "props": {
                         "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 4",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-4",
                       "props": {
                         "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 5",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-5",
                       "props": {
                         "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     },
                     {
-                      "_type": "ui.Component",
+                      "_type": "ui.AntarcticaRequestServerCard",
                       "_label": "Карточка card 6",
                       "_semantics": "UI-компонент типа cardComponent.",
-                      "type": "cardComponent",
                       "id": "card-6",
                       "props": {
                         "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                       },
-                      "actions": {
-                        "onClick": {
-                          "command": "requestServer",
-                          "payload": {}
-                        }
-                      }
+                      "type": "cardComponent"
                     }
                   ]
                 },
                 {
-                  "_type": "ui.Component",
+                  "_type": "ui.AntarcticaDefaultBottomControls",
                   "_label": "Область bottom controls container",
                   "_semantics": "UI-компонент типа areaComponent.",
-                  "type": "areaComponent",
-                  "props": {
-                    "cssClass": "bottom-controls-container"
-                  },
-                  "children": [
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Журнал ходов",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "btn-journal",
-                      "props": {
-                        "caption": "Журнал ходов",
-                        "variant": "helper"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "showPanel",
-                          "payload": {
-                            "panelId": "history"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Подсказка",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "btn-hint",
-                      "props": {
-                        "caption": "Подсказка",
-                        "variant": "helper"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "showPanel",
-                          "payload": {
-                            "panelId": "hint"
-                          }
-                        }
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Назад",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "nav-left",
-                      "props": {
-                        "caption": "Назад",
-                        "variant": "nav"
-                      }
-                    },
-                    {
-                      "_type": "ui.Component",
-                      "_label": "Вперед",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "type": "buttonComponent",
-                      "id": "nav-right",
-                      "props": {
-                        "caption": "Вперед",
-                        "variant": "nav"
-                      }
-                    }
-                  ]
+                  "type": "areaComponent"
                 }
               ]
             },
@@ -1363,7 +1298,8 @@
                 "cssClass": "additional-background"
               }
             }
-          ]
+          ],
+          "type": "screenComponent"
         },
         "title": "Antarctica (Left Sidebar)",
         "layout_id": "layout.web.s1_left"
@@ -1371,10 +1307,7 @@
     ],
     "panels": {
       "history": {
-        "type": "panel",
         "title": "Журнал ходов",
-        "mode": "overlay",
-        "layout_mode": "topbar",
         "design_artifact_id": "moves-journal",
         "root": {
           "type": "screenComponent",
@@ -1521,55 +1454,50 @@
                   ]
                 },
                 {
-                  "type": "areaComponent",
-                  "props": {
-                    "cssClass": "button-container panel-buttons"
-                  },
                   "children": [
                     {
-                      "type": "buttonComponent",
                       "id": "btn-journal",
                       "props": {
-                        "caption": "Журнал ходов",
-                        "variant": "helper"
+                        "caption": "Журнал ходов"
                       },
                       "actions": {
                         "onClick": {
-                          "command": "closePanel",
                           "payload": {
                             "panelId": "history"
                           }
                         }
-                      }
+                      },
+                      "_type": "ui.AntarcticaClosePanelButton",
+                      "type": "buttonComponent"
                     },
                     {
-                      "type": "buttonComponent",
                       "id": "btn-hint",
                       "props": {
-                        "caption": "Подсказка",
-                        "variant": "helper"
+                        "caption": "Подсказка"
                       },
                       "actions": {
                         "onClick": {
-                          "command": "showPanel",
                           "payload": {
                             "panelId": "hint"
                           }
                         }
-                      }
+                      },
+                      "_type": "ui.AntarcticaShowPanelButton",
+                      "type": "buttonComponent"
                     }
-                  ]
+                  ],
+                  "_type": "ui.AntarcticaPanelButtonContainer",
+                  "type": "areaComponent"
                 }
               ]
             }
           ]
-        }
+        },
+        "_type": "ui.AntarcticaOverlayPanel",
+        "type": "panel"
       },
       "hint": {
-        "type": "panel",
         "title": "Подсказка",
-        "mode": "overlay",
-        "layout_mode": "topbar",
         "design_artifact_id": "topsidebar-infocard",
         "root": {
           "type": "screenComponent",
@@ -1584,85 +1512,60 @@
               },
               "children": [
                 {
-                  "type": "gameVariableComponent",
-                  "id": "score",
                   "props": {
-                    "caption": "Остаток дней",
-                    "backgroundImage": "/images/top-sidebar/days-top.png",
-                    "value": "{{game.state.public.metrics.score}}",
-                    "layout": "prominent",
                     "description": "Оставшееся время в игре. Основной параметр."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarScoreMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "pro",
                   "props": {
-                    "caption": "Знания",
-                    "backgroundImage": "/images/top-sidebar/znaniya.png",
-                    "value": "{{game.state.public.metrics.pro}}",
                     "description": "Уровень знаний, который игрок может использовать для решения задач."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarProMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "rep",
                   "props": {
-                    "caption": "Доверие",
-                    "backgroundImage": "/images/top-sidebar/doverie.png",
-                    "value": "{{game.state.public.metrics.rep}}",
                     "description": "Уровень доверия команды и окружения к игроку."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarRepMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "lid",
                   "props": {
-                    "caption": "Энергия",
-                    "backgroundImage": "/images/top-sidebar/energia.png",
-                    "value": "{{game.state.public.metrics.lid}}",
                     "description": "Ресурс на действия и принятие решений."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarLidMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "man",
                   "props": {
-                    "caption": "Контроль",
-                    "backgroundImage": "/images/top-sidebar/kontrol.png",
-                    "value": "{{game.state.public.metrics.man}}",
                     "description": "Способность управлять ситуацией и направлением изменений."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarManMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "stat",
                   "props": {
-                    "caption": "Статус",
-                    "backgroundImage": "/images/top-sidebar/status.png",
-                    "value": "{{game.state.public.metrics.stat}}",
                     "description": "Положение игрока в системе и степень влияния."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarStatMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "cont",
                   "props": {
-                    "caption": "Контакт",
-                    "backgroundImage": "/images/top-sidebar/kontakt.png",
-                    "value": "{{game.state.public.metrics.cont}}",
                     "description": "Доступность связей и поддержки вокруг игрока."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarContMetric",
+                  "type": "gameVariableComponent"
                 },
                 {
-                  "type": "gameVariableComponent",
-                  "id": "constr",
                   "props": {
-                    "caption": "Конструктив",
-                    "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                    "value": "{{game.state.public.metrics.constr}}",
                     "description": "Нацеленность на результат без пустых конфликтов."
-                  }
+                  },
+                  "_type": "ui.AntarcticaTopbarConstrMetric",
+                  "type": "gameVariableComponent"
                 }
               ]
             },
@@ -1696,65 +1599,63 @@
               ]
             },
             {
-              "type": "areaComponent",
-              "props": {
-                "cssClass": "button-container panel-buttons"
-              },
               "children": [
                 {
-                  "type": "buttonComponent",
                   "id": "btn-journal",
                   "props": {
-                    "caption": "Журнал ходов",
-                    "variant": "helper"
+                    "caption": "Журнал ходов"
                   },
                   "actions": {
                     "onClick": {
-                      "command": "showPanel",
                       "payload": {
                         "panelId": "history"
                       }
                     }
-                  }
+                  },
+                  "_type": "ui.AntarcticaShowPanelButton",
+                  "type": "buttonComponent"
                 },
                 {
-                  "type": "buttonComponent",
                   "id": "btn-hint",
                   "props": {
-                    "caption": "Подсказка",
-                    "variant": "helper"
+                    "caption": "Подсказка"
                   },
                   "actions": {
                     "onClick": {
-                      "command": "closePanel",
                       "payload": {
                         "panelId": "hint"
                       }
                     }
-                  }
+                  },
+                  "_type": "ui.AntarcticaClosePanelButton",
+                  "type": "buttonComponent"
                 },
                 {
-                  "type": "buttonComponent",
                   "id": "nav-left",
                   "props": {
                     "caption": "Назад",
-                    "variant": "nav",
                     "disabled": true
-                  }
+                  },
+                  "_type": "ui.AntarcticaNavButton",
+                  "type": "buttonComponent"
                 },
                 {
-                  "type": "buttonComponent",
                   "id": "nav-right",
                   "props": {
                     "caption": "Вперед",
-                    "variant": "nav",
                     "disabled": true
-                  }
+                  },
+                  "_type": "ui.AntarcticaNavButton",
+                  "type": "buttonComponent"
                 }
-              ]
+              ],
+              "_type": "ui.AntarcticaPanelButtonContainer",
+              "type": "areaComponent"
             }
           ]
-        }
+        },
+        "_type": "ui.AntarcticaOverlayPanel",
+        "type": "panel"
       }
     },
     "layouts": {

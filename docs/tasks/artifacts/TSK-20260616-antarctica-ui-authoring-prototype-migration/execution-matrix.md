@@ -73,13 +73,13 @@ Top candidate groups to keep:
 
 | Slice | Goal | Main Edit | Done When |
 | --- | --- | --- | --- |
-| S0. Baseline | Confirm current state and diff target. | No source edits. | Compile check passes or baseline failure is recorded. |
-| S1. Button prototypes | Extract helper and nav button leaves. | Add 3 definitions and replace button instances. | Generated UI manifest is unchanged; button duplication decreases. |
-| S2. Card prototypes | Extract static and dynamic card leaves. | Add request-server and board-choice card definitions. | Static card action shape no longer repeats. |
-| S3. Metric prototypes | Extract repeated topbar metrics. | Add base + metric-specific topbar definitions. | Metric copies shrink without losing variant descriptions. |
-| S4. Container prototypes | Extract safe shells and rows. | Add root, bottom-controls, panel container definitions. | No broad screen-level arrays are hidden. |
-| S5. Journal internals | Extract journal entry side only if readable. | Add journal side definition. | Journal structure remains understandable in editor. |
-| S6. Closeout | Final audit and handoff. | Update task log. | Audit shows local prototypes and validation evidence. |
+| S0. Baseline | Confirm current state and diff target. | No source edits. | Done: compile baseline passed and runtime UI snapshot was captured. |
+| S1. Button prototypes | Extract helper and nav button leaves. | Add 3 definitions and replace button instances. | Done: show/close panel and nav button prototypes applied. |
+| S2. Card prototypes | Extract static and dynamic card leaves. | Add request-server and board-choice card definitions. | Done: 12 static cards and the dynamic board card use local prototypes. |
+| S3. Metric prototypes | Extract repeated topbar metrics. | Add base + metric-specific topbar definitions. | Done: 8 topbar metric prototypes applied to repeated topbar/hint instances. |
+| S4. Container prototypes | Extract safe shells and rows. | Add root, bottom-controls, panel container definitions. | Done: screen root, overlay panel, panel button container, fallback text and default bottom controls applied. |
+| S5. Journal internals | Extract journal entry side only if readable. | Add journal side definition. | Deferred: current array replacement makes a useful journal side prototype too indirect. |
+| S6. Closeout | Final audit and handoff. | Update task log. | Done: validation evidence recorded in active task. |
 
 ## Prototype Details
 
@@ -216,6 +216,7 @@ NODE
 | Left-sidebar metrics | Only one current screen uses them; keep explicit until another repeated source appears. |
 | Platform-level `ui.PanelButton` | Needs evidence from another game/channel before promotion. |
 | `root.metric_specs` reconciliation | Separate task; current specs diverge from actual rendered metric components. |
+| Residual deterministic audit candidates after extraction | Current scanner still reports small repeated `props` and inherited-instance fragments; handle through smarter grouping or suppression, not by over-extracting. |
 
 ## Handoff Checklist
 

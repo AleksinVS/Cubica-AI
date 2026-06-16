@@ -164,80 +164,80 @@
                 "children": [
                   {
                     "type": "cardComponent",
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    },
                     "id": "card-1",
                     "props": {
                       "text": "Антарктика — это огромный мир, скрытый под толщей льда. Мы живем здесь тысячелетиями, но мир меняется."
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-2",
                     "props": {
                       "text": "Наши предки оставили нам легенды об устойчивости айсберга, но Федор заметил неладное. Трещина растет."
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-3",
                     "props": {
                       "text": "Совет пингвинов пока спорит, но время уходит. Нужно действовать быстро, пока лед не тронулся."
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-4",
                     "props": {
                       "text": "Мы можем попытаться укрепить наш дом, но Профессор считает, что это лишь отсрочит неизбежное."
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-5",
                     "props": {
                       "text": "Слухи о чайках и новых землях кажутся сказкой, но что если это наш единственный шанс на спасение?"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
                     }
                   },
                   {
                     "type": "cardComponent",
-                    "id": "card-6",
-                    "props": {
-                      "text": "Каждый пингвин должен сделать выбор. Остаться и верить в чудо, или отправиться в неизвестность."
-                    },
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
+                    },
+                    "id": "card-6",
+                    "props": {
+                      "text": "Каждый пингвин должен сделать выбор. Остаться и верить в чудо, или отправиться в неизвестность."
                     }
                   }
                 ]
@@ -250,10 +250,9 @@
                 "children": [
                   {
                     "type": "buttonComponent",
-                    "id": "btn-journal",
                     "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Журнал ходов"
                     },
                     "actions": {
                       "onClick": {
@@ -262,14 +261,14 @@
                           "panelId": "history"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-journal"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "btn-hint",
                     "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Подсказка"
                     },
                     "actions": {
                       "onClick": {
@@ -278,23 +277,24 @@
                           "panelId": "hint"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-hint"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-left",
                     "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Назад"
+                    },
+                    "id": "nav-left"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-right",
                     "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Вперед"
+                    },
+                    "id": "nav-right"
                   }
                 ]
               }
@@ -430,15 +430,15 @@
                       {
                         "type": "richTextComponent",
                         "props": {
-                          "html": "{{currentBoard.title}}",
-                          "cssClass": "fallback-card-head"
+                          "cssClass": "fallback-card-head",
+                          "html": "{{currentBoard.title}}"
                         }
                       },
                       {
                         "type": "richTextComponent",
                         "props": {
-                          "html": "{{currentBoard.body}}",
-                          "cssClass": "fallback-copy"
+                          "cssClass": "fallback-copy",
+                          "html": "{{currentBoard.body}}"
                         }
                       }
                     ]
@@ -463,7 +463,6 @@
                       "selectLabel": "{{card.selectLabel || \"Выбрать\"}}",
                       "visualState": "{{card.visualState || \"default\"}}"
                     },
-                    "id": "board-card",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
@@ -471,7 +470,8 @@
                           "cardId": "{{card.cardId}}"
                         }
                       }
-                    }
+                    },
+                    "id": "board-card"
                   }
                 ]
               },
@@ -483,10 +483,9 @@
                 "children": [
                   {
                     "type": "buttonComponent",
-                    "id": "btn-journal",
                     "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Журнал ходов"
                     },
                     "actions": {
                       "onClick": {
@@ -495,14 +494,14 @@
                           "panelId": "history"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-journal"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "btn-hint",
                     "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Подсказка"
                     },
                     "actions": {
                       "onClick": {
@@ -511,23 +510,24 @@
                           "panelId": "hint"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-hint"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-left",
                     "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Назад"
+                    },
+                    "id": "nav-left"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-right",
                     "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Вперед"
+                    },
+                    "id": "nav-right"
                   }
                 ]
               }
@@ -678,16 +678,16 @@
                           {
                             "type": "richTextComponent",
                             "props": {
-                              "html": "{{currentInfo.title}}",
-                              "cssClass": "fallback-card-head"
+                              "cssClass": "fallback-card-head",
+                              "html": "{{currentInfo.title}}"
                             },
                             "id": "info-title"
                           },
                           {
                             "type": "richTextComponent",
                             "props": {
-                              "html": "{{currentInfo.body}}",
-                              "cssClass": "fallback-copy"
+                              "cssClass": "fallback-copy",
+                              "html": "{{currentInfo.body}}"
                             },
                             "id": "info-body"
                           }
@@ -719,26 +719,25 @@
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-left",
                     "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Назад"
+                    },
+                    "id": "nav-left"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-right",
                     "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Вперед"
+                    },
+                    "id": "nav-right"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "btn-journal",
                     "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Журнал ходов"
                     },
                     "actions": {
                       "onClick": {
@@ -747,14 +746,14 @@
                           "panelId": "history"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-journal"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "btn-hint",
                     "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Подсказка"
                     },
                     "actions": {
                       "onClick": {
@@ -763,7 +762,8 @@
                           "panelId": "hint"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-hint"
                   }
                 ]
               }
@@ -899,80 +899,80 @@
                 "children": [
                   {
                     "type": "cardComponent",
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {}
+                      }
+                    },
                     "id": "card-1",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-2",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-3",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-4",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
-                    },
+                    }
+                  },
+                  {
+                    "type": "cardComponent",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
+                    },
                     "id": "card-5",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
                     }
                   },
                   {
                     "type": "cardComponent",
-                    "id": "card-6",
-                    "props": {
-                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
-                    },
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {}
                       }
+                    },
+                    "id": "card-6",
+                    "props": {
+                      "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
                     }
                   }
                 ]
@@ -985,10 +985,9 @@
                 "children": [
                   {
                     "type": "buttonComponent",
-                    "id": "btn-journal",
                     "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Журнал ходов"
                     },
                     "actions": {
                       "onClick": {
@@ -997,14 +996,14 @@
                           "panelId": "history"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-journal"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "btn-hint",
                     "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Подсказка"
                     },
                     "actions": {
                       "onClick": {
@@ -1013,23 +1012,24 @@
                           "panelId": "hint"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-hint"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-left",
                     "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Назад"
+                    },
+                    "id": "nav-left"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "nav-right",
                     "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
+                      "variant": "nav",
+                      "caption": "Вперед"
+                    },
+                    "id": "nav-right"
                   }
                 ]
               }
@@ -1050,9 +1050,9 @@
   "panels": {
     "history": {
       "type": "panel",
-      "title": "Журнал ходов",
       "mode": "overlay",
       "layout_mode": "topbar",
+      "title": "Журнал ходов",
       "design_artifact_id": "moves-journal",
       "root": {
         "type": "screenComponent",
@@ -1206,10 +1206,9 @@
                 "children": [
                   {
                     "type": "buttonComponent",
-                    "id": "btn-journal",
                     "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Журнал ходов"
                     },
                     "actions": {
                       "onClick": {
@@ -1218,14 +1217,14 @@
                           "panelId": "history"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-journal"
                   },
                   {
                     "type": "buttonComponent",
-                    "id": "btn-hint",
                     "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
+                      "variant": "helper",
+                      "caption": "Подсказка"
                     },
                     "actions": {
                       "onClick": {
@@ -1234,7 +1233,8 @@
                           "panelId": "hint"
                         }
                       }
-                    }
+                    },
+                    "id": "btn-hint"
                   }
                 ]
               }
@@ -1245,9 +1245,9 @@
     },
     "hint": {
       "type": "panel",
-      "title": "Подсказка",
       "mode": "overlay",
       "layout_mode": "topbar",
+      "title": "Подсказка",
       "design_artifact_id": "topsidebar-infocard",
       "root": {
         "type": "screenComponent",
@@ -1381,10 +1381,9 @@
             "children": [
               {
                 "type": "buttonComponent",
-                "id": "btn-journal",
                 "props": {
-                  "caption": "Журнал ходов",
-                  "variant": "helper"
+                  "variant": "helper",
+                  "caption": "Журнал ходов"
                 },
                 "actions": {
                   "onClick": {
@@ -1393,14 +1392,14 @@
                       "panelId": "history"
                     }
                   }
-                }
+                },
+                "id": "btn-journal"
               },
               {
                 "type": "buttonComponent",
-                "id": "btn-hint",
                 "props": {
-                  "caption": "Подсказка",
-                  "variant": "helper"
+                  "variant": "helper",
+                  "caption": "Подсказка"
                 },
                 "actions": {
                   "onClick": {
@@ -1409,25 +1408,26 @@
                       "panelId": "hint"
                     }
                   }
-                }
+                },
+                "id": "btn-hint"
               },
               {
                 "type": "buttonComponent",
-                "id": "nav-left",
                 "props": {
+                  "variant": "nav",
                   "caption": "Назад",
-                  "variant": "nav",
                   "disabled": true
-                }
+                },
+                "id": "nav-left"
               },
               {
                 "type": "buttonComponent",
-                "id": "nav-right",
                 "props": {
-                  "caption": "Вперед",
                   "variant": "nav",
+                  "caption": "Вперед",
                   "disabled": true
-                }
+                },
+                "id": "nav-right"
               }
             ]
           }
