@@ -11,7 +11,6 @@ import { ManifestAction } from "@cubica/contracts-manifest";
 import { useLocale, LocaleProvider } from "@/lib/locale";
 import { ru } from "@/lib/locale/ru";
 import type { PlayerState } from "@/presenter/types";
-import type { RuntimeLogEntry } from "@/types/game-state";
 import type { ViewCommand } from "@cubica/sdk-core";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
@@ -22,8 +21,6 @@ import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { CubicaSurfaceRenderer } from "@/components/surface/cubica-surface-renderer";
 import { RuntimeStatusPanel } from "@/components/runtime-status-panel";
-import { HintRenderer } from "@/components/panels/hint-renderer";
-import { JournalRenderer } from "@/components/panels/journal-renderer";
 import {
   useEditorPreviewBridge,
   type EditorPreviewCompletedAction,
@@ -266,6 +263,10 @@ export function GamePlayer({
     const presenter = presenterRef.current;
     if (!presenter) return;
 
+    if (handlePanelCommand(command, payload)) {
+      return;
+    }
+
     const adapter = presenter.createManifestActionAdapter(
       (actionId, actionPayload) => handleAction(actionId, actionPayload),
       (message) => {
@@ -273,6 +274,24 @@ export function GamePlayer({
       }
     );
     adapter(command, payload);
+  };
+
+  const handlePanelCommand = (command: string, payload: Record<string, unknown>): boolean => {
+    if (command === ManifestAction.SHOW_PANEL) {
+      const panelId = payload.panelId ?? payload.panel;
+      if (typeof panelId === "string" && panelId.trim() !== "") {
+        void handleAction(ManifestAction.SHOW_PANEL, { panelId });
+      }
+      return true;
+    }
+
+    if (command === ManifestAction.CLOSE_PANEL || command === ManifestAction.DISMISS_PANEL) {
+      const panelId = payload.panelId ?? payload.panel ?? activePanel;
+      void handleAction(ManifestAction.CLOSE_PANEL, typeof panelId === "string" ? { panelId } : {});
+      return true;
+    }
+
+    return false;
   };
 
   const handleDismissPanel = (panel: string) => {
@@ -335,31 +354,22 @@ export function GamePlayer({
   }
 
   const metrics = state.metrics;
-  const log = state.log;
+  const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
 
   return (
     <main ref={rootRef} className="shell game-player-root">
-      {state.activePanel === "history" ? (
-        <JournalRenderer
+      {activeManifestPanel ? (
+        <ManifestRenderer
+          screenDefinition={activeManifestPanel}
           metrics={metrics}
-          log={log as Array<RuntimeLogEntry>}
-          onJournal={() => handleDismissPanel("history")}
-          onHint={() => handleAction(ManifestAction.SHOW_HINT)}
-          onClose={() => handleDismissPanel("history")}
-          fallbackMetrics={fullConfig.fallbackMetrics}
+          onAction={handleManifestAction}
+          screenKey={state.activePanel ?? undefined}
+          rootRuntimePointer={`/panels/${state.activePanel}/root`}
+          layoutMode={layoutMode}
+          metricBackgroundImages={fullConfig.metricBackgroundImages}
           gameState={state as Record<string, unknown>}
-          content={content}
-        />
-      ) : state.activePanel === "hint" ? (
-        <HintRenderer
-          content={content}
-          metrics={metrics}
-          log={log as Array<{ actionId: string; payload?: unknown; capability?: string; capabilityFamily?: string; at?: string }>}
-          onJournal={() => handleAction(ManifestAction.SHOW_HISTORY)}
-          onHint={() => handleDismissPanel("hint")}
-          onClose={() => handleDismissPanel("hint")}
-          fallbackMetrics={fullConfig.fallbackMetrics}
-          defaultHintText={fullConfig.resolveHintText?.(content, state as Record<string, unknown>) ?? null}
+          designArtifacts={gameUi?.designArtifacts}
+          editorPreviewMode={editorPreviewMode}
         />
       ) : state.agentSurface ? (
         <CubicaSurfaceRenderer
@@ -396,8 +406,8 @@ export function GamePlayer({
           dispatchAction={handleAction}
           fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}
           onManifestAction={handleManifestAction}
-          onJournal={() => handleAction(ManifestAction.SHOW_HISTORY)}
-          onHint={() => handleAction(ManifestAction.SHOW_HINT)}
+          onJournal={() => handleAction(ManifestAction.SHOW_PANEL, { panelId: "history" })}
+          onHint={() => handleAction(ManifestAction.SHOW_PANEL, { panelId: "hint" })}
           isPending={state.isPending}
           sessionId={state.sessionId}
           editorPreviewMode={editorPreviewMode}

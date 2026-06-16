@@ -79,9 +79,8 @@ exports.ANTARCTICA_GAME_CONFIG_DATA = {
         { id: "constr", caption: "Конструктив", aliases: ["constr", "constructive"], sidebarImage: "/images/left-sidebar/konstruktiv.png", topbarImage: "/images/top-sidebar/konstruktiv.png" }
     ],
     topbarScreenKeys: [
-        "55..60",
-        "61..66",
-        "67..70"
+        "board-topbar",
+        "info-topbar"
     ],
     metricBackgroundImages: {
         score: "/images/top-sidebar/days-top.png",
@@ -114,6 +113,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAntarcticaConfig = void 0;
 const plugin_api_1 = __pluginRequire("@cubica/player-web/plugin-api");
 const state_resolvers_1 = __pluginRequire("src/state-resolvers.ts");
+const BOARD_TOPBAR_SCREEN_KEY = "board-topbar";
+const INFO_TOPBAR_SCREEN_KEY = "info-topbar";
+const LEFT_SIDEBAR_SCREEN_KEY = "S1_LEFT";
+const ENTRY_SCREEN_KEY = "S1";
+// Antarctica uses S2 for several scenario scenes. Only these step indexes are
+// board scenes, so the shared board UI variant must not capture team selection.
+const ANTARCTICA_BOARD_STEP_INDEXES = new Set([9, 11, 13, 17, 19, 21, 23, 26, 28, 30, 32, 34, 36]);
 const createAntarcticaConfig = (data) => {
     const topbarScreenKeys = new Set(data.topbarScreenKeys);
     return {
@@ -124,17 +130,7 @@ const createAntarcticaConfig = (data) => {
         topbarScreenKeys,
         metricBackgroundImages: data.metricBackgroundImages,
         resolveBoardScreenKey(stepIndex) {
-            if (stepIndex === null)
-                return null;
-            if (stepIndex === 30)
-                return "55..60";
-            if (stepIndex === 32)
-                return "61..66";
-            if (stepIndex === 34)
-                return "67..70";
-            if (stepIndex === 36)
-                return "67..70";
-            return null;
+            return stepIndex !== null && ANTARCTICA_BOARD_STEP_INDEXES.has(stepIndex) ? BOARD_TOPBAR_SCREEN_KEY : null;
         },
         resolveScreenKey(screenId, stepIndex, infoId, runtimeUi, gameUi) {
             if (screenId === "S2") {
@@ -145,17 +141,17 @@ const createAntarcticaConfig = (data) => {
                 return null;
             }
             if (screenId === "S1") {
-                if (runtimeUi.activeScreen === "left-sidebar" && gameUi?.screens["S1_LEFT"]) {
-                    return "S1_LEFT";
+                if (runtimeUi.activeScreen === "left-sidebar" && gameUi?.screens[LEFT_SIDEBAR_SCREEN_KEY]) {
+                    return LEFT_SIDEBAR_SCREEN_KEY;
                 }
-                if (infoId && gameUi?.screens[infoId]) {
-                    return infoId;
+                if (infoId && gameUi?.screens[INFO_TOPBAR_SCREEN_KEY]) {
+                    return INFO_TOPBAR_SCREEN_KEY;
                 }
                 if (infoId) {
                     return null;
                 }
-                if (gameUi?.screens["S1"]) {
-                    return "S1";
+                if (gameUi?.screens[ENTRY_SCREEN_KEY]) {
+                    return ENTRY_SCREEN_KEY;
                 }
                 return null;
             }
@@ -196,6 +192,10 @@ const createAntarcticaConfig = (data) => {
             const teamSelectionState = (0, state_resolvers_1.readTeamSelection)(session);
             const canAdvance = (0, state_resolvers_1.readCanAdvance)(session);
             const fallbackActions = (0, state_resolvers_1.getFallbackActionEntries)(content);
+            const journalEntries = (0, state_resolvers_1.resolveJournalEntries)(gameContent, publicState, data.fallbackMetrics);
+            const resolvedHintText = (0, state_resolvers_1.resolveLastInfoHintText)(gameContent, { currentInfo, currentBoard, currentTeamSelection }) ??
+                content.description ??
+                "Подсказка пока не загружена";
             const selectedMemberIds = teamSelectionState.selectedMemberIds ?? [];
             const pickCount = teamSelectionState.pickCount ?? 0;
             const selectedTeamMemberIds = selectedMemberIds.length > 0
@@ -216,6 +216,12 @@ const createAntarcticaConfig = (data) => {
                 selectedMemberIds: selectedTeamMemberIds,
                 pickCount,
                 canAdvance,
+                journalEntries,
+                hasJournalEntries: journalEntries.length > 0,
+                journalIsEmpty: journalEntries.length === 0,
+                journalEmptyMessage: "Пока нет записей о выбранных карточках.",
+                hintText: resolvedHintText,
+                hasHintText: resolvedHintText.trim().length > 0,
                 fallbackActions
             };
         },
@@ -224,9 +230,6 @@ const createAntarcticaConfig = (data) => {
                 metrics.score = 60 - metrics.time;
             }
             return metrics;
-        },
-        resolveHintText(content, gameState) {
-            return (0, state_resolvers_1.resolveLastInfoHintText)((0, state_resolvers_1.resolveAntarcticaContent)(content), gameState);
         },
         createManifestActionAdapter(content, gameState, dispatchAction, onError) {
             return (0, plugin_api_1.createManifestActionAdapter)({
@@ -238,6 +241,9 @@ const createAntarcticaConfig = (data) => {
                         if (card) {
                             return card.selectActionId;
                         }
+                    }
+                    if (command === plugin_api_1.ManifestAction.ADVANCE && gameState.currentInfo?.advanceActionId) {
+                        return gameState.currentInfo.advanceActionId;
                     }
                     if (command === plugin_api_1.ManifestAction.ADVANCE && payload.advanceActionId) {
                         return String(payload.advanceActionId);
@@ -272,6 +278,7 @@ exports.resolveCurrentInfoEntry = resolveCurrentInfoEntry;
 exports.resolveCurrentBoard = resolveCurrentBoard;
 exports.resolveCurrentTeamSelectionScene = resolveCurrentTeamSelectionScene;
 exports.resolveBoardCards = resolveBoardCards;
+exports.resolveJournalEntries = resolveJournalEntries;
 exports.resolveLastInfoHintText = resolveLastInfoHintText;
 exports.readCardObjects = readCardObjects;
 exports.readTeamFlags = readTeamFlags;
@@ -363,6 +370,84 @@ function resolveBoardCards(gameContent, board, cardObjects) {
         }
         return contentAvailable !== false;
     });
+}
+function isCardJournalEntry(entry) {
+    const hasVisibleCardText = Boolean(entry.frontText || entry.backText || entry.summary);
+    const isCardEntry = entry.displayMode === "card" || entry.entityType === "card";
+    return Boolean(entry.cardId && (isCardEntry || hasVisibleCardText));
+}
+function metricValue(metrics, spec) {
+    if (!metrics) {
+        return null;
+    }
+    for (const key of [spec.id, ...spec.aliases]) {
+        const value = metrics[key];
+        if (typeof value === "number" && Number.isFinite(value)) {
+            return value;
+        }
+    }
+    return null;
+}
+function formatSignedDelta(delta) {
+    return delta > 0 ? `+${delta}` : String(delta);
+}
+function resolveMetricSummary(entry, metricSpecs) {
+    if (Array.isArray(entry.metricChanges) && entry.metricChanges.length > 0) {
+        const captions = new Map();
+        for (const spec of metricSpecs) {
+            captions.set(spec.id, spec.caption);
+            for (const alias of spec.aliases) {
+                captions.set(alias, spec.caption);
+            }
+        }
+        return entry.metricChanges
+            .filter((change) => typeof change.metricId === "string" && typeof change.delta === "number")
+            .map((change) => `${captions.get(change.metricId) ?? change.metricId}: ${formatSignedDelta(change.delta)}`)
+            .join(" · ");
+    }
+    const parts = [];
+    for (const spec of metricSpecs) {
+        const before = metricValue(entry.metricsBefore, spec);
+        const after = metricValue(entry.metricsAfter, spec);
+        if (before === null || after === null || before === after) {
+            continue;
+        }
+        parts.push(`${spec.caption}: ${formatSignedDelta(after - before)}`);
+    }
+    return parts.join(" · ");
+}
+/**
+ * Builds the game-defined journal projection used by the UI manifest panel.
+ *
+ * The platform should not know Antarctica journal semantics. This projection
+ * keeps only visible card choices and resolves card texts from game content.
+ */
+function resolveJournalEntries(gameContent, publicState, metricSpecs) {
+    if (!gameContent || !Array.isArray(publicState?.log)) {
+        return [];
+    }
+    const cardsById = new Map(gameContent.cards.map((card) => [card.cardId, card]));
+    return publicState.log
+        .filter((entry) => !!entry && typeof entry === "object")
+        .filter(isCardJournalEntry)
+        .map((entry) => {
+        const cardId = typeof entry.cardId === "string" ? entry.cardId : "";
+        const card = cardsById.get(cardId);
+        const frontText = entry.frontText ?? card?.summary ?? "";
+        const backText = entry.backText ?? entry.summary ?? card?.backText ?? "";
+        const metricSummary = resolveMetricSummary(entry, metricSpecs);
+        if (!frontText && !backText) {
+            return null;
+        }
+        return {
+            frontText,
+            backText,
+            metricSummary,
+            hasMetricSummary: metricSummary.length > 0,
+            at: entry.at ?? ""
+        };
+    })
+        .filter((entry) => entry !== null);
 }
 /**
  * Antarctica hint fallback: when no dedicated hint is open, show the last story

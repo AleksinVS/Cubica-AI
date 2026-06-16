@@ -5,6 +5,7 @@ import type {
   PlayerFacingMockup,
   GameManifestActionDefinition,
   GamePlayerUiContent,
+  GameUiPanelDefinition,
   GameUiScreenDefinition,
   ScreenRoutingEntry,
   MetricConfigSpec
@@ -89,6 +90,7 @@ interface RawUiManifest {
   };
   entry_point?: string;
   screens?: Record<string, unknown>;
+  panels?: Record<string, unknown>;
   design_artifacts?: {
     registry?: Record<string, { type?: string; source_ref?: { file?: string } }>;
     [key: string]: unknown;
@@ -124,12 +126,33 @@ const transformScreen = (
   };
 };
 
+const transformPanel = (
+  rawPanel: Record<string, unknown>
+): GameUiPanelDefinition => {
+  return {
+    type: "panel",
+    title: typeof rawPanel.title === "string" ? rawPanel.title : undefined,
+    mode: typeof rawPanel.mode === "string"
+      ? rawPanel.mode as GameUiPanelDefinition["mode"]
+      : "overlay",
+    layoutId: typeof rawPanel.layout_id === "string" ? rawPanel.layout_id : undefined,
+    layoutMode: typeof rawPanel.layout_mode === "string"
+      ? rawPanel.layout_mode as GameUiPanelDefinition["layoutMode"]
+      : undefined,
+    designRegions: Array.isArray(rawPanel.design_regions)
+      ? rawPanel.design_regions as GameUiPanelDefinition["designRegions"]
+      : undefined,
+    root: structuredClone(rawPanel.root) as GameUiPanelDefinition["root"]
+  };
+};
+
 const projectGameUiContent = (
   rawManifest: RawUiManifest
 ): GamePlayerUiContent | undefined => {
   const meta = rawManifest.meta ?? {};
   const entryPoint = rawManifest.entry_point ?? "S1";
   const rawScreens = rawManifest.screens;
+  const rawPanels = rawManifest.panels;
 
   if (!rawScreens || typeof rawScreens !== "object") {
     return undefined;
@@ -156,6 +179,15 @@ const projectGameUiContent = (
     }
   }
 
+  const panels: Record<string, GameUiPanelDefinition> = {};
+  if (rawPanels && typeof rawPanels === "object") {
+    for (const [panelId, rawPanel] of Object.entries(rawPanels)) {
+      if (rawPanel && typeof rawPanel === "object") {
+        panels[panelId] = transformPanel(rawPanel as Record<string, unknown>);
+      }
+    }
+  }
+
   if (Object.keys(screens).length === 0) {
     return undefined;
   }
@@ -166,6 +198,7 @@ const projectGameUiContent = (
     gameId: typeof meta.game_id === "string" ? meta.game_id : "game",
     entryPoint,
     screens,
+    panels: Object.keys(panels).length > 0 ? panels : undefined,
     screenRouting: (rawManifest.screen_routing ?? rawManifest.screenRouting) as ScreenRoutingEntry[] | undefined,
     metricSpecs: Array.isArray(rawManifest.metric_specs ?? rawManifest.metricSpecs) ? (rawManifest.metric_specs ?? rawManifest.metricSpecs) as MetricConfigSpec[] : undefined,
     designArtifacts: Object.keys(designArtifacts).length > 0 ? designArtifacts : undefined

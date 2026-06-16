@@ -30,6 +30,7 @@
 - `games/ai-driven-choice/` - минимальная AI-driven fixture-игра для проверки Agent Runtime readiness, opt-in mock adapter, `POST /agent-turns`, Web `CubicaSurface` rendering, deterministic fallback behavior and replay/eval/audit contract gates.
 - `games/antarctica/design/mockups/` - источник истины для UI-намерения и экранных макетов.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
+- ADR-051 применяет API First уже к текущему модульному монолиту: реализованный HTTP API `runtime-api` имеет current OpenAPI-контракт, а Router/Game Engine/Game Repository specs остаются future extraction references до физического выделения сервисов.
 - `apps/player-web/` - канонический web delivery слой; сложные игры могут подключать plugin, простые используют default config из `PlayerFacingContent.ui`, а AI-driven игры получают pause/retry/unavailable state и validated `CubicaSurface` renderer.
 - `packages/contracts/*` - общий contracts layer для manifest, session, runtime и AI; `packages/contracts/ai` содержит Cubica Surface, Agent Turn, channel projection, plugin contribution, A2UI-like adapter, operation-policy, replay transcript and evaluation fixture contracts.
 - `docs/architecture/agent-ui-foundation.md` и ADR-043 - источник истины для UI ИИ-агентов на CopilotKit/AG-UI; baseline внедрён в `apps/editor-web` как выключенная по умолчанию оболочка помощника, app-local маршрут `/api/copilotkit`, встроенный локальный AG-UI backend, ограниченная проекция контекста и frontend tools поверх `EditorChangeSet`; этот слой обслуживает редактор и будущих помощников платформы, но не владеет runtime/game state.
@@ -63,7 +64,7 @@
 
 ## 2. Архитектурные принципы
 - **Composable Services** — каждый сервис выполняет ограниченную функцию и имеет чёткие интерфейсы.
-- **API First** — контракты документируются в `docs/architecture/` и синхронизируются с реализацией через CI.
+- **API First** — контракты документируются в `docs/architecture/` и синхронизируются с реализацией через CI. На этапе модульного монолита current контрактом становится OpenAPI для `services/runtime-api`; будущие Router/Game Engine/Game Repository specs не считаются покрытием текущей реализации, пока соответствующие сервисы не выделены.
 - **Observability by design** — логирование, метрики и трассировка изначально встроены во все сервисы.
 - **Stub-to-Production Path** — каждая временная заглушка регистрируется и имеет план снятия (см. `docs/legacy/debt-log.csv`).
 - **Game-Agnostic Default Path** — простая игра должна запускаться из `games/<id>/game.manifest.json` и `games/<id>/ui/web/ui.manifest.json` без правок generic runtime/player layers.
@@ -76,6 +77,11 @@
 ## 3. Логическая архитектура
 
 Раздел ниже описывает target platform architecture. Текущий canonical slice уже зафиксирован выше и в `NEXT_STEPS.md`, `docs/architecture/PROJECT_ARCHITECTURE.md` и активных TSK-файлах в `docs/tasks/active/`.
+
+API First применяется на обоих уровнях: current `services/runtime-api`
+получает реализованный OpenAPI-контракт для монолита, а целевые сервисные
+спецификации остаются ориентирами для будущего выделения сервисов. Это
+позволяет не откладывать contract discipline до распределенной архитектуры.
 
 ## MVP (Model–View–Presenter)
 
@@ -253,6 +259,7 @@
 - Минимальный content bundle `games/simple-choice/`, который подтверждает запуск второй игры через generic `runtime-api` и `player-web` без custom plugin.
 - Минимальный AI-driven content bundle `games/ai-driven-choice/`, который подтверждает manifest-declared Agent Runtime dependency, readiness failure без mock adapter и Agent Turn execution при явном local mock opt-in.
 - Канонический backend runtime `services/runtime-api/` с bounded validation, capability routing и deterministic handlers.
+- ADR-051 и `TSK-20260613-runtime-api-openapi-contract` реализовали baseline current OpenAPI-контракта для `runtime-api` на этапе модульного монолита.
 - Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/*` и `packages/contracts/*`; для сложных игр он использует plugin, для простых - default config builder.
 - `draft/cubica-portal-nextjs/` как текущий вариант портала для анализа, доработки и тестового запуска `Antarctica` через launch links.
 - `apps/portal-nextjs/` и `services/portal-backend/` как импортированные draft-артефакты портала для последующего анализа.

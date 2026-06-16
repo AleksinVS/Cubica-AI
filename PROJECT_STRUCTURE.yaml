@@ -30,6 +30,7 @@ docs: # Архитектура, задачи, планирование
       048-element-authoring-prompt-contract.md: file # ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах.
       049-dynamic-element-prompt-projection-and-sync-strategy.md: file # ADR-049: принятая стратегия dynamic element prompts: static residue в _prompt, YAML projection из JSON-узла, field dictionary, Markdown refs и diagnostic-first sync.
       050-authoring-prototype-extraction-and-promotion.md: file # ADR-050: принятый механизм локального извлечения authoring-прототипов, ручного повышения в платформенный каталог и AI-assisted prototype designer.
+      051-api-first-contract-for-modular-monolith.md: file # ADR-051: применение API First к текущему модульному монолиту через current OpenAPI-контракт runtime-api и future extraction references для целевых сервисов.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
@@ -41,6 +42,7 @@ docs: # Архитектура, задачи, планирование
     ai-agent-safety-remediation.md: file # Проектная документация по исправлению review findings миграции Cubica Surface и AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel policies and production backend auth.
     element-prompt-contract.md: file # Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.
     generative-ui-surface-protocol.md: file # Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
+    runtime-api-openapi.yaml: file # Current OpenAPI 3.1 contract for the implemented services/runtime-api modular monolith HTTP API по ADR-051.
   legacy:
     debt-log.csv: file # Центральный реестр долга (tech debt).
     stub-marker-allowlist.json: file # Документированные исключения для CI-проверки маркеров заглушек с владельцем, причиной и сроком пересмотра.
@@ -75,6 +77,8 @@ docs: # Архитектура, задачи, планирование
       TSK-20260611-ai-driven-surface-architecture-migration.md: file # Главный план миграции к Cubica Surface и AI-driven runtime: фазы, зависимости, проверки, риски, renderer strategy и сохранение deterministic canonical slice.
       TSK-20260612-element-authoring-prompt-contract.md: file # План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.
       TSK-20260613-authoring-prototype-extraction-and-promotion.md: file # Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow.
+      TSK-20260613-runtime-api-openapi-contract.md: file # Исполнительный план применения API First к текущему runtime-api: current OpenAPI-контракт, drift checks и классификация будущих service specs.
+      TSK-20260616-antarctica-ui-authoring-prototype-migration.md: file # Исполнительный план миграции web UI authoring-манифеста Antarctica на локальные game-level UI-прототипы по ADR-050 без runtime UI diff.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
@@ -104,6 +108,7 @@ scripts: # Скрипты разработки и индексирования
     validate-legacy.ps1: file # PowerShell wrapper that delegates legacy/stub validation to the cross-platform Node.js validator.
     validate-manifest-authoring.js: file # Node.js validator for ADR-030 authoring manifest compilation, generated drift and authoring-only key leakage.
     validate-prototype-audit-status.js: file # Node.js validator for ADR-050 prototype audit status records emitted by the weekly audit workflow.
+    validate-runtime-api-openapi.js: file # Node.js validator for ADR-051 runtime-api OpenAPI contract shape, endpoint drift and future extraction spec classification.
   debug: directory... # Поддерживаемые debug-скрипты для локальной проверки UI, журналов и визуального сравнения. Скрипты не являются частью canonical verification и используются вручную при расследовании регрессий.
   manifest-tools: # Manifest transformation and generation tools used by development and CI workflows.
     audit-prototype-candidates.cjs: file # Read-only ADR-050 prototype candidate audit CLI for local, PR, weekly, LLM-semantic and platform promotion backlog workflows.

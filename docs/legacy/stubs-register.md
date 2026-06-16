@@ -42,6 +42,7 @@
 | LEGACY-0012 | services/router | services/router | historical target architecture | Классифицировать как archived target или contracts-only scaffold в `TSK-20260518-workspace-project-references-cleanup` | Backend Team | active | В текущем canonical slice runtime-api владеет boundary |
 | LEGACY-0013 | portal-backend | services/portal-backend | portal launch slice | Удалить payment stub или закрыть production policy после test VPS/payment integration | Portal Team | active | Доступен только при `PAYMENT_STUB_ENABLED=true`; backend markers покрывают payment-stub route/controller/readme |
 | LEGACY-0014 | runtime-api plugins | docs/architecture/adrs/040-runtime-api-plugin-architecture.md | ADR-040 | Реализовать runtime plugin runner отдельным slice только после доказанной необходимости; до этого использовать manifest/platform capabilities | Backend Team | active | Полноценные runtime-api plugins не входят в Antarctica cleanup; доверенные исключения требуют отдельного ревью |
+| LEGACY-0016 | JSON Schema validation | docs/tasks/active/TSK-20260518-json-schema-strict-validation.md | object-state architecture review 2026-06-13 | Удалить или детально разнести все `strict: false`/imperative companion checks при выполнении strict validation task | Platform Team | active | Исключения из ADR-025 допустимы только как зафиксированное legacy с владельцем и правилом снятия |
 
 ## Архив заглушек
 | id | component | location | introduced_in | removal_plan | owner | status | notes |
@@ -49,3 +50,4 @@
 | LEGACY-0002 | antarctica-nextjs-player | games/antarctica-nextjs-player/src/app/api/submit/route.js | CP_00024 | Удалить после подключения к реальному Router API (Phase1) | Frontend Team | removed | Плеер полностью заменен на apps/player-web |
 | LEGACY-0007 | antarctica-player | games/antarctica-nextjs-player/src/app/data/antarctica/manifest.json | CP_00024 | Удалить при переходе на SSOT | Content Team | removed | Плеер удален, данные берутся из games/antarctica |
 | LEGACY-0008 | canonical-slice | npm run verify:canonical | TSK-20260518 | Восстановить зеленые canonical checks | Platform Team | removed | Закрыто: `npm run verify:canonical` проходит 2026-05-18 |
+| LEGACY-0015 | player-web plugin API | apps/player-web/src/plugins/player-plugin-api.ts | object-state architecture review 2026-06-13 | Удалено после проверки текущего `player-web` и `Antarctica` plugin path | Frontend Team | removed | `readCardFlags` снят из публичного plugin API; current runtime/player behavior читает `objects.cards` через `readCardObjects` |

@@ -241,13 +241,6 @@ export interface GameManifestDeterministicGuard {
     selectedCardIdAbsent?: boolean;
     selectedCardIdEquals?: string | number;
   };
-  card?: {
-    id: string;
-    selected?: boolean;
-    resolved?: boolean;
-    locked?: boolean;
-    available?: boolean;
-  };
   team?: {
     memberId: string;
     selected?: boolean;
@@ -638,6 +631,13 @@ export interface GameUiComponent<
 > {
   type: GameUiComponentType;
   id?: string;
+  /**
+   * Optional conditional rendering expression.
+   *
+   * The manifest renderer resolves this against gameState and local item
+   * context. Falsy values skip the component without changing layout state.
+   */
+  if?: string;
   props: TProps;
   children?: Array<GameUiComponent>;
   /** Interactive actions for cardComponent and buttonComponent. */
@@ -713,6 +713,25 @@ export interface GameUiScreenDefinition {
 }
 
 /**
+ * Panel definition for transient UI layers such as journals, hints or
+ * inventory overlays. Panels are not timeline screens; the Presenter opens
+ * them through UI state and the renderer draws their root component tree.
+ */
+export interface GameUiPanelDefinition {
+  type: "panel";
+  title?: string;
+  mode: "overlay" | "drawer" | "inline";
+  layoutId?: string;
+  /**
+   * Explicit layout mode for this panel. Most web panels use topbar because
+   * they sit above the current game screen instead of replacing timeline state.
+   */
+  layoutMode?: "leftsidebar" | "topbar" | "auto";
+  designRegions?: DesignRegion[];
+  root: GameUiComponent;
+}
+
+/**
  * A design region from a mockup file, providing layout hints
  * that bridge the design-view gap.
  */
@@ -783,6 +802,12 @@ export interface GamePlayerUiContent {
    * Variant info screens (i19 vs i19_1) are disambiguated by `timeline.activeInfoId`.
    */
   screens: Record<string, GameUiScreenDefinition>;
+  /**
+   * Transient UI panels keyed by panel id. Panels are game-defined UI variants
+   * rendered by the platform's generic manifest renderer; they are not scenario
+   * screens and do not affect timeline routing.
+   */
+  panels?: Record<string, GameUiPanelDefinition>;
   /**
    * Data-driven screen routing entries.
    * When provided, the generic screen router matches runtime state
@@ -964,10 +989,10 @@ export interface MetricConfigSpec {
  * consistency and discoverability.
  */
 export const ManifestAction = {
-  /** Show the move history panel. */
-  SHOW_HISTORY: "showHistory",
-  /** Show the hint panel. */
-  SHOW_HINT: "showHint",
+  /** Show a manifest-defined UI panel. */
+  SHOW_PANEL: "showPanel",
+  /** Close the active manifest-defined UI panel. */
+  CLOSE_PANEL: "closePanel",
   /** Dismiss an active panel (history, hint, etc.). */
   DISMISS_PANEL: "dismiss_panel",
   /** Request a server action (most common game action). */
@@ -976,8 +1001,6 @@ export const ManifestAction = {
   ADVANCE: "advance",
   /** Reset the game session. */
   RESET_GAME: "reset_game",
-  /** Switch to a left-sidebar layout screen. */
-  SHOW_LEFT_SIDEBAR: "showScreenWithLeftSideBar",
 } as const;
 
 export type ManifestActionType = (typeof ManifestAction)[keyof typeof ManifestAction];

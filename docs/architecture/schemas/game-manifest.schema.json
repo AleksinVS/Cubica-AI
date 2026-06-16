@@ -325,6 +325,11 @@
     },
     "GameManifestDeterministicGuard": {
       "additionalProperties": true,
+      "not": {
+        "required": [
+          "card"
+        ]
+      },
       "properties": {
         "board": {
           "type": "object",
@@ -342,29 +347,6 @@
           "required": [
             "cardIds",
             "resolvedCountAtLeast"
-          ]
-        },
-        "card": {
-          "type": "object",
-          "properties": {
-            "id": {
-              "type": "string"
-            },
-            "selected": {
-              "type": "boolean"
-            },
-            "resolved": {
-              "type": "boolean"
-            },
-            "locked": {
-              "type": "boolean"
-            },
-            "available": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "id"
           ]
         },
         "jsonLogic": {

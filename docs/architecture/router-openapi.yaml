@@ -1,4 +1,7 @@
 openapi: 3.0.3
+x-cubica-contract-status: future-extraction-reference
+x-cubica-current-implementation: false
+x-cubica-current-contract: docs/architecture/runtime-api-openapi.yaml
 info:
   title: Cubica Router API (MVP)
   version: 0.1.0
@@ -102,4 +105,3 @@ components:
               from: { type: string }
               value: {}
       additionalProperties: true
-

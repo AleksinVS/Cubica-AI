@@ -257,8 +257,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "history"
+                        }
                       }
                     }
                   },
@@ -271,8 +273,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHint",
-                        "payload": {}
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "hint"
+                        }
                       }
                     }
                   },
@@ -307,7 +311,7 @@
       "title": "Antarctica",
       "layout_id": "layout.web.s1"
     },
-    "55..60": {
+    "board-topbar": {
       "type": "screen",
       "layout_mode": "topbar",
       "root": {
@@ -424,10 +428,17 @@
                     },
                     "children": [
                       {
-                        "type": "cardComponent",
-                        "id": "board-title",
+                        "type": "richTextComponent",
                         "props": {
-                          "text": "Теперь у вас есть еще несколько способов продолжить работу штаба."
+                          "html": "{{currentBoard.title}}",
+                          "cssClass": "fallback-card-head"
+                        }
+                      },
+                      {
+                        "type": "richTextComponent",
+                        "props": {
+                          "html": "{{currentBoard.body}}",
+                          "cssClass": "fallback-copy"
                         }
                       }
                     ]
@@ -439,93 +450,25 @@
                 "props": {
                   "cssClass": "cards-container topbar-cards-container"
                 },
+                "itemTemplate": {
+                  "collection": "{{boardCards}}",
+                  "itemKey": "card"
+                },
                 "children": [
                   {
                     "type": "cardComponent",
-                    "id": "card-55",
                     "props": {
-                      "text": "Привлечь скептиков"
+                      "title": "{{card.title}}",
+                      "summary": "{{card.summary}}",
+                      "selectLabel": "{{card.selectLabel || \"Выбрать\"}}",
+                      "visualState": "{{card.visualState || \"default\"}}"
                     },
+                    "id": "board-card",
                     "actions": {
                       "onClick": {
                         "command": "requestServer",
                         "payload": {
-                          "actionId": "opening.card.55"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-56",
-                    "props": {
-                      "text": "Поручить Профессору"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.56"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-57",
-                    "props": {
-                      "text": "Обсудить детали"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.57"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-58",
-                    "props": {
-                      "text": "Подготовить брифинг"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.58"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-59",
-                    "props": {
-                      "text": "Провести агитацию"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.59"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-60",
-                    "props": {
-                      "text": "Школа разведчика"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.60"
+                          "cardId": "{{card.cardId}}"
                         }
                       }
                     }
@@ -547,8 +490,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "history"
+                        }
                       }
                     }
                   },
@@ -561,8 +506,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHint",
-                        "payload": {}
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "hint"
+                        }
                       }
                     }
                   },
@@ -594,17 +541,17 @@
           }
         ]
       },
-      "title": "Выберите десятый шаг",
+      "title": "Доска выбора действий",
       "layout_id": "layout.web.board"
     },
-    "61..66": {
+    "info-topbar": {
       "type": "screen",
       "layout_mode": "topbar",
       "root": {
         "type": "screenComponent",
         "props": {
           "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen topbar-screen-shell"
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
         },
         "children": [
           {
@@ -704,578 +651,45 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "board-header"
-                },
-                "children": [
-                  {
-                    "type": "cardComponent",
-                    "id": "board-title",
-                    "props": {
-                      "text": "Отправка разведчиков требует особого подхода."
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "cards-container topbar-cards-container"
-                },
-                "children": [
-                  {
-                    "type": "cardComponent",
-                    "id": "card-61",
-                    "props": {
-                      "text": "Отправить элитную группу"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.61"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-62",
-                    "props": {
-                      "text": "Организовать логистику"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.62"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-63",
-                    "props": {
-                      "text": "Подготовить снаряжение"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.63"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-64",
-                    "props": {
-                      "text": "Назначить начальника"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.64"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-65",
-                    "props": {
-                      "text": "Составить маршрут"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.65"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-66",
-                    "props": {
-                      "text": "Отправить готовую группу"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.66"
-                        }
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Выберите одинадцатый шаг",
-      "layout_id": "layout.web.board"
-    },
-    "67..70": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent",
-                  "description": "Оставшееся время в игре."
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "board-header"
-                },
-                "children": [
-                  {
-                    "type": "cardComponent",
-                    "id": "board-title",
-                    "props": {
-                      "text": "После переезда нужно укрепить позиции."
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "cards-container topbar-cards-container"
-                },
-                "children": [
-                  {
-                    "type": "cardComponent",
-                    "id": "card-67",
-                    "props": {
-                      "text": "Кабинетный анализ"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.67"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-68",
-                    "props": {
-                      "text": "Оперативный сбор"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.68"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-69",
-                    "props": {
-                      "text": "Провести совещание"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.69"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "cardComponent",
-                    "id": "card-70",
-                    "props": {
-                      "text": "Взять паузу"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.card.70"
-                        }
-                      }
-                    }
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Выберите двенадцатый шаг",
-      "layout_id": "layout.web.board"
-    },
-    "i17": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "info-content info-content--i17"
+                  "cssClass": "info-content"
                 },
                 "children": [
                   {
                     "type": "areaComponent",
                     "props": {
-                      "cssClass": "info-event-card info-event-card--i17"
+                      "cssClass": "info-event-card"
                     },
                     "children": [
                       {
                         "type": "imageComponent",
-                        "id": "info-illustration",
                         "props": {
-                          "src": "/images/info/i17.png",
-                          "alt": "Ускорение процесса",
-                          "cssClass": "info-event-illustration info-event-illustration--i17"
-                        }
+                          "src": "/images/info/{{currentInfo.id}}.png",
+                          "alt": "{{currentInfo.title}}",
+                          "cssClass": "info-event-illustration"
+                        },
+                        "id": "info-illustration"
                       },
                       {
                         "type": "areaComponent",
                         "props": {
-                          "cssClass": "info-event-text info-event-text--i17"
+                          "cssClass": "info-event-text"
                         },
                         "children": [
                           {
                             "type": "richTextComponent",
-                            "id": "info-title",
                             "props": {
-                              "html": "Ускорение процесса",
+                              "html": "{{currentInfo.title}}",
                               "cssClass": "fallback-card-head"
-                            }
+                            },
+                            "id": "info-title"
                           },
                           {
                             "type": "richTextComponent",
-                            "id": "info-body",
                             "props": {
-                              "html": "Настало время ускорить процесс переезда.",
+                              "html": "{{currentInfo.body}}",
                               "cssClass": "fallback-copy"
-                            }
+                            },
+                            "id": "info-body"
                           }
                         ]
                       }
@@ -1293,15 +707,13 @@
                     "type": "buttonComponent",
                     "id": "btn-advance",
                     "props": {
-                      "caption": "Продолжить",
+                      "caption": "{{currentInfo.advanceLabel || \"Продолжить\"}}",
                       "variant": "action"
                     },
                     "actions": {
                       "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.info.i17.advance"
-                        }
+                        "command": "advance",
+                        "payload": {}
                       }
                     }
                   },
@@ -1330,241 +742,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Ускорение процесса",
-      "layout_id": "layout.web.info"
-    },
-    "i18": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "info-content info-content--i18"
-                },
-                "children": [
-                  {
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "info-event-card info-event-card--i18"
-                    },
-                    "children": [
-                      {
-                        "type": "imageComponent",
-                        "id": "info-illustration",
-                        "props": {
-                          "src": "/images/info/i18.png",
-                          "alt": "Отправка разведчиков",
-                          "cssClass": "info-event-illustration info-event-illustration--i18"
-                        }
-                      },
-                      {
-                        "type": "areaComponent",
-                        "props": {
-                          "cssClass": "info-event-text info-event-text--i18"
-                        },
-                        "children": [
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-title",
-                            "props": {
-                              "html": "Отправка разведчиков",
-                              "cssClass": "fallback-card-head"
-                            }
-                          },
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-body",
-                            "props": {
-                              "html": "Разведчики готовы к отправке.",
-                              "cssClass": "fallback-copy"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container info-bottom-controls"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-advance",
-                    "props": {
-                      "caption": "Продолжить",
-                      "variant": "action"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
+                        "command": "showPanel",
                         "payload": {
-                          "actionId": "opening.info.i18.advance"
+                          "panelId": "history"
                         }
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
                       }
                     }
                   },
@@ -1577,241 +758,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Отправка разведчиков",
-      "layout_id": "layout.web.info"
-    },
-    "i19": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "info-content info-content--i19"
-                },
-                "children": [
-                  {
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "info-event-card info-event-card--i19"
-                    },
-                    "children": [
-                      {
-                        "type": "imageComponent",
-                        "id": "info-illustration",
-                        "props": {
-                          "src": "/images/info/i19.png",
-                          "alt": "Первая партия",
-                          "cssClass": "info-event-illustration info-event-illustration--i19"
-                        }
-                      },
-                      {
-                        "type": "areaComponent",
-                        "props": {
-                          "cssClass": "info-event-text info-event-text--i19"
-                        },
-                        "children": [
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-title",
-                            "props": {
-                              "html": "Последствия переезда",
-                              "cssClass": "fallback-card-head"
-                            }
-                          },
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-body",
-                            "props": {
-                              "html": "После переезда началась работа над укреплением позиций.",
-                              "cssClass": "fallback-copy"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container info-bottom-controls"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-advance",
-                    "props": {
-                      "caption": "Продолжить",
-                      "variant": "action"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
+                        "command": "showPanel",
                         "payload": {
-                          "actionId": "opening.info.i19.advance"
+                          "panelId": "hint"
                         }
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
                       }
                     }
                   }
@@ -1827,706 +777,7 @@
           }
         ]
       },
-      "title": "Последствия переезда",
-      "layout_id": "layout.web.info"
-    },
-    "i19_1": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "info-content info-content--i19_1"
-                },
-                "children": [
-                  {
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "info-event-card info-event-card--i19_1"
-                    },
-                    "children": [
-                      {
-                        "type": "imageComponent",
-                        "id": "info-illustration",
-                        "props": {
-                          "src": "/images/info/i19_1.png",
-                          "alt": "Подготовка",
-                          "cssClass": "info-event-illustration info-event-illustration--i19_1"
-                        }
-                      },
-                      {
-                        "type": "areaComponent",
-                        "props": {
-                          "cssClass": "info-event-text info-event-text--i19_1"
-                        },
-                        "children": [
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-title",
-                            "props": {
-                              "html": "Быстрый переезд",
-                              "cssClass": "fallback-card-head"
-                            }
-                          },
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-body",
-                            "props": {
-                              "html": "Переезд был осуществлен быстро.",
-                              "cssClass": "fallback-copy"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container info-bottom-controls"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-advance",
-                    "props": {
-                      "caption": "Продолжить",
-                      "variant": "action"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.info.i19.advance"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Быстрый переезд",
-      "layout_id": "layout.web.info"
-    },
-    "i20": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "info-content info-content--i20"
-                },
-                "children": [
-                  {
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "info-event-card info-event-card--i20"
-                    },
-                    "children": [
-                      {
-                        "type": "imageComponent",
-                        "id": "info-illustration",
-                        "props": {
-                          "src": "/images/info/i20.png",
-                          "alt": "Вторая волна",
-                          "cssClass": "info-event-illustration info-event-illustration--i20"
-                        }
-                      },
-                      {
-                        "type": "areaComponent",
-                        "props": {
-                          "cssClass": "info-event-text info-event-text--i20"
-                        },
-                        "children": [
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-title",
-                            "props": {
-                              "html": "Второй переезд",
-                              "cssClass": "fallback-card-head"
-                            }
-                          },
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-body",
-                            "props": {
-                              "html": "Готовим второй переезд.",
-                              "cssClass": "fallback-copy"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container info-bottom-controls"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-advance",
-                    "props": {
-                      "caption": "Продолжить",
-                      "variant": "action"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.info.i20.advance"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Второй переезд",
-      "layout_id": "layout.web.info"
-    },
-    "i21": {
-      "type": "screen",
-      "layout_mode": "topbar",
-      "root": {
-        "type": "screenComponent",
-        "props": {
-          "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
-        },
-        "children": [
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
-            },
-            "children": [
-              {
-                "type": "gameVariableComponent",
-                "id": "score",
-                "props": {
-                  "caption": "Остаток дней",
-                  "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "pro",
-                "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "rep",
-                "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "lid",
-                "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "man",
-                "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "stat",
-                "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "cont",
-                "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
-                }
-              },
-              {
-                "type": "gameVariableComponent",
-                "id": "constr",
-                "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
-                }
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "sidebar-decoration"
-                }
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "main-content-area topbar-main-content"
-            },
-            "children": [
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "info-content info-content--i21"
-                },
-                "children": [
-                  {
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "info-event-card info-event-card--i21"
-                    },
-                    "children": [
-                      {
-                        "type": "imageComponent",
-                        "id": "info-illustration",
-                        "props": {
-                          "src": "/images/info/i21.png",
-                          "alt": "Последний этап",
-                          "cssClass": "info-event-illustration info-event-illustration--i21"
-                        }
-                      },
-                      {
-                        "type": "areaComponent",
-                        "props": {
-                          "cssClass": "info-event-text info-event-text--i21"
-                        },
-                        "children": [
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-title",
-                            "props": {
-                              "html": "Финальный экран",
-                              "cssClass": "fallback-card-head"
-                            }
-                          },
-                          {
-                            "type": "richTextComponent",
-                            "id": "info-body",
-                            "props": {
-                              "html": "История завершена.",
-                              "cssClass": "fallback-copy"
-                            }
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "bottom-controls-container info-bottom-controls"
-                },
-                "children": [
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-finish",
-                    "props": {
-                      "caption": "Завершить",
-                      "variant": "action"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {
-                          "actionId": "opening.info.i21.advance"
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-left",
-                    "props": {
-                      "caption": "Назад",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "nav-right",
-                    "props": {
-                      "caption": "Вперед",
-                      "variant": "nav"
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-journal",
-                    "props": {
-                      "caption": "Журнал ходов",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
-                    "id": "btn-hint",
-                    "props": {
-                      "caption": "Подсказка",
-                      "variant": "helper"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "showHint",
-                        "payload": {}
-                      }
-                    }
-                  }
-                ]
-              }
-            ]
-          },
-          {
-            "type": "areaComponent",
-            "props": {
-              "cssClass": "additional-background"
-            }
-          }
-        ]
-      },
-      "title": "Финальный экран",
+      "title": "Информационный экран",
       "layout_id": "layout.web.info"
     },
     "S1_LEFT": {
@@ -2741,8 +992,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHistory",
-                        "payload": {}
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "history"
+                        }
                       }
                     }
                   },
@@ -2755,8 +1008,10 @@
                     },
                     "actions": {
                       "onClick": {
-                        "command": "showHint",
-                        "payload": {}
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "hint"
+                        }
                       }
                     }
                   },
@@ -2790,6 +1045,394 @@
       },
       "title": "Antarctica (Left Sidebar)",
       "layout_id": "layout.web.s1_left"
+    }
+  },
+  "panels": {
+    "history": {
+      "type": "panel",
+      "title": "Журнал ходов",
+      "mode": "overlay",
+      "layout_mode": "topbar",
+      "design_artifact_id": "moves-journal",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen journal-screen"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "journal-main-content"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "journal-container"
+                },
+                "children": [
+                  {
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<h1 class=\"heading-h1\">Журнал ходов</h1>"
+                    }
+                  },
+                  {
+                    "type": "areaComponent",
+                    "if": "{{journalIsEmpty}}",
+                    "props": {
+                      "cssClass": "journal-empty-state"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "journal-empty-card"
+                        },
+                        "children": [
+                          {
+                            "type": "richTextComponent",
+                            "props": {
+                              "html": "{{journalEmptyMessage}}"
+                            }
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "type": "areaComponent",
+                    "if": "{{hasJournalEntries}}",
+                    "props": {
+                      "cssClass": "journal-entries-list"
+                    },
+                    "itemTemplate": {
+                      "collection": "{{journalEntries}}",
+                      "itemKey": "entry"
+                    },
+                    "children": [
+                      {
+                        "type": "areaComponent",
+                        "props": {
+                          "cssClass": "game-card journal-entry-card"
+                        },
+                        "children": [
+                          {
+                            "type": "areaComponent",
+                            "props": {
+                              "cssClass": "journal-entry-columns"
+                            },
+                            "children": [
+                              {
+                                "type": "areaComponent",
+                                "props": {
+                                  "cssClass": "journal-entry-front"
+                                },
+                                "children": [
+                                  {
+                                    "type": "richTextComponent",
+                                    "props": {
+                                      "html": "Исходная карточка",
+                                      "cssClass": "journal-entry-label"
+                                    }
+                                  },
+                                  {
+                                    "type": "richTextComponent",
+                                    "props": {
+                                      "html": "{{entry.frontText}}",
+                                      "cssClass": "journal-entry-text"
+                                    }
+                                  }
+                                ]
+                              },
+                              {
+                                "type": "areaComponent",
+                                "props": {
+                                  "cssClass": "journal-entry-divider"
+                                }
+                              },
+                              {
+                                "type": "areaComponent",
+                                "props": {
+                                  "cssClass": "journal-entry-back"
+                                },
+                                "children": [
+                                  {
+                                    "type": "richTextComponent",
+                                    "props": {
+                                      "html": "Результат",
+                                      "cssClass": "journal-entry-label"
+                                    }
+                                  },
+                                  {
+                                    "type": "richTextComponent",
+                                    "props": {
+                                      "html": "{{entry.backText}}",
+                                      "cssClass": "journal-entry-text"
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          },
+                          {
+                            "type": "areaComponent",
+                            "if": "{{entry.hasMetricSummary}}",
+                            "props": {
+                              "cssClass": "journal-entry-metrics"
+                            },
+                            "children": [
+                              {
+                                "type": "richTextComponent",
+                                "props": {
+                                  "html": "{{entry.metricSummary}}",
+                                  "cssClass": "journal-variables-container"
+                                }
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "button-container panel-buttons"
+                },
+                "children": [
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-journal",
+                    "props": {
+                      "caption": "Журнал ходов",
+                      "variant": "helper"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "closePanel",
+                        "payload": {
+                          "panelId": "history"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "type": "buttonComponent",
+                    "id": "btn-hint",
+                    "props": {
+                      "caption": "Подсказка",
+                      "variant": "helper"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "showPanel",
+                        "payload": {
+                          "panelId": "hint"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "hint": {
+      "type": "panel",
+      "title": "Подсказка",
+      "mode": "overlay",
+      "layout_mode": "topbar",
+      "design_artifact_id": "topsidebar-infocard",
+      "root": {
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "main-screen hint-screen"
+        },
+        "children": [
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container topbar-variables-container"
+            },
+            "children": [
+              {
+                "type": "gameVariableComponent",
+                "id": "score",
+                "props": {
+                  "caption": "Остаток дней",
+                  "backgroundImage": "/images/top-sidebar/days-top.png",
+                  "value": "{{game.state.public.metrics.score}}",
+                  "layout": "prominent",
+                  "description": "Оставшееся время в игре. Основной параметр."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "pro",
+                "props": {
+                  "caption": "Знания",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png",
+                  "value": "{{game.state.public.metrics.pro}}",
+                  "description": "Уровень знаний, который игрок может использовать для решения задач."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "rep",
+                "props": {
+                  "caption": "Доверие",
+                  "backgroundImage": "/images/top-sidebar/doverie.png",
+                  "value": "{{game.state.public.metrics.rep}}",
+                  "description": "Уровень доверия команды и окружения к игроку."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "lid",
+                "props": {
+                  "caption": "Энергия",
+                  "backgroundImage": "/images/top-sidebar/energia.png",
+                  "value": "{{game.state.public.metrics.lid}}",
+                  "description": "Ресурс на действия и принятие решений."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "man",
+                "props": {
+                  "caption": "Контроль",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png",
+                  "value": "{{game.state.public.metrics.man}}",
+                  "description": "Способность управлять ситуацией и направлением изменений."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "stat",
+                "props": {
+                  "caption": "Статус",
+                  "backgroundImage": "/images/top-sidebar/status.png",
+                  "value": "{{game.state.public.metrics.stat}}",
+                  "description": "Положение игрока в системе и степень влияния."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "cont",
+                "props": {
+                  "caption": "Контакт",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png",
+                  "value": "{{game.state.public.metrics.cont}}",
+                  "description": "Доступность связей и поддержки вокруг игрока."
+                }
+              },
+              {
+                "type": "gameVariableComponent",
+                "id": "constr",
+                "props": {
+                  "caption": "Конструктив",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
+                  "value": "{{game.state.public.metrics.constr}}",
+                  "description": "Нацеленность на результат без пустых конфликтов."
+                }
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area topbar-main-content"
+            },
+            "children": [
+              {
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container topbar-cards-container hint-cards"
+                },
+                "children": [
+                  {
+                    "type": "areaComponent",
+                    "props": {
+                      "cssClass": "hint-area"
+                    }
+                  },
+                  {
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "{{hintText}}",
+                      "cssClass": "hint-text"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "button-container panel-buttons"
+            },
+            "children": [
+              {
+                "type": "buttonComponent",
+                "id": "btn-journal",
+                "props": {
+                  "caption": "Журнал ходов",
+                  "variant": "helper"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "showPanel",
+                    "payload": {
+                      "panelId": "history"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "btn-hint",
+                "props": {
+                  "caption": "Подсказка",
+                  "variant": "helper"
+                },
+                "actions": {
+                  "onClick": {
+                    "command": "closePanel",
+                    "payload": {
+                      "panelId": "hint"
+                    }
+                  }
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "nav-left",
+                "props": {
+                  "caption": "Назад",
+                  "variant": "nav",
+                  "disabled": true
+                }
+              },
+              {
+                "type": "buttonComponent",
+                "id": "nav-right",
+                "props": {
+                  "caption": "Вперед",
+                  "variant": "nav",
+                  "disabled": true
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   },
   "layouts": {
@@ -2910,27 +1553,9 @@
   ],
   "screen_routing": [
     {
-      "screenKey": "55..60",
+      "screenKey": "board-topbar",
       "conditions": {
-        "screenId": "S2",
-        "stepIndex": 30
-      }
-    },
-    {
-      "screenKey": "61..66",
-      "conditions": {
-        "screenId": "S2",
-        "stepIndex": 32
-      }
-    },
-    {
-      "screenKey": "67..70",
-      "conditions": {
-        "screenId": "S2",
-        "stepIndexRange": {
-          "from": 34,
-          "to": 37
-        }
+        "screenId": "S2"
       }
     },
     {

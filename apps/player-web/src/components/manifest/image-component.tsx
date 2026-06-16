@@ -2,6 +2,7 @@ import type {
   GameUiComponent,
   GameUiImageComponentProps
 } from "@cubica/contracts-manifest";
+import { resolveExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
@@ -13,25 +14,43 @@ import type { PreviewElementAttributes } from "./preview-metadata";
  */
 export function ImageComponent({
   component,
+  localContext,
+  gameState,
   previewAttributes,
 }: {
   component: GameUiComponent<GameUiImageComponentProps>;
+  localContext?: Record<string, unknown>;
+  gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
 }) {
   const { src, alt, cssClass } = component.props;
-  const isDecorative = cssClass?.includes("illustration") || cssClass?.includes("decoration");
+  const resolvedSrc = resolveStringProp(src, gameState, localContext);
+  const resolvedAlt = resolveStringProp(alt, gameState, localContext);
+  const resolvedCssClass = resolveStringProp(cssClass, gameState, localContext);
+  const isDecorative = resolvedCssClass?.includes("illustration") || resolvedCssClass?.includes("decoration");
 
   if (isDecorative) {
     return (
       <div
         {...previewAttributes}
-        className={cssClass}
-        style={{ backgroundImage: `url(${src})` }}
+        className={resolvedCssClass}
+        style={{ backgroundImage: `url(${resolvedSrc})` }}
         role="img"
-        aria-label={alt}
+        aria-label={resolvedAlt}
       />
     );
   }
 
-  return <img {...previewAttributes} src={src} alt={alt ?? ""} className={cssClass} />;
+  return <img {...previewAttributes} src={resolvedSrc} alt={resolvedAlt ?? ""} className={resolvedCssClass} />;
+}
+
+function resolveStringProp(
+  value: string | undefined,
+  gameState: Record<string, unknown> | undefined,
+  localContext: Record<string, unknown> | undefined
+): string | undefined {
+  if (!value || !value.includes("{{")) {
+    return value;
+  }
+  return String(resolveExpressions(value, gameState ?? {}, localContext));
 }

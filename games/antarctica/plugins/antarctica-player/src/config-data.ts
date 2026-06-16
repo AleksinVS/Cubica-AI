@@ -25,9 +25,8 @@ export const ANTARCTICA_GAME_CONFIG_DATA: GameConfigData = {
   ] satisfies ReadonlyArray<FallbackMetricSpec>,
 
   topbarScreenKeys: [
-    "55..60",
-    "61..66",
-    "67..70"
+    "board-topbar",
+    "info-topbar"
   ],
 
   metricBackgroundImages: {

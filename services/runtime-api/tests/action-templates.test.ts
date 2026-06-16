@@ -3,7 +3,33 @@ import { test } from "node:test";
 import { createDeterministicHandler } from "../src/modules/runtime/deterministicHandlers.ts";
 import { validateGameManifest } from "../src/modules/content/manifestValidation.ts";
 import type { RuntimeActionContext } from "@cubica/contracts-runtime";
-import type { GameManifestActionDefinition, GameManifestTemplateMap } from "@cubica/contracts-manifest";
+import type {
+  GameManifestActionDefinition,
+  GameManifestObjectModelMap,
+  GameManifestTemplateMap
+} from "@cubica/contracts-manifest";
+
+const cardObjectModels = {
+  "antarctica.card": {
+    collection: "cards",
+    idField: "id",
+    scope: "session",
+    facets: {
+      selection: {
+        initial: "idle",
+        values: ["idle", "selected"]
+      },
+      resolution: {
+        initial: "idle",
+        values: ["idle", "resolved"]
+      },
+      face: {
+        initial: "front",
+        values: ["front", "back"]
+      }
+    }
+  }
+} satisfies GameManifestObjectModelMap;
 
 const manifestWithTemplates = {
   meta: {
@@ -160,7 +186,22 @@ test("deterministicHandler resolves template with overrides.deterministic patter
         },
         effects: [
           { op: "timeline.set", canAdvance: false },
-          { op: "flag.set", path: "/public/flags/cards/{{cardId}}", values: { selected: true, resolved: true } },
+          {
+            op: "object.state.set",
+            visibility: "public",
+            collection: "cards",
+            objectId: "{{cardId}}",
+            facet: "selection",
+            value: "selected"
+          },
+          {
+            op: "object.state.set",
+            visibility: "public",
+            collection: "cards",
+            objectId: "{{cardId}}",
+            facet: "resolution",
+            value: "resolved"
+          },
           { op: "log.append", kind: "card-resolution", cardId: "{{cardId}}", summary: "{{summary}}" }
         ]
       }
@@ -176,7 +217,16 @@ test("deterministicHandler resolves template with overrides.deterministic patter
     overrides: {
       deterministic: {
         guard: {
-          card: { id: "1", selected: false, resolved: false }
+          object: {
+            visibility: "public",
+            collection: "cards",
+            objectId: "1",
+            objectType: "antarctica.card",
+            facets: {
+              selection: "idle",
+              resolution: "idle"
+            }
+          }
         },
         effects: [
           { op: "metric.add", metricId: "score", delta: 10 },
@@ -188,7 +238,8 @@ test("deterministicHandler resolves template with overrides.deterministic patter
 
   const handler = createDeterministicHandler("runtime.server", {
     mode: "manifest-action",
-    templates
+    templates,
+    objectModels: cardObjectModels
   });
 
   const context: RuntimeActionContext<any> = {
@@ -199,7 +250,19 @@ test("deterministicHandler resolves template with overrides.deterministic patter
       public: {
         timeline: { line: "main", stepIndex: 5, canAdvance: false },
         log: [],
-        flags: { cards: { "1": { selected: false, resolved: false } } }
+        objects: {
+          cards: {
+            "1": {
+              objectType: "antarctica.card",
+              facets: {
+                selection: "idle",
+                resolution: "idle",
+                face: "front"
+              },
+              attributes: {}
+            }
+          }
+        }
       }
     },
     now: new Date(),
@@ -219,9 +282,9 @@ test("deterministicHandler resolves template with overrides.deterministic patter
 
   assert.equal(nextState.public.metrics?.score, 10);
 
-  // cardFlags from template applied (cardId resolved from params)
-  assert.equal(nextState.public.flags.cards["1"]?.selected, true);
-  assert.equal(nextState.public.flags.cards["1"]?.resolved, true);
+  // Object-state effects from template applied (cardId resolved from params).
+  assert.equal(nextState.public.objects.cards["1"]?.facets.selection, "selected");
+  assert.equal(nextState.public.objects.cards["1"]?.facets.resolution, "resolved");
 
   // selectedCardId from overrides applied
   assert.equal(nextState.secret?.opening?.selectedCardId, "1");
@@ -395,9 +458,20 @@ test("deterministicHandler applies ordered generic effects with current-state co
     deterministic: {
       effects: [
         {
-          op: "flag.set",
-          path: "/public/flags/cards/1",
-          values: { resolved: true, selected: true }
+          op: "object.state.set",
+          visibility: "public",
+          collection: "cards",
+          objectId: "1",
+          facet: "selection",
+          value: "selected"
+        },
+        {
+          op: "object.state.set",
+          visibility: "public",
+          collection: "cards",
+          objectId: "1",
+          facet: "resolution",
+          value: "resolved"
         },
         {
           op: "state.patch",
@@ -408,10 +482,10 @@ test("deterministicHandler applies ordered generic effects with current-state co
           canAdvance: true,
           when: {
             collectionCount: {
-              path: "/public/flags/cards",
+              path: "/public/objects/cards",
               ids: ["1", "2"],
-              field: "resolved",
-              equals: true,
+              field: "facets/resolution",
+              equals: "resolved",
               countAtLeast: 2
             }
           }
@@ -431,7 +505,8 @@ test("deterministicHandler applies ordered generic effects with current-state co
   } satisfies GameManifestActionDefinition;
 
   const handler = createDeterministicHandler("game.card.resolve", {
-    mode: "manifest-action"
+    mode: "manifest-action",
+    objectModels: cardObjectModels
   });
 
   const result = await handler({
@@ -441,7 +516,20 @@ test("deterministicHandler applies ordered generic effects with current-state co
     state: {
       public: {
         timeline: { line: "main", stepIndex: 1, canAdvance: false },
-        flags: { cards: { "2": { resolved: true } } },
+        objects: {
+          cards: {
+            "1": {
+              objectType: "antarctica.card",
+              facets: { selection: "idle", resolution: "idle", face: "front" },
+              attributes: {}
+            },
+            "2": {
+              objectType: "antarctica.card",
+              facets: { selection: "idle", resolution: "resolved", face: "back" },
+              attributes: {}
+            }
+          }
+        },
         teamSelection: { pickCount: 0, selectedMemberIds: [] },
         log: []
       },
@@ -457,8 +545,8 @@ test("deterministicHandler applies ordered generic effects with current-state co
 
   assert.ok(result.ok, `Action failed: ${result.error?.message}`);
   const nextState = result.delta?.state as any;
-  assert.equal(nextState.public.flags.cards["1"].resolved, true);
-  assert.equal(nextState.public.flags.cards["1"].selected, true);
+  assert.equal(nextState.public.objects.cards["1"].facets.resolution, "resolved");
+  assert.equal(nextState.public.objects.cards["1"].facets.selection, "selected");
   assert.equal(nextState.secret.opening.selectedCardId, "1");
   assert.equal(nextState.public.timeline.canAdvance, true);
   assert.equal(nextState.public.teamSelection.pickCount, 1);
@@ -569,7 +657,7 @@ test("deterministicHandler leaves plain log effects without metric snapshots", a
     deterministic: {
       effects: [
         { op: "metric.add", metricId: "score", delta: 2 },
-        { op: "log.append", kind: "ui-panel-open", summary: "Hint opened" }
+        { op: "log.append", kind: "ui-panel-open", summary: "Shared guide panel opened" }
       ]
     }
   } satisfies GameManifestActionDefinition;

@@ -61,10 +61,11 @@ The Server Component loads game content directly from `runtime-api`'s `GET /game
 The player-web supports three rendering paths:
 1. **Manifest-Driven Multi-Screen Renderer**: The UI is rendered dynamically from a bounded UI manifest provided by the `runtime-api` (see `antarcticaUi` in the DTO). This covers:
    - **S1 entry screen** (`screenId: "S1"` at `stepIndex: 0`): Opening screen with left-sidebar-6-cards layout, 8 metric components, 6 narrative cards, bottom controls.
-   - **S2 board screens** (`screenId: "S2"`): Board screens keyed by stepIndex (55..60 at stepIndex 30, 61..66 at stepIndex 32, 67..68 at stepIndex 34, 69..70 at stepIndex 36) with top-sidebar layout, horizontal metrics bar, board header, and card selection grid.
-   - **S1 info variant screens** (`screenId: "S1"` with `activeInfoId`): Info screens i17, i18, i19, i19_1, i20, i21 where `activeInfoId` disambiguates between variants (e.g., i19 vs i19_1 at the same stepIndex 35).
+   - **Reusable board UI variant** (`screenId: "S2"`): A single `board-topbar` screen renders board title/body and card actions from `currentBoard` and `boardCards` in the player-facing projection.
+   - **Reusable info UI variant** (`screenId: "S1"` with `activeInfoId`): A single `info-topbar` screen renders concrete info entries such as i17, i18, i19, i19_1, i20, and i21 from `currentInfo`; the UI manifest does not duplicate those entries as separate screens.
+   - **Game-defined panels** (`panels.<id>`): Temporary UI layers such as the Antarctica move journal and hint overlay are declared in the game UI manifest and rendered through the same manifest renderer. Local commands such as `showPanel` and `closePanel` update Presenter UI state only; they do not dispatch game actions to `runtime-api`.
    
-   Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId`) following the typed DTOs in `packages/contracts/manifest` and `apps/player-web/src/types/`. When a screen is not in the manifest, the player falls back to the action catalog resolver.
+   Screen selection is driven by runtime snapshot fields (`timeline.screenId`, `timeline.stepIndex`, `timeline.activeInfoId`) following the typed DTOs in `packages/contracts/manifest` and `apps/player-web/src/types/`. The screen key selects the reusable UI variant; scenario text, board content, and action ids stay in game content and the player-facing projection. When a screen is not in the manifest, the player falls back to the action catalog resolver.
 
 2. **Cubica Surface Renderer**: AI-driven games can receive a validated `CubicaSurface` from `POST /agent-turns`. The Web renderer currently supports the MVP catalog entries used by gameplay surfaces (`cubica.text`, `cubica.button`, `cubica.choiceList`, `cubica.metricsBar`, `cubica.hintPanel`, `cubica.cardGrid`) and renders an explicit diagnostic block for unsupported components. Surface actions are routed back through runtime APIs; React components never mutate session state directly.
 
@@ -72,7 +73,7 @@ The player-web supports three rendering paths:
 
 For games without a registered plugin, `player-web` builds a default config from `PlayerFacingContent.ui`. The default path uses UI manifest `screen_routing`, `metric_specs`, and explicit `actionId` values in UI payloads.
 
-`player-web` combines that player-facing content with the live session snapshot (`timeline`, `selectedCardId`, metrics, card flags, etc.) to render the current scene. Board card rendering respects `flags.cards[cardId].available === false`, so locked or alt-swap cards stay hidden until runtime exposes them. For steps that are not modeled yet in the content DTO, the player falls back to the global action catalog.
+`player-web` combines that player-facing content with the live session snapshot (`timeline`, `selectedCardId`, metrics, `objectViews`, `objects.cards`, etc.) to render the current scene. Board card rendering uses object-state facets such as `availability: "hidden"` or `availability: "locked"`, so locked or alt-swap cards stay hidden or disabled until runtime exposes them through object state. For steps that are not modeled yet in the content DTO, the player falls back to the global action catalog.
 
 ## AI-Driven Games
 
@@ -99,7 +100,6 @@ Run `npm test` to execute Vitest suites:
 - `src/components/manifest-renderer.test.tsx`: DOM tests for the manifest-driven renderer.
 - `src/components/game-player-dom.test.tsx`: Integration tests for the full GamePlayer component.
 - `src/components/game-player.test.tsx`: Logic and resolver tests.
-- `src/components/panels/journal-renderer.test.tsx`: Journal and metrics panel rendering tests.
 
 Run `npm run test:e2e` from the repository root to execute Playwright browser tests against `player-web` and `runtime-api`.
 

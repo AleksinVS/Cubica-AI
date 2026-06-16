@@ -5,13 +5,13 @@
     {
       "pluginId": "antarctica-player",
       "gameId": "antarctica",
-      "apiVersion": "1.0",
+      "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
-      "contentHash": "ddb6b7046a94eba6937c8173fca84c1a474b453333380d3a83a97f0de918a9a3",
-      "integrity": "sha256-3ba3BGqU66aTfIFz/KhMGkdLRTMzOA06g6l/DekYqaM=",
-      "filePath": "published/antarctica-player.ddb6b7046a94eba6937c8173fca84c1a474b453333380d3a83a97f0de918a9a3.mjs",
-      "url": "/published-plugin-bundles/antarctica/antarctica-player/ddb6b7046a94eba6937c8173fca84c1a474b453333380d3a83a97f0de918a9a3.mjs"
+      "contentHash": "88085843565cd0f7f20eaa695a3e8f50a519df171063bbefc1e1dd74f3e3222c",
+      "integrity": "sha256-iAhYQ1Zc0PfyDqppWj6PUKUZ3xcQY7vvweHddPPjIiw=",
+      "filePath": "published/antarctica-player.88085843565cd0f7f20eaa695a3e8f50a519df171063bbefc1e1dd74f3e3222c.mjs",
+      "url": "/published-plugin-bundles/antarctica/antarctica-player/88085843565cd0f7f20eaa695a3e8f50a519df171063bbefc1e1dd74f3e3222c.mjs"
     }
   ]
 }

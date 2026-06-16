@@ -248,19 +248,23 @@ Standard JsonLogic operators are available: `var`, `if`, `==`, `!=`, `>`, `<`, `
 
 ## Tier 3: Declarative Effects
 
-Declarative effects are explicit JSON operations that the runtime validates and applies. They are used for small UI/runtime commands that should not become arbitrary JavaScript:
+Declarative effects are explicit JSON operations that the runtime validates and applies. They are used for small game-runtime commands that should not become arbitrary JavaScript:
 
 ```json
 {
   "actions": {
-    "showHint": {
+    "recordFacilitatorNote": {
       "handlerType": "manifest-data",
-      "capabilityFamily": "ui.panel",
-      "capability": "ui.panel.open",
+      "capabilityFamily": "log",
+      "capability": "log.append",
       "deterministic": {
         "effects": [
-          { "op": "ui.panel.open", "panelId": "hint" },
-          { "op": "log.append", "kind": "ui-panel-open", "summary": "Hint panel opened" }
+          {
+            "op": "log.append",
+            "kind": "facilitator-note",
+            "summary": "Команда зафиксировала риск в обсуждении",
+            "data": { "riskLevel": "medium" }
+          }
         ]
       }
     }
@@ -268,7 +272,7 @@ Declarative effects are explicit JSON operations that the runtime validates and 
 }
 ```
 
-Effects are **capability triggers**, not sandboxed user scripts. They signal the runtime to perform a specific allowed operation, for example show a UI panel, open a screen, request a server action, or append a log entry. Full runtime plugins are a separate architecture topic and must not be introduced by adding ad hoc `handlerType: "script"` actions.
+Effects are **capability triggers**, not sandboxed user scripts. They signal the runtime to perform a specific allowed operation, for example append a game log entry, update a timeline field, change a metric, or apply an object-state change. Local UI-only commands such as opening a hint panel should live in the UI manifest and Presenter state, not in the logical game manifest. Full runtime plugins are a separate architecture topic and must not be introduced by adding ad hoc `handlerType: "script"` actions.
 
 ---
 

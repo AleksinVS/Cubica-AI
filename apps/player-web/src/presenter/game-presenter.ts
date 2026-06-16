@@ -297,32 +297,31 @@ export class GamePresenter {
       return;
     }
 
+    if (request.type === ManifestAction.SHOW_PANEL) {
+      const panelId = request.payload?.panelId ?? request.payload?.panel;
+      if (typeof panelId === "string" && panelId.trim() !== "") {
+        this.dismissedPanel = null;
+        this.currentActivePanel = panelId;
+        await this.syncView();
+      }
+      return;
+    }
+
+    if (request.type === ManifestAction.CLOSE_PANEL || request.type === ManifestAction.DISMISS_PANEL) {
+      const panelId = request.payload?.panelId ?? request.payload?.panel;
+      this.dismissedPanel = typeof panelId === "string" ? panelId : this.currentActivePanel;
+      this.currentActivePanel = null;
+      await this.syncView();
+      return;
+    }
+
     this.isPending = true;
     this.clearError();
     await this.syncView();
 
     try {
-      if (request.type === ManifestAction.SHOW_HISTORY || request.type === ManifestAction.SHOW_HINT) {
-        this.dismissedPanel = null;
-      }
-
-      if (request.type === ManifestAction.SHOW_HISTORY) {
-        this.currentActivePanel = "history";
-      }
-
-      if (request.type === ManifestAction.SHOW_HINT) {
-        this.currentActivePanel = "hint";
-      }
-
       if (request.type === ManifestAction.RESET_GAME) {
         await this.resetGame();
-        return;
-      }
-
-      if (request.type === ManifestAction.DISMISS_PANEL) {
-        this.dismissedPanel = (request.payload?.panel as string) ?? null;
-        this.currentActivePanel = null;
-        await this.syncView();
         return;
       }
 

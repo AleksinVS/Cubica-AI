@@ -2,7 +2,7 @@
   "$schema": "../../plugin.schema.json",
   "id": "antarctica-player",
   "gameId": "antarctica",
-  "apiVersion": "1.0",
+  "apiVersion": "2.0",
   "targets": {
     "player-web": {
       "entry": "src/index.ts",

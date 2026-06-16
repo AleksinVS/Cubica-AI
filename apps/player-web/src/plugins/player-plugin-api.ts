@@ -27,7 +27,6 @@ export type {
 export {
   getFallbackActionEntries,
   readCanAdvance,
-  readCardFlags,
   readCardObjects,
   readScreenId,
   readSelectedCardId,

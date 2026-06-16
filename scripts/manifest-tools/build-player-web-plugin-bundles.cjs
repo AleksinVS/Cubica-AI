@@ -23,7 +23,7 @@ const pluginSchema = readJson(path.join(schemasRoot, "plugin.schema.json"));
 const bundleSchema = readJson(path.join(schemasRoot, "player-web-plugin-bundles.schema.json"));
 const pluginSchemaId = "https://cubica.platform/schemas/plugin.schema.json";
 const bundleSchemaId = "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json";
-const supportedApiVersion = "1.0";
+const supportedApiVersion = "2.0";
 const validationTimeoutMs = 15_000;
 
 function parseArgs(argv) {

@@ -8,8 +8,9 @@ import { ManifestAction } from "@cubica/contracts-manifest";
  * 1. commandMap — static mapping of commands to actionId
  * 2. resolveActionId — dynamic resolution (e.g., finding cardId in boardCards)
  *
- * If neither commandMap nor resolveActionId are specified, a default
- * set of platform commands is used (showHistory, showHint, showScreenWithLeftSideBar).
+ * If neither commandMap nor resolveActionId are specified, a small default
+ * set of runtime-oriented commands is used. Pure UI commands such as showPanel
+ * are handled by the Presenter before this adapter is called.
  */
 export function createManifestActionAdapter(options: {
   /** Game-specific content (type unknown — plugin casts to its own type) */
@@ -41,21 +42,7 @@ export function createManifestActionAdapter(options: {
       return;
     }
 
-    // 3. Default platform commands (backward compatibility)
-    if (command === ManifestAction.SHOW_HISTORY) {
-      dispatchAction(ManifestAction.SHOW_HISTORY);
-      return;
-    }
-    if (command === ManifestAction.SHOW_HINT) {
-      dispatchAction(ManifestAction.SHOW_HINT);
-      return;
-    }
-    if (command === ManifestAction.SHOW_LEFT_SIDEBAR) {
-      dispatchAction(ManifestAction.SHOW_LEFT_SIDEBAR);
-      return;
-    }
-
-    // 4. Generic manifest-driven dispatch: simple games put the exact runtime
+    // 3. Generic manifest-driven dispatch: simple games put the exact runtime
     // action id into the UI payload, so no plugin resolver is needed.
     if (command === ManifestAction.REQUEST_SERVER) {
       const actionId = payload.actionId;

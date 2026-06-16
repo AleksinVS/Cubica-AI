@@ -13,7 +13,7 @@ A **global**, short and stable `CLAUDE.md` lives in the **repository root** (thi
 ## 2. General rules for agents
 
 Agents must always:
-1. **When planning, configuring, and developing, always use Context7 MCP to get up-to-date documentation and best practices.**
+1. **When planning, configuring, and developing, use Context7 MCP to get up-to-date documentation and best practices.**
 2. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
    - Re-read the active workflow wrapper/role skill that governs the current work (for example: `$cubica`, `wf-architect`, `wf-orchestrator`).
@@ -44,28 +44,37 @@ Agents must always:
    - Avoid Anglicisms whenever possible.
 
 6. **Write ADR for any architecture changes**
+   - When responding to or working on architectural decisions, proposals, or questions, the agent must always start its response by explicitly describing how it understood the decision/proposal/question.
    - All architectural solutions must be reflected in the ADR.
    - ADRs must contain only project architecture decisions, constraints, rejected alternatives, and consequences.
    - ADRs must not be used as execution plans, slice trackers, next-step lists, or card-by-card migration specs.
-   - Delivery-specific bounded gameplay details must go in Gameplay Slice Records or Content-packs under `docs/tasks/content-packs`.
+   - Delivery-specific bounded gameplay details must go in Gameplay Slice Records under `docs/architecture/gameplay-slices/`; task execution plans and handoffs go in `docs/tasks/active/`.
 
-7. **Keep architectural authority and final review with the main agent**
-   - Built-in subagents must not be treated as the final decision-maker for architectural choices.
-   
-8. **Manage architectural drift and legacy gaps**
+7. **Manage subagent lifecycle**
+   - A subagent is a delegated worker process, thread, or external agent session started to perform a bounded part of the current task.
+   - After a subagent finishes its work and its result has been collected, the parent agent MUST explicitly close or terminate that subagent if it is no longer needed.
+   - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
+   - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
+
+9. **Manage architectural drift and legacy gaps**
     - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
     - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
 
-9. **Platform purity over game-specific hacks**
+10. **Platform purity over game-specific hacks**
     - Any new game mechanic MUST be implemented by extending the manifest schema (capabilities, handlers, state extensions).
     - NEVER add game-specific `if/else` branches or hardcode game IDs (e.g., "antarctica") in the core platform layers (like `services/runtime-api`).
+    - Before designing or implementing a game mechanic, the agent MUST explicitly analyze whether the mechanic is:
+      - **general**: useful for a whole class of games or the platform as a whole;
+      - **game-specific**: meaningful only for one concrete game or scenario.
+    - If the classification is unclear, the agent MUST clarify it with the user or document the assumption before implementation.
+    - General mechanics belong in platform contracts, schema extensions, reusable handlers, or shared renderer behavior. Game-specific mechanics belong in the concrete game bundle/plugin/manifest and must not leak into generic player/runtime layers.
 
-12. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
+11. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
     - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.
     - When adding new significant directories, you MUST create a `.desc.json` file inside them containing a short semantic description (1-2 sentences).
     - After any structural changes (adding/removing folders or `.desc.json` files), you MUST run `node scripts/dev/generate-structure.js` to regenerate `PROJECT_STRUCTURE.yaml` and keep the architecture context up to date.
 
-13. **ANTI-PATTERN: Declarative vs. Imperative Drift**
+12. **ANTI-PATTERN: Declarative vs. Imperative Drift**
     - NEVER replace declarative, cross-platform contracts (e.g., JSON Schema, OpenAPI specs) with language-specific imperative code (e.g., manual TypeScript type guards, Zod schemas isolated in backend code).
     - JSON Schema is the Single Source of Truth (SSOT) for data structures like Game Manifests. Validation must be performed by executing a standard validator (like AJV) against the JSON Schema, not by writing manual `if (typeof x !== 'string')` checks.
 
@@ -90,8 +99,6 @@ Before planning anything, use these entry points:
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
-- [draft/Antarctica/README.md](/home/abc/projects/Cubica-AI/draft/Antarctica/README.md) - explains the structure of the legacy `GameFull.html` prototype used for current Antarctica mechanics extraction.
-- `draft/Antarctica/GameFull.html` - current factual source for Antarctica scenario/mechanics extraction during migration; do not read it whole in-chat, inspect it via scripts and targeted queries only.
 
 ---
 
@@ -101,6 +108,3 @@ Before planning anything, use these entry points:
 - **Naming:** Use descriptive names with timestamps for screenshots (e.g., `.tmp/verification-topbar-2024-05-20.png`).
 - **Cleanup:** Agents are responsible for cleaning up their temporary files in `.tmp/` once the task is completed and verified. **Do not leave temporary files in the repository root.**
 - **Persistence:** Never commit files from the `.tmp/` directory to the repository.
-
----
-

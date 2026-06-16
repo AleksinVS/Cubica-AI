@@ -28,7 +28,7 @@
 - `_prompt` - сохраненный элементный промт конкретного authoring-экземпляра. В первом срезе он хранит `raw/normalized`; в целевой архитектуре ADR-049 он хранит только static residue, то есть невосстановимую статическую часть авторского намерения.
 - `_promptTemplate` - шаблон промта в authoring-прототипе. Редактор копирует его в новый экземпляр при добавлении элемента.
 - `compiled prompt` - единый текст, который видит пользователь: `_prompt.staticText` или шаблонная статическая часть плюс dynamic YAML projection текущего JSON-узла.
-- `dynamic YAML projection` - временное YAML-представление authoring JSON-узла с русскими названиями полей; оно не хранится как источник истины.
+- `dynamic YAML projection` - временное YAML-представление значимых игровых, методических или визуальных свойств authoring JSON-узла с русскими названиями полей; оно не хранится как источник истины и не показывает технические поля.
 - `generation.prompt` - промт визуальной генерации design artifact. Он не описывает игровое или UI-поведение и не заменяет `_prompt`.
 
 ## 3. Жизненный цикл элементного промта
@@ -36,7 +36,7 @@
 1. Новый элемент без `_prompt` получает unsaved compiled prompt из `_promptTemplate` и dynamic YAML projection текущего JSON-узла.
 2. Если `_prompt` уже есть, редактор показывает его static residue вместе с новой dynamic YAML projection.
 3. Пользователь редактирует compiled prompt как единый человеко-читаемый текст.
-4. Агент получает compiled prompt, JSON-фрагменты, schema context, field dictionary и projection source map.
+4. Агент получает compiled prompt, JSON-фрагменты, schema context, field dictionary и скрытую projection source map.
 5. Агент отделяет static residue от структурных правок.
 6. Агент возвращает новый `_prompt.staticText` или external Markdown content и bounded `EditorChangeSet`.
 7. Редактор применяет ChangeSet только после dry-run, JSON Schema validation, semantic validation and undo journal recording.
@@ -88,6 +88,8 @@
 
 - полный compiled prompt не сохраняется;
 - dynamic YAML projection всегда пересобирается из JSON;
+- dynamic YAML projection показывает только значимые игровые, методические или визуальные сущности и свойства;
+- технические поля манифеста или редактора остаются в скрытом context/source map и не выводятся пользователю как YAML-свойства;
 - русские названия полей берутся из schema annotations и field dictionary;
 - словарь полей ключуется контекстом, например schema pointer или `semanticType + relativePath`, а не одним названием свойства;
 - обратное преобразование из edited compiled prompt в authoring JSON идет только через агента и `EditorChangeSet`;
@@ -117,4 +119,4 @@
 - Агент не может переписывать весь файл, если достаточно ChangeSet, ограниченного выбранными JSON Pointer.
 - Сохраненный `_prompt` не должен попадать в generated runtime manifests без отдельного runtime-контракта.
 - Промт не является исполняемой логикой. Исполнение остается в structured manifest fields, validated JSON Schema and runtime handlers.
-- YAML-проекция не является источником истины и не может применяться к JSON без агента, source map, dry-run and validation.
+- YAML-проекция не является источником истины и не может применяться к JSON без агента, скрытой source map, dry-run and validation.

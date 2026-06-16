@@ -14,9 +14,10 @@ import type {
   GamePlayerBoardCard,
   GamePlayerContent,
   GamePlayerInfoEntry,
+  GamePlayerJournalEntry,
   GamePlayerTeamSelectionScene
 } from "./contracts";
-import type { SessionSnapshot } from "@cubica/player-web/plugin-api";
+import type { FallbackMetricSpec, SessionSnapshot } from "@cubica/player-web/plugin-api";
 import {
   getFallbackActionEntries,
   readCanAdvance as readCanAdvanceGeneric,
@@ -38,6 +39,21 @@ type CardObjectState = {
     face?: "front" | "back";
   };
 };
+
+type RuntimeLogLike = Record<string, unknown> & {
+  at?: string;
+  cardId?: string;
+  displayMode?: string;
+  entityType?: string;
+  frontText?: string;
+  backText?: string;
+  metricsBefore?: Record<string, unknown>;
+  metricsAfter?: Record<string, unknown>;
+  metricChanges?: Array<{ metricId?: string; delta?: number }>;
+  summary?: string;
+};
+
+type HintSourceState = Pick<AntarcticaGameState, "currentInfo" | "currentBoard" | "currentTeamSelection">;
 
 /**
  * Extracts Antarctica-specific content from the generic player DTO.
@@ -173,13 +189,109 @@ export function resolveBoardCards(
     });
 }
 
+function isCardJournalEntry(entry: RuntimeLogLike): boolean {
+  const hasVisibleCardText = Boolean(entry.frontText || entry.backText || entry.summary);
+  const isCardEntry = entry.displayMode === "card" || entry.entityType === "card";
+  return Boolean(entry.cardId && (isCardEntry || hasVisibleCardText));
+}
+
+function metricValue(metrics: Record<string, unknown> | undefined, spec: FallbackMetricSpec): number | null {
+  if (!metrics) {
+    return null;
+  }
+
+  for (const key of [spec.id, ...spec.aliases]) {
+    const value = metrics[key];
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+  }
+
+  return null;
+}
+
+function formatSignedDelta(delta: number): string {
+  return delta > 0 ? `+${delta}` : String(delta);
+}
+
+function resolveMetricSummary(entry: RuntimeLogLike, metricSpecs: ReadonlyArray<FallbackMetricSpec>): string {
+  if (Array.isArray(entry.metricChanges) && entry.metricChanges.length > 0) {
+    const captions = new Map<string, string>();
+    for (const spec of metricSpecs) {
+      captions.set(spec.id, spec.caption);
+      for (const alias of spec.aliases) {
+        captions.set(alias, spec.caption);
+      }
+    }
+
+    return entry.metricChanges
+      .filter((change): change is { metricId: string; delta: number } =>
+        typeof change.metricId === "string" && typeof change.delta === "number"
+      )
+      .map((change) => `${captions.get(change.metricId) ?? change.metricId}: ${formatSignedDelta(change.delta)}`)
+      .join(" · ");
+  }
+
+  const parts: Array<string> = [];
+  for (const spec of metricSpecs) {
+    const before = metricValue(entry.metricsBefore, spec);
+    const after = metricValue(entry.metricsAfter, spec);
+    if (before === null || after === null || before === after) {
+      continue;
+    }
+    parts.push(`${spec.caption}: ${formatSignedDelta(after - before)}`);
+  }
+  return parts.join(" · ");
+}
+
+/**
+ * Builds the game-defined journal projection used by the UI manifest panel.
+ *
+ * The platform should not know Antarctica journal semantics. This projection
+ * keeps only visible card choices and resolves card texts from game content.
+ */
+export function resolveJournalEntries(
+  gameContent: GamePlayerContent | null,
+  publicState: Record<string, unknown> | undefined,
+  metricSpecs: ReadonlyArray<FallbackMetricSpec>
+): Array<GamePlayerJournalEntry> {
+  if (!gameContent || !Array.isArray(publicState?.log)) {
+    return [];
+  }
+
+  const cardsById = new Map(gameContent.cards.map((card) => [card.cardId, card]));
+  return publicState.log
+    .filter((entry): entry is RuntimeLogLike => !!entry && typeof entry === "object")
+    .filter(isCardJournalEntry)
+    .map((entry) => {
+      const cardId = typeof entry.cardId === "string" ? entry.cardId : "";
+      const card = cardsById.get(cardId);
+      const frontText = entry.frontText ?? card?.summary ?? "";
+      const backText = entry.backText ?? entry.summary ?? card?.backText ?? "";
+      const metricSummary = resolveMetricSummary(entry, metricSpecs);
+
+      if (!frontText && !backText) {
+        return null;
+      }
+
+      return {
+        frontText,
+        backText,
+        metricSummary,
+        hasMetricSummary: metricSummary.length > 0,
+        at: entry.at ?? ""
+      };
+    })
+    .filter((entry): entry is GamePlayerJournalEntry => entry !== null);
+}
+
 /**
  * Antarctica hint fallback: when no dedicated hint is open, show the last story
  * info screen the player has reached. This is game-specific presentation logic.
  */
 export function resolveLastInfoHintText(
   gameContent: GamePlayerContent | null,
-  gameState: AntarcticaGameState
+  gameState: HintSourceState
 ): string | null {
   if (gameState.currentInfo?.body || gameState.currentInfo?.title) {
     return [gameState.currentInfo.title, gameState.currentInfo.body].filter(Boolean).join("\n\n");

@@ -6,10 +6,11 @@
 - [Why](#why)
 - [Architecture Source](#architecture-source)
 - [Dependency](#dependency)
+- [Current Closeout Findings](#current-closeout-findings)
 - [Scope](#scope)
 - [Non-Goals](#non-goals)
 - [Migration Rules](#migration-rules)
-- [Plan](#plan)
+- [Closeout Work Packages](#closeout-work-packages)
 - [Acceptance](#acceptance)
 - [Validation](#validation)
 - [Artifacts](#artifacts)
@@ -17,12 +18,21 @@
 
 ## Status
 
-**Completed.** Antarctica card state fully migrated to object model. Targeted player-web review checks passing.
+**Closeout implemented - targeted validation passing; canonical verification pending.**
+
+The generic Object State Model platform path is implemented and `Antarctica`
+already uses `state.public.objects.cards` for a large part of card state.
+The closeout removed current card-state runtime/player behavior paths that read
+`flags.cards`; the former `readCardFlags` compatibility export was also retired.
+Full task acceptance still requires a successful `npm run verify:canonical` or
+a documented unrelated canonical failure.
 
 ## Why
 
-`Antarctica` still stores card gameplay state in `state.public.flags.cards`.
-That shape is a legacy card-specific model. It conflicts with ADR-041 because object state should live in `state.public.objects` and use generic object guards/effects.
+`Antarctica` used to store card gameplay state in `state.public.flags.cards`.
+That shape is a legacy card-specific model. It conflicts with ADR-041 because
+object state should live in `state.public.objects` and use generic object
+guards/effects.
 
 This package owns only the `Antarctica` migration from card flags to gameplay object state. The generic platform implementation already lives in `TSK-20260603-gameplay-object-state-model`.
 
@@ -51,6 +61,32 @@ Requires the generic Object State Model platform path:
 
 These are implemented by `TSK-20260603-gameplay-object-state-model`.
 
+## Current Closeout Findings
+
+The 2026-06-13 architecture review found that the task status and closeout
+evidence were ahead of the actual codebase state. The closeout now resolves or
+classifies those findings:
+
+1. `games/antarctica/authoring/game.authoring.json` and generated
+   `games/antarctica/game.manifest.json` previously contained some `flag.set`
+   effects. Current card-state mutations are migrated; remaining team-selection
+   `flag.set` effects are classified as non-card state.
+2. `services/runtime-api/src/modules/runtime/deterministicHandlers.ts`
+   previously contained the generic `guard.card` behavior path that read
+   `public.flags.cards`; it is now removed from current runtime behavior.
+3. `docs/architecture/schemas/game-manifest.schema.json` and
+   `packages/contracts/manifest/src/index.ts` previously exposed `guard.card`;
+   current manifest validation rejects it.
+4. `apps/player-web/src/lib/game-content-resolvers.ts` and
+   `apps/player-web/src/plugins/player-plugin-api.ts` exposed
+   `readCardFlags`. That compatibility export is now removed; current
+   production player behavior and current `Antarctica` plugin code use
+   `readCardObjects`.
+5. `apps/player-web/README.md` previously described `flags.cards` as current
+   board rendering behavior; current docs describe object-state facets.
+6. `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/closeout.md`
+   was referenced but missing; it is now the required closeout artifact.
+
 ## Scope
 
 In scope:
@@ -63,7 +99,12 @@ In scope:
 - use generic Presenter projection where it can replace card-specific projection;
 - regenerate `games/antarctica/game.manifest.json` and source map through the authoring compiler;
 - update tests for existing `Antarctica` flows;
-- prove that no permanent runtime/player fallback reads `flags.cards`.
+- prove that no permanent runtime/player fallback reads `flags.cards`;
+- remove `guard.card` from the current runtime manifest path, or move it behind
+  a separately documented legacy schema/version path if an older published
+  manifest still requires it;
+- remove the deprecated `readCardFlags` plugin API export after verifying
+  current player/plugin code uses `readCardObjects`.
 
 ## Non-Goals
 
@@ -72,6 +113,9 @@ In scope:
 - Do not change `Antarctica` story content, metrics or branching semantics unless required to preserve behavior under the new state shape.
 - Do not introduce per-player object state in this migration.
 - Do not bypass JSON Schema with TypeScript-only validators.
+- Do not remove public plugin API exports without verifying current published
+  and preview plugin paths. Retired exports must be reflected in the legacy
+  register and migration closeout.
 
 ## Migration Rules
 
@@ -87,9 +131,9 @@ In scope:
 6. All generated manifest changes must come from authoring changes and compiler output.
 7. Any remaining `flags.cards` usage after migration must be historical documentation or explicitly tracked debt, not runtime/player behavior.
 
-## Plan
+## Closeout Work Packages
 
-### Phase 1. Inventory And Migration Map
+### Package 1. Inventory And Classification
 
 1. Inventory every current `flags.cards` state shape in:
    - `games/antarctica/authoring/game.authoring.json`;
@@ -97,34 +141,55 @@ In scope:
    - `games/antarctica/plugins/antarctica-player/src`;
    - runtime/player tests.
 2. Map current booleans to object facets.
-3. Record action-by-action conversion rules in `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/migration-map.md`.
+3. Re-run the review search from the Validation section.
+4. Classify every hit as:
+   - current behavior that must be migrated;
+   - historical documentation that must be clearly labeled;
+   - bounded legacy with a debt-log row and removal rule.
+5. Record action-by-action conversion rules in
+   `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/migration-map.md`.
 
-### Phase 2. Authoring Manifest Conversion
+### Package 2. Authoring Manifest Conversion
 
 1. Add `objectTypes.antarctica.card`.
 2. Replace initial `state.public.flags.cards` with `state.public.objects.cards`.
 3. Convert action guards to `guard.object`.
 4. Convert card mutation effects to object effects.
 5. Run authoring compiler and verify generated source maps.
+6. Convert remaining card-related `flag.set` effects to `object.state.set` or
+   `object.attribute.patch`. If a `flag.set` hit is not card state, document
+   why it remains outside this migration.
 
-### Phase 3. Player Plugin And Presenter Cleanup
+### Package 3. Runtime Contract Cleanup
 
-1. Replace plugin reads of `flags.cards` with `objects.cards` or `objectViews.cards`.
-2. Remove card-specific projection where generic Presenter projection covers the same UI fields.
-3. Keep plugin code only for truly `Antarctica`-specific presentation or flow behavior.
+1. Remove current-manifest `guard.card` from runtime handlers, JSON Schema and
+   manifest contracts, or isolate it behind a documented legacy schema/version
+   path that current canonical manifests cannot use.
+2. Ensure runtime tests cover the equivalent `guard.object` behavior.
+3. Add or update a validation check that prevents new current manifests from
+   using `guard.card`.
+4. Keep runtime-api game-agnostic: no `gameId === "antarctica"` branch is
+   allowed.
 
-### Phase 4. Runtime And Player Verification
+### Package 4. Player Plugin And Presenter Cleanup
 
-1. Run existing runtime integration flows for `Antarctica`.
-2. Add or update tests that assert object state after key card actions.
-3. Add player tests or e2e coverage for visible/interactable/resolved card states.
-4. Confirm no permanent fallback reads `flags.cards`.
+1. Replace current plugin reads of `flags.cards` with `objects.cards` or
+   `objectViews.cards`.
+2. Remove card-specific projection where generic Presenter projection covers
+   the same UI fields.
+3. Keep plugin code only for truly `Antarctica`-specific presentation or flow
+   behavior.
+4. Remove deprecated `readCardFlags` compatibility after proving that current
+   `Antarctica` and player-web paths use `readCardObjects`.
 
-### Phase 5. Closeout
+### Package 5. Documentation And Closeout
 
-1. Update this task handoff.
-2. Update related docs if migration changes visible authoring guidance.
-3. Record closeout evidence in `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/closeout.md`.
+1. Update `apps/player-web/README.md` to describe object views/object state
+   instead of `flags.cards`.
+2. Update the migration map status after implementation.
+3. Record closeout evidence in
+   `docs/tasks/artifacts/TSK-20260603-antarctica-object-state-migration/closeout.md`.
+4. Update this task handoff and `NEXT_STEPS.md`.
 
 ## Acceptance
 
@@ -133,6 +198,10 @@ In scope:
 - `Antarctica` card guards use `guard.object`.
 - `Antarctica` card mutation effects use `object.state.set` and, where needed, `object.attribute.patch`.
 - Runtime/player code has no permanent behavior path reading `state.public.flags.cards`.
+- Current runtime manifest schema and contracts do not expose `guard.card`
+  for canonical manifests.
+- No `readCardFlags` export remains in current `player-web` plugin API.
+- Documentation no longer describes `flags.cards` as current player behavior.
 - Existing `Antarctica` runtime integration flows still pass.
 - `npm run verify:canonical` passes.
 
@@ -146,7 +215,7 @@ node scripts/ci/validate-manifest-authoring.js
 npm test --workspace services/runtime-api
 npm test --workspace @cubica/player-web
 npm run verify:canonical
-rg -n 'flags\\.cards|readCardFlags|state\\.public\\.flags|guard\\.card|\"op\": \"flag\\.set\"|object\\.state|guard\\.object' games/antarctica services packages apps docs
+rg -n 'flags\\.cards|readCardFlags|state\\.public\\.flags|guard\\.card|\"op\": \"flag\\.set\"|object\\.state|guard\\.object' games/antarctica services/runtime-api packages/contracts apps/player-web docs/architecture/schemas docs/tasks docs/legacy
 ```
 
 The final `rg` command is a review aid. After migration, `flags.cards` hits must not remain in runtime/player behavior.
@@ -169,3 +238,51 @@ The final `rg` command is a review aid. After migration, `flags.cards` hits must
 - Updated player-web Antarctica opening-tail fixtures to use `public.objects.cards` and kept locked/selected/resolved semantics aligned with the object model.
 - Renamed the player-web test case to reflect hidden-card filtering under object state.
 - Verified `npm test --workspace @cubica/player-web -- src/components/game-player.test.tsx` and `git diff --check`.
+
+### 2026-06-13 - Architecture review closeout reset
+
+- Reopened the task because review found remaining `flags.cards`, `guard.card`,
+  `flag.set` and `readCardFlags` paths that were not compatible with the
+  previous `Completed` status.
+- Converted the remaining work into explicit closeout packages.
+- Registered the temporary compatibility path found during review:
+  `readCardFlags` as ADR-042 same-major plugin API legacy under `LEGACY-0015`.
+
+### 2026-06-13 - Code closeout implementation
+
+- Removed current `guard.card` execution from `runtime-api`, removed the
+  explicit `guard.card` contract surface from `packages/contracts/manifest`,
+  and made the current JSON Schema reject `guard.card`.
+- Reworked runtime tests so card template/effect coverage uses `guard.object`
+  and `object.state.set` against `state.public.objects.cards`.
+- Confirmed regenerated `Antarctica` manifests have no card-state `flag.set`;
+  remaining `/public/flags/team/*` effects are classified as non-card
+  team-selection state.
+- Initially kept `readCardFlags` only as `LEGACY-0015` plugin API
+  compatibility and updated player-web documentation to describe object state
+  as current behavior.
+- Verified `npm run compile:manifests -- --game antarctica`,
+  `node scripts/ci/validate-manifest-authoring.js`,
+  `npm test --workspace services/runtime-api`, and
+  `npm test --workspace @cubica/player-web`.
+- `npm run verify:canonical` was not run in this code slice.
+
+### 2026-06-13 - readCardFlags retirement
+
+- Removed the deprecated `readCardFlags` implementation and public plugin API
+  export from `player-web`.
+- Removed compatibility tests that kept `readCardFlags` available in API 1.x.
+- Bumped current player-web plugin API usage to `apiVersion: "2.0"` so old
+  bundles that depended on API 1.x are not treated as compatible.
+- Moved `LEGACY-0015` from active debt to the removed archive after verifying
+  current `Antarctica` plugin code uses `readCardObjects`.
+- Verified `npm run typecheck --workspace @cubica/player-web`,
+  `npm test --workspace @cubica/player-web`,
+  `npm run build --workspace @cubica/player-web`,
+  `npm test --workspace services/runtime-api`,
+  `npm run build:player-web-plugin-bundles`,
+  `npm run build:player-web-plugin-bundles -- --check`,
+  `npm run verify:api-contracts`, and `git diff --check`.
+- `node scripts/ci/validate-legacy.js` still fails on unrelated pre-existing
+  `mock/not implemented` marker findings in AI/runtime/editor files; the
+  `LEGACY-0015` register/debt transition itself reaches marker scanning.

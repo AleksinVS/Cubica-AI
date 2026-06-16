@@ -67,6 +67,14 @@ export interface GamePlayerContent {
   cards: Array<GamePlayerBoardCard>;
 }
 
+export interface GamePlayerJournalEntry {
+  frontText: string;
+  backText: string;
+  metricSummary: string;
+  hasMetricSummary: boolean;
+  at: string;
+}
+
 /**
  * Game-specific state for Antarctica.
  *
@@ -85,5 +93,11 @@ export interface AntarcticaGameState {
   selectedMemberIds: Array<string>;
   pickCount: number;
   canAdvance: boolean;
+  journalEntries: Array<GamePlayerJournalEntry>;
+  hasJournalEntries: boolean;
+  journalIsEmpty: boolean;
+  journalEmptyMessage: string;
+  hintText: string;
+  hasHintText: boolean;
   fallbackActions: Array<ActionEntry>;
 }

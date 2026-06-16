@@ -27,8 +27,17 @@ import {
   resolveCurrentBoard,
   resolveCurrentInfoEntry,
   resolveCurrentTeamSelectionScene,
+  resolveJournalEntries,
   resolveLastInfoHintText
 } from "./state-resolvers";
+
+const BOARD_TOPBAR_SCREEN_KEY = "board-topbar";
+const INFO_TOPBAR_SCREEN_KEY = "info-topbar";
+const LEFT_SIDEBAR_SCREEN_KEY = "S1_LEFT";
+const ENTRY_SCREEN_KEY = "S1";
+// Antarctica uses S2 for several scenario scenes. Only these step indexes are
+// board scenes, so the shared board UI variant must not capture team selection.
+const ANTARCTICA_BOARD_STEP_INDEXES = new Set([9, 11, 13, 17, 19, 21, 23, 26, 28, 30, 32, 34, 36]);
 
 export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePlayerUiContent> = (
   data: GameConfigData
@@ -44,12 +53,7 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
     metricBackgroundImages: data.metricBackgroundImages,
 
     resolveBoardScreenKey(stepIndex) {
-      if (stepIndex === null) return null;
-      if (stepIndex === 30) return "55..60";
-      if (stepIndex === 32) return "61..66";
-      if (stepIndex === 34) return "67..70";
-      if (stepIndex === 36) return "67..70";
-      return null;
+      return stepIndex !== null && ANTARCTICA_BOARD_STEP_INDEXES.has(stepIndex) ? BOARD_TOPBAR_SCREEN_KEY : null;
     },
 
     resolveScreenKey(screenId, stepIndex, infoId, runtimeUi, gameUi) {
@@ -62,17 +66,17 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       }
 
       if (screenId === "S1") {
-        if (runtimeUi.activeScreen === "left-sidebar" && gameUi?.screens["S1_LEFT"]) {
-          return "S1_LEFT";
+        if (runtimeUi.activeScreen === "left-sidebar" && gameUi?.screens[LEFT_SIDEBAR_SCREEN_KEY]) {
+          return LEFT_SIDEBAR_SCREEN_KEY;
         }
-        if (infoId && gameUi?.screens[infoId]) {
-          return infoId;
+        if (infoId && gameUi?.screens[INFO_TOPBAR_SCREEN_KEY]) {
+          return INFO_TOPBAR_SCREEN_KEY;
         }
         if (infoId) {
           return null;
         }
-        if (gameUi?.screens["S1"]) {
-          return "S1";
+        if (gameUi?.screens[ENTRY_SCREEN_KEY]) {
+          return ENTRY_SCREEN_KEY;
         }
         return null;
       }
@@ -117,6 +121,11 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       const teamSelectionState = readTeamSelection(session);
       const canAdvance = readCanAdvance(session);
       const fallbackActions = getFallbackActionEntries(content);
+      const journalEntries = resolveJournalEntries(gameContent, publicState, data.fallbackMetrics);
+      const resolvedHintText =
+        resolveLastInfoHintText(gameContent, { currentInfo, currentBoard, currentTeamSelection }) ??
+        content.description ??
+        "Подсказка пока не загружена";
       const selectedMemberIds = teamSelectionState.selectedMemberIds ?? [];
       const pickCount = teamSelectionState.pickCount ?? 0;
       const selectedTeamMemberIds =
@@ -140,6 +149,12 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
         selectedMemberIds: selectedTeamMemberIds,
         pickCount,
         canAdvance,
+        journalEntries,
+        hasJournalEntries: journalEntries.length > 0,
+        journalIsEmpty: journalEntries.length === 0,
+        journalEmptyMessage: "Пока нет записей о выбранных карточках.",
+        hintText: resolvedHintText,
+        hasHintText: resolvedHintText.trim().length > 0,
         fallbackActions
       };
     },
@@ -149,10 +164,6 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
         metrics.score = 60 - metrics.time;
       }
       return metrics;
-    },
-
-    resolveHintText(content, gameState) {
-      return resolveLastInfoHintText(resolveAntarcticaContent(content), gameState);
     },
 
     createManifestActionAdapter(content, gameState, dispatchAction, onError) {
@@ -165,6 +176,9 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
             if (card) {
               return card.selectActionId;
             }
+          }
+          if (command === ManifestAction.ADVANCE && gameState.currentInfo?.advanceActionId) {
+            return gameState.currentInfo.advanceActionId;
           }
           if (command === ManifestAction.ADVANCE && payload.advanceActionId) {
             return String(payload.advanceActionId);

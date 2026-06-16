@@ -8,6 +8,8 @@ import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { GamePlayer } from "./game-player";
 import type { PlayerFacingContent, GamePlayerUiContent, PlayerWebPluginBundleReference } from "@cubica/contracts-manifest";
+import antarcticaGameManifest from "../../../../games/antarctica/game.manifest.json";
+import antarcticaWebUiManifest from "../../../../games/antarctica/ui/web/ui.manifest.json";
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -41,6 +43,14 @@ const mockContent: PlayerFacingContent = {
       teamSelections: [],
       cards: []
     }
+  }
+};
+
+const generatedAntarcticaUi = antarcticaWebUiManifest as unknown as GamePlayerUiContent;
+const generatedAntarcticaContent: PlayerFacingContent = {
+  ...mockContent,
+  content: {
+    data: antarcticaGameManifest.content.data
   }
 };
 
@@ -188,13 +198,13 @@ const mockS1Ui: GamePlayerUiContent = {
                     type: "buttonComponent",
                     id: "btn-journal",
                     props: { caption: "Журнал ходов" },
-                    actions: { onClick: { command: "showHistory", payload: {} } }
+                    actions: { onClick: { command: "showPanel", payload: { panelId: "history" } } }
                   },
                   {
                     type: "buttonComponent",
                     id: "btn-hint",
                     props: { caption: "Подсказка" },
-                    actions: { onClick: { command: "showHint", payload: {} } }
+                    actions: { onClick: { command: "showPanel", payload: { panelId: "hint" } } }
                   },
                   {
                     type: "buttonComponent",
@@ -207,6 +217,66 @@ const mockS1Ui: GamePlayerUiContent = {
                     props: { caption: "Вперед" }
                   }
                 ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  panels: {
+    history: {
+      type: "panel",
+      mode: "overlay",
+      title: "Журнал ходов",
+      root: {
+        type: "screenComponent",
+        props: { cssClass: "main-screen journal-screen" },
+        children: [
+          {
+            type: "areaComponent",
+            props: { cssClass: "journal-container" },
+            children: [
+              {
+                type: "richTextComponent",
+                props: { html: "<h1 class=\"heading-h1\">Журнал ходов</h1>" }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    hint: {
+      type: "panel",
+      mode: "overlay",
+      title: "Подсказка",
+      root: {
+        type: "screenComponent",
+        props: { cssClass: "main-screen hint-screen" },
+        children: [
+          {
+            type: "areaComponent",
+            props: { cssClass: "hint-area" }
+          },
+          {
+            type: "richTextComponent",
+            props: { html: "{{hintText}}", cssClass: "hint-text" }
+          },
+          {
+            type: "areaComponent",
+            props: { cssClass: "button-container panel-buttons" },
+            children: [
+              {
+                type: "buttonComponent",
+                id: "btn-journal",
+                props: { caption: "Журнал ходов", variant: "helper" },
+                actions: { onClick: { command: "showPanel", payload: { panelId: "history" } } }
+              },
+              {
+                type: "buttonComponent",
+                id: "btn-hint",
+                props: { caption: "Подсказка", variant: "helper" },
+                actions: { onClick: { command: "closePanel", payload: { panelId: "hint" } } }
               }
             ]
           }
@@ -658,32 +728,45 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const leftArrowButton = screen.getByRole("button", { name: /Назад/i });
     const rightArrowButton = screen.getByRole("button", { name: /Вперед/i });
     
-    // Mock the action dispatch fetch
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
-      if (url === "/api/runtime/actions") {
-        const body = JSON.parse(options.body);
-        expect(["showHint", "showHistory"]).toContain(body.actionId);
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: "showHint" } } })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
-    });
     (global.fetch as any).mockClear();
 
     fireEvent.click(journalButton);
-    fireEvent.click(hintButton);
     fireEvent.click(leftArrowButton);
     fireEvent.click(rightArrowButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      expect(document.querySelector(".journal-screen")).not.toBeNull();
     });
 
+    expect(global.fetch).not.toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
+    expect(hintButton).toBeDefined();
     expect((leftArrowButton as HTMLButtonElement).disabled).toBe(true);
     expect((rightArrowButton as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("opens the hint manifest panel without dispatching a runtime action", async () => {
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        gameUi={mockS1Ui}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText("Подсказка")).toBeDefined();
+    });
+
+    (global.fetch as any).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Подсказка/i }));
+
+    await waitFor(() => {
+      expect(document.querySelector(".hint-screen")).not.toBeNull();
+      expect(document.querySelector(".hint-text")).not.toBeNull();
+    });
+
+    expect(global.fetch).not.toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
   });
 
   it("renders the hint panel as a dedicated visual mode", async () => {
@@ -770,7 +853,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const bundle: PlayerWebPluginBundleReference = {
       pluginId: "async-plugin",
       gameId,
-      apiVersion: "1.0",
+      apiVersion: "2.0",
       target: "player-web",
       scope: "published",
       contentHash: "d".repeat(64),
@@ -939,9 +1022,16 @@ describe("GamePlayer S1 DOM Rendering", () => {
           ui: { activePanel: "history" },
           log: [
             {
-              actionId: "showHistory",
-              capabilityFamily: "ui.panel",
-              capability: "history",
+              actionId: "opening.card.3",
+              kind: "opening-card-advance",
+              entityType: "card",
+              displayMode: "card",
+              cardId: "3",
+              frontText: "Карточка 3",
+              backText: "Результат Карточки 3",
+              metricChanges: [
+                { metricId: "pro", delta: 5 }
+              ],
               at: "2026-04-10T12:00:00Z"
             }
           ],
@@ -965,16 +1055,15 @@ describe("GamePlayer S1 DOM Rendering", () => {
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        gameUi={mockS1Ui}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
     await waitFor(() => {
-      expect(document.querySelector(".journal-screen")).toBeDefined();
-      expect(document.querySelector(".additional-background")).toBeDefined();
-      expect(document.querySelector(".journal-container")).toBeDefined();
-      expect(document.querySelector(".journal-cards-container")).toBeDefined();
-      expect(document.querySelector(".journal-variables-container")).toBeDefined();
+      expect(document.querySelector(".journal-screen")).not.toBeNull();
+      expect(document.querySelector(".journal-container")).not.toBeNull();
+      expect(document.querySelector(".journal-entry-columns")).not.toBeNull();
+      expect(document.querySelector(".journal-variables-container")).not.toBeNull();
     });
   });
 
@@ -988,9 +1077,13 @@ describe("GamePlayer S1 DOM Rendering", () => {
           ui: { activePanel: "history" },
           log: [
             {
-              actionId: "showHistory",
-              capabilityFamily: "ui.panel",
-              capability: "history",
+              actionId: "opening.card.2",
+              kind: "opening-card-advance",
+              entityType: "card",
+              displayMode: "card",
+              cardId: "2",
+              frontText: "Карточка 2",
+              backText: "Результат Карточки 2",
               at: "2026-04-10T12:00:00Z"
             },
             {
@@ -1034,21 +1127,20 @@ describe("GamePlayer S1 DOM Rendering", () => {
         runtimeApiUrl="http://localhost:8080"
         content={mockContent}
         mockups={[]}
-        gameUi={mockS1Ui}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
     await waitFor(() => {
-      expect(document.querySelector(".journal-screen")).toBeDefined();
+      expect(document.querySelector(".journal-screen")).not.toBeNull();
     });
 
     // Journal should NOT show raw "Запрос" or "runtime.server" entries
     expect(screen.queryByText(/^Запрос$/)).toBeNull();
     expect(screen.queryByText(/runtime\.server/)).toBeNull();
 
-    // Journal SHOULD show manifest-driven entries (kind=opening-card-advance)
-    // that have proper user-facing summaries
-    // Use queryAll to check multiple elements found (title + subtitle contain "Карточка 3")
+    // Journal SHOULD show manifest-driven card entries with proper
+    // user-facing summaries.
     const card3Elements = screen.queryAllByText(/Карточка 3/);
     expect(card3Elements.length).toBeGreaterThan(0);
   });
@@ -1369,9 +1461,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithBoards}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1415,9 +1507,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithBoards}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1457,9 +1549,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithBoards}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1468,10 +1560,10 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
       expect(renderer).toBeDefined();
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
-      expect(screen.getByText("Последняя проверка перед переездом.")).toBeDefined();
+      expect(screen.getByText("Последняя проверка перед переездом: нужно понять, достаточно ли надежен новый айсберг.")).toBeDefined();
       // Board cards from manifest (merged 67..70 screen)
       expect(screen.getByText("Кабинетный анализ")).toBeDefined();
-      expect(screen.getByText("Оперативный сбор")).toBeDefined();
+      expect(screen.getByText("Отправить экспертную группу")).toBeDefined();
     });
   });
 
@@ -1500,9 +1592,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithBoards}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1512,9 +1604,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
       expect(document.querySelector(".topbar-screen-shell")).toBeDefined();
       expect(document.querySelector(".topbar-variables-container")).toBeDefined();
       // Both step 34 and 36 resolve to the same 67..70 screen
-      expect(screen.getByText("Последняя проверка перед переездом.")).toBeDefined();
-      expect(screen.getByText("Кабинетный анализ")).toBeDefined();
-      expect(screen.getByText("Подготовка к зиме")).toBeDefined();
+      expect(screen.getByText("После переезда нужно укрепить позиции и решить, готовиться ли ко второму переходу.")).toBeDefined();
+      expect(screen.getByText("Готовить второй переезд")).toBeDefined();
+      expect(screen.getByText("Взять паузу")).toBeDefined();
     });
   });
 
@@ -1544,9 +1636,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithBoards}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1671,7 +1763,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
                   type: "buttonComponent" as const,
                   id: "btn-journal",
                   props: { caption: "Журнал ходов" },
-                  actions: { onClick: { command: "showHistory", payload: {} } }
+                  actions: { onClick: { command: "showPanel", payload: { panelId: "history" } } }
                 }
               ]
             }
@@ -1755,9 +1847,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1776,7 +1868,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
 
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
-    expect(metricImages.length).toBe(2);
+    expect(metricImages.length).toBe(8);
     expect(
       metricImages.every(
         (node) => node.style.backgroundImage.includes("/images/left-sidebar/") || node.style.backgroundImage.includes("/images/top-sidebar/")
@@ -1820,9 +1912,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1863,9 +1955,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1900,9 +1992,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1939,9 +2031,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -1978,9 +2070,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -2018,9 +2110,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -2034,9 +2126,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
   });
 
-  it("renders early info i0 through FallbackRenderer when no dedicated UI screen exists", async () => {
-    // i0 has no dedicated UI screen in mockUiWithInfoVariants.
-    // resolveScreenKey should return null so FallbackRenderer shows the info content.
+  it("renders early info i0 through the reusable info UI variant", async () => {
+    // The normalized UI manifest has one info-topbar screen. The concrete
+    // scenario text still comes from currentInfo in player-facing content.
     const mockContentWithInfo: PlayerFacingContent = {
       ...mockContent,
       content: {
@@ -2085,7 +2177,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
         runtimeApiUrl="http://localhost:8080"
         content={mockContentWithInfo}
         mockups={[]}
-        gameUi={mockUiWithInfoVariants}
+        gameUi={generatedAntarcticaUi}
       />
     );
 
@@ -2155,7 +2247,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
         gameUi={mockS1Ui}
       />
@@ -2180,7 +2272,7 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
         runtimeApiUrl="http://localhost:8080"
-        content={mockContent}
+        content={generatedAntarcticaContent}
         mockups={[]}
         gameUi={mockS1Ui}
       />

@@ -213,12 +213,8 @@ export function SafeModeRenderer({
 function createConventionActionAdapter(dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void) {
   return (command: string, payload: Record<string, unknown>) => {
     // Специальные команды панели
-    if (command === ManifestAction.SHOW_HISTORY) {
-      dispatchAction(ManifestAction.SHOW_HISTORY);
-      return;
-    }
-    if (command === ManifestAction.SHOW_HINT) {
-      dispatchAction(ManifestAction.SHOW_HINT);
+    if (command === ManifestAction.SHOW_PANEL) {
+      dispatchAction(ManifestAction.SHOW_PANEL, payload);
       return;
     }
     // Advance — извлечь advanceActionId из payload
@@ -280,13 +276,13 @@ function buildPanelButtonsArea(
         type: "buttonComponent",
         id: "btn-journal",
         props: { caption: t.journal, variant: "helper" as const, disabled },
-        actions: { onClick: { command: ManifestAction.SHOW_HISTORY, payload: {} } },
+        actions: { onClick: { command: ManifestAction.SHOW_PANEL, payload: { panelId: "history" } } },
       },
       {
         type: "buttonComponent",
         id: "btn-hint",
         props: { caption: t.hint, variant: "helper" as const, disabled },
-        actions: { onClick: { command: ManifestAction.SHOW_HINT, payload: {} } },
+        actions: { onClick: { command: ManifestAction.SHOW_PANEL, payload: { panelId: "hint" } } },
       },
       {
         type: "buttonComponent",

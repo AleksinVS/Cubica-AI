@@ -52,7 +52,7 @@ describe("ManifestRenderer", () => {
                   type: "buttonComponent",
                   id: "btn-journal",
                   props: { caption: "Журнал" },
-                  actions: { onClick: { command: "showHistory", payload: {} } }
+                  actions: { onClick: { command: "showPanel", payload: { panelId: "history" } } }
                 },
                 {
                   type: "buttonComponent",
@@ -239,7 +239,7 @@ describe("ManifestRenderer", () => {
     const button = screen.getByText("Журнал");
     fireEvent.click(button);
 
-    expect(mockOnAction).toHaveBeenCalledWith("showHistory", {});
+    expect(mockOnAction).toHaveBeenCalledWith("showPanel", { panelId: "history" });
     expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
   });

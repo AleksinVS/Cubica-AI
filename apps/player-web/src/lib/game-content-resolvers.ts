@@ -38,13 +38,6 @@ type TimelineState = {
   canAdvance?: boolean;
 };
 
-type CardFlagState = {
-  selected?: boolean;
-  resolved?: boolean;
-  locked?: boolean;
-  available?: boolean;
-};
-
 type TeamFlagState = {
   selected?: boolean;
 };
@@ -57,7 +50,6 @@ type TeamSelectionState = {
 type PublicState = {
   timeline?: TimelineState;
   flags?: {
-    cards?: Record<string, CardFlagState>;
     team?: Record<string, TeamFlagState>;
   };
   objects?: {
@@ -208,17 +200,6 @@ export function readRuntimeUi(session: SessionSnapshot | null): {
  */
 export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
   return readPublicState(session)?.flags?.team ?? {};
-}
-
-/**
- * Читает legacy card flags из session snapshot.
- *
- * Deprecated: новые плагины должны читать object-state через readCardObjects().
- * Этот экспорт оставлен для уже открытых editor preview worktree-сессий,
- * где старый plugin source ещё компилируется против текущего player-web API.
- */
-export function readCardFlags(session: SessionSnapshot | null): Record<string, CardFlagState> {
-  return readPublicState(session)?.flags?.cards ?? {};
 }
 
 /**

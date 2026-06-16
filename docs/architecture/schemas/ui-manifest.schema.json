@@ -94,6 +94,16 @@
       },
       "additionalProperties": false
     },
+    "panels": {
+      "type": "object",
+      "description": "Registry of transient UI panels such as journals, hints, inventory or help overlays. Panels are not scenario screens and do not participate in timeline routing.",
+      "patternProperties": {
+        "^[a-zA-Z0-9_.:-]+$": {
+          "$ref": "#/definitions/uiPanel"
+        }
+      },
+      "additionalProperties": false
+    },
     "entry_point": {
       "type": "string",
       "description": "Identifier of the start screen to render (must exist in 'screens')."
@@ -169,6 +179,39 @@
     }
   },
   "definitions": {
+    "uiPanel": {
+      "type": "object",
+      "required": ["mode", "root"],
+      "properties": {
+        "type": { "const": "panel" },
+        "title": { "type": "string" },
+        "mode": {
+          "type": "string",
+          "enum": ["overlay", "drawer", "inline"],
+          "description": "How the panel is presented relative to the current screen."
+        },
+        "layout_mode": {
+          "type": "string",
+          "description": "Runtime layout hint used by the player presenter, for example topbar or leftsidebar."
+        },
+        "layout_id": {
+          "type": "string",
+          "description": "Optional reference to a design layout defined in the 'layouts' section. DEPRECATED: Use design_artifact_id."
+        },
+        "design_artifact_id": {
+          "type": "string",
+          "description": "ID дизайн-артефакта из секции design_artifacts.registry, описывающего визуальный дизайн этой панели."
+        },
+        "controller_id": {
+          "type": "string",
+          "description": "Optional identifier of a UI-level controller in the UI library."
+        },
+        "root": {
+          "$ref": "#/definitions/uiComponent"
+        }
+      },
+      "additionalProperties": false
+    },
     "uiComponentType": {
       "type": "string",
       "description": "Стандартные типы UI-компонентов платформы Cubica. Viewer должен поддерживать все перечисленные типы.",
@@ -295,7 +338,7 @@
     },
     "uiActions": {
       "type": "object",
-      "description": "UI-level event handlers mapping events like 'onClick' to logical commands in the game manifest.",
+      "description": "UI-level event handlers mapping events like 'onClick' to Presenter commands or explicit runtime action requests.",
       "patternProperties": {
         "^on[A-Z][a-zA-Z]+$": {
           "type": "object",
@@ -303,7 +346,7 @@
           "properties": {
             "command": {
               "type": "string",
-              "description": "Identifier of the command to send to the presenter (must map to an action in the logical manifest)."
+              "description": "Identifier of the command to send to the Presenter, for example showPanel, closePanel, advance or requestServer."
             },
             "payload": {
               "type": "object",

@@ -1133,7 +1133,7 @@ test("POST /actions applies a deterministic runtime transition", async () => {
     body: JSON.stringify({
       sessionId: created.sessionId,
       playerId: "actor",
-      actionId: "showHint",
+      actionId: "opening.info.i0.advance",
       payload: { source: "integration-test" }
     })
   });
@@ -1142,25 +1142,24 @@ test("POST /actions applies a deterministic runtime transition", async () => {
   assert.equal(action.sessionId, created.sessionId);
   assert.equal(action.version.stateVersion, 1);
   assert.equal(action.version.lastEventSequence, 1);
-  assert.equal(action.state.runtime?.lastActionId, "showHint");
-  assert.equal(action.state.runtime?.lastActionFunction, "showHint");
-  assert.equal(action.state.runtime?.lastCapabilityFamily, "ui.panel");
-  assert.equal(action.state.runtime?.lastCapability, "ui.panel.open");
-  assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.panel");
-  assert.equal(action.state.public.ui?.activePanel, "hint");
+  assert.equal(action.state.runtime?.lastActionId, "opening.info.i0.advance");
+  assert.equal(action.state.runtime?.lastActionFunction, "opening.info.i0.advance");
+  assert.equal(action.state.runtime?.lastCapabilityFamily, "game.info.advance");
+  assert.equal(action.state.runtime?.lastCapability, "game.info.advance");
+  assert.equal(action.state.public.timeline.stepIndex, 1);
 
   const log = action.state.public.log;
   assert.equal(log.length, 1);
-  assert.equal(log[0].actionId, "showHint");
-  assert.equal(log[0].capabilityFamily, "ui.panel");
-  assert.equal(log[0].capability, "ui.panel.open");
+  assert.equal(log[0].actionId, "opening.info.i0.advance");
+  assert.equal(log[0].capabilityFamily, "game.info.advance");
+  assert.equal(log[0].capability, "game.info.advance");
 
   const { response: getResponse, body: persisted } = await requestJson<SessionResponse>(`/sessions/${created.sessionId}`);
 
   assert.equal(getResponse.status, 200);
   assert.equal(persisted.version.stateVersion, 1);
-  assert.equal(persisted.state.runtime?.lastActionId, "showHint");
-  assert.equal(persisted.state.runtime?.lastCapabilityFamily, "ui.panel");
+  assert.equal(persisted.state.runtime?.lastActionId, "opening.info.i0.advance");
+  assert.equal(persisted.state.runtime?.lastCapabilityFamily, "game.info.advance");
   assert.equal(persisted.state.public.log.length, 1);
 });
 
@@ -1171,16 +1170,16 @@ test("POST /actions routes different Antarctica actions through manifest capabil
     body: JSON.stringify({
       sessionId: created.sessionId,
       playerId: "router",
-      actionId: "showScreenWithLeftSideBar",
+      actionId: "requestServer",
       payload: { source: "integration-test" }
     })
   });
 
   assert.equal(response.status, 200);
-  assert.equal(action.state.runtime?.lastCapabilityFamily, "ui.screen");
-  assert.equal(action.state.runtime?.lastCapability, "ui.screen.open");
-  assert.equal(action.state.public.ui?.activeScreen, "left-sidebar");
-  assert.equal(action.state.public.ui?.lastCapabilityFamily, "ui.screen");
+  assert.equal(action.state.runtime?.lastCapabilityFamily, "runtime.server");
+  assert.equal(action.state.runtime?.lastCapability, "runtime.server.request");
+  assert.equal(action.state.public.ui?.serverRequested, true);
+  assert.equal(action.state.public.ui?.lastCapabilityFamily, "runtime.server");
 });
 
 test("GET /games/:id/player-content returns dataUi manifest for Antarctica", async () => {
@@ -1208,7 +1207,7 @@ test("GET /games/:id/player-content returns published player-web plugin bundle r
   assert.ok(bundle);
   assert.equal(bundle.pluginId, "antarctica-player");
   assert.equal(bundle.gameId, "antarctica");
-  assert.equal(bundle.apiVersion, "1.0");
+  assert.equal(bundle.apiVersion, "2.0");
   assert.equal(bundle.target, "player-web");
   assert.equal(bundle.scope, "published");
   assert.match(bundle.contentHash, /^[a-f0-9]{64}$/u);
@@ -3182,11 +3181,13 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   assert.deepEqual(body.playerConfig, { min: 1, max: 1 });
   assert.ok(Array.isArray(body.actions));
   assert.ok(body.actions.length > 0);
-  const showHintAction = body.actions.find((a) => a.actionId === "showHint");
-  assert.ok(showHintAction);
-  assert.equal(showHintAction.displayName, "Show hint");
-  assert.equal(showHintAction.capabilityFamily, "ui.panel");
-  assert.equal(showHintAction.capability, "ui.panel.open");
+  assert.equal(body.actions.some((a) => a.actionId === "showHint"), false);
+  const infoAdvanceAction = body.actions.find((a) => a.actionId === "opening.info.i0.advance");
+  assert.ok(infoAdvanceAction);
+  assert.equal(infoAdvanceAction.capabilityFamily, "game.info.advance");
+  assert.equal(infoAdvanceAction.capability, "game.info.advance");
+  const ui = body.ui as { panels?: Record<string, unknown> } | undefined;
+  assert.ok(ui?.panels?.hint);
   assert.ok(Array.isArray(body.mockups));
   assert.ok(body.mockups.length > 0);
   const firstMockup = body.mockups[0];

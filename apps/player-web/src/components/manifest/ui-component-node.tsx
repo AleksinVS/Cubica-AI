@@ -144,6 +144,13 @@ export function UiComponentNode({
   /** Runtime JSON Pointer for the current component in the generated UI manifest. */
   runtimePointer?: string;
 }) {
+  if (component.if) {
+    const condition = resolveExpressions(component.if, gameState ?? {}, localContext);
+    if (!isTruthyCondition(condition)) {
+      return null;
+    }
+  }
+
   const children = moveAdvanceActionToForwardNavigation(component.children ?? []);
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
   const componentRuntimePointer = resolvePreviewRuntimePointer(component, runtimePointer);
@@ -362,6 +369,8 @@ export function UiComponentNode({
       return (
         <ImageComponent
           component={component as GameUiComponent<GameUiImageComponentProps>}
+          localContext={localContext}
+          gameState={gameState}
           previewAttributes={previewAttributes}
         />
       );
@@ -371,6 +380,20 @@ export function UiComponentNode({
       // Неизвестный тип компонента — пропускаем, не бросаем ошибку
       return null;
   }
+}
+
+function isTruthyCondition(value: unknown): boolean {
+  if (value === false || value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    return normalized !== "" && normalized !== "false" && normalized !== "0";
+  }
+  return true;
 }
 
 function resolvePreviewRuntimePointer(component: GameUiComponent, fallback: string | undefined): string | undefined {

@@ -22,7 +22,7 @@ describe("preview plugin loader", () => {
     const bundle: PlayerWebPluginBundleReference = {
       pluginId: "preview-player",
       gameId,
-      apiVersion: "1.0",
+      apiVersion: "2.0",
       target: "player-web",
       scope: "preview",
       contentHash: "a".repeat(64),
@@ -60,7 +60,7 @@ describe("preview plugin loader", () => {
     const bundle: PlayerWebPluginBundleReference = {
       pluginId: "preview-player",
       gameId: "preview-loader-test-scope",
-      apiVersion: "1.0",
+      apiVersion: "2.0",
       target: "player-web",
       scope: "preview",
       contentHash: "b".repeat(64),
@@ -91,7 +91,7 @@ describe("preview plugin loader", () => {
     const bundle: PlayerWebPluginBundleReference = {
       pluginId: "published-player",
       gameId,
-      apiVersion: "1.0",
+      apiVersion: "2.0",
       target: "player-web",
       scope: "published",
       contentHash: "c".repeat(64),

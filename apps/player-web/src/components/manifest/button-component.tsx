@@ -2,7 +2,7 @@ import type {
   GameUiComponent,
   GameUiButtonComponentProps
 } from "@cubica/contracts-manifest";
-import { resolvePayloadExpressions } from "@/lib/expression-resolver";
+import { resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**
@@ -32,6 +32,8 @@ export function ButtonComponent({
   const command = (component as GameUiComponent).actions?.onClick?.command;
   const basePayload = (component as GameUiComponent).actions?.onClick?.payload ?? {};
   const resolvedPayload = resolvePayloadExpressions(basePayload, gameState, localContext);
+  const resolvedCaption = resolveStringProp(caption, gameState, localContext);
+  const resolvedDisabled = resolveBooleanProp(disabled, false, gameState, localContext);
 
   // Определяем CSS классы по variant
   let className: string;
@@ -57,14 +59,49 @@ export function ButtonComponent({
       className={className}
       type="button"
       onClick={() => command && onAction(command, resolvedPayload)}
-      disabled={!command || disabled}
-      aria-label={caption}
+      disabled={!command || resolvedDisabled}
+      aria-label={resolvedCaption}
     >
-      {variant === "nav" ? null : caption}
+      {variant === "nav" ? null : resolvedCaption}
     </button>
   );
 }
 
 function appendClassName(base: string, extra: string): string {
   return base ? `${base} ${extra}` : extra;
+}
+
+function resolveStringProp(
+  value: string | undefined,
+  gameState: Record<string, unknown> | undefined,
+  localContext: Record<string, unknown> | undefined
+): string | undefined {
+  if (!value || !value.includes("{{")) {
+    return value;
+  }
+  return String(resolveExpressions(value, gameState ?? {}, localContext));
+}
+
+function resolveBooleanProp(
+  value: boolean | string | undefined,
+  fallback: boolean,
+  gameState: Record<string, unknown> | undefined,
+  localContext: Record<string, unknown> | undefined
+): boolean {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  const resolved = value.includes("{{")
+    ? resolveExpressions(value, gameState ?? {}, localContext)
+    : value;
+  if (typeof resolved === "boolean") {
+    return resolved;
+  }
+  if (typeof resolved === "string") {
+    return resolved !== "false" && resolved !== "";
+  }
+  return Boolean(resolved);
 }

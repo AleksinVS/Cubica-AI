@@ -26,15 +26,16 @@ const validManifest = {
     public: {
       timeline: { line: "main", stepIndex: 0, stageId: "stage_intro", screenId: "S1" },
       log: [],
-      flags: { cards: {} }
+      flags: { team: {} },
+      objects: { cards: {} }
     }
   },
   actions: {
-    showHint: {
+    openSharedGuidePanel: {
       handlerType: "script",
       capabilityFamily: "ui.panel",
       capability: "ui.panel.hint",
-      function: "showHint"
+      function: "openSharedGuidePanel"
     }
   }
 };
@@ -181,11 +182,11 @@ test("validateGameManifest rejects actions with invalid handlerType", () => {
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: 123,
             capabilityFamily: "ui.panel",
             capability: "ui.panel.hint",
-            function: "showHint"
+            function: "openSharedGuidePanel"
           }
         }
       }),
@@ -356,11 +357,11 @@ test("validateGameManifest rejects deterministic action with missing required pr
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: "script",
             capabilityFamily: "ui.panel",
             capability: "ui.panel.hint",
-            function: "showHint",
+            function: "openSharedGuidePanel",
             deterministic: {
               provenance: [
                 { sourceKind: "legacy-opening-card" }
@@ -449,11 +450,11 @@ test("validateGameManifest accepts deterministic action with empty provenance ar
   const manifest = validateGameManifest({
     ...validManifest,
     actions: {
-      showHint: {
+      openSharedGuidePanel: {
         handlerType: "script",
         capabilityFamily: "ui.panel",
         capability: "ui.panel.hint",
-          function: "showHint",
+          function: "openSharedGuidePanel",
           deterministic: {
             provenance: [],
             guard: {},
@@ -467,21 +468,21 @@ test("validateGameManifest accepts deterministic action with empty provenance ar
   }) as unknown as Record<string, unknown>;
 
   const actions = manifest.actions as Record<string, unknown>;
-  assert.ok(actions?.showHint);
+  assert.ok(actions?.openSharedGuidePanel);
 });
 
 test("validateGameManifest accepts manifest-declared UI effects", () => {
   const manifest = validateGameManifest({
     ...validManifest,
     actions: {
-      showHint: {
+      openSharedGuidePanel: {
         handlerType: "manifest-data",
         capabilityFamily: "ui.panel",
         capability: "ui.panel.open",
         deterministic: {
           effects: [
             { op: "ui.panel.open", panelId: "hint" },
-            { op: "log.append", kind: "ui-panel-open", summary: "Show hint" }
+            { op: "log.append", kind: "ui-panel-open", summary: "Open shared guide panel" }
           ]
         }
       }
@@ -489,7 +490,7 @@ test("validateGameManifest accepts manifest-declared UI effects", () => {
   }) as unknown as Record<string, unknown>;
 
   const actions = manifest.actions as Record<string, unknown>;
-  assert.ok(actions?.showHint);
+  assert.ok(actions?.openSharedGuidePanel);
 });
 
 test("validateGameManifest accepts manifest-declared timeline effects", () => {
@@ -520,9 +521,26 @@ test("validateGameManifest accepts manifest-declared timeline effects", () => {
   assert.ok(actions?.advanceTimeline);
 });
 
-test("validateGameManifest accepts generic manifest effects with conditions", () => {
+test("validateGameManifest accepts object-state card effects with conditions", () => {
   const manifest = validateGameManifest({
     ...validManifest,
+    objectModels: {
+      "antarctica.card": {
+        collection: "cards",
+        idField: "id",
+        scope: "session",
+        facets: {
+          selection: {
+            initial: "idle",
+            values: ["idle", "selected"]
+          },
+          resolution: {
+            initial: "idle",
+            values: ["idle", "resolved"]
+          }
+        }
+      }
+    },
     actions: {
       resolveCard: {
         handlerType: "manifest-data",
@@ -531,9 +549,20 @@ test("validateGameManifest accepts generic manifest effects with conditions", ()
         deterministic: {
           effects: [
             {
-              op: "flag.set",
-              path: "/public/flags/cards/1",
-              values: { selected: true, resolved: true }
+              op: "object.state.set",
+              visibility: "public",
+              collection: "cards",
+              objectId: "1",
+              facet: "selection",
+              value: "selected"
+            },
+            {
+              op: "object.state.set",
+              visibility: "public",
+              collection: "cards",
+              objectId: "1",
+              facet: "resolution",
+              value: "resolved"
             },
             {
               op: "state.patch",
@@ -554,10 +583,10 @@ test("validateGameManifest accepts generic manifest effects with conditions", ()
               canAdvance: true,
               when: {
                 collectionCount: {
-                  path: "/public/flags/cards",
+                  path: "/public/objects/cards",
                   ids: ["1", "2", "3"],
-                  field: "resolved",
-                  equals: true,
+                  field: "facets/resolution",
+                  equals: "resolved",
                   countAtLeast: 2
                 }
               }
@@ -580,13 +609,41 @@ test("validateGameManifest accepts generic manifest effects with conditions", ()
   assert.ok(actions?.resolveCard);
 });
 
+test("validateGameManifest rejects current manifests that still use guard.card", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        actions: {
+          resolveCard: {
+            handlerType: "manifest-data",
+            capabilityFamily: "game.card.resolve",
+            capability: "game.card.resolve",
+            deterministic: {
+              guard: {
+                card: { id: "1", selected: false, resolved: false }
+              },
+              effects: [
+                {
+                  op: "timeline.set",
+                  canAdvance: true
+                }
+              ]
+            }
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
 test("validateGameManifest rejects malformed manifest-declared UI effects", () => {
   assert.throws(
     () =>
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: "manifest-data",
             capabilityFamily: "ui.panel",
             capability: "ui.panel.open",
@@ -703,11 +760,11 @@ test("validateGameManifest rejects deterministic action with invalid metric oper
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: "script",
             capabilityFamily: "ui.panel",
             capability: "ui.panel.hint",
-            function: "showHint",
+            function: "openSharedGuidePanel",
             deterministic: {
               provenance: [
                 { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
@@ -765,11 +822,11 @@ test("validateGameManifest rejects deterministic action with invalid conditional
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: "script",
             capabilityFamily: "ui.panel",
             capability: "ui.panel.hint",
-            function: "showHint",
+            function: "openSharedGuidePanel",
             deterministic: {
               provenance: [
                 { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
@@ -800,11 +857,11 @@ test("validateGameManifest rejects deterministic action with malformed guard.boa
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: "script",
             capabilityFamily: "ui.panel",
             capability: "ui.panel.hint",
-            function: "showHint",
+            function: "openSharedGuidePanel",
             deterministic: {
               provenance: [
                 { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
@@ -829,11 +886,11 @@ test("validateGameManifest rejects deterministic action with invalid collection 
       validateGameManifest({
         ...validManifest,
         actions: {
-          showHint: {
+          openSharedGuidePanel: {
             handlerType: "script",
             capabilityFamily: "ui.panel",
             capability: "ui.panel.hint",
-            function: "showHint",
+            function: "openSharedGuidePanel",
             deterministic: {
               provenance: [
                 { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }

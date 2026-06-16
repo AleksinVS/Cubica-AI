@@ -48,7 +48,7 @@
           "pattern": "^[a-z][a-z0-9-]*$"
         },
         "apiVersion": {
-          "const": "1.0"
+          "const": "2.0"
         },
         "target": {
           "const": "player-web"

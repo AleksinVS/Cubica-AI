@@ -326,7 +326,7 @@ In practice, the presenter/router layer:
 
 ## Element Prompts (элементные промты)
 
-ADR-048 фиксирует отдельный принятый контракт элементного промта для authoring-манифестов. ADR-049 уточняет целевую модель: `_prompt` хранит только невосстановимую статическую часть авторского намерения, а полный текст, который видит пользователь, собирается редактором из `_prompt` и dynamic YAML projection текущего JSON-узла.
+ADR-048 фиксирует отдельный принятый контракт элементного промта для authoring-манифестов. ADR-049 уточняет целевую модель: `_prompt` хранит только невосстановимую статическую часть авторского намерения, а полный текст, который видит пользователь, собирается редактором из `_prompt` и semantic dynamic YAML projection текущего JSON-узла.
 
 Это не то же самое, что `generation.prompt` в design artifacts:
 
@@ -336,7 +336,7 @@ ADR-048 фиксирует отдельный принятый контракт 
 
 Authoring v2 schemas проверяют `_prompt` и `_promptTemplate` через `manifest-authoring-common.schema.json`. Runtime-схемы намеренно не принимают эти поля: compiler stripping rules удаляют их из generated runtime manifests, а доступ runtime/player к промтам потребует отдельного runtime-контракта.
 
-Канонические manifests остаются JSON. YAML используется только как временное человеко-читаемое представление в редакторе: field dictionary сопоставляет schema pointers или semantic type paths с русскими названиями, редактор строит YAML projection для пользователя, а обратное преобразование в JSON выполняется только через агента и `EditorChangeSet`.
+Канонические manifests остаются JSON. YAML используется только как временное человеко-читаемое представление в редакторе: field dictionary сопоставляет schema pointers или semantic type paths с русскими названиями, редактор строит YAML projection только из значимых игровых, методических или визуальных свойств, а технические поля держит в скрытом context/source map. Обратное преобразование в JSON выполняется только через агента и `EditorChangeSet`.
 
 ## Design Artifacts (Дизайн-артефакты для ИИ-агентов)
 

@@ -14,6 +14,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import React from "react";
 
+import type { GamePlayerUiContent } from "@cubica/contracts-manifest";
+import {
+  ANTARCTICA_GAME_CONFIG_DATA,
+  createAntarcticaConfig
+} from "@cubica/antarctica-player-plugin";
 import type { GamePlayerBoard } from "@cubica/antarctica-player-plugin/contracts";
 
 
@@ -43,7 +48,6 @@ import {
 } from "@/test/antarctica-opening-tail-fixtures";
 
 import {
-  readCardFlags,
   readSelectedCardId,
   readCanAdvance,
 } from "@/lib/game-content-resolvers";
@@ -55,6 +59,33 @@ import {
   resolveBoardCards,
 } from "@cubica/antarctica-player-plugin/state-resolvers";
 import type { GamePlayerContent } from "@cubica/antarctica-player-plugin/contracts";
+
+describe("antarctica shared UI screen routing", () => {
+  const uiWithSharedVariants = {
+    screens: {
+      S1: {},
+      S1_LEFT: {},
+      "board-topbar": {},
+      "info-topbar": {}
+    }
+  } as unknown as GamePlayerUiContent;
+
+  it("maps real S2 board steps to the shared board-topbar screen", () => {
+    const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
+
+    expect(config.resolveBoardScreenKey?.(30)).toBe("board-topbar");
+    expect(config.resolveScreenKey?.("S2", 30, null, { activeScreen: "topbar" }, uiWithSharedVariants)).toBe(
+      "board-topbar"
+    );
+  });
+
+  it("does not route the S2 team-selection step into the board UI variant", () => {
+    const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
+
+    expect(config.resolveBoardScreenKey?.(15)).toBeNull();
+    expect(config.resolveScreenKey?.("S2", 15, null, { activeScreen: "topbar" }, uiWithSharedVariants)).toBeNull();
+  });
+});
 
 describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   describe("resolveGameContent", () => {
@@ -201,8 +232,7 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   });
 
   describe("session snapshot readers", () => {
-    it("keeps legacy player plugin API exports available in the 1.x line", () => {
-      expect(typeof playerPluginApiModule.readCardFlags).toBe("function");
+    it("keeps current player plugin API exports available", () => {
       expect(typeof playerPluginApiModule.readCardObjects).toBe("function");
       expect(typeof playerPluginApiModule.createManifestActionAdapter).toBe("function");
       expect(typeof playerPluginApiModule.playerPluginApi.registerGameConfigFactory).toBe("function");
@@ -226,24 +256,6 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
     it("readCanAdvance returns true when canAdvance is set after go-card selection", () => {
       const canAdvance = readCanAdvance(openingTailStep30WithSelectedCardSessionSnapshot);
       expect(canAdvance).toBe(true);
-    });
-
-    it("readCardFlags preserves legacy preview plugin compatibility", () => {
-      const session = {
-        state: {
-          public: {
-            flags: {
-              cards: {
-                "56": { available: false, locked: true },
-              },
-            },
-          },
-        },
-      };
-
-      expect(readCardFlags(session as unknown as typeof openingTailStep30SessionSnapshot)).toEqual({
-        "56": { available: false, locked: true },
-      });
     });
   });
 

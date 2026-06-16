@@ -1,4 +1,4 @@
-import type { GameUiScreenDefinition, GameUiDesignArtifactRef } from "@cubica/contracts-manifest";
+import type { GameUiPanelDefinition, GameUiScreenDefinition, GameUiDesignArtifactRef } from "@cubica/contracts-manifest";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { UiComponentNode } from "./ui-component-node";
 import { screenRootRuntimePointer } from "./preview-metadata";
@@ -21,7 +21,7 @@ export function ManifestRenderer({
   designArtifacts,
   editorPreviewMode = false,
 }: {
-  screenDefinition: GameUiScreenDefinition;
+  screenDefinition: GameUiScreenDefinition | GameUiPanelDefinition;
   metrics: MetricsSnapshot;
   onAction: (command: string, payload: Record<string, unknown>) => void;
   screenKey?: string;

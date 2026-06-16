@@ -812,27 +812,6 @@ const evaluateManifestGuard = (
     }
   }
 
-  // Semantic guard: card — checks card state in public.flags.cards[card.id]
-  if ((guard as any).card) {
-    const cardGuard = (guard as any).card;
-    const flags = ensureObject(publicState.flags);
-    const cards = ensureObject(flags.cards);
-    const cardState = ensureObject(cards[cardGuard.id]);
-
-    if (cardGuard.selected !== undefined && cardState.selected !== cardGuard.selected) {
-      failures.push(`card[${cardGuard.id}].selected expected ${cardGuard.selected}`);
-    }
-    if (cardGuard.resolved !== undefined && cardState.resolved !== cardGuard.resolved) {
-      failures.push(`card[${cardGuard.id}].resolved expected ${cardGuard.resolved}`);
-    }
-    if (cardGuard.locked !== undefined && cardState.locked !== cardGuard.locked) {
-      failures.push(`card[${cardGuard.id}].locked expected ${cardGuard.locked}`);
-    }
-    if (cardGuard.available !== undefined && cardState.available !== cardGuard.available) {
-      failures.push(`card[${cardGuard.id}].available expected ${cardGuard.available}`);
-    }
-  }
-
   if ((guard as any).object) {
     const objectGuards = Array.isArray((guard as any).object)
       ? (guard as any).object

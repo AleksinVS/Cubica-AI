@@ -15,7 +15,7 @@ type PreviewPluginModule = {
   readonly activate?: (api: typeof playerPluginApi) => void;
 };
 
-const supportedPlayerPluginApiVersion = "1.0";
+const supportedPlayerPluginApiVersion = "2.0";
 
 declare global {
   // The generated preview bundle imports the facade from this explicit global

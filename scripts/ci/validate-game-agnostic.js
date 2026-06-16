@@ -5,7 +5,8 @@
  * The script is intentionally narrow: it does not prove all architecture rules,
  * but it blocks the regressions found in TSK-20260521:
  * - player-web page must not always pass Antarctica config;
- * - generic journal must not filter by Antarctica action prefixes;
+ * - game-specific journal UI must not return to generic player-web code;
+ * - local Antarctica UI commands must not return as game manifest actions;
  * - scaffolded plugins must not contain no-op routing/layout resolvers;
  * - a second game fixture must exist for multi-game verification.
  */
@@ -31,6 +32,19 @@ const assertNotContains = (relativePath, forbidden, reason) => {
   }
 };
 
+const assertFileAbsent = (relativePath, reason) => {
+  if (fs.existsSync(path.join(repoRoot, relativePath))) {
+    throw new Error(`${relativePath} must not exist: ${reason}`);
+  }
+};
+
+const assertManifestActionAbsent = (relativePath, actionId, reason) => {
+  const manifest = JSON.parse(read(relativePath));
+  if (manifest.actions && Object.prototype.hasOwnProperty.call(manifest.actions, actionId)) {
+    throw new Error(`${relativePath} must not contain action "${actionId}": ${reason}`);
+  }
+};
+
 requireFile("games/simple-choice/game.manifest.json");
 requireFile("games/simple-choice/ui/web/ui.manifest.json");
 requireFile("games/simple-choice/.desc.json");
@@ -42,17 +56,23 @@ assertNotContains(
   "page.tsx must select config by loaded content, not hard-code Antarctica"
 );
 
-assertNotContains(
+assertFileAbsent(
   "apps/player-web/src/components/panels/journal-renderer.tsx",
-  "opening.card.",
-  "generic journal must use neutral log metadata"
+  "journal UI must be game-defined in a UI manifest panel, not a platform React component"
 );
 
-assertNotContains(
-  "apps/player-web/src/components/panels/journal-renderer.tsx",
-  "opening-card-resolution",
-  "generic journal must use neutral log metadata"
+assertFileAbsent(
+  "apps/player-web/src/components/panels/hint-renderer.tsx",
+  "hint UI must be game-defined in a UI manifest panel, not a platform React component"
 );
+
+for (const actionId of ["showHint", "showTopBar", "showScreenWithLeftSideBar"]) {
+  assertManifestActionAbsent(
+    "games/antarctica/game.manifest.json",
+    actionId,
+    "local UI commands must live in the UI manifest/Presenter state, not in game logic"
+  );
+}
 
 assertNotContains(
   "scripts/dev/scaffold-game.js",

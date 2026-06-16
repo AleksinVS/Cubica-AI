@@ -1,0 +1,851 @@
+{
+  "openapi": "3.1.0",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Cubica Runtime API",
+    "version": "0.1.0",
+    "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
+  },
+  "x-cubica-contract-status": "current-implemented-contract",
+  "x-cubica-yaml-profile": "json-compatible-yaml",
+  "x-cubica-architecture-source": "docs/architecture/adrs/051-api-first-contract-for-modular-monolith.md",
+  "externalDocs": {
+    "description": "ADR-051: API First Contract For Modular Monolith",
+    "url": "./adrs/051-api-first-contract-for-modular-monolith.md"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3001",
+      "description": "Local runtime-api server."
+    }
+  ],
+  "tags": [
+    {
+      "name": "Admin",
+      "description": "Process health and readiness endpoints."
+    },
+    {
+      "name": "Content",
+      "description": "Content cache reload and plugin bundle delivery."
+    },
+    {
+      "name": "PlayerContent",
+      "description": "Player-facing game content and game-specific readiness."
+    },
+    {
+      "name": "Sessions",
+      "description": "Runtime session creation, lookup and editor-preview restore."
+    },
+    {
+      "name": "RuntimeActions",
+      "description": "Deterministic runtime action dispatch."
+    },
+    {
+      "name": "AgentRuntime",
+      "description": "AI-driven and hybrid Agent Turn execution."
+    },
+    {
+      "name": "EditorPreview",
+      "description": "Local/editor-only preview operations. These endpoints are current HTTP behavior but are not public production gameplay APIs."
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["Admin"],
+        "operationId": "getHealth",
+        "summary": "Check runtime-api process liveness.",
+        "x-cubica-scope": "admin",
+        "responses": {
+          "200": {
+            "description": "Runtime API process is alive.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/readiness": {
+      "get": {
+        "tags": ["Admin"],
+        "operationId": "getReadiness",
+        "summary": "Check runtime-api readiness for local process dependencies.",
+        "x-cubica-scope": "admin",
+        "responses": {
+          "200": {
+            "description": "Runtime API is ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Runtime API is not ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/content/reload": {
+      "post": {
+        "tags": ["Content", "EditorPreview"],
+        "operationId": "reloadContent",
+        "summary": "Clear player-facing content cache and optionally register a local editor-preview content source.",
+        "x-cubica-scope": "editor-preview",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/ContentReloadRequest"
+        },
+        "responses": {
+          "200": {
+            "description": "Content cache was cleared and optional preview source was registered.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentReloadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/content-sources/{contentSourceId}/plugin-bundles/{pluginId}/{contentHash}.mjs": {
+      "get": {
+        "tags": ["Content", "EditorPreview"],
+        "operationId": "getPreviewPluginBundle",
+        "summary": "Read a session-scoped player-web plugin bundle for editor preview.",
+        "x-cubica-scope": "editor-preview",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ContentSourceId"
+          },
+          {
+            "$ref": "#/components/parameters/PluginId"
+          },
+          {
+            "$ref": "#/components/parameters/ContentHash"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JavaScript module source.",
+            "content": {
+              "text/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/published-plugin-bundles/{gameId}/{pluginId}/{contentHash}.mjs": {
+      "get": {
+        "tags": ["Content"],
+        "operationId": "getPublishedPluginBundle",
+        "summary": "Read an immutable published player-web plugin bundle.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/GameId"
+          },
+          {
+            "$ref": "#/components/parameters/PluginId"
+          },
+          {
+            "$ref": "#/components/parameters/ContentHash"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JavaScript module source.",
+            "content": {
+              "text/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/games/{gameId}/player-content": {
+      "get": {
+        "tags": ["PlayerContent"],
+        "operationId": "getPlayerContent",
+        "summary": "Load player-facing content for one game.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/GameId"
+          },
+          {
+            "$ref": "#/components/parameters/OptionalContentSourceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Player-facing content projection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlayerFacingContent"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/games/{gameId}/readiness": {
+      "get": {
+        "tags": ["PlayerContent", "Admin"],
+        "operationId": "getGameReadiness",
+        "summary": "Check launch readiness for one game and optional content source.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/GameId"
+          },
+          {
+            "$ref": "#/components/parameters/OptionalContentSourceId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Game is launch-ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Game is not launch-ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sessions": {
+      "post": {
+        "tags": ["Sessions"],
+        "operationId": "createSession",
+        "summary": "Create a runtime session.",
+        "x-cubica-scope": "public",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/CreateSessionRequest"
+        },
+        "responses": {
+          "201": {
+            "description": "Runtime session was created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}": {
+      "get": {
+        "tags": ["Sessions"],
+        "operationId": "getSession",
+        "summary": "Read a runtime session snapshot.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SessionId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Runtime session snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/sessions/{sessionId}/preview-restore": {
+      "post": {
+        "tags": ["Sessions", "EditorPreview"],
+        "operationId": "restorePreviewSession",
+        "summary": "Restore an editor-preview runtime session snapshot.",
+        "x-cubica-scope": "editor-preview",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SessionId"
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/RestorePreviewSessionRequest"
+        },
+        "responses": {
+          "200": {
+            "description": "Preview session was restored.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RestorePreviewSessionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/actions": {
+      "post": {
+        "tags": ["RuntimeActions"],
+        "operationId": "dispatchAction",
+        "summary": "Dispatch a deterministic runtime action.",
+        "x-cubica-scope": "public",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/DispatchActionRequest"
+        },
+        "responses": {
+          "200": {
+            "description": "Action was dispatched and persisted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/agent-turns": {
+      "post": {
+        "tags": ["AgentRuntime"],
+        "operationId": "runAgentTurn",
+        "summary": "Run one AI-driven or hybrid Agent Turn.",
+        "x-cubica-scope": "public",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/AgentTurnRequest"
+        },
+        "responses": {
+          "200": {
+            "description": "Agent Turn result and persisted state snapshot.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgentTurnResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "502": {
+            "$ref": "#/components/responses/BadGateway"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "ContentHash": {
+        "name": "contentHash",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "ContentSourceId": {
+        "name": "contentSourceId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/ContentSourceId"
+        }
+      },
+      "GameId": {
+        "name": "gameId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/GameId"
+        }
+      },
+      "OptionalContentSourceId": {
+        "name": "contentSourceId",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "$ref": "#/components/schemas/ContentSourceId"
+        }
+      },
+      "PluginId": {
+        "name": "pluginId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "SessionId": {
+        "name": "sessionId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "requestBodies": {
+      "AgentTurnRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/AgentTurnRequest"
+            }
+          }
+        }
+      },
+      "ContentReloadRequest": {
+        "required": false,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ContentReloadRequest"
+            }
+          }
+        }
+      },
+      "CreateSessionRequest": {
+        "required": false,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/CreateSessionRequest"
+            }
+          }
+        }
+      },
+      "DispatchActionRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/DispatchActionRequest"
+            }
+          }
+        }
+      },
+      "RestorePreviewSessionRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/RestorePreviewSessionRequest"
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "BadGateway": {
+        "description": "Upstream or configured Agent Runtime returned invalid data.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "BadRequest": {
+        "description": "Request failed validation.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Operation is not allowed for this session or mode.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "Runtime API internal error.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Resource was not found.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "Required runtime dependency is unavailable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "ActionResponse": {
+        "type": "object",
+        "required": ["sessionId", "version", "state"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "version": { "$ref": "#/components/schemas/SessionStateVersion" },
+          "state": { "$ref": "#/components/schemas/JsonObject" }
+        },
+        "additionalProperties": false
+      },
+      "AgentTurnRequest": {
+        "type": "object",
+        "required": ["sessionId"],
+        "properties": {
+          "sessionId": { "type": "string", "minLength": 1 },
+          "playerId": { "type": "string", "minLength": 1 },
+          "actionId": { "type": "string", "minLength": 1 },
+          "payload": true
+        },
+        "additionalProperties": true
+      },
+      "AgentTurnResponse": {
+        "type": "object",
+        "required": ["sessionId", "version", "state", "agentTurn"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "version": { "$ref": "#/components/schemas/SessionStateVersion" },
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "agentTurn": { "$ref": "#/components/schemas/JsonObject" }
+        },
+        "additionalProperties": false
+      },
+      "ContentReloadRequest": {
+        "type": "object",
+        "properties": {
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "contentRoot": { "type": "string", "minLength": 1 },
+          "pluginBundles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/LocalPlayerWebPluginBundle" }
+          }
+        },
+        "additionalProperties": true
+      },
+      "ContentReloadResponse": {
+        "type": "object",
+        "required": ["ok", "clearedGameIds"],
+        "properties": {
+          "ok": { "const": true },
+          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "clearedGameIds": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/GameId" }
+          }
+        },
+        "additionalProperties": false
+      },
+      "ContentSourceId": {
+        "type": "string",
+        "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$"
+      },
+      "CreateSessionRequest": {
+        "type": "object",
+        "properties": {
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "playerId": { "type": "string", "minLength": 1 },
+          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" }
+        },
+        "additionalProperties": true
+      },
+      "DependencyCheckResult": {
+        "type": "object",
+        "required": ["status"],
+        "properties": {
+          "status": { "enum": ["ok", "error"] },
+          "ready": { "type": "boolean" },
+          "mode": { "type": "string" },
+          "message": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "DispatchActionRequest": {
+        "type": "object",
+        "required": ["sessionId", "actionId"],
+        "properties": {
+          "sessionId": { "type": "string", "minLength": 1 },
+          "playerId": { "type": "string", "minLength": 1 },
+          "actionId": { "type": "string", "minLength": 1 },
+          "payload": true
+        },
+        "additionalProperties": true
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "required": ["error"],
+        "properties": {
+          "error": { "type": "string" }
+        },
+        "additionalProperties": false
+      },
+      "GameId": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "GameReadinessResponse": {
+        "type": "object",
+        "required": ["ready", "service", "gameId", "dependencies"],
+        "properties": {
+          "ready": { "type": "boolean" },
+          "service": { "const": "runtime-api" },
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" },
+          "executionMode": { "enum": ["deterministic", "hybrid", "ai-driven"] },
+          "dependencies": { "$ref": "#/components/schemas/JsonObject" }
+        },
+        "additionalProperties": true
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": ["status", "service"],
+        "properties": {
+          "status": { "const": "ok" },
+          "service": { "const": "runtime-api" }
+        },
+        "additionalProperties": false
+      },
+      "JsonObject": {
+        "type": "object",
+        "additionalProperties": true
+      },
+      "LocalPlayerWebPluginBundle": {
+        "type": "object",
+        "required": ["gameId", "pluginId", "target", "contentHash", "file"],
+        "properties": {
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "pluginId": { "type": "string", "minLength": 1 },
+          "target": { "const": "player-web" },
+          "contentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "file": { "type": "string", "minLength": 1 }
+        },
+        "additionalProperties": false
+      },
+      "PlayerFacingContent": {
+        "type": "object",
+        "required": ["gameId"],
+        "properties": {
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "manifestVersion": { "type": "string" },
+          "ui": { "$ref": "#/components/schemas/JsonObject" },
+          "pluginBundles": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/JsonObject" }
+          }
+        },
+        "additionalProperties": true
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "required": ["ready", "service", "dependencies"],
+        "properties": {
+          "ready": { "type": "boolean" },
+          "service": { "const": "runtime-api" },
+          "dependencies": {
+            "type": "object",
+            "required": ["content", "sessionStore"],
+            "properties": {
+              "content": { "$ref": "#/components/schemas/DependencyCheckResult" },
+              "sessionStore": { "$ref": "#/components/schemas/DependencyCheckResult" }
+            },
+            "additionalProperties": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RestorePreviewSessionRequest": {
+        "type": "object",
+        "required": ["state", "version"],
+        "properties": {
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "version": {
+            "type": "object",
+            "required": ["stateVersion", "lastEventSequence"],
+            "properties": {
+              "sessionId": { "type": "string" },
+              "stateVersion": { "type": "integer", "minimum": 0 },
+              "lastEventSequence": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "targetEventSequence": { "type": "integer", "minimum": 0 },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": true
+      },
+      "RestorePreviewSessionResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/SessionResponse"
+          },
+          {
+            "type": "object",
+            "required": ["restored"],
+            "properties": {
+              "restored": { "const": true }
+            },
+            "additionalProperties": true
+          }
+        ]
+      },
+      "SessionResponse": {
+        "type": "object",
+        "required": ["sessionId", "gameId", "version", "state"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "version": { "$ref": "#/components/schemas/SessionStateVersion" },
+          "state": { "$ref": "#/components/schemas/JsonObject" }
+        },
+        "additionalProperties": false
+      },
+      "SessionStateVersion": {
+        "type": "object",
+        "required": ["sessionId", "stateVersion", "lastEventSequence"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "stateVersion": { "type": "integer", "minimum": 0 },
+          "lastEventSequence": { "type": "integer", "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
