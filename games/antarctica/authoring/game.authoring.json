@@ -10364,13 +10364,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "fedya",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/fedya/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10446,13 +10451,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "aliona",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/aliona/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10533,13 +10543,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "leo",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/leo/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10620,13 +10635,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "grisha",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/grisha/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10702,13 +10722,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "liza",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/liza/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10789,13 +10814,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "zenya",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/zenya/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10866,13 +10896,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "zora",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/zora/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -10943,13 +10978,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "arkadii",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/arkadii/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -11020,13 +11060,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "vasya",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/vasya/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -11097,13 +11142,18 @@
                 "opening": {
                   "selectedCardIdEquals": "18"
                 },
-                "teamSelection": {
-                  "pickCountLessThan": 5
-                },
-                "team": {
-                  "memberId": "tima",
-                  "selected": false
-                }
+                "stateConditions": [
+                  {
+                    "path": "/public/teamSelection/pickCount",
+                    "operator": "<",
+                    "value": 5
+                  },
+                  {
+                    "path": "/public/flags/team/tima/selected",
+                    "operator": "==",
+                    "value": false
+                  }
+                ]
               },
               "effects": [
                 {
@@ -11187,8 +11237,9 @@
                 "stepIndex": 19,
                 "canAdvance": true
               },
-              "board": {
-                "cardIds": [
+              "collectionCount": {
+                "path": "/public/objects/cards",
+                "ids": [
                   "25",
                   "26",
                   "27",
@@ -11196,7 +11247,9 @@
                   "29",
                   "30"
                 ],
-                "resolvedCountAtLeast": 3
+                "field": "facets/resolution",
+                "equals": "resolved",
+                "countAtLeast": 3
               }
             },
             "effects": [
@@ -11253,9 +11306,13 @@
               "opening": {
                 "selectedCardIdEquals": "18"
               },
-              "teamSelection": {
-                "pickCountEquals": 5
-              }
+              "stateConditions": [
+                {
+                  "path": "/public/teamSelection/pickCount",
+                  "operator": "==",
+                  "value": 5
+                }
+              ]
             },
             "effects": [
               {

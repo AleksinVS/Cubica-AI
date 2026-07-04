@@ -450,22 +450,18 @@
         ]
       },
       "properties": {
-        "board": {
-          "type": "object",
-          "properties": {
-            "cardIds": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
+        "collectionCount": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/GameManifestDeterministicCollectionCount"
             },
-            "resolvedCountAtLeast": {
-              "type": "number"
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/definitions/GameManifestDeterministicCollectionCount"
+              }
             }
-          },
-          "required": [
-            "cardIds",
-            "resolvedCountAtLeast"
           ]
         },
         "jsonLogic": {
@@ -508,31 +504,6 @@
             "$ref": "#/definitions/GameManifestDeterministicStateCondition"
           },
           "type": "array"
-        },
-        "team": {
-          "type": "object",
-          "properties": {
-            "memberId": {
-              "type": "string"
-            },
-            "selected": {
-              "type": "boolean"
-            }
-          },
-          "required": [
-            "memberId"
-          ]
-        },
-        "teamSelection": {
-          "type": "object",
-          "properties": {
-            "pickCountLessThan": {
-              "type": "number"
-            },
-            "pickCountEquals": {
-              "type": "number"
-            }
-          }
         },
         "timeline": {
           "additionalProperties": false,
@@ -1316,6 +1287,45 @@
       "required": [
         "path",
         "operator"
+      ],
+      "type": "object"
+    },
+    "GameManifestDeterministicCollectionCount": {
+      "additionalProperties": false,
+      "description": "Generic collection-count check: counts items in a collection whose field equals a value and requires a threshold. Shared by deterministic effect conditions and guards (ADR-041 §7.2).",
+      "properties": {
+        "countAtLeast": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string",
+              "pattern": "^\\{\\{.+\\}\\}$"
+            }
+          ]
+        },
+        "equals": {},
+        "field": {
+          "type": "string"
+        },
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "path": {
+          "pattern": "^/(public|secret)/",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path",
+        "ids",
+        "field",
+        "countAtLeast"
       ],
       "type": "object"
     },

@@ -281,27 +281,37 @@ export interface GameManifestDeterministicStateCondition {
   value?: unknown;
 }
 
+/**
+ * Generic "how many items in a collection satisfy a field condition" check.
+ *
+ * Shared by deterministic effect conditions and deterministic guards so that
+ * counting-with-threshold ("at least N of these ids have field == equals") is
+ * one platform primitive rather than a game-specific guard shape. Reads
+ * `path` as a JSON Pointer object, then for each id in `ids` reads `field`
+ * (a `/`-separated sub-path relative to the item) and counts matches of
+ * `equals` (default `true`); passes when the count reaches `countAtLeast`.
+ */
+export interface GameManifestDeterministicCollectionCount {
+  path: string;
+  ids: Array<string>;
+  field: string;
+  equals?: unknown;
+  countAtLeast: number | string;
+}
+
 export interface GameManifestDeterministicGuard {
   timeline?: {
     line?: string;
     stepIndex?: number | string;
     canAdvance?: boolean | string;
   };
+  /**
+   * Opening-card guard. Game-specific to Antarctica's `secret.opening`; a
+   * follow-up slice migrates it to generic `stateConditions` (ADR-041 §7.2).
+   */
   opening?: {
     selectedCardIdAbsent?: boolean;
     selectedCardIdEquals?: string | number;
-  };
-  team?: {
-    memberId: string;
-    selected?: boolean;
-  };
-  teamSelection?: {
-    pickCountLessThan?: number;
-    pickCountEquals?: number;
-  };
-  board?: {
-    cardIds: Array<string>;
-    resolvedCountAtLeast: number;
   };
   /**
    * Generic object-state guards. These check authoritative object state in
@@ -309,6 +319,12 @@ export interface GameManifestDeterministicGuard {
    */
   object?: GameManifestObjectStateGuard | Array<GameManifestObjectStateGuard>;
   stateConditions?: Array<GameManifestDeterministicStateCondition>;
+  /**
+   * Generic collection-count guard(s): the guard-side counterpart of the
+   * effect-condition `collectionCount`. `board` (Antarctica card resolution)
+   * migrated onto this generic form (ADR-041 §7.2).
+   */
+  collectionCount?: GameManifestDeterministicCollectionCount | Array<GameManifestDeterministicCollectionCount>;
   jsonLogic?: JsonLogicExpression;
   [key: string]: unknown;
 }
@@ -345,13 +361,7 @@ export type GameManifestDeterministicEffectCondition =
   | { readFrom?: "current" | "preAction"; state: GameManifestDeterministicStateCondition }
   | {
       readFrom?: "current" | "preAction";
-      collectionCount: {
-        path: string;
-        ids: Array<string>;
-        field: string;
-        equals?: unknown;
-        countAtLeast: number | string;
-      };
+      collectionCount: GameManifestDeterministicCollectionCount;
     }
   | { all: Array<GameManifestDeterministicEffectCondition> }
   | { any: Array<GameManifestDeterministicEffectCondition> }

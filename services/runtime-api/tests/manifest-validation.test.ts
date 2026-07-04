@@ -912,7 +912,10 @@ test("validateGameManifest rejects deterministic action with invalid conditional
   );
 });
 
-test("validateGameManifest rejects deterministic action with malformed guard.board.cardIds", () => {
+test("validateGameManifest rejects deterministic action with malformed guard.collectionCount", () => {
+  // ADR-041 §7.2: the game-specific `board` guard was migrated onto the generic
+  // `collectionCount` guard. A collectionCount missing required fields
+  // (`field`/`countAtLeast`) must be rejected by the schema.
   assert.throws(
     () =>
       validateGameManifest({
@@ -928,8 +931,9 @@ test("validateGameManifest rejects deterministic action with malformed guard.boa
                 { sourceKind: "legacy-opening-card", sourceFile: "game.js", legacyCardId: "1" }
               ],
               guard: {
-                board: {
-                  cardIds: ["1", 2, "3"]
+                collectionCount: {
+                  path: "/public/objects/cards",
+                  ids: ["1", "2"]
                 }
               },
               effects: [{ op: "log.append", kind: "test", summary: "test" }]

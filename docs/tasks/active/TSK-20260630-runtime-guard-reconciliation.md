@@ -19,7 +19,16 @@
 
 ## Status
 
-planned
+partially-implemented (2026-07-04) — board/team/teamSelection мигрированы; opening отложен
+
+По подтверждённому решению (все 4 guard-а → generic) выполнен первый слайс: `board` →
+generic `collectionCount`, `team`/`teamSelection` → generic `stateConditions`; их
+game-specific формы удалены из платформенной схемы и контрактов; чтение JSON-pointer
+унифицировано (`readJsonPointer`/`evaluateStateCondition`, чинит баг `~0/~1`, находка #4);
+`(guard as any)` касты удалены (находка #3). Эквивалентность доказана: runtime-api 127/127,
+`verify:contracts-schema-parity|contracts-manifest|manifest-authoring|game-agnostic` зелёные.
+**Отложено (Phase 2, отдельный коммит):** `opening` (73 инстанса) → `stateConditions` на
+`/secret/opening/selectedCardId`, затем удаление формы `opening` из схемы/контрактов.
 
 ## Understanding
 
@@ -137,3 +146,31 @@ npm run verify:canonical
 ## Handoff Log
 
 - 2026-06-30: задача создана по результатам полного ревью; покрывает LEGACY-0020.
+- 2026-07-04: **Phase 1** — миграция board/team/teamSelection + платформенная зачистка.
+  - **Решение (утверждено владельцем):** мигрировать все 4 guard-а на generic
+    `stateConditions`/`collectionCount`; `board`→collectionCount, opening/team/
+    teamSelection→stateConditions. opening вынесен в отдельный слайс из-за объёма (73).
+  - **Общий примитив:** вынесен `evaluateCollectionCount(state, spec)` — используется и
+    эффект-условиями, и guard-ами (без дублирования). В `game-manifest.schema.json`
+    добавлено определение `GameManifestDeterministicCollectionCount`, в контракте —
+    одноимённый интерфейс (переиспользован в эффект-условии).
+  - **board → collectionCount:** `{path:"/public/objects/cards", ids:cardIds,
+    field:"facets/resolution", equals:"resolved", countAtLeast:N}`. Эквивалент проверен:
+    те же path/field уже используются в эффект-условиях Antarctica.
+  - **team → stateConditions:** `{path:"/public/flags/team/<id>/selected", operator:"==",
+    value:<selected>}`. **teamSelection → stateConditions:** `pickCountLessThan`→`<`,
+    `pickCountEquals`→`==` на `/public/teamSelection/pickCount` (инициализирован `0`).
+  - **Унификация чтения:** guard `stateConditions` теперь идёт через `readJsonPointer`/
+    `evaluateStateCondition` (с распаковкой `~0/~1`) — устранён дубль-инлайн `/`-split
+    (находка #4). `(guard as any)` касты убраны (находка #3); типы guard-а очищены.
+  - **Миграция манифеста:** одноразовый transform-скрипт (в job tmp, не коммитится) —
+    board=1, team=10, teamSelection=11; распознавание строго по guard-формам, чтобы не
+    задеть одноимённые поля в состоянии (team-ростер, teamSelection.pickCount). Authoring
+    перекомпилирован; в compiled 0 legacy-форм, 14 collectionCount, 11 stateConditions.
+  - **Схема/контракт:** формы `board`/`team`/`teamSelection` удалены; `generate:contracts`
+    регенерирован; drift-check зелёный.
+  - **Тесты:** устаревший тест валидации `board`-guard заменён на проверку malformed
+    `collectionCount`-guard. runtime-api 127/127.
+  - **Осталось (Phase 2):** `opening` → `stateConditions` (`/secret/opening/selectedCardId`:
+    `selectedCardIdAbsent`→`not_exists`, `selectedCardIdEquals`→`==`), затем удаление
+    формы `opening` из схемы/контрактов и последнего game-specific guard из платформы.

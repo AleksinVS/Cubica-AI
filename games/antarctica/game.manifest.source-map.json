@@ -49803,34 +49803,58 @@
         "pointer": "/root/logic/actions/128/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.fedya/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.fedya/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.fedya/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.fedya/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.fedya/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.fedya/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/128/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.fedya/overrides/deterministic/effects/0": [
@@ -50185,34 +50209,58 @@
         "pointer": "/root/logic/actions/129/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.aliona/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.aliona/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.aliona/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.aliona/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.aliona/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.aliona/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/129/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.aliona/overrides/deterministic/effects/0": [
@@ -50591,34 +50639,58 @@
         "pointer": "/root/logic/actions/130/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.leo/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.leo/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.leo/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.leo/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.leo/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.leo/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/130/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.leo/overrides/deterministic/effects/0": [
@@ -50997,34 +51069,58 @@
         "pointer": "/root/logic/actions/131/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.grisha/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.grisha/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.grisha/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.grisha/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.grisha/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.grisha/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/131/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.grisha/overrides/deterministic/effects/0": [
@@ -51379,34 +51475,58 @@
         "pointer": "/root/logic/actions/132/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.liza/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.liza/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.liza/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.liza/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.liza/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.liza/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/132/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.liza/overrides/deterministic/effects/0": [
@@ -51785,34 +51905,58 @@
         "pointer": "/root/logic/actions/133/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.zenya/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.zenya/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.zenya/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.zenya/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.zenya/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.zenya/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/133/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.zenya/overrides/deterministic/effects/0": [
@@ -52143,34 +52287,58 @@
         "pointer": "/root/logic/actions/134/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.zora/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.zora/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.zora/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.zora/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.zora/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.zora/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/134/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.zora/overrides/deterministic/effects/0": [
@@ -52501,34 +52669,58 @@
         "pointer": "/root/logic/actions/135/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.arkadii/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/135/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.arkadii/overrides/deterministic/effects/0": [
@@ -52859,34 +53051,58 @@
         "pointer": "/root/logic/actions/136/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.vasya/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.vasya/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.vasya/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.vasya/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.vasya/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.vasya/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/136/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.vasya/overrides/deterministic/effects/0": [
@@ -53217,34 +53433,58 @@
         "pointer": "/root/logic/actions/137/overrides/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.select.tima/overrides/deterministic/guard/teamSelection": [
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.select.tima/overrides/deterministic/guard/teamSelection/pickCountLessThan": [
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/teamSelection/pickCountLessThan"
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/0/path"
       }
     ],
-    "/actions/opening.team.select.tima/overrides/deterministic/guard/team": [
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/0/operator": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/team"
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/0/operator"
       }
     ],
-    "/actions/opening.team.select.tima/overrides/deterministic/guard/team/memberId": [
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/0/value": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/team/memberId"
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/opening.team.select.tima/overrides/deterministic/guard/team/selected": [
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/team/selected"
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/opening.team.select.tima/overrides/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/137/overrides/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.select.tima/overrides/deterministic/effects/0": [
@@ -53619,58 +53859,76 @@
         "pointer": "/root/logic/actions/138/deterministic/guard/timeline/canAdvance"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds/0": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds/0"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/path"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds/1": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds/1"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids/0"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds/2": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids/1": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds/2"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids/1"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds/3": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids/2": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds/3"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids/2"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds/4": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids/3": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds/4"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids/3"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds/5": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids/4": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds/5"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids/4"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/cardIds": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids/5": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/cardIds"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids/5"
       }
     ],
-    "/actions/opening.board.25_30.advance/deterministic/guard/board/resolvedCountAtLeast": [
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/ids": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/138/deterministic/guard/board/resolvedCountAtLeast"
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/ids"
+      }
+    ],
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/field": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/field"
+      }
+    ],
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/equals": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/equals"
+      }
+    ],
+    "/actions/opening.board.25_30.advance/deterministic/guard/collectionCount/countAtLeast": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/138/deterministic/guard/collectionCount/countAtLeast"
       }
     ],
     "/actions/opening.board.25_30.advance/deterministic/effects/0": [
@@ -53919,16 +54177,34 @@
         "pointer": "/root/logic/actions/139/deterministic/guard/opening/selectedCardIdEquals"
       }
     ],
-    "/actions/opening.team.confirm/deterministic/guard/teamSelection": [
+    "/actions/opening.team.confirm/deterministic/guard/stateConditions/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/139/deterministic/guard/teamSelection"
+        "pointer": "/root/logic/actions/139/deterministic/guard/stateConditions/0"
       }
     ],
-    "/actions/opening.team.confirm/deterministic/guard/teamSelection/pickCountEquals": [
+    "/actions/opening.team.confirm/deterministic/guard/stateConditions/0/path": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/139/deterministic/guard/teamSelection/pickCountEquals"
+        "pointer": "/root/logic/actions/139/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/opening.team.confirm/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/139/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/opening.team.confirm/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/139/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/opening.team.confirm/deterministic/guard/stateConditions": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/139/deterministic/guard/stateConditions"
       }
     ],
     "/actions/opening.team.confirm/deterministic/effects/0": [

@@ -376,10 +376,9 @@ export interface GameManifestObjectAttributePatch {
  * via the `definition` "GameManifestDeterministicGuard".
  */
 export interface GameManifestDeterministicGuard {
-  board?: {
-    cardIds: string[];
-    resolvedCountAtLeast: number;
-  };
+  collectionCount?:
+    | GameManifestDeterministicCollectionCount
+    | [GameManifestDeterministicCollectionCount, ...GameManifestDeterministicCollectionCount[]];
   jsonLogic?: JsonLogicExpression;
   opening?: {
     selectedCardIdAbsent?: boolean;
@@ -387,20 +386,28 @@ export interface GameManifestDeterministicGuard {
   };
   object?: GameManifestObjectStateGuard | [GameManifestObjectStateGuard, ...GameManifestObjectStateGuard[]];
   stateConditions?: GameManifestDeterministicStateCondition[];
-  team?: {
-    memberId: string;
-    selected?: boolean;
-  };
-  teamSelection?: {
-    pickCountLessThan?: number;
-    pickCountEquals?: number;
-  };
   timeline?: {
     canAdvance?: boolean | string;
     line?: string;
     stepIndex?: number | string;
   };
   [k: string]: unknown;
+}
+/**
+ * Generic collection-count check: counts items in a collection whose field equals a value and requires a threshold. Shared by deterministic effect conditions and guards (ADR-041 §7.2).
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestDeterministicCollectionCount".
+ */
+export interface GameManifestDeterministicCollectionCount {
+  countAtLeast: number | string;
+  equals?: unknown;
+  field: string;
+  /**
+   * @minItems 1
+   */
+  ids: [string, ...string[]];
+  path: string;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema

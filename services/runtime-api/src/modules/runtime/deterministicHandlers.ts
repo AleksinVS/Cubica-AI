@@ -7,6 +7,7 @@ import type {
 import type {
   GameManifestActionDefinition,
   GameManifestDeterministicActionMetadata,
+  GameManifestDeterministicCollectionCount,
   GameManifestDeterministicEffect,
   GameManifestDeterministicEffectCondition,
   GameManifestDeterministicMetricCondition,
@@ -456,6 +457,39 @@ const evaluateStateConditionValue = (
 const evaluateStateCondition = (state: RuntimeState, condition: GameManifestDeterministicStateCondition) =>
   evaluateStateConditionValue(readJsonPointer(state, condition.path), condition);
 
+/**
+ * Generic collection-count primitive shared by effect conditions and guards.
+ *
+ * Reads `spec.path` as a JSON Pointer object, then for each id in `spec.ids`
+ * reads `spec.field` (a `/`-separated sub-path relative to the item, e.g.
+ * "facets/resolution") and counts how many equal `spec.equals` (default
+ * `true`). Returns whether the count reached `spec.countAtLeast`. This is the
+ * single evaluator behind both `when.collectionCount` and the `collectionCount`
+ * guard, so counting-with-threshold is one platform primitive (ADR-041 §7.2)
+ * rather than a game-specific guard shape.
+ */
+const evaluateCollectionCount = (state: RuntimeState, spec: GameManifestDeterministicCollectionCount): boolean => {
+  const collection = readJsonPointer(state, spec.path);
+  const expected = spec.equals ?? true;
+  const threshold = coerceManifestNumber(spec.countAtLeast);
+  let count = 0;
+  if (isObjectRecord(collection)) {
+    for (const id of spec.ids) {
+      const item = collection[id];
+      const value =
+        isObjectRecord(item) && spec.field.includes("/")
+          ? readJsonPointer(item, `/${spec.field}`)
+          : isObjectRecord(item)
+            ? item[spec.field]
+            : undefined;
+      if (value === expected) {
+        count += 1;
+      }
+    }
+  }
+  return count >= threshold;
+};
+
 const selectEffectConditionState = (
   currentState: RuntimeState,
   preActionState: RuntimeState,
@@ -483,24 +517,7 @@ const evaluateEffectCondition = (
 
   if ("collectionCount" in condition) {
     const sourceState = selectEffectConditionState(currentState, preActionState, condition.readFrom);
-    const collection = readJsonPointer(sourceState, condition.collectionCount.path);
-    const expected = condition.collectionCount.equals ?? true;
-    const threshold = coerceManifestNumber(condition.collectionCount.countAtLeast);
-    let count = 0;
-    if (isObjectRecord(collection)) {
-      for (const id of condition.collectionCount.ids) {
-        const item = collection[id];
-        const value = isObjectRecord(item) && condition.collectionCount.field.includes("/")
-          ? readJsonPointer(item, `/${condition.collectionCount.field}`)
-          : isObjectRecord(item)
-          ? item[condition.collectionCount.field]
-          : undefined;
-        if (value === expected) {
-          count += 1;
-        }
-      }
-    }
-    return count >= threshold;
+    return evaluateCollectionCount(sourceState, condition.collectionCount);
   }
 
   if ("all" in condition) {
@@ -648,18 +665,6 @@ const readManifestDeterministicMetadata = (
   return resolved.deterministic as unknown as GameManifestDeterministicActionMetadata;
 };
 
-const countResolvedCards = (cards: Record<string, any>, cardIds: Array<string>) => {
-  let resolvedCount = 0;
-  for (const cardId of cardIds) {
-    const cardState = ensureObject(cards[cardId]);
-    const facets = ensureObject(cardState.facets);
-    if (facets.resolution === "resolved") {
-      resolvedCount++;
-    }
-  }
-  return resolvedCount;
-};
-
 const readMetricValue = (state: RuntimeState, metricId: string) => {
   const publicState = ensureObject(state.public);
   const metrics = ensureObject(publicState.metrics);
@@ -767,69 +772,48 @@ const evaluateManifestGuard = (
     }
   }
 
-  if ((guard as any).board) {
-    const objects = ensureObject(ensureObject(state.public).objects);
-    const cards = ensureObject(objects.cards);
-    const resolvedCount = countResolvedCards(cards, (guard as any).board.cardIds);
-
-    if (
-      (guard as any).board.resolvedCountAtLeast !== undefined &&
-      resolvedCount < (guard as any).board.resolvedCountAtLeast
-    ) {
-      failures.push(
-        `public.objects.cards resolved count for board [${(guard as any).board.cardIds.join(", ")}] expected >= ${(guard as any).board.resolvedCountAtLeast} (got ${resolvedCount})`
-      );
+  // Generic collection-count guard(s) (ADR-041 §7.2): count items in a
+  // collection matching a field condition and require a threshold. Antarctica's
+  // former `board` guard (resolved-card count) migrated onto this generic form,
+  // reusing the same `evaluateCollectionCount` primitive as effect conditions.
+  if (guard.collectionCount) {
+    const specs = Array.isArray(guard.collectionCount) ? guard.collectionCount : [guard.collectionCount];
+    for (const spec of specs) {
+      if (!evaluateCollectionCount(state, spec)) {
+        failures.push(
+          `collectionCount ${spec.path} [${spec.ids.join(", ")}].${spec.field} == ${String(spec.equals ?? true)} expected >= ${String(spec.countAtLeast)}`
+        );
+      }
     }
   }
 
+  // Generic state conditions: each path is read as a JSON Pointer (with ~0/~1
+  // unescaping) via the SAME readJsonPointer / evaluateStateCondition primitives
+  // as effect conditions — no duplicated, non-unescaping inline pointer parsing.
   if (guard.stateConditions) {
     for (const condition of guard.stateConditions) {
-      const pathParts = condition.path.split('/');
-      let current: unknown = state;
-      for (const part of pathParts) {
-        if (part === '') continue;
-        if (current == null || typeof current !== 'object') {
-          current = undefined;
-          break;
-        }
-        current = (current as Record<string, unknown>)[part];
-      }
-      
-      const value = current;
-      const expected = condition.value;
-      
-      let conditionMet = false;
-      switch (condition.operator) {
-        case "==": conditionMet = value === expected; break;
-        case "!=": conditionMet = value !== expected; break;
-        case ">": conditionMet = typeof value === 'number' && typeof expected === 'number' && value > expected; break;
-        case ">=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value >= expected; break;
-        case "<": conditionMet = typeof value === 'number' && typeof expected === 'number' && value < expected; break;
-        case "<=": conditionMet = typeof value === 'number' && typeof expected === 'number' && value <= expected; break;
-        case "exists": conditionMet = value !== undefined && value !== null; break;
-        case "not_exists": conditionMet = value === undefined || value === null; break;
-      }
-      
-      if (!conditionMet) {
-        failures.push(`Condition failed: ${condition.path} ${condition.operator} ${String(expected)} (actual: ${String(value)})`);
+      if (!evaluateStateCondition(state, condition)) {
+        failures.push(
+          `Condition failed: ${condition.path} ${condition.operator} ${String(condition.value)} (actual: ${String(readJsonPointer(state, condition.path))})`
+        );
       }
     }
   }
 
-  if ((guard as any).object) {
-    const objectGuards = Array.isArray((guard as any).object)
-      ? (guard as any).object
-      : [(guard as any).object];
+  if (guard.object) {
+    const objectGuards = Array.isArray(guard.object) ? guard.object : [guard.object];
     for (const objectGuard of objectGuards) {
       const resolvedGuard = resolveValue(objectGuard, params) as GameManifestObjectStateGuard;
       failures.push(...evaluateObjectStateGuard(state, resolvedGuard));
     }
   }
 
-  // Semantic guard: opening — checks secret.opening.selectedCardId
-  if ((guard as any).opening) {
-    const openingGuard = (guard as any).opening;
-    const secret = ensureObject((state as any).secret);
+  // Semantic guard: opening — checks secret.opening.selectedCardId. Still
+  // game-specific to Antarctica; a follow-up slice migrates it to generic
+  // stateConditions (ADR-041 §7.2, LEGACY-0020).
+  if (guard.opening) {
+    const openingGuard = guard.opening;
+    const secret = ensureObject((state as Record<string, unknown>).secret);
     const opening = ensureObject(secret.opening);
     const selectedCardId = opening.selectedCardId as string | undefined;
 
@@ -845,35 +829,9 @@ const evaluateManifestGuard = (
     }
   }
 
-  // Semantic guard: team — checks public.flags.team[memberId]
-  if ((guard as any).team) {
-    const teamGuard = (guard as any).team;
-    const flags = ensureObject(publicState.flags);
-    const team = ensureObject(flags.team);
-    const memberState = ensureObject(team[teamGuard.memberId]);
-
-    if (teamGuard.selected !== undefined && memberState.selected !== teamGuard.selected) {
-      failures.push(`team[${teamGuard.memberId}].selected expected ${teamGuard.selected}`);
-    }
-  }
-
-  // Semantic guard: teamSelection — checks public.teamSelection.pickCount
-  if ((guard as any).teamSelection) {
-    const tsGuard = (guard as any).teamSelection;
-    const teamSelection = ensureObject(publicState.teamSelection);
-    const pickCount = Number(teamSelection.pickCount) || 0;
-
-    if (tsGuard.pickCountLessThan !== undefined && pickCount >= tsGuard.pickCountLessThan) {
-      failures.push(`teamSelection.pickCount expected < ${tsGuard.pickCountLessThan}, got ${pickCount}`);
-    }
-    if (tsGuard.pickCountEquals !== undefined && pickCount !== tsGuard.pickCountEquals) {
-      failures.push(`teamSelection.pickCount expected ${tsGuard.pickCountEquals}, got ${pickCount}`);
-    }
-  }
-
   // Tier 2 guard: JsonLogic expression evaluation
-  if ((guard as any).jsonLogic) {
-    const result = jsonLogic.apply((guard as any).jsonLogic, state);
+  if (guard.jsonLogic) {
+    const result = jsonLogic.apply(guard.jsonLogic as Parameters<typeof jsonLogic.apply>[0], state);
     if (!result) {
       failures.push(`JsonLogic guard evaluated to false`);
     }
