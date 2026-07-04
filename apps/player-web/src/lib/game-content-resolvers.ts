@@ -38,24 +38,18 @@ type TimelineState = {
   canAdvance?: boolean;
 };
 
-type TeamFlagState = {
-  selected?: boolean;
-};
-
-type TeamSelectionState = {
-  pickCount?: number;
-  selectedMemberIds?: Array<string>;
-};
-
+/**
+ * Generic shape of the public session state that the platform itself reads.
+ *
+ * Only the truly cross-game buckets live here: `timeline` (step/screen cursor)
+ * and `ui` (runtime UI hints). Any further, game-defined buckets (for example
+ * Antarctica's `flags.team`, `objects.cards` or `teamSelection`) are NOT typed
+ * here on purpose — per ADR-055 §5 the generic player-web layer must stay
+ * agnostic to game state shapes. Game plugins read those buckets through the
+ * generic accessors below and cast the result to their own state types.
+ */
 type PublicState = {
   timeline?: TimelineState;
-  flags?: {
-    team?: Record<string, TeamFlagState>;
-  };
-  objects?: {
-    cards?: Record<string, any>;
-  };
-  teamSelection?: TeamSelectionState;
   ui?: {
     activePanel?: string;
     activeScreen?: string;
@@ -65,11 +59,14 @@ type PublicState = {
   };
 };
 
-type SecretState = {
-  opening?: {
-    selectedCardId?: string;
-  };
-};
+/**
+ * Generic shape of the secret (per-player, hidden) session state.
+ *
+ * The platform does not interpret secret state; it is an open, game-defined
+ * bag. Game plugins cast the accessor result to their own secret-state type
+ * (ADR-055 §5).
+ */
+type SecretState = Record<string, unknown>;
 
 const runtimeApiUrl = process.env.RUNTIME_API_URL ?? "http://127.0.0.1:3001";
 
@@ -195,41 +192,10 @@ export function readRuntimeUi(session: SessionSnapshot | null): {
 }
 
 /**
- * Читает team flags из session snapshot.
- * Обобщённая утилита для плагинов.
- */
-export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
-  return readPublicState(session)?.flags?.team ?? {};
-}
-
-/**
- * Читает card objects из session snapshot.
- * Обобщённая утилита для плагинов.
- */
-export function readCardObjects(session: SessionSnapshot | null): Record<string, any> {
-  return readPublicState(session)?.objects?.cards ?? {};
-}
-
-/**
- * Читает team selection state из session snapshot.
- * Обобщённая утилита для плагинов.
- */
-export function readTeamSelection(session: SessionSnapshot | null): TeamSelectionState {
-  return readPublicState(session)?.teamSelection ?? {};
-}
-
-/**
- * Читает canAdvance из session snapshot.
- * Обобщённая утилита для плагинов.
+ * Читает canAdvance из timeline session snapshot.
+ * Обобщённая утилита для плагинов: canAdvance — это общий признак «можно
+ * перейти к следующему шагу», не привязанный к конкретной игре.
  */
 export function readCanAdvance(session: SessionSnapshot | null): boolean {
   return Boolean(readPublicState(session)?.timeline?.canAdvance);
-}
-
-/**
- * Читает selectedCardId из secret state.
- * Обобщённая утилита для плагинов.
- */
-export function readSelectedCardId(session: SessionSnapshot | null): string | null {
-  return readSecretState(session)?.opening?.selectedCardId ?? null;
 }

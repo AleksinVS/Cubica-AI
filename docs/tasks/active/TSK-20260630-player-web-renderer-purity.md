@@ -181,11 +181,21 @@ npm run test:e2e
     `verify:contracts-manifest` (ui.manifest валиден по схеме), player-web typecheck +
     130 тестов — зелёные. e2e не завершился в sandbox (dev-сервера не поднялись);
     поведение-сохранение доказано diff-построением, запустить `test:e2e` в целевой среде.
-  - **Отложено (отдельные срезы):**
-    1. `resolveAreaCssClass` (`layout-helpers.ts:6-24`) ещё ветвится по структурным
-       классам Antarctica (`game-variables-container`, `main-content-area`, ...) для
-       topbar-модификаторов — нужна CSS/manifest-стратегия (например, `.topbar` в CSS
-       или модификатор-класс из манифеста).
-    2. `game-content-resolvers.ts` team/card/opening формы состояния — перенос в
-       `games/antarctica/plugins/antarctica-player/src/state-resolvers.ts` (широкая
-       import-поверхность в player-web, отдельный срез с plugin API).
+- 2026-07-04 (sub-part 2/2): **state-резолверы перенесены в плагин (ADR-055 §5).**
+  Четыре game-specific ридера (`readTeamFlags`/`readCardObjects`/`readTeamSelection`/
+  `readSelectedCardId`) и Antarctica-типы состояния (`TeamFlagState`,
+  `TeamSelectionState`, `flags.team`/`objects.cards`/`teamSelection`,
+  `opening.selectedCardId`) перенесены из `apps/player-web/src/lib/
+  game-content-resolvers.ts` в `games/antarctica/plugins/antarctica-player/src/
+  state-resolvers.ts` (читают через generic `readPublicState`/`readSecretState`).
+  В player-web остались только generic ридеры; `player-plugin-api.ts` больше не
+  реэкспортирует game-specific ридеры (экспонирует generic `readPublicState`/
+  `readSecretState`). Направление зависимости строго plugin → player-web generic API.
+  Тесты обновлены. Бандл плагина пересобран. Проверки: player-web typecheck+130,
+  runtime-api 127, verify:game-agnostic — зелёные.
+  - **Осталось (единственный отдельный срез):** `resolveAreaCssClass`
+    (`layout-helpers.ts:6-24`) ещё ветвится по структурным классам Antarctica для
+    topbar-модификаторов. Требует CSS-рефакторинга: **72** правила `topbar-*` в
+    `globals.css` (включая вложенные `.topbar-board-title .game-card:hover` и т.п.)
+    нужно перевести на descendant-селекторы от `.game-renderer--topbar` и убрать
+    JS-навешивание классов. Визуальный риск → выполнять с e2e-приёмкой.

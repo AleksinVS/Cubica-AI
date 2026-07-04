@@ -284,6 +284,16 @@ exports.readSelectedCardId = readSelectedCardId;
 const plugin_api_1 = __pluginRequire("@cubica/player-web/plugin-api");
 Object.defineProperty(exports, "getFallbackActionEntries", { enumerable: true, get: function () { return plugin_api_1.getFallbackActionEntries; } });
 /**
+ * Reads the Antarctica-shaped public state from a session snapshot.
+ *
+ * We go through the generic readPublicState accessor so the plugin never
+ * reaches into the raw snapshot structure directly, then cast to the
+ * game-owned shape.
+ */
+function readAntarcticaPublicState(session) {
+    return (0, plugin_api_1.readPublicState)(session);
+}
+/**
  * Extracts Antarctica-specific content from the generic player DTO.
  */
 function resolveAntarcticaContent(content) {
@@ -503,20 +513,36 @@ function resolveLastInfoHintText(gameContent, gameState) {
     }
     return [lastInfo.title, lastInfo.body].filter(Boolean).join("\n\n");
 }
+/**
+ * Reads Antarctica card object state (`public.objects.cards`) from the snapshot.
+ */
 function readCardObjects(session) {
-    return (0, plugin_api_1.readCardObjects)(session);
+    return readAntarcticaPublicState(session)?.objects?.cards ?? {};
 }
+/**
+ * Reads Antarctica team flags (`public.flags.team`) from the snapshot.
+ */
 function readTeamFlags(session) {
-    return (0, plugin_api_1.readTeamFlags)(session);
+    return readAntarcticaPublicState(session)?.flags?.team ?? {};
 }
+/**
+ * Reads Antarctica team-selection state (`public.teamSelection`) from the snapshot.
+ */
 function readTeamSelection(session) {
-    return (0, plugin_api_1.readTeamSelection)(session);
+    return readAntarcticaPublicState(session)?.teamSelection ?? {};
 }
+/**
+ * canAdvance is a generic timeline flag; the plugin re-exports the platform
+ * accessor unchanged so game code keeps a single import surface.
+ */
 function readCanAdvance(session) {
     return (0, plugin_api_1.readCanAdvance)(session);
 }
+/**
+ * Reads the Antarctica selected go-card id (`secret.opening.selectedCardId`).
+ */
 function readSelectedCardId(session) {
-    return (0, plugin_api_1.readSelectedCardId)(session);
+    return (0, plugin_api_1.readSecretState)(session)?.opening?.selectedCardId ?? null;
 }
 
 });

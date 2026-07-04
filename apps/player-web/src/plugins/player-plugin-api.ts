@@ -24,15 +24,19 @@ export type {
   SessionSnapshot
 } from "@/lib/game-content-resolvers";
 
+// Generic session-state accessors only. Game-specific readers (team flags,
+// card objects, team selection, selected card id) intentionally do NOT live
+// here anymore — per ADR-055 §5 they moved into the owning game plugin
+// (games/antarctica/plugins/antarctica-player/src/state-resolvers.ts). The
+// platform exposes readPublicState/readSecretState so plugins can read their
+// own state buckets and cast to their own state types.
 export {
   getFallbackActionEntries,
   readCanAdvance,
-  readCardObjects,
+  readPublicState,
   readScreenId,
-  readSelectedCardId,
+  readSecretState,
   readStepIndex,
-  readTeamFlags,
-  readTeamSelection,
   resolveGameContent
 } from "@/lib/game-content-resolvers";
 export { createManifestActionAdapter } from "@/lib/manifest-action-adapter";

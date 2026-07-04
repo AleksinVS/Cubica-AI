@@ -45,12 +45,15 @@ import {
   openingTailStep38InfoI21SessionSnapshot,
 } from "@/test/antarctica-opening-tail-fixtures";
 
+// readCanAdvance is a generic timeline flag and stays in the platform lib.
+// readSelectedCardId is an Antarctica-specific reader and now lives in the
+// game plugin (ADR-055 §5), so it is imported from the plugin resolvers.
 import {
-  readSelectedCardId,
   readCanAdvance,
 } from "@/lib/game-content-resolvers";
 import * as playerPluginApiModule from "@/plugins/player-plugin-api";
 import {
+  readSelectedCardId,
   resolveAntarcticaContent,
   resolveCurrentBoard,
   resolveCurrentInfoEntry,
@@ -230,8 +233,12 @@ describe("slice-step30-31-render: Board 55_60 and Info i17", () => {
   });
 
   describe("session snapshot readers", () => {
-    it("keeps current player plugin API exports available", () => {
-      expect(typeof playerPluginApiModule.readCardObjects).toBe("function");
+    it("keeps generic player plugin API exports available", () => {
+      // The plugin API exposes only generic session-state accessors now; the
+      // Antarctica-specific readCardObjects reader moved into the game plugin
+      // (ADR-055 §5). readPublicState/readSecretState are the generic surface.
+      expect(typeof playerPluginApiModule.readPublicState).toBe("function");
+      expect(typeof playerPluginApiModule.readSecretState).toBe("function");
       expect(typeof playerPluginApiModule.createManifestActionAdapter).toBe("function");
       expect(typeof playerPluginApiModule.playerPluginApi.registerGameConfigFactory).toBe("function");
     });

@@ -21,12 +21,10 @@ import type { FallbackMetricSpec, SessionSnapshot } from "@cubica/player-web/plu
 import {
   getFallbackActionEntries,
   readCanAdvance as readCanAdvanceGeneric,
-  readCardObjects as readCardObjectsGeneric,
+  readPublicState,
   readScreenId,
-  readSelectedCardId as readSelectedCardIdGeneric,
+  readSecretState,
   readStepIndex,
-  readTeamFlags as readTeamFlagsGeneric,
-  readTeamSelection as readTeamSelectionGeneric,
   resolveGameContent
 } from "@cubica/player-web/plugin-api";
 
@@ -39,6 +37,52 @@ type CardObjectState = {
     face?: "front" | "back";
   };
 };
+
+/**
+ * Antarctica-specific state-shape types (moved out of the generic player-web
+ * lib per ADR-055 §5).
+ *
+ * The platform stores these buckets inside the opaque public/secret session
+ * state but must not know their shape. The plugin owns the shapes and casts the
+ * generic accessor results (readPublicState/readSecretState) to them below.
+ */
+type TeamFlagState = {
+  selected?: boolean;
+};
+
+type TeamSelectionState = {
+  pickCount?: number;
+  selectedMemberIds?: Array<string>;
+};
+
+/** Antarctica view over the generic public session state. */
+type AntarcticaPublicState = {
+  flags?: {
+    team?: Record<string, TeamFlagState>;
+  };
+  objects?: {
+    cards?: Record<string, CardObjectState>;
+  };
+  teamSelection?: TeamSelectionState;
+};
+
+/** Antarctica view over the generic secret session state. */
+type AntarcticaSecretState = {
+  opening?: {
+    selectedCardId?: string;
+  };
+};
+
+/**
+ * Reads the Antarctica-shaped public state from a session snapshot.
+ *
+ * We go through the generic readPublicState accessor so the plugin never
+ * reaches into the raw snapshot structure directly, then cast to the
+ * game-owned shape.
+ */
+function readAntarcticaPublicState(session: SessionSnapshot | null): AntarcticaPublicState | undefined {
+  return readPublicState(session) as AntarcticaPublicState | undefined;
+}
 
 type RuntimeLogLike = Record<string, unknown> & {
   at?: string;
@@ -361,24 +405,40 @@ export function resolveLastInfoHintText(
   return [lastInfo.title, lastInfo.body].filter(Boolean).join("\n\n");
 }
 
+/**
+ * Reads Antarctica card object state (`public.objects.cards`) from the snapshot.
+ */
 export function readCardObjects(session: SessionSnapshot | null): Record<string, CardObjectState> {
-  return readCardObjectsGeneric(session) as Record<string, CardObjectState>;
+  return readAntarcticaPublicState(session)?.objects?.cards ?? {};
 }
 
-export function readTeamFlags(session: SessionSnapshot | null) {
-  return readTeamFlagsGeneric(session);
+/**
+ * Reads Antarctica team flags (`public.flags.team`) from the snapshot.
+ */
+export function readTeamFlags(session: SessionSnapshot | null): Record<string, TeamFlagState> {
+  return readAntarcticaPublicState(session)?.flags?.team ?? {};
 }
 
-export function readTeamSelection(session: SessionSnapshot | null) {
-  return readTeamSelectionGeneric(session);
+/**
+ * Reads Antarctica team-selection state (`public.teamSelection`) from the snapshot.
+ */
+export function readTeamSelection(session: SessionSnapshot | null): TeamSelectionState {
+  return readAntarcticaPublicState(session)?.teamSelection ?? {};
 }
 
+/**
+ * canAdvance is a generic timeline flag; the plugin re-exports the platform
+ * accessor unchanged so game code keeps a single import surface.
+ */
 export function readCanAdvance(session: SessionSnapshot | null): boolean {
   return readCanAdvanceGeneric(session);
 }
 
+/**
+ * Reads the Antarctica selected go-card id (`secret.opening.selectedCardId`).
+ */
 export function readSelectedCardId(session: SessionSnapshot | null): string | null {
-  return readSelectedCardIdGeneric(session);
+  return (readSecretState(session) as AntarcticaSecretState | undefined)?.opening?.selectedCardId ?? null;
 }
 
 export { getFallbackActionEntries };
