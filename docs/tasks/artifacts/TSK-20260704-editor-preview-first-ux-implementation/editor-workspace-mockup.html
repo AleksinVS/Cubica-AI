@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Эталонный макет: preview-first редактор Cubica</title>
+<style>
+  :root{
+    --bg:#f5f4f0; --surface:#ffffff; --panel:#fafaf8;
+    --border:#d9d7d0; --border-strong:#b8b6ae;
+    --text:#2c2c2a; --text-2:#5f5e5a; --muted:#8a8880;
+    --accent:#185fa5; --accent-bg:#e6f1fb; --accent-border:#85b7eb;
+    --warn:#854f0b; --warn-bg:#faeeda;
+    --err:#a32d2d; --err-bg:#fcebeb;
+    --ok:#3b6d11; --ok-bg:#eaf3de;
+    --note:#534ab7; --note-bg:#eeedfe;
+    --r:8px;
+  }
+  *{box-sizing:border-box}
+  body{font-family:"Segoe UI",system-ui,sans-serif;font-size:13px;color:var(--text);
+       background:var(--bg);margin:0;padding:24px;line-height:1.45}
+  h1{font-size:20px;font-weight:600;margin:0 0 4px}
+  h2{font-size:16px;font-weight:600;margin:28px 0 10px}
+  p.lead{color:var(--text-2);margin:0 0 20px;max-width:900px}
+  .frame{border:1px solid var(--border-strong);border-radius:12px;overflow:hidden;
+         background:var(--surface);max-width:1180px;position:relative}
+  .zone{position:absolute;width:22px;height:22px;border-radius:50%;background:var(--note);
+        color:#fff;font-size:12px;font-weight:600;display:flex;align-items:center;
+        justify-content:center;z-index:30;box-shadow:0 0 0 2px #fff}
+  .bar{display:flex;align-items:center;gap:12px;padding:7px 12px;
+       border-bottom:1px solid var(--border);color:var(--text-2);background:var(--surface)}
+  .bar b{color:var(--text);font-weight:600}
+  .seg{display:inline-flex;border:1px solid var(--border-strong);border-radius:var(--r);overflow:hidden}
+  .seg span{padding:4px 12px}
+  .seg .on{background:var(--accent-bg);color:var(--accent);font-weight:600}
+  .btn{border:1px solid var(--border-strong);border-radius:var(--r);padding:3px 10px;
+       background:var(--surface);color:var(--text-2)}
+  .grid{display:grid;grid-template-columns:230px minmax(0,1fr) 230px;min-height:520px}
+  .side{border-right:1px solid var(--border);padding:10px;background:var(--panel);
+        display:flex;flex-direction:column;gap:8px;font-size:12.5px}
+  .side.right{border-right:0;border-left:1px solid var(--border)}
+  .search{border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;color:var(--muted)}
+  .sect{font-weight:600;padding:3px 0;cursor:default}
+  .sect.closed{color:var(--text-2);font-weight:600}
+  .tree{padding-left:8px;color:var(--text-2);display:flex;flex-direction:column;gap:3px}
+  .tree .sel{background:var(--accent-bg);color:var(--accent);border-radius:4px;padding:2px 6px}
+  .tree .occ{color:var(--muted);font-style:italic}
+  .badge{display:inline-block;border:1px solid var(--border);border-radius:10px;
+         padding:0 8px;font-size:11.5px;color:var(--text-2)}
+  .badge.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+  .badge.acc{background:var(--accent-bg);color:var(--accent);border-color:transparent}
+  .badge.proto{background:var(--note-bg);color:var(--note);border-color:transparent;font-style:normal}
+  .canvas{position:relative;background:#eceae4;padding:12px}
+  .modebar{display:flex;gap:10px;align-items:center;margin-bottom:10px;color:var(--text-2)}
+  .plate{background:var(--accent-bg);color:var(--accent);font-weight:600;
+         padding:3px 10px;border-radius:var(--r)}
+  .stale{background:var(--warn-bg);color:var(--warn);padding:3px 10px;border-radius:var(--r)}
+  .screen{border:1px solid var(--border);border-radius:var(--r);background:var(--surface);
+          height:180px;display:flex;align-items:center;justify-content:center;
+          color:var(--muted);margin-bottom:10px}
+  .selbox{position:absolute;top:96px;left:40px;width:150px;height:78px;
+          border:2px dashed var(--accent-border);border-radius:4px;z-index:5}
+  .inspector{border:1px solid var(--border-strong);border-radius:12px;background:var(--surface);
+             padding:10px 12px;max-width:340px;margin-left:210px;position:relative;z-index:10}
+  .insp-head{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .insp-head b{font-size:13.5px}
+  .icons{margin-left:auto;color:var(--muted);letter-spacing:4px}
+  .chips{display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap}
+  .chip{border:1px solid var(--border);border-radius:10px;padding:1px 9px;color:var(--text-2)}
+  .chip.on{border-color:var(--accent-border);color:var(--accent)}
+  .row{display:flex;justify-content:space-between;padding:3px 0;color:var(--text-2);gap:10px}
+  .row .src{color:var(--muted);font-size:11px;white-space:nowrap}
+  .row.hl{background:#fdf6e3;border-radius:4px;padding-left:4px}
+  .prompt{border:1px solid var(--border);border-radius:var(--r);padding:5px 10px;
+          color:var(--muted);margin-top:8px;display:flex;gap:6px;align-items:center}
+  .tabs{display:flex;gap:10px;border-bottom:1px solid var(--border);padding-bottom:5px}
+  .tabs .on{font-weight:600;color:var(--text)}
+  .tabs span{color:var(--muted)}
+  .msg{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);
+       padding:6px 9px;color:var(--text-2)}
+  .timeline{display:flex;align-items:center;gap:6px;padding:8px 12px;
+            border-top:1px solid var(--border);color:var(--text-2);background:var(--surface)}
+  .step{border:1px solid var(--border);border-radius:10px;padding:2px 9px}
+  .step.cur{background:var(--accent-bg);color:var(--accent);border-color:transparent;font-weight:600}
+  .step.old{color:var(--muted);border-style:dashed}
+  .status{display:flex;gap:16px;padding:5px 12px;border-top:1px solid var(--border);
+          color:var(--muted);font-size:11.5px;background:var(--surface);align-items:center}
+  .dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+  .legend{max-width:1180px;margin-top:14px;border-collapse:collapse;width:100%}
+  .legend td,.legend th{border:1px solid var(--border);padding:6px 10px;text-align:left;
+                        font-size:12.5px;background:var(--surface)}
+  .legend th{background:var(--panel)}
+  .variants{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));
+            gap:16px;max-width:1180px}
+  .vcard{border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:12px}
+  .vcard h3{font-size:13.5px;margin:0 0 8px}
+  .region{position:relative;border:1px solid var(--border);border-radius:var(--r);
+          background:#eceae4;height:150px;padding:10px}
+  .rbox{position:absolute;top:24px;left:24px;width:180px;height:74px;
+        border:2px solid var(--accent);background:rgba(24,95,165,.06)}
+  .handle{position:absolute;width:8px;height:8px;background:#fff;border:1.5px solid var(--accent)}
+</style>
+</head>
+<body>
+
+<h1>Эталонный макет рабочего пространства редактора</h1>
+<p class="lead">Источник состава и расположения UI для
+TSK-20260704-editor-preview-first-ux-implementation. Номера в фиолетовых кружках —
+зоны из design-spec.md §1. Исполнитель адаптирует стиль к дизайн-системе
+editor-web, но не меняет состав, расположение и подписи без изменения спецификации.</p>
+
+<div class="frame">
+  <div class="zone" style="top:8px;left:8px">1</div>
+  <div class="zone" style="top:64px;left:8px">2</div>
+  <div class="zone" style="top:64px;left:262px">3</div>
+  <div class="zone" style="top:190px;left:400px">4</div>
+  <div class="zone" style="top:64px;right:8px">5</div>
+  <div class="zone" style="bottom:64px;left:8px">6</div>
+  <div class="zone" style="bottom:8px;left:8px">7</div>
+
+  <div class="bar">
+    <b>Antarctica</b>
+    <span>Канал: Web ▾</span>
+    <span class="seg"><span class="on">Дизайн</span><span>Превью</span></span>
+    <span style="flex:1"></span>
+    <span class="btn">Ctrl+K Команды</span>
+    <span class="btn">↶ Отменить правку</span>
+    <span class="btn">↷</span>
+    <span class="btn" style="font-weight:600">Сохранить</span>
+  </div>
+
+  <div class="grid">
+    <div class="side">
+      <div class="search">🔍 Поиск: имя, тип, проблема…</div>
+      <div class="seg" style="align-self:stretch;display:flex">
+        <span class="on" style="flex:1;text-align:center">По экранам</span>
+        <span style="flex:1;text-align:center">По типам</span>
+      </div>
+      <div class="tree">
+        <div>▸ Экран «Приветствие»</div>
+        <div>▾ <b>Экран «Маршрут»</b> <span class="badge warn">1</span></div>
+        <div style="padding-left:12px" class="sel">Карточка выбора</div>
+        <div style="padding-left:12px">Метрики (топбар)</div>
+        <div style="padding-left:12px">Кнопка «Дальше»</div>
+        <div style="padding-left:12px;color:var(--muted)">▸ Логика экрана (3)</div>
+        <div>▸ Экран «Лагерь»</div>
+      </div>
+      <div class="sect closed">▸ Сценарий</div>
+      <div class="sect closed">▸ Правила</div>
+      <div class="sect closed">▸ Ассеты <span class="badge">14</span></div>
+    </div>
+
+    <div class="canvas">
+      <div class="modebar">
+        <span class="plate">Дизайн · этап i12</span>
+        <span>Состояние: фикстура «День 4» ▾</span>
+      </div>
+      <div class="screen">экран игры (рендер предпросмотра)</div>
+      <div class="selbox"></div>
+      <div class="inspector">
+        <div class="insp-head">
+          <b>Карточка выбора</b>
+          <span class="badge proto">Прототип: choice-card</span>
+          <span class="icons" title="источник · закрепить">⌗ 📌</span>
+        </div>
+        <div class="chips">
+          <span class="chip">Смысл</span>
+          <span class="chip">Содержание</span>
+          <span class="chip on">Вид · Web ▾</span>
+        </div>
+        <div class="row"><span>Заголовок</span><span class="src">игра</span></div>
+        <div class="row hl"><span>Текст варианта 2</span><span class="src">игра · изменено агентом</span></div>
+        <div class="row"><span>Стиль карточки</span><span class="src">UI · web</span></div>
+        <div class="row"><span>Изображение</span><span class="src">ассет ▾</span></div>
+        <div class="prompt">✦ Промт для этого элемента…<span style="margin-left:auto">→ В чат сессии</span></div>
+      </div>
+    </div>
+
+    <div class="side right">
+      <div class="tabs"><span class="on">Чат</span><span>Журнал</span><span>Проверки <span class="badge warn">2</span></span></div>
+      <span class="badge acc">контекст: Карточка выбора ×</span>
+      <div class="msg">Сделал варианты ответов крупнее и добавил третий вариант. Изменены 2 поля, добавлен 1 элемент.</div>
+      <div style="display:flex;gap:6px">
+        <span class="btn">Отменить</span><span class="btn">Показать diff</span>
+      </div>
+      <div style="flex:1"></div>
+      <div class="search">Сообщение агенту…</div>
+    </div>
+  </div>
+
+  <div class="timeline">
+    <span style="font-weight:600">Timeline</span>
+    <span class="step">i10</span>—<span class="step cur">i12</span>—<span class="step">i14</span>—<span class="step old" title="записано на старой версии манифеста">i17</span>
+    <span style="flex:1"></span>
+    <span class="btn">Закрепить как фикстуру</span>
+  </div>
+  <div class="status">
+    <span>сессия: worktree a1b2</span>
+    <span>Сохранено 12 мин назад · 3 несохранённых</span>
+    <span><span class="dot" style="background:#e0a63a"></span>предпросмотр отстаёт</span>
+    <span style="color:var(--warn)">проверки: 2 предупреждения</span>
+    <span>аудит прототипов: ок</span>
+  </div>
+</div>
+
+<h2>Обязательные варианты состояний</h2>
+<div class="variants">
+
+  <div class="vcard">
+    <h3>Дерево «По типам» (инвентарь)</h3>
+    <div class="tree">
+      <div><span class="badge proto">Прототип</span> <b>Карточка выбора</b> <span class="badge">12</span> <span class="btn" style="font-size:11px">+ прототип</span></div>
+      <div style="padding-left:12px" class="sel">Карточка «Маршрут» <span class="badge">Экран Маршрут ›</span></div>
+      <div style="padding-left:24px">Заголовок</div>
+      <div style="padding-left:24px" class="occ">Кнопка «Выбрать» — тот же объект ↗</div>
+      <div style="padding-left:12px">Карточка «Погода» <span class="badge">Экран Лагерь ›</span></div>
+      <div><span class="badge proto">Прототип</span> <b>Таймер</b> <span class="badge">2 · невизуальный</span></div>
+    </div>
+    <p style="color:var(--muted);font-size:12px">Курсив «тот же объект» = вхождение
+    (occurrence); клик выбирает ту же сущность. Прототип-строка визуально отлична.</p>
+  </div>
+
+  <div class="vcard">
+    <h3>Вкладка «Проверки»</h3>
+    <div class="tabs"><span>Чат</span><span>Журнал</span><span class="on">Проверки</span></div>
+    <div class="msg" style="margin-top:8px;border-left:3px solid var(--warn)">
+      ⚠ Нет вида для Telegram — «Карточка выбора»
+      <span class="badge">смысл</span><br>
+      <span class="btn" style="font-size:11px">Создать вид</span>
+      <span class="btn" style="font-size:11px">Исправить агентом</span>
+    </div>
+    <div class="msg" style="margin-top:6px;border-left:3px solid var(--warn)">
+      ⚠ Этап i19 недостижим из старта <span class="badge">сценарий</span>
+    </div>
+  </div>
+
+  <div class="vcard">
+    <h3>Режим «Превью»: правки отстают</h3>
+    <div class="modebar">
+      <span class="plate" style="background:var(--ok-bg);color:var(--ok)">Превью · идёт прохождение</span>
+      <span class="stale">Предпросмотр отстаёт от правок — Применить</span>
+    </div>
+    <div class="screen" style="height:70px">экран игры</div>
+    <p style="color:var(--muted);font-size:12px">Применение запускает лестницу
+    восстановления; результат сообщается простыми словами.</p>
+  </div>
+
+  <div class="vcard">
+    <h3>Сломанная компиляция: последний валидный снимок</h3>
+    <div class="msg" style="border-left:3px solid var(--err);background:var(--err-bg);color:var(--err)">
+      Показана последняя рабочая версия — 3 правки назад. 2 ошибки блокируют
+      обновление. <u>К первой ошибке</u>
+    </div>
+    <div class="screen" style="height:70px;margin-top:8px">последний валидный снимок</div>
+  </div>
+
+  <div class="vcard">
+    <h3>Выделение региона (зона 8)</h3>
+    <div class="region">
+      <div class="rbox">
+        <div class="handle" style="top:-5px;left:-5px"></div>
+        <div class="handle" style="top:-5px;right:-5px"></div>
+        <div class="handle" style="bottom:-5px;left:-5px"></div>
+        <div class="handle" style="bottom:-5px;right:-5px"></div>
+      </div>
+      <div style="position:absolute;top:104px;left:24px;display:flex;gap:5px">
+        <span class="badge acc">Карточка выбора ×</span>
+        <span class="badge acc">Кнопка «Дальше» ×</span>
+      </div>
+      <div style="position:absolute;top:104px;left:260px;right:12px" class="search">✦ Промт для области…</div>
+    </div>
+    <p style="color:var(--muted);font-size:12px">Агент получает: промт + снимок
+    области (если адаптер умеет) + список захваченных сущностей. YAML-проекция
+    для региона не строится.</p>
+  </div>
+
+  <div class="vcard">
+    <h3>Текстовый режим панели («источник»)</h3>
+    <div class="msg" style="font-family:Consolas,monospace;font-size:12px;white-space:pre">заголовок: Выбор маршрута
+варианты:
+  - Северный путь        # безопасно, медленно
+  - Южный путь
+стиль: крупные карточки</div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <span class="btn">Применить как намерение</span>
+      <span class="badge">хеш источников: захвачен</span>
+    </div>
+    <p style="color:var(--muted);font-size:12px">Возврат текста идёт в интерпретатор
+    (быстрый путь → агент); после применения — построчный отчёт трёх корзин.</p>
+  </div>
+</div>
+
+<h2>Легенда зон</h2>
+<table class="legend">
+  <tr><th>Зона</th><th>Название</th><th>Ключевые элементы</th></tr>
+  <tr><td>1</td><td>Строка меню</td><td>игра, канал, «Дизайн/Превью», Ctrl+K, Отменить правку, Сохранить</td></tr>
+  <tr><td>2</td><td>Левый сайдбар</td><td>поиск; переключатель «По экранам/По типам»; дерево; секции «Сценарий», «Правила», «Ассеты»</td></tr>
+  <tr><td>3</td><td>Предпросмотр</td><td>плашка режима; селектор фикстуры (Дизайн) / плашка «отстаёт» (Превью)</td></tr>
+  <tr><td>4</td><td>Панель сущности</td><td>заголовок + прототип; чипы фасетов с каналом; поля с бейджами источника; промт-строка; иконки «источник»/«закрепить»</td></tr>
+  <tr><td>5</td><td>Правый сайдбар</td><td>вкладки «Чат», «Журнал», «Проверки»; чип контекста; резюме + Отменить/Diff</td></tr>
+  <tr><td>6</td><td>Timeline</td><td>этапы-чипы; текущий подсвечен; устаревшие приглушены; «Закрепить как фикстуру»</td></tr>
+  <tr><td>7</td><td>Статусная строка</td><td>сессия; сохранение/несохранённые; индикатор свежести; проверки; weekly audit</td></tr>
+  <tr><td>8</td><td>Рамка региона</td><td>ручки; чипы сущностей; растущая строка промта</td></tr>
+</table>
+
+</body>
+</html>
