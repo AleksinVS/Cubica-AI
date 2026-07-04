@@ -8,6 +8,7 @@
  */
 import type { CubicaAgentContext, CubicaAgentContextSource } from "@cubica/contracts-ai";
 import {
+  isPlainJsonObject,
   readJsonPointer,
   type DocumentDiagnostic,
   type EditorEntity,
@@ -310,8 +311,4 @@ function getJsonValueType(value: JsonValue | undefined): string {
   }
 
   return typeof value;
-}
-
-function isPlainJsonObject(value: JsonValue | undefined): value is { readonly [key: string]: JsonValue } {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

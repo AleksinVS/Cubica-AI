@@ -1,0 +1,842 @@
+/**
+ * Shared public type contracts for the editor engine (ADR-034).
+ *
+ * This module holds every framework-agnostic type, interface, and type alias
+ * that the editor engine exposes. Splitting the pure type surface out of the
+ * behavioural modules keeps the value modules small and lets a newcomer read
+ * the whole public data model in one place. There is NO runtime code here.
+ *
+ * These types are re-exported verbatim from `index.ts`, so the public import
+ * surface (`@cubica/editor-engine`) is unchanged.
+ */
+import { type AnySchema, type Options as AjvOptions } from "ajv";
+
+export type JsonPrimitive = string | number | boolean | null;
+export type JsonValue = JsonPrimitive | JsonObject | JsonArray;
+export type JsonObject = { readonly [key: string]: JsonValue };
+export type JsonArray = readonly JsonValue[];
+export type JsonSchema = AnySchema;
+
+export type JsonPatchOperation =
+  | { readonly op: "add"; readonly path: string; readonly value: JsonValue }
+  | { readonly op: "replace"; readonly path: string; readonly value: JsonValue }
+  | { readonly op: "remove"; readonly path: string }
+  | { readonly op: "test"; readonly path: string; readonly value: JsonValue };
+
+export type DiagnosticSeverity = "error" | "warning";
+export type DiagnosticSource = "syntax" | "schema" | "semantic" | "reverse-projection" | string;
+
+export interface TextPosition {
+  /** One-based text line for editor integrations. */
+  readonly line: number;
+  /** One-based UTF-16 column inside the line. */
+  readonly column: number;
+  /** Zero-based absolute UTF-16 offset in the JSON text. */
+  readonly offset: number;
+}
+
+export interface TextRange {
+  /** Inclusive start of the token or syntactic node. */
+  readonly start: TextPosition;
+  /** Exclusive end of the token or syntactic node. */
+  readonly end: TextPosition;
+}
+
+export interface DocumentDiagnostic {
+  readonly severity: DiagnosticSeverity;
+  readonly message: string;
+  readonly source: DiagnosticSource;
+  readonly pointer: string;
+  readonly range?: TextRange;
+  /** Backward-compatible shortcut for consumers that only need a marker point. */
+  readonly line?: number;
+  /** Backward-compatible shortcut for consumers that only need a marker point. */
+  readonly column?: number;
+}
+
+export type TextLocationTarget = "value" | "key";
+
+export interface TextLocationEntry {
+  readonly pointer: string;
+  readonly value: TextRange;
+  readonly key?: TextRange;
+}
+
+/**
+ * Maps JSON Pointer paths to source text ranges.
+ *
+ * `get(pointer)` keeps the original API and returns the value range. Consumers
+ * that need property-name highlighting can pass `key` or read the full entry.
+ */
+export interface TextLocationMap {
+  get(pointer: string, target?: TextLocationTarget): TextRange | undefined;
+  getEntry(pointer: string): TextLocationEntry | undefined;
+  entries(): readonly TextLocationEntry[];
+}
+
+export interface DocumentSnapshot {
+  readonly filePath: string;
+  readonly text: string;
+  readonly json: JsonValue | undefined;
+  readonly diagnostics: readonly DocumentDiagnostic[];
+  readonly selectedPointer: string | undefined;
+  readonly locationMap: TextLocationMap;
+}
+
+export interface DocumentStore {
+  snapshot(): DocumentSnapshot;
+  applyPatch(operations: readonly JsonPatchOperation[]): DocumentSnapshot;
+  selectPointer(pointer: string | undefined): DocumentSnapshot;
+}
+
+/**
+ * User-facing edit request captured by the editor before an AI agent or local
+ * planner turns it into bounded file operations.
+ */
+export interface EditorPatchIntent {
+  readonly id: string;
+  readonly kind: "preview-prompt" | "property-prompt" | "manual" | string;
+  readonly prompt: string;
+  readonly activeFilePath: string;
+  readonly targetPointers: readonly string[];
+  readonly createdAt: string;
+  readonly selectionKind?: "entity" | "region" | "document" | string;
+}
+
+export interface EditorChangeSetJsonPatch {
+  readonly filePath: string;
+  readonly operations: readonly JsonPatchOperation[];
+}
+
+export interface EditorChangeSetTextPatch {
+  readonly filePath: string;
+  readonly description: string;
+  readonly beforeText?: string;
+  readonly afterText?: string;
+}
+
+export interface EditorChangeSetFileCreate {
+  readonly filePath: string;
+  readonly text: string;
+}
+
+export interface EditorChangeSetFileDelete {
+  readonly filePath: string;
+  readonly previousText?: string;
+}
+
+export interface EditorChangeSetFileRename {
+  readonly fromFilePath: string;
+  readonly toFilePath: string;
+}
+
+/**
+ * Bounded editor mutation produced by an AI planner.
+ *
+ * Phase 8 applies JSON patches to the active authoring document. Text and file
+ * operations are present in the contract so Phase 9 can cover project plugins
+ * without changing the public shape again.
+ */
+export interface EditorChangeSet {
+  readonly id: string;
+  readonly intentId?: string;
+  readonly summary: string;
+  readonly jsonPatches: readonly EditorChangeSetJsonPatch[];
+  readonly textPatches?: readonly EditorChangeSetTextPatch[];
+  readonly fileCreates?: readonly EditorChangeSetFileCreate[];
+  readonly fileDeletes?: readonly EditorChangeSetFileDelete[];
+  readonly fileRenames?: readonly EditorChangeSetFileRename[];
+}
+
+export interface EditorDiffSummaryItem {
+  readonly filePath: string;
+  readonly pointer: string;
+  readonly operation: JsonPatchOperation["op"];
+  readonly before: JsonValue | undefined;
+  readonly after: JsonValue | undefined;
+  readonly description: string;
+}
+
+export interface PatchJournalStep {
+  readonly id: string;
+  readonly createdAt: string;
+  readonly intent: EditorPatchIntent;
+  readonly summary: string;
+  readonly affectedFiles: readonly string[];
+  readonly forward: EditorChangeSet;
+  readonly inverse: EditorChangeSet;
+  readonly beforeHash: string;
+  readonly afterHash: string;
+  readonly diffSummary: readonly EditorDiffSummaryItem[];
+  readonly diagnostics: readonly DocumentDiagnostic[];
+}
+
+export interface ApplyJsonPatchWithInverseResult {
+  readonly value: JsonValue;
+  readonly inverseOperations: readonly JsonPatchOperation[];
+  readonly diffSummary: readonly Omit<EditorDiffSummaryItem, "filePath">[];
+}
+
+export interface DryRunEditorChangeSetInput {
+  readonly snapshot: DocumentSnapshot;
+  readonly changeSet: EditorChangeSet;
+  readonly schemaRegistry?: SchemaRegistry;
+  readonly schemaId?: string;
+  readonly includeSemanticDiagnostics?: boolean;
+}
+
+export interface DryRunEditorChangeSetResult {
+  readonly ok: boolean;
+  readonly before: DocumentSnapshot;
+  readonly after: DocumentSnapshot | undefined;
+  readonly inverseChangeSet: EditorChangeSet | undefined;
+  readonly diffSummary: readonly EditorDiffSummaryItem[];
+  readonly diagnostics: readonly DocumentDiagnostic[];
+}
+
+export type TreeViewNodeValueType = "array" | "object" | "string" | "number" | "boolean" | "null";
+
+export type TreeViewNodeKind =
+  /** Root of the JSON document (the empty pointer). */
+  | "document"
+  /** JSON object node. */
+  | "object"
+  /** JSON array node. */
+  | "array"
+  /** Scalar JSON value (string/number/boolean/null). */
+  | "scalar"
+  /**
+   * Reference-ish value (a node that looks like a `$ref` container or a local
+   * reference string).
+   *
+   * This is a UI hint only. The editable source of truth remains the authoring
+   * JSON document, and all writes still route through JSON Patch operations.
+   */
+  | "reference";
+
+export interface TreeViewNodeActionHints {
+  /**
+   * Whether the value is editable as a scalar replacement.
+   *
+   * This is intentionally conservative for the first tree slice: structural
+   * operations (add/remove/rename/reorder) require schema-aware gating and are
+   * left disabled until that policy is formalized.
+   */
+  readonly canSetValue: boolean;
+  /** Whether this node should be treated as read-only by default. */
+  readonly readOnly: boolean;
+}
+
+export interface TreeViewNode {
+  /**
+   * Stable node identifier for UI layers.
+   *
+   * For non-root nodes it matches the JSON Pointer. The root uses `$` to align
+   * with graph projection node ids.
+   */
+  readonly id: string;
+  /** JSON Pointer for this node (empty string is the document root). */
+  readonly pointer: string;
+  /** Parent JSON Pointer, or undefined for the document root. */
+  readonly parentPointer: string | undefined;
+  /**
+   * Human-facing label for the node row.
+   *
+   * - Root: `/`
+   * - Object property: the raw property key
+   * - Array item: `[index]`
+   */
+  readonly label: string;
+  readonly kind: TreeViewNodeKind;
+  readonly valueType: TreeViewNodeValueType;
+  /** Short value preview for tree rows and search. */
+  readonly valuePreview: string;
+  readonly childCount: number;
+  /** Diagnostics that target this exact pointer. */
+  readonly diagnostics: readonly DocumentDiagnostic[];
+  /**
+   * Total number of diagnostics targeting this node or any descendant pointer.
+   *
+   * Tree UIs typically render this as a badge so users can quickly discover
+   * which branches contain errors or warnings.
+   */
+  readonly subtreeDiagnosticCount: number;
+  /** Optional graph node id for selection sync when available. */
+  readonly graphNodeId: string | undefined;
+  readonly actions: TreeViewNodeActionHints;
+  readonly children: readonly TreeViewNode[];
+}
+
+export interface TreeViewModel {
+  readonly root: TreeViewNode;
+  /** Pre-order list of all nodes for fast search. */
+  readonly flatNodes: readonly TreeViewNode[];
+  /** Lookup map for pointer-based selection sync. */
+  readonly nodeByPointer: ReadonlyMap<string, TreeViewNode>;
+}
+
+export interface BuildTreeViewModelInput {
+  readonly snapshot: DocumentSnapshot;
+  /**
+   * Diagnostics to attach to tree nodes.
+   *
+   * Callers usually pass `validateDocument(snapshot, ...)` output so the tree
+   * can show schema and semantic errors, not only syntax parsing failures.
+   */
+  readonly diagnostics?: readonly DocumentDiagnostic[];
+  /** Optional graph projection used to attach matching graph node ids. */
+  readonly graphProjection?: AuthoringGraphProjection;
+  /** Max length for scalar previews; longer values are truncated. */
+  readonly maxValuePreviewLength?: number;
+}
+
+/**
+ * Input for the entity tree projection.
+ *
+ * LEGACY-0018: this used to be an empty interface extending
+ * `BuildTreeViewModelInput`, which added no fields and only widened the API
+ * surface. It is now a plain type alias so the distinct public name stays
+ * available while the empty-interface anti-pattern is gone.
+ */
+export type BuildEntityTreeViewModelInput = BuildTreeViewModelInput;
+
+export type AuthoringGraphNodeRole =
+  | "document"
+  | "collection"
+  | "definition"
+  | "object"
+  | "typed-object"
+  | "reference"
+  | "property";
+
+export type AuthoringSemanticRole =
+  | "manifest-root"
+  | "definition"
+  | "scenario"
+  | "step"
+  | "action"
+  | "condition"
+  | "state"
+  | "metric"
+  | "ui-screen"
+  | "ui-component"
+  | "asset"
+  | "reference"
+  | "collection"
+  | "property";
+
+export type AuthoringPresentationRole =
+  | "root"
+  | "branch"
+  | "definition"
+  | "flow"
+  | "operation"
+  | "decision"
+  | "state"
+  | "metric"
+  | "screen"
+  | "component"
+  | "asset"
+  | "reference"
+  | "collection"
+  | "property";
+
+export interface AuthoringGraphNode {
+  readonly id: string;
+  readonly pointer: string;
+  readonly role: AuthoringGraphNodeRole;
+  /** Semantic role is editor-only meaning inferred from generic JSON signals. */
+  readonly semanticRole: AuthoringSemanticRole;
+  readonly semanticTitle: string;
+  readonly semanticSummary: string;
+  readonly presentationRole: AuthoringPresentationRole;
+  readonly label: string;
+  readonly valueType: "array" | "object" | "string" | "number" | "boolean" | "null";
+  readonly parentId: string | undefined;
+  readonly childIds: readonly string[];
+  readonly hiddenByDefault: boolean;
+  readonly expandable: boolean;
+  readonly childCount: number;
+}
+
+export interface AuthoringGraphEdge {
+  readonly id: string;
+  readonly from: string;
+  readonly to: string;
+  readonly role: "contains" | "defines" | "references";
+  readonly label?: string;
+}
+
+export interface AuthoringGraphProjection {
+  readonly nodes: readonly AuthoringGraphNode[];
+  readonly edges: readonly AuthoringGraphEdge[];
+}
+
+export interface AuthoringGraphExpansionState {
+  readonly selectedNodeId?: string;
+  readonly activeBranchRootId?: string;
+  readonly expandedNodeIds?: readonly string[];
+  readonly collapsedNodeIds?: readonly string[];
+  readonly includeRawProperties?: boolean;
+  readonly maxVisibleNodes?: number;
+  readonly maxExpandedChildren?: number;
+}
+
+export interface VisibleAuthoringGraphProjection extends AuthoringGraphProjection {
+  readonly activeBranchRootId: string | undefined;
+  readonly selectedNodeId: string | undefined;
+  readonly hiddenNodeCount: number;
+}
+
+export interface PreviewPoint {
+  /** X coordinate in the adapter-declared preview coordinate space. */
+  readonly x: number;
+  /** Y coordinate in the adapter-declared preview coordinate space. */
+  readonly y: number;
+}
+
+export interface PreviewRect extends PreviewPoint {
+  /** Rectangle width. Negative values are normalized before hit-testing. */
+  readonly width: number;
+  /** Rectangle height. Negative values are normalized before hit-testing. */
+  readonly height: number;
+}
+
+export interface PreviewEntityDescriptor {
+  /**
+   * Stable renderer-side id for selection and highlight commands.
+   *
+   * It does not replace authoring JSON Pointer: renderer adapters may need an
+   * id that stays stable while runtime and authoring pointers are mapped.
+   */
+  readonly entityId: string;
+  /** Authoring JSON Pointer for property panel and Monaco synchronization. */
+  readonly authoringPointer: string;
+  /** Optional generated-runtime JSON Pointer when the renderer can report it. */
+  readonly runtimePointer?: string;
+  /** Human-facing label shown in object pickers and preview overlays. */
+  readonly label: string;
+  /** Editor-only semantic role inferred by schema/projection or renderer metadata. */
+  readonly semanticRole: AuthoringSemanticRole | string;
+  /** Optional visual layer name, for example `hud`, `board`, or `modal`. */
+  readonly layer?: string;
+  /** Higher z-index values are hit-tested first. */
+  readonly zIndex?: number;
+  /** Stable render order inside the same z-index; higher values are later/on top. */
+  readonly renderOrder?: number;
+  /** Entity bounds in the adapter-declared coordinate space. */
+  readonly bounds: PreviewRect;
+  /** Invisible entities stay available for diagnostics but are skipped by default. */
+  readonly visible: boolean;
+  /** Non-selectable entities are skipped by default but may be included for diagnostics. */
+  readonly selectable?: boolean;
+  /** Small renderer-neutral metadata bag for tooling. Keep game data in manifests. */
+  readonly metadata?: JsonObject;
+}
+
+export interface PreviewHitTestOptions {
+  /** Include descriptors whose `visible` flag is false. */
+  readonly includeHidden?: boolean;
+  /** Include descriptors whose `selectable` flag is false. */
+  readonly includeNonSelectable?: boolean;
+  /** Restrict hit-test to selected visual layers. Empty or undefined means all layers. */
+  readonly layers?: readonly string[];
+  /** Maximum number of descriptors returned after topmost sorting. */
+  readonly limit?: number;
+}
+
+export interface PreviewHitTestResult {
+  /** Point used for point hit-test, if applicable. */
+  readonly point?: PreviewPoint;
+  /** Rectangle used for region hit-test, if applicable. */
+  readonly rect?: PreviewRect;
+  /** Matching entities sorted topmost first. */
+  readonly entities: readonly PreviewEntityDescriptor[];
+}
+
+export type PreviewHighlightCommand =
+  | {
+      readonly type: "clearHighlight";
+    }
+  | {
+      readonly type: "highlightEntities";
+      readonly entityIds: readonly string[];
+      /** Reason lets adapters style hover, selection and region highlights differently. */
+      readonly reason?: "hover" | "selection" | "region";
+      readonly style?: {
+        readonly outlineColor?: string;
+        readonly fillColor?: string;
+      };
+    };
+
+export interface PreviewRendererAdapter {
+  /**
+   * Returns the latest renderer-neutral descriptors.
+   *
+   * Implementations can be DOM, canvas, WebGL, or a test double. The
+   * editor core only depends on this descriptor list and explicit commands.
+   */
+  getEntities(): readonly PreviewEntityDescriptor[];
+  hitTestPoint(point: PreviewPoint, options?: PreviewHitTestOptions): PreviewHitTestResult;
+  hitTestRect(rect: PreviewRect, options?: PreviewHitTestOptions): PreviewHitTestResult;
+  highlight(command: PreviewHighlightCommand): void;
+  /** Optional invalidation hook for UI layers that subscribe to renderer changes. */
+  subscribe?(listener: () => void): () => void;
+}
+
+export interface StaticPreviewRendererAdapter extends PreviewRendererAdapter {
+  /** Replaces descriptors and notifies subscribers; useful for tests and adapters. */
+  setEntities(entities: readonly PreviewEntityDescriptor[]): void;
+  /** Last highlight command received by this adapter. */
+  getHighlightCommand(): PreviewHighlightCommand;
+  subscribe(listener: () => void): () => void;
+}
+
+export type EditorEntityDocumentKind = "game" | "ui" | "design" | "plugin" | "unknown";
+
+export type EditorEntityKind =
+  | "game-root"
+  | "game-flow"
+  | "game-step"
+  | "game-action"
+  | "content-block"
+  | "state-model"
+  | "metric"
+  | "ui-root"
+  | "ui-screen"
+  | "ui-component"
+  | "design-artifact"
+  | "plugin-contribution"
+  | "unknown";
+
+export type EditorEntityFacetKind = "logic" | "content" | "state" | "view" | "design" | "plugin";
+
+export type EditorEntityProjectionDiagnosticCode =
+  | "stale-source-hash"
+  | "unresolved-source-pointer"
+  | "unresolved-action-link"
+  | "unresolved-view-link"
+  | "ambiguous-view-link"
+  | "hidden-technical-field";
+
+export interface EditorEntitySourcePointer {
+  readonly filePath: string;
+  readonly pointer: string;
+  readonly documentKind: EditorEntityDocumentKind;
+  readonly channel?: string;
+  readonly label?: string;
+  readonly role?: string;
+}
+
+export interface EditorEntity {
+  readonly entityId: string;
+  readonly kind: EditorEntityKind;
+  readonly label: string;
+  readonly primarySource: EditorEntitySourcePointer;
+  readonly facets: Readonly<Partial<Record<EditorEntityFacetKind, readonly EditorEntitySourcePointer[]>>>;
+  readonly diagnostics: readonly EditorEntityProjectionDiagnostic[];
+}
+
+export interface EditorEntityProjectionDiagnostic {
+  readonly severity: DiagnosticSeverity;
+  readonly code: EditorEntityProjectionDiagnosticCode;
+  readonly message: string;
+  readonly source: EditorEntitySourcePointer;
+  readonly target?: EditorEntitySourcePointer;
+}
+
+export interface EditorEntityProjectionDocument {
+  readonly filePath: string;
+  readonly json: JsonValue | undefined;
+  readonly documentKind?: EditorEntityDocumentKind;
+  readonly channel?: string;
+  /** Optional caller-computed source hash used only for invalidating cached projections. */
+  readonly sourceHash?: string;
+}
+
+export interface EditorEntityFieldDictionaryEntry {
+  /** Match a concrete JSON Pointer when a field needs a precise user-facing label. */
+  readonly pointer?: string;
+  /** Match a property key across documents, for example `screenId`. */
+  readonly key?: string;
+  readonly label: string;
+  /** `false` hides the field from human-facing YAML prompt projection. */
+  readonly meaningful?: boolean;
+}
+
+export interface BuildEditorEntityProjectionInput {
+  readonly gameId?: string;
+  readonly documents: readonly EditorEntityProjectionDocument[];
+  readonly previewEntities?: readonly PreviewEntityDescriptor[];
+  readonly fieldDictionary?: readonly EditorEntityFieldDictionaryEntry[];
+  /** Previously cached hashes by file path. Mismatches produce diagnostics only. */
+  readonly expectedSourceHashes?: Readonly<Record<string, string>>;
+}
+
+export interface EditorEntityProjection {
+  readonly projectionVersion: 1;
+  readonly gameId: string | undefined;
+  readonly sourceHashes: Readonly<Record<string, string>>;
+  readonly entities: readonly EditorEntity[];
+  readonly entityById: ReadonlyMap<string, EditorEntity>;
+  readonly entitiesBySourcePointer: ReadonlyMap<string, readonly EditorEntity[]>;
+  readonly diagnostics: readonly EditorEntityProjectionDiagnostic[];
+}
+
+export interface BuildEditorEntityYamlProjectionInput {
+  readonly entity: EditorEntity;
+  readonly documents: readonly EditorEntityProjectionDocument[];
+  readonly fieldDictionary?: readonly EditorEntityFieldDictionaryEntry[];
+  /** Limits nested output so assistant context stays compact and deterministic. */
+  readonly maxDepth?: number;
+}
+
+export interface EditorEntityYamlProjection {
+  readonly text: string;
+  readonly hiddenTechnicalPointers: readonly EditorEntitySourcePointer[];
+  readonly diagnostics: readonly EditorEntityProjectionDiagnostic[];
+}
+
+export type ManifestTimelineEntryKind = "flow" | "step";
+
+export interface ManifestTimelineEntry {
+  /** Stable timeline id; currently equal to the authoring pointer. */
+  readonly id: string;
+  /** Authoring JSON Pointer for selection sync. */
+  readonly pointer: string;
+  readonly kind: ManifestTimelineEntryKind;
+  readonly label: string;
+  /** Zero-based order among entries of the same kind and parent. */
+  readonly order: number;
+  /** Parent flow id for steps. */
+  readonly parentId?: string;
+  readonly flowId?: string;
+  readonly stepId?: string;
+  readonly screenId?: string;
+  readonly actionIds: readonly string[];
+  readonly nextStepId?: string;
+}
+
+export interface ManifestTimeline {
+  readonly entries: readonly ManifestTimelineEntry[];
+  readonly entryById: ReadonlyMap<string, ManifestTimelineEntry>;
+  readonly rootEntryIds: readonly string[];
+}
+
+export interface BuildManifestTimelineInput {
+  readonly snapshot: DocumentSnapshot;
+}
+
+export type PreviewPlaythroughEventKind = "action" | "navigation" | "selection" | "system" | string;
+
+export interface PreviewPlaythroughEvent {
+  readonly id: string;
+  /** Monotonic sequence number inside one preview trace. */
+  readonly sequence: number;
+  readonly timestamp: string;
+  readonly kind: PreviewPlaythroughEventKind;
+  readonly label: string;
+  readonly payload?: JsonValue;
+}
+
+export interface PreviewPlaythroughSnapshot {
+  readonly id: string;
+  /** Sequence of the last event included in this snapshot. */
+  readonly eventSequence: number;
+  readonly state: JsonValue;
+}
+
+export interface PreviewPlaythroughTrace {
+  readonly version: 1;
+  readonly traceId: string;
+  readonly gameId?: string;
+  readonly events: readonly PreviewPlaythroughEvent[];
+  readonly snapshots: readonly PreviewPlaythroughSnapshot[];
+}
+
+export interface PreviewTraceRestorePlan {
+  readonly targetSequence: number;
+  readonly snapshot: PreviewPlaythroughSnapshot | undefined;
+  readonly replayEvents: readonly PreviewPlaythroughEvent[];
+}
+
+export interface SchemaRegistryOptions {
+  /**
+   * Ajv is kept local and synchronous. No remote loader is configured, so `$ref`
+   * values resolve only against schemas already registered in this registry.
+   */
+  readonly ajvOptions?: AjvOptions;
+}
+
+export interface ValidateValueInput {
+  readonly schemaId: string;
+  readonly value: JsonValue;
+  readonly locationMap?: TextLocationMap;
+  readonly source?: DiagnosticSource;
+}
+
+export interface SchemaRegistry {
+  registerSchema(schemaId: string, schema: JsonSchema): void;
+  hasSchema(schemaId: string): boolean;
+  validateValue(input: ValidateValueInput): readonly DocumentDiagnostic[];
+  validateDocument(snapshot: DocumentSnapshot, schemaId: string): readonly DocumentDiagnostic[];
+}
+
+export interface ValidateDocumentOptions {
+  readonly schemaRegistry?: SchemaRegistry;
+  readonly schemaId?: string;
+  readonly includeSemanticDiagnostics?: boolean;
+}
+
+export interface ValidateJsonValueOptions {
+  readonly schemaRegistry?: SchemaRegistry;
+  readonly schemaId?: string;
+  readonly locationMap?: TextLocationMap;
+  readonly includeSemanticDiagnostics?: boolean;
+}
+
+export type ReverseProjectIntent =
+  | {
+      readonly type: "setValue";
+      readonly pointer: string;
+      readonly value: JsonValue;
+    }
+  | {
+      readonly type: "moveNode";
+      readonly pointer: string;
+      readonly position: { readonly x: number; readonly y: number };
+    }
+  | {
+      readonly type: "addCollectionItem";
+      readonly collectionPointer: string;
+      readonly value: JsonValue;
+      readonly index?: number | "end";
+      readonly key?: string;
+    }
+  | {
+      readonly type: "removeCollectionItem";
+      readonly itemPointer: string;
+    }
+  | {
+      readonly type: "connectReference";
+      readonly referencePointer: string;
+      readonly targetPointer: string;
+    }
+  | {
+      readonly type: "disconnectReference";
+      readonly referencePointer: string;
+      readonly expectedTargetPointer?: string;
+    };
+
+export type ReverseProjectResult =
+  | {
+      readonly target: "authoring";
+      readonly operations: readonly JsonPatchOperation[];
+      readonly diagnostics?: readonly DocumentDiagnostic[];
+    }
+  | {
+      readonly target: "layout";
+      readonly operations: readonly JsonPatchOperation[];
+      readonly diagnostics?: readonly DocumentDiagnostic[];
+    }
+  | {
+      readonly target: "rejected";
+      readonly operations: readonly [];
+      readonly diagnostics: readonly DocumentDiagnostic[];
+    };
+
+export type PrototypeExtractionClassification = "game-level" | "candidate-for-platform" | "rejected-over-extraction";
+export type PrototypeExtractionRuntimeDiffExpectation = "must-be-zero" | "requires-separate-migration";
+export type PrototypeExtractionRisk = "low" | "medium" | "high";
+
+export interface PrototypeExtractionScore {
+  readonly repetitionCount: number;
+  readonly commonFieldCount: number;
+  readonly overrideFieldCount: number;
+  readonly sharedFieldRatio: number;
+  readonly readabilityRisk: PrototypeExtractionRisk;
+  readonly overExtractionRisk: PrototypeExtractionRisk;
+  readonly summary: string;
+}
+
+export interface PrototypeExtractionCandidate {
+  readonly signature: string;
+  readonly pointers: readonly string[];
+  readonly normalizedShape: JsonValue;
+  readonly score: PrototypeExtractionScore;
+}
+
+export interface DiscoverPrototypeExtractionCandidatesInput {
+  readonly snapshot: DocumentSnapshot;
+  readonly rootPointer?: string;
+  readonly knownVariantKeys?: readonly string[];
+  readonly excludedPointers?: readonly string[];
+  readonly minRepeatCount?: number;
+  readonly minObjectFieldCount?: number;
+}
+
+export type DiscoverPrototypeExtractionCandidatesResult =
+  | {
+      readonly ok: true;
+      readonly candidates: readonly PrototypeExtractionCandidate[];
+      readonly diagnostics: readonly DocumentDiagnostic[];
+    }
+  | {
+      readonly ok: false;
+      readonly candidates: readonly [];
+      readonly diagnostics: readonly DocumentDiagnostic[];
+    };
+
+export interface PrototypeInstanceOverride {
+  readonly sourcePointer: string;
+  readonly replacement: JsonObject;
+  readonly overridePointers: readonly string[];
+}
+
+export interface PrototypeExtractionSourceMapImpact {
+  readonly requiresPointerExistenceCheck: true;
+  readonly affectedPointers: readonly string[];
+}
+
+export interface PrototypeExtractionProposal {
+  readonly id: string;
+  readonly classification: Exclude<PrototypeExtractionClassification, "rejected-over-extraction">;
+  readonly definitionType: string;
+  readonly definitionPointer: string;
+  readonly definition: JsonObject;
+  readonly commonBody: JsonObject;
+  readonly sourcePointers: readonly string[];
+  readonly knownVariantKeys: readonly string[];
+  readonly instanceOverrides: readonly PrototypeInstanceOverride[];
+  readonly score: PrototypeExtractionScore;
+  readonly expectedRuntimeDiff: PrototypeExtractionRuntimeDiffExpectation;
+  readonly sourceMapImpact: PrototypeExtractionSourceMapImpact;
+  readonly validationGates: readonly string[];
+  readonly changeSet: EditorChangeSet;
+}
+
+export interface CreatePrototypeExtractionProposalInput {
+  readonly snapshot: DocumentSnapshot;
+  readonly sourcePointers: readonly string[];
+  readonly definitionType: string;
+  readonly definitionSemantics: string;
+  readonly promptTemplate?: JsonObject;
+  readonly classification?: Exclude<PrototypeExtractionClassification, "rejected-over-extraction">;
+  readonly knownVariantKeys?: readonly string[];
+  readonly expectedRuntimeDiff?: PrototypeExtractionRuntimeDiffExpectation;
+  readonly proposalId?: string;
+  readonly changeSetId?: string;
+  readonly intentId?: string;
+}
+
+export type CreatePrototypeExtractionProposalResult =
+  | {
+      readonly ok: true;
+      readonly proposal: PrototypeExtractionProposal;
+      readonly diagnostics: readonly DocumentDiagnostic[];
+    }
+  | {
+      readonly ok: false;
+      readonly proposal?: undefined;
+      readonly diagnostics: readonly DocumentDiagnostic[];
+    };

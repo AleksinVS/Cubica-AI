@@ -18,7 +18,18 @@
 
 ## Status
 
-planned
+partially-implemented (2026-07-04) — Phases 1–3 done; Phase 4 (EditorWorkspace) deferred
+
+Выполнены Phase 1 (разбиение `editor-engine/index.ts` на 14 связных модулей +
+тонкий фасад), Phase 2 (dedup `isPlainJsonObject`, удаление пустого интерфейса,
+пометка test-only экспортов) и Phase 3 (authoritative schema-driven role inference
+с документированным substring-fallback). Публичная поверхность (`@cubica/editor-engine`)
+сохранена (все 127 экспортов на месте), поведение неизменно: `verify:editor-engine`
+(typecheck + 38 тестов), editor-web typecheck и 105 тестов зелёные.
+**Phase 4 (декомпозиция ~2500-строчного `apps/editor-web/src/components/
+editor-workspace.tsx`) отложена как отдельный срез** — требует e2e-проверки и несёт
+наибольший behavior-риск; там же остаётся последняя копия `isPlainJsonObject`.
+LEGACY-0018/0019 обновлены.
 
 ## Understanding
 
@@ -131,3 +142,36 @@ npm run test:e2e
 ## Handoff Log
 
 - 2026-06-30: задача создана по результатам полного ревью; покрывает LEGACY-0018/0019.
+- 2026-07-04: Phases 1–3 реализованы (поведение-сохраняющий рефакторинг).
+  - **Phase 1:** `packages/editor-engine/src/index.ts` (5428 строк) → тонкий
+    фасад (91 строка), реэкспортирующий 14 связных модулей: `types`, `shared`
+    (dependency-free JSON/token/diagnostic helpers, канонический
+    `isPlainJsonObject`), `json-pointer-patch` (включая сохранённый array-insert
+    inverse fix), `document-store`, `change-set`, `tree-view`, `graph-projection`,
+    `role-inference`, `semantics` (cross-cutting предикаты — вынесены отдельно во
+    избежание циклов), `preview`, `entity-projection`, `schema`,
+    `prototype-extraction`, `reverse-projection`. Имена экспортов не менялись;
+    facade реэкспортирует публичные функции явно + все типы через `export *`
+    (внутренние cross-module хелперы НЕ утекают в публичную поверхность).
+  - **Phase 2:** канонический `isPlainJsonObject` в `shared.ts`, дубль в
+    `apps/editor-web/src/lib/agent-context-projection.ts` заменён на импорт
+    (копия в `editor-workspace.tsx` оставлена — это Phase 4). Пустой интерфейс
+    `BuildEntityTreeViewModelInput` → type-alias. Экспорты
+    `buildEditorEntityYamlProjection`, `createStaticPreviewRendererAdapter`,
+    `previewRectsIntersect`, `TreeViewModelBuilder` подтверждены как test-only
+    (нет production-потребителя) и помечены комментарием; тесты не менялись.
+  - **Phase 3:** `inferSemanticRole` теперь сначала консультирует authoritative
+    сигнал (`_type`/`role`/`_semantics` через data-driven
+    `AUTHORITATIVE_ROLE_BY_TOKEN`), и только при его отсутствии применяет
+    английскую substring-эвристику как явный документированный fallback
+    (LEGACY-0019). Регресс-тесты: кириллический путь с явным `role`/`_type`
+    классифицируется верно; fallback по-прежнему работает без явного сигнала.
+  - **Проверки:** `verify:editor-engine` (typecheck + 38 тестов, было 36 + 2 новых),
+    editor-web typecheck и `npm test @cubica/editor-web` (105 тестов) — зелёные.
+    `validate-legacy` — те же 30 baseline-маркеров, ни одного нового и ни одного
+    в `editor-engine/src`. `debt-log.csv`/`stubs-register.md` обновлены (LEGACY-0018
+    engine-split done / component-decomp deferred; LEGACY-0019 authoritative-first
+    landed, fallback documented).
+  - **Отложено (Phase 4):** декомпозиция `editor-workspace.tsx` (reducer/хуки,
+    дочерние панели) — отдельный срез с e2e-приёмкой; последняя копия
+    `isPlainJsonObject` живёт там.

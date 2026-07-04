@@ -871,6 +871,62 @@ describe("authoring graph projection", () => {
     expect(screensVisible.nodes.map((node) => node.pointer)).toContain("/root/screens/first");
     expect(screensVisible.nodes.map((node) => node.pointer)).not.toContain("/root/actions/one");
   });
+
+  it("classifies non-English nodes by their explicit authoring role, not by English path substrings (LEGACY-0019)", () => {
+    // The pointer segments and labels are Cyrillic, so the old English-substring
+    // heuristic has nothing to match and would fall back to a generic
+    // "collection". The nodes instead carry an explicit authoring role
+    // annotation (`role` / `_type`) that must be treated as authoritative.
+    const snapshot = createDocumentStore({
+      filePath: "authoring.json",
+      text: JSON.stringify({
+        root: {
+          "шаг": {
+            // `role` was NOT read at all by the old substring soup, proving the
+            // new authoritative branch is what classifies this node.
+            role: "action",
+            "имя": "Ход игрока"
+          },
+          "раздел": {
+            _type: "ui-screen",
+            "заголовок": "Главный экран"
+          }
+        }
+      })
+    }).snapshot();
+
+    const projection = buildAuthoringGraphProjection(snapshot);
+    const actionNode = projection.nodes.find((node) => node.pointer === "/root/шаг");
+    const screenNode = projection.nodes.find((node) => node.pointer === "/root/раздел");
+
+    expect(actionNode).toMatchObject({ semanticRole: "action", presentationRole: "operation" });
+    expect(screenNode).toMatchObject({ semanticRole: "ui-screen", presentationRole: "screen" });
+  });
+
+  it("still falls back to English substring heuristics when no explicit role is present", () => {
+    // No `_type`/`role`/`_semantics` role token here: classification must still
+    // work from the English path segment ("screens"/"metrics") via the fallback.
+    const snapshot = createDocumentStore({
+      filePath: "authoring.json",
+      text: JSON.stringify({
+        root: {
+          screens: {
+            home: { title: "Home" }
+          },
+          metrics: {
+            hp: 10
+          }
+        }
+      })
+    }).snapshot();
+
+    const projection = buildAuthoringGraphProjection(snapshot);
+    const screenNode = projection.nodes.find((node) => node.pointer === "/root/screens/home");
+    const metricNode = projection.nodes.find((node) => node.pointer === "/root/metrics/hp");
+
+    expect(screenNode?.semanticRole).toBe("ui-screen");
+    expect(metricNode?.semanticRole).toBe("metric");
+  });
 });
 
 describe("TreeViewModelBuilder", () => {
