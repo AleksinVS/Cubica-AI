@@ -5,6 +5,7 @@ import type {
   RuntimeActionResult
 } from "@cubica/contracts-runtime";
 import type {
+  GameManifestActionDefinition,
   GameManifestDeterministicActionMetadata,
   GameManifestDeterministicEffect,
   GameManifestDeterministicEffectCondition,
@@ -79,12 +80,15 @@ const resolveTemplate = (
   // actions still carry direct metadata (for example audit flags) while bounded
   // gameplay details live under `overrides.deterministic`; both shapes must be
   // merged instead of choosing one and silently dropping the other.
-  const raw = action.raw || {};
+  // `raw` is the raw manifest action object. It follows the typed
+  // GameManifestActionDefinition contract, so `deterministic` and the
+  // template `overrides` are read through typed fields (ADR-056: no untyped
+  // `raw.overrides` bypass for fields that exist in the schema/contract).
+  const raw: Partial<GameManifestActionDefinition> = isObjectRecord(action.raw) ? action.raw : {};
   const directDeterministic = isObjectRecord(raw.deterministic) ? raw.deterministic : {};
-  const overrideDeterministic =
-    isObjectRecord(raw.overrides) && isObjectRecord(raw.overrides.deterministic)
-      ? raw.overrides.deterministic
-      : {};
+  const overrideDeterministic = isObjectRecord(raw.overrides?.deterministic)
+    ? raw.overrides.deterministic
+    : {};
   const actionDeterministic = { ...directDeterministic, ...overrideDeterministic };
 
 

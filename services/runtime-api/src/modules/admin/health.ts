@@ -65,9 +65,9 @@ export interface GameReadinessResponse {
 /**
  * Injectable dependencies for the content subsystem probe.
  *
- * A "probe" here is a real, executed check (not a stub). The default probe
- * exercises the actual content pipeline; tests inject a failing probe to prove
- * the readiness check honestly reports content failures.
+ * A "probe" here is a real, executed check (not a placeholder). The default
+ * probe exercises the actual content pipeline; tests inject a failing probe to
+ * prove the readiness check honestly reports content failures.
  */
 export interface ContentProbe {
   /** Discover the ids of games that can be loaded. */

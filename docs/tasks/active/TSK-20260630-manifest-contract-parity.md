@@ -18,7 +18,16 @@
 
 ## Status
 
-planned
+implemented (2026-07-04)
+
+Механизм парности схема→TS реализован и проверен: генератор, закоммиченный
+артефакт, CI drift check, типизированный `overrides` с типизированным чтением в
+runtime, и реальные контрактные тесты вместо `exit 1` для manifest-пакета.
+`verify:contracts-schema-parity`, `verify:contracts-manifest` (typecheck + 9 AJV-тестов),
+`verify:contracts-runtime|session|ai` зелёные; runtime-api typecheck + 127 тестов зелёные.
+Пред-существующий красный `verify:legacy` (baseline-маркеры в untouched-файлах) — вне
+scope этой задачи; регрессия `health.ts` (слово «stub» в комментарии P0) исправлена.
+Две ограниченные (bounded) осознанные развилки — см. Handoff Log 2026-07-04.
 
 ## Understanding
 
@@ -135,3 +144,46 @@ npm run verify:canonical
 ## Handoff Log
 
 - 2026-06-30: задача создана по результатам полного ревью; реализует ADR-056.
+- 2026-07-04: парность реализована и проверена.
+  - **Генератор:** `scripts/manifest-tools/generate-contracts-types.cjs`
+    (`json-schema-to-typescript@15`) компилирует `docs/architecture/schemas/
+    game-manifest.schema.json` → `packages/contracts/manifest/src/generated/
+    game-manifest.ts`. Скрипт `generate:contracts`; `--check` режим для CI.
+    Сгенерированный файл — производный, drift-checked артефакт; НЕ является
+    consumer-поверхностью (её роль сохраняет ручной `src/index.ts`), поэтому
+    исключён из strict typecheck пакета (гарантируется string-diff drift-check,
+    не tsc).
+  - **Drift check:** `scripts/ci/validate-contracts-schema-parity.js`
+    (`verify:contracts-schema-parity`) перегенерирует и сравнивает; включён в
+    `verify:canonical`.
+  - **`overrides`:** типизирован в `packages/contracts/manifest/src/index.ts`;
+    runtime (`deterministicHandlers.ts`) читает `raw.overrides.deterministic`
+    через типизированный `Partial<GameManifestActionDefinition>`, без `raw`-обхода.
+  - **Контрактные тесты (manifest):** `tests/manifests.test.ts` — AJV round-trip
+    всех обнаруженных `games/*/game.manifest.json` и `ui.manifest.json` (9 тестов);
+    `tests/type-compat.ts` — compile-time проверка, что поставляемые манифесты
+    структурно присваиваемы контракту `GameManifest`.
+  - **Найденный и устранённый разрыв wiring:** P0-задача временно поставила
+    `contracts-manifest` `test`-скрипт в no-op (снятие `exit 1`-хазарда). Здесь
+    он переведён на `vitest run`, добавлен `typecheck` (`tsc -p tsconfig.json`,
+    компилирует `type-compat.ts`), а корневой `verify:contracts-manifest` теперь
+    гоняет оба.
+  - **JSON-widening в type-compat:** `import ... with { type: "json" }` расширяет
+    строковые литералы до `string`, из-за чего прямое присваивание манифеста
+    контракту с enum/discriminated-union полями (`kind:"computed"`,
+    `executionMode`, object `visibility`) падало ложно. Введён widening-толерантный
+    `WidenLiterals<T>` — compile-check фокусируется на структуре, а членство в
+    enum проверяет AJV (SSOT — схема). `ajv` импортируется через тот же
+    `.default`-unwrap, что и остальной код (NodeNext без esModuleInterop).
+  - **Bounded decision 1 — AI-схемы (ADR-056 §6):** оставлены TS-colocated в
+    `packages/contracts/ai/src/index.ts` (TS уже носитель схемы для AI-слоя, что
+    §6 явно допускает). Эмиссия `.schema.json` в `docs/architecture/schemas/ai/` —
+    отложенный follow-up; фиксируется как осознанный gap, а не дрейф.
+  - **Bounded decision 2 — contracts-runtime/session:** это чисто TS-контракты
+    без JSON Schema на диске и без поставляемых экземпляров данных, поэтому
+    AJV round-trip неприменим. Их `test` остаётся проходящим no-op со ссылкой на
+    эту задачу; реальные контрактные тесты появятся только после извлечения их
+    схем (future work). `verify:contracts-runtime|session` зелёные.
+  - **Не сделано (вне scope):** миграция consumer-импортов на сгенерированные
+    типы (осознанный follow-up, см. заголовок генератора); retire/repurpose
+    `schema-export.ts`; пред-существующий baseline-красный `verify:legacy`.

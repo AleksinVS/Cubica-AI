@@ -1,0 +1,3 @@
+{
+  ".": "Generated TypeScript projection of the canonical manifest JSON Schemas (ADR-056). Derived and drift-checked, never hand-edited; JSON Schema in docs/architecture/schemas/ is the source of truth."
+}

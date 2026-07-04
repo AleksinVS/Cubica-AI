@@ -482,6 +482,19 @@ export interface GameManifestActionDefinition {
   tags?: Array<string>;
   payloadSchema?: Record<string, unknown>;
   deterministic?: GameManifestDeterministicActionMetadata;
+  /**
+   * Action-specific deterministic overrides merged on top of the resolved
+   * template. Used when a template-based action needs extra guard fields or
+   * effects without redefining the whole template.
+   *
+   * This mirrors `GameManifestActionDefinition.overrides` in
+   * `docs/architecture/schemas/game-manifest.schema.json` (JSON Schema is the
+   * single source of truth per ADR-025/ADR-056). The runtime reads it through
+   * this typed field instead of an untyped `raw.overrides` lookup.
+   */
+  overrides?: {
+    deterministic?: GameManifestDeterministicActionMetadata;
+  };
   raw?: Record<string, unknown>;
 }
 

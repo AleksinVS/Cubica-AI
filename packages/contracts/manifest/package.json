@@ -7,8 +7,9 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"[contracts-manifest] no build yet (see TSK-20260630-manifest-contract-parity)\"",
-    "test": "echo \"[contracts-manifest] no tests yet (see TSK-20260630-manifest-contract-parity)\"",
+    "build": "echo \"[contracts-manifest] source-only TS package; no build step\"",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
     "lint": "echo \"[contracts-manifest] no lint yet (see TSK-20260630-manifest-contract-parity)\""
   },
   "engines": {

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "noEmit": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "types": ["node", "vitest/globals"]
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts", "vitest.config.ts"],
+  "//exclude": "src/generated is a derived, drift-checked artifact (see generate-contracts-types.cjs). It is NOT the consumer type surface and is guaranteed by the schema→TS string-diff parity check, not by tsc — so it is excluded from this package's strict typecheck.",
+  "exclude": ["src/generated/**"]
+}
