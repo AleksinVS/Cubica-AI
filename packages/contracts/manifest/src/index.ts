@@ -306,14 +306,6 @@ export interface GameManifestDeterministicGuard {
     canAdvance?: boolean | string;
   };
   /**
-   * Opening-card guard. Game-specific to Antarctica's `secret.opening`; a
-   * follow-up slice migrates it to generic `stateConditions` (ADR-041 §7.2).
-   */
-  opening?: {
-    selectedCardIdAbsent?: boolean;
-    selectedCardIdEquals?: string | number;
-  };
-  /**
    * Generic object-state guards. These check authoritative object state in
    * state.public.objects or state.secret.objects without game-specific code.
    */

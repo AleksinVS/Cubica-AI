@@ -2401,9 +2401,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "3",
@@ -2411,7 +2408,13 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -2672,9 +2675,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "7",
@@ -2682,7 +2682,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -2731,9 +2738,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "8",
@@ -2741,7 +2745,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -2790,9 +2801,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "9",
@@ -2800,7 +2808,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -2868,9 +2883,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "10",
@@ -2878,7 +2890,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -2927,9 +2946,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "11",
@@ -2937,7 +2953,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -2986,9 +3009,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "12",
@@ -2996,7 +3016,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3050,9 +3077,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "13",
@@ -3060,7 +3084,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3109,9 +3140,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "14",
@@ -3119,7 +3147,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3168,9 +3203,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "15",
@@ -3178,7 +3210,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3227,9 +3266,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "16",
@@ -3237,7 +3273,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3286,9 +3329,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "17",
@@ -3296,7 +3336,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3350,9 +3397,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "18",
@@ -3360,7 +3404,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3428,9 +3479,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "19",
@@ -3438,7 +3486,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3487,9 +3542,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "20",
@@ -3497,7 +3549,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3551,9 +3610,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "21",
@@ -3561,7 +3617,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3605,9 +3668,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "22",
@@ -3615,7 +3675,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3688,9 +3755,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "23",
@@ -3698,7 +3762,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -3766,9 +3837,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "24",
@@ -3776,7 +3844,14 @@
                     "selection": "idle",
                     "resolution": "idle"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -7723,9 +7798,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "3",
@@ -7733,7 +7805,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -7776,9 +7855,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "9",
@@ -7786,7 +7862,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -7829,9 +7912,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "18",
@@ -7839,7 +7919,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -7882,9 +7969,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "22"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "22",
@@ -7892,7 +7976,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "22"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -7935,9 +8026,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "23"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "23",
@@ -7945,7 +8033,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "23"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -7984,9 +8079,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "31"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "31",
@@ -7994,7 +8086,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "31"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8037,9 +8136,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "32"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "32",
@@ -8047,7 +8143,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "32"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8086,9 +8189,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "33"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "33",
@@ -8096,7 +8196,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "33"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8135,9 +8242,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "35"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "35",
@@ -8145,7 +8249,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "35"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8184,9 +8295,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "36"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "36",
@@ -8194,7 +8302,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "36"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8233,9 +8348,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "39"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "39",
@@ -8243,7 +8355,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "39"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8282,9 +8401,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3902"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "3902",
@@ -8292,7 +8408,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3902"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8335,9 +8458,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "43"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "43",
@@ -8345,7 +8465,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "43"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8384,9 +8511,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "45"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "45",
@@ -8394,7 +8518,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "45"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8433,9 +8564,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "47"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "47",
@@ -8443,7 +8571,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "47"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8482,9 +8617,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "48"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "48",
@@ -8492,7 +8624,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "48"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8535,9 +8674,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "49"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "49",
@@ -8545,7 +8681,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "49"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8588,9 +8731,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "50"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "50",
@@ -8598,7 +8738,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "50"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8637,9 +8784,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "51"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "51",
@@ -8647,7 +8791,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "51"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8686,9 +8837,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "52"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "52",
@@ -8696,7 +8844,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "52"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8735,9 +8890,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "53"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "53",
@@ -8745,7 +8897,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "53"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8784,9 +8943,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "54"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "54",
@@ -8794,7 +8950,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "54"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8833,9 +8996,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "55"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "55",
@@ -8843,7 +9003,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "55"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8882,9 +9049,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "57"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "57",
@@ -8892,7 +9056,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "57"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8931,9 +9102,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "58"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "58",
@@ -8941,7 +9109,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "58"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -8980,9 +9155,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "60"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "60",
@@ -8990,7 +9162,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "60"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -9033,9 +9212,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "61"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "61",
@@ -9043,7 +9219,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "61"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -9083,9 +9266,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "66"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "66",
@@ -9093,7 +9273,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "66"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -9132,9 +9319,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "68"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "68",
@@ -9142,7 +9326,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "68"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -9214,9 +9405,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "69"
-                },
                 "object": {
                   "collection": "cards",
                   "objectId": "69",
@@ -9224,7 +9412,14 @@
                     "selection": "selected",
                     "resolution": "resolved"
                   }
-                }
+                },
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "69"
+                  }
+                ]
               },
               "effects": [
                 {
@@ -9278,9 +9473,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9320,9 +9518,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9362,9 +9563,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9404,9 +9608,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9446,9 +9653,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9488,9 +9698,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9530,9 +9743,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9572,9 +9788,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9614,9 +9833,12 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdAbsent": true
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "not_exists"
+                  }
+                ]
               }
             }
           }
@@ -9656,9 +9878,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "3"
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "3"
+                  }
+                ]
               }
             }
           }
@@ -9698,9 +9924,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "9"
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "9"
+                  }
+                ]
               }
             }
           }
@@ -9740,9 +9970,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               }
             }
           }
@@ -9782,9 +10016,13 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                }
+                "stateConditions": [
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
+                  }
+                ]
               }
             }
           }
@@ -10361,9 +10599,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10374,6 +10609,11 @@
                     "path": "/public/flags/team/fedya/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10448,9 +10688,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10461,6 +10698,11 @@
                     "path": "/public/flags/team/aliona/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10540,9 +10782,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10553,6 +10792,11 @@
                     "path": "/public/flags/team/leo/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10632,9 +10876,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10645,6 +10886,11 @@
                     "path": "/public/flags/team/grisha/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10719,9 +10965,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10732,6 +10975,11 @@
                     "path": "/public/flags/team/liza/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10811,9 +11059,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10824,6 +11069,11 @@
                     "path": "/public/flags/team/zenya/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10893,9 +11143,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10906,6 +11153,11 @@
                     "path": "/public/flags/team/zora/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -10975,9 +11227,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -10988,6 +11237,11 @@
                     "path": "/public/flags/team/arkadii/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -11057,9 +11311,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -11070,6 +11321,11 @@
                     "path": "/public/flags/team/vasya/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -11139,9 +11395,6 @@
           "overrides": {
             "deterministic": {
               "guard": {
-                "opening": {
-                  "selectedCardIdEquals": "18"
-                },
                 "stateConditions": [
                   {
                     "path": "/public/teamSelection/pickCount",
@@ -11152,6 +11405,11 @@
                     "path": "/public/flags/team/tima/selected",
                     "operator": "==",
                     "value": false
+                  },
+                  {
+                    "path": "/secret/opening/selectedCardId",
+                    "operator": "==",
+                    "value": "18"
                   }
                 ]
               },
@@ -11303,14 +11561,16 @@
                 "stepIndex": 15,
                 "canAdvance": false
               },
-              "opening": {
-                "selectedCardIdEquals": "18"
-              },
               "stateConditions": [
                 {
                   "path": "/public/teamSelection/pickCount",
                   "operator": "==",
                   "value": 5
+                },
+                {
+                  "path": "/secret/opening/selectedCardId",
+                  "operator": "==",
+                  "value": "18"
                 }
               ]
             },

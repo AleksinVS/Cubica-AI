@@ -380,10 +380,6 @@ export interface GameManifestDeterministicGuard {
     | GameManifestDeterministicCollectionCount
     | [GameManifestDeterministicCollectionCount, ...GameManifestDeterministicCollectionCount[]];
   jsonLogic?: JsonLogicExpression;
-  opening?: {
-    selectedCardIdAbsent?: boolean;
-    selectedCardIdEquals?: string | number;
-  };
   object?: GameManifestObjectStateGuard | [GameManifestObjectStateGuard, ...GameManifestObjectStateGuard[]];
   stateConditions?: GameManifestDeterministicStateCondition[];
   timeline?: {

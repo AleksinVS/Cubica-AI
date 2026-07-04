@@ -19,16 +19,16 @@
 
 ## Status
 
-partially-implemented (2026-07-04) — board/team/teamSelection мигрированы; opening отложен
+implemented (2026-07-04) — все 4 legacy guard-а мигрированы; платформа свободна от game-specific форм
 
-По подтверждённому решению (все 4 guard-а → generic) выполнен первый слайс: `board` →
-generic `collectionCount`, `team`/`teamSelection` → generic `stateConditions`; их
-game-specific формы удалены из платформенной схемы и контрактов; чтение JSON-pointer
-унифицировано (`readJsonPointer`/`evaluateStateCondition`, чинит баг `~0/~1`, находка #4);
-`(guard as any)` касты удалены (находка #3). Эквивалентность доказана: runtime-api 127/127,
-`verify:contracts-schema-parity|contracts-manifest|manifest-authoring|game-agnostic` зелёные.
-**Отложено (Phase 2, отдельный коммит):** `opening` (73 инстанса) → `stateConditions` на
-`/secret/opening/selectedCardId`, затем удаление формы `opening` из схемы/контрактов.
+По подтверждённому решению мигрированы ВСЕ четыре legacy-guard-а на generic-примитивы:
+`board` → `collectionCount`; `team`/`teamSelection`/`opening` → `stateConditions`. Формы
+`board`/`team`/`teamSelection`/`opening` полностью удалены из платформенной схемы и
+контрактов; чтение JSON-pointer унифицировано (`readJsonPointer`/`evaluateStateCondition`,
+чинит баг `~0/~1`, находка #4); `(guard as any)` касты удалены (находка #3). В платформе
+не осталось ни одной game-specific guard-формы. Эквивалентность доказана: runtime-api
+127/127, `verify:contracts-schema-parity|contracts-manifest|manifest-authoring|game-agnostic`
+зелёные. **LEGACY-0020 закрыт** (перенесён в архив реестра заглушек).
 
 ## Understanding
 
@@ -171,6 +171,17 @@ npm run verify:canonical
     регенерирован; drift-check зелёный.
   - **Тесты:** устаревший тест валидации `board`-guard заменён на проверку malformed
     `collectionCount`-guard. runtime-api 127/127.
-  - **Осталось (Phase 2):** `opening` → `stateConditions` (`/secret/opening/selectedCardId`:
-    `selectedCardIdAbsent`→`not_exists`, `selectedCardIdEquals`→`==`), затем удаление
-    формы `opening` из схемы/контрактов и последнего game-specific guard из платформы.
+- 2026-07-04: **Phase 2** — миграция `opening` и полное закрытие.
+  - **opening → stateConditions:** `selectedCardIdAbsent:true`→`{path:"/secret/opening/
+    selectedCardId", operator:"not_exists"}`; `selectedCardIdEquals:X`→`{operator:"==",
+    value:String(X)}`. Эквивалент строгого `===` подтверждён: и `selectedCardId` в
+    состоянии (`value:"3"`), и все `selectedCardIdEquals` — строки. Одноразовый transform
+    (job tmp): 73 инстанса (63 equals + 10 absent), append к существующим stateConditions
+    от Phase 1; распознавание строго по guard-форме (state `opening:{}` не тронут).
+  - **Удаление формы:** `opening` убран из хендлера, контракта и схемы; `generate:contracts`
+    регенерирован; манифест перекомпилирован (compiled: 0 opening-форм, 73 stateConditions).
+  - **Проверки:** runtime-api typecheck + 127/127; verify contracts-schema-parity/
+    contracts-manifest/manifest-authoring/game-agnostic зелёные. В схеме/контракте/хендлере
+    0 форм board/opening/team/teamSelection и 0 `(guard as any)`.
+  - **Закрытие:** LEGACY-0020 → `removed` в `debt-log.csv` и перенесён в архив
+    `stubs-register.md` (validate-legacy debt/register консистентны).

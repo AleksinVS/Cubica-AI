@@ -808,27 +808,6 @@ const evaluateManifestGuard = (
     }
   }
 
-  // Semantic guard: opening — checks secret.opening.selectedCardId. Still
-  // game-specific to Antarctica; a follow-up slice migrates it to generic
-  // stateConditions (ADR-041 §7.2, LEGACY-0020).
-  if (guard.opening) {
-    const openingGuard = guard.opening;
-    const secret = ensureObject((state as Record<string, unknown>).secret);
-    const opening = ensureObject(secret.opening);
-    const selectedCardId = opening.selectedCardId as string | undefined;
-
-    if (openingGuard.selectedCardIdAbsent === true) {
-      if (selectedCardId !== undefined && selectedCardId !== null) {
-        failures.push(`opening.selectedCardId expected absent, got "${selectedCardId}"`);
-      }
-    }
-    if (openingGuard.selectedCardIdEquals !== undefined) {
-      if (String(selectedCardId) !== String(openingGuard.selectedCardIdEquals)) {
-        failures.push(`opening.selectedCardId expected "${openingGuard.selectedCardIdEquals}", got "${String(selectedCardId)}"`);
-      }
-    }
-  }
-
   // Tier 2 guard: JsonLogic expression evaluation
   if (guard.jsonLogic) {
     const result = jsonLogic.apply(guard.jsonLogic as Parameters<typeof jsonLogic.apply>[0], state);

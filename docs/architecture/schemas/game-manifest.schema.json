@@ -467,24 +467,6 @@
         "jsonLogic": {
           "$ref": "#/definitions/JsonLogicExpression"
         },
-        "opening": {
-          "type": "object",
-          "properties": {
-            "selectedCardIdAbsent": {
-              "type": "boolean"
-            },
-            "selectedCardIdEquals": {
-              "oneOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "number"
-                }
-              ]
-            }
-          }
-        },
         "object": {
           "oneOf": [
             {
