@@ -24,9 +24,6 @@ import {
   createPreviewElementAttributes
 } from "./preview-metadata";
 
-const FORWARD_NAV_BUTTON_ID = "nav-right";
-const ADVANCE_BUTTON_IDS = new Set(["btn-advance", "btn-finish"]);
-
 type PreviewRuntimePointerComponent = GameUiComponent & {
   /**
    * Runtime-only override for editor preview mapping.
@@ -38,63 +35,6 @@ type PreviewRuntimePointerComponent = GameUiComponent & {
    */
   readonly previewRuntimePointer?: string;
 };
-
-/**
- * Переносит явное действие продолжения на стрелку "Вперед".
- *
- * UI-манифесты старого вида могут содержать отдельную кнопку "Продолжить"
- * рядом со стрелками навигации. Runtime-смысл у нее тот же: выполнить
- * следующий action (серверное игровое действие). Чтобы экран переходил
- * через навигационную стрелку, рендерер убирает отдельную кнопку и назначает
- * ее действие на nav-right.
- */
-function moveAdvanceActionToForwardNavigation(children: Array<GameUiComponent>): Array<GameUiComponent> {
-  const advanceIndex = children.findIndex(
-    (child) => child.type === "buttonComponent" && child.id && ADVANCE_BUTTON_IDS.has(child.id) && child.actions?.onClick
-  );
-  const forwardIndex = children.findIndex(
-    (child) => child.type === "buttonComponent" && child.id === FORWARD_NAV_BUTTON_ID
-  );
-
-  if (advanceIndex === -1 || forwardIndex === -1) {
-    return children;
-  }
-
-  const advanceButton = children[advanceIndex];
-  const advanceProps = (advanceButton.props ?? {}) as GameUiButtonComponentProps;
-
-  return children.flatMap((child, index) => {
-    if (index === advanceIndex) {
-      return [];
-    }
-
-    if (index === forwardIndex) {
-      const forwardProps = (child.props ?? {}) as GameUiButtonComponentProps;
-      // WHY: only propagate `disabled` when the original advance action
-      // explicitly declared one. Previously this always wrote
-      // `disabled: advanceProps.disabled === true`, which forces
-      // `disabled: false` onto the merged nav-right button whenever the
-      // advance action had no `disabled` field at all — silently
-      // overwriting any `disabled` the forward-nav button already had
-      // (e.g. from a manifest-declared "not yet allowed to advance" rule)
-      // with a hardcoded `false`. Spreading `forwardProps` first and only
-      // adding `disabled` when it was explicitly set on the advance action
-      // preserves the forward button's own disabled state in all other
-      // cases.
-      const mergedProps: GameUiButtonComponentProps = { ...forwardProps };
-      if (typeof advanceProps.disabled === "boolean") {
-        mergedProps.disabled = advanceProps.disabled;
-      }
-      return [{
-        ...child,
-        props: mergedProps,
-        actions: advanceButton.actions,
-      }];
-    }
-
-    return [child];
-  });
-}
 
 /**
  * Резолвит designImageRef против designArtifacts registry.
@@ -163,7 +103,11 @@ export function UiComponentNode({
     }
   }
 
-  const children = moveAdvanceActionToForwardNavigation(component.children ?? []);
+  // WHY (ADR-055): the generic renderer no longer rewrites the component tree
+  // by game-specific button ids. Which control carries the "advance" action is
+  // declared directly in the UI manifest (the forward-nav button owns the
+  // action), so the renderer just renders the declared children as-is.
+  const children = component.children ?? [];
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
   const componentRuntimePointer = resolvePreviewRuntimePointer(component, runtimePointer);
   const previewAttributes = createPreviewElementAttributes({
@@ -272,7 +216,14 @@ export function UiComponentNode({
           className={`game-screen ${cssClass}`}
           style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
         >
-          {(cssClass.includes("topbar-screen-shell") || cssClass.includes("info-screen-shell")) && (
+          {/*
+            WHY (ADR-055): render the decorative background layer from generic,
+            declarative signals only — the layout mode (topbar) which the
+            platform itself owns, or the manifest's `decorativeBackground` prop —
+            instead of branching on a game-authored CSS class name, which made
+            the renderer know one specific game.
+          */}
+          {(layoutMode === "topbar" || props.decorativeBackground === true) && (
             <div className="additional-background" />
           )}
           {children.map((child, index) => (

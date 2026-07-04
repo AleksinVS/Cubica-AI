@@ -24,21 +24,6 @@ export function resolveAreaCssClass(
 }
 
 /**
- * Определяет стабильный id кнопки по подписи или явному id.
- */
-export function resolveButtonId(caption: string, id?: string): string | undefined {
-  if (id) {
-    return id;
-  }
-  const normalized = caption.trim().toLowerCase();
-  if (normalized.includes("журнал")) return "btn-journal";
-  if (normalized.includes("подсказ")) return "btn-hint";
-  if (normalized.includes("назад")) return "nav-left";
-  if (normalized.includes("вперед")) return "nav-right";
-  return undefined;
-}
-
-/**
  * Выбирает фоновое изображение метрики в зависимости от режима раскладки.
  *
  * Если layoutMode === "topbar" и для данного id есть override

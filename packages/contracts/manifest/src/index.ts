@@ -568,6 +568,18 @@ export interface GameUiScreenComponentProps {
   backgroundImage?: string;
   /** Visual mode override at screen level. Components inherit unless they override. */
   visualMode?: "image" | "style" | "auto";
+  /**
+   * Declarative flag (ADR-055): when true, the renderer draws the extra
+   * decorative background layer (`.additional-background`) for this screen.
+   *
+   * This replaces the renderer's former game-specific branch
+   * `cssClass.includes("info-screen-shell")`. Keying a decorative layer off a
+   * particular game's CSS class name made the generic renderer know one game;
+   * the intent is now declared in the UI manifest instead. (`props` is an open
+   * object in ui-manifest.schema.json, like `backgroundImage`/`caption`, so no
+   * schema change is required — this field documents the contract.)
+   */
+  decorativeBackground?: boolean;
 }
 
 /**

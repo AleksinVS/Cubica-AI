@@ -74,6 +74,26 @@ for (const actionId of ["showHint", "showTopBar", "showScreenWithLeftSideBar"]) 
   );
 }
 
+// ADR-055: the generic player-web renderer and layout lib must not carry
+// game-specific signals — no hardcoded button ids, no branching on a game's CSS
+// class name, and no mapping of natural-language captions to behavior. Which
+// control carries which action is declared in the UI manifest instead.
+for (const forbidden of ["nav-right", "btn-advance", "btn-finish", "info-screen-shell"]) {
+  assertNotContains(
+    "apps/player-web/src/components/manifest/ui-component-node.tsx",
+    forbidden,
+    "generic renderer must not hardcode game-specific button ids or CSS class names (ADR-055)"
+  );
+}
+
+for (const forbidden of ["журнал", "подсказ"]) {
+  assertNotContains(
+    "apps/player-web/src/lib/layout-helpers.ts",
+    forbidden,
+    "generic renderer must not map natural-language captions to button behavior (ADR-055)"
+  );
+}
+
 assertNotContains(
   "scripts/dev/scaffold-game.js",
   "resolveScreenKey(screenId",

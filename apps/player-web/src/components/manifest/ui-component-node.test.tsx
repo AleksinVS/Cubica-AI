@@ -1,21 +1,19 @@
 /**
- * Regression tests for `moveAdvanceActionToForwardNavigation` in
- * ui-component-node.tsx (P0 review Finding 7a).
+ * Tests for the generic UI renderer (ui-component-node.tsx) under ADR-055
+ * (player renderer purity / declarative action binding).
  *
- * Background: older UI manifests can place a standalone "Продолжить"
- * (Continue) button next to the "nav-right" navigation arrow. Both trigger
- * the same server-side advance action, so the renderer merges the advance
- * button's action onto nav-right and drops the standalone button. The bug
- * was that this merge ALWAYS wrote `disabled: advanceProps.disabled === true`
- * onto the resulting nav-right button — forcing `disabled: false` even when
- * the advance action never declared a `disabled` field at all, silently
- * discarding whatever `disabled` value nav-right already had from the
- * manifest.
+ * Under ADR-055 the generic renderer no longer knows any specific game: it does
+ * NOT hardcode button ids, does NOT rewrite the component tree to move an
+ * "advance" action from a standalone button onto a navigation arrow, and does
+ * NOT branch on a game's CSS class name. Instead:
+ *   - which control carries which action is declared in the UI manifest (the
+ *     forward-nav button simply owns the `onClick` advance action), and
+ *   - the decorative background layer is driven by the declarative
+ *     `decorativeBackground` prop (or the platform-owned topbar layout mode),
+ *     not by a game-authored CSS class.
  *
- * These tests render a full screen through ManifestRenderer (the public
- * surface) rather than calling the private merge function directly, so the
- * assertions cover the actual rendered `<button disabled>` attribute that
- * players interact with.
+ * These tests render through ManifestRenderer (the public surface) and assert
+ * the rendered DOM the player actually interacts with.
  */
 
 import { describe, it, expect, vi } from "vitest";
@@ -24,27 +22,36 @@ import React from "react";
 import { ManifestRenderer } from "./manifest-renderer";
 import type { GamePlayerS1UiContent } from "@cubica/contracts-manifest";
 
-/** Builds a minimal screen with a btn-advance + nav-right pair for merge testing. */
+/**
+ * Builds a screen whose forward-nav button directly declares the advance action
+ * (the ADR-055 declarative model), alongside a back button. Optional props let
+ * a test set the nav button's own `disabled` or the screen's decorative flag.
+ */
 function buildScreen(options: {
-  advanceDisabled?: boolean;
   navRightDisabled?: boolean;
-}): GamePlayerS1UiContent["screen"] {
-  const advanceProps: Record<string, unknown> = { caption: "Продолжить" };
-  if (options.advanceDisabled !== undefined) {
-    advanceProps.disabled = options.advanceDisabled;
-  }
-
+  decorativeBackground?: boolean;
+  layoutMode?: "leftsidebar" | "topbar";
+} = {}): GamePlayerS1UiContent["screen"] {
   const navRightProps: Record<string, unknown> = { caption: "Вперед", variant: "nav" };
   if (options.navRightDisabled !== undefined) {
     navRightProps.disabled = options.navRightDisabled;
   }
 
+  const screenProps: Record<string, unknown> = { cssClass: "main-screen" };
+  if (options.decorativeBackground !== undefined) {
+    screenProps.decorativeBackground = options.decorativeBackground;
+  }
+
   return {
     type: "screen",
-    title: "Advance merge test screen",
+    title: "Declarative action binding test screen",
+    // ManifestRenderer defaults layoutMode to "topbar" (which itself draws the
+    // decorative layer); tests that isolate the `decorativeBackground` prop set
+    // a non-topbar mode so only the prop can trigger the layer.
+    ...(options.layoutMode ? { layoutMode: options.layoutMode } : {}),
     root: {
       type: "screenComponent",
-      props: { cssClass: "main-screen" },
+      props: screenProps,
       children: [
         {
           type: "areaComponent",
@@ -52,14 +59,16 @@ function buildScreen(options: {
           children: [
             {
               type: "buttonComponent",
-              id: "btn-advance",
-              props: advanceProps,
-              actions: { onClick: { command: "requestServer", payload: { actionId: "advance.action" } } }
+              id: "nav-left",
+              props: { caption: "Назад", variant: "nav" }
             },
             {
               type: "buttonComponent",
               id: "nav-right",
-              props: navRightProps
+              props: navRightProps,
+              // ADR-055: the forward-nav button itself carries the advance
+              // action — the renderer no longer moves it from a separate button.
+              actions: { onClick: { command: "requestServer", payload: { actionId: "advance.action" } } }
             }
           ]
         }
@@ -68,91 +77,65 @@ function buildScreen(options: {
   };
 }
 
-describe("moveAdvanceActionToForwardNavigation (via ManifestRenderer)", () => {
-  it("does NOT force the merged nav-right button disabled when the advance action has no explicit disabled", () => {
-    render(
-      <ManifestRenderer
-        screenDefinition={buildScreen({})}
-        metrics={{}}
-        onAction={vi.fn()}
-      />
-    );
-
-    // The standalone btn-advance must be removed (merged into nav-right).
-    expect(document.getElementById("btn-advance")).toBeNull();
-
-    const navRight = document.getElementById("nav-right") as HTMLButtonElement | null;
-    expect(navRight).not.toBeNull();
-    // Regression: previously this was always forced to `disabled` because
-    // `advanceProps.disabled === true` evaluates to `false` when
-    // `disabled` is undefined, and that `false` was unconditionally written
-    // — which happened to look "not disabled" here, but see the next test
-    // for the case this masked.
-    expect(navRight!.disabled).toBe(false);
-  });
-
-  it("preserves nav-right's own explicit disabled when the advance action does not declare one", () => {
-    // nav-right itself is manifest-declared as disabled (e.g. "not yet
-    // allowed to advance"). The advance action has no `disabled` field.
-    // Before the fix, the merge unconditionally wrote
-    // `disabled: advanceProps.disabled === true` (=> false), silently
-    // clearing nav-right's own disabled state. The fix must leave it alone.
-    render(
-      <ManifestRenderer
-        screenDefinition={buildScreen({ navRightDisabled: true })}
-        metrics={{}}
-        onAction={vi.fn()}
-      />
-    );
-
-    const navRight = document.getElementById("nav-right") as HTMLButtonElement | null;
-    expect(navRight).not.toBeNull();
-    expect(navRight!.disabled).toBe(true);
-  });
-
-  it("propagates an explicit disabled: true from the advance action onto the merged nav-right button", () => {
-    render(
-      <ManifestRenderer
-        screenDefinition={buildScreen({ advanceDisabled: true })}
-        metrics={{}}
-        onAction={vi.fn()}
-      />
-    );
-
-    const navRight = document.getElementById("nav-right") as HTMLButtonElement | null;
-    expect(navRight).not.toBeNull();
-    expect(navRight!.disabled).toBe(true);
-  });
-
-  it("propagates an explicit disabled: false from the advance action onto the merged nav-right button", () => {
-    render(
-      <ManifestRenderer
-        screenDefinition={buildScreen({ advanceDisabled: false, navRightDisabled: true })}
-        metrics={{}}
-        onAction={vi.fn()}
-      />
-    );
-
-    const navRight = document.getElementById("nav-right") as HTMLButtonElement | null;
-    expect(navRight).not.toBeNull();
-    // Explicit `false` on the advance action wins over nav-right's own
-    // disabled: true, since it was explicitly declared.
-    expect(navRight!.disabled).toBe(false);
-  });
-
-  it("dispatches the advance action's command when the merged nav-right button is clicked", () => {
+describe("UiComponentNode declarative action binding (ADR-055)", () => {
+  it("dispatches the action declared directly on the forward-nav button when clicked", () => {
     const onAction = vi.fn();
     const { container } = render(
-      <ManifestRenderer
-        screenDefinition={buildScreen({})}
-        metrics={{}}
-        onAction={onAction}
-      />
+      <ManifestRenderer screenDefinition={buildScreen()} metrics={{}} onAction={onAction} />
     );
 
     const navRight = container.querySelector("#nav-right") as HTMLButtonElement;
+    expect(navRight).not.toBeNull();
     navRight.click();
 
     expect(onAction).toHaveBeenCalledWith("requestServer", { actionId: "advance.action" });
+  });
+
+  it("renders every declared child as-is without removing or rewriting any button", () => {
+    // The old renderer removed a standalone advance button and merged it into
+    // nav-right. The pure renderer must leave the declared tree untouched: both
+    // buttons the manifest declares are present.
+    const { container } = render(
+      <ManifestRenderer screenDefinition={buildScreen()} metrics={{}} onAction={vi.fn()} />
+    );
+
+    expect(container.querySelector("#nav-left")).not.toBeNull();
+    expect(container.querySelector("#nav-right")).not.toBeNull();
+  });
+
+  it("respects a button's own declared disabled prop", () => {
+    const { container } = render(
+      <ManifestRenderer screenDefinition={buildScreen({ navRightDisabled: true })} metrics={{}} onAction={vi.fn()} />
+    );
+
+    const navRight = container.querySelector("#nav-right") as HTMLButtonElement;
+    expect(navRight).not.toBeNull();
+    expect(navRight.disabled).toBe(true);
+  });
+
+  it("renders the decorative background layer when props.decorativeBackground is true (non-topbar)", () => {
+    const { container } = render(
+      <ManifestRenderer
+        screenDefinition={buildScreen({ layoutMode: "leftsidebar", decorativeBackground: true })}
+        metrics={{}}
+        onAction={vi.fn()}
+      />
+    );
+
+    expect(container.querySelector(".additional-background")).not.toBeNull();
+  });
+
+  it("does not render the decorative background layer without the declarative signal (non-topbar)", () => {
+    // No decorativeBackground prop and a non-topbar layout mode → no extra
+    // layer. (In topbar mode the platform-owned layout draws it regardless.)
+    const { container } = render(
+      <ManifestRenderer
+        screenDefinition={buildScreen({ layoutMode: "leftsidebar" })}
+        metrics={{}}
+        onAction={vi.fn()}
+      />
+    );
+
+    expect(container.querySelector(".additional-background")).toBeNull();
   });
 });

@@ -779,7 +779,8 @@
           "_label": "Корневой контейнер",
           "_semantics": "UI-компонент типа screenComponent.",
           "props": {
-            "cssClass": "main-screen info-screen-shell topbar-screen-shell"
+            "cssClass": "main-screen info-screen-shell topbar-screen-shell",
+            "decorativeBackground": true
           },
           "children": [
             {
@@ -934,23 +935,6 @@
                   },
                   "children": [
                     {
-                      "_type": "ui.Component",
-                      "_label": "Кнопка продолжения текущей информации",
-                      "_semantics": "Action id и подпись берутся из currentInfo.",
-                      "type": "buttonComponent",
-                      "id": "btn-advance",
-                      "props": {
-                        "caption": "{{currentInfo.advanceLabel || \"Продолжить\"}}",
-                        "variant": "action"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "command": "advance",
-                          "payload": {}
-                        }
-                      }
-                    },
-                    {
                       "_type": "ui.AntarcticaNavButton",
                       "_label": "Назад",
                       "_semantics": "UI-компонент типа buttonComponent.",
@@ -963,10 +947,16 @@
                     {
                       "_type": "ui.AntarcticaNavButton",
                       "_label": "Вперед",
-                      "_semantics": "UI-компонент типа buttonComponent.",
+                      "_semantics": "ADR-055: стрелка \"Вперед\" сама несёт действие advance (раньше рендерер переносил его с отдельной кнопки btn-advance по хардкод-id).",
                       "id": "nav-right",
                       "props": {
                         "caption": "Вперед"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "advance",
+                          "payload": {}
+                        }
                       },
                       "type": "buttonComponent"
                     },

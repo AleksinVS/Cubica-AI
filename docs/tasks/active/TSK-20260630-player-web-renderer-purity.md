@@ -19,7 +19,16 @@
 
 ## Status
 
-planned
+partially-implemented (2026-07-04) — core declarative binding done; 2 sub-parts deferred
+
+Выполнено ядро ADR-055: удалена game-specific привязка действий и ветка по CSS-классу
+из generic-рендерера, введена декларативная привязка через UI-манифест, расширен
+инвариант `verify:game-agnostic`. **Отложены (отдельные срезы):** обобщение
+`resolveAreaCssClass` (topbar structural classes) и перенос Antarctica state-резолверов
+(`team`/`card`/`opening`) из `player-web/src/lib/game-content-resolvers.ts` в
+`games/antarctica/plugins/*`. Полная e2e visual-проверка не запускалась в текущем
+sandbox (3 dev-сервера не поднялись за отведённое время) — изменение поведение-сохраняющее
+по построению (см. Handoff Log), запустить `npm run test:e2e` в целевой среде.
 
 ## Understanding
 
@@ -143,3 +152,40 @@ npm run test:e2e
 
 - 2026-06-30: задача создана по результатам полного ревью; зависит от ADR-055 и
   (для регенерации TS) TSK manifest-contract-parity.
+- 2026-07-04: реализовано ядро декларативной привязки (Phases 1–2 частично, 3–4).
+  - **Мёртвый `resolveButtonId`** (сопоставление русских подписей → id кнопок) удалён
+    из `apps/player-web/src/lib/layout-helpers.ts` — ноль потребителей в репозитории.
+  - **Хардкод привязки действия удалён:** из `ui-component-node.tsx` убраны
+    `FORWARD_NAV_BUTTON_ID`/`ADVANCE_BUTTON_IDS` и функция
+    `moveAdvanceActionToForwardNavigation`, переписывавшая дерево по game-specific id.
+    Рендерер теперь рендерит объявленные `children` как есть.
+  - **Декларативная привязка в манифесте:** в UI authoring-манифесте Antarctica
+    (`games/antarctica/authoring/ui/web.authoring.json`) стрелка `nav-right` теперь
+    сама несёт `onClick: advance`, отдельная кнопка `btn-advance` удалена. Манифест
+    перекомпилирован (`compile:manifests`); diff `ui.manifest.json` ТОЧНО повторяет
+    прежний runtime-результат переноса (nav-right сохраняет свои props, btn-advance
+    исчезает) → нет визуального изменения.
+  - **Декоративный фон — declarative prop:** ветка `cssClass.includes("info-screen-shell")`
+    заменена на `props.decorativeBackground === true`; топбар-случай оставлен как
+    платформенный (`layoutMode === "topbar"`, эквивалент прежнего
+    `topbar-screen-shell`, который добавляет сам рендерер). Экран Antarctica получил
+    `decorativeBackground: true`. Добавлено поле `decorativeBackground?: boolean` в
+    `GameUiScreenComponentProps` (props — открытый object в схеме, изменение схемы не
+    требуется).
+  - **Инвариант:** `scripts/ci/validate-game-agnostic.js` теперь запрещает `nav-right`,
+    `btn-advance`, `btn-finish`, `info-screen-shell` в `ui-component-node.tsx` и русские
+    подписи `журнал`/`подсказ` в `layout-helpers.ts`.
+  - **Тесты:** `ui-component-node.test.tsx` переписан под декларативную модель
+    (прямая привязка действия, отсутствие переписывания дерева, `decorativeBackground`).
+  - **Проверки:** `verify:game-agnostic`, `verify:manifest-authoring` (compiled drift),
+    `verify:contracts-manifest` (ui.manifest валиден по схеме), player-web typecheck +
+    130 тестов — зелёные. e2e не завершился в sandbox (dev-сервера не поднялись);
+    поведение-сохранение доказано diff-построением, запустить `test:e2e` в целевой среде.
+  - **Отложено (отдельные срезы):**
+    1. `resolveAreaCssClass` (`layout-helpers.ts:6-24`) ещё ветвится по структурным
+       классам Antarctica (`game-variables-container`, `main-content-area`, ...) для
+       topbar-модификаторов — нужна CSS/manifest-стратегия (например, `.topbar` в CSS
+       или модификатор-класс из манифеста).
+    2. `game-content-resolvers.ts` team/card/opening формы состояния — перенос в
+       `games/antarctica/plugins/antarctica-player/src/state-resolvers.ts` (широкая
+       import-поверхность в player-web, отдельный срез с plugin API).

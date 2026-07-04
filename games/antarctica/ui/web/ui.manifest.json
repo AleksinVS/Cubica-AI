@@ -526,7 +526,8 @@
         "type": "screenComponent",
         "props": {
           "backgroundImage": "/images/arctic-background.png",
-          "cssClass": "main-screen info-screen-shell topbar-screen-shell"
+          "cssClass": "main-screen info-screen-shell topbar-screen-shell",
+          "decorativeBackground": true
         },
         "children": [
           {
@@ -671,20 +672,6 @@
                 "children": [
                   {
                     "type": "buttonComponent",
-                    "id": "btn-advance",
-                    "props": {
-                      "caption": "{{currentInfo.advanceLabel || \"Продолжить\"}}",
-                      "variant": "action"
-                    },
-                    "actions": {
-                      "onClick": {
-                        "command": "advance",
-                        "payload": {}
-                      }
-                    }
-                  },
-                  {
-                    "type": "buttonComponent",
                     "props": {
                       "variant": "nav",
                       "caption": "Назад"
@@ -697,7 +684,13 @@
                       "variant": "nav",
                       "caption": "Вперед"
                     },
-                    "id": "nav-right"
+                    "id": "nav-right",
+                    "actions": {
+                      "onClick": {
+                        "command": "advance",
+                        "payload": {}
+                      }
+                    }
                   },
                   {
                     "type": "buttonComponent",
