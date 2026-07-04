@@ -94,6 +94,24 @@ for (const forbidden of ["журнал", "подсказ"]) {
   );
 }
 
+// ADR-055: the generic layout helper must not know a game's structural CSS class
+// names. Which topbar modifier an area needs is declared in the UI manifest
+// (props.topbarCssClass); the helper only applies it, it does not map class names.
+for (const forbidden of [
+  "game-variables-container",
+  "main-content-area",
+  "cards-container",
+  "board-header",
+  "board-title",
+  "sidebar-decoration"
+]) {
+  assertNotContains(
+    "apps/player-web/src/lib/layout-helpers.ts",
+    forbidden,
+    "generic layout helper must not branch on a game's structural CSS class names (ADR-055)"
+  );
+}
+
 assertNotContains(
   "scripts/dev/scaffold-game.js",
   "resolveScreenKey(screenId",

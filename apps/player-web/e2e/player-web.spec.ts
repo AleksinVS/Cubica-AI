@@ -37,13 +37,13 @@ test.describe("player-web e2e", () => {
     await page.getByRole("button", { name: /Журнал ходов/i }).click();
     await expect(page.getByRole("heading", { name: /Журнал ходов/i })).toBeVisible();
 
-    const actionResponse = page.waitForResponse((response) =>
-      response.url().endsWith("/api/runtime/actions") &&
-      response.request().method() === "POST"
-    );
+    // Hint is a UI-only panel (ADR-053, TSK-20260615): showing it is a
+    // client-side SHOW_PANEL command, not a server round-trip. The old
+    // assertion here waited for a /api/runtime/actions POST that no longer
+    // happens after the hint was migrated out of the game manifest — it was a
+    // stale false-red. Assert the panel renders client-side instead.
     await page.getByRole("button", { name: /Подсказка/i }).click();
     await expect(page.locator(".hint-screen")).toBeVisible();
-    expect((await actionResponse).status()).toBe(200);
   });
 
   test("uses portal launch binding and stores a launch-scoped session id", async ({ page, request }) => {

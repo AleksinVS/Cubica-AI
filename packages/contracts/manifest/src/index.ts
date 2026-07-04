@@ -589,6 +589,15 @@ export interface GameUiScreenComponentProps {
  */
 export interface GameUiAreaComponentProps {
   cssClass?: string;
+  /**
+   * Declarative topbar-layout CSS modifier(s) (ADR-055): applied by the generic
+   * renderer only when the screen is in topbar layout mode. This replaces the
+   * renderer's former game-specific mapping from structural class names to
+   * `topbar-*` classes — the manifest now declares which modifier a given area
+   * needs, so the generic renderer knows no game. Space-separated for multiple.
+   * (`props` is an open object in ui-manifest.schema.json, so no schema change.)
+   */
+  topbarCssClass?: string;
   /** Visual mode override at area level. */
   visualMode?: "image" | "style" | "auto";
   /** Reference to a design artifact image for "image" visualMode. */

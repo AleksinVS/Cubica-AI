@@ -291,6 +291,12 @@
         "pointer": "/root/screens/0/root/children/0/props/cssClass"
       }
     ],
+    "/screens/S1/root/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props/topbarCssClass"
+      }
+    ],
     "/screens/S1/root/children/0/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -705,6 +711,12 @@
         "pointer": "/root/screens/0/root/children/0/children/8/props/cssClass"
       }
     ],
+    "/screens/S1/root/children/0/children/8/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/8/props/topbarCssClass"
+      }
+    ],
     "/screens/S1/root/children/0/children": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -735,6 +747,12 @@
         "pointer": "/root/screens/0/root/children/1/props/cssClass"
       }
     ],
+    "/screens/S1/root/children/1/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props/topbarCssClass"
+      }
+    ],
     "/screens/S1/root/children/1/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -757,6 +775,12 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/0/root/children/1/children/0/props/cssClass"
+      }
+    ],
+    "/screens/S1/root/children/1/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/topbarCssClass"
       }
     ],
     "/screens/S1/root/children/1/children/0/children/0": [
@@ -1565,6 +1589,12 @@
         "pointer": "/root/screens/1/root/children/0/props/cssClass"
       }
     ],
+    "/screens/board-topbar/root/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/1/root/children/0/props/topbarCssClass"
+      }
+    ],
     "/screens/board-topbar/root/children/0/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -1979,6 +2009,12 @@
         "pointer": "/root/screens/1/root/children/0/children/8/props/cssClass"
       }
     ],
+    "/screens/board-topbar/root/children/0/children/8/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/1/root/children/0/children/8/props/topbarCssClass"
+      }
+    ],
     "/screens/board-topbar/root/children/0/children": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -2009,6 +2045,12 @@
         "pointer": "/root/screens/1/root/children/1/props/cssClass"
       }
     ],
+    "/screens/board-topbar/root/children/1/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/1/root/children/1/props/topbarCssClass"
+      }
+    ],
     "/screens/board-topbar/root/children/1/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -2033,6 +2075,12 @@
         "pointer": "/root/screens/1/root/children/1/children/0/props/cssClass"
       }
     ],
+    "/screens/board-topbar/root/children/1/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/1/root/children/1/children/0/props/topbarCssClass"
+      }
+    ],
     "/screens/board-topbar/root/children/1/children/0/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -2055,6 +2103,12 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/1/root/children/1/children/0/children/0/props/cssClass"
+      }
+    ],
+    "/screens/board-topbar/root/children/1/children/0/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/1/root/children/1/children/0/children/0/props/topbarCssClass"
       }
     ],
     "/screens/board-topbar/root/children/1/children/0/children/0/children/0": [
@@ -2175,6 +2229,12 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/1/root/children/1/children/1/props/cssClass"
+      }
+    ],
+    "/screens/board-topbar/root/children/1/children/1/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/1/root/children/1/children/1/props/topbarCssClass"
       }
     ],
     "/screens/board-topbar/root/children/1/children/1/itemTemplate": [
@@ -2721,6 +2781,12 @@
         "pointer": "/root/screens/2/root/children/0/props/cssClass"
       }
     ],
+    "/screens/info-topbar/root/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/2/root/children/0/props/topbarCssClass"
+      }
+    ],
     "/screens/info-topbar/root/children/0/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -3135,6 +3201,12 @@
         "pointer": "/root/screens/2/root/children/0/children/8/props/cssClass"
       }
     ],
+    "/screens/info-topbar/root/children/0/children/8/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/2/root/children/0/children/8/props/topbarCssClass"
+      }
+    ],
     "/screens/info-topbar/root/children/0/children": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -3163,6 +3235,12 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/2/root/children/1/props/cssClass"
+      }
+    ],
+    "/screens/info-topbar/root/children/1/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/2/root/children/1/props/topbarCssClass"
       }
     ],
     "/screens/info-topbar/root/children/1/children/0": [
@@ -3853,6 +3931,12 @@
         "pointer": "/root/screens/3/root/children/0/props/cssClass"
       }
     ],
+    "/screens/S1_LEFT/root/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/3/root/children/0/props/topbarCssClass"
+      }
+    ],
     "/screens/S1_LEFT/root/children/0/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4171,6 +4255,12 @@
         "pointer": "/root/screens/3/root/children/0/children/8/props/cssClass"
       }
     ],
+    "/screens/S1_LEFT/root/children/0/children/8/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/3/root/children/0/children/8/props/topbarCssClass"
+      }
+    ],
     "/screens/S1_LEFT/root/children/0/children": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4201,6 +4291,12 @@
         "pointer": "/root/screens/3/root/children/1/props/cssClass"
       }
     ],
+    "/screens/S1_LEFT/root/children/1/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/3/root/children/1/props/topbarCssClass"
+      }
+    ],
     "/screens/S1_LEFT/root/children/1/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4223,6 +4319,12 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/3/root/children/1/children/0/props/cssClass"
+      }
+    ],
+    "/screens/S1_LEFT/root/children/1/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/3/root/children/1/children/0/props/topbarCssClass"
       }
     ],
     "/screens/S1_LEFT/root/children/1/children/0/children/0": [
@@ -5887,6 +5989,12 @@
         "pointer": "/root/panels/hint/root/children/0/props/cssClass"
       }
     ],
+    "/panels/hint/root/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/panels/hint/root/children/0/props/topbarCssClass"
+      }
+    ],
     "/panels/hint/root/children/0/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -6307,6 +6415,12 @@
         "pointer": "/root/panels/hint/root/children/1/props/cssClass"
       }
     ],
+    "/panels/hint/root/children/1/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/panels/hint/root/children/1/props/topbarCssClass"
+      }
+    ],
     "/panels/hint/root/children/1/children/0": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -6329,6 +6443,12 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/root/panels/hint/root/children/1/children/0/props/cssClass"
+      }
+    ],
+    "/panels/hint/root/children/1/children/0/props/topbarCssClass": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/panels/hint/root/children/1/children/0/props/topbarCssClass"
       }
     ],
     "/panels/hint/root/children/1/children/0/children/0": [

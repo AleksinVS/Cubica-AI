@@ -58,7 +58,8 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container",
+              "topbarCssClass": "topbar-variables-container"
             },
             "children": [
               {
@@ -129,7 +130,8 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "sidebar-decoration"
+                  "cssClass": "sidebar-decoration",
+                  "topbarCssClass": "topbar-decoration"
                 }
               }
             ]
@@ -137,13 +139,15 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area topbar-main-content"
+              "cssClass": "main-content-area topbar-main-content",
+              "topbarCssClass": "topbar-main-content"
             },
             "children": [
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container topbar-cards-container"
+                  "cssClass": "cards-container topbar-cards-container",
+                  "topbarCssClass": "topbar-cards-container"
                 },
                 "children": [
                   {
@@ -308,7 +312,8 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container",
+              "topbarCssClass": "topbar-variables-container"
             },
             "children": [
               {
@@ -379,7 +384,8 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "sidebar-decoration"
+                  "cssClass": "sidebar-decoration",
+                  "topbarCssClass": "topbar-decoration"
                 }
               }
             ]
@@ -387,19 +393,22 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area topbar-main-content"
+              "cssClass": "main-content-area topbar-main-content",
+              "topbarCssClass": "topbar-main-content"
             },
             "children": [
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "board-header"
+                  "cssClass": "board-header",
+                  "topbarCssClass": "topbar-board-header"
                 },
                 "children": [
                   {
                     "type": "areaComponent",
                     "props": {
-                      "cssClass": "board-title"
+                      "cssClass": "board-title",
+                      "topbarCssClass": "topbar-board-title"
                     },
                     "children": [
                       {
@@ -423,7 +432,8 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container topbar-cards-container"
+                  "cssClass": "cards-container topbar-cards-container",
+                  "topbarCssClass": "topbar-cards-container"
                 },
                 "itemTemplate": {
                   "collection": "{{boardCards}}",
@@ -533,7 +543,8 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container",
+              "topbarCssClass": "topbar-variables-container"
             },
             "children": [
               {
@@ -604,7 +615,8 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "sidebar-decoration"
+                  "cssClass": "sidebar-decoration",
+                  "topbarCssClass": "topbar-decoration"
                 }
               }
             ]
@@ -612,7 +624,8 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area topbar-main-content"
+              "cssClass": "main-content-area topbar-main-content",
+              "topbarCssClass": "topbar-main-content"
             },
             "children": [
               {
@@ -752,7 +765,8 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container"
+              "cssClass": "game-variables-container",
+              "topbarCssClass": "topbar-variables-container"
             },
             "children": [
               {
@@ -823,7 +837,8 @@
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "sidebar-decoration"
+                  "cssClass": "sidebar-decoration",
+                  "topbarCssClass": "topbar-decoration"
                 }
               }
             ]
@@ -831,13 +846,15 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "cssClass": "main-content-area",
+              "topbarCssClass": "topbar-main-content"
             },
             "children": [
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container topbar-cards-container"
+                  "cssClass": "cards-container topbar-cards-container",
+                  "topbarCssClass": "topbar-cards-container"
                 },
                 "children": [
                   {
@@ -1201,7 +1218,8 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "game-variables-container topbar-variables-container"
+              "cssClass": "game-variables-container topbar-variables-container",
+              "topbarCssClass": "topbar-variables-container"
             },
             "children": [
               {
@@ -1274,13 +1292,15 @@
           {
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area topbar-main-content"
+              "cssClass": "main-content-area topbar-main-content",
+              "topbarCssClass": "topbar-main-content"
             },
             "children": [
               {
                 "type": "areaComponent",
                 "props": {
-                  "cssClass": "cards-container topbar-cards-container hint-cards"
+                  "cssClass": "cards-container topbar-cards-container hint-cards",
+                  "topbarCssClass": "topbar-cards-container"
                 },
                 "children": [
                   {

@@ -1,25 +1,27 @@
 import { appendClassName } from "@/lib/classname-utils";
 
 /**
- * Дополняет CSS-класс area-контейнера классами для topbar-режима.
+ * Дополняет CSS-класс area-контейнера объявленными в манифесте topbar-модификаторами.
+ *
+ * ADR-055 (renderer purity): раньше эта функция знала конкретные структурные
+ * CSS-классы одной игры и по ним навешивала topbar-модификаторы — то есть
+ * generic-рендерер знал одну конкретную игру. Теперь какие модификаторы нужны в
+ * topbar-режиме объявляет сам UI-манифест в `props.topbarCssClass`; рендерер лишь
+ * применяет их в topbar-режиме, не зная значений. `cssClass` не модифицируется.
+ * `appendClassName` дедуплицирует, поэтому если модификатор уже присутствует в
+ * `cssClass`, повтора не будет.
  */
 export function resolveAreaCssClass(
   cssClass: string | undefined,
-  _screenKey?: string,
-  layoutMode?: "leftsidebar" | "topbar"
+  layoutMode?: "leftsidebar" | "topbar",
+  topbarCssClass?: string
 ): string {
-  const isTopbarMode = layoutMode === "topbar";
-  if (!isTopbarMode) {
-    return cssClass ?? "";
-  }
-
   let next = cssClass ?? "";
-  if (next.includes("game-variables-container")) next = appendClassName(next, "topbar-variables-container");
-  if (next.includes("main-content-area")) next = appendClassName(next, "topbar-main-content");
-  if (next.includes("cards-container")) next = appendClassName(next, "topbar-cards-container");
-  if (next.includes("board-header")) next = appendClassName(next, "topbar-board-header");
-  if (next.includes("board-title")) next = appendClassName(next, "topbar-board-title");
-  if (next.includes("sidebar-decoration")) next = appendClassName(next, "topbar-decoration");
+  if (layoutMode === "topbar" && topbarCssClass) {
+    for (const modifier of topbarCssClass.split(/\s+/).filter(Boolean)) {
+      next = appendClassName(next, modifier);
+    }
+  }
   return next;
 }
 

@@ -19,16 +19,20 @@
 
 ## Status
 
-partially-implemented (2026-07-04) — core declarative binding done; 2 sub-parts deferred
+implemented (2026-07-04) — ADR-055 полностью; generic-рендерер не знает конкретной игры
 
-Выполнено ядро ADR-055: удалена game-specific привязка действий и ветка по CSS-классу
-из generic-рендерера, введена декларативная привязка через UI-манифест, расширен
-инвариант `verify:game-agnostic`. **Отложены (отдельные срезы):** обобщение
-`resolveAreaCssClass` (topbar structural classes) и перенос Antarctica state-резолверов
-(`team`/`card`/`opening`) из `player-web/src/lib/game-content-resolvers.ts` в
-`games/antarctica/plugins/*`. Полная e2e visual-проверка не запускалась в текущем
-sandbox (3 dev-сервера не поднялись за отведённое время) — изменение поведение-сохраняющее
-по построению (см. Handoff Log), запустить `npm run test:e2e` в целевой среде.
+Все три части выполнены и **проверены e2e** (player-web 4/4 в браузере):
+1. **Ядро:** декларативная привязка действий (advance→forward nav напрямую в манифесте,
+   удалён tree-rewrite по id), `decorativeBackground` prop вместо ветки по CSS-классу,
+   удалён мёртвый `resolveButtonId`.
+2. **state-резолверы** team/card/opening перенесены из player-web lib в Antarctica plugin.
+3. **`resolveAreaCssClass`** обобщён: game-specific маппинг структурных классов на
+   `topbar-*` заменён декларативным `props.topbarCssClass`; рендерер применяет его в
+   topbar-режиме, не зная значений (by-construction идентичные классы).
+Инвариант `verify:game-agnostic` расширен на все три (id кнопок, CSS-классы, структурные
+классы, русские подписи). В generic-рендерере/layout-lib не осталось game-specific
+signals. Проверки: player-web typecheck+130, runtime-api 127, verify:game-agnostic/
+manifest-authoring/contracts-manifest и **e2e player-web 4/4** — зелёные.
 
 ## Understanding
 
@@ -193,9 +197,17 @@ npm run test:e2e
   `readSecretState`). Направление зависимости строго plugin → player-web generic API.
   Тесты обновлены. Бандл плагина пересобран. Проверки: player-web typecheck+130,
   runtime-api 127, verify:game-agnostic — зелёные.
-  - **Осталось (единственный отдельный срез):** `resolveAreaCssClass`
-    (`layout-helpers.ts:6-24`) ещё ветвится по структурным классам Antarctica для
-    topbar-модификаторов. Требует CSS-рефакторинга: **72** правила `topbar-*` в
-    `globals.css` (включая вложенные `.topbar-board-title .game-card:hover` и т.п.)
-    нужно перевести на descendant-селекторы от `.game-renderer--topbar` и убрать
-    JS-навешивание классов. Визуальный риск → выполнять с e2e-приёмкой.
+- 2026-07-04 (sub-part 3/3 + e2e-приёмка): **`resolveAreaCssClass` обобщён.**
+  Вместо ветвления по 6 структурным классам Antarctica введено обобщённое поле
+  `props.topbarCssClass` (в `GameUiAreaComponentProps`); рендерер навешивает его в
+  topbar-режиме, `cssClass` не трогает (`appendClassName` дедуплицирует). Чтобы CSS
+  не переписывать (72 правила `topbar-*`), `topbarCssClass` = ровно то, что старый
+  рендерер добавлял → тот же className в обоих режимах, ноль визуальных изменений.
+  20 областей аннотированы one-off transform-скриптом (job tmp); манифест
+  перекомпилирован (`topbarCssClass` сохраняется в compiled). `verify:game-agnostic`
+  запрещает структурные классы в `layout-helpers.ts`.
+  - **e2e-приёмка:** подтверждено, что e2e поднимается на этом хосте (нужно поднять
+    3 dev-сервера заранее и использовать `reuseExistingServer`, а не ждать 3×120с
+    внутри playwright). player-web e2e **4/4 зелёный** после всех purity-изменений;
+    заодно исправлена устаревшая проверка в спеке (клик «Подсказка» ждал POST-action,
+    но hint стал UI-only панелью в TSK-20260615 — это был pre-existing false-red).

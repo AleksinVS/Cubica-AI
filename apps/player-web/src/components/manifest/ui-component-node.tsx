@@ -180,7 +180,7 @@ export function UiComponentNode({
     if (component.type === "areaComponent" || component.type === "screenComponent") {
       const props = component.props as GameUiAreaComponentProps;
       const cssClass = component.type === "areaComponent"
-        ? resolveAreaCssClass(props.cssClass, screenKey, layoutMode)
+        ? resolveAreaCssClass(props.cssClass, layoutMode, props.topbarCssClass)
         : (props as GameUiScreenComponentProps).cssClass ?? "";
       const areaBgImage = isImageMode && resolvedDesignImage ? resolvedDesignImage : undefined;
       return (
@@ -254,7 +254,7 @@ export function UiComponentNode({
       return (
         <div
           {...previewAttributes}
-          className={`game-area ${resolveAreaCssClass(props.cssClass, screenKey, layoutMode)}`}
+          className={`game-area ${resolveAreaCssClass(props.cssClass, layoutMode, props.topbarCssClass)}`}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
         >
           {children.map((child, index) => (
