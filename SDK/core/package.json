@@ -7,9 +7,9 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"TODO: wire up TypeScript build\" && exit 1",
-    "test": "echo \"TODO: implement unit tests\" && exit 1",
-    "lint": "echo \"TODO: add lint pipeline\" && exit 1"
+    "build": "echo \"[sdk-core] source-only TS package consumed via src; no build step\"",
+    "test": "echo \"[sdk-core] no tests yet (LEGACY-0021: used view-protocol/state half; session half is dead)\"",
+    "lint": "echo \"[sdk-core] no lint yet (LEGACY-0021)\""
   },
   "keywords": [
     "cubica",

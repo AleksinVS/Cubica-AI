@@ -123,6 +123,21 @@ const evaluateVar = (
   return undefined;
 };
 
+/**
+ * Operators the player-web computed-metric evaluator supports — a documented
+ * SUBSET of JsonLogic (LEGACY-0022).
+ *
+ * The runtime evaluates JsonLogic with the full `json-logic-js` library; this
+ * player-web evaluator intentionally implements only the arithmetic/`var` subset
+ * that computed metrics need. To keep metric values identical across the runtime
+ * and player-web channels, shipped manifests must use ONLY these operators in
+ * computed-metric expressions. That invariant is enforced in CI by
+ * `scripts/ci/validate-metric-jsonlogic-subset.js` (keep this list in sync with
+ * the `SUPPORTED_METRIC_JSONLOGIC_OPERATORS` array in that script). Any operator
+ * outside this set evaluates to `undefined` here (see the `default` branch).
+ */
+export const SUPPORTED_METRIC_JSONLOGIC_OPERATORS = ["var", "+", "-", "*", "/", "min", "max"] as const;
+
 function evaluateExpression(expression: JsonLogicExpression, context: MetricContext): unknown {
   if (!isRecord(expression)) {
     return expression;

@@ -18,17 +18,19 @@
 
 ## Status
 
-partially-implemented (2026-07-04) — player-web dead code + strict flags done; JsonLogic + SDK + readNumber deferred
+implemented (2026-07-04)
 
-Выполнены Phase 1 (мёртвый код player-web удалён, `noUnusedLocals`/`noUnusedParameters`
-включены и зелёные) и часть Phase 2 (дедуп `formatValue` — через удаление мёртвого
-`formatting.ts`). **Отложены (нужны решения/крупнее):** Phase 3 (унификация JsonLogic —
-стратегия shared evaluator vs документированное подмножество + CI), Phase 4 (статус
-`SDK/react-sdk` и session-половины `SDK/core` + `exit 1`-хазард в `SDK/*`), и консолидация
-`readNumber` (три копии с РАЗНЫМИ сигнатурами — не безопасный blind-merge).
-`GamePlayerS1UiContent` НЕ удалён — есть потребители (тесты + контракт). Также
-`resolveButtonId` уже удалён в renderer-purity (0d440b0), а `game-content-resolvers`
-team/card/opening перенос закреплён за renderer-purity follow-up.
+Все фазы закрыты: Phase 1 (мёртвый код player-web удалён, `noUnusedLocals`/
+`noUnusedParameters` включены), Phase 2 (`formatValue` дедуплицирован удалением;
+`readNumber` осознанно НЕ слит — три копии с разными контрактами), Phase 3 (JsonLogic:
+документированное подмножество `SUPPORTED_METRIC_JSONLOGIC_OPERATORS` + CI-проверка
+`validate-metric-jsonlogic-subset.js` в `verify:canonical` → каналы не расходятся,
+LEGACY-0022 закрыт), Phase 4 (`SDK/react-sdk`+`SDK/shared` убраны из workspaces как
+мёртвые, `SDK/core` оставлен как используемый с снятым `exit 1`; агрегатный
+`npm test --workspaces` больше не падает; `GamePlayerS1UiContent` оставлен — есть
+потребители). Проверки: player-web typecheck+130, агрегатный `npm test --workspaces`
+зелёный, новая CI-проверка OK. Остаточное опциональное — физическое удаление мёртвых
+`SDK/react-sdk`/`SDK/shared`/session-половины `SDK/core` (LEGACY-0021, delete-candidates).
 
 ## Understanding
 
@@ -168,13 +170,19 @@ npm run verify:canonical
   - **Оставлено осознанно:** `GamePlayerS1UiContent` (есть потребители: тесты +
     контракт); `readNumber` в `safe-mode-renderer.tsx` и `editor-preview-bridge.ts`
     (РАЗНЫЕ сигнатуры/контракты — не сливать вслепую).
-  - **Отложено (отдельные срезы, нужны решения):**
-    1. **JsonLogic (Phase 3):** `apps/player-web/src/lib/metric-projection.ts` дублирует
-       вычислитель `json-logic-js` из runtime. Решить: общий evaluator в общий пакет,
-       либо документированное подмножество операторов + CI-проверка. Не тронуто.
-    2. **SDK (Phase 4):** статус `SDK/react-sdk` и мёртвой session-половины `SDK/core`
-       (удалить из workspaces или внести в debt-log/LEGACY-0021/0022). Плюс тот же
-       `exit 1`-хазард в `SDK/core`, `SDK/shared`, `SDK/react-sdk` (найден в P0), из-за
-       которого агрегатный `npm test --workspaces` всё ещё падает. Не тронуто.
-    3. **`readNumber` консолидация** — при желании унифицировать три варианта с общим
-       контрактом (сейчас разные).
+- 2026-07-04 (продолжение): закрыты Phase 3 и Phase 4.
+  - **JsonLogic (Phase 3, LEGACY-0022 закрыт):** выбран вариант «документированное
+    подмножество + CI» (без переписывания рендеринга player-web). В `metric-projection.ts`
+    добавлен экспорт `SUPPORTED_METRIC_JSONLOGIC_OPERATORS` (`var,+,-,*,/,min,max`);
+    `scripts/ci/validate-metric-jsonlogic-subset.js` сканирует все `games/*/game.manifest.json`
+    computed-метрики и падает, если оператор вне подмножества; добавлен в `verify:canonical`.
+  - **SDK (Phase 4):** `SDK/react-sdk` (0 потребителей) и `SDK/shared` (0 потребителей)
+    убраны из root `workspaces`; `SDK/core` оставлен (используется player-web:
+    IViewGateway/ViewCommand/applyJsonMergePatch — view-protocol/state половина), его
+    `exit 1` снят. Session-половина `sdk-core` (createSession/validateSessionOptions/
+    SessionOptions) используется только мёртвым react-sdk. Итог: агрегатный
+    `npm test --workspaces` зелёный (23+130+127+38+9+33 тестов + no-op-заглушки).
+  - **readNumber:** осознанно не консолидирован — `safe-mode-renderer.tsx` и
+    `editor-preview-bridge.ts` имеют разные сигнатуры/контракты возврата.
+  - **Остаточное (LEGACY-0021, опционально):** физическое удаление мёртвых dir
+    `SDK/react-sdk`/`SDK/shared` и session-половины `SDK/core` (delete-candidates).
