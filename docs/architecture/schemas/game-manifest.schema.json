@@ -67,6 +67,7 @@
             ],
             "properties": {
               "agentRuntime": {
+                "type": "object",
                 "required": [
                   "required"
                 ],
@@ -83,6 +84,7 @@
           "if": {
             "properties": {
               "agentRuntime": {
+                "type": "object",
                 "properties": {
                   "required": {
                     "const": true

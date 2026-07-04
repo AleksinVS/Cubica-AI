@@ -14,6 +14,7 @@ import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
 import { readFileSync, existsSync, readdirSync } from "node:fs";
 import AjvLib, { type ValidateFunction } from "ajv";
+import addFormatsLib from "ajv-formats";
 import { describe, expect, it } from "vitest";
 
 // ajv ships a dual CommonJS/ESM default export; under NodeNext resolution the
@@ -26,6 +27,11 @@ type AjvConstructor = new (options?: Record<string, unknown>) => {
 };
 const Ajv =
   (AjvLib as unknown as { default?: AjvConstructor }).default ?? (AjvLib as unknown as AjvConstructor);
+// ajv-formats is a dual CJS/ESM module; unwrap `.default` the same way as Ajv so
+// standard formats (uri, date-time, ...) are registered under strict mode.
+const addFormats =
+  (addFormatsLib as unknown as { default?: (ajv: unknown) => void }).default ??
+  (addFormatsLib as unknown as (ajv: unknown) => void);
 
 // Repo root is four levels up from this file:
 // tests -> manifest -> contracts -> packages -> <repo root>
@@ -66,7 +72,19 @@ function collectFiles(root: string, predicate: (filePath: string) => boolean): s
  * validator) and compile its root; ui-manifest carries its own `$id`.
  */
 function buildValidator(schemaFile: string): ValidateFunction {
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  // Strict Ajv mode enforces ADR-025: unknown keywords/formats and malformed
+  // schemas fail the contract test instead of being silently ignored. The two
+  // relaxations are principled, not defect-hiding: allowUnionTypes accepts valid
+  // `type: [...]` unions (e.g. ui-manifest uiStyle.width), and ajv-formats
+  // registers standard formats (uri, date-time, ...) so `format` is recognised.
+  // strictRequired is disabled because game-manifest.schema.json uses standard
+  // declarative idioms — "at least one of" (`anyOf` of `{required:[x]}`) and
+  // "must be absent" (`not: {required:[x]}`) — where the property lives at the
+  // parent level or is intentionally forbidden and cannot be re-listed locally.
+  // `required` is still fully enforced; only the authoring lint is relaxed.
+  // Documented bounded exception in LEGACY-0016.
+  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  addFormats(ajv);
   const schema = readJson(join(schemasRoot, schemaFile)) as Record<string, unknown>;
   return ajv.compile(schema);
 }

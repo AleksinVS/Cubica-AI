@@ -20,7 +20,24 @@ const schemaPath = path.resolve(__dirname, "../../../../../docs/architecture/sch
 const schemaSource = fs.readFileSync(schemaPath, "utf8");
 const gameManifestSchema = JSON.parse(schemaSource);
 
-const ajv = new Ajv({ allErrors: true, strict: false });
+// Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025):
+// unknown keywords, malformed schemas and unknown formats fail fast instead of
+// being silently ignored. Two principled relaxations are applied because the
+// canonical schemas legitimately need them, not to hide defects:
+//  - allowUnionTypes: schemas use `type: ["string", "number"]`-style unions
+//    (e.g. ui-manifest uiStyle.width), which are valid JSON Schema.
+//  - ajv-formats: registers standard formats (uri, date-time, ...) so `format`
+//    keywords are recognised under strict mode rather than rejected as unknown.
+//  - strictRequired: false — game-manifest.schema.json uses standard declarative
+//    idioms where a `required` keyword sits in a subschema that does not itself
+//    list the property in `properties`: "at least one of" via
+//    `anyOf: [{required:[a]}, {required:[b]}, ...]` (timeline.set effect) and
+//    "must be absent" via `not: {required:["card"]}` (legacy guard removal). The
+//    property is defined at the parent level (or intentionally forbidden), so it
+//    cannot be re-listed locally. strictRequired is only an authoring lint; the
+//    `required` constraint is still fully enforced, so data validation is NOT
+//    weakened. Documented bounded exception in LEGACY-0016.
+const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
 addFormats(ajv);
 ajvErrors(ajv);
 
@@ -35,6 +52,13 @@ export function validateGameManifest(manifest: unknown): GameManifest {
     throw new ManifestValidationError(`Schema validation failed: ${errors}`);
   }
 
+  // Intentional imperative companion check (bounded exception, LEGACY-0016):
+  // "an action's templateId must equal a key of the manifest `templates` object"
+  // is a cross-key existence constraint. JSON Schema has no clean, standard way
+  // to assert that a string value matches a *key* of a sibling object, so this
+  // stays as an imperative check next to (not instead of) schema validation.
+  // It never re-implements schema shape checks, so ADR-025 (schema as SSOT) holds.
+  //
   // Cross-validate templateId references: every action referencing a template
   // must point to a template that actually exists in the manifest.
   const m = manifest as Record<string, unknown>;

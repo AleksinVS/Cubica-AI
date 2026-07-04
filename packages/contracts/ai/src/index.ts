@@ -12,6 +12,7 @@ import AjvModule, {
   type Options as AjvOptions,
   type ValidateFunction
 } from "ajv";
+import addFormatsModule from "ajv-formats";
 
 interface LocalAjvInstance {
   addSchema(schema: AnySchema, key?: string): LocalAjvInstance;
@@ -2179,7 +2180,22 @@ function getCompiledValidators() {
   const AjvConstructor =
     (AjvModule as unknown as { readonly default?: LocalAjvConstructor }).default ??
     (AjvModule as unknown as LocalAjvConstructor);
-  const ajv = new AjvConstructor({ allErrors: true, strict: false });
+  // Strict Ajv mode keeps these AI/agent JSON Schemas the single source of truth
+  // (ADR-025): unknown keywords/formats and malformed schemas fail fast instead
+  // of being silently ignored. allowUnionTypes and ajv-formats are applied for a
+  // uniform, principled config across the codebase's validators (union `type`
+  // arrays are valid JSON Schema; ajv-formats registers standard formats so any
+  // `format` keyword is recognised, not rejected as unknown under strict mode).
+  // strictRequired is disabled because the AI schemas use a standard conditional
+  // idiom — e.g. execution-mode-config `allOf/0/then: {required:["agentRuntime"]}`
+  // — where the required property is defined at the parent level and not re-listed
+  // inside the `then` subschema. `required` is still fully enforced; only the
+  // authoring lint is relaxed. Documented bounded exception in LEGACY-0016.
+  const ajv = new AjvConstructor({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  const addFormats =
+    (addFormatsModule as unknown as { readonly default?: (instance: LocalAjvInstance) => void }).default ??
+    (addFormatsModule as unknown as (instance: LocalAjvInstance) => void);
+  addFormats(ajv);
 
   ajv.addSchema(cubicaSurfaceSchema as AnySchema, CUBICA_SURFACE_SCHEMA_ID);
   ajv.addSchema(agentTurnInputSchema as AnySchema, CUBICA_AGENT_TURN_INPUT_SCHEMA_ID);

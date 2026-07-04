@@ -14,7 +14,10 @@ const fsp = require("node:fs/promises");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 const { createHash } = require("node:crypto");
-const Ajv = require("ajv");
+const AjvLib = require("ajv");
+const Ajv = AjvLib.default || AjvLib;
+const addFormatsLib = require("ajv-formats");
+const addFormats = addFormatsLib.default || addFormatsLib;
 const ts = require("typescript");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
@@ -55,7 +58,12 @@ function parseArgs(argv) {
 async function main() {
   const options = parseArgs(process.argv);
   const gameIds = options.games.length > 0 ? options.games : await discoverGamesWithPlugins();
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  // Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025) for
+  // generated plugin/bundle metadata: unknown keywords/formats fail fast instead
+  // of being silently ignored. allowUnionTypes accepts valid `type: [...]` unions
+  // and ajv-formats registers standard formats so `format` keywords are known.
+  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+  addFormats(ajv);
   ajv.addSchema(pluginSchema, pluginSchemaId);
   ajv.addSchema(bundleSchema, bundleSchemaId);
 

@@ -12,6 +12,10 @@
     "test": "vitest run",
     "lint": "echo \"[contracts-manifest] no lint yet (see TSK-20260630-manifest-contract-parity)\""
   },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1"
+  },
   "engines": {
     "node": ">=18"
   }

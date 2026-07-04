@@ -15,19 +15,27 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import AjvLib from "ajv";
+import addFormatsLib from "ajv-formats";
 import { loadGameBundle, type GameBundle, extractInitialState } from "./manifestLoader.ts";
 import { NotFoundError } from "../errors.ts";
 import type { IGameRepository } from "./repository.ts";
 import { LocalFileGameRepository } from "./localFileRepository.ts";
 
 const Ajv = (AjvLib as any).default || AjvLib;
+const addFormats = (addFormatsLib as any).default || addFormatsLib;
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
 const publishedBundleSchema = JSON.parse(readFileSync(
   path.join(repoRoot, "docs", "architecture", "schemas", "player-web-plugin-bundles.schema.json"),
   "utf8"
 )) as object;
 const publishedBundleSchemaId = "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json";
-const publishedBundleAjv = new Ajv({ allErrors: true, strict: false });
+// Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025):
+// unknown keywords/formats and malformed schemas fail fast. allowUnionTypes and
+// ajv-formats are the same principled relaxations used by the manifest validator
+// (union `type` arrays are valid JSON Schema; ajv-formats registers standard
+// formats like uri/date-time so `format` keywords are recognised, not rejected).
+const publishedBundleAjv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true });
+addFormats(publishedBundleAjv);
 publishedBundleAjv.addSchema(publishedBundleSchema, publishedBundleSchemaId);
 const validatePublishedBundleMetadata = publishedBundleAjv.getSchema(publishedBundleSchemaId);
 

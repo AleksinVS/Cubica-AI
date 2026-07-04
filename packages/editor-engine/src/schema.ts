@@ -9,6 +9,7 @@
  * tree-visible entities) that a JSON Schema cannot express.
  */
 import AjvModule, { type AnySchema, type ErrorObject, type Options as AjvOptions } from "ajv";
+import addFormatsModule from "ajv-formats";
 import { isPlainJsonObject, makeDiagnostic } from "./shared.ts";
 import { appendPointerSegment, localReferenceToPointer, readJsonPointer } from "./json-pointer-patch.ts";
 import { isTreeVisibleSemanticEntity } from "./semantics.ts";
@@ -51,11 +52,31 @@ export function createSchemaRegistry(options: SchemaRegistryOptions = {}): Schem
   const AjvConstructor =
     (AjvModule as unknown as { readonly default?: LocalAjvConstructor }).default ??
     (AjvModule as unknown as LocalAjvConstructor);
+  // Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025):
+  // unknown keywords/formats and malformed schemas fail fast instead of being
+  // silently ignored. allowUnionTypes accepts valid `type: [...]` unions (e.g.
+  // ui-manifest uiStyle.width). Callers may still override via ajvOptions, but
+  // the strict default means editor-registered schemas are validated the same
+  // way as the runtime/contract validators. ajv-formats is registered below so
+  // standard formats (uri, date-time, ...) are recognised under strict mode.
+  // strictRequired is disabled because the manifest/authoring schemas the editor
+  // registers use standard declarative idioms — conditional `then: {required}`,
+  // "at least one of" (`anyOf` of `{required:[x]}`) and "must be absent"
+  // (`not: {required:[x]}`) — where the property is defined at the parent level
+  // or intentionally forbidden and cannot be re-listed locally. `required` is
+  // still fully enforced; only the authoring lint is relaxed. Documented bounded
+  // exception in LEGACY-0016.
   const ajv = new AjvConstructor({
     allErrors: true,
-    strict: false,
+    strict: true,
+    allowUnionTypes: true,
+    strictRequired: false,
     ...options.ajvOptions
   });
+  const addFormats =
+    (addFormatsModule as unknown as { readonly default?: (instance: LocalAjvInstance) => void }).default ??
+    (addFormatsModule as unknown as (instance: LocalAjvInstance) => void);
+  addFormats(ajv);
   const registered = new Set<string>();
 
   return {

@@ -10,7 +10,10 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const Ajv = require("ajv");
+const AjvLib = require("ajv");
+const Ajv = AjvLib.default || AjvLib;
+const addFormatsLib = require("ajv-formats");
+const addFormats = addFormatsLib.default || addFormatsLib;
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
@@ -71,7 +74,21 @@ function formatErrors(errors) {
 }
 
 function buildAjv() {
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  // Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025) for
+  // both authoring and runtime manifest schemas: unknown keywords/formats and
+  // malformed schemas fail fast instead of being silently ignored. allowUnionTypes
+  // accepts valid `type: [...]` unions (e.g. ui-manifest uiStyle.width) and
+  // ajv-formats registers standard formats (uri, date-time, ...) so `format`
+  // keywords are recognised rather than rejected as unknown under strict mode.
+  // strictRequired is disabled because both manifest-authoring-common.schema.json
+  // (elementPrompt conditional `then: {required:["normalized"]}`) and
+  // game-manifest.schema.json ("at least one of" `anyOf` and "must be absent"
+  // `not` idioms) place `required` in subschemas that do not re-list the property
+  // in a local `properties` — the property is defined at the parent or is
+  // intentionally forbidden. `required` stays fully enforced; only the authoring
+  // lint is relaxed. Documented bounded exception in LEGACY-0016.
+  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  addFormats(ajv);
   for (const schemaFile of [
     "manifest-authoring-common.schema.json",
     "game-authoring.schema.json",
