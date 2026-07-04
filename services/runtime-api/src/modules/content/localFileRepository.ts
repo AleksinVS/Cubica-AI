@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IGameRepository } from "./repository.ts";
@@ -17,6 +17,40 @@ export class LocalFileGameRepository implements IGameRepository {
 
   constructor(repoRoot: string = defaultRepoRoot) {
     this.repoRoot = path.resolve(repoRoot);
+  }
+
+  async listGameIds(): Promise<readonly string[]> {
+    // Discover games by scanning the `games/` directory for entries that expose
+    // a `game.manifest.json`. Returned sorted so readiness probes pick a stable,
+    // deterministic "first" game rather than relying on filesystem order.
+    const gamesRoot = path.resolve(this.repoRoot, "games");
+    let entries: import("node:fs").Dirent[] = [];
+    try {
+      entries = await readdir(gamesRoot, { withFileTypes: true });
+    } catch {
+      // No games directory (or unreadable) => no games available to probe.
+      return [];
+    }
+
+    const candidates = entries
+      .filter((entry) => entry.isDirectory() && SAFE_GAME_ID_PATTERN.test(entry.name))
+      .map((entry) => entry.name)
+      .sort();
+
+    // Keep only directories that actually contain a manifest file so the probe
+    // does not fail on scaffold/support folders that are not real games.
+    const withManifest = await Promise.all(
+      candidates.map(async (gameId) => {
+        try {
+          await access(path.resolve(gamesRoot, gameId, "game.manifest.json"));
+          return gameId;
+        } catch {
+          return undefined;
+        }
+      })
+    );
+
+    return withManifest.filter((gameId): gameId is string => gameId !== undefined);
   }
 
   async getManifestRaw(gameId: string): Promise<string> {

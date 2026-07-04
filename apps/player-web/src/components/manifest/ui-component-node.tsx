@@ -70,12 +70,24 @@ function moveAdvanceActionToForwardNavigation(children: Array<GameUiComponent>):
 
     if (index === forwardIndex) {
       const forwardProps = (child.props ?? {}) as GameUiButtonComponentProps;
+      // WHY: only propagate `disabled` when the original advance action
+      // explicitly declared one. Previously this always wrote
+      // `disabled: advanceProps.disabled === true`, which forces
+      // `disabled: false` onto the merged nav-right button whenever the
+      // advance action had no `disabled` field at all — silently
+      // overwriting any `disabled` the forward-nav button already had
+      // (e.g. from a manifest-declared "not yet allowed to advance" rule)
+      // with a hardcoded `false`. Spreading `forwardProps` first and only
+      // adding `disabled` when it was explicitly set on the advance action
+      // preserves the forward button's own disabled state in all other
+      // cases.
+      const mergedProps: GameUiButtonComponentProps = { ...forwardProps };
+      if (typeof advanceProps.disabled === "boolean") {
+        mergedProps.disabled = advanceProps.disabled;
+      }
       return [{
         ...child,
-        props: {
-          ...forwardProps,
-          disabled: advanceProps.disabled === true,
-        },
+        props: mergedProps,
         actions: advanceButton.actions,
       }];
     }

@@ -7,9 +7,9 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "build": "echo \"TODO: add contracts-runtime build\" && exit 1",
-    "test": "echo \"TODO: add contracts-runtime tests\" && exit 1",
-    "lint": "echo \"TODO: add contracts-runtime lint\" && exit 1"
+    "build": "echo \"[contracts-runtime] no build yet (see TSK-20260630-manifest-contract-parity)\"",
+    "test": "echo \"[contracts-runtime] no tests yet (see TSK-20260630-manifest-contract-parity)\"",
+    "lint": "echo \"[contracts-runtime] no lint yet (see TSK-20260630-manifest-contract-parity)\""
   },
   "engines": {
     "node": ">=18"

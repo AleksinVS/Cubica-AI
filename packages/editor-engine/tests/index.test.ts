@@ -149,6 +149,62 @@ describe("JSON Patch utilities", () => {
     expect(journalStep.beforeHash).toBe(hashEditorText(snapshot.text));
     expect(journalStep.affectedFiles).toEqual(["doc.authoring.json"]);
   });
+
+  it("inverts array-index insertions with `remove`, not `replace`, so undo restores exactly", () => {
+    // Array `add` shifts existing elements right; its inverse must remove the
+    // inserted slot. A `replace` would clobber the shifted-along element and
+    // leave a duplicate. These cases lock in the fix for that correctness bug.
+
+    // The confirmed reproduction case: insert "X" at index 1 of ["a","b","c"].
+    const middle = applyJsonPatchWithInverse({ arr: ["a", "b", "c"] }, [
+      { op: "add", path: "/arr/1", value: "X" }
+    ]);
+    expect(middle.value).toEqual({ arr: ["a", "X", "b", "c"] });
+    expect(middle.inverseOperations).toEqual([{ op: "remove", path: "/arr/1" }]);
+    expect(applyJsonPatch(middle.value, middle.inverseOperations)).toEqual({ arr: ["a", "b", "c"] });
+
+    // Insert at the start of a non-empty array.
+    const start = applyJsonPatchWithInverse({ arr: ["a", "b", "c"] }, [
+      { op: "add", path: "/arr/0", value: "X" }
+    ]);
+    expect(start.value).toEqual({ arr: ["X", "a", "b", "c"] });
+    expect(start.inverseOperations).toEqual([{ op: "remove", path: "/arr/0" }]);
+    expect(applyJsonPatch(start.value, start.inverseOperations)).toEqual({ arr: ["a", "b", "c"] });
+
+    // Insert at the end via an explicit index equal to the array length.
+    const endIndex = applyJsonPatchWithInverse({ arr: ["a", "b", "c"] }, [
+      { op: "add", path: "/arr/3", value: "X" }
+    ]);
+    expect(endIndex.value).toEqual({ arr: ["a", "b", "c", "X"] });
+    expect(endIndex.inverseOperations).toEqual([{ op: "remove", path: "/arr/3" }]);
+    expect(applyJsonPatch(endIndex.value, endIndex.inverseOperations)).toEqual({ arr: ["a", "b", "c"] });
+
+    // Append via the `-` token; the inverse targets the resolved concrete index.
+    const append = applyJsonPatchWithInverse({ arr: ["a", "b", "c"] }, [
+      { op: "add", path: "/arr/-", value: "X" }
+    ]);
+    expect(append.value).toEqual({ arr: ["a", "b", "c", "X"] });
+    expect(append.inverseOperations).toEqual([{ op: "remove", path: "/arr/3" }]);
+    expect(applyJsonPatch(append.value, append.inverseOperations)).toEqual({ arr: ["a", "b", "c"] });
+  });
+
+  it("keeps object-member `add` overwrite semantics for both new and existing keys", () => {
+    // Adding a brand-new object key inverts to `remove`.
+    const newKey = applyJsonPatchWithInverse({ obj: { a: 1 } }, [
+      { op: "add", path: "/obj/b", value: 2 }
+    ]);
+    expect(newKey.value).toEqual({ obj: { a: 1, b: 2 } });
+    expect(newKey.inverseOperations).toEqual([{ op: "remove", path: "/obj/b" }]);
+    expect(applyJsonPatch(newKey.value, newKey.inverseOperations)).toEqual({ obj: { a: 1 } });
+
+    // Overwriting an existing object key inverts to `replace` with the old value.
+    const overwrite = applyJsonPatchWithInverse({ obj: { a: 1 } }, [
+      { op: "add", path: "/obj/a", value: 99 }
+    ]);
+    expect(overwrite.value).toEqual({ obj: { a: 99 } });
+    expect(overwrite.inverseOperations).toEqual([{ op: "replace", path: "/obj/a", value: 1 }]);
+    expect(applyJsonPatch(overwrite.value, overwrite.inverseOperations)).toEqual({ obj: { a: 1 } });
+  });
 });
 
 describe("editor entity projection", () => {

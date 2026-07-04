@@ -26,6 +26,11 @@ planned
 SDK-пакеты и дублированный интерпретатор JsonLogic. Нужно удалить мусор, устранить
 дубли и определить статус неиспользуемых workspace-членов (удалить или внести в долг).
 
+**Поглощает (2026-07-04):** классификацию workspace/scaffold из закрытой
+`TSK-20260518-workspace-project-references-cleanup` — статус `SDK/viewers/web-base`,
+`services/router`, portal drafts (`apps/portal-nextjs`, `services/portal-backend`) и
+TypeScript project references. Часть portal/router уже отвечена ADR-032/033.
+
 ## Architecture Source
 
 - `docs/reviews/2026-06-27-full-project-review.md` (разделы 1.1.F, 1.1.G, 3)
@@ -53,6 +58,11 @@ SDK-пакеты и дублированный интерпретатор JsonLo
 4. **SDK**: `SDK/react-sdk` зарегистрирован в `package.json:11`, но ноль импортов в
    apps/services/packages; мёртвая session-половина `SDK/core` (`createSession`,
    `validateSessionOptions`, `SessionOptions`) дублирует `packages/contracts/session`.
+   **(2026-07-04)** Дополнительно: `SDK/core`, `SDK/shared`, `SDK/react-sdk` содержат тот
+   же `test = "... && exit 1"`-хазард, из-за которого агрегатный `npm test --workspaces`
+   всё ещё падает (передано из P0 `TSK-20260630-review-remediation-correctness`, где
+   аналогичный хазард снят в контракт-пакетах). Решить вместе со статусом SDK: удалить
+   пакеты из workspaces или снять `exit 1` и внести в долг.
 5. `packages/contracts/manifest/src/index.ts:891` `GamePlayerS1UiContent` помечен
    `@deprecated`.
 6. `apps/player-web/tsconfig.json` без `noUnusedLocals`/`noUnusedParameters`.

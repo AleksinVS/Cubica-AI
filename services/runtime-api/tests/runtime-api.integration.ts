@@ -1072,6 +1072,30 @@ test("POST /sessions rejects invalid request bodies", async () => {
   assert.match(body.error, /gameId must match/);
 });
 
+test("POST /sessions with an empty body responds 400 (not 500)", async () => {
+  // Regression: a missing gameId used to reach the service layer, which threw a
+  // plain Error mapped to HTTP 500. It must now be rejected as a 400 client error.
+  const { response, body } = await requestJson<{ error: string }>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /gameId is required/);
+});
+
+test("POST /sessions with a completely empty request body responds 400", async () => {
+  // No JSON body at all: readJsonBody yields {}, so gameId is still missing.
+  const response = await fetch(`${baseUrl}/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+  });
+  const body = (await readJson<{ error: string }>(response));
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /gameId is required/);
+});
+
 test("POST /sessions rejects unsafe game ids before repository lookup", async () => {
   const { response, body } = await requestJson<{ error: string }>("/sessions", {
     method: "POST",

@@ -187,12 +187,20 @@ export function GamePlayer({
           const state = command.payload?.state as PlayerState | undefined;
           if (state) {
             setPlayerState(state);
-            if (state.screenKey) {
-              setScreenKey(state.screenKey);
-            }
-            if (state.layoutMode) {
-              setLayoutMode(state.layoutMode);
-            }
+            // WHY: mirror screenKey/layoutMode unconditionally from the
+            // authoritative presenter state instead of only assigning on
+            // truthy values. `state.screenKey` is `string | null` and
+            // becomes null once the game transitions into a state that has
+            // no manifest screen (e.g. it moves to an agent-surface or
+            // safe-mode state). The previous "only set when truthy" logic
+            // never cleared the local screenKey in that case, so the render
+            // branch below kept matching the OLD screenKey against
+            // `gameUi.screens` and kept showing a stale manifest screen
+            // instead of falling through to CubicaSurfaceRenderer /
+            // SafeModeRenderer. Mirroring `?? undefined` here makes the
+            // local screenKey state track the server-driven truth exactly.
+            setScreenKey(state.screenKey ?? undefined);
+            setLayoutMode(state.layoutMode);
             if (state.activePanel) {
               setActivePanel(state.activePanel);
             } else {

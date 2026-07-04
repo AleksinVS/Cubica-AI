@@ -138,8 +138,25 @@ function chooseTextEditTarget(
   }
 
   const fallbackField = labelKeywords.some((keyword) => promptLower.includes(keyword)) ? "_label" : "text";
+  const fallbackPointer = joinJsonPointer(target.pointer, [fallbackField]);
+  // WHY (Finding 7b): the loop above only matches candidates whose CURRENT value is a string.
+  // A field can still exist at the fallback pointer with a non-string value (number, boolean,
+  // object, array, or null) — e.g. `text` authored as a localization object instead of a
+  // plain string. Treating that as `exists: false` would make the caller emit a bare JSON
+  // Patch "add", which silently overwrites the existing non-string value with no guard. Read
+  // the raw value at the fallback pointer (any type) so a genuinely existing field is guarded
+  // with a "test" + "replace" pair, matching how the string-match branch above is guarded.
+  const fallbackExistingValue = readJsonPointer(target.value, `/${fallbackField}`);
+  if (fallbackExistingValue !== undefined) {
+    return {
+      pointer: fallbackPointer,
+      exists: true,
+      before: fallbackExistingValue
+    };
+  }
+
   return {
-    pointer: joinJsonPointer(target.pointer, [fallbackField]),
+    pointer: fallbackPointer,
     exists: false,
     before: undefined
   };

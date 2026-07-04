@@ -2307,3 +2307,142 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
   });
 });
+
+/**
+ * Regression test for the "sticky screenKey" bug (P0 review Finding 2).
+ *
+ * Background: GamePlayer keeps a local React screenKey/layoutMode mirror of
+ * the presenter's authoritative `PlayerState.screenKey`. The SYNC_STATE
+ * handler used to update that mirror ONLY when the incoming value was
+ * truthy, and never cleared it otherwise. When the game legitimately
+ * transitions into a state that has no manifest screen (e.g. `screenKey`
+ * becomes `null` because the new screenId/stepIndex has no mapped UI
+ * screen), the stale previous screenKey stuck around and the player kept
+ * rendering the OLD manifest screen instead of falling through to
+ * SafeModeRenderer.
+ *
+ * This test drives a real screen -> no-screen transition through the
+ * default (non-plugin) GameConfig screen router: the UI manifest only
+ * declares screen "S1", so once the session's `timeline.screenId` moves to
+ * an unmapped screen ("S2"), `resolveScreenKey` legitimately returns null.
+ */
+describe("GamePlayer sticky screenKey regression (Finding 2)", () => {
+  const stickyGameId = "sticky-screenkey-regression-game";
+  const fallbackActionMarker = "Fallback Action Marker";
+
+  const stickyContent: PlayerFacingContent = {
+    gameId: stickyGameId,
+    version: "1.0.0",
+    name: "Sticky ScreenKey Regression Game",
+    description: "Fixture game for the sticky screenKey regression test.",
+    playerConfig: { min: 1, max: 1 },
+    locale: "en-US",
+    actions: [
+      {
+        actionId: "fallback.action",
+        displayName: fallbackActionMarker,
+        capabilityFamily: "runtime.server",
+        capability: "advance"
+      }
+    ],
+    mockups: [],
+    content: { data: {} }
+  };
+
+  const stickyGameUi: GamePlayerUiContent = {
+    id: `${stickyGameId}.ui.web`,
+    version: "1.0.0",
+    gameId: stickyGameId,
+    entryPoint: "S1",
+    screens: {
+      S1: {
+        type: "screen",
+        title: "Sticky S1",
+        root: {
+          type: "screenComponent",
+          props: { cssClass: "sticky-test-s1-screen" },
+          children: [
+            {
+              type: "buttonComponent",
+              id: "advance-btn",
+              props: { caption: "Advance to no-screen state" },
+              actions: { onClick: { command: "requestServer", payload: { actionId: "advance-to-nowhere" } } }
+            }
+          ]
+        }
+      }
+    }
+  };
+
+  const stickyInitialSession = {
+    sessionId: "sticky-session-1",
+    gameId: stickyGameId,
+    version: { sessionId: "sticky-session-1", stateVersion: 0, lastEventSequence: 0 },
+    state: {
+      public: {
+        metrics: {},
+        timeline: { screenId: "S1", stepIndex: 0 }
+      }
+    }
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+
+  it("falls through to the fallback catalog instead of the stale S1 screen once screenKey clears", async () => {
+    (global.fetch as any).mockImplementation((url: string, options: any) => {
+      if (url === "/api/runtime/actions") {
+        // The server moves the session to screenId "S2", which has no
+        // mapped UI screen in `stickyGameUi.screens` — so the presenter's
+        // next `playerState.screenKey` is legitimately `null`.
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              ...stickyInitialSession,
+              state: {
+                ...stickyInitialSession.state,
+                public: {
+                  ...stickyInitialSession.state.public,
+                  timeline: { screenId: "S2", stepIndex: 1 }
+                }
+              }
+            })
+        });
+      }
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(stickyInitialSession) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer
+        config={createDefaultGameConfigData(stickyContent, stickyGameUi)}
+        runtimeApiUrl="http://localhost:8080"
+        content={stickyContent}
+        mockups={[]}
+        gameUi={stickyGameUi}
+      />
+    );
+
+    // Initially screenKey resolves to "S1" and the manifest screen renders.
+    await waitFor(() => {
+      expect(document.querySelector(".sticky-test-s1-screen")).not.toBeNull();
+      expect(screen.getByText("Advance to no-screen state")).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText("Advance to no-screen state"));
+
+    // After the transition, screenId "S2" has no mapped UI screen, so
+    // screenKey must clear and the player must fall through to
+    // SafeModeRenderer's fallback action catalog — NOT keep showing S1.
+    await waitFor(() => {
+      expect(screen.getByText(fallbackActionMarker)).toBeDefined();
+    });
+    expect(document.querySelector(".sticky-test-s1-screen")).toBeNull();
+    expect(screen.queryByText("Advance to no-screen state")).toBeNull();
+  });
+});

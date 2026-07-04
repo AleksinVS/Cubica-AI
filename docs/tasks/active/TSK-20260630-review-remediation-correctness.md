@@ -17,7 +17,14 @@
 
 ## Status
 
-planned
+implemented (2026-07-04)
+
+Все семь находок исправлены точечно, по одному субагенту на изолированный workspace,
+каждая с регресс-тестом. Все проверки зелёные (editor-engine 36, player-web 130,
+runtime-api 127, editor-web 105; агрегатный `npm test --workspaces` больше не падает на
+контракт-пакетах). Остаётся закрыть архитектурные задачи блока `TSK-20260630-*`
+(purity, parity, modularization, cleanup, guard-reconciliation), которые перекрывают те
+же файлы и потому шли после этого P0-пакета.
 
 ## Understanding
 
@@ -156,3 +163,44 @@ npm run typecheck --workspace @cubica/editor-web
 ## Handoff Log
 
 - 2026-06-30: задача создана по результатам полного ревью проекта; реализация не начата.
+- 2026-07-04: реализованы все семь находок (по одному субагенту на изолированный
+  workspace, файлы не пересекались).
+  - **Fix 1 (критично, editor-engine):** `inverseOperationForMutation` в
+    `packages/editor-engine/src/index.ts` теперь получает флаг `targetsArrayInsertion`
+    (вычисляется на PRE-mutation документе в `applyJsonPatchWithInverse`). Для `add`
+    по индексу массива (вставка/сдвиг) инверсия всегда `remove`; для члена объекта —
+    прежнее поведение (`replace` если ключ был, иначе `remove`). Покрывает append `-`.
+    Регресс-тесты (вставка в начало/середину/конец/`-`, add объекта новый/существующий
+    ключ) в `packages/editor-engine/tests/index.test.ts`. `verify:editor-engine` зелёный
+    (36 тестов).
+  - **Fix 2 (player-web):** `SYNC_STATE` в `game-player.tsx` теперь безусловно зеркалит
+    `state.screenKey ?? undefined` и `layoutMode`, снимая залипание при переходе в
+    состояние без экрана (рендерится fallback/surface). Тест перехода screen→no-screen
+    в `game-player-dom.test.tsx`.
+  - **Fix 3 (runtime-api):** отсутствующий/пустой `gameId` в `parseCreateSessionRequest`
+    (`requestValidation.ts`) бросает `RequestValidationError` → 400; в `session.service.ts`
+    добавлена защита от прямого вызова без `gameId`. Тесты `POST /sessions {}` → 400.
+  - **Fix 4 (runtime-api):** `checkContentSubsystem` — реальная проба (обнаружение игры
+    через новый `listGameIds()` в repository/contentService + загрузка манифеста через
+    AJV-валидацию, без хардкода id); `checkSessionStore` отражает реальный режим store по
+    классу порта; тип `ReadinessResponse...mode` расширен до `string`. Инъекция
+    `ContentProbe` для тестируемости. Тесты в `tests/health.test.ts`. `runtime-api`
+    typecheck+test зелёные (127).
+  - **Fix 5 (contracts):** `exit 1`-заглушки `test/build/lint` в
+    `contracts/manifest|runtime|session` заменены на проходящий no-op со ссылкой на
+    `TSK-20260630-manifest-contract-parity` (реальные тесты — там). Найден тот же
+    хазард в `SDK/core`, `SDK/shared`, `SDK/react-sdk` — вне scope P0, передан в
+    `TSK-20260630-codebase-cleanup-and-workspace-status`.
+  - **Fix 6 (editor-web):** `agent-context-projection.ts` меряет `truncated` ПОСЛЕ
+    дедупликации (нет ложноположительного) и протягивает реальное усечение
+    массивов/ключей через возвращаемый `truncated`-флаг (`redactAgentContextValue`,
+    `truncateJsonValue`). Тесты в `agent-context-projection.test.ts`.
+  - **Fix 7a (player-web):** `moveAdvanceActionToForwardNavigation`
+    (`ui-component-node.tsx`) больше не форсит `disabled` — переносит только явно
+    заданное булево значение advance-действия, иначе сохраняет собственное значение
+    nav-кнопки. Тесты в `ui-component-node.test.tsx`. player-web typecheck+test зелёные (130).
+  - **Fix 7b (editor-web):** `chooseTextEditTarget` в `ai-change-planner.ts` читает
+    существующее не-строковое значение fallback-поля и возвращает `exists:true` → каузер
+    эмитит `test`+`replace` вместо голого `add`. Отсутствующее поле по-прежнему даёт
+    `add` без guard. Тесты в `ai-change-planner.test.ts`. editor-web typecheck+test
+    зелёные (105).

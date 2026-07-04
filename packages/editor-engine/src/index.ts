@@ -1261,11 +1261,23 @@ export function applyJsonPatchWithInverse(
     const actualPath = actualMutationPath(current, operation);
     const existedBefore = jsonPointerExists(current, actualPath);
     const before = existedBefore ? cloneJsonValue(readJsonPointer(current, actualPath) as JsonValue) : undefined;
+    // WHY: an `add` whose parent is an array has INSERTION semantics — it shifts
+    // every existing element from the target index onward one slot to the right
+    // (see `applyToArrayParent`, which uses `splice(index, 0, value)`). That is
+    // fundamentally different from an object-member `add`, which overwrites a key
+    // in place. The array-vs-object distinction must be evaluated against the
+    // PRE-mutation parent (before `applySinglePatch` runs below), because after
+    // the insertion the shifted element no longer sits at the target index.
+    // This flag also covers the append token `-` (parent is still the array).
+    const targetsArrayInsertion =
+      operation.op === "add" && Array.isArray(readParentValue(current, operation.path));
     current = applySinglePatch(current, operation);
     const existsAfter = jsonPointerExists(current, actualPath);
     const after = existsAfter ? cloneJsonValue(readJsonPointer(current, actualPath) as JsonValue) : undefined;
 
-    inverseOperations.unshift(inverseOperationForMutation(operation, actualPath, existedBefore, before));
+    inverseOperations.unshift(
+      inverseOperationForMutation(operation, actualPath, existedBefore, before, targetsArrayInsertion)
+    );
     diffSummary.push({
       pointer: actualPath,
       operation: operation.op,
@@ -4524,9 +4536,25 @@ function inverseOperationForMutation(
   operation: Exclude<JsonPatchOperation, { readonly op: "test" }>,
   actualPath: string,
   existedBefore: boolean,
-  before: JsonValue | undefined
+  before: JsonValue | undefined,
+  // True when this `add` targets a position inside an array (numeric index or
+  // the `-` append token), evaluated against the pre-mutation document.
+  targetsArrayInsertion: boolean
 ): JsonPatchOperation {
   if (operation.op === "add") {
+    // WHY: array `add` is an INSERTION that shifts existing elements right, so it
+    // never overwrites a value — even when `existedBefore` is true, that element
+    // is still present (just moved to index+1). Undoing it therefore always means
+    // removing the freshly inserted slot; a `replace` here would clobber the
+    // shifted-along element and leave a duplicate (e.g. ["a","b","c"] + add
+    // /arr/1="X" -> ["a","X","b","c"]; a bad `replace /arr/1` would yield
+    // ["a","b","b","c"] instead of restoring ["a","b","c"]).
+    if (targetsArrayInsertion) {
+      return { op: "remove", path: actualPath };
+    }
+
+    // Object-member `add` keeps overwrite semantics: restore the prior value if
+    // the key already existed, otherwise remove the newly added key.
     return existedBefore && before !== undefined
       ? { op: "replace", path: actualPath, value: before }
       : { op: "remove", path: actualPath };

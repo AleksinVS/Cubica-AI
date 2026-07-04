@@ -116,9 +116,23 @@ export function buildEditorAgentContextProjection(
   const maxSelectedPointers = input.maxSelectedPointers ?? defaultMaxSelectedPointers;
   const maxDiagnostics = input.maxDiagnostics ?? defaultMaxDiagnostics;
   const maxExcerptLength = input.maxExcerptLength ?? defaultMaxExcerptLength;
-  const selectedPointers = [...new Set(input.selectedPointers)]
+  // WHY: dedup BEFORE measuring for the `truncated` flag. Callers (e.g. multi-select in the
+  // editor UI) can legitimately send the same pointer twice; collapsing duplicates is not a
+  // limit-driven truncation and must never flip `limits.truncated` to true on its own
+  // (Finding 6 — false-positive truncation reporting).
+  const dedupedSelectedPointers = [...new Set(input.selectedPointers)];
+  // Track whether any individual pointer's projected value was actually cut down (either by
+  // the array/object item caps inside redactAgentContextValue, or by the excerpt character
+  // cap below) so the top-level `truncated` signal reflects real data loss, not just the
+  // presence of arrays/objects.
+  let anyPointerValueTruncated = false;
+  const selectedPointers = dedupedSelectedPointers
     .slice(0, maxSelectedPointers)
-    .map((pointer) => buildPointerContext(pointer, input.document, maxExcerptLength));
+    .map((pointer) => {
+      const built = buildPointerContext(pointer, input.document, maxExcerptLength);
+      anyPointerValueTruncated = anyPointerValueTruncated || built.truncated;
+      return built.context;
+    });
   const diagnostics = (input.diagnostics ?? []).slice(0, maxDiagnostics).map((diagnostic) => ({
     severity: diagnostic.severity,
     source: diagnostic.source,
@@ -154,11 +168,15 @@ export function buildEditorAgentContextProjection(
       maxSelectedPointers,
       maxDiagnostics,
       maxExcerptLength,
+      // WHY: compare the DEDUPED pointer count against the limit — comparing the raw,
+      // pre-dedup input length here was the root cause of Finding 6: sending duplicate
+      // pointers that fit under the limit once collapsed would still report `truncated: true`
+      // even though nothing was actually dropped by a limit.
       truncated:
-        input.selectedPointers.length > maxSelectedPointers ||
+        dedupedSelectedPointers.length > maxSelectedPointers ||
         (input.selectedEditorEntities?.length ?? 0) > maxSelectedPointers ||
         (input.diagnostics?.length ?? 0) > maxDiagnostics ||
-        selectedPointers.some((pointer) => typeof pointer.excerpt === "string" && pointer.excerpt.endsWith("..."))
+        anyPointerValueTruncated
     }
   };
 }
@@ -189,62 +207,89 @@ function toAgentEntitySourcePointerContext(source: EditorEntitySourcePointer): E
   };
 }
 
-export function redactAgentContextValue(value: JsonValue | undefined, path = ""): { readonly value: JsonValue | string; readonly redacted: boolean } {
+export function redactAgentContextValue(
+  value: JsonValue | undefined,
+  path = ""
+): { readonly value: JsonValue | string; readonly redacted: boolean; readonly truncated: boolean } {
   if (value === undefined) {
-    return { value: "[unavailable]", redacted: false };
+    return { value: "[unavailable]", redacted: false, truncated: false };
   }
 
   if (isForbiddenAgentContextPath(path)) {
-    return { value: "[redacted]", redacted: true };
+    return { value: "[redacted]", redacted: true, truncated: false };
   }
 
   if (Array.isArray(value)) {
     let redacted = false;
+    // WHY: `slice(0, 12)` below silently drops elements once the array is larger than the
+    // cap. Finding 6 flagged this as a SILENT truncation (no signal was ever raised). Compute
+    // the "did we actually drop anything" fact up front from the true length, then bubble it
+    // (and any truncation from nested values) up to the caller via `limits.truncated`.
+    let truncated = value.length > 12;
     const items = value.slice(0, 12).map((item, index) => {
       const child = redactAgentContextValue(item, `${path}/${index}`);
       redacted = redacted || child.redacted;
+      truncated = truncated || child.truncated;
       return child.value as JsonValue;
     });
-    return { value: items, redacted };
+    return { value: items, redacted, truncated };
   }
 
   if (isPlainJsonObject(value)) {
     let redacted = false;
-    const entries = Object.entries(value)
-      .slice(0, 24)
-      .map(([key, childValue]) => {
-        const child = redactAgentContextValue(childValue, path === "" ? `/${key}` : `${path}/${key}`);
-        redacted = redacted || child.redacted;
-        return [key, child.value] as const;
-      });
-    return { value: Object.fromEntries(entries) as JsonValue, redacted };
+    const allEntries = Object.entries(value);
+    // WHY: same silent-truncation risk as arrays above, but for object keys — the `slice(0,
+    // 24)` cap must be reflected in `truncated` whenever the object actually has more keys
+    // than the cap allows.
+    let truncated = allEntries.length > 24;
+    const entries = allEntries.slice(0, 24).map(([key, childValue]) => {
+      const child = redactAgentContextValue(childValue, path === "" ? `/${key}` : `${path}/${key}`);
+      redacted = redacted || child.redacted;
+      truncated = truncated || child.truncated;
+      return [key, child.value] as const;
+    });
+    return { value: Object.fromEntries(entries) as JsonValue, redacted, truncated };
   }
 
-  return { value, redacted: false };
+  return { value, redacted: false, truncated: false };
 }
 
 export function isForbiddenAgentContextPath(path: string): boolean {
   return secretPathPattern.test(path);
 }
 
-function buildPointerContext(pointer: string, document: JsonValue | undefined, maxExcerptLength: number): EditorAgentSelectedPointerContext {
+function buildPointerContext(
+  pointer: string,
+  document: JsonValue | undefined,
+  maxExcerptLength: number
+): { readonly context: EditorAgentSelectedPointerContext; readonly truncated: boolean } {
   const rawValue = document === undefined ? undefined : readJsonPointer(document, pointer);
   const redacted = redactAgentContextValue(rawValue, pointer);
+  const excerpt = truncateJsonValue(redacted.value, maxExcerptLength);
   return {
-    pointer,
-    valueType: getJsonValueType(rawValue),
-    excerpt: truncateJsonValue(redacted.value, maxExcerptLength),
-    redacted: redacted.redacted
+    context: {
+      pointer,
+      valueType: getJsonValueType(rawValue),
+      excerpt: excerpt.value,
+      redacted: redacted.redacted
+    },
+    // WHY: a pointer's projected value can be truncated in two independent places — the
+    // array/object item caps applied inside redactAgentContextValue, or the excerpt character
+    // cap applied here. Either one means real data was dropped, so the caller needs the
+    // combined signal (not just a heuristic string-endswith check on the final excerpt, which
+    // could false-negative for nested truncation hidden inside the JSON before stringifying,
+    // or false-positive for a legitimate value that happens to end in "...").
+    truncated: redacted.truncated || excerpt.truncated
   };
 }
 
-function truncateJsonValue(value: JsonValue | string, maxLength: number): JsonValue | string {
+function truncateJsonValue(value: JsonValue | string, maxLength: number): { readonly value: JsonValue | string; readonly truncated: boolean } {
   const json = typeof value === "string" ? value : JSON.stringify(value);
   if (json.length <= maxLength) {
-    return value;
+    return { value, truncated: false };
   }
 
-  return `${json.slice(0, Math.max(0, maxLength - 3))}...`;
+  return { value: `${json.slice(0, Math.max(0, maxLength - 3))}...`, truncated: true };
 }
 
 function truncateText(value: string, maxLength: number): string {

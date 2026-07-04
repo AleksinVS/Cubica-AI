@@ -14,7 +14,11 @@
 
 ## Status
 
-planned
+planned (resequenced 2026-07-04) — выполнять внутри TSK-20260630-manifest-contract-parity
+
+Строгий режим Ajv — предпосылка контрактной работы ADR-056. Чтобы не разошлись инвентари
+исключений (LEGACY-0016), эту задачу нужно выполнять под/вместе с
+`TSK-20260630-manifest-contract-parity`, а не параллельно.
 
 ## Why
 

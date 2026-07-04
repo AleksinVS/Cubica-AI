@@ -2,7 +2,12 @@
 
 ## Status
 
-planned
+merged (2026-07-04) → TSK-20260630-codebase-cleanup-and-workspace-status
+
+Классификация workspace/scaffold участков объединена с более новой и точной задачей
+`TSK-20260630-codebase-cleanup-and-workspace-status` (LEGACY-0021/0022). Часть вопросов
+(portal/router boundary) уже отвечена ADR-032/033. Оставшиеся пункты (`SDK/viewers/web-base`,
+portal drafts, router scaffolds, TS project references) переносятся в задачу 0630.
 
 ## Why
 

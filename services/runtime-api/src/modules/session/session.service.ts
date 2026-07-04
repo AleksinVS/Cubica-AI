@@ -8,7 +8,7 @@ import type {
 } from "@cubica/contracts-session";
 import { assertGameLaunchReady } from "../admin/health.ts";
 import { contentService } from "../content/contentService.ts";
-import { HttpError, NotFoundError } from "../errors.ts";
+import { HttpError, NotFoundError, RequestValidationError } from "../errors.ts";
 import { InMemorySessionStore } from "./inMemorySessionStore.ts";
 import type { SessionStorePort } from "@cubica/contracts-session";
 
@@ -29,7 +29,12 @@ export class SessionService {
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
     const gameId = request.gameId;
     if (!gameId) {
-      throw new Error("gameId is required to create a session");
+      // WHY: A missing gameId is a client error, not a server fault. Throwing a
+      // `RequestValidationError` (HTTP 400) instead of a plain `Error` prevents
+      // `httpServer.ts` from mapping it to a misleading HTTP 500. The request
+      // validation layer normally catches this first; this guard defends the
+      // service when it is invoked directly (e.g. tests, internal callers).
+      throw new RequestValidationError("gameId is required to create a session");
     }
     const playerId: PlayerId | undefined = request.playerId;
 

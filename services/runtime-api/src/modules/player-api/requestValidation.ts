@@ -51,20 +51,28 @@ const assertRequiredString: (value: unknown, path: string) => asserts value is s
 };
 
 export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest => {
-  if (body === undefined) {
-    return {};
+  // WHY: `gameId` is REQUIRED to create a session. The manifest/content
+  // pipeline cannot resolve a game without it, and the downstream service used
+  // to throw a plain `Error` for a missing id which `httpServer.ts` maps to a
+  // misleading HTTP 500. Validating it here (the request-validation layer)
+  // surfaces the client mistake as a proper HTTP 400 instead. An undefined body
+  // is treated the same as a body with no `gameId`.
+  assertRecord(body ?? {}, "POST /sessions body");
+  const record = (body ?? {}) as JsonRecord;
+
+  // Reject a missing/empty id with a clear "required" message. Any present but
+  // malformed id (wrong type, unsafe characters) still falls through to
+  // `assertGameId`, which reports the "must match <pattern>" contract.
+  if (record.gameId === undefined || record.gameId === null || record.gameId === "") {
+    throw new RequestValidationError("gameId is required and must be a non-empty string");
+  }
+  assertGameId(record.gameId, "gameId");
+  assertOptionalString(record.playerId, "playerId");
+  if (record.contentSourceId !== undefined) {
+    assertContentSourceId(record.contentSourceId, "contentSourceId");
   }
 
-  assertRecord(body, "POST /sessions body");
-  if (body.gameId !== undefined) {
-    assertGameId(body.gameId, "gameId");
-  }
-  assertOptionalString(body.playerId, "playerId");
-  if (body.contentSourceId !== undefined) {
-    assertContentSourceId(body.contentSourceId, "contentSourceId");
-  }
-
-  return body as CreateSessionRequest;
+  return record as CreateSessionRequest;
 };
 
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {

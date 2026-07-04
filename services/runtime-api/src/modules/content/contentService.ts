@@ -317,6 +317,16 @@ export class ContentService {
     this.clearBundleCache(undefined, sourceId);
   }
 
+  /**
+   * Lists ids of games available in the default (published) repository.
+   *
+   * Used by the runtime readiness probe to discover a game to load without
+   * hardcoding a concrete game id in core layers.
+   */
+  async listGameIds(): Promise<readonly string[]> {
+    return this.repository.listGameIds();
+  }
+
   async getBundle(gameId: string, contentSourceId?: string): Promise<GameBundle> {
     const cacheKey = this.bundleCacheKey(gameId, contentSourceId);
     const cached = this.bundleCache.get(cacheKey);
@@ -582,6 +592,16 @@ export function registerLocalPlayerFacingContentSourceWithPlugins(
 
 export async function loadGameManifest(gameId: string, contentSourceId?: string): Promise<GameBundle["manifest"]> {
   return contentService.getGameManifest(gameId, contentSourceId);
+}
+
+/**
+ * Lists ids of games available in the default (published) repository.
+ *
+ * Thin module-level wrapper over {@link ContentService.listGameIds} for callers
+ * (like the readiness probe) that use the shared singleton.
+ */
+export async function listAvailableGameIds(): Promise<readonly string[]> {
+  return contentService.listGameIds();
 }
 
 export function getPlayerWebPluginBundleFile(input: {
