@@ -209,3 +209,19 @@ game-agnostic CI invariant.
 - 2026-07-04 (позже): оформлен ADR-057; `PROJECT_ARCHITECTURE.md` и
   `PROJECT_OVERVIEW.md` синхронизированы; Phase 0 сведена к проверке предпосылок
   и сверке документации.
+- 2026-07-05: **Phase 0 выполнена.** (1) Сверка: ADR-057 ↔ UX-документ ↔ design-spec
+  согласованы по всем 13 пунктам решения, материальных расхождений нет; макет
+  покрывает зоны 1–8 и обязательные состояния. Наблюдение для Phase 1.4:
+  `sourceTraceRef` фикстуры указывает в `.tmp/editor-playthroughs/` (чистится GC) —
+  в схеме поле сделать необязательным/информационным. (2) Блокеры: инверсия undo
+  закрыта (`json-pointer-patch.ts`, `targetsArrayInsertion`, verify 38 зелёный);
+  модуляризация editor-engine Phases 1–3 done, **не** сделаны декомпозиция
+  `EditorWorkspace` (гейтит Phase 3) и профилирование загрузки (гейтит Phase 2).
+  (3) docs-ветка ADR-057 влита в `main` (merge c993f51). (4) План скорректирован
+  по блокеру окружения (`docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md`):
+  перед UI-фазами идёт срез «e2e в production-режиме» (player-web/editor-web через
+  `next build` последовательно + `next start`; preview-путь не зависит от `next dev` —
+  в `apps/player-web/src` нет NODE_ENV-веток, preview задаётся query-параметрами;
+  build-time env `RUNTIME_API_URL` обязателен из-за rewrites), затем
+  `EditorWorkspace` Phase 4 (модуляризационный TSK) с гейтом editor e2e 4/4,
+  параллельно — Phase 1 контрактов (не заблокирована).
