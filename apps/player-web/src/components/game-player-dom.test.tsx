@@ -16,7 +16,6 @@ global.fetch = vi.fn();
 activateAntarcticaPlayer(playerPluginApi);
 
 const mockMetrics = {
-  score: 45,
   time: 10,
   pro: 20,
   rep: 30,
@@ -38,6 +37,37 @@ const mockContent: PlayerFacingContent = {
   mockups: [],
   content: {
     data: {
+      rules: {
+        dayLimit: 60
+      },
+      metrics: [
+        {
+          metricId: "time",
+          label: "Прошло дней",
+          kind: "state",
+          statePath: "public.metrics.time"
+        },
+        {
+          metricId: "remainingDays",
+          label: "Осталось дней",
+          kind: "computed",
+          computed: {
+            expression: {
+              "-": [
+                { var: "content.rules.dayLimit" },
+                { var: "public.metrics.time" }
+              ]
+            }
+          }
+        },
+        { metricId: "pro", label: "Знания", kind: "state", statePath: "public.metrics.pro" },
+        { metricId: "rep", label: "Доверие", kind: "state", statePath: "public.metrics.rep" },
+        { metricId: "lid", label: "Энергия", kind: "state", statePath: "public.metrics.lid" },
+        { metricId: "man", label: "Контроль", kind: "state", statePath: "public.metrics.man" },
+        { metricId: "stat", label: "Статус", kind: "state", statePath: "public.metrics.stat" },
+        { metricId: "cont", label: "Контакт", kind: "state", statePath: "public.metrics.cont" },
+        { metricId: "constr", label: "Конструктив", kind: "state", statePath: "public.metrics.constr" }
+      ],
       infos: [],
       boards: [],
       teamSelections: [],
@@ -124,22 +154,19 @@ const mockS1Ui: GamePlayerUiContent = {
             children: [
               {
                 type: "gameVariableComponent",
-                id: "score",
+                id: "remainingDays",
                 props: {
-                  caption: "Остаток дней",
-                  description: "Время",
+                  metricId: "remainingDays",
                   backgroundImage: "/images/left-sidebar/days.png",
-                  value: "{{game.state.public.metrics.score}}"
+                  layout: "prominent"
                 }
               },
               {
                 type: "gameVariableComponent",
                 id: "pro",
                 props: {
-                  caption: "Знания",
-                  description: "Опыт",
-                  backgroundImage: "/images/left-sidebar/znania.png",
-                  value: "{{game.state.public.metrics.pro}}"
+                  metricId: "pro",
+                  backgroundImage: "/images/left-sidebar/znania.png"
                 }
               }
             ]
@@ -524,7 +551,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
 
     // Wait for session to load and renderer to switch to S1
     await waitFor(() => {
-      expect(screen.getByText("Остаток дней")).toBeDefined();
+      expect(screen.getByText("Осталось дней")).toBeDefined();
     });
 
     // Check that top metrics are HIDDEN in S1 mode
@@ -584,7 +611,7 @@ describe("GamePlayer S1 DOM Rendering", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText("Остаток дней")).toBeDefined();
+      expect(screen.getByText("Осталось дней")).toBeDefined();
     });
 
     const leftsidebarScreen = document.querySelector(".leftsidebar-screen");
@@ -645,9 +672,9 @@ describe("GamePlayer S1 DOM Rendering", () => {
     );
 
     await waitFor(() => {
-      // Metric value for 'score' is 45 in mockMetrics
-      const scoreElements = screen.getAllByText("45");
-      expect(scoreElements.length).toBeGreaterThanOrEqual(1);
+      // remainingDays is computed from dayLimit 60 and time 10.
+      const remainingDayElements = screen.getAllByText("50");
+      expect(remainingDayElements.length).toBeGreaterThanOrEqual(1);
     });
 
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
@@ -1257,10 +1284,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
               children: [
                 {
                   type: "gameVariableComponent",
-                  id: "score",
+                  id: "remainingDays",
                   props: {
-                    caption: "Остаток дней",
-                    value: "{{game.state.public.metrics.score}}"
+                    metricId: "remainingDays"
                   }
                 }
               ]
@@ -1322,10 +1348,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
               children: [
                 {
                   type: "gameVariableComponent",
-                  id: "score",
+                  id: "remainingDays",
                   props: {
-                    caption: "Остаток дней",
-                    value: "{{game.state.public.metrics.score}}"
+                    metricId: "remainingDays"
                   }
                 }
               ]
@@ -1375,10 +1400,9 @@ describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
               children: [
                 {
                   type: "gameVariableComponent",
-                  id: "score",
+                  id: "remainingDays",
                   props: {
-                    caption: "Остаток дней",
-                    value: "{{game.state.public.metrics.score}}"
+                    metricId: "remainingDays"
                   }
                 }
               ]
@@ -1656,20 +1680,18 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
   const buildInfoMetrics = () => ([
     {
       type: "gameVariableComponent" as const,
-      id: "score",
+      id: "remainingDays",
       props: {
-        caption: "Остаток дней",
         backgroundImage: "/images/left-sidebar/days.png",
-        value: "{{game.state.public.metrics.score}}"
+        metricId: "remainingDays"
       }
     },
     {
       type: "gameVariableComponent" as const,
       id: "pro",
       props: {
-        caption: "Знания",
         backgroundImage: "/images/left-sidebar/znania.png",
-        value: "{{game.state.public.metrics.pro}}"
+        metricId: "pro"
       }
     }
   ]);

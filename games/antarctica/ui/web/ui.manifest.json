@@ -63,83 +63,67 @@
             "children": [
               {
                 "type": "gameVariableComponent",
-                "id": "score",
+                "id": "remainingDays",
                 "props": {
-                  "caption": "Остаток дней",
+                  "metricId": "remainingDays",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent",
-                  "description": "Оставшееся время в игре. Основной параметр."
+                  "layout": "prominent"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "pro",
                 "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}",
-                  "description": "Уровень знаний, который игрок может использовать для решения задач."
+                  "metricId": "pro",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "rep",
                 "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}",
-                  "description": "Уровень доверия команды и окружения к игроку."
+                  "metricId": "rep",
+                  "backgroundImage": "/images/top-sidebar/doverie.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "lid",
                 "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}",
-                  "description": "Ресурс на действия и принятие решений."
+                  "metricId": "lid",
+                  "backgroundImage": "/images/top-sidebar/energia.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "man",
                 "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}",
-                  "description": "Способность управлять ситуацией и направлением изменений."
+                  "metricId": "man",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "stat",
                 "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}",
-                  "description": "Положение игрока в системе и степень влияния."
+                  "metricId": "stat",
+                  "backgroundImage": "/images/top-sidebar/status.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "cont",
                 "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}",
-                  "description": "Доступность связей и поддержки вокруг игрока."
+                  "metricId": "cont",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "constr",
                 "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}",
-                  "description": "Нацеленность на результат без пустых конфликтов."
+                  "metricId": "constr",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png"
                 }
               },
               {
@@ -329,76 +313,67 @@
             "children": [
               {
                 "type": "gameVariableComponent",
-                "id": "score",
+                "id": "remainingDays",
                 "props": {
-                  "caption": "Остаток дней",
+                  "metricId": "remainingDays",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent",
-                  "description": "Оставшееся время в игре."
+                  "layout": "prominent"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "pro",
                 "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
+                  "metricId": "pro",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "rep",
                 "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
+                  "metricId": "rep",
+                  "backgroundImage": "/images/top-sidebar/doverie.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "lid",
                 "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
+                  "metricId": "lid",
+                  "backgroundImage": "/images/top-sidebar/energia.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "man",
                 "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
+                  "metricId": "man",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "stat",
                 "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
+                  "metricId": "stat",
+                  "backgroundImage": "/images/top-sidebar/status.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "cont",
                 "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
+                  "metricId": "cont",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "constr",
                 "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
+                  "metricId": "constr",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png"
                 }
               },
               {
@@ -562,76 +537,67 @@
             "children": [
               {
                 "type": "gameVariableComponent",
-                "id": "score",
+                "id": "remainingDays",
                 "props": {
-                  "caption": "Остаток дней",
+                  "metricId": "remainingDays",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent",
-                  "description": "Оставшееся время в игре."
+                  "layout": "prominent"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "pro",
                 "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}"
+                  "metricId": "pro",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "rep",
                 "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
+                  "metricId": "rep",
+                  "backgroundImage": "/images/top-sidebar/doverie.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "lid",
                 "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
+                  "metricId": "lid",
+                  "backgroundImage": "/images/top-sidebar/energia.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "man",
                 "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
+                  "metricId": "man",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "stat",
                 "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
+                  "metricId": "stat",
+                  "backgroundImage": "/images/top-sidebar/status.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "cont",
                 "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
+                  "metricId": "cont",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "constr",
                 "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
+                  "metricId": "constr",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png"
                 }
               },
               {
@@ -798,12 +764,10 @@
             "children": [
               {
                 "type": "gameVariableComponent",
-                "id": "score",
+                "id": "remainingDays",
                 "props": {
-                  "caption": "Остаток дней",
-                  "description": "Оставшееся время в игре. Основной параметр.",
+                  "metricId": "remainingDays",
                   "backgroundImage": "/images/left-sidebar/days.png",
-                  "value": "{{game.state.public.metrics.score}}",
                   "layout": "prominent"
                 }
               },
@@ -811,70 +775,56 @@
                 "type": "gameVariableComponent",
                 "id": "pro",
                 "props": {
-                  "caption": "Знания",
-                  "description": "Уровень знаний, который игрок может использовать для решения задач.",
-                  "backgroundImage": "/images/left-sidebar/znania.png",
-                  "value": "{{game.state.public.metrics.pro}}"
+                  "metricId": "pro",
+                  "backgroundImage": "/images/left-sidebar/znania.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "rep",
                 "props": {
-                  "caption": "Доверие",
-                  "description": "Уровень доверия команды и окружения к игроку.",
-                  "backgroundImage": "/images/left-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}"
+                  "metricId": "rep",
+                  "backgroundImage": "/images/left-sidebar/doverie.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "lid",
                 "props": {
-                  "caption": "Энергия",
-                  "description": "Ресурс на действия и принятие решений.",
-                  "backgroundImage": "/images/left-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}"
+                  "metricId": "lid",
+                  "backgroundImage": "/images/left-sidebar/energia.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "man",
                 "props": {
-                  "caption": "Контроль",
-                  "description": "Способность управлять ситуацией и направлением изменений.",
-                  "backgroundImage": "/images/left-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}"
+                  "metricId": "man",
+                  "backgroundImage": "/images/left-sidebar/kontrol.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "stat",
                 "props": {
-                  "caption": "Статус",
-                  "description": "Положение игрока в системе и степень влияния.",
-                  "backgroundImage": "/images/left-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}"
+                  "metricId": "stat",
+                  "backgroundImage": "/images/left-sidebar/status.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "cont",
                 "props": {
-                  "caption": "Контакт",
-                  "description": "Доступность связей и поддержки вокруг игрока.",
-                  "backgroundImage": "/images/left-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}"
+                  "metricId": "cont",
+                  "backgroundImage": "/images/left-sidebar/kontakt.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "constr",
                 "props": {
-                  "caption": "Конструктив",
-                  "description": "Нацеленность на результат без пустых конфликтов.",
-                  "backgroundImage": "/images/left-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}"
+                  "metricId": "constr",
+                  "backgroundImage": "/images/left-sidebar/konstruktiv.png"
                 }
               },
               {
@@ -1263,83 +1213,67 @@
             "children": [
               {
                 "type": "gameVariableComponent",
-                "id": "score",
+                "id": "remainingDays",
                 "props": {
-                  "caption": "Остаток дней",
+                  "metricId": "remainingDays",
                   "backgroundImage": "/images/top-sidebar/days-top.png",
-                  "value": "{{game.state.public.metrics.score}}",
-                  "layout": "prominent",
-                  "description": "Оставшееся время в игре. Основной параметр."
+                  "layout": "prominent"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "pro",
                 "props": {
-                  "caption": "Знания",
-                  "backgroundImage": "/images/top-sidebar/znaniya.png",
-                  "value": "{{game.state.public.metrics.pro}}",
-                  "description": "Уровень знаний, который игрок может использовать для решения задач."
+                  "metricId": "pro",
+                  "backgroundImage": "/images/top-sidebar/znaniya.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "rep",
                 "props": {
-                  "caption": "Доверие",
-                  "backgroundImage": "/images/top-sidebar/doverie.png",
-                  "value": "{{game.state.public.metrics.rep}}",
-                  "description": "Уровень доверия команды и окружения к игроку."
+                  "metricId": "rep",
+                  "backgroundImage": "/images/top-sidebar/doverie.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "lid",
                 "props": {
-                  "caption": "Энергия",
-                  "backgroundImage": "/images/top-sidebar/energia.png",
-                  "value": "{{game.state.public.metrics.lid}}",
-                  "description": "Ресурс на действия и принятие решений."
+                  "metricId": "lid",
+                  "backgroundImage": "/images/top-sidebar/energia.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "man",
                 "props": {
-                  "caption": "Контроль",
-                  "backgroundImage": "/images/top-sidebar/kontrol.png",
-                  "value": "{{game.state.public.metrics.man}}",
-                  "description": "Способность управлять ситуацией и направлением изменений."
+                  "metricId": "man",
+                  "backgroundImage": "/images/top-sidebar/kontrol.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "stat",
                 "props": {
-                  "caption": "Статус",
-                  "backgroundImage": "/images/top-sidebar/status.png",
-                  "value": "{{game.state.public.metrics.stat}}",
-                  "description": "Положение игрока в системе и степень влияния."
+                  "metricId": "stat",
+                  "backgroundImage": "/images/top-sidebar/status.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "cont",
                 "props": {
-                  "caption": "Контакт",
-                  "backgroundImage": "/images/top-sidebar/kontakt.png",
-                  "value": "{{game.state.public.metrics.cont}}",
-                  "description": "Доступность связей и поддержки вокруг игрока."
+                  "metricId": "cont",
+                  "backgroundImage": "/images/top-sidebar/kontakt.png"
                 }
               },
               {
                 "type": "gameVariableComponent",
                 "id": "constr",
                 "props": {
-                  "caption": "Конструктив",
-                  "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-                  "value": "{{game.state.public.metrics.constr}}",
-                  "description": "Нацеленность на результат без пустых конфликтов."
+                  "metricId": "constr",
+                  "backgroundImage": "/images/top-sidebar/konstruktiv.png"
                 }
               }
             ]
@@ -1451,106 +1385,6 @@
       }
     }
   },
-  "metric_specs": [
-    {
-      "id": "time",
-      "caption": "Остаток дней",
-      "aliases": [
-        "days"
-      ],
-      "value": "{{game.state.public.metrics.time}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/days.png",
-        "topbar": "/images/top-sidebar/days.png"
-      },
-      "layout": "prominent"
-    },
-    {
-      "id": "score",
-      "caption": "Баллы",
-      "aliases": [
-        "points"
-      ],
-      "value": "{{game.state.public.metrics.score}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/score.png",
-        "topbar": "/images/top-sidebar/score.png"
-      },
-      "layout": "prominent"
-    },
-    {
-      "id": "pro",
-      "caption": "Знания",
-      "aliases": [
-        "knowledge"
-      ],
-      "value": "{{game.state.public.metrics.pro}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/pro.png",
-        "topbar": "/images/top-sidebar/pro.png"
-      }
-    },
-    {
-      "id": "rep",
-      "caption": "Доверие",
-      "aliases": [
-        "reputation"
-      ],
-      "value": "{{game.state.public.metrics.rep}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/rep.png",
-        "topbar": "/images/top-sidebar/rep.png"
-      }
-    },
-    {
-      "id": "lid",
-      "caption": "Энергия",
-      "aliases": [
-        "energy"
-      ],
-      "value": "{{game.state.public.metrics.lid}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/lid.png",
-        "topbar": "/images/top-sidebar/lid.png"
-      }
-    },
-    {
-      "id": "money",
-      "caption": "Бюджет",
-      "aliases": [
-        "budget"
-      ],
-      "value": "{{game.state.public.metrics.money}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/money.png",
-        "topbar": "/images/top-sidebar/money.png"
-      }
-    },
-    {
-      "id": "team",
-      "caption": "Команда",
-      "aliases": [
-        "teamScore"
-      ],
-      "value": "{{game.state.public.metrics.team}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/team.png",
-        "topbar": "/images/top-sidebar/team.png"
-      }
-    },
-    {
-      "id": "climate",
-      "caption": "Климат",
-      "aliases": [
-        "climate"
-      ],
-      "value": "{{game.state.public.metrics.climate}}",
-      "images": {
-        "sidebar": "/images/left-sidebar/climate.png",
-        "topbar": "/images/top-sidebar/climate.png"
-      }
-    }
-  ],
   "screen_routing": [
     {
       "screenKey": "board-topbar",

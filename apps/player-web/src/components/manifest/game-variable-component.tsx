@@ -1,7 +1,8 @@
 import type { CSSProperties } from "react";
 import type {
   GameUiComponent,
-  GameUiGameVariableComponentProps
+  GameUiGameVariableComponentProps,
+  GameMetricView
 } from "@cubica/contracts-manifest";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { resolveMetricBinding } from "@/lib/metric-resolvers";
@@ -12,12 +13,13 @@ import type { PreviewElementAttributes } from "./preview-metadata";
  * Renders gameVariableComponent (metric display in sidebar or topbar).
  *
  * The `layout` prop on component.props controls visual treatment:
- * - "prominent": larger display with fixed dimensions (for primary score metrics)
+ * - "prominent": larger display with fixed dimensions (for primary metrics)
  * - "default" or undefined: standard metric display
  */
 export function GameVariableComponent({
   component,
   metrics,
+  gameState,
   backgroundImage,
   layoutMode,
   metricBackgroundImages,
@@ -25,14 +27,21 @@ export function GameVariableComponent({
 }: {
   component: GameUiComponent<GameUiGameVariableComponentProps>;
   metrics: MetricsSnapshot;
+  gameState?: Record<string, unknown>;
   backgroundImage?: string;
   layoutMode?: "leftsidebar" | "topbar";
   metricBackgroundImages?: Record<string, string>;
   previewAttributes?: PreviewElementAttributes;
 }) {
-  const { caption, description, value } = component.props;
-  const resolvedValue = resolveMetricBinding(value, metrics);
-  const id = (component as GameUiComponent).id;
+  const { value } = component.props;
+  const metricId = component.props.metricId ?? (component as GameUiComponent).id;
+  const metricView = resolveMetricView(gameState, metricId);
+  const resolvedValue = value
+    ? resolveMetricBinding(value, metrics)
+    : metricView?.formattedValue ?? formatMetricValue(metricId ? metrics[metricId] : undefined);
+  const id = (component as GameUiComponent).id ?? metricId;
+  const caption = metricView?.label ?? component.props.caption ?? metricId ?? "";
+  const description = metricView?.description ?? component.props.description;
   const resolvedBackgroundImage = resolveMetricBackgroundImage(id, backgroundImage, layoutMode, metricBackgroundImages);
   const isProminent = component.props.layout === "prominent";
 
@@ -110,4 +119,33 @@ export function GameVariableComponent({
       </div>
     </div>
   );
+}
+
+function resolveMetricView(
+  gameState: Record<string, unknown> | undefined,
+  metricId: string | undefined
+): GameMetricView | undefined {
+  if (!gameState || !metricId) {
+    return undefined;
+  }
+
+  const metricViews = gameState.metricViews;
+  if (!metricViews || typeof metricViews !== "object" || Array.isArray(metricViews)) {
+    return undefined;
+  }
+
+  const metricView = (metricViews as Record<string, unknown>)[metricId];
+  return metricView && typeof metricView === "object" && !Array.isArray(metricView)
+    ? metricView as GameMetricView
+    : undefined;
+}
+
+function formatMetricValue(value: unknown): string {
+  if (value === null || value === undefined) {
+    return "—";
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
 }

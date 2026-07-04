@@ -25,5 +25,13 @@
   "TSK-20260612-element-authoring-prompt-contract.md": "План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.",
   "TSK-20260613-authoring-prototype-extraction-and-promotion.md": "Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow.",
   "TSK-20260613-runtime-api-openapi-contract.md": "Исполнительный план применения API First к текущему runtime-api: current OpenAPI-контракт, drift checks и классификация будущих service specs.",
-  "TSK-20260616-antarctica-ui-authoring-prototype-migration.md": "Исполнительный план миграции web UI authoring-манифеста Antarctica на локальные game-level UI-прототипы по ADR-050 без runtime UI diff."
+  "TSK-20260616-antarctica-metric-projection-boundary-migration.md": "Исполнительный план миграции Antarctica по ADR-054: game-owned словарь метрик, computed remainingDays и очистка score alias.",
+  "TSK-20260616-antarctica-ui-authoring-prototype-migration.md": "Исполнительный план миграции web UI authoring-манифеста Antarctica на локальные game-level UI-прототипы по ADR-050 без runtime UI diff.",
+  "TSK-20260616-editor-entity-projection-in-memory.md": "Исполнительный план первого среза ADR-052: in-memory EditorEntityProjection без persisted editor.entities.json, с projection builder, lenses, field labels and read-only editor-web integration.",
+  "TSK-20260630-review-remediation-correctness.md": "Исполнительный план P0-исправлений корректности из полного ревью 2026-06-27: undo вставки в массив, залипающий screenKey, 400 на сессии без gameId, честная readiness, тесты контрактов.",
+  "TSK-20260630-player-web-renderer-purity.md": "Исполнительный план ADR-055: декларативная привязка действий/навигации в UI-манифесте и снятие game-specific логики из generic-рендерера player-web.",
+  "TSK-20260630-manifest-contract-parity.md": "Исполнительный план ADR-056: генерация TS-контрактов из JSON Schema, CI drift check, контрактные тесты и устранение дрейфа overrides.",
+  "TSK-20260630-editor-engine-modularization.md": "Исполнительный план разбиения переросшего editor-engine и EditorWorkspace и перевода role inference на schema-driven без изменения поведения.",
+  "TSK-20260630-codebase-cleanup-and-workspace-status.md": "Исполнительный план удаления мёртвого кода player-web, унификации дублей и JsonLogic и решения статуса SDK/react-sdk и session-половины SDK/core.",
+  "TSK-20260630-runtime-guard-reconciliation.md": "Исполнительный план согласования legacy semantic guards с дженерик-guard-ами ADR-041 и очистки платформенной схемы от game-specific guard-форм."
 }

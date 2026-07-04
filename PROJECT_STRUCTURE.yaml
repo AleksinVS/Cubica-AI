@@ -31,6 +31,11 @@ docs: # Архитектура, задачи, планирование
       049-dynamic-element-prompt-projection-and-sync-strategy.md: file # ADR-049: принятая стратегия dynamic element prompts: static residue в _prompt, YAML projection из JSON-узла, field dictionary, Markdown refs и diagnostic-first sync.
       050-authoring-prototype-extraction-and-promotion.md: file # ADR-050: принятый механизм локального извлечения authoring-прототипов, ручного повышения в платформенный каталог и AI-assisted prototype designer.
       051-api-first-contract-for-modular-monolith.md: file # ADR-051: применение API First к текущему модульному монолиту через current OpenAPI-контракт runtime-api и future extraction references для целевых сервисов.
+      052-editor-entity-projection-sidecar.md: file # ADR-052: принятое решение об in-memory EditorEntityProjection как project-level индексе редактора с optional hints-only sidecar позднее.
+      053-game-defined-ui-panels.md: file # ADR-053: game-defined UI panels, где UI-only поведение и панели (журнал, подсказка) описываются в UI-манифесте, а не в логическом game-манифесте.
+      054-game-ui-manifest-boundary-and-metric-projection.md: file # ADR-054: граница game/UI манифестов и player-facing проекция метрик; game-манифест владеет смыслом, ui-манифест - presentation, Presenter - projection.
+      055-player-renderer-purity-and-declarative-ui-action-binding.md: file # ADR-055: чистота generic-рендерера player-web и декларативная привязка действий/навигации в UI-манифесте вместо хардкода id кнопок, CSS-классов и подписей игры.
+      056-manifest-contract-schema-parity-and-testing.md: file # ADR-056: парность manifest-контрактов и JSON Schema через генерацию TS из схемы, CI drift check и контрактные тесты вместо ручной синхронизации.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
@@ -78,7 +83,15 @@ docs: # Архитектура, задачи, планирование
       TSK-20260612-element-authoring-prompt-contract.md: file # План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.
       TSK-20260613-authoring-prototype-extraction-and-promotion.md: file # Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow.
       TSK-20260613-runtime-api-openapi-contract.md: file # Исполнительный план применения API First к текущему runtime-api: current OpenAPI-контракт, drift checks и классификация будущих service specs.
+      TSK-20260616-antarctica-metric-projection-boundary-migration.md: file # Исполнительный план миграции Antarctica по ADR-054: game-owned словарь метрик, computed remainingDays и очистка score alias.
       TSK-20260616-antarctica-ui-authoring-prototype-migration.md: file # Исполнительный план миграции web UI authoring-манифеста Antarctica на локальные game-level UI-прототипы по ADR-050 без runtime UI diff.
+      TSK-20260616-editor-entity-projection-in-memory.md: file # Исполнительный план первого среза ADR-052: in-memory EditorEntityProjection без persisted editor.entities.json, с projection builder, lenses, field labels and read-only editor-web integration.
+      TSK-20260630-codebase-cleanup-and-workspace-status.md: file # Исполнительный план удаления мёртвого кода player-web, унификации дублей и JsonLogic и решения статуса SDK/react-sdk и session-половины SDK/core.
+      TSK-20260630-editor-engine-modularization.md: file # Исполнительный план разбиения переросшего editor-engine и EditorWorkspace и перевода role inference на schema-driven без изменения поведения.
+      TSK-20260630-manifest-contract-parity.md: file # Исполнительный план ADR-056: генерация TS-контрактов из JSON Schema, CI drift check, контрактные тесты и устранение дрейфа overrides.
+      TSK-20260630-player-web-renderer-purity.md: file # Исполнительный план ADR-055: декларативная привязка действий/навигации в UI-манифесте и снятие game-specific логики из generic-рендерера player-web.
+      TSK-20260630-review-remediation-correctness.md: file # Исполнительный план P0-исправлений корректности из полного ревью 2026-06-27: undo вставки в массив, залипающий screenKey, 400 на сессии без gameId, честная readiness, тесты контрактов.
+      TSK-20260630-runtime-guard-reconciliation.md: file # Исполнительный план согласования legacy semantic guards с дженерик-guard-ами ADR-041 и очистки платформенной схемы от game-specific guard-форм.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.

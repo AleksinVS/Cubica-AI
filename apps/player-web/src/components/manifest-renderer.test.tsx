@@ -132,6 +132,54 @@ describe("ManifestRenderer", () => {
     expect(screen.getByText("Score")).toBeDefined();
   });
 
+  it("renders metricId components from game-owned metricViews", () => {
+    const screenWithMetricId: GamePlayerS1UiContent["screen"] = {
+      ...mockScreenDefinition,
+      root: {
+        type: "screenComponent",
+        props: { cssClass: "topbar-screen-shell" },
+        children: [
+          {
+            type: "areaComponent",
+            props: { cssClass: "topbar-metrics" },
+            children: [
+              {
+                type: "gameVariableComponent",
+                id: "remainingDays",
+                props: {
+                  metricId: "remainingDays"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    render(
+      <ManifestRenderer
+        screenDefinition={screenWithMetricId}
+        metrics={{ remainingDays: 50 }}
+        onAction={mockOnAction}
+        layoutMode="topbar"
+        gameState={{
+          metricViews: {
+            remainingDays: {
+              metricId: "remainingDays",
+              label: "Осталось дней",
+              value: 50,
+              formattedValue: "50",
+              kind: "computed"
+            }
+          }
+        }}
+      />
+    );
+
+    expect(screen.getByText("50")).toBeDefined();
+    expect(screen.getByText("Осталось дней")).toBeDefined();
+  });
+
   it("renders cards with correct text", () => {
     render(
       <ManifestRenderer

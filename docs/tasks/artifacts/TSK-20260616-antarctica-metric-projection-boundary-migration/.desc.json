@@ -1,0 +1,3 @@
+{
+  "description": "Artifacts for the Antarctica migration that moves metric meaning into the game manifest and exposes computed remainingDays through player-facing projection."
+}

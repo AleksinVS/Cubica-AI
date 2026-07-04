@@ -8,5 +8,10 @@
   "048-element-authoring-prompt-contract.md": "ADR-048: принятый контракт элементного authoring-промта для хранения подтвержденных промтов на экземплярах и шаблонов промта на прототипах.",
   "049-dynamic-element-prompt-projection-and-sync-strategy.md": "ADR-049: принятая стратегия dynamic element prompts: static residue в _prompt, YAML projection из JSON-узла, field dictionary, Markdown refs и diagnostic-first sync.",
   "050-authoring-prototype-extraction-and-promotion.md": "ADR-050: принятый механизм локального извлечения authoring-прототипов, ручного повышения в платформенный каталог и AI-assisted prototype designer.",
-  "051-api-first-contract-for-modular-monolith.md": "ADR-051: применение API First к текущему модульному монолиту через current OpenAPI-контракт runtime-api и future extraction references для целевых сервисов."
+  "051-api-first-contract-for-modular-monolith.md": "ADR-051: применение API First к текущему модульному монолиту через current OpenAPI-контракт runtime-api и future extraction references для целевых сервисов.",
+  "052-editor-entity-projection-sidecar.md": "ADR-052: принятое решение об in-memory EditorEntityProjection как project-level индексе редактора с optional hints-only sidecar позднее.",
+  "053-game-defined-ui-panels.md": "ADR-053: game-defined UI panels, где UI-only поведение и панели (журнал, подсказка) описываются в UI-манифесте, а не в логическом game-манифесте.",
+  "054-game-ui-manifest-boundary-and-metric-projection.md": "ADR-054: граница game/UI манифестов и player-facing проекция метрик; game-манифест владеет смыслом, ui-манифест - presentation, Presenter - projection.",
+  "055-player-renderer-purity-and-declarative-ui-action-binding.md": "ADR-055: чистота generic-рендерера player-web и декларативная привязка действий/навигации в UI-манифесте вместо хардкода id кнопок, CSS-классов и подписей игры.",
+  "056-manifest-contract-schema-parity-and-testing.md": "ADR-056: парность manifest-контрактов и JSON Schema через генерацию TS из схемы, CI drift check и контрактные тесты вместо ручной синхронизации."
 }

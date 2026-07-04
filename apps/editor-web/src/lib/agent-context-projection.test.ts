@@ -77,6 +77,84 @@ describe("editor agent context projection", () => {
     expect(projection.limits.truncated).toBe(true);
   });
 
+  it("projects selected editor entities as source pointers for AI context", () => {
+    const projection = buildEditorAgentContextProjection({
+      gameId: "demo",
+      activeFilePath: "game.authoring.json",
+      document: {
+        root: {
+          logic: {
+            flows: [
+              {
+                steps: [
+                  {
+                    id: "main.start",
+                    body: "This body is not selected and must not leak through entity metadata."
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      selectedPointers: [],
+      selectedEditorEntities: [
+        {
+          entityId: "game-step:main.start",
+          kind: "game-step",
+          label: "Start step",
+          primarySource: {
+            filePath: "game.authoring.json",
+            pointer: "/root/logic/flows/0/steps/0",
+            documentKind: "game",
+            role: "step"
+          },
+          facets: {
+            view: [
+              {
+                filePath: "ui/web.authoring.json",
+                pointer: "/root/screens/0",
+                documentKind: "ui",
+                channel: "web",
+                role: "screen",
+                label: "Intro screen"
+              }
+            ]
+          },
+          diagnostics: []
+        }
+      ],
+      diagnostics: []
+    });
+
+    expect(projection.selectedEditorEntities).toEqual([
+      {
+        entityId: "game-step:main.start",
+        kind: "game-step",
+        label: "Start step",
+        primarySource: {
+          filePath: "game.authoring.json",
+          pointer: "/root/logic/flows/0/steps/0",
+          documentKind: "game",
+          role: "step"
+        },
+        facets: {
+          view: [
+            {
+              filePath: "ui/web.authoring.json",
+              pointer: "/root/screens/0",
+              documentKind: "ui",
+              channel: "web",
+              role: "screen",
+              label: "Intro screen"
+            }
+          ]
+        }
+      }
+    ]);
+    expect(JSON.stringify(projection)).not.toContain("This body is not selected");
+  });
+
   it("recognizes forbidden context paths", () => {
     expect(isForbiddenAgentContextPath("/root/state/secret")).toBe(true);
     expect(isForbiddenAgentContextPath("/root/public/title")).toBe(false);

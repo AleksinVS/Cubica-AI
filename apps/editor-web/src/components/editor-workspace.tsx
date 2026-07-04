@@ -686,6 +686,17 @@ export function EditorWorkspace() {
       ),
     [previewEntities, previewPromptContext?.entities, selectedPreviewEntityId]
   );
+  const agentSelectedEditorEntities = useMemo(() => {
+    const entitiesById = new Map<string, (typeof viewModel.editorEntityProjection.entities)[number]>();
+    for (const pointer of agentSelectedPointers) {
+      const sourceKey = `${currentDocument.filePath}#${pointer}`;
+      for (const entity of viewModel.editorEntityProjection.entitiesBySourcePointer.get(sourceKey) ?? []) {
+        entitiesById.set(entity.entityId, entity);
+      }
+    }
+
+    return [...entitiesById.values()];
+  }, [agentSelectedPointers, currentDocument.filePath, viewModel.editorEntityProjection.entities, viewModel.editorEntityProjection.entitiesBySourcePointer]);
   const editorAgentContext = useMemo(
     () =>
       buildEditorAgentContextProjection({
@@ -696,6 +707,7 @@ export function EditorWorkspace() {
         document: viewModel.snapshot.json,
         selectedPointers: agentSelectedPointers,
         selectedPreviewEntities: agentSelectedPreviewEntities,
+        selectedEditorEntities: agentSelectedEditorEntities,
         diagnostics: viewModel.documentDiagnostics,
         previewTraceSummary:
           previewTrace.events.length === 0
@@ -710,6 +722,7 @@ export function EditorWorkspace() {
     [
       agentSelectedPointers,
       agentSelectedPreviewEntities,
+      agentSelectedEditorEntities,
       currentDocument.filePath,
       currentDocument.gameId,
       currentDocument.versionHash,

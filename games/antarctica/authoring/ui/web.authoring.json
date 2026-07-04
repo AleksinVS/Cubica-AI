@@ -95,28 +95,27 @@
     },
     "ui.AntarcticaTopbarMetricBadge": {
       "_label": "Метрика верхней панели Antarctica",
-      "_semantics": "Базовый локальный UI-прототип метрики верхней панели Antarctica; конкретная метрика наследует id, caption, image и value.",
+      "_semantics": "Базовый локальный UI-прототип метрики верхней панели Antarctica; конкретная метрика наследует id, metricId и изображение.",
       "_promptTemplate": {
-        "raw": "Создай бейдж метрики верхней панели Antarctica; конкретная метрика задает id, подпись, изображение и binding значения.",
+        "raw": "Создай бейдж метрики верхней панели Antarctica; конкретная метрика задает id, metricId и изображение.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaTopbarMetricBadge"
       },
       "type": "gameVariableComponent"
     },
-    "ui.AntarcticaTopbarScoreMetric": {
+    "ui.AntarcticaTopbarRemainingDaysMetric": {
       "_extends": "ui.AntarcticaTopbarMetricBadge",
-      "_label": "Метрика остатка дней Antarctica",
-      "_semantics": "Локальный прототип topbar-метрики остатка дней Antarctica.",
+      "_label": "Topbar-метрика remainingDays Antarctica",
+      "_semantics": "Локальный UI-прототип topbar-метрики remainingDays; игровой смысл берется из game metric catalog.",
       "_promptTemplate": {
-        "raw": "Создай topbar-метрику остатка дней Antarctica с prominent layout.",
+        "raw": "Создай topbar-метрику remainingDays Antarctica с prominent layout.",
         "language": "ru",
-        "appliesTo": "ui.AntarcticaTopbarScoreMetric"
+        "appliesTo": "ui.AntarcticaTopbarRemainingDaysMetric"
       },
-      "id": "score",
+      "id": "remainingDays",
       "props": {
-        "caption": "Остаток дней",
+        "metricId": "remainingDays",
         "backgroundImage": "/images/top-sidebar/days-top.png",
-        "value": "{{game.state.public.metrics.score}}",
         "layout": "prominent"
       }
     },
@@ -131,9 +130,8 @@
       },
       "id": "pro",
       "props": {
-        "caption": "Знания",
-        "backgroundImage": "/images/top-sidebar/znaniya.png",
-        "value": "{{game.state.public.metrics.pro}}"
+        "metricId": "pro",
+        "backgroundImage": "/images/top-sidebar/znaniya.png"
       }
     },
     "ui.AntarcticaTopbarRepMetric": {
@@ -147,9 +145,8 @@
       },
       "id": "rep",
       "props": {
-        "caption": "Доверие",
-        "backgroundImage": "/images/top-sidebar/doverie.png",
-        "value": "{{game.state.public.metrics.rep}}"
+        "metricId": "rep",
+        "backgroundImage": "/images/top-sidebar/doverie.png"
       }
     },
     "ui.AntarcticaTopbarLidMetric": {
@@ -163,9 +160,8 @@
       },
       "id": "lid",
       "props": {
-        "caption": "Энергия",
-        "backgroundImage": "/images/top-sidebar/energia.png",
-        "value": "{{game.state.public.metrics.lid}}"
+        "metricId": "lid",
+        "backgroundImage": "/images/top-sidebar/energia.png"
       }
     },
     "ui.AntarcticaTopbarManMetric": {
@@ -179,9 +175,8 @@
       },
       "id": "man",
       "props": {
-        "caption": "Контроль",
-        "backgroundImage": "/images/top-sidebar/kontrol.png",
-        "value": "{{game.state.public.metrics.man}}"
+        "metricId": "man",
+        "backgroundImage": "/images/top-sidebar/kontrol.png"
       }
     },
     "ui.AntarcticaTopbarStatMetric": {
@@ -195,9 +190,8 @@
       },
       "id": "stat",
       "props": {
-        "caption": "Статус",
-        "backgroundImage": "/images/top-sidebar/status.png",
-        "value": "{{game.state.public.metrics.stat}}"
+        "metricId": "stat",
+        "backgroundImage": "/images/top-sidebar/status.png"
       }
     },
     "ui.AntarcticaTopbarContMetric": {
@@ -211,9 +205,8 @@
       },
       "id": "cont",
       "props": {
-        "caption": "Контакт",
-        "backgroundImage": "/images/top-sidebar/kontakt.png",
-        "value": "{{game.state.public.metrics.cont}}"
+        "metricId": "cont",
+        "backgroundImage": "/images/top-sidebar/kontakt.png"
       }
     },
     "ui.AntarcticaTopbarConstrMetric": {
@@ -227,9 +220,8 @@
       },
       "id": "constr",
       "props": {
-        "caption": "Конструктив",
-        "backgroundImage": "/images/top-sidebar/konstruktiv.png",
-        "value": "{{game.state.public.metrics.constr}}"
+        "metricId": "constr",
+        "backgroundImage": "/images/top-sidebar/konstruktiv.png"
       }
     },
     "ui.AntarcticaScreenRoot": {
@@ -437,75 +429,51 @@
               },
               "children": [
                 {
-                  "_type": "ui.AntarcticaTopbarScoreMetric",
+                  "_type": "ui.AntarcticaTopbarRemainingDaysMetric",
                   "_label": "Остаток дней",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Оставшееся время в игре. Основной параметр."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarProMetric",
                   "_label": "Знания",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Уровень знаний, который игрок может использовать для решения задач."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarRepMetric",
                   "_label": "Доверие",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Уровень доверия команды и окружения к игроку."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarLidMetric",
                   "_label": "Энергия",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Ресурс на действия и принятие решений."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarManMetric",
                   "_label": "Контроль",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Способность управлять ситуацией и направлением изменений."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarStatMetric",
                   "_label": "Статус",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Положение игрока в системе и степень влияния."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarContMetric",
                   "_label": "Контакт",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Доступность связей и поддержки вокруг игрока."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
                   "_type": "ui.AntarcticaTopbarConstrMetric",
                   "_label": "Конструктив",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Нацеленность на результат без пустых конфликтов."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
@@ -647,12 +615,9 @@
               },
               "children": [
                 {
-                  "_type": "ui.AntarcticaTopbarScoreMetric",
+                  "_type": "ui.AntarcticaTopbarRemainingDaysMetric",
                   "_label": "Остаток дней",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Оставшееся время в игре."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
@@ -827,12 +792,9 @@
               },
               "children": [
                 {
-                  "_type": "ui.AntarcticaTopbarScoreMetric",
+                  "_type": "ui.AntarcticaTopbarRemainingDaysMetric",
                   "_label": "Остаток дней",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
-                  "props": {
-                    "description": "Оставшееся время в игре."
-                  },
                   "type": "gameVariableComponent"
                 },
                 {
@@ -1087,15 +1049,13 @@
               "children": [
                 {
                   "_type": "ui.Component",
-                  "_label": "Остаток дней",
+                  "_label": "Left-sidebar metric remainingDays",
                   "_semantics": "UI-компонент типа gameVariableComponent.",
                   "type": "gameVariableComponent",
-                  "id": "score",
+                  "id": "remainingDays",
                   "props": {
-                    "caption": "Остаток дней",
-                    "description": "Оставшееся время в игре. Основной параметр.",
+                    "metricId": "remainingDays",
                     "backgroundImage": "/images/left-sidebar/days.png",
-                    "value": "{{game.state.public.metrics.score}}",
                     "layout": "prominent"
                   }
                 },
@@ -1106,10 +1066,8 @@
                   "type": "gameVariableComponent",
                   "id": "pro",
                   "props": {
-                    "caption": "Знания",
-                    "description": "Уровень знаний, который игрок может использовать для решения задач.",
-                    "backgroundImage": "/images/left-sidebar/znania.png",
-                    "value": "{{game.state.public.metrics.pro}}"
+                    "metricId": "pro",
+                    "backgroundImage": "/images/left-sidebar/znania.png"
                   }
                 },
                 {
@@ -1119,10 +1077,8 @@
                   "type": "gameVariableComponent",
                   "id": "rep",
                   "props": {
-                    "caption": "Доверие",
-                    "description": "Уровень доверия команды и окружения к игроку.",
-                    "backgroundImage": "/images/left-sidebar/doverie.png",
-                    "value": "{{game.state.public.metrics.rep}}"
+                    "metricId": "rep",
+                    "backgroundImage": "/images/left-sidebar/doverie.png"
                   }
                 },
                 {
@@ -1132,10 +1088,8 @@
                   "type": "gameVariableComponent",
                   "id": "lid",
                   "props": {
-                    "caption": "Энергия",
-                    "description": "Ресурс на действия и принятие решений.",
-                    "backgroundImage": "/images/left-sidebar/energia.png",
-                    "value": "{{game.state.public.metrics.lid}}"
+                    "metricId": "lid",
+                    "backgroundImage": "/images/left-sidebar/energia.png"
                   }
                 },
                 {
@@ -1145,10 +1099,8 @@
                   "type": "gameVariableComponent",
                   "id": "man",
                   "props": {
-                    "caption": "Контроль",
-                    "description": "Способность управлять ситуацией и направлением изменений.",
-                    "backgroundImage": "/images/left-sidebar/kontrol.png",
-                    "value": "{{game.state.public.metrics.man}}"
+                    "metricId": "man",
+                    "backgroundImage": "/images/left-sidebar/kontrol.png"
                   }
                 },
                 {
@@ -1158,10 +1110,8 @@
                   "type": "gameVariableComponent",
                   "id": "stat",
                   "props": {
-                    "caption": "Статус",
-                    "description": "Положение игрока в системе и степень влияния.",
-                    "backgroundImage": "/images/left-sidebar/status.png",
-                    "value": "{{game.state.public.metrics.stat}}"
+                    "metricId": "stat",
+                    "backgroundImage": "/images/left-sidebar/status.png"
                   }
                 },
                 {
@@ -1171,10 +1121,8 @@
                   "type": "gameVariableComponent",
                   "id": "cont",
                   "props": {
-                    "caption": "Контакт",
-                    "description": "Доступность связей и поддержки вокруг игрока.",
-                    "backgroundImage": "/images/left-sidebar/kontakt.png",
-                    "value": "{{game.state.public.metrics.cont}}"
+                    "metricId": "cont",
+                    "backgroundImage": "/images/left-sidebar/kontakt.png"
                   }
                 },
                 {
@@ -1184,10 +1132,8 @@
                   "type": "gameVariableComponent",
                   "id": "constr",
                   "props": {
-                    "caption": "Конструктив",
-                    "description": "Нацеленность на результат без пустых конфликтов.",
-                    "backgroundImage": "/images/left-sidebar/konstruktiv.png",
-                    "value": "{{game.state.public.metrics.constr}}"
+                    "metricId": "constr",
+                    "backgroundImage": "/images/left-sidebar/konstruktiv.png"
                   }
                 },
                 {
@@ -1512,58 +1458,34 @@
               },
               "children": [
                 {
-                  "props": {
-                    "description": "Оставшееся время в игре. Основной параметр."
-                  },
-                  "_type": "ui.AntarcticaTopbarScoreMetric",
+                  "_type": "ui.AntarcticaTopbarRemainingDaysMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Уровень знаний, который игрок может использовать для решения задач."
-                  },
                   "_type": "ui.AntarcticaTopbarProMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Уровень доверия команды и окружения к игроку."
-                  },
                   "_type": "ui.AntarcticaTopbarRepMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Ресурс на действия и принятие решений."
-                  },
                   "_type": "ui.AntarcticaTopbarLidMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Способность управлять ситуацией и направлением изменений."
-                  },
                   "_type": "ui.AntarcticaTopbarManMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Положение игрока в системе и степень влияния."
-                  },
                   "_type": "ui.AntarcticaTopbarStatMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Доступность связей и поддержки вокруг игрока."
-                  },
                   "_type": "ui.AntarcticaTopbarContMetric",
                   "type": "gameVariableComponent"
                 },
                 {
-                  "props": {
-                    "description": "Нацеленность на результат без пустых конфликтов."
-                  },
                   "_type": "ui.AntarcticaTopbarConstrMetric",
                   "type": "gameVariableComponent"
                 }
@@ -1674,106 +1596,6 @@
         }
       }
     },
-    "metric_specs": [
-      {
-        "id": "time",
-        "caption": "Остаток дней",
-        "aliases": [
-          "days"
-        ],
-        "value": "{{game.state.public.metrics.time}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/days.png",
-          "topbar": "/images/top-sidebar/days.png"
-        },
-        "layout": "prominent"
-      },
-      {
-        "id": "score",
-        "caption": "Баллы",
-        "aliases": [
-          "points"
-        ],
-        "value": "{{game.state.public.metrics.score}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/score.png",
-          "topbar": "/images/top-sidebar/score.png"
-        },
-        "layout": "prominent"
-      },
-      {
-        "id": "pro",
-        "caption": "Знания",
-        "aliases": [
-          "knowledge"
-        ],
-        "value": "{{game.state.public.metrics.pro}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/pro.png",
-          "topbar": "/images/top-sidebar/pro.png"
-        }
-      },
-      {
-        "id": "rep",
-        "caption": "Доверие",
-        "aliases": [
-          "reputation"
-        ],
-        "value": "{{game.state.public.metrics.rep}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/rep.png",
-          "topbar": "/images/top-sidebar/rep.png"
-        }
-      },
-      {
-        "id": "lid",
-        "caption": "Энергия",
-        "aliases": [
-          "energy"
-        ],
-        "value": "{{game.state.public.metrics.lid}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/lid.png",
-          "topbar": "/images/top-sidebar/lid.png"
-        }
-      },
-      {
-        "id": "money",
-        "caption": "Бюджет",
-        "aliases": [
-          "budget"
-        ],
-        "value": "{{game.state.public.metrics.money}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/money.png",
-          "topbar": "/images/top-sidebar/money.png"
-        }
-      },
-      {
-        "id": "team",
-        "caption": "Команда",
-        "aliases": [
-          "teamScore"
-        ],
-        "value": "{{game.state.public.metrics.team}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/team.png",
-          "topbar": "/images/top-sidebar/team.png"
-        }
-      },
-      {
-        "id": "climate",
-        "caption": "Климат",
-        "aliases": [
-          "climate"
-        ],
-        "value": "{{game.state.public.metrics.climate}}",
-        "images": {
-          "sidebar": "/images/left-sidebar/climate.png",
-          "topbar": "/images/top-sidebar/climate.png"
-        }
-      }
-    ],
     "screen_routing": [
       {
         "screenKey": "board-topbar",

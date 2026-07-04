@@ -115,6 +115,10 @@ function assertNoMergeOperatorConflicts(node, filePath, pointer) {
     return;
   }
 
+  if (isDeclarativeExpressionPointer(pointer)) {
+    return;
+  }
+
   for (const key of Object.keys(node)) {
     if (!key.startsWith("+") && !key.startsWith("-")) {
       continue;
@@ -133,6 +137,11 @@ function assertNoMergeOperatorConflicts(node, filePath, pointer) {
       pointer
     );
   }
+}
+
+function isDeclarativeExpressionPointer(pointer) {
+  const segments = pointer.split("/").filter(Boolean);
+  return segments.includes("jsonLogic") || segments.includes("expression");
 }
 
 function mergeObjects(parentValue, childValue) {

@@ -9,6 +9,8 @@ import {
   applyJsonPatch,
   applyJsonPatchWithInverse,
   buildAuthoringGraphProjection,
+  buildEditorEntityProjection,
+  buildEditorEntityYamlProjection,
   buildVisibleAuthoringGraphProjection,
   buildJsonPointer,
   appendPreviewPlaythroughEvent,
@@ -146,6 +148,222 @@ describe("JSON Patch utilities", () => {
 
     expect(journalStep.beforeHash).toBe(hashEditorText(snapshot.text));
     expect(journalStep.affectedFiles).toEqual(["doc.authoring.json"]);
+  });
+});
+
+describe("editor entity projection", () => {
+  it("links game step logic, content, action and UI view facets without copying source objects", () => {
+    const gameAuthoring = {
+      _schemaVersion: "2.0",
+      _manifestType: "game",
+      root: {
+        _type: "game.Game",
+        _label: "Projection Fixture",
+        content: {
+          data: {
+            infos: [
+              {
+                _type: "game.Info",
+                _label: "Intro info",
+                id: "intro-info",
+                title: "Intro",
+                body: "Explain the first decision."
+              }
+            ]
+          }
+        },
+        state: {
+          public: {
+            metrics: {
+              score: 0
+            }
+          }
+        },
+        logic: {
+          flows: [
+            {
+              id: "main",
+              _type: "game.Flow",
+              _label: "Main flow",
+              steps: [
+                {
+                  id: "main.start",
+                  _type: "game.Step",
+                  _label: "Start step",
+                  screenId: "intro",
+                  contentId: "intro-info",
+                  actionIds: ["choice.accept"]
+                }
+              ]
+            }
+          ],
+          actions: [
+            {
+              id: "choice.accept",
+              _type: "game.Action",
+              _label: "Accept choice",
+              deterministic: {
+                guard: {
+                  objectId: "intro-info"
+                }
+              }
+            }
+          ]
+        }
+      }
+    } satisfies JsonValue;
+    const uiAuthoring = {
+      _schemaVersion: "2.0",
+      _manifestType: "ui",
+      _channel: "web",
+      root: {
+        _type: "ui.Manifest",
+        _label: "Projection Fixture Web UI",
+        screens: [
+          {
+            id: "intro",
+            _type: "ui.Screen",
+            _label: "Intro screen",
+            title: "Intro",
+            root: {
+              id: "intro.button",
+              _type: "ui.Component",
+              _label: "Accept button",
+              type: "buttonComponent",
+              props: {
+                text: "Accept"
+              },
+              actions: {
+                onClick: {
+                  payload: {
+                    actionId: "choice.accept"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    } satisfies JsonValue;
+
+    const projection = buildEditorEntityProjection({
+      gameId: "projection-fixture",
+      documents: [
+        { filePath: "game.authoring.json", json: gameAuthoring, sourceHash: "sha256:game" },
+        { filePath: "ui/web.authoring.json", json: uiAuthoring, sourceHash: "sha256:ui" }
+      ]
+    });
+
+    const step = projection.entityById.get("game-step:main.start");
+    expect(step).toBeDefined();
+    expect(step?.primarySource).toMatchObject({
+      filePath: "game.authoring.json",
+      pointer: "/root/logic/flows/0/steps/0"
+    });
+    expect(step?.facets.logic?.map((source) => `${source.filePath}#${source.pointer}`)).toEqual([
+      "game.authoring.json#/root/logic/flows/0/steps/0",
+      "game.authoring.json#/root/logic/actions/0"
+    ]);
+    expect(step?.facets.content?.map((source) => `${source.filePath}#${source.pointer}`)).toEqual([
+      "game.authoring.json#/root/content/data/infos/0"
+    ]);
+    expect(step?.facets.view?.map((source) => `${source.filePath}#${source.pointer}`)).toContain(
+      "ui/web.authoring.json#/root/screens/0"
+    );
+    expect(JSON.stringify(step)).not.toContain("Explain the first decision.");
+
+    const action = projection.entityById.get("game-action:choice.accept");
+    expect(action?.facets.view?.map((source) => `${source.filePath}#${source.pointer}`)).toContain(
+      "ui/web.authoring.json#/root/screens/0/root"
+    );
+    expect(projection.entitiesBySourcePointer.get("game.authoring.json#/root/logic/actions/0")?.map((entity) => entity.entityId)).toEqual(
+      expect.arrayContaining(["game-action:choice.accept", "game-step:main.start"])
+    );
+    expect(projection.sourceHashes).toEqual({
+      "game.authoring.json": "sha256:game",
+      "ui/web.authoring.json": "sha256:ui"
+    });
+    expect(projection.diagnostics).toEqual([]);
+  });
+
+  it("builds human-facing YAML projection with field labels and hidden technical diagnostics", () => {
+    const gameAuthoring = {
+      _manifestType: "game",
+      root: {
+        logic: {
+          flows: [
+            {
+              id: "main",
+              steps: [
+                {
+                  id: "main.start",
+                  _type: "game.Step",
+                  _label: "Start step",
+                  screenId: "intro",
+                  title: "Opening"
+                }
+              ]
+            }
+          ],
+          actions: []
+        }
+      }
+    } satisfies JsonValue;
+    const projection = buildEditorEntityProjection({
+      documents: [{ filePath: "game.authoring.json", json: gameAuthoring }]
+    });
+    const step = projection.entityById.get("game-step:main.start");
+    expect(step).toBeDefined();
+    if (step === undefined) {
+      throw new Error("Expected game-step entity.");
+    }
+
+    const yaml = buildEditorEntityYamlProjection({
+      entity: step,
+      documents: [{ filePath: "game.authoring.json", json: gameAuthoring }],
+      fieldDictionary: [
+        { key: "screenId", label: "Экран" },
+        { key: "title", label: "Название" }
+      ]
+    });
+
+    expect(yaml.text).toContain("Экран: \"intro\"");
+    expect(yaml.text).toContain("Название: \"Opening\"");
+    expect(yaml.text).not.toContain("_type");
+    expect(yaml.text).not.toContain("_label");
+    expect(yaml.hiddenTechnicalPointers.map((source) => source.pointer)).toEqual(
+      expect.arrayContaining(["/root/logic/flows/0/steps/0/_type", "/root/logic/flows/0/steps/0/_label"])
+    );
+    expect(yaml.diagnostics.every((diagnostic) => diagnostic.code === "hidden-technical-field")).toBe(true);
+  });
+
+  it("reports unresolved view links without mutating authoring data", () => {
+    const gameAuthoring = {
+      _manifestType: "game",
+      root: {
+        logic: {
+          flows: [
+            {
+              id: "main",
+              steps: [{ id: "main.start", _type: "game.Step", _label: "Start step", screenId: "missing" }]
+            }
+          ],
+          actions: []
+        }
+      }
+    } satisfies JsonValue;
+
+    const projection = buildEditorEntityProjection({
+      documents: [{ filePath: "game.authoring.json", json: gameAuthoring }]
+    });
+
+    expect(projection.diagnostics).toEqual([
+      expect.objectContaining({
+        code: "unresolved-view-link",
+        source: expect.objectContaining({ pointer: "/root/logic/flows/0/steps/0" })
+      })
+    ]);
+    expect(gameAuthoring.root.logic.flows[0]?.steps[0]?.screenId).toBe("missing");
   });
 });
 

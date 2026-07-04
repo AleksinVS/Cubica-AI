@@ -7,7 +7,14 @@
  * EditorChangeSet before Cubica applies any durable change.
  */
 import type { CubicaAgentContext, CubicaAgentContextSource } from "@cubica/contracts-ai";
-import { readJsonPointer, type DocumentDiagnostic, type JsonValue } from "@cubica/editor-engine";
+import {
+  readJsonPointer,
+  type DocumentDiagnostic,
+  type EditorEntity,
+  type EditorEntityFacetKind,
+  type EditorEntitySourcePointer,
+  type JsonValue
+} from "@cubica/editor-engine";
 
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "./agent-assistant-registry";
 import type { RoutedEditorDiagnostic } from "./editor-web-adapter";
@@ -18,6 +25,23 @@ export interface EditorAgentSelectedPointerContext {
   readonly valueType: string;
   readonly excerpt: JsonValue | string;
   readonly redacted: boolean;
+}
+
+export interface EditorAgentSelectedEntityContext {
+  readonly entityId: string;
+  readonly kind: string;
+  readonly label: string;
+  readonly primarySource: EditorAgentEntitySourcePointerContext;
+  readonly facets: Readonly<Partial<Record<EditorEntityFacetKind, readonly EditorAgentEntitySourcePointerContext[]>>>;
+}
+
+export interface EditorAgentEntitySourcePointerContext {
+  readonly filePath: string;
+  readonly pointer: string;
+  readonly documentKind: string;
+  readonly channel?: string;
+  readonly role?: string;
+  readonly label?: string;
 }
 
 interface EditorAgentContextSource extends CubicaAgentContextSource {
@@ -39,6 +63,7 @@ export interface EditorAgentContextProjection extends CubicaAgentContext<EditorA
     readonly semanticRole: string;
     readonly authoringPointer: string;
   }[];
+  readonly selectedEditorEntities: readonly EditorAgentSelectedEntityContext[];
   readonly diagnostics: readonly {
     readonly severity: DocumentDiagnostic["severity"];
     readonly source: string;
@@ -72,6 +97,7 @@ export interface BuildEditorAgentContextProjectionInput {
     readonly semanticRole: string;
     readonly authoringPointer: string;
   }[];
+  readonly selectedEditorEntities?: readonly EditorEntity[];
   readonly diagnostics?: readonly (DocumentDiagnostic | RoutedEditorDiagnostic)[];
   readonly previewTraceSummary?: EditorAgentContextProjection["previewTraceSummary"];
   readonly maxSelectedPointers?: number;
@@ -105,6 +131,9 @@ export function buildEditorAgentContextProjection(
     semanticRole: entity.semanticRole,
     authoringPointer: entity.authoringPointer
   }));
+  const selectedEditorEntities = (input.selectedEditorEntities ?? [])
+    .slice(0, maxSelectedPointers)
+    .map(toAgentSelectedEntityContext);
 
   return {
     contextVersion: 1,
@@ -118,6 +147,7 @@ export function buildEditorAgentContextProjection(
     },
     selectedPointers,
     selectedPreviewEntities,
+    selectedEditorEntities,
     diagnostics,
     previewTraceSummary: input.previewTraceSummary,
     limits: {
@@ -126,9 +156,36 @@ export function buildEditorAgentContextProjection(
       maxExcerptLength,
       truncated:
         input.selectedPointers.length > maxSelectedPointers ||
+        (input.selectedEditorEntities?.length ?? 0) > maxSelectedPointers ||
         (input.diagnostics?.length ?? 0) > maxDiagnostics ||
         selectedPointers.some((pointer) => typeof pointer.excerpt === "string" && pointer.excerpt.endsWith("..."))
     }
+  };
+}
+
+function toAgentSelectedEntityContext(entity: EditorEntity): EditorAgentSelectedEntityContext {
+  const facets: Partial<Record<EditorEntityFacetKind, readonly EditorAgentEntitySourcePointerContext[]>> = {};
+  for (const [facetKind, sources] of Object.entries(entity.facets) as readonly [EditorEntityFacetKind, readonly EditorEntitySourcePointer[]][]) {
+    facets[facetKind] = sources.map(toAgentEntitySourcePointerContext);
+  }
+
+  return {
+    entityId: entity.entityId,
+    kind: entity.kind,
+    label: truncateText(entity.label, 120),
+    primarySource: toAgentEntitySourcePointerContext(entity.primarySource),
+    facets
+  };
+}
+
+function toAgentEntitySourcePointerContext(source: EditorEntitySourcePointer): EditorAgentEntitySourcePointerContext {
+  return {
+    filePath: source.filePath,
+    pointer: source.pointer,
+    documentKind: source.documentKind,
+    channel: source.channel,
+    role: source.role,
+    label: source.label === undefined ? undefined : truncateText(source.label, 120)
   };
 }
 

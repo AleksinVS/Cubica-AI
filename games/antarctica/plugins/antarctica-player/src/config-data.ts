@@ -14,7 +14,7 @@ export const ANTARCTICA_GAME_CONFIG_DATA: GameConfigData = {
   storageKey: "cubica-antarctica-session-id",
 
   fallbackMetrics: [
-    { id: "score", caption: "Остаток дней", aliases: ["score", "days", "time"], sidebarImage: "/images/left-sidebar/days.png", topbarImage: "/images/top-sidebar/days-top.png" },
+    { id: "remainingDays", caption: "Осталось дней", aliases: ["remainingDays", "days"], sidebarImage: "/images/left-sidebar/days.png", topbarImage: "/images/top-sidebar/days-top.png" },
     { id: "pro", caption: "Знания", aliases: ["pro", "knowledge"], sidebarImage: "/images/left-sidebar/znania.png", topbarImage: "/images/top-sidebar/znaniya.png" },
     { id: "rep", caption: "Доверие", aliases: ["rep", "trust"], sidebarImage: "/images/left-sidebar/doverie.png", topbarImage: "/images/top-sidebar/doverie.png" },
     { id: "lid", caption: "Энергия", aliases: ["lid", "energy"], sidebarImage: "/images/left-sidebar/energia.png", topbarImage: "/images/top-sidebar/energia.png" },
@@ -30,7 +30,7 @@ export const ANTARCTICA_GAME_CONFIG_DATA: GameConfigData = {
   ],
 
   metricBackgroundImages: {
-    score: "/images/top-sidebar/days-top.png",
+    remainingDays: "/images/top-sidebar/days-top.png",
     pro: "/images/top-sidebar/znaniya.png",
     rep: "/images/top-sidebar/doverie.png",
     energy: "/images/top-sidebar/energia.png",

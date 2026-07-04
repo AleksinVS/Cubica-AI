@@ -91,9 +91,59 @@ export interface GameManifestConfig {
   settings: GameManifestSettings;
 }
 
+export interface GameManifestMetricBase {
+  /** Stable gameplay metric id used by state, effects and UI references. */
+  metricId: string;
+  /** Canonical player-facing metric label owned by the game manifest. */
+  label: string;
+  /** Canonical gameplay explanation, reusable by every player channel. */
+  description?: string;
+  /** Optional lookup aliases kept for compatibility with legacy logs or UI. */
+  aliases?: Array<string>;
+  /** Optional value format hint for presenter projections. */
+  format?: "number" | "integer" | "text" | string;
+}
+
+export interface GameManifestStateMetricDefinition extends GameManifestMetricBase {
+  kind: "state";
+  /** Dot path inside runtime state, for example public.metrics.time. */
+  statePath: string;
+}
+
+export interface GameManifestComputedMetricDefinition extends GameManifestMetricBase {
+  kind: "computed";
+  /**
+   * Declarative expression for a metric derived from authoritative state.
+   * The expression is evaluated by the player-facing projection and must not
+   * create an independently mutable runtime metric.
+   */
+  computed: {
+    expression: JsonLogicExpression;
+  };
+}
+
+export type GameManifestMetricDefinition =
+  | GameManifestStateMetricDefinition
+  | GameManifestComputedMetricDefinition;
+
+export interface GameManifestContentRules {
+  /** Optional game-owned day limit used by time-based training scenarios. */
+  dayLimit?: number;
+  [key: string]: unknown;
+}
+
+export interface GameManifestContentData {
+  /** Canonical metric catalog owned by the game manifest. */
+  metrics?: Array<GameManifestMetricDefinition>;
+  /** Game-owned rule constants exposed to declarative computed metrics. */
+  rules?: GameManifestContentRules;
+  [key: string]: unknown;
+}
+
 export interface GameManifestContent {
   scenario?: GameManifestDocumentRef;
   scripts?: Array<GameManifestDocumentRef>;
+  data?: GameManifestContentData;
   design?: {
     mockups?: Array<GameManifestDesignArtifactRef>;
     references?: Array<GameManifestDesignArtifactRef>;
@@ -522,19 +572,29 @@ export interface GameUiAreaComponentProps {
  * Props for gameVariableComponent (metric display) in S1 sidebar.
  */
 export interface GameUiGameVariableComponentProps {
-  caption: string;
+  /**
+   * Gameplay metric id. When provided, the renderer can read label,
+   * description and value from player-facing metricViews.
+   */
+  metricId?: string;
+  /**
+   * UI-only caption override. Gameplay metric labels should come from the
+   * game manifest catalog through metricViews.
+   */
+  caption?: string;
   description?: string;
   backgroundImage?: string;
   /**
-   * Binding expression for the metric value, e.g. "{{game.state.public.metrics.score}}".
-   * The renderer resolves this against the session snapshot at display time.
+   * Optional binding expression for the metric value, e.g.
+   * "{{game.state.public.metrics.remainingDays}}". If omitted, the renderer
+   * uses metricViews[metricId].value or metrics[metricId].
    */
-  value: string;
+  value?: string;
   /**
    * Layout variant for the metric display.
    * - "default": standard size
-   * - "prominent": larger display (e.g., primary score metric)
-   * Replaces the previous id-based "score" check — games should set this
+   * - "prominent": larger display (e.g., primary time/resource metric)
+   * Replaces id-based visual checks — games should set this
    * on metrics that need special visual treatment.
    */
   layout?: "default" | "prominent";
@@ -961,7 +1021,7 @@ export interface PlayerWebPluginBundleReference {
  * configuration part of the manifest data, derivable without hardcoded config.
  */
 export interface MetricConfigSpec {
-  /** Metric identifier (e.g., "time", "score", "pro"). */
+  /** Metric identifier (e.g., "time", "remainingDays", "pro"). */
   id: string;
   /** Display caption (e.g., "Остаток дней", "Баллы"). */
   caption: string;
@@ -976,8 +1036,25 @@ export interface MetricConfigSpec {
     sidebar?: string;
     topbar?: string;
   };
-  /** Layout variant: "prominent" for primary score metric, "default" for others. */
+  /** Layout variant: "prominent" for primary metric, "default" for others. */
   layout?: "default" | "prominent";
+}
+
+export interface GameMetricView {
+  /** Stable gameplay metric id. */
+  metricId: string;
+  /** Canonical label from the game manifest metric catalog. */
+  label: string;
+  /** Optional canonical description from the game manifest metric catalog. */
+  description?: string;
+  /** Raw value prepared for player-facing renderers. */
+  value: unknown;
+  /** String form for renderers that do not apply their own formatting. */
+  formattedValue: string;
+  /** Source kind from the metric catalog. */
+  kind: "state" | "computed";
+  /** State path for state-backed metrics. */
+  statePath?: string;
 }
 
 /**

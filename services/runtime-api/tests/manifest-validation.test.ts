@@ -816,6 +816,67 @@ test("validateGameManifest accepts team selection content under additionalProper
   assert.equal(data?.data?.teamSelections.length, 1);
 });
 
+test("validateGameManifest accepts game-owned metric catalog", () => {
+  const manifest = validateGameManifest({
+    ...validManifest,
+    content: {
+      data: {
+        rules: {
+          dayLimit: 60
+        },
+        metrics: [
+          {
+            metricId: "time",
+            label: "Прошло дней",
+            kind: "state",
+            statePath: "public.metrics.time"
+          },
+          {
+            metricId: "remainingDays",
+            label: "Осталось дней",
+            kind: "computed",
+            computed: {
+              expression: {
+                "-": [
+                  { var: "content.rules.dayLimit" },
+                  { var: "public.metrics.time" }
+                ]
+              }
+            }
+          }
+        ]
+      }
+    }
+  }) as unknown as { content?: { data?: { metrics?: Array<{ metricId: string }> } } };
+
+  assert.deepEqual(
+    manifest.content?.data?.metrics?.map((metric) => metric.metricId),
+    ["time", "remainingDays"]
+  );
+});
+
+test("validateGameManifest rejects computed metric without expression", () => {
+  assert.throws(
+    () =>
+      validateGameManifest({
+        ...validManifest,
+        content: {
+          data: {
+            metrics: [
+              {
+                metricId: "remainingDays",
+                label: "Осталось дней",
+                kind: "computed",
+                computed: {}
+              }
+            ]
+          }
+        }
+      }),
+    ManifestValidationError
+  );
+});
+
 test("validateGameManifest rejects deterministic action with invalid conditional timeline stepIndex", () => {
   assert.throws(
     () =>

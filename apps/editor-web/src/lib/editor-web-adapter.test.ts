@@ -28,6 +28,67 @@ describe("editor web adapter", () => {
     expect(viewModel.tree.root.pointer).toBe("");
     expect(viewModel.tree.nodeByPointer.get("/_definitions")).toBeUndefined();
     expect(viewModel.jsonTree.nodeByPointer.get("/_definitions")).toBeDefined();
+    expect(viewModel.editorEntityProjection.entities.length).toBeGreaterThan(0);
+  });
+
+  it("exposes the ADR-052 editor entity projection across active game and UI documents", () => {
+    const gameAuthoring = {
+      _manifestType: "game",
+      root: {
+        _type: "game.Game",
+        _label: "Projection Game",
+        logic: {
+          flows: [
+            {
+              id: "main",
+              steps: [
+                {
+                  id: "main.start",
+                  _type: "game.Step",
+                  _label: "Start",
+                  screenId: "intro",
+                  actionIds: ["choice.accept"]
+                }
+              ]
+            }
+          ],
+          actions: [{ id: "choice.accept", _type: "game.Action", _label: "Accept" }]
+        }
+      }
+    } as const;
+    const uiAuthoring = {
+      _manifestType: "ui",
+      _channel: "web",
+      root: {
+        _type: "ui.Manifest",
+        _label: "Projection UI",
+        screens: [
+          {
+            id: "intro",
+            _type: "ui.Screen",
+            _label: "Intro screen",
+            root: {
+              _type: "ui.Component",
+              _label: "Button",
+              type: "buttonComponent",
+              actions: { onClick: { payload: { actionId: "choice.accept" } } }
+            }
+          }
+        ]
+      }
+    } as const;
+
+    const viewModel = createEditorViewModel(JSON.stringify(gameAuthoring), {
+      filePath: "game.authoring.json",
+      gameId: "projection-game",
+      editorEntityProjectionDocuments: [{ filePath: "ui/web.authoring.json", json: uiAuthoring }]
+    });
+
+    const step = viewModel.editorEntityProjection.entityById.get("game-step:main.start");
+    expect(step?.facets.view?.map((source) => `${source.filePath}#${source.pointer}`)).toContain(
+      "ui/web.authoring.json#/root/screens/0"
+    );
+    expect(viewModel.editorEntityProjection.entityById.get("game-action:choice.accept")?.facets.view).toHaveLength(1);
   });
 
   it("reveals only the expanded active branch in the visible graph", () => {

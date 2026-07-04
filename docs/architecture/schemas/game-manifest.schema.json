@@ -237,6 +237,9 @@
         "description": "Game-specific content is keyed by gameId."
       },
       "properties": {
+        "data": {
+          "$ref": "#/definitions/GameManifestContentData"
+        },
         "design": {
           "additionalProperties": false,
           "properties": {
@@ -277,6 +280,122 @@
           "type": "array"
         }
       },
+      "type": "object"
+    },
+    "GameManifestContentData": {
+      "additionalProperties": true,
+      "properties": {
+        "metrics": {
+          "description": "Canonical gameplay metric catalog owned by the game manifest.",
+          "items": {
+            "$ref": "#/definitions/GameManifestMetricDefinition"
+          },
+          "type": "array"
+        },
+        "rules": {
+          "additionalProperties": true,
+          "description": "Game-owned rule constants available to computed metric expressions.",
+          "properties": {
+            "dayLimit": {
+              "type": "number"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "GameManifestMetricDefinition": {
+      "description": "Canonical metric metadata. State metrics read authoritative state; computed metrics are player-facing derived values.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/GameManifestStateMetricDefinition"
+        },
+        {
+          "$ref": "#/definitions/GameManifestComputedMetricDefinition"
+        }
+      ]
+    },
+    "GameManifestStateMetricDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "description": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "state"
+        },
+        "label": {
+          "type": "string"
+        },
+        "metricId": {
+          "type": "string"
+        },
+        "statePath": {
+          "description": "Dot path inside runtime state, for example public.metrics.time.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "metricId",
+        "label",
+        "kind",
+        "statePath"
+      ],
+      "type": "object"
+    },
+    "GameManifestComputedMetricDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "computed": {
+          "additionalProperties": false,
+          "properties": {
+            "expression": {
+              "$ref": "#/definitions/JsonLogicExpression"
+            }
+          },
+          "required": [
+            "expression"
+          ],
+          "type": "object"
+        },
+        "description": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "kind": {
+          "const": "computed"
+        },
+        "label": {
+          "type": "string"
+        },
+        "metricId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "metricId",
+        "label",
+        "kind",
+        "computed"
+      ],
       "type": "object"
     },
     "GameManifestDesignArtifactRef": {

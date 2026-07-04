@@ -6,7 +6,7 @@
  * player plugin API facade.
  */
 
-import type { PlayerFacingContent } from "@cubica/contracts-manifest";
+import type { GameManifestMetricDefinition, PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import type {
   AntarcticaGameState,
@@ -60,6 +60,53 @@ type HintSourceState = Pick<AntarcticaGameState, "currentInfo" | "currentBoard" 
  */
 export function resolveAntarcticaContent(content: PlayerFacingContent): GamePlayerContent | null {
   return resolveGameContent(content) as GamePlayerContent | null;
+}
+
+function isMetricDefinition(value: unknown): value is GameManifestMetricDefinition {
+  return (
+    !!value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    typeof (value as { metricId?: unknown }).metricId === "string" &&
+    typeof (value as { label?: unknown }).label === "string" &&
+    ((value as { kind?: unknown }).kind === "state" || (value as { kind?: unknown }).kind === "computed")
+  );
+}
+
+/**
+ * Builds metric summary specs for the moves journal from game-owned metadata.
+ *
+ * The journal summarizes authoritative runtime metric changes. Computed values
+ * such as remainingDays are intentionally excluded because runtime logs contain
+ * changes to the source metric `time`, not to independently stored projection
+ * values.
+ */
+export function resolveJournalMetricSpecs(
+  content: PlayerFacingContent,
+  fallbackMetrics: ReadonlyArray<FallbackMetricSpec>
+): ReadonlyArray<FallbackMetricSpec> {
+  const contentData = content.content?.data;
+  const metrics = contentData && typeof contentData === "object" && !Array.isArray(contentData)
+    ? (contentData as { metrics?: unknown }).metrics
+    : undefined;
+
+  if (!Array.isArray(metrics)) {
+    return fallbackMetrics;
+  }
+
+  const stateMetrics = metrics
+    .filter(isMetricDefinition)
+    .filter((metric) => metric.kind === "state")
+    .map((metric) => ({
+      id: metric.metricId,
+      caption: metric.label,
+      description: metric.description,
+      aliases: [metric.metricId, ...(metric.aliases ?? [])],
+      sidebarImage: "",
+      topbarImage: ""
+    }));
+
+  return stateMetrics.length > 0 ? stateMetrics : fallbackMetrics;
 }
 
 /**

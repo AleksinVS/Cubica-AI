@@ -321,6 +321,7 @@ export function UiComponentNode({
         <GameVariableComponent
           component={component as GameUiComponent<GameUiGameVariableComponentProps>}
           metrics={metrics}
+          gameState={gameState}
           backgroundImage={props.backgroundImage}
           layoutMode={layoutMode}
           metricBackgroundImages={metricBackgroundImages}

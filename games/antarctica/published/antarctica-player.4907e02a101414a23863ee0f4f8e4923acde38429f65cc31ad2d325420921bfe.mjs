@@ -69,7 +69,7 @@ exports.ANTARCTICA_GAME_CONFIG_DATA = {
     playerId: "player-web",
     storageKey: "cubica-antarctica-session-id",
     fallbackMetrics: [
-        { id: "score", caption: "Остаток дней", aliases: ["score", "days", "time"], sidebarImage: "/images/left-sidebar/days.png", topbarImage: "/images/top-sidebar/days-top.png" },
+        { id: "remainingDays", caption: "Осталось дней", aliases: ["remainingDays", "days"], sidebarImage: "/images/left-sidebar/days.png", topbarImage: "/images/top-sidebar/days-top.png" },
         { id: "pro", caption: "Знания", aliases: ["pro", "knowledge"], sidebarImage: "/images/left-sidebar/znania.png", topbarImage: "/images/top-sidebar/znaniya.png" },
         { id: "rep", caption: "Доверие", aliases: ["rep", "trust"], sidebarImage: "/images/left-sidebar/doverie.png", topbarImage: "/images/top-sidebar/doverie.png" },
         { id: "lid", caption: "Энергия", aliases: ["lid", "energy"], sidebarImage: "/images/left-sidebar/energia.png", topbarImage: "/images/top-sidebar/energia.png" },
@@ -83,7 +83,7 @@ exports.ANTARCTICA_GAME_CONFIG_DATA = {
         "info-topbar"
     ],
     metricBackgroundImages: {
-        score: "/images/top-sidebar/days-top.png",
+        remainingDays: "/images/top-sidebar/days-top.png",
         pro: "/images/top-sidebar/znaniya.png",
         rep: "/images/top-sidebar/doverie.png",
         energy: "/images/top-sidebar/energia.png",
@@ -192,7 +192,8 @@ const createAntarcticaConfig = (data) => {
             const teamSelectionState = (0, state_resolvers_1.readTeamSelection)(session);
             const canAdvance = (0, state_resolvers_1.readCanAdvance)(session);
             const fallbackActions = (0, state_resolvers_1.getFallbackActionEntries)(content);
-            const journalEntries = (0, state_resolvers_1.resolveJournalEntries)(gameContent, publicState, data.fallbackMetrics);
+            const journalMetricSpecs = (0, state_resolvers_1.resolveJournalMetricSpecs)(content, data.fallbackMetrics);
+            const journalEntries = (0, state_resolvers_1.resolveJournalEntries)(gameContent, publicState, journalMetricSpecs);
             const resolvedHintText = (0, state_resolvers_1.resolveLastInfoHintText)(gameContent, { currentInfo, currentBoard, currentTeamSelection }) ??
                 content.description ??
                 "Подсказка пока не загружена";
@@ -224,12 +225,6 @@ const createAntarcticaConfig = (data) => {
                 hasHintText: resolvedHintText.trim().length > 0,
                 fallbackActions
             };
-        },
-        resolveMetrics(metrics) {
-            if (typeof metrics.time === "number" && !("score" in metrics)) {
-                metrics.score = 60 - metrics.time;
-            }
-            return metrics;
         },
         createManifestActionAdapter(content, gameState, dispatchAction, onError) {
             return (0, plugin_api_1.createManifestActionAdapter)({
@@ -274,6 +269,7 @@ __pluginDefine("src/state-resolvers.ts", (exports, module) => {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getFallbackActionEntries = void 0;
 exports.resolveAntarcticaContent = resolveAntarcticaContent;
+exports.resolveJournalMetricSpecs = resolveJournalMetricSpecs;
 exports.resolveCurrentInfoEntry = resolveCurrentInfoEntry;
 exports.resolveCurrentBoard = resolveCurrentBoard;
 exports.resolveCurrentTeamSelectionScene = resolveCurrentTeamSelectionScene;
@@ -292,6 +288,43 @@ Object.defineProperty(exports, "getFallbackActionEntries", { enumerable: true, g
  */
 function resolveAntarcticaContent(content) {
     return (0, plugin_api_1.resolveGameContent)(content);
+}
+function isMetricDefinition(value) {
+    return (!!value &&
+        typeof value === "object" &&
+        !Array.isArray(value) &&
+        typeof value.metricId === "string" &&
+        typeof value.label === "string" &&
+        (value.kind === "state" || value.kind === "computed"));
+}
+/**
+ * Builds metric summary specs for the moves journal from game-owned metadata.
+ *
+ * The journal summarizes authoritative runtime metric changes. Computed values
+ * such as remainingDays are intentionally excluded because runtime logs contain
+ * changes to the source metric `time`, not to independently stored projection
+ * values.
+ */
+function resolveJournalMetricSpecs(content, fallbackMetrics) {
+    const contentData = content.content?.data;
+    const metrics = contentData && typeof contentData === "object" && !Array.isArray(contentData)
+        ? contentData.metrics
+        : undefined;
+    if (!Array.isArray(metrics)) {
+        return fallbackMetrics;
+    }
+    const stateMetrics = metrics
+        .filter(isMetricDefinition)
+        .filter((metric) => metric.kind === "state")
+        .map((metric) => ({
+        id: metric.metricId,
+        caption: metric.label,
+        description: metric.description,
+        aliases: [metric.metricId, ...(metric.aliases ?? [])],
+        sidebarImage: "",
+        topbarImage: ""
+    }));
+    return stateMetrics.length > 0 ? stateMetrics : fallbackMetrics;
 }
 /**
  * Resolves the current info screen from timeline state.

@@ -6,6 +6,7 @@
  * because the shared player only needs generic manifest/session contracts.
  */
 
+import type { GameManifestMetricDefinition } from "@cubica/contracts-manifest";
 import type { ActionEntry } from "@cubica/player-web/plugin-api";
 
 export interface GamePlayerInfoEntry {
@@ -61,6 +62,10 @@ export interface GamePlayerBoard {
 }
 
 export interface GamePlayerContent {
+  /** Game-owned metric catalog projected from game manifest content.data. */
+  metrics?: Array<GameManifestMetricDefinition>;
+  /** Game-owned rule constants such as the day limit for computed metrics. */
+  rules?: Record<string, unknown>;
   infos: Array<GamePlayerInfoEntry>;
   boards: Array<GamePlayerBoard>;
   teamSelections?: Array<GamePlayerTeamSelectionScene>;

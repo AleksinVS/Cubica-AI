@@ -423,6 +423,438 @@
         "pointer": "/root/content/data"
       }
     ],
+    "/content/data/rules": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules"
+      }
+    ],
+    "/content/data/rules/dayLimit": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/dayLimit"
+      }
+    ],
+    "/content/data/metrics/0": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0"
+      }
+    ],
+    "/content/data/metrics/0/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0/metricId"
+      }
+    ],
+    "/content/data/metrics/0/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0/label"
+      }
+    ],
+    "/content/data/metrics/0/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0/description"
+      }
+    ],
+    "/content/data/metrics/0/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0/kind"
+      }
+    ],
+    "/content/data/metrics/0/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0/statePath"
+      }
+    ],
+    "/content/data/metrics/0/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/0/format"
+      }
+    ],
+    "/content/data/metrics/1": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1"
+      }
+    ],
+    "/content/data/metrics/1/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/metricId"
+      }
+    ],
+    "/content/data/metrics/1/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/label"
+      }
+    ],
+    "/content/data/metrics/1/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/description"
+      }
+    ],
+    "/content/data/metrics/1/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/kind"
+      }
+    ],
+    "/content/data/metrics/1/computed": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed"
+      }
+    ],
+    "/content/data/metrics/1/computed/expression": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed/expression"
+      }
+    ],
+    "/content/data/metrics/1/computed/expression/-/0": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed/expression/-/0"
+      }
+    ],
+    "/content/data/metrics/1/computed/expression/-/0/var": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed/expression/-/0/var"
+      }
+    ],
+    "/content/data/metrics/1/computed/expression/-/1": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed/expression/-/1"
+      }
+    ],
+    "/content/data/metrics/1/computed/expression/-/1/var": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed/expression/-/1/var"
+      }
+    ],
+    "/content/data/metrics/1/computed/expression/-": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/computed/expression/-"
+      }
+    ],
+    "/content/data/metrics/1/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/1/format"
+      }
+    ],
+    "/content/data/metrics/2": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2"
+      }
+    ],
+    "/content/data/metrics/2/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2/metricId"
+      }
+    ],
+    "/content/data/metrics/2/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2/label"
+      }
+    ],
+    "/content/data/metrics/2/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2/description"
+      }
+    ],
+    "/content/data/metrics/2/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2/kind"
+      }
+    ],
+    "/content/data/metrics/2/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2/statePath"
+      }
+    ],
+    "/content/data/metrics/2/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/2/format"
+      }
+    ],
+    "/content/data/metrics/3": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3"
+      }
+    ],
+    "/content/data/metrics/3/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3/metricId"
+      }
+    ],
+    "/content/data/metrics/3/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3/label"
+      }
+    ],
+    "/content/data/metrics/3/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3/description"
+      }
+    ],
+    "/content/data/metrics/3/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3/kind"
+      }
+    ],
+    "/content/data/metrics/3/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3/statePath"
+      }
+    ],
+    "/content/data/metrics/3/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/3/format"
+      }
+    ],
+    "/content/data/metrics/4": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4"
+      }
+    ],
+    "/content/data/metrics/4/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4/metricId"
+      }
+    ],
+    "/content/data/metrics/4/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4/label"
+      }
+    ],
+    "/content/data/metrics/4/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4/description"
+      }
+    ],
+    "/content/data/metrics/4/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4/kind"
+      }
+    ],
+    "/content/data/metrics/4/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4/statePath"
+      }
+    ],
+    "/content/data/metrics/4/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/4/format"
+      }
+    ],
+    "/content/data/metrics/5": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5"
+      }
+    ],
+    "/content/data/metrics/5/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5/metricId"
+      }
+    ],
+    "/content/data/metrics/5/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5/label"
+      }
+    ],
+    "/content/data/metrics/5/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5/description"
+      }
+    ],
+    "/content/data/metrics/5/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5/kind"
+      }
+    ],
+    "/content/data/metrics/5/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5/statePath"
+      }
+    ],
+    "/content/data/metrics/5/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/5/format"
+      }
+    ],
+    "/content/data/metrics/6": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6"
+      }
+    ],
+    "/content/data/metrics/6/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6/metricId"
+      }
+    ],
+    "/content/data/metrics/6/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6/label"
+      }
+    ],
+    "/content/data/metrics/6/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6/description"
+      }
+    ],
+    "/content/data/metrics/6/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6/kind"
+      }
+    ],
+    "/content/data/metrics/6/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6/statePath"
+      }
+    ],
+    "/content/data/metrics/6/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/6/format"
+      }
+    ],
+    "/content/data/metrics/7": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7"
+      }
+    ],
+    "/content/data/metrics/7/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7/metricId"
+      }
+    ],
+    "/content/data/metrics/7/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7/label"
+      }
+    ],
+    "/content/data/metrics/7/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7/description"
+      }
+    ],
+    "/content/data/metrics/7/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7/kind"
+      }
+    ],
+    "/content/data/metrics/7/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7/statePath"
+      }
+    ],
+    "/content/data/metrics/7/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/7/format"
+      }
+    ],
+    "/content/data/metrics/8": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8"
+      }
+    ],
+    "/content/data/metrics/8/metricId": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8/metricId"
+      }
+    ],
+    "/content/data/metrics/8/label": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8/label"
+      }
+    ],
+    "/content/data/metrics/8/description": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8/description"
+      }
+    ],
+    "/content/data/metrics/8/kind": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8/kind"
+      }
+    ],
+    "/content/data/metrics/8/statePath": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8/statePath"
+      }
+    ],
+    "/content/data/metrics/8/format": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics/8/format"
+      }
+    ],
+    "/content/data/metrics": [
+      {
+        "file": "games/antarctica/authoring/game.authoring.json",
+        "pointer": "/root/content/data/metrics"
+      }
+    ],
     "/content/data/infos/0": [
       {
         "file": "games/antarctica/authoring/game.authoring.json",

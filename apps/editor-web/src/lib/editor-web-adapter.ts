@@ -7,6 +7,7 @@
 import {
   applyJsonPatch,
   buildAuthoringGraphProjection,
+  buildEditorEntityProjection,
   buildEntityTreeViewModel,
   buildManifestChronologyTimeline,
   buildVisibleAuthoringGraphProjection,
@@ -22,6 +23,8 @@ import {
   type DiagnosticSeverity,
   type DocumentDiagnostic,
   type DocumentSnapshot,
+  type EditorEntityProjection,
+  type EditorEntityProjectionDocument,
   type SchemaRegistry,
   type JsonValue,
   type ManifestTimeline,
@@ -43,6 +46,13 @@ export interface EditorViewModel {
    */
   readonly documentDiagnostics: readonly DocumentDiagnostic[];
   readonly diagnostics: readonly RoutedEditorDiagnostic[];
+  /**
+   * ADR-052 project-level entity projection.
+   *
+   * It is read-only editor context: runtime/player/compiler never consume it,
+   * and all durable edits still go through EditorChangeSet.
+   */
+  readonly editorEntityProjection: EditorEntityProjection;
   /** Default semantic entity tree model derived from the same authoring snapshot. */
   readonly tree: TreeViewModel;
   /** Advanced pointer-complete JSON tree for technical debugging. */
@@ -107,6 +117,8 @@ export function createEditorViewModel(
     readonly schemaId?: string;
     readonly extraDiagnostics?: readonly RoutedEditorDiagnostic[];
     readonly graphState?: AuthoringGraphExpansionState;
+    readonly gameId?: string;
+    readonly editorEntityProjectionDocuments?: readonly EditorEntityProjectionDocument[];
   } = {}
 ): EditorViewModel {
   const store = createDocumentStore({ filePath: options.filePath ?? "embedded-sample.game.authoring.json", text });
@@ -124,11 +136,16 @@ export function createEditorViewModel(
   const tree = buildEntityTreeViewModel({ snapshot, diagnostics: documentDiagnostics, graphProjection: fullProjection });
   const jsonTree = buildTreeViewModel({ snapshot, diagnostics: documentDiagnostics, graphProjection: fullProjection });
   const timeline = buildManifestChronologyTimeline({ snapshot });
+  const editorEntityProjection = buildEditorEntityProjection({
+    gameId: options.gameId,
+    documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments)
+  });
 
   return {
     snapshot,
     documentDiagnostics,
     diagnostics,
+    editorEntityProjection,
     tree,
     jsonTree,
     timeline,
@@ -137,6 +154,35 @@ export function createEditorViewModel(
     nodes: visibleProjection.nodes,
     edges: visibleProjection.edges.map(toEditorEdge)
   };
+}
+
+function buildEditorEntityProjectionDocuments(
+  snapshot: DocumentSnapshot,
+  extraDocuments: readonly EditorEntityProjectionDocument[] | undefined
+): readonly EditorEntityProjectionDocument[] {
+  const documentsByPath = new Map<string, EditorEntityProjectionDocument>();
+
+  if (snapshot.json !== undefined) {
+    documentsByPath.set(snapshot.filePath, {
+      filePath: snapshot.filePath,
+      json: snapshot.json
+    });
+  }
+
+  for (const document of extraDocuments ?? []) {
+    const activeDocument = documentsByPath.get(document.filePath);
+    documentsByPath.set(
+      document.filePath,
+      activeDocument === undefined
+        ? document
+        : {
+            ...document,
+            json: activeDocument.json
+          }
+    );
+  }
+
+  return [...documentsByPath.values()];
 }
 
 function toEditorEdge(edge: AuthoringGraphEdge): EditorViewModel["edges"][number] {

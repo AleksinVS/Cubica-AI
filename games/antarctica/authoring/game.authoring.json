@@ -220,6 +220,94 @@
         }
       },
       "data": {
+        "rules": {
+          "dayLimit": 60
+        },
+        "metrics": [
+          {
+            "metricId": "time",
+            "label": "Прошло дней",
+            "description": "Количество игровых дней, потраченных командой.",
+            "kind": "state",
+            "statePath": "public.metrics.time",
+            "format": "integer"
+          },
+          {
+            "metricId": "remainingDays",
+            "label": "Осталось дней",
+            "description": "Сколько игровых дней осталось до предельного срока.",
+            "kind": "computed",
+            "computed": {
+              "expression": {
+                "-": [
+                  {
+                    "var": "content.rules.dayLimit"
+                  },
+                  {
+                    "var": "public.metrics.time"
+                  }
+                ]
+              }
+            },
+            "format": "integer"
+          },
+          {
+            "metricId": "pro",
+            "label": "Знания",
+            "description": "Объем полезных знаний по проекту изменений.",
+            "kind": "state",
+            "statePath": "public.metrics.pro",
+            "format": "integer"
+          },
+          {
+            "metricId": "rep",
+            "label": "Доверие",
+            "description": "Отношение заинтересованных сторон к проекту.",
+            "kind": "state",
+            "statePath": "public.metrics.rep",
+            "format": "integer"
+          },
+          {
+            "metricId": "lid",
+            "label": "Энергия",
+            "description": "Вовлеченность команды в проект и вера в успех изменений.",
+            "kind": "state",
+            "statePath": "public.metrics.lid",
+            "format": "integer"
+          },
+          {
+            "metricId": "man",
+            "label": "Контроль",
+            "description": "Возможность координировать действия и выполнять намеченное.",
+            "kind": "state",
+            "statePath": "public.metrics.man",
+            "format": "integer"
+          },
+          {
+            "metricId": "stat",
+            "label": "Статус",
+            "description": "Понимание важности проекта и его приоритетности.",
+            "kind": "state",
+            "statePath": "public.metrics.stat",
+            "format": "integer"
+          },
+          {
+            "metricId": "cont",
+            "label": "Контакт",
+            "description": "Легкость коммуникации участников проекта с окружением.",
+            "kind": "state",
+            "statePath": "public.metrics.cont",
+            "format": "integer"
+          },
+          {
+            "metricId": "constr",
+            "label": "Конструктив",
+            "description": "Способность сохранять нацеленность на результат в стрессовой ситуации.",
+            "kind": "state",
+            "statePath": "public.metrics.constr",
+            "format": "integer"
+          }
+        ],
         "infos": [
           {
             "_type": "game.AntarcticaInfoBlock",

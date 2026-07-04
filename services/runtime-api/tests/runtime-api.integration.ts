@@ -1198,6 +1198,32 @@ test("GET /games/:id/player-content returns dataUi manifest for Antarctica", asy
   assert.equal(body.ui.screens["S1"].root.type, "screenComponent");
 });
 
+test("GET /games/:id/player-content returns Antarctica game-owned metric catalog", async () => {
+  const { response, body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
+
+  assert.equal(response.status, 200);
+  const contentData = body.content?.data as {
+    metrics?: Array<{ metricId?: string; kind?: string; computed?: unknown }>;
+    rules?: { dayLimit?: number };
+  };
+  const metricIds = contentData.metrics?.map((metric) => metric.metricId);
+
+  assert.deepEqual(metricIds, [
+    "time",
+    "remainingDays",
+    "pro",
+    "rep",
+    "lid",
+    "man",
+    "stat",
+    "cont",
+    "constr"
+  ]);
+  assert.equal(contentData.rules?.dayLimit, 60);
+  assert.equal(contentData.metrics?.find((metric) => metric.metricId === "remainingDays")?.kind, "computed");
+  assert.equal((body.ui as { metricSpecs?: unknown } | undefined)?.metricSpecs, undefined);
+});
+
 test("GET /games/:id/player-content returns published player-web plugin bundle references", async () => {
   const { response, body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
 
@@ -1412,7 +1438,7 @@ test("POST /actions progresses from first board through i7 to second board after
   assert.equal(cardState?.facets?.resolution, "resolved");
   assert.equal(cardAction.state.secret?.opening?.selectedCardId, "3");
   assert.equal(cardAction.state.public.metrics?.time, 1);
-  // score is client-side derived: assert.equal(cardAction.state.public.metrics?.score, 59);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(lastLogEntry.actionId, "opening.card.3");
   assert.equal(lastLogEntry.kind, "opening-card-resolution");
   assert.equal(lastLogEntry.cardId, "3");
@@ -1506,7 +1532,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   assert.equal(card4Action.state.public.metrics?.pro, 2);
   assert.equal(card4Action.state.public.metrics?.rep, 0);
   assert.equal(card4Action.state.public.metrics?.time, 3);
-  // score is client-side derived: assert.equal(card4Action.state.public.metrics?.score, 57);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card4State?.facets?.selection, "selected");
   assert.equal(card4State?.facets?.resolution, "resolved");
   assert.equal(lastCard4LogEntry.actionId, "opening.card.4");
@@ -1540,7 +1566,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   assert.equal(card3Action.state.public.metrics?.lid, 1);
   assert.equal(card3Action.state.public.metrics?.stat, 1);
   assert.equal(card3Action.state.public.metrics?.time, 4);
-  // score is client-side derived: assert.equal(card3Action.state.public.metrics?.score, 56);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card3State?.facets?.selection, "selected");
   assert.equal(card3State?.facets?.resolution, "resolved");
 });
@@ -1584,7 +1610,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card12Action.state.public.metrics?.pro, 2);
   assert.equal(card12Action.state.public.metrics?.rep, 1);
   assert.equal(card12Action.state.public.metrics?.time, 2);
-  // score is client-side derived: assert.equal(card12Action.state.public.metrics?.score, 58);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card12State?.facets?.selection, "selected");
   assert.equal(card12State?.facets?.resolution, "resolved");
   assert.equal(card12LogEntry.actionId, "opening.card.12");
@@ -1617,7 +1643,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   assert.equal(card9Action.state.public.metrics?.pro, 3);
   assert.equal(card9Action.state.public.metrics?.rep, 3);
   assert.equal(card9Action.state.public.metrics?.time, 4);
-  // score is client-side derived: assert.equal(card9Action.state.public.metrics?.score, 56);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card9State?.facets?.selection, "selected");
   assert.equal(card9State?.facets?.resolution, "resolved");
   assert.equal(card9LogEntry.actionId, "opening.card.9");
@@ -1664,7 +1690,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card9Action.state.public.metrics?.pro, 2);
   assert.equal(card9Action.state.public.metrics?.rep, 4);
   assert.equal(card9Action.state.public.metrics?.time, 3);
-  // score is client-side derived: assert.equal(card9Action.state.public.metrics?.score, 57);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card9State?.facets?.selection, "selected");
   assert.equal(card9State?.facets?.resolution, "resolved");
   assert.equal(card9LogEntry.actionId, "opening.card.9");
@@ -1732,7 +1758,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card13Action.state.public.metrics?.pro, 2);
   assert.equal(card13Action.state.public.metrics?.rep, -1);
   assert.equal(card13Action.state.public.metrics?.time, 6);
-  // score is client-side derived: assert.equal(card13Action.state.public.metrics?.score, 54);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card13State?.facets?.selection, "selected");
   assert.equal(card13State?.facets?.resolution, "resolved");
   assert.equal(card13LogEntry.actionId, "opening.card.13");
@@ -1767,7 +1793,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   assert.equal(card18Action.state.public.metrics?.pro, 4);
   assert.equal(card18Action.state.public.metrics?.rep, 1);
   assert.equal(card18Action.state.public.metrics?.time, 7);
-  // score is client-side derived: assert.equal(card18Action.state.public.metrics?.score, 53);
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card18State?.facets?.selection, "selected");
   assert.equal(card18State?.facets?.resolution, "resolved");
   assert.equal(card18LogEntry.actionId, "opening.card.18");
@@ -1910,7 +1936,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
       }
       expectedMetrics[metricId] = (expectedMetrics[metricId] ?? 0) + delta;
     }
-    // score is client-side derived, not asserted here
+    // remainingDays is player-facing derived, not asserted here
 
     assert.equal(pickAction.state.public.teamSelection?.pickCount, expectedPickCount);
     assert.deepEqual(pickAction.state.public.teamSelection?.selectedMemberIds, teamPicks.slice(0, expectedPickCount).map((item) => item.memberId));
@@ -1957,7 +1983,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
     }
     expectedMetrics[metricId] = (expectedMetrics[metricId] ?? 0) + delta;
   }
-  // score is client-side derived, not asserted here
+  // remainingDays is player-facing derived, not asserted here
 
   assert.equal(fifthAction.state.public.teamSelection?.pickCount, 5);
   assert.deepEqual(
@@ -2211,7 +2237,7 @@ test("POST /actions resolves opening.card.31 with a post-base conditional bonus 
   assert.equal(card31Action.state.public.metrics?.rep, beforeCard31Rep + 1);
   assert.equal(card31Action.state.public.metrics?.cont, 11);
   assert.equal(card31Action.state.public.metrics?.time, beforeCard31Time + 2);
-  // score is client-side derived: assert.equal(card31Action.state.public.metrics?.score, 60 - (beforeCard31Time + 2));
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card31Action.state.secret?.opening?.selectedCardId, "31");
   assert.equal(card31Flags?.facets?.selection, "selected");
   assert.equal(card31Flags?.facets?.resolution, "resolved");
@@ -2295,7 +2321,7 @@ test("POST /actions sends opening.card.34 to the loss line when pre-action stat 
   assert.equal(card34Action.state.public.metrics?.lid, beforeCard34Lid - 3);
   assert.equal(card34Action.state.public.metrics?.stat, beforeCard34Stat + 3);
   assert.equal(card34Action.state.public.metrics?.time, beforeCard34Time + 2);
-  // score is client-side derived: assert.equal(card34Action.state.public.metrics?.score, 60 - (beforeCard34Time + 2));
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card34Action.state.secret?.opening?.selectedCardId, "34");
   assert.equal(card34Flags?.facets?.selection, "selected");
   assert.equal(card34Flags?.facets?.resolution, "resolved");
@@ -2405,7 +2431,7 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
   assert.equal(card39Action.state.public.timeline.stepIndex, 23);
   assert.equal(card39Action.state.public.timeline.canAdvance, true);
   assert.equal(card39Action.state.public.metrics?.time, beforeCard39Time + 1);
-  // score is client-side derived: assert.equal(card39Action.state.public.metrics?.score, 60 - (beforeCard39Time + 1));
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card39Action.state.public.objects!.cards!["39"]?.facets?.selection, "selected");
   assert.equal(card39Action.state.public.objects!.cards!["39"]?.facets?.resolution, "resolved");
   assert.equal(card39Action.state.secret?.opening?.selectedCardId, "39");
@@ -2500,7 +2526,7 @@ test("POST /actions exposes opening.card.3902 immediately on a high-pro step-23 
   assert.equal(card3902Action.state.public.timeline.stepIndex, 23);
   assert.equal(card3902Action.state.public.timeline.canAdvance, true);
   assert.equal(card3902Action.state.public.metrics?.time, beforeCard3902Time + 1);
-  // score is client-side derived: assert.equal(card3902Action.state.public.metrics?.score, 60 - (beforeCard3902Time + 1));
+  // remainingDays is player-facing derived from time, not stored in runtime metrics.
   assert.equal(card3902Action.state.public.objects!.cards!["3902"]?.facets?.selection, "selected");
   assert.equal(card3902Action.state.public.objects!.cards!["3902"]?.facets?.resolution, "resolved");
   assert.equal(card3902Action.state.secret?.opening?.selectedCardId, "3902");
@@ -3741,7 +3767,7 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   assert.ok(Array.isArray(variablesArea.children));
 
   // Verify all 8 metric gameVariableComponents are present
-  const metricIds = ["score", "pro", "rep", "lid", "man", "stat", "cont", "constr"];
+  const metricIds = ["remainingDays", "pro", "rep", "lid", "man", "stat", "cont", "constr"];
   const gameVariableComponents = variablesArea.children!.filter(
     (child: any) => child.type === "gameVariableComponent"
   );
@@ -3752,11 +3778,9 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
     const component = gameVariableComponents.find((c: any) => c.id === metricId);
     assert.ok(component, `gameVariableComponent for metric "${metricId}" must be present`);
     assert.equal(component.type, "gameVariableComponent");
-    assert.ok(component.props.caption, `metric "${metricId}" should have a caption`);
-    assert.ok(
-      typeof component.props.value === "string" && component.props.value.includes(metricId),
-      `metric "${metricId}" value binding should reference the metric`
-    );
+    assert.equal(component.props.metricId, metricId);
+    assert.equal(component.props.caption, undefined);
+    assert.equal(component.props.value, undefined);
   }
 
   // Find the main-content-area
@@ -3819,18 +3843,18 @@ test("GET /games/antarctica/player-content preserves asset references in antarct
   );
   assert.ok(variablesArea);
 
-  const scoreComponent = ((variablesArea.children as Array<Record<string, unknown>>) as Array<{
+  const remainingDaysComponent = ((variablesArea.children as Array<Record<string, unknown>>) as Array<{
     type?: string;
     id?: string;
     props: Record<string, unknown>;
   }>)?.find(
-    (child: any) => child.type === "gameVariableComponent" && child.id === "score"
+    (child: any) => child.type === "gameVariableComponent" && child.id === "remainingDays"
   );
-  assert.ok(scoreComponent);
-  const scoreProps = scoreComponent.props as { backgroundImage?: string };
+  assert.ok(remainingDaysComponent);
+  const remainingDaysProps = remainingDaysComponent.props as { backgroundImage?: string };
   assert.ok(
-    typeof scoreProps.backgroundImage === "string" && scoreProps.backgroundImage.length > 0,
-    "score backgroundImage should be a non-empty string asset reference"
+    typeof remainingDaysProps.backgroundImage === "string" && remainingDaysProps.backgroundImage.length > 0,
+    "remainingDays backgroundImage should be a non-empty string asset reference"
   );
 });
 

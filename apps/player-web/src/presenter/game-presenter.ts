@@ -16,6 +16,10 @@ import {
   RuntimeClientError
 } from "@/presenter/runtime-client";
 import {
+  projectMetricViewsFromContent,
+  projectMetricsFromContent
+} from "@/lib/metric-projection";
+import {
   bindPortalLaunchSession,
   launchScopedStorageKey,
   readPortalLaunchContext,
@@ -95,9 +99,11 @@ export class GamePresenter {
   get playerState(): PlayerState {
     const publicState = this.session?.state?.public as Record<string, unknown> | undefined;
     const rawMetrics = { ...(publicState?.metrics as MetricsSnapshot) ?? {} };
+    const projectedMetrics = projectMetricsFromContent(this.content, publicState ?? {}, rawMetrics);
     const metrics = this.config.resolveMetrics
-      ? this.config.resolveMetrics(rawMetrics)
-      : rawMetrics;
+      ? this.config.resolveMetrics(projectedMetrics)
+      : projectedMetrics;
+    const metricViews = projectMetricViewsFromContent(this.content, publicState ?? {}, metrics);
     const timeline = (publicState?.timeline as Record<string, unknown> | undefined) ?? {};
     const runtimeUi = (publicState?.ui as RuntimeUiState | undefined) ?? {};
 
@@ -149,6 +155,7 @@ export class GamePresenter {
       ...gameState,
       sessionId: this.session?.sessionId ?? null,
       metrics,
+      metricViews,
       screenKey,
       layoutMode,
       activePanel,

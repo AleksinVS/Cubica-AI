@@ -1,6 +1,6 @@
 import type { ActionEntry } from "@/lib/game-content-resolvers";
 import type { AgentSurfaceState } from "@/types/game-state";
-import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
+import type { GameManifestAgentFailurePolicy, GameMetricView } from "@cubica/contracts-manifest";
 
 /**
  * Запрос от View или системы к Presenter.
@@ -41,6 +41,7 @@ export type PlayerRuntimeStatus = "booting" | "ready" | "paused" | "retry" | "un
 export type PlayerState = Record<string, unknown> & {
   sessionId: string | null;
   metrics: Record<string, unknown>;
+  metricViews: Record<string, GameMetricView>;
   screenKey: string | null;
   layoutMode: "leftsidebar" | "topbar";
   activePanel: string | null;

@@ -17,8 +17,8 @@ import { createManifestActionAdapter as createGenericManifestActionAdapter } fro
  * Спецификация одной fallback-метрики.
  * Используется, когда UI-манифест не предоставляет собственные описания метрик.
  *
- * @deprecated Метрики должны описываться в UI-манифесте через gameVariableComponent.
- * FallbackMetricSpec останется до полного покрытия всех экранов манифестом.
+ * @deprecated Смысл и подписи метрик должны приходить из game manifest metric
+ * catalog. FallbackMetricSpec остается только для legacy fallback-экранов.
  */
 export interface FallbackMetricSpec {
   id: string;
@@ -127,7 +127,8 @@ export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePl
   /**
    * Опциональный hook для деривации (производных) метрик.
    * Вызывается Presenter-ом при каждом syncView.
-   * Позволяет игре вычислять производные метрики (например, score = 60 - time).
+   * Позволяет игре добавлять legacy-проекции, пока вычисляемые метрики
+   * переносятся в game manifest metric catalog.
    */
   resolveMetrics?: (metrics: MetricsSnapshot) => MetricsSnapshot;
 

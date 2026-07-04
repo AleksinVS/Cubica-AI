@@ -28,6 +28,7 @@ import {
   resolveCurrentInfoEntry,
   resolveCurrentTeamSelectionScene,
   resolveJournalEntries,
+  resolveJournalMetricSpecs,
   resolveLastInfoHintText
 } from "./state-resolvers";
 
@@ -121,7 +122,8 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       const teamSelectionState = readTeamSelection(session);
       const canAdvance = readCanAdvance(session);
       const fallbackActions = getFallbackActionEntries(content);
-      const journalEntries = resolveJournalEntries(gameContent, publicState, data.fallbackMetrics);
+      const journalMetricSpecs = resolveJournalMetricSpecs(content, data.fallbackMetrics);
+      const journalEntries = resolveJournalEntries(gameContent, publicState, journalMetricSpecs);
       const resolvedHintText =
         resolveLastInfoHintText(gameContent, { currentInfo, currentBoard, currentTeamSelection }) ??
         content.description ??
@@ -157,13 +159,6 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
         hasHintText: resolvedHintText.trim().length > 0,
         fallbackActions
       };
-    },
-
-    resolveMetrics(metrics) {
-      if (typeof metrics.time === "number" && !("score" in metrics)) {
-        metrics.score = 60 - metrics.time;
-      }
-      return metrics;
     },
 
     createManifestActionAdapter(content, gameState, dispatchAction, onError) {
