@@ -7,49 +7,6 @@ import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { useLocale, type LocaleStrings } from "@/lib/locale";
 
 /**
- * Convention state keys that SafeModeRenderer checks for fallback screen generation.
- *
- * Games that want convention-based rendering must provide these keys
- * in their resolveGameState() output. All fields are optional —
- * the renderer checks each key and falls through to the next convention
- * or the action catalog fallback.
- */
-interface GameConventionState {
-  currentInfo?: {
-    id: string;
-    title: string;
-    body: string;
-    advanceActionId?: string;
-    advanceLabel?: string;
-    [key: string]: unknown;
-  };
-  currentBoard?: {
-    title?: string;
-    body?: string;
-    [key: string]: unknown;
-  };
-  canAdvance?: boolean;
-  selectedCard?: Record<string, unknown>;
-  currentTeamSelection?: {
-    id: string;
-    title?: string;
-    requiredPickCount?: number;
-    confirmActionId?: string;
-    confirmLabel?: string;
-    [key: string]: unknown;
-  };
-  pickCount?: number;
-  boardCards?: Array<{
-    cardId: string;
-    title: string;
-    summary: string;
-    selectActionId: string;
-    selectLabel?: string;
-    [key: string]: unknown;
-  }>;
-}
-
-/**
  * Безопасный рендерер для экранов без манифестного описания.
  *
  * Генерирует GameUiScreenDefinition из convention-ключей в GameState
@@ -74,8 +31,6 @@ export function SafeModeRenderer({
   dispatchAction,
   fallbackScreenBuilder,
   onManifestAction,
-  onJournal,
-  onHint,
   isPending,
   sessionId,
   editorPreviewMode = false,
@@ -100,10 +55,6 @@ export function SafeModeRenderer({
   ) => GameUiScreenDefinition | null;
   /** Manifest action handler — for fallbackScreenBuilder path via ManifestRenderer */
   onManifestAction?: (command: string, payload: Record<string, unknown>) => void;
-  /** Callback for "Journal" button */
-  onJournal?: () => void;
-  /** Callback for "Hint" button */
-  onHint?: () => void;
   /** Pending server response flag */
   isPending?: boolean;
   /** Current session ID */
@@ -192,7 +143,7 @@ export function SafeModeRenderer({
   }
 
   // 3. Fallback — каталог действий
-  const fallbackScreenDef = buildFallbackActionsScreenDefinition(content, layoutMode, fallbackMetrics, disabled, t);
+  const fallbackScreenDef = buildFallbackActionsScreenDefinition(content, layoutMode, fallbackMetrics, t);
   return (
     <ManifestRenderer
       screenDefinition={fallbackScreenDef}
@@ -262,7 +213,6 @@ function buildMetricGameVariableComponents(
 }
 
 function buildPanelButtonsArea(
-  layoutMode: "leftsidebar" | "topbar",
   disabled: boolean,
   t: LocaleStrings,
   forwardAction?: { command: string; payload: Record<string, unknown> },
@@ -376,7 +326,6 @@ function buildInfoScreenDefinition(
     // Panel buttons. "Вперед" получает то же действие, которое раньше
     // показывалось отдельной кнопкой "Продолжить".
     buildPanelButtonsArea(
-      layoutMode,
       disabled,
       t,
       advanceActionId
@@ -504,7 +453,6 @@ function buildBoardScreenDefinition(
           // Panel buttons. "Вперед" активируется тем же canAdvance-состоянием,
           // при котором раньше появлялась отдельная кнопка "Продолжить".
           buildPanelButtonsArea(
-            "topbar",
             disabled,
             t,
             selectedCardAdvanceActionId
@@ -613,7 +561,7 @@ function buildTeamSelectionScreenDefinition(
           ],
         },
         // Panel buttons
-        buildPanelButtonsArea(layoutMode, disabled, t),
+        buildPanelButtonsArea(disabled, t),
       ],
     }, previewPointers.root),
   };
@@ -623,7 +571,6 @@ function buildFallbackActionsScreenDefinition(
   content: PlayerFacingContent,
   layoutMode: "leftsidebar" | "topbar",
   fallbackMetrics: ReadonlyArray<FallbackMetricSpec>,
-  disabled: boolean,
   t: LocaleStrings
 ): GameUiScreenDefinition {
   const actions = getFallbackActionEntries(content);

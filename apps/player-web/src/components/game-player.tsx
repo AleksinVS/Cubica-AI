@@ -8,8 +8,7 @@ import type {
   GamePlayerUiContent
 } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
-import { useLocale, LocaleProvider } from "@/lib/locale";
-import { ru } from "@/lib/locale/ru";
+import { useLocale } from "@/lib/locale";
 import type { PlayerState } from "@/presenter/types";
 import type { ViewCommand } from "@cubica/sdk-core";
 import type { GameConfigData } from "@/presenter/game-config";
@@ -64,7 +63,6 @@ export type GamePlayerProps = {
 export function GamePlayer({
   runtimeApiUrl,
   content,
-  mockups,
   gameUi,
   config: configData,
   initialSessionId,
@@ -302,18 +300,6 @@ export function GamePlayer({
     return false;
   };
 
-  const handleDismissPanel = (panel: string) => {
-    const presenter = presenterRef.current;
-    if (!presenter) return;
-
-    void presenter.handleEvent({
-      source: "user" as const,
-      type: ManifestAction.DISMISS_PANEL,
-      payload: { panel },
-      timestamp: new Date().toISOString()
-    });
-  };
-
   const handleRetryBoot = () => {
     const presenter = presenterRef.current;
     if (!presenter) return;
@@ -414,8 +400,6 @@ export function GamePlayer({
           dispatchAction={handleAction}
           fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}
           onManifestAction={handleManifestAction}
-          onJournal={() => handleAction(ManifestAction.SHOW_PANEL, { panelId: "history" })}
-          onHint={() => handleAction(ManifestAction.SHOW_PANEL, { panelId: "hint" })}
           isPending={state.isPending}
           sessionId={state.sessionId}
           editorPreviewMode={editorPreviewMode}

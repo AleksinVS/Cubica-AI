@@ -1,9 +1,5 @@
-import type {
-  PlayerFacingContent,
-  PlayerFacingMockup
-} from "@cubica/contracts-manifest";
 import type { CubicaSurface } from "@cubica/contracts-ai";
-import type { ActionSnapshot, SessionSnapshot } from "@/lib/game-content-resolvers";
+import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 
 
 export type GameSession = SessionSnapshot & {

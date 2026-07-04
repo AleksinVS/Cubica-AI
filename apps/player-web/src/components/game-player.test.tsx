@@ -12,7 +12,6 @@
  */
 
 import { beforeEach, describe, expect, it } from "vitest";
-import React from "react";
 
 import type { GamePlayerUiContent } from "@cubica/contracts-manifest";
 import {
@@ -42,7 +41,6 @@ import {
   openingTailStep35InfoI19SessionSnapshot,
   openingTailStep35InfoI19_1SessionSnapshot,
   openingTailStep36BoardSessionSnapshot,
-  openingTailStep36WithSelectedGoCard69SessionSnapshot,
   openingTailStep37InfoI20SessionSnapshot,
   openingTailStep38InfoI21SessionSnapshot,
 } from "@/test/antarctica-opening-tail-fixtures";

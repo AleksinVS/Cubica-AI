@@ -1,6 +1,5 @@
 import { ANTARCTICA_GAME_CONFIG_DATA } from "@cubica/antarctica-player-plugin/config-data";
 import { activate as activateAntarcticaPlayer } from "@cubica/antarctica-player-plugin";
-import { buildGameConfig } from "@/presenter/game-config-registry";
 import { createDefaultGameConfigData } from "@/presenter/game-config";
 import { playerPluginApi } from "@/plugins/player-plugin-api";
 import { describe, expect, it, vi, beforeEach } from "vitest";
@@ -1263,203 +1262,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
 });
 
 describe("GamePlayer S2 Board Screens (55..60, 61..66, 67..68, 69..70)", () => {
-  // UI manifest with board screens for testing S2 board rendering
-  const mockUiWithBoards: GamePlayerUiContent = {
-    id: "antarctica.ui.web",
-    version: "1.2.0",
-    gameId: "antarctica",
-    entryPoint: "S1",
-    screens: {
-      S1: mockS1Ui.screens.S1,
-      "55..60": {
-        type: "screen",
-        title: "Выберите десятый шаг",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen topbar-screen-shell" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container topbar-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "remainingDays",
-                  props: {
-                    metricId: "remainingDays"
-                  }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area topbar-main-content" },
-              children: [
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "board-header topbar-board-header" },
-                  children: [
-                    {
-                      type: "areaComponent",
-                      props: { cssClass: "board-title topbar-board-title" },
-                      children: [
-                        {
-                          type: "cardComponent",
-                          id: "board-title",
-                          props: { text: "Теперь у вас есть еще несколько способов продолжить работу штаба." }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "cards-container topbar-cards-container" },
-                  children: [
-                    {
-                      type: "cardComponent",
-                      id: "card-55",
-                      props: { text: "Привлечь скептиков" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.55" } } }
-                    },
-                    {
-                      type: "cardComponent",
-                      id: "card-60",
-                      props: { text: "Школа разведчика" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.60" } } }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "61..66": {
-        type: "screen",
-        title: "Выберите одинадцатый шаг",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen topbar-screen-shell" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container topbar-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "remainingDays",
-                  props: {
-                    metricId: "remainingDays"
-                  }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area topbar-main-content" },
-              children: [
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "board-header topbar-board-header" },
-                  children: [
-                    {
-                      type: "cardComponent",
-                      id: "board-title",
-                      props: { text: "Отправка разведчиков требует особого подхода." }
-                    }
-                  ]
-                },
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "cards-container topbar-cards-container" },
-                  children: [
-                    {
-                      type: "cardComponent",
-                      id: "card-61",
-                      props: { text: "Отправить элитную группу" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.61" } } }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      },
-      "67..70": {
-        type: "screen",
-        title: "Выберите двенадцатый шаг",
-        root: {
-          type: "screenComponent",
-          props: { cssClass: "main-screen topbar-screen-shell" },
-          children: [
-            {
-              type: "areaComponent",
-              props: { cssClass: "game-variables-container topbar-variables-container" },
-              children: [
-                {
-                  type: "gameVariableComponent",
-                  id: "remainingDays",
-                  props: {
-                    metricId: "remainingDays"
-                  }
-                }
-              ]
-            },
-            {
-              type: "areaComponent",
-              props: { cssClass: "main-content-area topbar-main-content" },
-              children: [
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "board-header topbar-board-header" },
-                  children: [
-                    {
-                      type: "cardComponent",
-                      id: "board-title",
-                      props: { text: "Последняя проверка перед переездом." }
-                    }
-                  ]
-                },
-                {
-                  type: "areaComponent",
-                  props: { cssClass: "cards-container topbar-cards-container" },
-                  children: [
-                    {
-                      type: "cardComponent",
-                      id: "card-67",
-                      props: { text: "Кабинетный анализ" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.67" } } }
-                    },
-                    {
-                      type: "cardComponent",
-                      id: "card-68",
-                      props: { text: "Оперативный сбор" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.68" } } }
-                    },
-                    {
-                      type: "cardComponent",
-                      id: "card-69",
-                      props: { text: "Осмотр территории" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.69" } } }
-                    },
-                    {
-                      type: "cardComponent",
-                      id: "card-70",
-                      props: { text: "Подготовка к зиме" },
-                      actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.70" } } }
-                    }
-                  ]
-                }
-              ]
-            }
-          ]
-        }
-      }
-    }
-  };
-
   it("renders board screen 55..60 when screenId=S2 and stepIndex=30", async () => {
     const sessionAtBoard55_60 = {
       ...mockSession,
@@ -2253,11 +2055,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
   });
 
   it("shows loading state when session is booting (not yet available)", async () => {
-    // Mock a session that takes time to load via a slow promise
-    let slowResolve: (value: any) => void;
-    const slowPromise = new Promise<any>((resolve) => {
-      slowResolve = resolve;
-    });
+    // Mock a session that takes time to load via a slow promise that
+    // intentionally never resolves during this test.
+    const slowPromise = new Promise<any>(() => {});
 
     (global.fetch as any).mockImplementation((url: string) => {
       if (url.includes("/api/runtime/sessions")) {
@@ -2392,7 +2192,7 @@ describe("GamePlayer sticky screenKey regression (Finding 2)", () => {
   });
 
   it("falls through to the fallback catalog instead of the stale S1 screen once screenKey clears", async () => {
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
+    (global.fetch as any).mockImplementation((url: string, _options: any) => {
       if (url === "/api/runtime/actions") {
         // The server moves the session to screenId "S2", which has no
         // mapped UI screen in `stickyGameUi.screens` — so the presenter's

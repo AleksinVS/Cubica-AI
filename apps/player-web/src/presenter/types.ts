@@ -1,4 +1,3 @@
-import type { ActionEntry } from "@/lib/game-content-resolvers";
 import type { AgentSurfaceState } from "@/types/game-state";
 import type { GameManifestAgentFailurePolicy, GameMetricView } from "@cubica/contracts-manifest";
 

@@ -1,7 +1,5 @@
-import type { GamePlayerUiContent } from "@cubica/contracts-manifest";
-import type { MetricsSnapshot, RuntimeUiState } from "@/types/game-state";
+import type { MetricsSnapshot } from "@/types/game-state";
 import { resolveExpression } from "@/lib/expression-resolver";
-import { appendClassName } from "@/lib/classname-utils";
 
 /**
  * Разрешает выражение привязки метрики, например "{{game.state.public.metrics.score}}",

@@ -18,7 +18,17 @@
 
 ## Status
 
-planned
+partially-implemented (2026-07-04) — player-web dead code + strict flags done; JsonLogic + SDK + readNumber deferred
+
+Выполнены Phase 1 (мёртвый код player-web удалён, `noUnusedLocals`/`noUnusedParameters`
+включены и зелёные) и часть Phase 2 (дедуп `formatValue` — через удаление мёртвого
+`formatting.ts`). **Отложены (нужны решения/крупнее):** Phase 3 (унификация JsonLogic —
+стратегия shared evaluator vs документированное подмножество + CI), Phase 4 (статус
+`SDK/react-sdk` и session-половины `SDK/core` + `exit 1`-хазард в `SDK/*`), и консолидация
+`readNumber` (три копии с РАЗНЫМИ сигнатурами — не безопасный blind-merge).
+`GamePlayerS1UiContent` НЕ удалён — есть потребители (тесты + контракт). Также
+`resolveButtonId` уже удалён в renderer-purity (0d440b0), а `game-content-resolvers`
+team/card/opening перенос закреплён за renderer-purity follow-up.
 
 ## Understanding
 
@@ -141,3 +151,30 @@ npm run verify:canonical
 ## Handoff Log
 
 - 2026-06-30: задача создана по результатам полного ревью; покрывает LEGACY-0021/0022.
+- 2026-07-04: Phase 1 + часть Phase 2 (player-web, всё греп-проверено перед удалением).
+  - **Удалён мёртвый код:** `apps/player-web/src/lib/formatting.ts` (ноль импортёров;
+    `export * from "./formatting"` убран из `lib/index.ts`) и весь
+    `apps/player-web/src/components/panels/` (`MetricCluster` — ноль потребителей).
+    `resolveMetricValueByAliases` оставлен — используется `lib/metric-resolvers.ts`.
+  - **Мёртвые импорты/пропсы:** убраны неиспользуемые импорты `LocaleProvider`/`ru` и
+    dead `onJournal`/`onHint` (проброс в `SafeModeRenderer` + сами пропсы в
+    `safe-mode-renderer.tsx`; кнопки диспатчат `ManifestAction.SHOW_PANEL` напрямую).
+  - **Строгие проверки:** `noUnusedLocals`/`noUnusedParameters` включены в
+    `apps/player-web/tsconfig.json`; исправлен 21 диагностик в 9 файлах (мёртвые
+    импорты/типы/локали, `_`-префикс для нужных-но-неиспользуемых параметров).
+  - **Дедуп `formatValue`:** после удаления `formatting.ts` остаётся один в
+    `lib/metric-resolvers.ts` — дедуп достигнут удалением.
+  - **Проверки:** player-web typecheck, 130 тестов и `next build` — зелёные.
+  - **Оставлено осознанно:** `GamePlayerS1UiContent` (есть потребители: тесты +
+    контракт); `readNumber` в `safe-mode-renderer.tsx` и `editor-preview-bridge.ts`
+    (РАЗНЫЕ сигнатуры/контракты — не сливать вслепую).
+  - **Отложено (отдельные срезы, нужны решения):**
+    1. **JsonLogic (Phase 3):** `apps/player-web/src/lib/metric-projection.ts` дублирует
+       вычислитель `json-logic-js` из runtime. Решить: общий evaluator в общий пакет,
+       либо документированное подмножество операторов + CI-проверка. Не тронуто.
+    2. **SDK (Phase 4):** статус `SDK/react-sdk` и мёртвой session-половины `SDK/core`
+       (удалить из workspaces или внести в debt-log/LEGACY-0021/0022). Плюс тот же
+       `exit 1`-хазард в `SDK/core`, `SDK/shared`, `SDK/react-sdk` (найден в P0), из-за
+       которого агрегатный `npm test --workspaces` всё ещё падает. Не тронуто.
+    3. **`readNumber` консолидация** — при желании унифицировать три варианта с общим
+       контрактом (сейчас разные).

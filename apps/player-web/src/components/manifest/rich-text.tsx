@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { RichTextProps } from "@/types/game-state";
 
 /**
