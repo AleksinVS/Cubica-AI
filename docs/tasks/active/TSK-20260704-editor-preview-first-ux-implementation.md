@@ -267,3 +267,14 @@ game-agnostic CI invariant.
   двунаправленная: правка ниже И выше префикса; источники — только sourcePointers
   проекции, ADR-052). verify 70/70 + editor-web typecheck. Механизм
   инвалидации/кэша не реализовывался — это Phase 2.1.
+- 2026-07-05 (Phase 1.4, готово): `state-fixture.schema.json` (draft-07, strict-clean,
+  additionalProperties:false; обязательные id/_label/state/manifestHash, опциональные
+  screenRef/stepRef/sourceTraceRef/note — sourceTraceRef информационный, протухание
+  допустимо) + engine-модуль `state-fixture.ts`: `computeManifestContentHash`
+  (sha256 по отсортированным files path+content), `validateStateFixtureSemantics`
+  (`fixture-stale` warning по хешу; `fixture-unknown-ref` error — код добавлен в
+  реестр spec §4), id-коллекторы поверх существующих проекций. Ajv — через общий
+  `createSchemaRegistry` (strict:true, без исключений). verify 85/85 + typecheck +
+  verify:manifest-authoring. Runtime/player/compiler фикстуры не читают (инвариант
+  соблюдён). Live-валидация в editor-web и CI-валидация коммитнутых фикстур —
+  вместе с потребителями (Phase 5).

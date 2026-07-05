@@ -26,6 +26,7 @@
  * - `preview.ts`             — preview geometry, hit-testing, playthrough traces
  * - `entity-projection.ts`   — editor entity projection + YAML + timeline
  * - `schema.ts`              — JSON Schema validation + semantic diagnostics
+ * - `state-fixture.ts`       — state fixture hash + semantic validation (ADR-057)
  * - `prototype-extraction.ts`— local prototype extraction (ADR-050)
  * - `reverse-projection.ts`  — UI edit intents back into JSON Patch
  */
@@ -96,6 +97,19 @@ export { pointersOverlap } from "./semantics.ts";
 
 // JSON Schema validation and semantic diagnostics.
 export { createSchemaRegistry, validateDocument, validateJsonValue } from "./schema.ts";
+
+// State fixtures: schema id, deterministic manifest content hash, and the
+// fixture-specific semantic checks (ADR-057 §4.9, §9.3; design-spec §2.5, §4).
+export {
+  FIXTURE_STALE_DIAGNOSTIC_CODE,
+  FIXTURE_UNKNOWN_REF_DIAGNOSTIC_CODE,
+  STATE_FIXTURE_SCHEMA_ID,
+  collectManifestChronologyStepIds,
+  collectUiScreenIds,
+  computeManifestContentHash,
+  validateStateFixtureSemantics
+} from "./state-fixture.ts";
+export type { ManifestContentFile, ValidateStateFixtureSemanticsInput } from "./state-fixture.ts";
 
 // Local prototype extraction (ADR-050).
 export { createPrototypeExtractionProposal, discoverPrototypeExtractionCandidates } from "./prototype-extraction.ts";

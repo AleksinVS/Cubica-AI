@@ -159,6 +159,8 @@ export function makeDiagnostic(input: {
   readonly source: DiagnosticSource;
   readonly pointer: string;
   readonly message: string;
+  /** Optional stable registry code (design-spec §4), e.g. `fixture-stale`. */
+  readonly code?: string;
   readonly range?: TextRange;
 }): DocumentDiagnostic {
   return {
@@ -166,6 +168,7 @@ export function makeDiagnostic(input: {
     source: input.source,
     pointer: input.pointer,
     message: input.message,
+    code: input.code,
     range: input.range,
     line: input.range?.start.line,
     column: input.range?.start.column

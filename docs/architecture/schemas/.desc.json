@@ -4,5 +4,6 @@
   "game-authoring.schema.json": "JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.",
   "manifest-authoring-common.schema.json": "Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.",
   "manifest-source-map.schema.json": "JSON Schema for tooling-only source map companion files generated next to runtime manifests.",
+  "state-fixture.schema.json": "JSON Schema for pinned editor state fixtures under games/<id>/authoring/fixtures/*.json (ADR-057); runtime/player never read these files.",
   "ui-authoring.schema.json": "JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files."
 }

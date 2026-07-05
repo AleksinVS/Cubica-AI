@@ -309,6 +309,7 @@ interface QueuedIntent {
 | `entity-missing-view` | warning | тип требует отображения, вида в канале нет |
 | `prompt-stale` | info/block | хеши источников проекции не совпали (ADR-049) |
 | `fixture-stale` | warning | `manifestHash` фикстуры не совпадает с текущим |
+| `fixture-unknown-ref` | error | `screenRef`/`stepRef` фикстуры не существует среди экранов активного канала / шагов хронологии |
 | `intent-stale` | info | журнал тронул read/write указатели интента |
 | `preview-stale` | status | валидные правки не применены к предпросмотру |
 | `preview-blocked` | status | компиляция сломана, показан последний валидный снимок |

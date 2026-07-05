@@ -47,6 +47,13 @@ export interface DocumentDiagnostic {
   readonly message: string;
   readonly source: DiagnosticSource;
   readonly pointer: string;
+  /**
+   * Optional stable diagnostic code from the editor diagnostic registry
+   * (design-spec §4), for example `fixture-stale` or `fixture-unknown-ref`.
+   * Absent for the older schema/semantic diagnostics that predate the registry;
+   * present on newer checks so UI layers can group and navigate by code.
+   */
+  readonly code?: string;
   readonly range?: TextRange;
   /** Backward-compatible shortcut for consumers that only need a marker point. */
   readonly line?: number;

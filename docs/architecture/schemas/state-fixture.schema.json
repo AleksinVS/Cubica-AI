@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/state-fixture.schema.json",
+  "title": "Cubica State Fixture",
+  "description": "Pinned named snapshot of runtime game state that becomes a reviewable authoring artifact under games/<gameId>/authoring/fixtures/<fixtureId>.json (ADR-057 §4.9). A fixture provides the state context for the editor Design mode and a starting point for a playthrough. Runtime-api, player-web and the compiler never read fixture files; the editor passes the captured state into a preview-only restore endpoint.",
+  "type": "object",
+  "required": [
+    "id",
+    "_label",
+    "state",
+    "manifestHash"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable ASCII-first identifier of the fixture, used for the file name and references. Same identifier shape as authoring entity ids.",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$"
+    },
+    "_label": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable editor name for the fixture. Cyrillic labels are allowed and expected for Russian authoring."
+    },
+    "screenRef": {
+      "type": "string",
+      "description": "Optional id of the UI screen this fixture is bound to. Must match a screen id in the active preview channel UI manifest. A fixture may be bound to a step only, so this field is optional.",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$"
+    },
+    "stepRef": {
+      "type": "string",
+      "description": "Optional id of the game chronology step this fixture is bound to. Must match a step id in the game manifest chronology. A fixture may be bound to a screen only, so this field is optional.",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_.:-]*$"
+    },
+    "state": {
+      "type": "object",
+      "description": "Full snapshot of the runtime game state (stage, metrics, objects) captured at pin time. The shape is intentionally open because it mirrors whatever runtime state the game produces."
+    },
+    "manifestHash": {
+      "type": "string",
+      "description": "Deterministic content hash of the authoring manifests at the moment the fixture was captured. When it no longer matches the current manifests the editor raises the fixture-stale diagnostic. Format: sha256-<64 lowercase hex chars>.",
+      "pattern": "^sha256-[0-9a-f]{64}$"
+    },
+    "sourceTraceRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional informational pointer to the source playthrough trace the fixture was captured from, for example .tmp/editor-playthroughs/<traceId>#<seq>. It targets the garbage-collected .tmp area, so a stale reference is allowed and is not an error."
+    },
+    "note": {
+      "type": "string",
+      "description": "Optional free-form author note explaining why this fixture exists."
+    }
+  },
+  "additionalProperties": false
+}
