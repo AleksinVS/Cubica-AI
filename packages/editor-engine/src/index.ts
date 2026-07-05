@@ -79,11 +79,20 @@ export {
 } from "./preview.ts";
 
 // Editor entity projection, YAML projection, and chronology timeline.
+// Also the projection lens read-dependency declarations and the incremental
+// invalidation helpers that build on them (ADR-057 §4.13).
 export {
+  PROJECTION_LENSES,
+  PROJECTION_LENS_SET_VERSION,
   buildEditorEntityProjection,
   buildEditorEntityYamlProjection,
-  buildManifestChronologyTimeline
+  buildManifestChronologyTimeline,
+  collectAffectedEntities,
+  pointerAffectsLens
 } from "./entity-projection.ts";
+
+// Cross-cutting semantic pointer predicate for incremental invalidation.
+export { pointersOverlap } from "./semantics.ts";
 
 // JSON Schema validation and semantic diagnostics.
 export { createSchemaRegistry, validateDocument, validateJsonValue } from "./schema.ts";

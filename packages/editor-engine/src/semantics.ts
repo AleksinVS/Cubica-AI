@@ -24,6 +24,19 @@ export function isSameOrDescendantPointer(pointer: string, ancestorPointer: stri
 }
 
 /**
+ * True when two JSON Pointers address overlapping subtrees.
+ *
+ * Overlap is symmetric "same-or-descendant": either pointer being at or below
+ * the other counts. This is the "a change here can affect a read there" test
+ * used by incremental invalidation — true both when the change is INSIDE a read
+ * subtree and when the change REPLACES a read subtree from ABOVE (reverse
+ * nesting). The empty pointer `""` (document root) overlaps every pointer.
+ */
+export function pointersOverlap(pointerA: string, pointerB: string): boolean {
+  return isSameOrDescendantPointer(pointerA, pointerB) || isSameOrDescendantPointer(pointerB, pointerA);
+}
+
+/**
  * True when a node should appear as its own entity in the entity tree.
  *
  * The document root is always visible; definition templates never are; any

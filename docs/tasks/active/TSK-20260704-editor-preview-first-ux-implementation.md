@@ -17,7 +17,7 @@
 
 ## Status
 
-planned
+in-progress (2026-07-05) — Phase 0 и Phase 1.1–1.3 выполнены; срезы A (e2e prod-режим) и B (декомпозиция EditorWorkspace) закрыты
 
 ## Understanding
 
@@ -259,3 +259,11 @@ game-agnostic CI invariant.
   identity/reference-поля распознаются generic naming convention (`id`, `*Id`,
   `*Ref`…) — кандидат на schema-driven признак вместе с Phase 1.5; интерпретатор
   текстового режима (Phase 4) обязан идти через ту же единую точку.
+- 2026-07-05 (Phase 1.3, готово): декларации зависимостей линз — новый контракт
+  `ProjectionLens` c `readPointerPrefixes`/`documentKinds`, реестр
+  `PROJECTION_LENSES` (1:1 к существующим collectors, включая честную линзу
+  `preview-facets` с корневым префиксом), `PROJECTION_LENS_SET_VERSION`, хелперы
+  `pointersOverlap`/`pointerAffectsLens`/`collectAffectedEntities` (затронутость
+  двунаправленная: правка ниже И выше префикса; источники — только sourcePointers
+  проекции, ADR-052). verify 70/70 + editor-web typecheck. Механизм
+  инвалидации/кэша не реализовывался — это Phase 2.1.

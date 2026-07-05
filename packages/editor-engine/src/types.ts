@@ -658,6 +658,38 @@ export interface EditorEntityProjection {
   readonly diagnostics: readonly EditorEntityProjectionDiagnostic[];
 }
 
+/**
+ * Read-dependency declaration for one projection lens (ADR-057 §4.13, UX §10).
+ *
+ * A "projection lens" (линза проекции) is one bounded reader inside the
+ * entity-projection builder: it walks a fixed part of an authoring document and
+ * emits editor entities plus their source pointers. Declaring WHICH pointer
+ * subtrees a lens reads is the foundation for the future incremental cache
+ * (Phase 2.1): a changed pointer only needs to re-run the lenses whose declared
+ * subtrees it touches, instead of rebuilding the whole projection.
+ *
+ * This is a pure DECLARATION contract; on its own it drives no caching yet.
+ */
+export interface ProjectionLens {
+  /** Stable lens identifier, unique inside the lens set. */
+  readonly id: string;
+  /**
+   * Document kinds this lens applies to. Absent means "any document kind" and
+   * is used by input-driven lenses that can touch several documents at once.
+   */
+  readonly documentKinds?: readonly EditorEntityDocumentKind[];
+  /**
+   * JSON Pointer prefixes the lens reads inside each matching document.
+   *
+   * A prefix is a JSON Pointer to the root of a subtree the lens reads. The
+   * empty string `""` means the lens can read the whole document; it is used
+   * when the read set is not expressible as fixed subtrees (for example
+   * runtime-supplied pointers). Over-declaring a broader prefix is always SAFE:
+   * it can only cause an extra rebuild, never a missed invalidation.
+   */
+  readonly readPointerPrefixes: readonly string[];
+}
+
 export interface BuildEditorEntityYamlProjectionInput {
   readonly entity: EditorEntity;
   readonly documents: readonly EditorEntityProjectionDocument[];

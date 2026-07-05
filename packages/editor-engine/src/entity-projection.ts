@@ -11,7 +11,7 @@
  */
 import { isPlainJsonObject, isScalar, normalizeToken, titleFromToken } from "./shared.ts";
 import { appendPointerSegment, buildJsonPointer, lastPointerSegmentOrRoot, readJsonPointer } from "./json-pointer-patch.ts";
-import { isSameOrDescendantPointer, resolveEntityTreeLabel } from "./semantics.ts";
+import { isSameOrDescendantPointer, pointersOverlap, resolveEntityTreeLabel } from "./semantics.ts";
 import type {
   BuildEditorEntityProjectionInput,
   BuildEditorEntityYamlProjectionInput,
@@ -32,7 +32,8 @@ import type {
   JsonValue,
   ManifestTimeline,
   ManifestTimelineEntry,
-  PreviewEntityDescriptor
+  PreviewEntityDescriptor,
+  ProjectionLens
 } from "./types.ts";
 
 /**
@@ -89,6 +90,119 @@ export function buildEditorEntityProjection(input: BuildEditorEntityProjectionIn
     entitiesBySourcePointer,
     diagnostics: [...diagnostics, ...entityDiagnostics]
   };
+}
+
+/**
+ * Version of the projection lens set (ADR-057 §4.13, UX §10).
+ *
+ * The "lens set" is the fixed collection of readers in `PROJECTION_LENSES` plus
+ * how `buildEditorEntityProjection` turns document subtrees into entities and
+ * source pointers. The future incremental cache (Phase 2.1) may only apply
+ * PARTIAL, pointer-level invalidation while this version is unchanged.
+ *
+ * Bump this integer whenever a change could make a partial rebuild diverge from
+ * a full rebuild, namely:
+ *   - adding, removing, or renaming a lens;
+ *   - changing any lens `readPointerPrefixes`;
+ *   - changing how a lens derives entities, labels, links, or source pointers.
+ * Do NOT bump for pure refactors that keep reads and outputs identical. A bump
+ * forces a full projection rebuild (UX §10: "полная пересборка ... при ...
+ * изменении версии линз").
+ */
+export const PROJECTION_LENS_SET_VERSION = 1;
+
+/**
+ * Declared read dependencies of every projection lens (ADR-057 §4.13).
+ *
+ * Each entry mirrors one reader used by `buildEditorEntityProjection`; the
+ * `readPointerPrefixes` are the honest subtrees that reader touches inside a
+ * matching document. Root lenses declare the whole enclosing object (`/root`)
+ * on purpose: they read only header fields (id/_label/title/name), but the
+ * broader prefix stays correct even if label resolution ever reads more keys —
+ * over-declaration can only cause an extra rebuild, never a missed one.
+ *
+ * The order and ids match the collectors so the list stays easy to audit
+ * against the code; it is not otherwise significant.
+ */
+export const PROJECTION_LENSES: readonly ProjectionLens[] = [
+  // Game root entity: reads the `/root` object header.
+  { id: "game-root", documentKinds: ["game"], readPointerPrefixes: ["/root"] },
+  // Flows, their steps, and the link ids each step declares.
+  { id: "game-flow-step", documentKinds: ["game"], readPointerPrefixes: ["/root/logic/flows"] },
+  // Game actions (and nested objectId links resolved against content).
+  { id: "game-action", documentKinds: ["game"], readPointerPrefixes: ["/root/logic/actions"] },
+  // Public metrics map.
+  { id: "game-metric", documentKinds: ["game"], readPointerPrefixes: ["/root/state/public/metrics"] },
+  // Object-type state models.
+  { id: "game-state-model", documentKinds: ["game"], readPointerPrefixes: ["/root/objectTypes"] },
+  // Cross-reference index: action id -> action source pointer.
+  { id: "game-action-index", documentKinds: ["game"], readPointerPrefixes: ["/root/logic/actions"] },
+  // Cross-reference index: content id -> content source pointer.
+  { id: "game-content-index", documentKinds: ["game"], readPointerPrefixes: ["/root/content"] },
+  // UI root header, screens, and every nested component subtree.
+  { id: "ui-entities", documentKinds: ["ui"], readPointerPrefixes: ["/root"] },
+  // Cross-reference index: screen id -> screen source pointer.
+  { id: "ui-screen-index", documentKinds: ["ui"], readPointerPrefixes: ["/root/screens"] },
+  // Preview facets attach to runtime-supplied authoring pointers, so they can
+  // read anywhere in any document; `""` is the whole-document (root) prefix.
+  { id: "preview-facets", readPointerPrefixes: [""] }
+];
+
+/**
+ * True when a changed JSON Pointer can affect what `lens` reads.
+ *
+ * Affectedness is BIDIRECTIONAL nesting against the lens `readPointerPrefixes`:
+ *   - the change is at or below a prefix (a field the lens reads changed), or
+ *   - the change is at or above a prefix (a whole subtree the lens reads was
+ *     replaced or removed from higher up — reverse nesting).
+ * When `documentKind` is given and the lens is scoped to other kinds only, the
+ * lens cannot be affected. This is a pure predicate; it performs no rebuild.
+ */
+export function pointerAffectsLens(
+  lens: ProjectionLens,
+  changedPointer: string,
+  documentKind?: EditorEntityDocumentKind
+): boolean {
+  if (documentKind !== undefined && lens.documentKinds !== undefined && !lens.documentKinds.includes(documentKind)) {
+    return false;
+  }
+
+  return lens.readPointerPrefixes.some((prefix) => pointersOverlap(changedPointer, prefix));
+}
+
+/**
+ * Collects the ids of projection entities whose source pointers intersect a set
+ * of changed pointers (foundation for Phase 2.1 incremental invalidation).
+ *
+ * The ONLY source of entity-to-pointer links is the projection itself (ADR-052
+ * §11): this reads each entity's primary and facet source pointers and never
+ * re-parses documents. `changedPointersByFile` maps a file path to the pointers
+ * changed in that file (an empty pointer `""` means the whole file changed). An
+ * entity is affected when any of its source pointers in a changed file overlaps
+ * a changed pointer under the same bidirectional-nesting rule used by
+ * `pointerAffectsLens`.
+ */
+export function collectAffectedEntities(
+  projection: EditorEntityProjection,
+  changedPointersByFile: Readonly<Record<string, readonly string[]>>
+): ReadonlySet<string> {
+  const affected = new Set<string>();
+
+  for (const entity of projection.entities) {
+    for (const source of collectEntitySourcePointers(entity)) {
+      const changedPointers = changedPointersByFile[source.filePath];
+      if (changedPointers === undefined) {
+        continue;
+      }
+
+      if (changedPointers.some((changed) => pointersOverlap(changed, source.pointer))) {
+        affected.add(entity.entityId);
+        break;
+      }
+    }
+  }
+
+  return affected;
 }
 
 /**
