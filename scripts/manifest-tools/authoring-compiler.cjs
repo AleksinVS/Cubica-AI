@@ -24,6 +24,8 @@ const AUTHORING_KEYS = new Set([
   "_semantics",
   "_prompt",
   "_promptTemplate",
+  "_requiresView",
+  "_decorative",
   "_definitions",
   "_schemaVersion",
   "_manifestType",

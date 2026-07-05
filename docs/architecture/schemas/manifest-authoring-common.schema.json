@@ -135,6 +135,36 @@
       },
       "additionalProperties": false
     },
+    "requiresView": {
+      "description": "Authoring-only declaration that a game entity type/prototype REQUIRES a UI view (ADR-057 §4.2, §5; editor-preview-first-ux §2.1). `true` requires a view in every preview channel; the object form limits the requirement to the named channels. The editor raises the `entity-missing-view` diagnostic when a required view is absent in the active channel. This is authoring metadata: the compiler strips it and it never appears in runtime manifests.",
+      "oneOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "object",
+          "required": [
+            "channels"
+          ],
+          "properties": {
+            "channels": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Preview channel keys (for example web, telegram) in which the entity requires a view."
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "decorativeFlag": {
+      "type": "boolean",
+      "description": "Authoring-only declaration that a UI element is decorative and carries no game meaning (ADR-057 §4.2, §5; editor-preview-first-ux §2.1). A decorative element needs no reference to a game entity and is excluded from the `entity-view-orphan` diagnostic. This is authoring metadata: the compiler strips it and it never appears in runtime manifests."
+    },
     "semanticEntity": {
       "type": "object",
       "description": "Base metadata for a real authoring entity shown by the editor entity tree. The authoring JSON remains the source of truth; this metadata must not leak into generated runtime manifests.",
@@ -157,6 +187,12 @@
         },
         "_prompt": {
           "$ref": "#/definitions/elementPrompt"
+        },
+        "_requiresView": {
+          "$ref": "#/definitions/requiresView"
+        },
+        "_decorative": {
+          "$ref": "#/definitions/decorativeFlag"
         }
       },
       "additionalProperties": true
@@ -181,6 +217,14 @@
         },
         "_promptTemplate": {
           "$ref": "#/definitions/promptTemplate"
+        },
+        "_requiresView": {
+          "$ref": "#/definitions/requiresView",
+          "description": "Prototype-level 'requires view' declaration inherited in spirit by instances of this type. See #/definitions/requiresView."
+        },
+        "_decorative": {
+          "$ref": "#/definitions/decorativeFlag",
+          "description": "Prototype-level 'decorative' declaration for reusable decorative UI prototypes. See #/definitions/decorativeFlag."
         }
       },
       "additionalProperties": true

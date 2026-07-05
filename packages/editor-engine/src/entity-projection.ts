@@ -73,6 +73,7 @@ export function buildEditorEntityProjection(input: BuildEditorEntityProjectionIn
   }
 
   attachPreviewEntityFacets(input.previewEntities ?? [], documents, builders);
+  collectIdentityFacetDiagnostics(builders, documents, actionRefsById, contentRefsById, input.activeChannel);
 
   const entities = [...builders.values()]
     .map(finalizeEditorEntityBuilder)
@@ -108,8 +109,15 @@ export function buildEditorEntityProjection(input: BuildEditorEntityProjectionIn
  * Do NOT bump for pure refactors that keep reads and outputs identical. A bump
  * forces a full projection rebuild (UX §10: "полная пересборка ... при ...
  * изменении версии линз").
+ *
+ * v2 (Phase 1.5): the identity-discipline diagnostics `entity-missing-view` and
+ * `entity-view-orphan` derive from CROSS-entity inputs (a game entity's missing
+ * view depends on UI view facets in other documents; a UI element's orphan
+ * status depends on the set of game entity ids). Pointer-level partial
+ * invalidation does not yet re-run these cross-references, so the version is
+ * bumped to force a full rebuild until the incremental cache models them.
  */
-export const PROJECTION_LENS_SET_VERSION = 1;
+export const PROJECTION_LENS_SET_VERSION = 2;
 
 /**
  * Declared read dependencies of every projection lens (ADR-057 §4.13).
@@ -763,6 +771,213 @@ function attachPreviewEntityFacets(
       role: `preview:${previewEntity.semanticRole}`
     });
   }
+}
+
+/**
+ * Emits the identity-discipline diagnostics from ADR-057 §4.2 and
+ * editor-preview-first-ux §2.1:
+ *   - `entity-missing-view` (warning): a GAME entity whose type/prototype
+ *     declares `_requiresView` for the active channel has no `view` facet
+ *     resolving in that channel;
+ *   - `entity-view-orphan` (warning): a UI component that is neither declared
+ *     `_decorative` nor references any game entity id.
+ *
+ * Both признака ("requires view" / "decorative") are read DECLARATIVELY from the
+ * authoring nodes (`_requiresView` / `_decorative`), never from a hardcoded list
+ * of types in engine code — this is the ADR-057 §5 invariant and CLAUDE.md §10.
+ * Diagnostics are attached to the builders BEFORE finalization so they flow into
+ * both `entity.diagnostics` and the aggregate `projection.diagnostics`.
+ */
+function collectIdentityFacetDiagnostics(
+  builders: ReadonlyMap<string, MutableEditorEntityBuilder>,
+  documents: readonly NormalizedEditorEntityProjectionDocument[],
+  actionRefsById: ReadonlyMap<string, readonly EditorEntitySourcePointer[]>,
+  contentRefsById: ReadonlyMap<string, readonly EditorEntitySourcePointer[]>,
+  activeChannel: string | undefined
+): void {
+  const documentsByPath = new Map(documents.map((document) => [document.filePath, document]));
+  const gameReferenceIds = collectGameReferenceIds(builders, actionRefsById, contentRefsById);
+
+  for (const builder of builders.values()) {
+    const node = readAuthoringNode(builder.primarySource, documentsByPath);
+
+    // "Requires view" is a game-entity type feature; check every game facet owner.
+    if (builder.primarySource.documentKind === "game") {
+      appendMissingViewDiagnostic(builder, node, activeChannel);
+    }
+
+    // "Orphan" applies to concrete UI elements only; screens/roots are containers.
+    if (builder.kind === "ui-component") {
+      appendViewOrphanDiagnostic(builder, node, gameReferenceIds);
+    }
+  }
+}
+
+/**
+ * The set of game-entity ids a UI element may reference (identity discipline).
+ *
+ * It unions the explicit ids of every game-document entity (metrics, actions,
+ * steps, object types, ...) with the action and content reference indexes, so a
+ * UI element that binds by id or by a `*Id`/`*Ref` field can be recognised as
+ * "references a game entity". Synthetic `filePath#pointer` ids (entities without
+ * an explicit id) are skipped: they can never match an authored UI reference.
+ */
+function collectGameReferenceIds(
+  builders: ReadonlyMap<string, MutableEditorEntityBuilder>,
+  actionRefsById: ReadonlyMap<string, readonly EditorEntitySourcePointer[]>,
+  contentRefsById: ReadonlyMap<string, readonly EditorEntitySourcePointer[]>
+): ReadonlySet<string> {
+  const ids = new Set<string>();
+  for (const id of actionRefsById.keys()) {
+    ids.add(id);
+  }
+  for (const id of contentRefsById.keys()) {
+    ids.add(id);
+  }
+  for (const builder of builders.values()) {
+    if (builder.primarySource.documentKind !== "game") {
+      continue;
+    }
+    const publicId = builder.entityId.slice(builder.kind.length + 1);
+    if (publicId !== "" && !publicId.includes("#")) {
+      ids.add(publicId);
+    }
+  }
+  return ids;
+}
+
+/** Reads the authoring object a builder's primary source points at, if present. */
+function readAuthoringNode(
+  source: EditorEntitySourcePointer,
+  documentsByPath: ReadonlyMap<string, NormalizedEditorEntityProjectionDocument>
+): JsonObject | undefined {
+  const document = documentsByPath.get(source.filePath);
+  if (document?.json === undefined) {
+    return undefined;
+  }
+  const value = readJsonPointer(document.json, source.pointer);
+  return isPlainJsonObject(value) ? value : undefined;
+}
+
+/** Adds `entity-missing-view` when a required view is absent in the active channel. */
+function appendMissingViewDiagnostic(
+  builder: MutableEditorEntityBuilder,
+  node: JsonObject | undefined,
+  activeChannel: string | undefined
+): void {
+  if (node === undefined || !requiresViewInChannel(node._requiresView, activeChannel)) {
+    return;
+  }
+  if (entityHasViewInChannel(builder, activeChannel)) {
+    return;
+  }
+
+  const channelSuffix = activeChannel === undefined ? "" : ` in channel "${activeChannel}"`;
+  builder.diagnostics.push(
+    createProjectionDiagnostic(
+      "warning",
+      "entity-missing-view",
+      builder.primarySource,
+      `Entity ${builder.label} requires a view${channelSuffix} but no view facet resolves there.`
+    )
+  );
+}
+
+/**
+ * Interprets the declarative `_requiresView` flag against the active channel.
+ *
+ * `true` requires a view in every channel. The object form `{ channels: [...] }`
+ * requires a view only in the listed channels. Any other value (absent, false,
+ * malformed) means the type is non-visual — no diagnostic (UX §2.1). When no
+ * active channel is supplied the requirement degrades to "requires some view".
+ */
+function requiresViewInChannel(requiresView: JsonValue | undefined, activeChannel: string | undefined): boolean {
+  if (requiresView === true) {
+    return true;
+  }
+  if (isPlainJsonObject(requiresView) && Array.isArray(requiresView.channels)) {
+    const channels = requiresView.channels.filter((channel): channel is string => typeof channel === "string");
+    return activeChannel === undefined ? channels.length > 0 : channels.includes(activeChannel);
+  }
+  return false;
+}
+
+/** True when the entity owns a `view` facet resolving in the active channel. */
+function entityHasViewInChannel(builder: MutableEditorEntityBuilder, activeChannel: string | undefined): boolean {
+  const viewFacets = builder.facets.get("view") ?? [];
+  if (activeChannel === undefined) {
+    return viewFacets.length > 0;
+  }
+  return viewFacets.some((facet) => facet.channel === activeChannel);
+}
+
+/** Adds `entity-view-orphan` for a non-decorative UI element with no game reference. */
+function appendViewOrphanDiagnostic(
+  builder: MutableEditorEntityBuilder,
+  node: JsonObject | undefined,
+  gameReferenceIds: ReadonlySet<string>
+): void {
+  if (node === undefined || node._decorative === true) {
+    return;
+  }
+  if (uiComponentReferencesGameEntity(node, gameReferenceIds)) {
+    return;
+  }
+
+  builder.diagnostics.push(
+    createProjectionDiagnostic(
+      "warning",
+      "entity-view-orphan",
+      builder.primarySource,
+      `UI element ${builder.label} is not decorative and references no game entity.`
+    )
+  );
+}
+
+/**
+ * True when a UI element's authoring subtree references a known game entity id.
+ *
+ * A reference is either a binding by `id` (a UI element whose id equals a game
+ * entity id, per ADR-057 §4.2) or a link field (`*Id`/`*Ids`/`*Ref`/`*Refs`,
+ * camelCase or snake_case) whose value is a known game id. The walk is
+ * transitive on purpose: a container that hosts game-referencing elements is not
+ * itself an orphan. Detection is by a generic naming convention (mirroring
+ * change-risk.ts) so the engine stays game-agnostic.
+ */
+function uiComponentReferencesGameEntity(node: JsonObject, gameReferenceIds: ReadonlySet<string>): boolean {
+  if (gameReferenceIds.size === 0) {
+    return false;
+  }
+
+  let references = false;
+  visitProjectionJson(node, "", (value) => {
+    if (references || !isPlainJsonObject(value)) {
+      return;
+    }
+    for (const [key, candidate] of Object.entries(value)) {
+      if (isGameEntityReferenceKey(key) && valueMatchesGameId(candidate, gameReferenceIds)) {
+        references = true;
+        return;
+      }
+    }
+  });
+  return references;
+}
+
+/** True for the identity `id` field and for `*Id`/`*Ids`/`*Ref`/`*Refs` link keys. */
+function isGameEntityReferenceKey(key: string): boolean {
+  return key === "id" || /[a-z0-9](Id|Ids|Ref|Refs)$/.test(key) || /_(id|ids|ref|refs)$/.test(key);
+}
+
+/** True when a scalar or string-array value contains a known game entity id. */
+function valueMatchesGameId(value: JsonValue, gameReferenceIds: ReadonlySet<string>): boolean {
+  if (typeof value === "string") {
+    return gameReferenceIds.has(value.trim());
+  }
+  if (Array.isArray(value)) {
+    return value.some((item) => typeof item === "string" && gameReferenceIds.has(item.trim()));
+  }
+  return false;
 }
 
 function collectActionRefsById(

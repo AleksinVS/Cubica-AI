@@ -54,6 +54,7 @@
               "_type": "game.Step",
               "_label": "Вступление",
               "_semantics": "Первый шаг прохождения, связанный с начальным экраном.",
+              "_requiresView": true,
               "screenId": "intro",
               "actionIds": [
                 "choice.accept"

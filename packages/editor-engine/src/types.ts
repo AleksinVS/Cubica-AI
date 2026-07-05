@@ -599,7 +599,21 @@ export type EditorEntityProjectionDiagnosticCode =
   | "unresolved-action-link"
   | "unresolved-view-link"
   | "ambiguous-view-link"
-  | "hidden-technical-field";
+  | "hidden-technical-field"
+  // Identity-discipline diagnostics (ADR-057 §4.2; editor-preview-first-ux §2.1).
+  // Both are driven by the DECLARATIVE authoring flags `_requiresView` /
+  // `_decorative`, never by a hardcoded list of types in engine code (ADR-057 §5).
+  | "entity-view-orphan"
+  | "entity-missing-view";
+
+/**
+ * Declarative "requires view" annotation for a game entity type/prototype
+ * (`_requiresView` in authoring manifests; SSOT in
+ * manifest-authoring-common.schema.json). `true` requires a view in every
+ * preview channel; the object form limits the requirement to named channels.
+ * Authoring-only: the compiler strips it and it never reaches runtime manifests.
+ */
+export type RequiresViewDeclaration = boolean | { readonly channels: readonly string[] };
 
 export interface EditorEntitySourcePointer {
   readonly filePath: string;
@@ -653,6 +667,14 @@ export interface BuildEditorEntityProjectionInput {
   readonly fieldDictionary?: readonly EditorEntityFieldDictionaryEntry[];
   /** Previously cached hashes by file path. Mismatches produce diagnostics only. */
   readonly expectedSourceHashes?: Readonly<Record<string, string>>;
+  /**
+   * Active preview channel key (for example "web", "telegram"). The
+   * `entity-missing-view` diagnostic is computed per channel: a game entity that
+   * declares `_requiresView` for this channel but has no `view` facet resolving
+   * there is reported. When omitted, "requires a view" degrades to "has any view
+   * facet in any channel" (ADR-057 §4.2, editor-preview-first-ux §2.1).
+   */
+  readonly activeChannel?: string;
 }
 
 export interface EditorEntityProjection {

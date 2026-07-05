@@ -25,6 +25,8 @@ const authoringOnlyKeys = new Set([
   "_semantics",
   "_prompt",
   "_promptTemplate",
+  "_requiresView",
+  "_decorative",
   "_schemaVersion",
   "_manifestType",
   "_channel",

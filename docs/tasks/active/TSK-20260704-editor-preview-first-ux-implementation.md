@@ -278,3 +278,17 @@ game-agnostic CI invariant.
   verify:manifest-authoring. Runtime/player/compiler фикстуры не читают (инвариант
   соблюдён). Live-валидация в editor-web и CI-валидация коммитнутых фикстур —
   вместе с потребителями (Phase 5).
+- 2026-07-05 (Phase 1.5, готово — Phase 1 закрыта целиком): декларативные признаки
+  `_requiresView` (true | {channels:[...]}) и `_decorative` в
+  manifest-authoring-common.schema.json (на semanticEntity И authoringDefinition),
+  вырезаются компилятором (AUTHORING_KEYS) и ловятся CI leak-scan; примеры
+  authoring-v2 обновлены. Диагностики `entity-missing-view` (по activeChannel,
+  view-фасет канала) и `entity-view-orphan` (недекоративный ui-component без
+  ссылки на game-сущность; transitively по поддереву, id/Ref-поля как в
+  change-risk) считаются в buildEditorEntityProjection декларативно — без
+  хардкод-списков типов. PROJECTION_LENS_SET_VERSION 1→2 (кросс-сущностные
+  диагностики не пере-считываются частичной инвалидацией — консервативно).
+  verify 91/91 + typecheck + manifest-authoring OK. Известные хвосты: инженерное
+  наследование `_requiresView` от прототипа (engine пока читает только инстанс) —
+  срез при появлении резолвинга _definitions; schema-driven признак
+  reference-полей (общий хвост с 1.2).

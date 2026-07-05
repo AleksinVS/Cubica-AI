@@ -41,6 +41,7 @@
           "_type": "ui.Component",
           "_label": "Корневой контейнер",
           "_semantics": "Контейнер экрана, внутри которого находятся видимые компоненты.",
+          "_decorative": true,
           "type": "screenComponent",
           "props": {
             "cssClass": "topbar-screen-shell"
