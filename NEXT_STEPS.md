@@ -74,9 +74,8 @@
 
 ## Blocked
 
-- **Известные блокеры окружения и e2e-runbook: [docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md](docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md).** Читать перед запуском e2e.
-- **editor e2e на этом хосте — только 2/4.** `editor-web` `next dev`/`next build` под нагрузкой убиваются SIGTERM (4 ядра); editor поднимается только в production-режиме (`next build` в одиночку + `next start`). 2 интерактивных preview-теста (Inspect, rollback) залипают под CPU-starvation (не регрессия — standalone player e2e 4/4). Детали и обход — в документе выше.
-- **`EditorWorkspace` Phase 4 отложен** (единственный незакрытый пункт remediation) — требует рабочего интерактивного editor e2e (машина ≥8 ядер). См. `TSK-20260630-editor-engine-modularization` §Handoff и документ блокеров §6.
+- **Блокер editor e2e СНЯТ (2026-07-05): полный e2e-набор 8/8 на этом хосте через `npm run test:e2e:prod`** (последовательные сборки + `next start`, без компиляции во время тестов). Диагноз «2 интерактивных теста падают из-за среды» опровергнут — это были устаревшие ожидания спека + перехват кликов JSON-панелью. История диагностики и runbook: [docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md](docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md) (§7). `next dev` для editor-web на этом хосте по-прежнему не работает — использовать prod-режим.
+- **`EditorWorkspace` Phase 4 разблокирован** (gate editor e2e 4/4 доступен через `test:e2e:prod`); включён в программу TSK-20260704 как пред-условие её Phase 3. См. `TSK-20260630-editor-engine-modularization`.
 - **`verify:legacy` красный на 30 baseline stub-маркерах** в нетронутых файлах (pre-existing). Ни один remediation-коммит не добавил новых маркеров.
 
 ## Canonical Context

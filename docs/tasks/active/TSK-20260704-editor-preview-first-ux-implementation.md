@@ -225,3 +225,13 @@ game-agnostic CI invariant.
   build-time env `RUNTIME_API_URL` обязателен из-за rewrites), затем
   `EditorWorkspace` Phase 4 (модуляризационный TSK) с гейтом editor e2e 4/4,
   параллельно — Phase 1 контрактов (не заблокирована).
+- 2026-07-05 (позже): **срез A выполнен — блокер окружения снят, e2e 8/8 (~55с) на
+  этом хосте.** Добавлены `npm run test:e2e:prod` (`scripts/dev/run-e2e-prod.mjs`,
+  `E2E_SERVER_MODE=prod` в playwright-конфиге) и `E2E_LOW_RESOURCE=1` (без записи
+  trace/video). Настоящая причина падения 2 интерактивных editor-тестов — не среда,
+  а устаревшие ожидания спека (экранные указатели `info-topbar` после нормализации
+  UI-манифеста Antarctica; имя кнопки simple-choice) плюс перехват кликов iframe
+  открытой JSON-панелью; спек обновлён (выбор по `data-preview-label`, активный файл
+  `ui/web.authoring.json`, сворачивание JSON-панели). Продуктовый код не менялся.
+  Детали — `docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md` §7.
+  Следующий срез: `EditorWorkspace` Phase 4 (декомпозиция), затем Phase 1 контрактов.

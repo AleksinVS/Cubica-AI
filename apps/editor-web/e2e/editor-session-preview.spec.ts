@@ -160,7 +160,7 @@ test.describe("editor-web session preview", () => {
     }
   });
 
-  test("supports Inspect selection and context menu for Antarctica fallback preview", async ({ page, request }) => {
+  test("supports Inspect selection and context menu for the Antarctica preview", async ({ page, request }) => {
     let editorSessionId: string | undefined;
 
     try {
@@ -168,7 +168,10 @@ test.describe("editor-web session preview", () => {
         response.url().endsWith("/api/editor/session") && response.request().method() === "POST"
       );
 
-      await page.goto(`${editorUrl}/?gameId=antarctica&file=game.authoring.json`);
+      // The Antarctica opening renders through the normalized ui.manifest
+      // screens, so preview selection maps to pointers of the UI authoring
+      // file; open that file so the mapping lands in the active document.
+      await page.goto(`${editorUrl}/?gameId=antarctica&file=ui/web.authoring.json`);
       await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
 
       const sessionResponse = await sessionResponsePromise;
@@ -189,7 +192,10 @@ test.describe("editor-web session preview", () => {
 
       const editorStatus = page.getByLabel("Editor status");
       const frame = page.frameLocator('iframe[title="Game preview"]');
-      const titleEntity = frame.locator('[data-preview-runtime-pointer="/content/data/infos/0/title"]');
+      // The Antarctica opening renders through the normalized ui.manifest screen
+      // (`info-topbar`), so runtime pointers are screen-based; select the info
+      // title by its stable semantic preview label instead of a pointer literal.
+      const titleEntity = frame.locator('[data-preview-label="info-title"]');
       await expect(titleEntity).toBeVisible();
       await expect(editorStatus).toContainText(/[1-9][0-9]* selectable/);
 
@@ -200,7 +206,11 @@ test.describe("editor-web session preview", () => {
 
       const propertiesSidebar = page.locator('aside[aria-label="Selected node properties"]');
       await expect(propertiesSidebar).toBeVisible();
-      await expect(propertiesSidebar).toContainText("/root/content/data/infos/0/title");
+      // Screen-based runtime pointers map into the UI authoring document; the
+      // exact child indexes depend on manifest layout, so assert the stable
+      // parts: the mapped node lives under /root/screens and is the info title.
+      await expect(propertiesSidebar).toContainText("/root/screens/");
+      await expect(propertiesSidebar).toContainText("info-title");
       await expect(page.locator(".preview-highlight-frame")).toContainText("info-title");
 
       await overlay.click({ button: "right", position: targetPoint });
@@ -243,6 +253,17 @@ test.describe("editor-web session preview", () => {
 
       const frame = page.frameLocator('iframe[title="Game preview"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
+
+      // Editor side panels float above the preview stage, so an open JSON
+      // sidebar (for example restored from persisted layout) intercepts
+      // pointer events aimed at the game iframe. Collapse it before clicking
+      // inside the preview.
+      const jsonSidebar = page.locator('aside[aria-label="Authoring JSON editor"]');
+      if (await jsonSidebar.isVisible()) {
+        await jsonSidebar.getByRole("button", { name: "Collapse" }).click();
+        await expect(jsonSidebar).toHaveCount(0);
+      }
+
       await page.getByRole("button", { name: "Timeline" }).click();
       const timelinePanel = page.locator('aside[aria-label="Timeline"]');
       await expect(timelinePanel).not.toContainText("Chronology");
@@ -256,7 +277,7 @@ test.describe("editor-web session preview", () => {
       await expect(page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" })).toBeVisible();
       const floatingProperties = page.locator(".property-panel");
       await expect(floatingProperties).toBeHidden();
-      await frame.getByRole("button", { name: "Choose path" }).click();
+      await frame.getByRole("button", { name: "Choose the option with the visible tradeoff." }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
       await expect(timelinePanel).toContainText("T1");
       await expect(timelinePanel).toContainText("choice.accept");
@@ -277,7 +298,7 @@ test.describe("editor-web session preview", () => {
       await expect(traceDetails).toContainText("Current T0");
       await expect(page.getByLabel("Editor status")).toContainText("Clean");
 
-      await frame.getByRole("button", { name: "Choose path" }).click();
+      await frame.getByRole("button", { name: "Choose the option with the visible tradeoff." }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
       await expect(timelinePanel.getByRole("button", { name: /T1.*choice.accept/ })).toHaveCount(1);
       await expect(traceDetails).toContainText("Current T1");

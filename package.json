@@ -40,6 +40,7 @@
     "verify:editor-web": "npm run typecheck --workspace @cubica/editor-web && npm run build --workspace @cubica/editor-web",
     "verify:canonical": "npm run verify:legacy && npm run verify:manifest-authoring && npm run verify:contracts-schema-parity && npm run verify:contracts-manifest && npm run verify:contracts-runtime && npm run verify:contracts-session && npm run verify:game-agnostic && npm run verify:metric-jsonlogic-subset && npm run verify:api-contracts && npm run verify:contracts-ai && npm run verify:agent-ui-boundaries && npm run verify:runtime-api && npm run verify:player-web",
     "test:e2e": "playwright test",
+    "test:e2e:prod": "node scripts/dev/run-e2e-prod.mjs",
     "antarctica:extract-opening": "node scripts/antarctica/extract-opening.js",
     "antarctica:extract-step": "node scripts/antarctica/extract-opening.js",
     "verify:antarctica-extraction": "node scripts/antarctica/verify-extraction.js",
