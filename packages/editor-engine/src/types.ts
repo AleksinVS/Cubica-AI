@@ -719,6 +719,67 @@ export interface ProjectionLens {
   readonly readPointerPrefixes: readonly string[];
 }
 
+/**
+ * Changed JSON Pointers grouped by authoring file path.
+ *
+ * This is exactly the shape `collectAffectedEntities` consumes and the shape a
+ * DocumentStore/JSON Patch edit naturally produces: the editor knows which
+ * pointers a patch touched. An empty array for a file means "this file changed
+ * but the touched pointers are unknown" — the incremental updater treats that as
+ * a signal to fall back to a full rebuild (UX §10). The empty pointer `""` means
+ * the whole file changed.
+ */
+export type ChangedPointersByFile = Readonly<Record<string, readonly string[]>>;
+
+/**
+ * A projection paired with the input that produced it (ADR-057 §4.13, UX §10
+ * "Уровень 1").
+ *
+ * `updateEditorEntityProjection` diffs the NEXT input against this state to
+ * decide what to rebuild. The state is a plain value and is NEVER mutated: the
+ * incremental cache is not a source of truth (ADR-057 §5), so each update returns
+ * a fresh state that reuses untouched entity records by reference.
+ */
+export interface EditorEntityProjectionState {
+  readonly projection: EditorEntityProjection;
+  /** The build input that produced `projection`; used only to diff the next input. */
+  readonly input: BuildEditorEntityProjectionInput;
+}
+
+/** How `updateEditorEntityProjection` produced its result (telemetry, design-spec §5). */
+export type IncrementalProjectionMode = "full" | "incremental";
+
+/**
+ * Telemetry for one incremental projection update (design-spec §5: "длительность
+ * инкрементальной инвалидации" + rebuilt-entities counter). Mirrors the shape of
+ * the Level-3 compile telemetry.
+ */
+export interface IncrementalProjectionReport {
+  readonly mode: IncrementalProjectionMode;
+  /** Machine-readable reason the mode was chosen (for example "full:link-change"). */
+  readonly reason: string;
+  /** Entity ids whose records were recomputed this update (empty for a no-op or a full rebuild). */
+  readonly rebuiltEntityIds: readonly string[];
+  /** Count of previous entity records reused by reference (0 for a full rebuild). */
+  readonly reusedEntityCount: number;
+  /** Wall-clock duration of the update in milliseconds. */
+  readonly durationMs: number;
+}
+
+/** Result of `updateEditorEntityProjection`: the new state plus its telemetry. */
+export interface UpdateEditorEntityProjectionResult {
+  readonly state: EditorEntityProjectionState;
+  readonly report: IncrementalProjectionReport;
+}
+
+/** Next-step input for `updateEditorEntityProjection`. */
+export interface UpdateEditorEntityProjectionInput {
+  /** The new build input (new document snapshots plus options). */
+  readonly input: BuildEditorEntityProjectionInput;
+  /** Pointers touched since the previous state, grouped by file. */
+  readonly changedPointersByFile: ChangedPointersByFile;
+}
+
 export interface BuildEditorEntityYamlProjectionInput {
   readonly entity: EditorEntity;
   readonly documents: readonly EditorEntityProjectionDocument[];

@@ -10,12 +10,13 @@
  * assembly, and the timeline builder derives flow/step chronology.
  */
 import { isPlainJsonObject, isScalar, normalizeToken, titleFromToken } from "./shared.ts";
-import { appendPointerSegment, buildJsonPointer, lastPointerSegmentOrRoot, readJsonPointer } from "./json-pointer-patch.ts";
+import { appendPointerSegment, buildJsonPointer, lastPointerSegmentOrRoot, parseJsonPointer, readJsonPointer } from "./json-pointer-patch.ts";
 import { isSameOrDescendantPointer, pointersOverlap, resolveEntityTreeLabel } from "./semantics.ts";
 import type {
   BuildEditorEntityProjectionInput,
   BuildEditorEntityYamlProjectionInput,
   BuildManifestTimelineInput,
+  ChangedPointersByFile,
   DiagnosticSeverity,
   EditorEntity,
   EditorEntityDocumentKind,
@@ -26,14 +27,18 @@ import type {
   EditorEntityProjectionDiagnostic,
   EditorEntityProjectionDiagnosticCode,
   EditorEntityProjectionDocument,
+  EditorEntityProjectionState,
   EditorEntitySourcePointer,
   EditorEntityYamlProjection,
+  IncrementalProjectionReport,
   JsonObject,
   JsonValue,
   ManifestTimeline,
   ManifestTimelineEntry,
   PreviewEntityDescriptor,
-  ProjectionLens
+  ProjectionLens,
+  UpdateEditorEntityProjectionInput,
+  UpdateEditorEntityProjectionResult
 } from "./types.ts";
 
 /**
@@ -108,14 +113,24 @@ export function buildEditorEntityProjection(input: BuildEditorEntityProjectionIn
  *   - changing how a lens derives entities, labels, links, or source pointers.
  * Do NOT bump for pure refactors that keep reads and outputs identical. A bump
  * forces a full projection rebuild (UX §10: "полная пересборка ... при ...
- * изменении версии линз").
+ * изменении версии линз"). The version does NOT gate ordinary per-edit
+ * incremental updates — those are decided per change by
+ * `updateEditorEntityProjection`.
  *
- * v2 (Phase 1.5): the identity-discipline diagnostics `entity-missing-view` and
- * `entity-view-orphan` derive from CROSS-entity inputs (a game entity's missing
- * view depends on UI view facets in other documents; a UI element's orphan
- * status depends on the set of game entity ids). Pointer-level partial
- * invalidation does not yet re-run these cross-references, so the version is
- * bumped to force a full rebuild until the incremental cache models them.
+ * Version history:
+ *   - v1: the original ADR-052 projection (entities + facets + link diagnostics).
+ *   - v2: ADR-057 §4.13 lens declarations plus the identity-discipline lenses
+ *     `entity-missing-view` / `entity-view-orphan` (Phase 1.3/1.5).
+ *
+ * NOTE (Phase 2.1): earlier this comment claimed v2 existed to FORCE a full
+ * rebuild on every edit because the identity-discipline diagnostics are
+ * cross-entity. That rationale is now obsolete: `updateEditorEntityProjection`
+ * keeps those cross-entity derivations correct WITHOUT a per-edit full rebuild —
+ * it takes the incremental fast path only for changes that provably cannot alter
+ * identity, links, types, structure, or the game-id set (the inputs those
+ * diagnostics depend on), and falls back to a full rebuild for anything else. So
+ * the value stays 2 purely as the lens-set version; it is no longer a "disable
+ * incremental" flag.
  */
 export const PROJECTION_LENS_SET_VERSION = 2;
 
@@ -211,6 +226,394 @@ export function collectAffectedEntities(
   }
 
   return affected;
+}
+
+/**
+ * Wraps a freshly built projection with the input that produced it (ADR-057
+ * §4.13, UX §10 "Уровень 1"), giving `updateEditorEntityProjection` a value to
+ * diff the next input against. This is a thin convenience; callers may build the
+ * state object literally instead.
+ */
+export function createEditorEntityProjectionState(input: BuildEditorEntityProjectionInput): EditorEntityProjectionState {
+  return { projection: buildEditorEntityProjection(input), input };
+}
+
+/**
+ * Incrementally updates an `EditorEntityProjection` for a set of changed pointers
+ * (ADR-057 §4.13; editor-preview-first-ux §10 "Уровень 1 — инкрементальная
+ * пересборка в памяти"; design-spec §2.6, §5).
+ *
+ * The main correctness gate is: the returned projection is DEEPLY EQUAL to
+ * `buildEditorEntityProjection(next.input)` for every change (verified by the
+ * equivalence property tests). To honour that while doing far less work, the
+ * updater takes a FAST PATH only for changes it can prove are safe, and falls
+ * back to a full rebuild for everything else:
+ *
+ *   - The projection depends on a small, fixed set of authoring inputs: labels
+ *     (`_label`/`title`/`name`/`id`), types (`_type`/`type`), channel headers
+ *     (`_channel`/`_manifestType`), link/reference keys (`*Id`/`*Ref`/…, per the
+ *     identity-discipline rules), the visibility flags (`_requiresView`/
+ *     `_decorative`), and the OBJECT STRUCTURE (which entities exist, array
+ *     order). It never reads other content values.
+ *   - A change that touches any of the topology/identity inputs above — or that
+ *     replaces a whole object/array subtree, adds/removes a sibling key, or
+ *     shifts an array — forces a FULL rebuild. That is exactly the set of inputs
+ *     the cross-entity identity diagnostics depend on, so those diagnostics are
+ *     never left stale (this is why `PROJECTION_LENS_SET_VERSION` no longer needs
+ *     to force a per-edit full rebuild).
+ *   - A change that touches ONLY a scalar LABEL field refreshes just the labels
+ *     of the AFFECTED entities (`collectAffectedEntities`), reusing every other
+ *     entity record by reference.
+ *   - A change that touches only projection-IRRELEVANT scalar fields leaves the
+ *     projection unchanged; the whole previous projection is reused.
+ *
+ * `previous` is never mutated (ADR-057 §5: the cache is not a source of truth).
+ */
+export function updateEditorEntityProjection(
+  previous: EditorEntityProjectionState,
+  next: UpdateEditorEntityProjectionInput
+): UpdateEditorEntityProjectionResult {
+  const startedAt = nowMs();
+  const fullRebuild = (reason: string): UpdateEditorEntityProjectionResult => ({
+    state: { projection: buildEditorEntityProjection(next.input), input: next.input },
+    report: { mode: "full", reason, rebuiltEntityIds: [], reusedEntityCount: 0, durationMs: nowMs() - startedAt }
+  });
+
+  // Options that change how the WHOLE projection is derived cannot be handled by
+  // pointer-scoped invalidation: a channel switch re-evaluates every
+  // `entity-missing-view`; preview entities and expected hashes add cross-cutting
+  // facets/diagnostics. Bail to a full rebuild if any of them is in play.
+  if (
+    previous.input.activeChannel !== next.input.activeChannel ||
+    hasPreviewEntities(previous.input) ||
+    hasPreviewEntities(next.input) ||
+    hasExpectedSourceHashes(previous.input) ||
+    hasExpectedSourceHashes(next.input)
+  ) {
+    return fullRebuild("full:projection-options-changed");
+  }
+
+  const classification = classifyProjectionChanges(previous.input, next.input, next.changedPointersByFile);
+  if (classification.kind === "full") {
+    return fullRebuild(classification.reason);
+  }
+
+  // From here the change is provably label-only and/or irrelevant. The set of
+  // entities, their kinds, links, and diagnostics are all unchanged; only label
+  // strings on the affected entities can differ.
+  const nextDocumentJsonByPath = buildDocumentJsonByPath(next.input.documents);
+  const affected = classification.hasLabelChange
+    ? collectAffectedEntities(previous.projection, next.changedPointersByFile)
+    : new Set<string>();
+
+  // A label change to an entity that CARRIES a diagnostic could change that
+  // diagnostic's message/label (both embed the entity's own label). Rather than
+  // re-render diagnostic text, fall back to a full rebuild in that rare case.
+  for (const entity of previous.projection.entities) {
+    if (affected.has(entity.entityId) && entity.diagnostics.length > 0) {
+      return fullRebuild("full:label-change-on-diagnostic-entity");
+    }
+  }
+
+  const rebuiltEntityIds: string[] = [];
+  const entities = previous.projection.entities.map((entity) => {
+    if (!affected.has(entity.entityId)) {
+      return entity;
+    }
+    rebuiltEntityIds.push(entity.entityId);
+    return refreshEntityLabels(entity, nextDocumentJsonByPath);
+  });
+
+  const projection: EditorEntityProjection = {
+    projectionVersion: 1,
+    gameId: next.input.gameId,
+    sourceHashes: buildProjectionSourceHashes(next.input.documents.map(normalizeEditorEntityDocument)),
+    entities,
+    entityById: new Map(entities.map((entity) => [entity.entityId, entity])),
+    entitiesBySourcePointer: buildEntitiesBySourcePointer(entities),
+    // Aggregate diagnostics are unchanged: the fast path never fires when an
+    // affected entity has diagnostics, and unaffected entities keep theirs.
+    diagnostics: previous.projection.diagnostics
+  };
+
+  return {
+    state: { projection, input: next.input },
+    report: {
+      mode: "incremental",
+      reason: classification.hasLabelChange ? "incremental:label-refresh" : "incremental:no-projection-effect",
+      rebuiltEntityIds,
+      reusedEntityCount: entities.length - rebuiltEntityIds.length,
+      durationMs: nowMs() - startedAt
+    }
+  };
+}
+
+/** Millisecond clock that works in both Node and the browser (framework-agnostic). */
+function nowMs(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function" ? performance.now() : Date.now();
+}
+
+function hasPreviewEntities(input: BuildEditorEntityProjectionInput): boolean {
+  return (input.previewEntities?.length ?? 0) > 0;
+}
+
+function hasExpectedSourceHashes(input: BuildEditorEntityProjectionInput): boolean {
+  return input.expectedSourceHashes !== undefined && Object.keys(input.expectedSourceHashes).length > 0;
+}
+
+/** Maps file path -> current parsed JSON for quick pointer reads during refresh. */
+function buildDocumentJsonByPath(
+  documents: readonly EditorEntityProjectionDocument[]
+): ReadonlyMap<string, JsonValue> {
+  const byPath = new Map<string, JsonValue>();
+  for (const document of documents) {
+    if (document.json !== undefined) {
+      byPath.set(document.filePath, document.json);
+    }
+  }
+  return byPath;
+}
+
+/**
+ * The outcome of classifying a change set for the incremental fast path.
+ *   - `full`: at least one change can alter entity topology/identity/links, so a
+ *     full rebuild is required; `reason` is machine-readable telemetry.
+ *   - `incremental`: every change is a scalar label edit or a projection-
+ *     irrelevant scalar edit; `hasLabelChange` says whether any label refresh is
+ *     needed at all.
+ */
+type ProjectionChangeClassification =
+  | { readonly kind: "full"; readonly reason: string }
+  | { readonly kind: "incremental"; readonly hasLabelChange: boolean };
+
+/**
+ * Classifies a change set into "safe for the incremental fast path" vs "needs a
+ * full rebuild", by inspecting each changed pointer against the previous and next
+ * document JSON.
+ */
+function classifyProjectionChanges(
+  previousInput: BuildEditorEntityProjectionInput,
+  nextInput: BuildEditorEntityProjectionInput,
+  changedPointersByFile: ChangedPointersByFile
+): ProjectionChangeClassification {
+  const changedFiles = Object.keys(changedPointersByFile);
+  if (changedFiles.length === 0) {
+    return { kind: "full", reason: "full:no-changes-reported" };
+  }
+
+  const previousJsonByPath = buildDocumentJsonByPath(previousInput.documents);
+  const nextJsonByPath = buildDocumentJsonByPath(nextInput.documents);
+
+  // The set of documents (and their JSON presence) must be identical: a file
+  // added, removed, or that failed to parse (json === undefined) can change the
+  // entity set wholesale.
+  if (!sameFilePathSet(previousInput.documents, nextInput.documents)) {
+    return { kind: "full", reason: "full:document-set-changed" };
+  }
+
+  // Every document whose parsed JSON reference actually changed MUST be listed in
+  // the change set. A changed-but-unreported file would silently desync the fast
+  // path, so treat that as unknown -> full rebuild.
+  for (const document of nextInput.documents) {
+    const previousJson = previousJsonByPath.get(document.filePath);
+    const changed = previousJson !== document.json;
+    if (changed && !(document.filePath in changedPointersByFile)) {
+      return { kind: "full", reason: "full:unreported-file-change" };
+    }
+  }
+
+  let hasLabelChange = false;
+  for (const filePath of changedFiles) {
+    const pointers = changedPointersByFile[filePath] ?? [];
+    if (pointers.length === 0) {
+      // Empty pointer list means "changed, but where is unknown" (UX §10).
+      return { kind: "full", reason: "full:unknown-pointers" };
+    }
+
+    const previousJson = previousJsonByPath.get(filePath);
+    const nextJson = nextJsonByPath.get(filePath);
+    if (previousJson === undefined || nextJson === undefined) {
+      return { kind: "full", reason: "full:missing-document-json" };
+    }
+
+    for (const pointer of pointers) {
+      const verdict = classifyChangedPointer(pointer, previousJson, nextJson);
+      if (verdict === "full") {
+        return { kind: "full", reason: "full:topology-change" };
+      }
+      if (verdict === "label") {
+        hasLabelChange = true;
+      }
+    }
+  }
+
+  return { kind: "incremental", hasLabelChange };
+}
+
+/** Per-pointer verdict: `full` (needs rebuild), `label` (label refresh), or `irrelevant`. */
+function classifyChangedPointer(
+  pointer: string,
+  previousJson: JsonValue,
+  nextJson: JsonValue
+): "full" | "label" | "irrelevant" {
+  // The whole-document pointer forces a full rebuild.
+  if (pointer === "") {
+    return "full";
+  }
+
+  const segments = parseJsonPointer(pointer);
+
+  // A topology/identity/link key ANYWHERE on the path forces a full rebuild. It
+  // must be checked across all segments, not just the last, because links can be
+  // stored as array elements (for example `.../actionIds/0`): the leaf segment is
+  // a numeric index, but the ancestor key `actionIds` re-targets a reference.
+  if (segments.some(isProjectionTopologyKey)) {
+    return "full";
+  }
+
+  const segment = segments[segments.length - 1] ?? "";
+
+  const previousValue = readJsonPointer(previousJson, pointer);
+  const nextValue = readJsonPointer(nextJson, pointer);
+
+  // Added or removed leaf, or a subtree (object/array) replacement: the affected
+  // subtree can contain any relevant field, so rebuild fully.
+  if (previousValue === undefined || nextValue === undefined) {
+    return "full";
+  }
+  if (isContainerValue(previousValue) || isContainerValue(nextValue)) {
+    return "full";
+  }
+
+  // A sibling added/removed/renamed at the parent (or an array length change)
+  // shifts pointers and can add/remove entities: rebuild fully.
+  if (!parentContainerShapeUnchanged(pointer, previousJson, nextJson)) {
+    return "full";
+  }
+
+  return isProjectionLabelKey(segment) ? "label" : "irrelevant";
+}
+
+/**
+ * True when the immediate parent container of `pointer` has the same shape (same
+ * object keys or same array length) in both documents. This is a cheap guard
+ * against structural edits (sibling add/remove, array insert/delete) that a
+ * per-pointer scalar check would otherwise miss.
+ */
+function parentContainerShapeUnchanged(pointer: string, previousJson: JsonValue, nextJson: JsonValue): boolean {
+  const segments = parseJsonPointer(pointer);
+  if (segments.length === 0) {
+    return true;
+  }
+  const parentPointer = buildJsonPointer(segments.slice(0, -1).map(String));
+  const previousParent = readJsonPointer(previousJson, parentPointer);
+  const nextParent = readJsonPointer(nextJson, parentPointer);
+
+  if (Array.isArray(previousParent) && Array.isArray(nextParent)) {
+    return previousParent.length === nextParent.length;
+  }
+  if (isPlainJsonObject(previousParent) && isPlainJsonObject(nextParent)) {
+    const previousKeys = Object.keys(previousParent);
+    const nextKeys = Object.keys(nextParent);
+    return previousKeys.length === nextKeys.length && previousKeys.every((key) => key in nextParent);
+  }
+  // Parent kind changed (object <-> array <-> scalar): structural.
+  return false;
+}
+
+/**
+ * Keys whose value the projection reads to derive ENTITY TOPOLOGY, identity,
+ * links, types, channel, or visibility. A change to any of them can add/remove
+ * entities, re-target links, or flip an identity diagnostic, so it forces a full
+ * rebuild. `id` and the `*Id`/`*Ref` link/reference keys are matched by the same
+ * generic naming convention used for orphan detection (`isGameEntityReferenceKey`),
+ * keeping the engine game-agnostic.
+ */
+function isProjectionTopologyKey(segment: string): boolean {
+  if (isGameEntityReferenceKey(segment)) {
+    return true;
+  }
+  return (
+    segment === "_type" ||
+    segment === "type" ||
+    segment === "_channel" ||
+    segment === "_manifestType" ||
+    segment === "_requiresView" ||
+    segment === "_decorative"
+  );
+}
+
+/** Keys read only to derive a human LABEL (`resolveEntityTreeLabel`), never topology. */
+function isProjectionLabelKey(segment: string): boolean {
+  // `id` is also a label fallback, but it is a topology key handled before this.
+  return segment === "_label" || segment === "title" || segment === "name";
+}
+
+function isContainerValue(value: JsonValue): boolean {
+  return Array.isArray(value) || isPlainJsonObject(value);
+}
+
+function sameFilePathSet(
+  previousDocuments: readonly EditorEntityProjectionDocument[],
+  nextDocuments: readonly EditorEntityProjectionDocument[]
+): boolean {
+  if (previousDocuments.length !== nextDocuments.length) {
+    return false;
+  }
+  const previousPaths = new Set(previousDocuments.map((document) => document.filePath));
+  return nextDocuments.every((document) => previousPaths.has(document.filePath));
+}
+
+/**
+ * Produces a refreshed copy of one entity whose labels are recomputed from the
+ * CURRENT document JSON, reusing everything else (id, kind, source pointers,
+ * diagnostics). Only labels can differ under a proven label-only change, so this
+ * matches a full rebuild exactly for those changes.
+ */
+function refreshEntityLabels(entity: EditorEntity, documentJsonByPath: ReadonlyMap<string, JsonValue>): EditorEntity {
+  const primarySource = refreshSourcePointerLabel(entity.primarySource, documentJsonByPath);
+  const facets: Partial<Record<EditorEntityFacetKind, readonly EditorEntitySourcePointer[]>> = {};
+  for (const facetKind of orderedEditorEntityFacetKinds) {
+    const sources = entity.facets[facetKind];
+    if (sources !== undefined && sources.length > 0) {
+      facets[facetKind] = sources.map((source) => refreshSourcePointerLabel(source, documentJsonByPath));
+    }
+  }
+
+  return {
+    entityId: entity.entityId,
+    kind: entity.kind,
+    // Every builder sets `entity.label` to `primarySource.label`, so refreshing
+    // the primary source keeps the two in lock-step with a full rebuild.
+    label: primarySource.label ?? entity.label,
+    primarySource,
+    facets,
+    diagnostics: entity.diagnostics
+  };
+}
+
+/**
+ * Recomputes one source pointer's `label` from the current node. Every source
+ * label is `resolveEntityTreeLabel(node)` EXCEPT metric sources, whose label is
+ * derived from the (structurally stable) metric key and therefore never changes
+ * on a value edit — those keep their previous label.
+ */
+function refreshSourcePointerLabel(
+  source: EditorEntitySourcePointer,
+  documentJsonByPath: ReadonlyMap<string, JsonValue>
+): EditorEntitySourcePointer {
+  if (source.role === "metric") {
+    return source;
+  }
+  const json = documentJsonByPath.get(source.filePath);
+  if (json === undefined) {
+    return source;
+  }
+  const node = readJsonPointer(json, source.pointer);
+  if (!isPlainJsonObject(node)) {
+    return source;
+  }
+  return { ...source, label: resolveEntityTreeLabel(node, source.pointer) };
 }
 
 /**

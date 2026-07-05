@@ -89,7 +89,9 @@ export {
   buildEditorEntityYamlProjection,
   buildManifestChronologyTimeline,
   collectAffectedEntities,
-  pointerAffectsLens
+  createEditorEntityProjectionState,
+  pointerAffectsLens,
+  updateEditorEntityProjection
 } from "./entity-projection.ts";
 
 // Cross-cutting semantic pointer predicate for incremental invalidation.

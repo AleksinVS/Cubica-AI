@@ -345,3 +345,21 @@ game-agnostic CI invariant.
   Гейты: байт-идентичность ×2 (cold/warm) + seq-режим, manifest-authoring,
   engine 91, editor-web typecheck+105. Замер в §9.7 baseline. Планируемый
   остаток: GC/LRU дискового кэша — вместе с L2 (запись §9.7.6).
+- 2026-07-05 (Phase 2.1 — инкрементальная инвалидация L1, ядро готово):
+  `updateEditorEntityProjection(previous, next)` + `createEditorEntityProjectionState`
+  в entity-projection.ts. Дизайн correctness-first: быстрый путь берётся ТОЛЬКО
+  для скалярных правок, доказуемо не меняющих топологию/идентичность/ссылки
+  (label-refresh, no-effect); всё остальное — честный полный rebuild, поэтому
+  кросс-сущностные производные (identity-диагностики 1.5, индексы ссылок) не
+  бывают устаревшими ПО ПОСТРОЕНИЮ (заметка «version 2 = full rebuild из-за
+  диагностик» устарела, комментарий у PROJECTION_LENS_SET_VERSION переписан).
+  Главный гейт — эквивалентность: deep-equal инкремента и полной пересборки на
+  16 тестах (синтетика + детерминированный fuzz по всем указателям реальных
+  antarctica/simple-choice; классы: leaf/label/link/link-в-массиве/id-rename/
+  ui-фасет/_decorative/_requiresView/метрики/add-remove/замена выше префикса
+  линзы). Числа (antarctica, 222 сущности): 0.91мс против 44.5мс (≈49×), 1
+  rebuilt/221 reused. Телеметрия в отчёте функции; профиль-стадии
+  edit.incrementalProjection/fullProjectionRebuild; §9.8 baseline. verify 107/107
+  + typecheck + 105. Клиентская привязка НЕ подключена (точки зафиксированы в
+  §9.8/отчёте: previousState ref в контроллере, changed pointers на трёх
+  patch-точках, full rebuild для Monaco free-text) — следующий срез.

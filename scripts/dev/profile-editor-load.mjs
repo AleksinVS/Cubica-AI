@@ -234,6 +234,8 @@ async function main() {
   const perGame = Object.fromEntries(games.map((g) => [g.gameId, {}]));
   // Информация о выбранной представительной сущности (для отчёта; не таймер).
   const representative = {};
+  // Итог инкрементальной проекции уровня 1 (режим/пересобрано/переиспользовано).
+  const incrementalStats = {};
   // Грубые размеры входов (для отчёта о нелинейности).
   const inputStats = {};
 
@@ -383,6 +385,41 @@ async function main() {
         }
       });
 
+      // 12. Инкрементальная проекция уровня 1 (design-spec §2.6, §5): типовой
+      // маленький патч — replace текста одного поля (`_label` корня игры) — через
+      // updateEditorEntityProjection против полной пересборки того же входа.
+      // Это диагностический разрез: НЕ входит в composite.projectionLoad.
+      const gameFilePath = gameSnapshot.input.relPath;
+      const gameRootLabel = gameSnapshot.snapshot.json?.root?._label;
+      const labelPatch =
+        typeof gameRootLabel === "string"
+          ? { op: "replace", path: "/root/_label", value: `${gameRootLabel} (ред.)` }
+          : { op: "add", path: "/root/_label", value: "Ред." };
+      const nextGameJson = engine.applyJsonPatch(gameSnapshot.snapshot.json, [labelPatch]);
+      const nextProjectionDocuments = projectionDocuments.map((document) =>
+        document.filePath === gameFilePath ? { ...document, json: nextGameJson } : document
+      );
+      const previousProjectionState = { projection, input: { gameId, documents: projectionDocuments } };
+      const nextProjectionInput = { gameId, documents: nextProjectionDocuments };
+      const changedPointersByFile = { [gameFilePath]: ["/root/_label"] };
+
+      const incrementalUpdate = timed(bucket, "edit.incrementalProjection", () =>
+        engine.updateEditorEntityProjection(previousProjectionState, {
+          input: nextProjectionInput,
+          changedPointersByFile
+        })
+      );
+      timed(bucket, "edit.fullProjectionRebuild", () => engine.buildEditorEntityProjection(nextProjectionInput));
+
+      if (!isWarmup && incrementalStats[gameId] === undefined) {
+        incrementalStats[gameId] = {
+          mode: incrementalUpdate.report.mode,
+          reason: incrementalUpdate.report.reason,
+          rebuiltEntities: incrementalUpdate.report.rebuiltEntityIds.length,
+          reusedEntities: incrementalUpdate.report.reusedEntityCount
+        };
+      }
+
       // Грубые размеры входов — фиксируем один раз (для анализа нелинейности).
       if (!isWarmup && inputStats[gameId] === undefined) {
         inputStats[gameId] = {
@@ -438,6 +475,7 @@ async function main() {
     shared: summarizeBucket(shared),
     perGame: Object.fromEntries(games.map((g) => [g.gameId, summarizeBucket(perGame[g.gameId])])),
     representativeEntity: representative,
+    incrementalProjection: incrementalStats,
     inputStats
   };
 
@@ -492,9 +530,17 @@ function printReport(result, compositeStages) {
     console.log(row("composite.projectionLoad", bucket["composite.projectionLoad"]));
     console.log(row("parse.jsonOnly (диагн.)", bucket["parse.jsonOnly"]));
     console.log(row("compile.game (warm, hit)", bucket["compile.gameWarm"]));
+    console.log(row("edit.incrementalProjection", bucket["edit.incrementalProjection"]));
+    console.log(row("edit.fullProjectionRebuild", bucket["edit.fullProjectionRebuild"]));
     const rep = result.representativeEntity[gameId];
     if (rep) {
       console.log(`  представит. сущность YAML: ${rep.entityId} (facet-источников: ${rep.facetSourceCount})`);
+    }
+    const inc = result.incrementalProjection[gameId];
+    if (inc) {
+      console.log(
+        `  инкремент _label: mode=${inc.mode} (${inc.reason}), пересобрано=${inc.rebuiltEntities}, переиспользовано=${inc.reusedEntities}`
+      );
     }
   }
   console.log("");
