@@ -20,7 +20,6 @@ import {
   buildManifestChronologyTimeline,
   collectManifestChronologyStepIds,
   collectUiScreenIds,
-  computeManifestContentHash,
   createDocumentStore,
   createSchemaRegistry,
   validateStateFixtureSemantics,
@@ -28,6 +27,7 @@ import {
   type JsonValue,
   type SchemaRegistry
 } from "../src/index.ts";
+import { computeManifestContentHash } from "../src/state-fixture-hash.ts";
 
 const stateFixtureSchema = JSON.parse(
   readFileSync(new URL("../../../docs/architecture/schemas/state-fixture.schema.json", import.meta.url), "utf8")

@@ -100,18 +100,22 @@ export { pointersOverlap } from "./semantics.ts";
 // JSON Schema validation and semantic diagnostics.
 export { createSchemaRegistry, validateDocument, validateJsonValue } from "./schema.ts";
 
-// State fixtures: schema id, deterministic manifest content hash, and the
-// fixture-specific semantic checks (ADR-057 §4.9, §9.3; design-spec §2.5, §4).
+// State fixtures: schema id and the fixture-specific semantic checks
+// (ADR-057 §4.9, §9.3; design-spec §2.5, §4). The hash PRODUCER
+// (computeManifestContentHash) is deliberately NOT re-exported here: it needs
+// `node:crypto`, and this barrel is reachable from browser bundles. Node-side
+// consumers import it via the `@cubica/editor-engine/state-fixture-hash`
+// subpath (package.json `exports`).
 export {
   FIXTURE_STALE_DIAGNOSTIC_CODE,
   FIXTURE_UNKNOWN_REF_DIAGNOSTIC_CODE,
   STATE_FIXTURE_SCHEMA_ID,
   collectManifestChronologyStepIds,
   collectUiScreenIds,
-  computeManifestContentHash,
   validateStateFixtureSemantics
 } from "./state-fixture.ts";
-export type { ManifestContentFile, ValidateStateFixtureSemanticsInput } from "./state-fixture.ts";
+export type { ValidateStateFixtureSemanticsInput } from "./state-fixture.ts";
+export type { ManifestContentFile } from "./state-fixture-hash.ts";
 
 // Local prototype extraction (ADR-050).
 export { createPrototypeExtractionProposal, discoverPrototypeExtractionCandidates } from "./prototype-extraction.ts";

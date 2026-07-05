@@ -1,6 +1,9 @@
 /**
- * State fixtures: schema id, deterministic manifest content hash, and semantic
- * validation (ADR-057 §4.9, §9.3; design-spec §2.5, §4).
+ * State fixtures: schema id and semantic validation (ADR-057 §4.9, §9.3;
+ * design-spec §2.5, §4). The deterministic manifest content hash PRODUCER
+ * lives in the node-only module `state-fixture-hash.ts` (it needs
+ * `node:crypto` and must stay out of this browser-reachable barrel path);
+ * this module only COMPARES hash strings and stays browser-safe.
  *
  * A "state fixture" (фикстура состояния) is a pinned, named snapshot of runtime
  * game state that becomes a reviewable authoring artifact under
@@ -25,7 +28,6 @@
  * subtree `/root/screens` (screens). Small collectors below bridge those
  * projections to plain id sets so the semantic validator stays a pure function.
  */
-import { createHash } from "node:crypto";
 import { isPlainJsonObject, makeDiagnostic } from "./shared.ts";
 import { appendPointerSegment, readJsonPointer } from "./json-pointer-patch.ts";
 import type {
@@ -42,43 +44,6 @@ export const STATE_FIXTURE_SCHEMA_ID = "https://cubica.platform/schemas/state-fi
 export const FIXTURE_STALE_DIAGNOSTIC_CODE = "fixture-stale";
 /** Registry code: fixture `screenRef`/`stepRef` points at a non-existent id. */
 export const FIXTURE_UNKNOWN_REF_DIAGNOSTIC_CODE = "fixture-unknown-ref";
-
-/** One authoring manifest file contributing to the deterministic content hash. */
-export interface ManifestContentFile {
-  /** Repository-relative path; used both as sort key and hash input. */
-  readonly path: string;
-  /** Verbatim file text at capture time. */
-  readonly content: string;
-}
-
-/**
- * Computes the deterministic content hash of a game's authoring manifests.
- *
- * Rule (stable across machines and runs): sort the files by `path`, then feed a
- * single SHA-256 the concatenation of `${path}\n${content}\n` for each file in
- * that order, and format the digest as `sha256-<hex>`. Sorting by path makes the
- * result independent of input order; including the path guards against two files
- * swapping content. The output matches the `^sha256-[0-9a-f]{64}$` pattern the
- * fixture schema requires for `manifestHash`.
- *
- * This runs in the Node/editor-host context where fixtures are captured and
- * validated (it uses `node:crypto`); it is never bundled into a game runtime.
- */
-export function computeManifestContentHash(files: readonly ManifestContentFile[]): string {
-  const sorted = [...files].sort((left, right) => {
-    if (left.path < right.path) {
-      return -1;
-    }
-    return left.path > right.path ? 1 : 0;
-  });
-
-  const hash = createHash("sha256");
-  for (const file of sorted) {
-    hash.update(`${file.path}\n${file.content}\n`);
-  }
-
-  return `sha256-${hash.digest("hex")}`;
-}
 
 /**
  * Collects the chronology step ids from a manifest timeline projection.
@@ -131,7 +96,7 @@ export interface ValidateStateFixtureSemanticsInput {
   readonly knownScreenIds: Iterable<string>;
   /** Chronology step ids (see {@link collectManifestChronologyStepIds}). */
   readonly knownStepIds: Iterable<string>;
-  /** Deterministic hash of the current manifests (see {@link computeManifestContentHash}). */
+  /** Deterministic hash of the current manifests (produced by `computeManifestContentHash` from `state-fixture-hash.ts`). */
   readonly currentManifestHash: string;
   /** Optional location map to attach source text ranges to diagnostics. */
   readonly locationMap?: TextLocationMap;
