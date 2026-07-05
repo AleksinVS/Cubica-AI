@@ -16,6 +16,7 @@
   ],
   "scripts": {
     "bootstrap": "npm install --workspaces",
+    "profile:editor-load": "node --expose-gc --experimental-transform-types scripts/dev/profile-editor-load.mjs",
     "typecheck": "npm run typecheck --workspace services/runtime-api",
     "verify:runtime-api": "npm run typecheck --workspace services/runtime-api && npm test --workspace services/runtime-api && npm run smoke --workspace services/runtime-api",
     "verify:player-web": "npm run typecheck --workspace @cubica/player-web && npm test --workspace @cubica/player-web && npm run build --workspace @cubica/player-web",
