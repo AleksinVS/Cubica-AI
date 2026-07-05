@@ -1,0 +1,2440 @@
+"use client";
+
+/**
+ * Controller hook module for the ADR-034 editor workspace.
+ *
+ * The editor treats repository authoring JSON as the editable source. React Flow
+ * remains a derived projection: selection and drag state may change local canvas
+ * layout, but manifest data is changed only through editor-engine JSON Patch
+ * operations or direct Monaco text edits.
+ *
+ * `useEditorWorkspace` (below) owns all workspace state, effects, and handlers;
+ * the presentational `EditorWorkspace` component and the panels in this folder
+ * consume the returned controller object.
+ */
+import {
+  applyNodeChanges,
+  Position,
+  type ReactFlowInstance,
+  type Node,
+  type NodeChange
+} from "@xyflow/react";
+import {
+  buildPreviewTraceRestorePlan,
+  createPatchJournalStep,
+  createPreviewPlaythroughTrace,
+  createSchemaRegistry,
+  dryRunEditorChangeSet,
+  hashEditorText,
+  readJsonPointer,
+  type EditorDiffSummaryItem,
+  type EditorPatchIntent,
+  type JsonValue,
+  type PatchJournalStep,
+  type PreviewEntityDescriptor,
+  type PreviewPoint,
+  type PreviewPlaythroughTrace,
+  type PreviewRect,
+  type PrototypeExtractionProposal
+} from "@cubica/editor-engine";
+import { type CubicaAgentApprovalEnvelope } from "@cubica/contracts-ai";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  type CSSProperties,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent
+} from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
+import { embeddedAuthoringSample } from "@/lib/authoring-sample";
+import {
+  registerLocalAuthoringSchemas,
+  schemaIdForAuthoringDocument
+} from "@/lib/editor-json-schema";
+import {
+  applyPropertyEditResult,
+  applyJsonPropertyEditResult,
+  applyWritableGraphOperation,
+  coercePropertyValue,
+  createEditorViewModel,
+  findEditorNodeById,
+  findEditorNodeForPointer,
+  findTreeNodeForPointer,
+  getBranchRootNode,
+  getNodeAncestorIds,
+  selectProperties,
+  toRoutedDiagnostic,
+  type EditorProperty,
+  type EditorViewNode,
+  type RoutedEditorDiagnostic,
+  type WritableGraphOperation
+} from "@/lib/editor-web-adapter";
+import { createDefaultCollapsedTreePointers } from "@/components/json-tree-view";
+import type { PrototypeAuditNoticeRecord } from "@/components/prototype-audit-notice";
+import type { PreviewAiIntent, PreviewPromptContext } from "@/components/preview-selection-overlay";
+import {
+  isPlayerPreviewEntitiesMessage,
+  isPlayerPreviewSessionSnapshotMessage,
+  mapPlayerPreviewEntitiesToAuthoringDescriptors,
+  type PreviewSelectionSourceMap
+} from "@/lib/preview-message-adapter";
+import { buildEditorAgentContextProjection } from "@/lib/agent-context-projection";
+import {
+  useEditorAgentConnection,
+  type EditorAgentToolResult,
+  type EditorAgentTools
+} from "@/components/editor-agent-ui";
+
+import {
+  buildEditorAgentSurface,
+  editorApplyApprovalScope,
+  editorSaveApprovalScope,
+  editorUndoApprovalScope,
+  prototypeProposalGatesPassed,
+  toAgentDiagnostic,
+  validateEditorAgentApproval
+} from "@/components/workspace/agent-surface";
+import {
+  createEditorSession,
+  fetchAuthoringFile,
+  fetchAuthoringList,
+  fetchEditorLayout,
+  fetchPrototypeAuditStatus,
+  postEditorWorkflow,
+  requestAiChangeSet,
+  requestPrototypeExtractionProposal,
+  saveEditorLayout,
+  toPrototypeAuditNotice
+} from "@/components/workspace/api-client";
+import {
+  defaultJsonSidebarWidth,
+  defaultLeftSidebarWidth,
+  editorMarkerOwner,
+  embeddedFilePath,
+  jsonSidebarWidthMax,
+  jsonSidebarWidthMin,
+  leftSidebarWidthMax,
+  leftSidebarWidthMin,
+  semanticNodeColumnSpacing,
+  semanticNodeDepthSpacing,
+  semanticNodeHandles,
+  semanticNodeHeight,
+  semanticNodeRowsPerColumn,
+  semanticNodeWidth,
+  temporaryPlayPassthroughMs
+} from "@/components/workspace/constants";
+import {
+  addPreviewReloadNonce,
+  buildAiPatchTargetContexts,
+  buildSelectedNodeAiPatchTargetContext,
+  clampNumber,
+  configureMonacoJson,
+  createEmptyEditorLayout,
+  diagnosticsFromPluginValidation,
+  filterServerOnlyDiagnostics,
+  findNodeForPointer,
+  getNodeDepth,
+  getNodePosition,
+  getSyncLabel,
+  parentPointer,
+  persistPreviewTraceSnapshot,
+  persistPreviewTraceTruncation,
+  pluginDiagnosticsFromWorkflowResponse,
+  positionsFromLayout,
+  prototypeSemanticsFromPrompt,
+  readRuntimeEventVersion,
+  readSessionIdFromPreviewUrl,
+  safeUrlOrigin,
+  summarizeNonVisualEntities,
+  toMonacoMarker,
+  toMonacoModelUri,
+  toMonacoRange,
+  toRepositoryAuthoringFilePath,
+  truncatePreviewTrace,
+  upsertRuntimeSnapshotInTrace
+} from "@/components/workspace/workspace-helpers";
+import type {
+  AuthoringFileDocument,
+  AuthoringFileSummary,
+  CurrentDocument,
+  EditorLayoutDocument,
+  EditorLayoutDocumentBody,
+  EditorPluginValidationResult,
+  EditorPreviewRollbackResponse,
+  EditorSessionListResult,
+  EditorSessionSummary,
+  LeftSidebarPanel,
+  MonacoApi,
+  MonacoEditorInstance,
+  PlanCurrentAiChangeSetResult,
+  PlannedAiChangeSet,
+  PlannedPrototypeExtractionProposal,
+  PreviewViewportMode,
+  RightSidebarPanel,
+  SavedAuthoringFileDocument,
+  SemanticFlowEdge,
+  SemanticFlowNode,
+  SidebarResizeState
+} from "@/components/workspace/types";
+import {
+  useAiPatchState,
+  useLayoutUiState,
+  usePreviewRuntimeState,
+  useSelectionGraphState,
+  useSessionDocumentState
+} from "@/components/workspace/use-editor-workspace-state";
+
+
+/**
+ * Controller hook for the ADR-034 editor workspace.
+ *
+ * This hook owns the entire behavioural surface of the workspace: repository /
+ * session document state, the derived editor view model and graph projection,
+ * preview runtime state and playthrough trace, AI ChangeSet planning/apply/undo,
+ * layout/sidebar UI state, and every effect and event handler. It is a verbatim
+ * extraction of the former `EditorWorkspace` component body — behaviour is
+ * unchanged. The presentational `EditorWorkspace` component consumes the object
+ * returned here and renders it through the panels in `./`.
+ */
+export function useEditorWorkspace() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedGameId = searchParams.get("gameId");
+  const requestedFilePath = searchParams.get("file");
+
+  // State is grouped by domain into small hooks (see use-editor-workspace-state).
+  // Grouping is structural only: initializers and update semantics are unchanged.
+  const {
+    jsonText,
+    setJsonText,
+    savedText,
+    setSavedText,
+    currentDocument,
+    setCurrentDocument,
+    availableGames,
+    setAvailableGames,
+    availableFiles,
+    setAvailableFiles,
+    editorSession,
+    setEditorSession,
+    lastEditSource,
+    setLastEditSource,
+    loadState,
+    setLoadState,
+    saveState,
+    setSaveState,
+    workflowState,
+    setWorkflowState,
+    statusMessage,
+    setStatusMessage,
+    reverseDiagnostics,
+    setReverseDiagnostics,
+    workflowDiagnostics,
+    setWorkflowDiagnostics,
+    pluginDiagnostics,
+    setPluginDiagnostics,
+    prototypeAuditNotice,
+    setPrototypeAuditNotice,
+    prototypeAuditSnoozed,
+    setPrototypeAuditSnoozed,
+    editorSessionRef,
+    openingSessionRef
+  } = useSessionDocumentState();
+
+  const {
+    selectedNodeId,
+    setSelectedNodeId,
+    editorLayout,
+    setEditorLayout,
+    layoutVersionHash,
+    setLayoutVersionHash,
+    localNodePositions,
+    setLocalNodePositions,
+    flowNodes,
+    setFlowNodes,
+    activeBranchRootId,
+    setActiveBranchRootId,
+    expandedNodeIds,
+    setExpandedNodeIds,
+    collapsedNodeIds,
+    setCollapsedNodeIds,
+    surfaceMode,
+    setSurfaceMode,
+    treeDetailMode,
+    setTreeDetailMode,
+    treeCollapsedPointers,
+    setTreeCollapsedPointers,
+    flowRef
+  } = useSelectionGraphState();
+
+  const {
+    previewUrl,
+    setPreviewUrl,
+    previewRuntimeSessionId,
+    setPreviewRuntimeSessionId,
+    previewSourceMaps,
+    setPreviewSourceMaps,
+    previewEntities,
+    setPreviewEntities,
+    previewUnresolvedEntityCount,
+    setPreviewUnresolvedEntityCount,
+    selectedPreviewEntityId,
+    setSelectedPreviewEntityId,
+    previewPromptContext,
+    setPreviewPromptContext,
+    previewAiIntent,
+    setPreviewAiIntent,
+    previewTrace,
+    setPreviewTrace,
+    selectedPreviewTraceSequence,
+    setSelectedPreviewTraceSequence,
+    previewRollbackState,
+    setPreviewRollbackState,
+    previewInspectMode,
+    setPreviewInspectMode,
+    altPlayActive,
+    setAltPlayActive,
+    previewPointerPlayMode,
+    setPreviewPointerPlayMode,
+    previewPointSelectionMode,
+    setPreviewPointSelectionMode,
+    previewViewportMode,
+    setPreviewViewportMode,
+    previewIframeRef,
+    previewPointerPlayResetRef
+  } = usePreviewRuntimeState();
+
+  const {
+    aiApplyState,
+    setAiApplyState,
+    aiPatchJournal,
+    setAiPatchJournal,
+    aiRedoJournal,
+    setAiRedoJournal,
+    aiDiffSummary,
+    setAiDiffSummary,
+    aiDiagnostics,
+    setAiDiagnostics,
+    agentPlannedChangeSet,
+    setAgentPlannedChangeSet,
+    prototypeExtractionProposal,
+    setPrototypeExtractionProposal
+  } = useAiPatchState();
+
+  const {
+    leftSidebarPanel,
+    setLeftSidebarPanel,
+    jsonPanelOpen,
+    setJsonPanelOpen,
+    leftSidebarWidth,
+    setLeftSidebarWidth,
+    jsonSidebarWidth,
+    setJsonSidebarWidth,
+    sidebarResizeState,
+    setSidebarResizeState,
+    propertyPanelOpen,
+    setPropertyPanelOpen,
+    pendingJsonRevealPointer,
+    setPendingJsonRevealPointer,
+    monacoApi,
+    setMonacoApi,
+    editorRef
+  } = useLayoutUiState();
+
+  const schemaRegistry = useMemo(() => {
+    const registry = createSchemaRegistry();
+    registerLocalAuthoringSchemas(registry);
+    return registry;
+  }, []);
+
+  const schemaId = useMemo(
+    () => schemaIdForAuthoringDocument(currentDocument.filePath, undefined),
+    [currentDocument.filePath]
+  );
+  const monacoModelUri = useMemo(() => toMonacoModelUri(currentDocument), [currentDocument]);
+  const viewModel = useMemo(
+    () =>
+      createEditorViewModel(jsonText, {
+        filePath: currentDocument.filePath,
+        schemaRegistry,
+        schemaId,
+        graphState: {
+          selectedNodeId,
+          activeBranchRootId,
+          expandedNodeIds: [...expandedNodeIds],
+          collapsedNodeIds: [...collapsedNodeIds],
+          maxVisibleNodes: activeBranchRootId === undefined ? 25 : 60,
+          maxExpandedChildren: 36
+        },
+        extraDiagnostics: reverseDiagnostics
+          .concat(aiDiagnostics)
+          .concat(workflowDiagnostics)
+      }),
+    [
+      activeBranchRootId,
+      collapsedNodeIds,
+      currentDocument.filePath,
+      expandedNodeIds,
+      jsonText,
+      aiDiagnostics,
+      reverseDiagnostics,
+      schemaId,
+      schemaRegistry,
+      selectedNodeId,
+      workflowDiagnostics
+    ]
+  );
+  const selectedNode = findEditorNodeById(viewModel.fullNodes, selectedNodeId) ?? viewModel.fullNodes[0];
+  const activeTree = treeDetailMode === "entities" ? viewModel.tree : viewModel.jsonTree;
+  const selectedValue = selectedNode === undefined || viewModel.snapshot.json === undefined ? undefined : readJsonPointer(viewModel.snapshot.json, selectedNode.pointer);
+  const properties = selectedNode ? selectProperties(viewModel.snapshot, selectedNode.pointer) : [];
+  const graphTargetNodes = useMemo(
+    () =>
+      viewModel.fullNodes.filter(
+        (node) => node.pointer !== selectedNode?.pointer && node.role !== "property" && (node.valueType === "object" || node.valueType === "array")
+      ),
+    [selectedNode?.pointer, viewModel.fullNodes]
+  );
+  const hasBlockingDiagnostics = viewModel.diagnostics.some((diagnostic) => diagnostic.severity === "error");
+  const hasLocalSchemaBlockingDiagnostics = viewModel.diagnostics.some(
+    (diagnostic) => diagnostic.severity === "error" && (diagnostic.source === "syntax" || diagnostic.source === "schema")
+  );
+  const isDirty = jsonText !== savedText;
+  const nonVisualEntityCounts = useMemo(() => summarizeNonVisualEntities(viewModel.fullNodes), [viewModel.fullNodes]);
+  const previewTraceEntries = previewTrace.events.slice(-8);
+  const currentPreviewTraceEvent = previewTrace.events.length === 0
+    ? undefined
+    : previewTrace.events[previewTrace.events.length - 1];
+  const selectedPreviewTraceEvent = selectedPreviewTraceSequence === undefined
+    ? currentPreviewTraceEvent
+    : previewTrace.events.find((event) => event.sequence === selectedPreviewTraceSequence) ?? currentPreviewTraceEvent;
+  const selectedPreviewTraceSnapshot = selectedPreviewTraceEvent === undefined
+    ? undefined
+    : previewTrace.snapshots.find((snapshot) => snapshot.eventSequence === selectedPreviewTraceEvent.sequence);
+  const agentConnection = useEditorAgentConnection();
+  const agentSelectedPointers = useMemo(() => {
+    const pointers = new Set<string>();
+    if (selectedNode?.pointer !== undefined && selectedNode.pointer !== "") {
+      pointers.add(selectedNode.pointer);
+    }
+    for (const entity of previewPromptContext?.entities ?? []) {
+      if (entity.authoringPointer !== "") {
+        pointers.add(entity.authoringPointer);
+      }
+    }
+    return [...pointers];
+  }, [previewPromptContext?.entities, selectedNode?.pointer]);
+  const agentSelectedPreviewEntities = useMemo(
+    () =>
+      (previewPromptContext?.entities ?? (selectedPreviewEntityId === undefined ? [] : previewEntities.filter((entity) => entity.entityId === selectedPreviewEntityId))).map(
+        (entity) => ({
+          entityId: entity.entityId,
+          label: entity.label,
+          semanticRole: entity.semanticRole,
+          authoringPointer: entity.authoringPointer
+        })
+      ),
+    [previewEntities, previewPromptContext?.entities, selectedPreviewEntityId]
+  );
+  const agentSelectedEditorEntities = useMemo(() => {
+    const entitiesById = new Map<string, (typeof viewModel.editorEntityProjection.entities)[number]>();
+    for (const pointer of agentSelectedPointers) {
+      const sourceKey = `${currentDocument.filePath}#${pointer}`;
+      for (const entity of viewModel.editorEntityProjection.entitiesBySourcePointer.get(sourceKey) ?? []) {
+        entitiesById.set(entity.entityId, entity);
+      }
+    }
+
+    return [...entitiesById.values()];
+  }, [agentSelectedPointers, currentDocument.filePath, viewModel.editorEntityProjection.entities, viewModel.editorEntityProjection.entitiesBySourcePointer]);
+  const editorAgentContext = useMemo(
+    () =>
+      buildEditorAgentContextProjection({
+        sessionId: editorSession?.sessionId,
+        gameId: currentDocument.gameId,
+        activeFilePath: currentDocument.filePath,
+        activeFileVersionHash: currentDocument.versionHash,
+        document: viewModel.snapshot.json,
+        selectedPointers: agentSelectedPointers,
+        selectedPreviewEntities: agentSelectedPreviewEntities,
+        selectedEditorEntities: agentSelectedEditorEntities,
+        diagnostics: viewModel.documentDiagnostics,
+        previewTraceSummary:
+          previewTrace.events.length === 0
+            ? undefined
+            : {
+                traceId: previewTrace.traceId,
+                eventCount: previewTrace.events.length,
+                currentEventLabel: currentPreviewTraceEvent?.label,
+                selectedEventLabel: selectedPreviewTraceEvent?.label
+              }
+      }),
+    [
+      agentSelectedPointers,
+      agentSelectedPreviewEntities,
+      agentSelectedEditorEntities,
+      currentDocument.filePath,
+      currentDocument.gameId,
+      currentDocument.versionHash,
+      currentPreviewTraceEvent?.label,
+      editorSession?.sessionId,
+      previewTrace.events.length,
+      previewTrace.traceId,
+      selectedPreviewTraceEvent?.label,
+      viewModel.documentDiagnostics,
+      viewModel.snapshot.json
+    ]
+  );
+  const editorAgentSurface = useMemo(
+    () =>
+      buildEditorAgentSurface({
+        aiApplyState,
+        aiDiffSummary,
+        aiDiagnostics,
+        prototypeExtractionProposal,
+        hasPlannedChangeSet: agentPlannedChangeSet !== null,
+        hasUndoPatch: aiPatchJournal.length > 0,
+        applyApprovalScopeHash: editorApplyApprovalScope(agentPlannedChangeSet),
+        undoApprovalScopeHash: editorUndoApprovalScope(aiPatchJournal.length)
+      }),
+    [agentPlannedChangeSet, aiApplyState, aiDiagnostics, aiDiffSummary, aiPatchJournal.length, prototypeExtractionProposal]
+  );
+  const leftSidebarOpen = leftSidebarPanel !== undefined;
+  const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
+  const rightSidebarOpen = rightSidebarPanel !== undefined;
+  const effectivePreviewInspectMode = previewInspectMode && !altPlayActive && !previewPointerPlayMode;
+  const previewModeLabel = effectivePreviewInspectMode ? "Inspect" : "Play";
+  const workspaceStyle = {
+    "--left-sidebar-width": `${leftSidebarOpen ? leftSidebarWidth : 0}px`,
+    "--json-sidebar-width": `${rightSidebarOpen ? jsonSidebarWidth : 0}px`
+  } as CSSProperties;
+  const editorAgentTools: EditorAgentTools = {
+    planChangeSet: (input) => runAgentPlanTool(input.prompt),
+    proposePrototypeExtraction: (input) => runAgentPrototypeExtractionTool(input),
+    preparePrototypeChangeSet: () => runAgentPreparePrototypeChangeSetTool(),
+    dryRunChangeSet: (input) => runAgentDryRunTool(input.prompt),
+    applyChangeSet: (input) => runAgentApplyTool(input.prompt, input.approval),
+    undoLastPatch: async (input) => runAgentUndoTool(input?.approval),
+    preparePreview: async () => {
+      await handlePreview();
+      return {
+        ok: true,
+        summary: "Preview preparation requested through the existing editor preview route."
+      };
+    },
+    saveSession: async (input) => {
+      const approvalError = validateEditorAgentApproval(
+        input.approval,
+        "editor.saveSession",
+        editorSaveApprovalScope(currentDocument.versionHash ?? "no-version-hash", editorSession?.sessionId)
+      );
+      if (approvalError !== null) {
+        return approvalError;
+      }
+
+      await handleSave();
+      return {
+        ok: true,
+        summary: "Save requested through the existing editor file route."
+      };
+    }
+  };
+
+  const projectedNodes = useMemo<SemanticFlowNode[]>(
+    () => {
+      const countByDepth = new Map<number, number>();
+      for (const node of viewModel.nodes) {
+        const depth = getNodeDepth(node);
+        countByDepth.set(depth, (countByDepth.get(depth) ?? 0) + 1);
+      }
+
+      const xByDepth = new Map<number, number>();
+      let nextDepthX = 0;
+      for (const depth of [...countByDepth.keys()].sort((left, right) => left - right)) {
+        const nodeCount = countByDepth.get(depth) ?? 0;
+        const columnCount = Math.max(1, Math.ceil(nodeCount / semanticNodeRowsPerColumn));
+        xByDepth.set(depth, nextDepthX);
+        nextDepthX += columnCount * semanticNodeColumnSpacing + semanticNodeDepthSpacing;
+      }
+
+      const slotByDepth = new Map<number, number>();
+
+      return viewModel.nodes.map((node) => {
+        const depth = getNodeDepth(node);
+        const slot = slotByDepth.get(depth) ?? 0;
+        slotByDepth.set(depth, slot + 1);
+
+        return {
+          id: node.id,
+          type: "semantic",
+          position: localNodePositions.get(node.id) ?? editorLayout.nodes[node.id]?.position ?? getNodePosition(xByDepth.get(depth) ?? 0, slot),
+          sourcePosition: Position.Right,
+          targetPosition: Position.Left,
+          handles: semanticNodeHandles,
+          initialWidth: semanticNodeWidth,
+          initialHeight: semanticNodeHeight,
+          width: semanticNodeWidth,
+          height: semanticNodeHeight,
+          selected: node.id === selectedNodeId,
+          className: `presentation-${node.presentationRole} semantic-role-${node.semanticRole}`,
+          data: {
+            semanticRole: node.semanticRole,
+            semanticTitle: node.semanticTitle,
+            semanticSummary: node.semanticSummary,
+            presentationRole: node.presentationRole,
+            pointer: node.pointer,
+            valueType: node.valueType,
+            childCount: node.childCount,
+            expandable: node.expandable,
+            expanded: expandedNodeIds.has(node.id) && !collapsedNodeIds.has(node.id)
+          }
+        };
+      });
+    },
+    [collapsedNodeIds, editorLayout.nodes, expandedNodeIds, localNodePositions, selectedNodeId, viewModel.nodes]
+  );
+
+  useEffect(() => {
+    setFlowNodes(projectedNodes);
+  }, [projectedNodes]);
+
+  useEffect(() => {
+    editorSessionRef.current = editorSession;
+  }, [editorSession]);
+
+  const visibleNodeIds = useMemo(() => new Set(flowNodes.map((node) => node.id)), [flowNodes]);
+  const flowEdges = useMemo<SemanticFlowEdge[]>(
+    () =>
+      viewModel.edges
+        .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+        .map((edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          label: edge.label,
+          type: "semantic",
+          animated: edge.role === "references",
+          data: {
+            role: edge.role,
+            label: edge.label
+          }
+        })),
+    [viewModel.edges, visibleNodeIds]
+  );
+
+  const fitViewDependency = useMemo(
+    () => flowNodes.map((node) => node.id).join("\u001f"),
+    [flowNodes]
+  );
+
+  useEffect(() => {
+    const flow = flowRef.current;
+    if (flow === null || flowNodes.length === 0) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      void flow.fitView({ padding: 0.18, duration: 0 });
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [fitViewDependency, leftSidebarOpen, rightSidebarOpen, flowNodes.length]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadFromRepository() {
+      setLoadState("loading");
+      setStatusMessage("Opening editor session...");
+
+      try {
+        const list = await openSessionFileList(requestedGameId);
+        const session = list.session;
+        if (cancelled) {
+          return;
+        }
+
+        if (session !== null) {
+          setEditorSession(session);
+          editorSessionRef.current = session;
+        }
+
+        const filePath =
+          requestedFilePath !== null && list.files.some((file) => file.filePath === requestedFilePath)
+            ? requestedFilePath
+            : list.defaultFilePath;
+
+        if (filePath === undefined) {
+          throw new Error(`No editable authoring files were found for ${list.gameId}.`);
+        }
+
+        const document = await fetchAuthoringFile(list.gameId, filePath, session?.sessionId);
+        if (cancelled) {
+          return;
+        }
+
+        setAvailableGames(list.games);
+        setAvailableFiles(list.files);
+        const layout = await fetchEditorLayout(list.gameId, filePath, session?.sessionId).catch(() => undefined);
+        if (cancelled) {
+          return;
+        }
+
+        applyLoadedDocument(document, layout);
+        setLoadState("ready");
+        setSaveState("idle");
+        setStatusMessage(session === null ? "Loaded from repository" : `Loaded session ${session.branchName}`);
+
+        if (requestedGameId !== list.gameId || requestedFilePath !== filePath) {
+          replaceUrlState(list.gameId, filePath);
+        }
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        loadEmbeddedFallback(error);
+      }
+    }
+
+    void loadFromRepository();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [requestedFilePath, requestedGameId]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPrototypeAuditStatus() {
+      if (currentDocument.source !== "repository") {
+        setPrototypeAuditNotice(null);
+        setPrototypeAuditSnoozed(false);
+        return;
+      }
+
+      try {
+        const response = await fetchPrototypeAuditStatus();
+        if (cancelled) {
+          return;
+        }
+        setPrototypeAuditNotice(toPrototypeAuditNotice(response));
+        setPrototypeAuditSnoozed(false);
+      } catch {
+        if (!cancelled) {
+          setPrototypeAuditNotice({
+            notification: "missing",
+            message: "Weekly prototype audit status is unavailable."
+          });
+          setPrototypeAuditSnoozed(false);
+        }
+      }
+    }
+
+    void loadPrototypeAuditStatus();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentDocument.filePath, currentDocument.source, currentDocument.versionHash]);
+
+  useEffect(() => {
+    if (monacoApi === null) {
+      return;
+    }
+
+    configureMonacoJson(monacoApi, monacoModelUri, schemaId);
+  }, [monacoApi, monacoModelUri, schemaId]);
+
+  useEffect(() => {
+    if (rightSidebarPanel !== "json") {
+      editorRef.current = null;
+    }
+  }, [rightSidebarPanel]);
+
+  useEffect(() => {
+    if (monacoApi === null || editorRef.current === null) {
+      return;
+    }
+
+    const model = editorRef.current.getModel();
+    if (model === null) {
+      return;
+    }
+
+    monacoApi.editor.setModelMarkers(
+      model,
+      editorMarkerOwner,
+      viewModel.diagnostics.map((diagnostic) => toMonacoMarker(monacoApi, model, diagnostic))
+    );
+  }, [monacoApi, monacoModelUri, viewModel.diagnostics]);
+
+  useEffect(() => {
+    if (rightSidebarPanel === "json" && selectedNode !== undefined) {
+      revealJsonPointer(selectedNode.pointer);
+    }
+  }, [rightSidebarPanel, selectedNode?.pointer, viewModel.snapshot.locationMap]);
+
+  useEffect(() => {
+    if (rightSidebarPanel !== "json" || pendingJsonRevealPointer === undefined || editorRef.current === null) {
+      return;
+    }
+
+    revealJsonPointer(pendingJsonRevealPointer);
+    setPendingJsonRevealPointer(undefined);
+  }, [monacoApi, pendingJsonRevealPointer, rightSidebarPanel, viewModel.snapshot.locationMap]);
+
+  useEffect(() => {
+    if (previewUrl === null) {
+      return;
+    }
+
+    const expectedOrigin = safeUrlOrigin(previewUrl);
+
+    function handlePreviewMessage(event: MessageEvent) {
+      const frameWindow = previewIframeRef.current?.contentWindow;
+      if (frameWindow === undefined || event.source !== frameWindow) {
+        return;
+      }
+
+      if (expectedOrigin !== undefined && event.origin !== expectedOrigin) {
+        return;
+      }
+
+      if (isPlayerPreviewEntitiesMessage(event.data)) {
+        const mapped = mapPlayerPreviewEntitiesToAuthoringDescriptors(event.data.entities, previewSourceMaps, {
+          currentAuthoringFile: currentDocument.filePath,
+          gameId: currentDocument.gameId
+        });
+
+        setPreviewEntities(mapped.descriptors);
+        setPreviewUnresolvedEntityCount(mapped.unresolved.length);
+        return;
+      }
+
+      if (isPlayerPreviewSessionSnapshotMessage(event.data)) {
+        if (previewRuntimeSessionId !== undefined && event.data.sessionId !== previewRuntimeSessionId) {
+          return;
+        }
+        if (event.data.gameId !== undefined && event.data.gameId !== currentDocument.gameId) {
+          return;
+        }
+
+        setSelectedPreviewTraceSequence(event.data.sessionVersion.lastEventSequence);
+        setPreviewRuntimeSessionId(event.data.sessionId);
+        setPreviewTrace((currentTrace) => {
+          const nextTrace = upsertRuntimeSnapshotInTrace(currentTrace, event.data);
+          void persistPreviewTraceSnapshot(nextTrace, event.data, editorSessionRef.current?.sessionId).catch(() => {
+            setStatusMessage("Preview trace persistence failed.");
+          });
+          return nextTrace;
+        });
+        setPreviewRollbackState((current) => (current === "restoring" ? "restored" : current));
+      }
+    }
+
+    window.addEventListener("message", handlePreviewMessage);
+    return () => window.removeEventListener("message", handlePreviewMessage);
+  }, [currentDocument.filePath, currentDocument.gameId, previewRuntimeSessionId, previewSourceMaps, previewUrl]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Alt") {
+        setAltPlayActive(true);
+        setPreviewPointerPlayMode(false);
+      }
+
+      if (event.key === "Control") {
+        setPreviewPointSelectionMode(true);
+      }
+    }
+
+    function handleKeyUp(event: KeyboardEvent) {
+      if (event.key === "Alt") {
+        setAltPlayActive(false);
+        setPreviewPointerPlayMode(false);
+        clearPreviewPointerPlayReset();
+      }
+
+      if (event.key === "Control") {
+        setPreviewPointSelectionMode(false);
+      }
+    }
+
+    function resetTransientModes() {
+      setAltPlayActive(false);
+      setPreviewPointerPlayMode(false);
+      setPreviewPointSelectionMode(false);
+      clearPreviewPointerPlayReset();
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", resetTransientModes);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", resetTransientModes);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => clearPreviewPointerPlayReset();
+  }, []);
+
+  useEffect(() => {
+    if (sidebarResizeState === null) {
+      return;
+    }
+
+    const previousCursor = document.body.style.cursor;
+    const previousUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+
+    function handlePointerMove(event: PointerEvent) {
+      if (sidebarResizeState === null) {
+        return;
+      }
+
+      const deltaX = event.clientX - sidebarResizeState.startX;
+      if (sidebarResizeState.side === "left") {
+        setLeftSidebarWidth(
+          clampNumber(sidebarResizeState.startWidth + deltaX, leftSidebarWidthMin, leftSidebarWidthMax)
+        );
+        return;
+      }
+
+      setJsonSidebarWidth(
+        clampNumber(sidebarResizeState.startWidth - deltaX, jsonSidebarWidthMin, jsonSidebarWidthMax)
+      );
+    }
+
+    function stopResize() {
+      setSidebarResizeState(null);
+    }
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", stopResize);
+    window.addEventListener("blur", stopResize);
+    return () => {
+      document.body.style.cursor = previousCursor;
+      document.body.style.userSelect = previousUserSelect;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", stopResize);
+      window.removeEventListener("blur", stopResize);
+    };
+  }, [sidebarResizeState]);
+
+  useEffect(() => {
+    if (selectedPreviewEntityId === undefined) {
+      return;
+    }
+
+    if (!previewEntities.some((entity) => entity.entityId === selectedPreviewEntityId)) {
+      setSelectedPreviewEntityId(undefined);
+    }
+  }, [previewEntities, selectedPreviewEntityId]);
+
+  useEffect(() => {
+    const pointer = selectedNode?.pointer;
+    if (pointer === undefined) {
+      return;
+    }
+
+    const entity = previewEntities.find((candidate) => candidate.authoringPointer === pointer);
+    if (entity !== undefined && entity.entityId !== selectedPreviewEntityId) {
+      setSelectedPreviewEntityId(entity.entityId);
+      return;
+    }
+
+    if (entity === undefined && selectedPreviewEntityId !== undefined) {
+      const selectedEntity = previewEntities.find((candidate) => candidate.entityId === selectedPreviewEntityId);
+      if (selectedEntity === undefined || selectedEntity.authoringPointer !== pointer) {
+        setSelectedPreviewEntityId(undefined);
+      }
+    }
+  }, [previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
+
+  const onNodesChange = useCallback((changes: NodeChange[]) => {
+    setFlowNodes((nodes) => applyNodeChanges(changes, nodes));
+    setLocalNodePositions((currentPositions) => {
+      const nextPositions = new Map(currentPositions);
+
+      for (const change of changes) {
+        if (change.type === "position" && change.position !== undefined) {
+          nextPositions.set(change.id, change.position);
+        }
+      }
+
+      return nextPositions;
+    });
+  }, []);
+
+  function clearPreviewPointerPlayReset() {
+    if (previewPointerPlayResetRef.current === undefined) {
+      return;
+    }
+
+    window.clearTimeout(previewPointerPlayResetRef.current);
+    previewPointerPlayResetRef.current = undefined;
+  }
+
+  function handlePreviewTemporaryPlayChange(active: boolean) {
+    clearPreviewPointerPlayReset();
+    setPreviewPointerPlayMode(active);
+    if (!active) {
+      return;
+    }
+
+    /*
+     * When focus is inside the preview iframe, the parent window may not receive
+     * the Alt keyup. A short timeout prevents the inspect overlay from getting
+     * stuck in pass-through mode after an Alt-assisted preview gesture.
+     */
+    previewPointerPlayResetRef.current = window.setTimeout(() => {
+      previewPointerPlayResetRef.current = undefined;
+      setPreviewPointerPlayMode(false);
+    }, temporaryPlayPassthroughMs);
+  }
+
+  function handleSidebarResizeStart(side: SidebarResizeState["side"], event: ReactPointerEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setSidebarResizeState({
+      side,
+      startX: event.clientX,
+      startWidth: side === "left" ? leftSidebarWidth : jsonSidebarWidth
+    });
+  }
+
+  function openPropertiesSidebar() {
+    setJsonPanelOpen(false);
+    setPropertyPanelOpen(true);
+  }
+
+  function openJsonSidebar(pointer: string | undefined = selectedNode?.pointer) {
+    setPropertyPanelOpen(false);
+    setJsonPanelOpen(true);
+    if (pointer !== undefined) {
+      setPendingJsonRevealPointer(pointer);
+    }
+  }
+
+  function handleEditorMount(editor: MonacoEditorInstance, monaco: MonacoApi) {
+    editorRef.current = editor;
+    setMonacoApi(monaco);
+  }
+
+  async function openSessionFileList(gameId: string | null): Promise<EditorSessionListResult> {
+    const existingSession = editorSessionRef.current;
+    if (existingSession !== null && (gameId === null || existingSession.gameId === gameId)) {
+      return {
+        ...(await fetchAuthoringList(existingSession.gameId, existingSession.sessionId)),
+        session: existingSession
+      };
+    }
+
+    const pending = openingSessionRef.current;
+    if (pending !== null && pending.gameId === gameId) {
+      return pending.promise;
+    }
+
+    const promise = createEditorSession(gameId).finally(() => {
+      if (openingSessionRef.current?.promise === promise) {
+        openingSessionRef.current = null;
+      }
+    });
+    openingSessionRef.current = { gameId, promise };
+    return promise;
+  }
+
+  function clearPreparedPreview() {
+    setPreviewUrl(null);
+    setPreviewRuntimeSessionId(undefined);
+    setPreviewSourceMaps([]);
+    setPreviewEntities([]);
+    setPreviewUnresolvedEntityCount(0);
+    setSelectedPreviewEntityId(undefined);
+    setPreviewPromptContext(null);
+    setPreviewAiIntent(null);
+    setPreviewInspectMode(false);
+    setAltPlayActive(false);
+    setPreviewPointerPlayMode(false);
+    setPreviewPointSelectionMode(false);
+    clearPreviewPointerPlayReset();
+    setPreviewTrace(createPreviewPlaythroughTrace({ traceId: "preview-trace-initial", gameId: currentDocument.gameId }));
+    setSelectedPreviewTraceSequence(undefined);
+    setPreviewRollbackState("idle");
+  }
+
+  function clearAiSessionState() {
+    setAiApplyState("idle");
+    setAiPatchJournal([]);
+    setAiRedoJournal([]);
+    setAiDiffSummary([]);
+    setAiDiagnostics([]);
+    setAgentPlannedChangeSet(null);
+  }
+
+  function clearWorkflowAndPluginDiagnostics() {
+    setWorkflowDiagnostics([]);
+    setPluginDiagnostics([]);
+  }
+
+  function handleJsonChange(value: string | undefined) {
+    setJsonText(value ?? "");
+    setReverseDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
+    clearAiSessionState();
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource("json");
+    setSaveState("idle");
+  }
+
+  function handlePropertyChange(property: EditorProperty, rawValue: string) {
+    const nextValue = coercePropertyValue(property.value, rawValue);
+    const result = applyPropertyEditResult(viewModel.snapshot, property.pointer, nextValue);
+    applyAuthoringEditResult(result, "property", property.pointer);
+  }
+
+  function handlePropertyJsonChange(property: EditorProperty, rawJson: string) {
+    const result = applyJsonPropertyEditResult(viewModel.snapshot, property.pointer, rawJson);
+    applyAuthoringEditResult(result, "property", property.pointer);
+  }
+
+  function handleWritableGraphOperation(operation: WritableGraphOperation) {
+    const result = applyWritableGraphOperation(viewModel.snapshot, operation);
+    const revealPointer =
+      operation.type === "addCollectionItem"
+        ? operation.collectionPointer
+        : operation.type === "removeCollectionItem"
+          ? parentPointer(operation.itemPointer) ?? ""
+          : operation.referencePointer;
+    applyAuthoringEditResult(result, "graph", revealPointer);
+
+    if (operation.type === "removeCollectionItem" && result.diagnostics.length === 0) {
+      const parent = parentPointer(operation.itemPointer) ?? "";
+      const parentNode = findEditorNodeForPointer(viewModel.fullNodes, parent);
+      setSelectedNodeId(parentNode?.id ?? "$");
+    }
+  }
+
+  function handleTreeSelectPointer(pointer: string, options: { readonly openJson?: boolean } = {}) {
+    const treeNode = findTreeNodeForPointer(viewModel.tree, pointer);
+    if (treeNode === undefined) {
+      return;
+    }
+
+    const graphNode =
+      treeNode.graphNodeId !== undefined
+        ? findEditorNodeById(viewModel.fullNodes, treeNode.graphNodeId) ?? findEditorNodeForPointer(viewModel.fullNodes, pointer)
+        : findEditorNodeForPointer(viewModel.fullNodes, pointer);
+    setSelectedNodeId(graphNode?.id ?? "$");
+    if (graphNode !== undefined) {
+      updateActiveBranchForSelection(graphNode.id);
+    }
+
+    if (options.openJson) {
+      openJsonSidebar(pointer);
+      return;
+    }
+
+    openPropertiesSidebar();
+  }
+
+  async function handleSave() {
+    if (currentDocument.source !== "repository" || currentDocument.versionHash === undefined || hasBlockingDiagnostics) {
+      return;
+    }
+
+    setSaveState("saving");
+    setStatusMessage("Saving...");
+    setPluginDiagnostics([]);
+
+    try {
+      const response = await fetch("/api/editor/file", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId: currentDocument.gameId,
+          filePath: currentDocument.filePath,
+          text: jsonText,
+          versionHash: currentDocument.versionHash,
+          sessionId: editorSession?.sessionId,
+          commitMessage: `Save ${currentDocument.gameId}/${currentDocument.filePath}`
+        })
+      });
+
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as Partial<SavedAuthoringFileDocument> & {
+          readonly error?: string;
+          readonly pluginValidation?: EditorPluginValidationResult;
+        };
+        if (response.status === 422 && body.pluginValidation !== undefined) {
+          const nextPluginDiagnostics = body.pluginValidation.diagnostics;
+          adoptSavedDocumentVersion(body);
+          setPluginDiagnostics(nextPluginDiagnostics);
+          setWorkflowDiagnostics(nextPluginDiagnostics);
+          setSaveState("error");
+          setWorkflowState("blocked");
+          setStatusMessage(nextPluginDiagnostics[0]?.message ?? "Plugin validation blocked save.");
+          return;
+        }
+
+        throw new Error(body.error ?? `Save failed with HTTP ${response.status}.`);
+      }
+
+      const saved = (await response.json()) as SavedAuthoringFileDocument;
+      const nextPluginDiagnostics = diagnosticsFromPluginValidation(saved.pluginValidation);
+      applyLoadedDocument(saved);
+      setSaveState("saved");
+      setWorkflowDiagnostics(nextPluginDiagnostics);
+      setPluginDiagnostics(nextPluginDiagnostics);
+      clearAiSessionState();
+      clearPreparedPreview();
+      setWorkflowState("idle");
+      const commitLabel = saved.commit?.committed === true && saved.commit.commitHash !== undefined
+        ? ` commit ${saved.commit.commitHash.slice(0, 8)}`
+        : "";
+      setStatusMessage(editorSession === null ? "Saved to repository" : `Saved to session${commitLabel}`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Save failed.";
+      setSaveState(message.includes("changed on disk") ? "conflict" : "error");
+      setStatusMessage(message);
+    }
+  }
+
+  async function handleValidate() {
+    if (currentDocument.source !== "repository") {
+      return;
+    }
+
+    setWorkflowState("validating");
+    setStatusMessage("Validating authoring text...");
+    setPluginDiagnostics([]);
+
+    try {
+      const result = await postEditorWorkflow("/api/editor/validate", {
+        gameId: currentDocument.gameId,
+        filePath: currentDocument.filePath,
+        text: jsonText,
+        sessionId: editorSession?.sessionId
+      });
+      setWorkflowDiagnostics(filterServerOnlyDiagnostics(result.diagnostics ?? []));
+      setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
+      setWorkflowState(result.ok ? "validated" : "blocked");
+      setStatusMessage(result.ok ? "Validation passed" : "Validation found blocking diagnostics");
+    } catch (error) {
+      setWorkflowState("error");
+      setStatusMessage(error instanceof Error ? error.message : "Validation failed.");
+    }
+  }
+
+  async function handleCompile() {
+    if (currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics) {
+      return;
+    }
+
+    setWorkflowState("compiling");
+    setStatusMessage("Compiling generated manifests...");
+    setPluginDiagnostics([]);
+
+    try {
+      const result = await postEditorWorkflow("/api/editor/compile", {
+        gameId: currentDocument.gameId,
+        checkOnly: false,
+        sessionId: editorSession?.sessionId
+      });
+      setWorkflowDiagnostics(result.diagnostics ?? []);
+      setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
+      setWorkflowState(result.ok ? "compiled" : "blocked");
+      setStatusMessage(result.ok ? "Compiled generated manifests" : "Compile found blocking diagnostics");
+    } catch (error) {
+      setWorkflowState("error");
+      setStatusMessage(error instanceof Error ? error.message : "Compile failed.");
+    }
+  }
+
+  async function handlePreview() {
+    if (currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics) {
+      return;
+    }
+
+    setWorkflowState("previewing");
+    setStatusMessage("Preparing player preview...");
+    setPluginDiagnostics([]);
+
+    try {
+      const result = await postEditorWorkflow("/api/editor/preview", {
+        gameId: currentDocument.gameId,
+        sessionId: editorSession?.sessionId
+      });
+      setWorkflowDiagnostics(result.diagnostics ?? []);
+      setPluginDiagnostics(pluginDiagnosticsFromWorkflowResponse(result));
+
+      if (result.ready && typeof result.playerUrl === "string") {
+        const runtimeSessionId = typeof result.sessionId === "string" ? result.sessionId : readSessionIdFromPreviewUrl(result.playerUrl);
+        setPreviewUrl(result.playerUrl);
+        setPreviewRuntimeSessionId(runtimeSessionId);
+        setPreviewSourceMaps(result.sourceMaps ?? []);
+        setPreviewEntities([]);
+        setPreviewUnresolvedEntityCount(0);
+        setSelectedPreviewEntityId(undefined);
+        setPreviewPromptContext(null);
+        setPreviewAiIntent(null);
+        setPreviewInspectMode(false);
+        setAltPlayActive(false);
+        setPreviewPointerPlayMode(false);
+        setPreviewPointSelectionMode(false);
+        clearPreviewPointerPlayReset();
+        setPreviewTrace(createPreviewPlaythroughTrace({
+          traceId: runtimeSessionId === undefined ? `preview-${Date.now()}` : `preview-${runtimeSessionId}`,
+          gameId: currentDocument.gameId
+        }));
+        setSelectedPreviewTraceSequence(undefined);
+        setPreviewRollbackState("idle");
+        setWorkflowState("ready");
+        setStatusMessage("Preview session is ready");
+      } else {
+        clearPreparedPreview();
+        setWorkflowState("blocked");
+        setStatusMessage("Preview is not ready");
+      }
+    } catch (error) {
+      setWorkflowState("error");
+      setStatusMessage(error instanceof Error ? error.message : "Preview failed.");
+    }
+  }
+
+  async function handlePreviewRollback(targetSequence: number) {
+    if (previewUrl === null || previewRuntimeSessionId === undefined) {
+      setPreviewRollbackState("blocked");
+      setStatusMessage("Preview rollback requires a prepared runtime session.");
+      return;
+    }
+
+    const plan = buildPreviewTraceRestorePlan(previewTrace, targetSequence);
+    if (plan.snapshot === undefined || plan.snapshot.eventSequence !== targetSequence) {
+      setPreviewRollbackState("blocked");
+      setStatusMessage("Preview rollback requires a runtime snapshot for the selected trace point.");
+      return;
+    }
+    const runtimeVersion = readRuntimeEventVersion(previewTrace, targetSequence) ?? {
+      stateVersion: targetSequence,
+      lastEventSequence: targetSequence
+    };
+
+    setPreviewRollbackState("restoring");
+    setStatusMessage(`Restoring preview to event ${targetSequence}...`);
+
+    try {
+      const response = await fetch("/api/editor/preview/rollback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId: currentDocument.gameId,
+          sessionId: previewRuntimeSessionId,
+          state: plan.snapshot.state,
+          version: runtimeVersion,
+          targetEventSequence: targetSequence
+        })
+      });
+      const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? `Preview rollback failed with HTTP ${response.status}.`);
+      }
+
+      const truncatedTrace = truncatePreviewTrace(previewTrace, targetSequence);
+      setPreviewTrace(truncatedTrace);
+      void persistPreviewTraceTruncation(truncatedTrace, previewRuntimeSessionId, editorSession?.sessionId, targetSequence).catch(() => {
+        setStatusMessage("Preview trace persistence failed after rollback.");
+      });
+      setSelectedPreviewEntityId(undefined);
+      setPreviewPromptContext(null);
+      setPreviewAiIntent(null);
+      setPreviewEntities([]);
+      setPreviewUnresolvedEntityCount(0);
+      setSelectedPreviewTraceSequence(targetSequence);
+      setPreviewRollbackState("restored");
+      setPreviewUrl(addPreviewReloadNonce(previewUrl, targetSequence));
+      setStatusMessage(`Preview restored to event ${targetSequence}; future trace was discarded.`);
+    } catch (error) {
+      setPreviewRollbackState("error");
+      setStatusMessage(error instanceof Error ? error.message : "Preview rollback failed.");
+    }
+  }
+
+  function handlePreviewResetToStart() {
+    const firstEvent = previewTrace.events[0];
+    if (firstEvent !== undefined) {
+      void handlePreviewRollback(firstEvent.sequence);
+    }
+  }
+
+  function handlePreviewReplayCurrent() {
+    if (previewUrl === null || currentPreviewTraceEvent === undefined) {
+      return;
+    }
+
+    setPreviewUrl(addPreviewReloadNonce(previewUrl, currentPreviewTraceEvent.sequence));
+    setStatusMessage(`Replaying current preview event ${currentPreviewTraceEvent.sequence}.`);
+  }
+
+  async function resetCurrentFile() {
+    if (currentDocument.source !== "repository") {
+      loadEmbeddedFallback();
+      return;
+    }
+
+    setLoadState("loading");
+    setStatusMessage("Reloading current file...");
+
+    try {
+      const document = await fetchAuthoringFile(currentDocument.gameId, currentDocument.filePath, editorSession?.sessionId);
+      const layout = await fetchEditorLayout(currentDocument.gameId, currentDocument.filePath, editorSession?.sessionId).catch(() => undefined);
+      applyLoadedDocument(document, layout);
+      setLoadState("ready");
+      setSaveState("idle");
+      setStatusMessage(editorSession === null ? "Reloaded from repository" : "Reloaded from session worktree");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Reload failed.";
+      setLoadState("error");
+      setSaveState("error");
+      setStatusMessage(message);
+    }
+  }
+
+  function handleGameChange(gameId: string) {
+    const next = new URLSearchParams();
+    next.set("gameId", gameId);
+    router.replace(`?${next.toString()}`);
+  }
+
+  function handleFileChange(filePath: string) {
+    replaceUrlState(currentDocument.gameId, filePath);
+  }
+
+  function selectPointerNode(node: EditorViewNode, options: { readonly openJson?: boolean } = {}) {
+    setSelectedNodeId(node.id);
+    updateActiveBranchForSelection(node.id);
+
+    if (options.openJson === true) {
+      openJsonSidebar(node.pointer);
+      return;
+    }
+
+    openPropertiesSidebar();
+  }
+
+  function handlePreviewEntitySelect(
+    entity: PreviewEntityDescriptor,
+    point: PreviewPoint,
+    layeredEntities: readonly PreviewEntityDescriptor[]
+  ) {
+    setSelectedPreviewEntityId(entity.entityId);
+    selectAuthoringPointerFromPreview(entity);
+    setPreviewPromptContext({
+      kind: "entity",
+      point,
+      entities: layeredEntities,
+      draft: previewPromptContext?.draft ?? ""
+    });
+    setPreviewAiIntent(null);
+  }
+
+  function handlePreviewRegionSelect(entities: readonly PreviewEntityDescriptor[], rect: PreviewRect, point: PreviewPoint) {
+    setSelectedPreviewEntityId(undefined);
+    setPropertyPanelOpen(false);
+    setPreviewPromptContext({
+      kind: "region",
+      point,
+      rect,
+      entities,
+      draft: previewPromptContext?.draft ?? ""
+    });
+    setPreviewAiIntent(null);
+  }
+
+  async function handlePreviewPromptSubmit() {
+    const context = previewPromptContext;
+    if (context === null || context.draft.trim() === "") {
+      return;
+    }
+
+    try {
+      const planned = await planCurrentAiChangeSet(context.draft.trim());
+      if (!planned.ok) {
+        setAiDiagnostics(planned.diagnostics);
+        setAiApplyState("blocked");
+        setStatusMessage(planned.summary);
+        return;
+      }
+
+      applyPlannedAiChangeSet(planned.plan);
+    } catch (error) {
+      setAiApplyState("error");
+      setStatusMessage(error instanceof Error ? error.message : "AI ChangeSet apply failed.");
+    }
+  }
+
+  async function runAgentPlanTool(prompt: string | undefined): Promise<EditorAgentToolResult> {
+    setPrototypeExtractionProposal(null);
+    const planned = await planCurrentAiChangeSet(prompt);
+    if (!planned.ok) {
+      return {
+        ok: false,
+        summary: planned.summary,
+        diagnostics: planned.diagnostics.map(toAgentDiagnostic)
+      };
+    }
+
+    return {
+      ok: true,
+      summary: planned.plan.changeSet.summary,
+      diagnostics: planned.plan.diagnostics.map(toAgentDiagnostic),
+      changeSetId: planned.plan.changeSet.id
+    };
+  }
+
+  async function runAgentPrototypeExtractionTool(input: {
+    readonly prompt?: string;
+    readonly sourcePointers?: readonly string[];
+    readonly definitionType?: string;
+    readonly definitionSemantics?: string;
+  }): Promise<EditorAgentToolResult> {
+    if (currentDocument.source !== "repository") {
+      return {
+        ok: false,
+        summary: "Prototype extraction proposals are available only for repository-backed authoring files."
+      };
+    }
+
+    if (viewModel.snapshot.json === undefined) {
+      return {
+        ok: false,
+        summary: "Prototype extraction proposal requires valid authoring JSON."
+      };
+    }
+
+    setAiApplyState("planning");
+    setAiDiagnostics([]);
+    setAgentPlannedChangeSet(null);
+    setStatusMessage("Planning prototype extraction proposal...");
+
+    try {
+      const response = await requestPrototypeExtractionProposal({
+        gameId: currentDocument.gameId,
+        filePath: currentDocument.filePath,
+        text: jsonText,
+        sessionId: editorSession?.sessionId,
+        sourcePointers: input.sourcePointers ?? currentPrototypeExtractionSourcePointers(),
+        definitionType: input.definitionType,
+        definitionSemantics: input.definitionSemantics ?? prototypeSemanticsFromPrompt(input.prompt)
+      });
+      const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+      const diffSummary = response.diffSummary ?? [];
+      setAiDiagnostics(diagnostics);
+      setAiDiffSummary(diffSummary);
+
+      if (!response.ok || response.proposal === undefined) {
+        setPrototypeExtractionProposal(null);
+        setAiApplyState("blocked");
+        const summary = diagnostics[0]?.message ?? "Prototype extraction proposal was blocked by validation gates.";
+        setStatusMessage(summary);
+        return {
+          ok: false,
+          summary,
+          diagnostics: diagnostics.map(toAgentDiagnostic),
+          diffSummary: diffSummary.map((item) => item.description)
+        };
+      }
+
+      const plannedProposal: PlannedPrototypeExtractionProposal = {
+        proposal: response.proposal,
+        diagnostics,
+        diffSummary,
+        gates: response.gates ?? []
+      };
+      setPrototypeExtractionProposal(plannedProposal);
+      setAiApplyState("idle");
+      setStatusMessage(`Prototype proposal ready: ${response.proposal.definitionType}`);
+
+      return {
+        ok: true,
+        summary: `Prototype proposal ready: ${response.proposal.definitionType}. Apply is intentionally not automatic.`,
+        diagnostics: diagnostics.map(toAgentDiagnostic),
+        diffSummary: [
+          ...diffSummary.map((item) => item.description),
+          ...(response.gates ?? []).map((gate) => `${gate.label}: ${gate.ok ? "OK" : "blocked"}`)
+        ],
+        changeSetId: response.proposal.changeSet.id,
+        data: {
+          changeSetId: response.proposal.changeSet.id,
+          prototypeProposal: {
+            id: response.proposal.id,
+            definitionType: response.proposal.definitionType,
+            definitionPointer: response.proposal.definitionPointer,
+            sourcePointers: response.proposal.sourcePointers,
+            gates: (response.gates ?? []).map((gate) => ({ id: gate.id, label: gate.label, ok: gate.ok })),
+            expectedRuntimeDiff: response.proposal.expectedRuntimeDiff
+          }
+        }
+      };
+    } catch (error) {
+      setPrototypeExtractionProposal(null);
+      setAiApplyState("error");
+      const summary = error instanceof Error ? error.message : "Prototype extraction proposal failed.";
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary
+      };
+    }
+  }
+
+  async function runAgentPreparePrototypeChangeSetTool(): Promise<EditorAgentToolResult> {
+    const plannedProposal = prototypeExtractionProposal;
+    if (plannedProposal === null) {
+      return {
+        ok: false,
+        summary: "Prototype ChangeSet preparation requires a current prototype proposal."
+      };
+    }
+
+    if (!prototypeProposalGatesPassed(plannedProposal)) {
+      const blocked = plannedProposal.gates.filter((gate) => !gate.ok).map((gate) => `${gate.label}: blocked`);
+      const summary = blocked[0] ?? "Prototype proposal gates are not complete.";
+      setAiApplyState("blocked");
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary,
+        diagnostics: plannedProposal.diagnostics.map(toAgentDiagnostic),
+        diffSummary: blocked
+      };
+    }
+
+    const plan = prototypeProposalToPlannedChangeSet(plannedProposal.proposal, currentDocument.filePath);
+    const dryRun = dryRunPlannedAiChangeSet(plan);
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    setAiDiffSummary(dryRun.diffSummary);
+
+    if (!dryRun.ok) {
+      const summary = routedDiagnostics[0]?.message ?? "Prototype proposal is no longer applicable to the current document.";
+      setAiApplyState("blocked");
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary,
+        diagnostics: routedDiagnostics.map(toAgentDiagnostic),
+        diffSummary: dryRun.diffSummary.map((item) => item.description),
+        changeSetId: plan.changeSet.id
+      };
+    }
+
+    setAgentPlannedChangeSet(plan);
+    setPrototypeExtractionProposal(null);
+    setAiApplyState("idle");
+    setStatusMessage(`Prototype proposal prepared as planned ChangeSet: ${plan.changeSet.summary}`);
+    return {
+      ok: true,
+      summary: `Prototype proposal prepared as planned ChangeSet: ${plan.changeSet.summary}`,
+      diagnostics: routedDiagnostics.map(toAgentDiagnostic),
+      diffSummary: dryRun.diffSummary.map((item) => item.description),
+      changeSetId: plan.changeSet.id
+    };
+  }
+
+  async function runAgentDryRunTool(prompt: string | undefined): Promise<EditorAgentToolResult> {
+    let planned = agentPlannedChangeSet;
+    if (prompt !== undefined && prompt.trim() !== "") {
+      const plannedFromPrompt = await planCurrentAiChangeSet(prompt);
+      if (!plannedFromPrompt.ok) {
+        return {
+          ok: false,
+          summary: plannedFromPrompt.summary,
+          diagnostics: plannedFromPrompt.diagnostics.map(toAgentDiagnostic)
+        };
+      }
+      planned = plannedFromPrompt.plan;
+    }
+
+    if (planned === null) {
+      return {
+        ok: false,
+        summary: "Dry-run requires a planned ChangeSet or a prompt for the current selection."
+      };
+    }
+
+    const dryRun = dryRunPlannedAiChangeSet(planned);
+    setAiDiagnostics(dryRun.diagnostics.map(toRoutedDiagnostic));
+    setAiDiffSummary(dryRun.diffSummary);
+    setStatusMessage(dryRun.ok ? `Dry-run passed: ${planned.changeSet.summary}` : "AI ChangeSet failed dry-run validation.");
+
+    return {
+      ok: dryRun.ok,
+      summary: dryRun.ok ? `Dry-run passed: ${planned.changeSet.summary}` : "AI ChangeSet failed dry-run validation.",
+      diagnostics: dryRun.diagnostics.map(toAgentDiagnostic),
+      diffSummary: dryRun.diffSummary.map((item) => item.description),
+      changeSetId: planned.changeSet.id
+    };
+  }
+
+  async function runAgentApplyTool(
+    prompt: string | undefined,
+    approval: CubicaAgentApprovalEnvelope | undefined
+  ): Promise<EditorAgentToolResult> {
+    if (prompt !== undefined && prompt.trim() !== "") {
+      return {
+        ok: false,
+        summary: "Apply requires an already planned ChangeSet. Plan and dry-run first, then approve the returned ChangeSet scope."
+      };
+    }
+
+    const planned = agentPlannedChangeSet;
+    if (planned === null) {
+      return {
+        ok: false,
+        summary: "Apply requires a planned ChangeSet or a prompt for the current selection."
+      };
+    }
+
+    const approvalError = validateEditorAgentApproval(
+      approval,
+      "editor.applyChangeSet",
+      editorApplyApprovalScope(planned)
+    );
+    if (approvalError !== null) {
+      return approvalError;
+    }
+
+    const applied = applyPlannedAiChangeSet(planned);
+    return {
+      ok: applied.ok,
+      summary: applied.summary,
+      diagnostics: applied.diagnostics?.map(toAgentDiagnostic),
+      diffSummary: applied.diffSummary,
+      changeSetId: planned.changeSet.id
+    };
+  }
+
+  function runAgentUndoTool(approval: CubicaAgentApprovalEnvelope | undefined): EditorAgentToolResult {
+    const step = aiPatchJournal.at(-1);
+    if (step === undefined) {
+      return {
+        ok: false,
+        summary: "No AI patch is available to undo."
+      };
+    }
+
+    const approvalError = validateEditorAgentApproval(
+      approval,
+      "editor.undoLastPatch",
+      editorUndoApprovalScope(aiPatchJournal.length)
+    );
+    if (approvalError !== null) {
+      return approvalError;
+    }
+
+    handleUndoAiChange();
+    return {
+      ok: true,
+      summary: `Undo requested for ${step.summary}.`
+    };
+  }
+
+  async function requirePlannedAiChangeSet(prompt: string): Promise<PlannedAiChangeSet | null> {
+    const planned = await planCurrentAiChangeSet(prompt);
+    return planned.ok ? planned.plan : null;
+  }
+
+  async function planCurrentAiChangeSet(promptOverride?: string): Promise<PlanCurrentAiChangeSetResult> {
+    if (viewModel.snapshot.json === undefined) {
+      return rejectedPlan("AI ChangeSet was not planned because the active JSON is invalid.");
+    }
+
+    const prompt = (promptOverride ?? previewPromptContext?.draft ?? "").trim();
+    if (prompt === "") {
+      return rejectedPlan("AI ChangeSet planning requires a prompt for the current selection.");
+    }
+
+    const context = buildCurrentAiPlanContext(prompt);
+    if (!context.ok) {
+      return {
+        ok: false,
+        diagnostics: context.diagnostics,
+        summary: context.summary
+      };
+    }
+
+    setPreviewAiIntent(context.previewIntent);
+    setAiApplyState("planning");
+    setAiDiagnostics([]);
+    setStatusMessage(`Planning AI ChangeSet for ${context.targets.length} target pointer${context.targets.length === 1 ? "" : "s"}...`);
+
+    const response = await requestAiChangeSet(context.intent, context.targets);
+    if (!response.ok || response.changeSet === undefined) {
+      const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+      return {
+        ok: false,
+        diagnostics,
+        summary: diagnostics[0]?.message ?? "AI planner did not return an applicable ChangeSet."
+      };
+    }
+
+    const plan: PlannedAiChangeSet = {
+      intent: context.intent,
+      changeSet: response.changeSet,
+      diagnostics: response.diagnostics ?? [],
+      targetPointers: context.intent.targetPointers
+    };
+    setAgentPlannedChangeSet(plan);
+    setAiApplyState("idle");
+    setStatusMessage(`Planned AI ChangeSet: ${response.changeSet.summary}`);
+    return { ok: true, plan };
+  }
+
+  function buildCurrentAiPlanContext(prompt: string):
+    | {
+        readonly ok: true;
+        readonly intent: EditorPatchIntent;
+        readonly previewIntent: PreviewAiIntent;
+        readonly targets: ReturnType<typeof buildAiPatchTargetContexts>;
+      }
+    | {
+        readonly ok: false;
+        readonly diagnostics: readonly RoutedEditorDiagnostic[];
+        readonly summary: string;
+      } {
+    const now = new Date().toISOString();
+    const targetPointers = [...new Set((previewPromptContext?.entities.map((entity) => entity.authoringPointer) ?? [selectedNode?.pointer ?? ""]).filter((pointer) => pointer !== ""))];
+    const previewKind = previewPromptContext?.kind ?? "entity";
+    const previewIntent: PreviewAiIntent = {
+      id: `preview-ai-${Date.now()}`,
+      kind: previewKind,
+      prompt,
+      targetPointers,
+      createdAt: now
+    };
+    const intent: EditorPatchIntent = {
+      id: previewIntent.id,
+      kind: previewPromptContext === null ? "property-prompt" : "preview-prompt",
+      prompt,
+      activeFilePath: currentDocument.filePath,
+      targetPointers,
+      createdAt: now,
+      selectionKind: previewPromptContext?.kind ?? "entity"
+    };
+    const targets =
+      previewPromptContext === null
+        ? buildSelectedNodeAiPatchTargetContext(currentDocument.filePath, selectedNode, selectedValue)
+        : buildAiPatchTargetContexts(previewPromptContext.entities, currentDocument.gameId, currentDocument.filePath, viewModel.snapshot.json as JsonValue);
+
+    if (targets.length === 0) {
+      return rejectedPlanContext("No active-file target was available for AI editing.");
+    }
+
+    return { ok: true, intent, previewIntent, targets };
+  }
+
+  function currentPrototypeExtractionSourcePointers(): readonly string[] | undefined {
+    const previewPointers = previewPromptContext?.entities
+      .map((entity) => entity.authoringPointer)
+      .filter((pointer) => pointer !== "") ?? [];
+    const selectedPointer = selectedNode?.pointer !== undefined && selectedNode.pointer !== "" ? [selectedNode.pointer] : [];
+    const uniquePointers = [...new Set([...previewPointers, ...selectedPointer])];
+    return uniquePointers.length >= 2 ? uniquePointers : undefined;
+  }
+
+  function prototypeProposalToPlannedChangeSet(
+    proposal: PrototypeExtractionProposal,
+    activeFilePath: string
+  ): PlannedAiChangeSet {
+    const createdAt = new Date().toISOString();
+    const intent: EditorPatchIntent = {
+      id: `${proposal.id}:manual-review:${Date.now()}`,
+      kind: "prototype-extraction-review",
+      prompt: `Use prototype extraction proposal ${proposal.definitionType}.`,
+      activeFilePath,
+      targetPointers: [...new Set([...proposal.sourcePointers, proposal.definitionPointer])],
+      createdAt,
+      selectionKind: "document"
+    };
+
+    return {
+      intent,
+      changeSet: {
+        ...proposal.changeSet,
+        intentId: intent.id
+      },
+      diagnostics: [],
+      targetPointers: proposal.sourcePointers
+    };
+  }
+
+  function dryRunPlannedAiChangeSet(plan: PlannedAiChangeSet) {
+    return dryRunEditorChangeSet({
+      snapshot: viewModel.snapshot,
+      changeSet: plan.changeSet,
+      schemaRegistry,
+      schemaId,
+      includeSemanticDiagnostics: true
+    });
+  }
+
+  function applyPlannedAiChangeSet(plan: PlannedAiChangeSet): EditorAgentToolResult {
+    setAiApplyState("applying");
+    const dryRun = dryRunPlannedAiChangeSet(plan);
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    if (!dryRun.ok || dryRun.after === undefined || dryRun.inverseChangeSet === undefined) {
+      setAiApplyState("blocked");
+      const summary = routedDiagnostics[0]?.message ?? "AI ChangeSet failed dry-run validation.";
+      setStatusMessage(summary);
+      return {
+        ok: false,
+        summary,
+        diagnostics: routedDiagnostics.map(toAgentDiagnostic)
+      };
+    }
+
+    const step = createPatchJournalStep({
+      id: `patch-step-${Date.now()}`,
+      createdAt: plan.intent.createdAt,
+      intent: plan.intent,
+      forward: plan.changeSet,
+      inverse: dryRun.inverseChangeSet,
+      beforeText: viewModel.snapshot.text,
+      afterText: dryRun.after.text,
+      diffSummary: dryRun.diffSummary,
+      diagnostics: dryRun.diagnostics
+    });
+
+    setJsonText(dryRun.after.text);
+    setAiPatchJournal((current) => [...current, step]);
+    setAiRedoJournal([]);
+    setAiDiffSummary(dryRun.diffSummary);
+    setAgentPlannedChangeSet(null);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("applied");
+    setStatusMessage(`Applied AI ChangeSet: ${plan.changeSet.summary}`);
+    selectFirstPointerAfterAiApply(plan.targetPointers);
+
+    return {
+      ok: true,
+      summary: `Applied AI ChangeSet: ${plan.changeSet.summary}`,
+      diagnostics: dryRun.diagnostics.map(toAgentDiagnostic),
+      diffSummary: dryRun.diffSummary.map((item) => item.description),
+      changeSetId: plan.changeSet.id
+    };
+  }
+
+  function rejectedPlan(summary: string): PlanCurrentAiChangeSetResult {
+    const diagnostics = [
+      {
+        severity: "error",
+        source: "ai-planner",
+        pointer: "",
+        label: "/",
+        message: summary,
+        range: undefined
+      } satisfies RoutedEditorDiagnostic
+    ];
+    setAiDiagnostics(diagnostics);
+    setAiApplyState("blocked");
+    setStatusMessage(summary);
+    return { ok: false, diagnostics, summary };
+  }
+
+  function rejectedPlanContext(summary: string): Extract<PlanCurrentAiChangeSetResult, { readonly ok: false }> {
+    const rejected = rejectedPlan(summary);
+    if (!rejected.ok) {
+      return rejected;
+    }
+
+    throw new Error("Unexpected successful rejected plan.");
+  }
+
+  function selectFirstPointerAfterAiApply(targetPointers: readonly string[]) {
+    const firstPointer = targetPointers[0];
+    if (firstPointer === undefined) {
+      return;
+    }
+
+    const node = findNodeForPointer(viewModel.fullNodes, firstPointer);
+    if (node !== undefined) {
+      selectPointerNode(node);
+    }
+  }
+
+  function handleUndoAiChange() {
+    const step = aiPatchJournal.at(-1);
+    if (step === undefined) {
+      return;
+    }
+
+    if (hashEditorText(jsonText) !== step.afterHash) {
+      setAiApplyState("blocked");
+      setStatusMessage("Undo is blocked because the document changed outside the AI journal.");
+      return;
+    }
+
+    const dryRun = dryRunEditorChangeSet({
+      snapshot: viewModel.snapshot,
+      changeSet: step.inverse,
+      schemaRegistry,
+      schemaId,
+      includeSemanticDiagnostics: true
+    });
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    if (!dryRun.ok || dryRun.after === undefined) {
+      setAiApplyState("blocked");
+      setStatusMessage(routedDiagnostics[0]?.message ?? "AI undo failed validation.");
+      return;
+    }
+
+    setJsonText(dryRun.after.text);
+    setAiPatchJournal((current) => current.slice(0, -1));
+    setAiRedoJournal((current) => [...current, step]);
+    setAiDiffSummary(dryRun.diffSummary);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("undone");
+    setStatusMessage(`Undid AI ChangeSet: ${step.summary}`);
+  }
+
+  function handleRedoAiChange() {
+    const step = aiRedoJournal.at(-1);
+    if (step === undefined) {
+      return;
+    }
+
+    if (hashEditorText(jsonText) !== step.beforeHash) {
+      setAiApplyState("blocked");
+      setStatusMessage("Redo is blocked because the document changed outside the AI journal.");
+      return;
+    }
+
+    const dryRun = dryRunEditorChangeSet({
+      snapshot: viewModel.snapshot,
+      changeSet: step.forward,
+      schemaRegistry,
+      schemaId,
+      includeSemanticDiagnostics: true
+    });
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    if (!dryRun.ok || dryRun.after === undefined) {
+      setAiApplyState("blocked");
+      setStatusMessage(routedDiagnostics[0]?.message ?? "AI redo failed validation.");
+      return;
+    }
+
+    setJsonText(dryRun.after.text);
+    setAiPatchJournal((current) => [...current, step]);
+    setAiRedoJournal((current) => current.slice(0, -1));
+    setAiDiffSummary(dryRun.diffSummary);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("applied");
+    setStatusMessage(`Reapplied AI ChangeSet: ${step.summary}`);
+  }
+
+  function selectAuthoringPointerFromPreview(entity: PreviewEntityDescriptor) {
+    const pointer = entity.authoringPointer;
+    const sourceFile = typeof entity.metadata?.sourceFile === "string" ? entity.metadata.sourceFile : undefined;
+    const sourceFilePath = sourceFile === undefined ? undefined : toRepositoryAuthoringFilePath(sourceFile, currentDocument.gameId);
+    if (
+      sourceFilePath !== undefined &&
+      currentDocument.source === "repository" &&
+      sourceFilePath !== currentDocument.filePath &&
+      availableFiles.some((file) => file.filePath === sourceFilePath)
+    ) {
+      setStatusMessage(`Switching to ${sourceFilePath} for preview selection.`);
+      replaceUrlState(currentDocument.gameId, sourceFilePath);
+      return;
+    }
+
+    const node = findNodeForPointer(viewModel.fullNodes, pointer);
+    if (node !== undefined) {
+      selectPointerNode(node);
+      return;
+    }
+
+    openJsonSidebar(pointer);
+  }
+
+  function handleFlowNodeClick(event: ReactMouseEvent, node: Node) {
+    const target = event.target instanceof Element ? event.target : undefined;
+    if (target?.closest("[data-node-action='toggle']") !== null) {
+      toggleGraphNode(node.id);
+      return;
+    }
+
+    const graphNode = findEditorNodeById(viewModel.fullNodes, node.id);
+    if (graphNode !== undefined) {
+      selectPointerNode(graphNode);
+    }
+  }
+
+  function toggleGraphNode(nodeId: string) {
+    const node = findEditorNodeById(viewModel.fullNodes, nodeId);
+    if (node === undefined || !node.expandable) {
+      return;
+    }
+
+    const nextActiveBranchRootId = node.id === "$" ? undefined : node.id;
+    setActiveBranchRootId(nextActiveBranchRootId);
+    setExpandedNodeIds((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) {
+        next.delete(nodeId);
+      } else {
+        next.add(nodeId);
+      }
+      return next;
+    });
+    setCollapsedNodeIds((current) => {
+      const next = new Set(current);
+      if (expandedNodeIds.has(nodeId)) {
+        next.add(nodeId);
+      } else {
+        next.delete(nodeId);
+      }
+      return next;
+    });
+  }
+
+  function updateActiveBranchForSelection(nodeId: string) {
+    const node = findEditorNodeById(viewModel.fullNodes, nodeId);
+    const branchRoot = getBranchRootNode(viewModel.fullNodes, nodeId);
+    const ancestorIds = getNodeAncestorIds(viewModel.fullNodes, nodeId).filter((id) => id !== "$");
+    const nextActiveBranchRootId = node !== undefined && node.expandable && node.id !== "$" ? node.id : branchRoot?.id;
+
+    setActiveBranchRootId(nextActiveBranchRootId);
+    setExpandedNodeIds(new Set(nextActiveBranchRootId === undefined ? ancestorIds : [nextActiveBranchRootId, ...ancestorIds]));
+    setCollapsedNodeIds(() => {
+      const next = new Set<string>();
+      if (activeBranchRootId !== undefined && activeBranchRootId !== nextActiveBranchRootId) {
+        next.add(activeBranchRootId);
+      }
+
+      if (node !== undefined && node.expandable && branchRoot !== undefined && branchRoot.id !== node.id) {
+        next.add(branchRoot.id);
+      }
+
+      return next;
+    });
+  }
+
+  function handleDiagnosticClick(diagnostic: RoutedEditorDiagnostic) {
+    const node = findEditorNodeForPointer(viewModel.fullNodes, diagnostic.pointer);
+    if (node !== undefined) {
+      selectPointerNode(node, { openJson: true });
+      return;
+    }
+
+    openJsonSidebar(diagnostic.pointer);
+  }
+
+  function replaceUrlState(gameId: string, filePath: string) {
+    const next = new URLSearchParams();
+    next.set("gameId", gameId);
+    next.set("file", filePath);
+    router.replace(`?${next.toString()}`);
+  }
+
+  function adoptSavedDocumentVersion(document: Partial<SavedAuthoringFileDocument>) {
+    const versionHash = document.versionHash;
+    const text = document.text;
+    if (typeof versionHash !== "string" || typeof text !== "string") {
+      return;
+    }
+
+    setCurrentDocument((current) =>
+      current.source === "repository"
+        ? {
+            ...current,
+            versionHash
+          }
+        : current
+    );
+    setSavedText(text);
+  }
+
+  function applyLoadedDocument(document: AuthoringFileDocument, layoutDocument?: EditorLayoutDocument) {
+    setCurrentDocument({
+      source: "repository",
+      gameId: document.gameId,
+      filePath: document.filePath,
+      versionHash: document.versionHash
+    });
+    const nextLayout = layoutDocument?.layout ?? createEmptyEditorLayout();
+    setEditorLayout(nextLayout);
+    setLayoutVersionHash(layoutDocument?.versionHash);
+    setLocalNodePositions(positionsFromLayout(nextLayout));
+    setJsonText(document.text);
+    setSavedText(document.text);
+    setSelectedNodeId("$");
+    setActiveBranchRootId(undefined);
+    setExpandedNodeIds(new Set());
+    setCollapsedNodeIds(new Set());
+    setSurfaceMode("tree");
+    setTreeDetailMode("entities");
+    setTreeCollapsedPointers(createDefaultCollapsedTreePointers(createEditorViewModel(document.text, { filePath: document.filePath }).tree));
+    setPropertyPanelOpen(false);
+    setReverseDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
+    clearAiSessionState();
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource("repository");
+  }
+
+  function loadEmbeddedFallback(error?: unknown) {
+    const fallbackText = `${JSON.stringify(embeddedAuthoringSample, null, 2)}\n`;
+    setAvailableGames([]);
+    setAvailableFiles([]);
+    setEditorSession(null);
+    editorSessionRef.current = null;
+    setCurrentDocument({
+      source: "embedded",
+      gameId: "embedded",
+      filePath: embeddedFilePath,
+      versionHash: undefined
+    });
+    setJsonText(fallbackText);
+    setSavedText(fallbackText);
+    setEditorLayout(createEmptyEditorLayout());
+    setLayoutVersionHash(undefined);
+    setLocalNodePositions(new Map());
+    setSelectedNodeId("$");
+    setActiveBranchRootId(undefined);
+    setExpandedNodeIds(new Set());
+    setCollapsedNodeIds(new Set());
+    setSurfaceMode("tree");
+    setTreeDetailMode("entities");
+    setTreeCollapsedPointers(createDefaultCollapsedTreePointers(createEditorViewModel(fallbackText, { filePath: embeddedFilePath }).tree));
+    setPropertyPanelOpen(false);
+    setReverseDiagnostics([]);
+    clearWorkflowAndPluginDiagnostics();
+    clearAiSessionState();
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLoadState("fallback");
+    setSaveState("idle");
+    setLastEditSource("repository");
+    setStatusMessage(error instanceof Error ? `Repository unavailable: ${error.message}` : "Using embedded sample");
+  }
+
+  function applyAuthoringEditResult(
+    result: { readonly text: string; readonly diagnostics: readonly RoutedEditorDiagnostic[] },
+    source: "graph" | "property",
+    pointer: string
+  ) {
+    setJsonText(result.text);
+    setReverseDiagnostics(result.diagnostics);
+    clearWorkflowAndPluginDiagnostics();
+    clearAiSessionState();
+    clearPreparedPreview();
+    setWorkflowState("idle");
+    setLastEditSource(source);
+    setSaveState("idle");
+    if (rightSidebarPanel === "json") {
+      revealJsonPointer(pointer);
+    }
+  }
+
+  async function persistNodePosition(node: Node) {
+    if (currentDocument.source !== "repository") {
+      return;
+    }
+
+    const position = { x: node.position.x, y: node.position.y };
+    const nextLayout: EditorLayoutDocumentBody = {
+      version: 1,
+      nodes: {
+        ...editorLayout.nodes,
+        [node.id]: {
+          ...(editorLayout.nodes[node.id] ?? {}),
+          position
+        }
+      }
+    };
+
+    setEditorLayout(nextLayout);
+
+    try {
+      const savedLayout = await saveEditorLayout(currentDocument.gameId, currentDocument.filePath, nextLayout, layoutVersionHash, editorSession?.sessionId);
+      setEditorLayout(savedLayout.layout);
+      setLayoutVersionHash(savedLayout.versionHash);
+      setStatusMessage(`Saved editor layout ${savedLayout.layoutFilePath}`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Layout save failed.");
+    }
+  }
+
+  function revealJsonPointer(pointer: string) {
+    const editor = editorRef.current;
+    if (editor === null) {
+      return;
+    }
+
+    const range = viewModel.snapshot.locationMap.get(pointer) ?? viewModel.snapshot.locationMap.get(parentPointer(pointer) ?? "");
+    if (range === undefined) {
+      return;
+    }
+
+    const monacoRange = toMonacoRange(range);
+    editor.setSelection(monacoRange);
+    editor.revealRangeInCenter(monacoRange);
+  }
+
+  const syncLabel = getSyncLabel({
+    loadState,
+    saveState,
+    isDirty,
+    hasBlockingDiagnostics,
+    currentDocument,
+    statusMessage
+  });
+
+
+  return {
+    agentConnection,
+    editorAgentContext,
+    editorAgentTools,
+    editorAgentSurface,
+    effectivePreviewInspectMode,
+    previewModeLabel,
+    previewViewportMode,
+    setPreviewViewportMode,
+    setPreviewInspectMode,
+    setAltPlayActive,
+    setPreviewPointerPlayMode,
+    setPreviewPointSelectionMode,
+    clearPreviewPointerPlayReset,
+    setPreviewPromptContext,
+    setPreviewAiIntent,
+    setPropertyPanelOpen,
+    availableGames,
+    availableFiles,
+    currentDocument,
+    handleGameChange,
+    handleFileChange,
+    resetCurrentFile,
+    loadState,
+    saveState,
+    workflowState,
+    statusMessage,
+    syncLabel,
+    handleSave,
+    handleUndoAiChange,
+    handleRedoAiChange,
+    handleValidate,
+    handleCompile,
+    handlePreview,
+    isDirty,
+    hasBlockingDiagnostics,
+    hasLocalSchemaBlockingDiagnostics,
+    aiPatchJournal,
+    aiRedoJournal,
+    aiApplyState,
+    aiDiffSummary,
+    rightSidebarOpen,
+    leftSidebarOpen,
+    rightSidebarPanel,
+    leftSidebarPanel,
+    setLeftSidebarPanel,
+    setJsonPanelOpen,
+    openJsonSidebar,
+    openPropertiesSidebar,
+    previewUrl,
+    sidebarResizeState,
+    workspaceStyle,
+    selectedNode,
+    selectedValue,
+    properties,
+    graphTargetNodes,
+    surfaceMode,
+    setSurfaceMode,
+    flowNodes,
+    flowEdges,
+    flowRef,
+    onNodesChange,
+    persistNodePosition,
+    handleFlowNodeClick,
+    activeTree,
+    treeCollapsedPointers,
+    setTreeCollapsedPointers,
+    handleTreeSelectPointer,
+    previewTraceEntries,
+    selectedPreviewTraceEvent,
+    selectedPreviewTraceSnapshot,
+    currentPreviewTraceEvent,
+    previewRollbackState,
+    setSelectedPreviewTraceSequence,
+    handlePreviewRollback,
+    handlePreviewResetToStart,
+    handlePreviewReplayCurrent,
+    previewAiIntent,
+    prototypeExtractionProposal,
+    runAgentPreparePrototypeChangeSetTool,
+    handleSidebarResizeStart,
+    previewIframeRef,
+    previewEntities,
+    selectedPreviewEntityId,
+    previewPointSelectionMode,
+    previewPromptContext,
+    previewUnresolvedEntityCount,
+    handlePreviewEntitySelect,
+    handlePreviewRegionSelect,
+    setSelectedPreviewEntityId,
+    handlePreviewPromptSubmit,
+    handlePreviewTemporaryPlayChange,
+    viewModel,
+    monacoModelUri,
+    jsonText,
+    schemaId,
+    handleEditorMount,
+    handleJsonChange,
+    handlePropertyChange,
+    handlePropertyJsonChange,
+    handleWritableGraphOperation,
+    altPlayActive,
+    previewPointerPlayMode,
+    previewTrace,
+    nonVisualEntityCounts,
+    pluginDiagnostics,
+    handleDiagnosticClick,
+    prototypeAuditSnoozed,
+    prototypeAuditNotice,
+    setPrototypeAuditSnoozed
+  };
+}
+
+/**
+ * The full controller object returned by {@link useEditorWorkspace}. The
+ * presentational panels accept this and read the slice of state/handlers they
+ * render, which keeps their prop lists in sync with the controller by construction.
+ */
+export type EditorWorkspaceController = ReturnType<typeof useEditorWorkspace>;

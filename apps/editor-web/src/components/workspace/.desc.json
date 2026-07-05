@@ -1,0 +1,3 @@
+{
+  "description": "Decomposed building blocks of the ADR-034 editor workspace: shared types/constants, presentational panel components (toolbar, sidebars, preview stage, status bar, property panel, timeline), pure helpers, the editor REST client, and the domain state hooks that back the thin EditorWorkspace composition."
+}

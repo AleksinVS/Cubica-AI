@@ -18,18 +18,17 @@
 
 ## Status
 
-partially-implemented (2026-07-04) — Phases 1–3 done; Phase 4 (EditorWorkspace) deferred
+implemented (2026-07-05) — Phases 1–4 done
 
 Выполнены Phase 1 (разбиение `editor-engine/index.ts` на 14 связных модулей +
 тонкий фасад), Phase 2 (dedup `isPlainJsonObject`, удаление пустого интерфейса,
-пометка test-only экспортов) и Phase 3 (authoritative schema-driven role inference
-с документированным substring-fallback). Публичная поверхность (`@cubica/editor-engine`)
-сохранена (все 127 экспортов на месте), поведение неизменно: `verify:editor-engine`
-(typecheck + 38 тестов), editor-web typecheck и 105 тестов зелёные.
-**Phase 4 (декомпозиция ~2500-строчного `apps/editor-web/src/components/
-editor-workspace.tsx`) отложена как отдельный срез** — требует e2e-проверки и несёт
-наибольший behavior-риск; там же остаётся последняя копия `isPlainJsonObject`.
-LEGACY-0018/0019 обновлены.
+пометка test-only экспортов), Phase 3 (authoritative schema-driven role inference
+с документированным substring-fallback) и Phase 4 (декомпозиция
+`editor-workspace.tsx`: 4351 → 57 строк, контроллер `useEditorWorkspace` +
+5 доменных state-хуков + презентационные панели в `workspace/`). Публичная
+поверхность (`@cubica/editor-engine`) сохранена, поведение неизменно:
+`verify:editor-engine` (38), editor-web typecheck + 105 unit, **editor e2e 8/8**
+через `npm run test:e2e:prod`. LEGACY-0018 снят, LEGACY-0019 задокументирован.
 
 ## Understanding
 
@@ -182,3 +181,23 @@ npm run test:e2e
   `docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md` §7).
   Gate декомпозиции: typecheck + unit editor-web + build + editor e2e 4/4.
   Выполняется следующим срезом оркестрации TSK-20260704.
+- 2026-07-05 (позже): **Phase 4 выполнена** (срез B оркестрации TSK-20260704,
+  Opus-субагент). `editor-workspace.tsx` (4351 строки) → тонкая композиция
+  (57 строк) + `apps/editor-web/src/components/workspace/` (17 файлов):
+  `types`/`constants`, презентационные панели (toolbar, activity bar,
+  left/right sidebar, preview stage, status bar, property panel, timeline,
+  ai-chat, trace details, semantic-graph), `api-client` (fetch-обёртки
+  `/api/editor/*`), `agent-surface`, чистые `workspace-helpers`,
+  `use-editor-workspace-state` (5 доменных хуков: session/document,
+  selection/graph, preview/runtime, ai-patch, layout/ui) и контроллер
+  `use-editor-workspace` (эффекты/хендлеры перенесены дословно).
+  Последний дубль `isPlainJsonObject` заменён каноническим импортом из
+  `@cubica/editor-engine`. Осознанные решения: доменные хуки вместо
+  useReducer (сохранение батчинг/functional-update семантики без
+  behavior-риска); новая мемоизация не добавлялась (панели получают объект
+  контроллера — useCallback не сократил бы ре-рендеры; профиль ре-рендеров
+  не изменился). Хвост: `use-editor-workspace.ts` ~2440 строк — дальнейшее
+  разрезание контроллера на доменные хендлер-хуки возможно отдельным срезом.
+  Гейт: verify:editor-engine 38, editor-web typecheck + 105 unit,
+  `npm run test:e2e:prod` 8/8 (39.4s). LEGACY-0018 переведён в removed
+  (debt-log.csv, stubs-register.md). Задача закрыта.

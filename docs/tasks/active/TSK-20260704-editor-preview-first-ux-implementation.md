@@ -235,3 +235,11 @@ game-agnostic CI invariant.
   `ui/web.authoring.json`, сворачивание JSON-панели). Продуктовый код не менялся.
   Детали — `docs/reviews/2026-07-05-remediation-closeout-and-e2e-blockers.md` §7.
   Следующий срез: `EditorWorkspace` Phase 4 (декомпозиция), затем Phase 1 контрактов.
+- 2026-07-05 (срез B): **декомпозиция `EditorWorkspace` выполнена** (Phase 4
+  модуляризационного TSK, Opus-субагент; поведение сохранено, гейт
+  verify:editor-engine 38 + typecheck + 105 unit + e2e 8/8). Гейт нашей Phase 3
+  со стороны модуляризации снят: дерево/панель кладутся на декомпозированные
+  панели `apps/editor-web/src/components/workspace/`. Для Phase 2 (кэш) остаётся
+  пред-условие «профилирование загрузки». Следующий срез: Phase 1 контрактов
+  editor-engine (1.1 occurrences → 1.2 риск-политика → 1.3 readPointerPrefixes →
+  1.4 схема фикстур → 1.5 schema-признаки отображения/декоративности).

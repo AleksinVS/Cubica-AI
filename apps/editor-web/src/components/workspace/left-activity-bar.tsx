@@ -1,0 +1,65 @@
+/**
+ * Vertical activity bar that toggles the editor sidebars.
+ *
+ * The four buttons switch the left sidebar between the manifest tree, timeline,
+ * and AI chat panels, and toggle the right-hand JSON editor. Presentational: all
+ * state and toggles come from the {@link EditorWorkspaceController}.
+ */
+import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
+
+export function LeftActivityBar({ controller }: { controller: EditorWorkspaceController }) {
+  const { leftSidebarPanel, setLeftSidebarPanel, rightSidebarPanel, setJsonPanelOpen, openJsonSidebar, selectedNode } =
+    controller;
+
+  return (
+    <nav className="left-activity-bar" aria-label="Editor sidebars">
+      <button
+        type="button"
+        className={leftSidebarPanel === "tree" ? "is-active" : ""}
+        aria-pressed={leftSidebarPanel === "tree"}
+        aria-label="Tree"
+        title="Tree"
+        onClick={() => setLeftSidebarPanel((current) => (current === "tree" ? undefined : "tree"))}
+      >
+        <span aria-hidden="true">Tree</span>
+      </button>
+      <button
+        type="button"
+        className={leftSidebarPanel === "timeline" ? "is-active" : ""}
+        aria-pressed={leftSidebarPanel === "timeline"}
+        aria-label="Timeline"
+        title="Timeline"
+        onClick={() => setLeftSidebarPanel((current) => (current === "timeline" ? undefined : "timeline"))}
+      >
+        <span aria-hidden="true">Time</span>
+      </button>
+      <button
+        type="button"
+        className={leftSidebarPanel === "chat" ? "is-active" : ""}
+        aria-pressed={leftSidebarPanel === "chat"}
+        aria-label="AI chat"
+        title="AI chat"
+        onClick={() => setLeftSidebarPanel((current) => (current === "chat" ? undefined : "chat"))}
+      >
+        <span aria-hidden="true">AI</span>
+      </button>
+      <button
+        type="button"
+        className={rightSidebarPanel === "json" ? "is-active" : ""}
+        aria-pressed={rightSidebarPanel === "json"}
+        aria-label="JSON"
+        title="JSON"
+        onClick={() => {
+          if (rightSidebarPanel === "json") {
+            setJsonPanelOpen(false);
+            return;
+          }
+
+          openJsonSidebar(selectedNode?.pointer ?? "");
+        }}
+      >
+        <span aria-hidden="true">JSON</span>
+      </button>
+    </nav>
+  );
+}
