@@ -15,7 +15,7 @@ import {
   type CubicaSurface,
   type CubicaSurfaceComponent
 } from "@cubica/contracts-ai";
-import type { EditorDiffSummaryItem } from "@cubica/editor-engine";
+import { hashEditorText, type ClassifyChangeSetResult, type EditorDiffSummaryItem } from "@cubica/editor-engine";
 
 import type { EditorAgentToolResult } from "@/components/editor-agent-ui";
 import type { RoutedEditorDiagnostic } from "@/lib/editor-web-adapter";
@@ -35,9 +35,28 @@ export function toAgentDiagnostic(diagnostic: { readonly severity: string; reado
   };
 }
 
-/** Approval scope for applying a specific planned ChangeSet. */
-export function editorApplyApprovalScope(planned: PlannedAiChangeSet | null): string {
-  return planned === null ? "editor.applyChangeSet:none" : `editor.applyChangeSet:${planned.changeSet.id}`;
+/**
+ * Approval scope for applying a specific planned ChangeSet.
+ *
+ * When the ChangeSet is classified `dangerous` (ADR-057 §4.5), the scope is
+ * extended with the risk and a hash of the classification reasons, so approving
+ * one dangerous operation cannot authorise a different one (or a stale replan).
+ * Safe/structural changes keep the historical scope for backward compatibility.
+ */
+export function editorApplyApprovalScope(
+  planned: PlannedAiChangeSet | null,
+  classification?: ClassifyChangeSetResult
+): string {
+  if (planned === null) {
+    return "editor.applyChangeSet:none";
+  }
+
+  const base = `editor.applyChangeSet:${planned.changeSet.id}`;
+  if (classification?.risk === "dangerous") {
+    return `${base}:dangerous:${hashEditorText(classification.reasons.join("\n"))}`;
+  }
+
+  return base;
 }
 
 /** True when a prototype proposal has at least one gate and all gates pass. */

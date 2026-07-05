@@ -148,6 +148,26 @@ export interface EditorChangeSet {
   readonly fileRenames?: readonly EditorChangeSetFileRename[];
 }
 
+/**
+ * Operation risk level for an editor ChangeSet (ADR-057 §4.5, §5).
+ *
+ * - `safe`:       replace of a leaf value (text, label, style, number).
+ * - `structural`: add/remove of collection elements or fields, reordering, or
+ *                 file/text operations inside authoring/assets.
+ * - `dangerous`:  id change, reference retargeting, deletion of an entity with
+ *                 incoming references, or a file operation outside
+ *                 authoring/assets. Dangerous changes require an approval
+ *                 envelope (ADR-047) before apply.
+ */
+export type ChangeRisk = "safe" | "structural" | "dangerous";
+
+/** Result of classifying a ChangeSet: the highest risk plus its reasons. */
+export interface ClassifyChangeSetResult {
+  readonly risk: ChangeRisk;
+  /** Human-readable reasons for the summary and approval envelope (English). */
+  readonly reasons: readonly string[];
+}
+
 export interface EditorDiffSummaryItem {
   readonly filePath: string;
   readonly pointer: string;

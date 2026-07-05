@@ -18,6 +18,7 @@
  * - `json-pointer-patch.ts`  — JSON Pointer + JSON Patch (apply/inverse)
  * - `document-store.ts`      — document store and text-location mapping
  * - `change-set.ts`          — ChangeSet dry-run gate + patch journal
+ * - `change-risk.ts`         — ChangeSet operation risk classification
  * - `tree-view.ts`           — JSON tree and entity tree view models
  * - `graph-projection.ts`    — authoring graph projection
  * - `role-inference.ts`      — semantic role/title/summary inference
@@ -53,6 +54,9 @@ export { createDocumentStore } from "./document-store.ts";
 
 // ChangeSet dry-run gate and journal steps.
 export { createPatchJournalStep, dryRunEditorChangeSet } from "./change-set.ts";
+
+// Operation risk policy for editor ChangeSets (ADR-057 §4.5).
+export { classifyChangeSet } from "./change-risk.ts";
 
 // JSON tree and entity tree view models.
 export { TreeViewModelBuilder, buildEntityTreeViewModel, buildTreeViewModel } from "./tree-view.ts";

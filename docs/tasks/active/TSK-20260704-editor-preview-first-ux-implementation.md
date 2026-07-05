@@ -243,3 +243,19 @@ game-agnostic CI invariant.
   пред-условие «профилирование загрузки». Следующий срез: Phase 1 контрактов
   editor-engine (1.1 occurrences → 1.2 риск-политика → 1.3 readPointerPrefixes →
   1.4 схема фикстур → 1.5 schema-признаки отображения/декоративности).
+- 2026-07-05 (Phase 1.1, готово): вхождения сущностей в TreeViewModel по spec §2.1 —
+  `TreeViewNode.entityId`/`occurrenceKind` (аддитивно, по умолчанию `primary`),
+  обратный индекс `TreeViewModel.nodesByEntityId`, `buildEntityTreeViewModel`
+  принимает `EditorEntityProjection` (дерево не строит свой индекс, ADR-052).
+  Поле `id` узла оставлено как `nodeId` из §2.1 (уже уникально, включает путь) —
+  задокументировано в типе. verify:editor-engine 42/42. Cross-document occurrences
+  и UI-подсветка/auto-reveal — Phase 3.
+- 2026-07-05 (Phase 1.2, готово): `classifyChangeSet` в `change-risk.ts`
+  (safe/structural/dangerous + reasons; max-risk-wins; входящие ссылки — только из
+  проекции) и единая точка применения агентских ChangeSet в editor-web
+  (`applyPlannedAiChangeSet`: панельный чат, регион/промт сущности, прототипные
+  операции; dangerous → approval envelope ADR-047, отклонение фиксируется без
+  мутации документа). verify 54/54 + typecheck + 105 unit. Известное ограничение:
+  identity/reference-поля распознаются generic naming convention (`id`, `*Id`,
+  `*Ref`…) — кандидат на schema-driven признак вместе с Phase 1.5; интерпретатор
+  текстового режима (Phase 4) обязан идти через ту же единую точку.

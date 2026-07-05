@@ -21,12 +21,14 @@ import {
 } from "@xyflow/react";
 import {
   buildPreviewTraceRestorePlan,
+  classifyChangeSet,
   createPatchJournalStep,
   createPreviewPlaythroughTrace,
   createSchemaRegistry,
   dryRunEditorChangeSet,
   hashEditorText,
   readJsonPointer,
+  type ClassifyChangeSetResult,
   type EditorDiffSummaryItem,
   type EditorPatchIntent,
   type JsonValue,
@@ -487,6 +489,16 @@ export function useEditorWorkspace() {
       viewModel.snapshot.json
     ]
   );
+  // Single risk classification (ADR-057 §4.5) for the currently planned agent
+  // ChangeSet. It feeds BOTH the approval scope shown to the human and the
+  // apply-time gate, so the scope the user approves matches the scope enforced.
+  const agentPlannedChangeClassification = useMemo<ClassifyChangeSetResult | null>(
+    () =>
+      agentPlannedChangeSet === null
+        ? null
+        : classifyChangeSet(agentPlannedChangeSet.changeSet, viewModel.editorEntityProjection),
+    [agentPlannedChangeSet, viewModel.editorEntityProjection]
+  );
   const editorAgentSurface = useMemo(
     () =>
       buildEditorAgentSurface({
@@ -496,10 +508,18 @@ export function useEditorWorkspace() {
         prototypeExtractionProposal,
         hasPlannedChangeSet: agentPlannedChangeSet !== null,
         hasUndoPatch: aiPatchJournal.length > 0,
-        applyApprovalScopeHash: editorApplyApprovalScope(agentPlannedChangeSet),
+        applyApprovalScopeHash: editorApplyApprovalScope(agentPlannedChangeSet, agentPlannedChangeClassification ?? undefined),
         undoApprovalScopeHash: editorUndoApprovalScope(aiPatchJournal.length)
       }),
-    [agentPlannedChangeSet, aiApplyState, aiDiagnostics, aiDiffSummary, aiPatchJournal.length, prototypeExtractionProposal]
+    [
+      agentPlannedChangeSet,
+      agentPlannedChangeClassification,
+      aiApplyState,
+      aiDiagnostics,
+      aiDiffSummary,
+      aiPatchJournal.length,
+      prototypeExtractionProposal
+    ]
   );
   const leftSidebarOpen = leftSidebarPanel !== undefined;
   const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
@@ -1704,16 +1724,17 @@ export function useEditorWorkspace() {
       };
     }
 
+    const classification = classifyChangeSet(planned.changeSet, viewModel.editorEntityProjection);
     const approvalError = validateEditorAgentApproval(
       approval,
       "editor.applyChangeSet",
-      editorApplyApprovalScope(planned)
+      editorApplyApprovalScope(planned, classification)
     );
     if (approvalError !== null) {
       return approvalError;
     }
 
-    const applied = applyPlannedAiChangeSet(planned);
+    const applied = applyPlannedAiChangeSet(planned, { approval, classification });
     return {
       ok: applied.ok,
       summary: applied.summary,
@@ -1887,7 +1908,32 @@ export function useEditorWorkspace() {
     });
   }
 
-  function applyPlannedAiChangeSet(plan: PlannedAiChangeSet): EditorAgentToolResult {
+  /**
+   * The single convergence point for applying any agent-produced ChangeSet.
+   *
+   * Every agent input channel funnels through here: the agent panel apply
+   * (`runAgentApplyTool`) and the preview entity/region/text prompt
+   * (`handlePreviewPromptSubmit`). Per ADR-057 §5 the risk classification runs
+   * ONCE, right before the shared dry-run / validation / undo-journal pipeline.
+   * A `dangerous` ChangeSet may not apply without a matching ADR-047 approval
+   * envelope; a rejected dangerous apply is recorded and never mutates the doc.
+   */
+  function applyPlannedAiChangeSet(
+    plan: PlannedAiChangeSet,
+    options: { readonly approval?: CubicaAgentApprovalEnvelope; readonly classification?: ClassifyChangeSetResult } = {}
+  ): EditorAgentToolResult {
+    const classification = options.classification ?? classifyChangeSet(plan.changeSet, viewModel.editorEntityProjection);
+    if (classification.risk === "dangerous") {
+      const approvalError = validateEditorAgentApproval(
+        options.approval,
+        "editor.applyChangeSet",
+        editorApplyApprovalScope(plan, classification)
+      );
+      if (approvalError !== null) {
+        return recordRejectedDangerousChange(plan, classification, approvalError);
+      }
+    }
+
     setAiApplyState("applying");
     const dryRun = dryRunPlannedAiChangeSet(plan);
     const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
@@ -1927,15 +1973,53 @@ export function useEditorWorkspace() {
     setLastEditSource("ai");
     setSaveState("idle");
     setAiApplyState("applied");
-    setStatusMessage(`Applied AI ChangeSet: ${plan.changeSet.summary}`);
+    // Structural changes get an emphasized summary (ADR-057 §4.5) so the author
+    // notices add/remove/reorder edits; safe leaf edits keep the plain message.
+    const appliedSummary =
+      classification.risk === "structural"
+        ? `Applied structural ChangeSet — review the changes: ${plan.changeSet.summary}`
+        : `Applied AI ChangeSet: ${plan.changeSet.summary}`;
+    setStatusMessage(appliedSummary);
     selectFirstPointerAfterAiApply(plan.targetPointers);
 
     return {
       ok: true,
-      summary: `Applied AI ChangeSet: ${plan.changeSet.summary}`,
+      summary: appliedSummary,
       diagnostics: dryRun.diagnostics.map(toAgentDiagnostic),
       diffSummary: dryRun.diffSummary.map((item) => item.description),
       changeSetId: plan.changeSet.id
+    };
+  }
+
+  /**
+   * Records a dangerous ChangeSet that was blocked for lack of a matching
+   * ADR-047 approval envelope. The rejection is surfaced through the existing
+   * diagnostics/status log (the "Проверки" tab and status bar); it never
+   * mutates the document, matching the ADR-047 rejected-turn invariant.
+   */
+  function recordRejectedDangerousChange(
+    plan: PlannedAiChangeSet,
+    classification: ClassifyChangeSetResult,
+    approvalError: EditorAgentToolResult
+  ): EditorAgentToolResult {
+    const reasonText = classification.reasons.join("; ");
+    const diagnostics: RoutedEditorDiagnostic[] = [
+      {
+        severity: "error",
+        source: "change-risk",
+        pointer: "",
+        label: "/",
+        message: `Dangerous ChangeSet "${plan.changeSet.summary}" needs an approval envelope before apply: ${reasonText}`,
+        range: undefined
+      }
+    ];
+    setAiDiagnostics(diagnostics);
+    setAiDiffSummary([]);
+    setAiApplyState("blocked");
+    setStatusMessage(`Blocked dangerous ChangeSet pending approval: ${reasonText || classification.risk}`);
+    return {
+      ...approvalError,
+      diagnostics: diagnostics.map(toAgentDiagnostic)
     };
   }
 
