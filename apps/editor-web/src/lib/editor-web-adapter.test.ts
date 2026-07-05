@@ -2,7 +2,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { applyJsonPatch, createSchemaRegistry, type JsonPatchOperation, type JsonValue } from "@cubica/editor-engine";
+import {
+  applyJsonPatch,
+  createSchemaRegistry,
+  reviveEditorEntityProjection,
+  serializeEditorEntityProjection,
+  type JsonPatchOperation,
+  type JsonValue
+} from "@cubica/editor-engine";
 
 import { embeddedAuthoringSample } from "./authoring-sample";
 import { registerLocalAuthoringSchemas, gameAuthoringSchemaId, uiAuthoringSchemaId } from "./editor-json-schema";
@@ -486,5 +493,57 @@ describe("editor web adapter — incremental entity projection", () => {
     expect(incrementalView.incrementalReport?.mode).toBe("incremental");
     // The returned state can seed a further incremental step.
     expect(incrementalView.projectionState.projection).toBe(incrementalView.editorEntityProjection);
+  });
+
+  /**
+   * Warm-start hydration (option a, Phase 2.2b): a projection revived from the
+   * disk cache is substituted AS-IS, equals a fresh build of the same text, and
+   * seeds a subsequent incremental edit — proving the hydrated state is a valid
+   * `previousState` for `updateEditorEntityProjection`.
+   */
+  it("substitutes a hydrated projection as-is and equals a fresh build", () => {
+    const fresh = createEditorViewModel(baseText, { filePath: antarcticaGamePath });
+    // Round-trip the projection through the disk-cache serialization, as the
+    // server ships it and the client revives it.
+    const revived = reviveEditorEntityProjection(
+      JSON.parse(JSON.stringify(serializeEditorEntityProjection(fresh.editorEntityProjection)))
+    );
+    expect(revived).not.toBeNull();
+
+    const hydratedView = createEditorViewModel(baseText, {
+      filePath: antarcticaGamePath,
+      hydratedProjection: revived ?? undefined
+    });
+
+    // The projection is taken as-is (same object reference), no rebuild/update.
+    expect(hydratedView.editorEntityProjection).toBe(revived);
+    expect(hydratedView.incrementalReport).toBeUndefined();
+    expect(hydratedView.editorEntityProjection).toEqual(fresh.editorEntityProjection);
+    expect(hydratedView.projectionState.projection).toBe(revived);
+  });
+
+  it("lets a hydrated projection seed a subsequent incremental edit", () => {
+    const fresh = createEditorViewModel(baseText, { filePath: antarcticaGamePath });
+    const revived = reviveEditorEntityProjection(
+      JSON.parse(JSON.stringify(serializeEditorEntityProjection(fresh.editorEntityProjection)))
+    );
+    const hydratedView = createEditorViewModel(baseText, {
+      filePath: antarcticaGamePath,
+      hydratedProjection: revived ?? undefined
+    });
+
+    const nextText = patchedText([{ op: "replace", path: "/root/_label", value: "Антарктида (тёплый старт)" }]);
+    const afterEdit = createEditorViewModel(nextText, {
+      filePath: antarcticaGamePath,
+      incremental: {
+        previousState: hydratedView.projectionState,
+        changedPointersByFile: { [antarcticaGamePath]: ["/root/_label"] }
+      }
+    });
+    const fullRebuild = createEditorViewModel(nextText, { filePath: antarcticaGamePath });
+
+    // The edit after hydration takes the incremental path and equals a full rebuild.
+    expect(afterEdit.incrementalReport?.mode).toBe("incremental");
+    expect(afterEdit.editorEntityProjection).toEqual(fullRebuild.editorEntityProjection);
   });
 });

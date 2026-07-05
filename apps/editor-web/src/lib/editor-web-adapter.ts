@@ -170,6 +170,18 @@ export function createEditorViewModel(
       readonly previousState: EditorEntityProjectionState;
       readonly changedPointersByFile: ChangedPointersByFile;
     };
+    /**
+     * Optional warm-start hydration (ADR-057 §4.13, Phase 2.2b). When present, the
+     * entity projection is taken AS-IS from this already-built value (revived from
+     * the Level-2 disk cache) instead of being built or incrementally updated —
+     * option (a) of the slice brief: "проекция берётся как есть без update-вызова".
+     * It is paired with the input this build would have produced, so the NEXT edit
+     * diffs against it through the normal incremental path. The caller is
+     * responsible for verifying the projection matches the current text before
+     * passing it (a mismatch must simply omit this and rebuild). Ignored when
+     * `incremental` is also supplied — a fresh open never has a pending edit.
+     */
+    readonly hydratedProjection?: EditorEntityProjection;
   } = {}
 ): EditorViewModel {
   const store = createDocumentStore({ filePath: options.filePath ?? "embedded-sample.game.authoring.json", text });
@@ -192,7 +204,8 @@ export function createEditorViewModel(
       gameId: options.gameId,
       documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments)
     },
-    options.incremental
+    options.incremental,
+    options.hydratedProjection
   );
 
   return {
@@ -225,12 +238,24 @@ function buildViewModelProjection(
   input: BuildEditorEntityProjectionInput,
   incremental:
     | { readonly previousState: EditorEntityProjectionState; readonly changedPointersByFile: ChangedPointersByFile }
-    | undefined
+    | undefined,
+  hydratedProjection: EditorEntityProjection | undefined
 ): {
   readonly editorEntityProjection: EditorEntityProjection;
   readonly projectionState: EditorEntityProjectionState;
   readonly incrementalReport: IncrementalProjectionReport | undefined;
 } {
+  // Warm-start hydration (option a): substitute the revived projection directly
+  // and pair it with this build's input so the NEXT edit diffs against it through
+  // the normal incremental path. No build, no `updateEditorEntityProjection` call.
+  if (hydratedProjection !== undefined) {
+    return {
+      editorEntityProjection: hydratedProjection,
+      projectionState: { projection: hydratedProjection, input },
+      incrementalReport: undefined
+    };
+  }
+
   if (incremental === undefined) {
     const projectionState = createEditorEntityProjectionState(input);
     return { editorEntityProjection: projectionState.projection, projectionState, incrementalReport: undefined };

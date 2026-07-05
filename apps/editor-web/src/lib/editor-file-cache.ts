@@ -128,8 +128,11 @@ export function computeFileArtifactKey(filePath: string, text: string): string {
 
 /** Reads a cache entry, returning a revived snapshot on a clean hit or `null` on any miss. Never throws. */
 export async function readFileArtifact(cacheDir: string, key: string): Promise<DocumentSnapshot | null> {
+  const text = await readCacheTextEntry(cacheDir, key);
+  if (text === null) {
+    return null;
+  }
   try {
-    const text = await readFile(cacheEntryPath(cacheDir, key), "utf8");
     return reviveDocumentSnapshot(JSON.parse(text));
   } catch {
     return null;
@@ -142,14 +145,56 @@ export async function readFileArtifact(cacheDir: string, key: string): Promise<D
  * cache that cannot be written must never fail the request.
  */
 export async function writeFileArtifact(cacheDir: string, key: string, snapshot: DocumentSnapshot): Promise<void> {
+  await writeCacheTextEntryAtomic(cacheDir, key, `${JSON.stringify(serializeDocumentSnapshot(snapshot))}\n`);
+}
+
+// --- Shared disk primitives (reused by editor-project-cache, ADR-057 §4.13) ---
+//
+// These generic helpers are the ONE implementation of the atomic-write / swallow-read
+// / cache-dir-resolution / env-gate contract, so the per-file cache (here) and the
+// project-artifact cache do not duplicate the disk layer. All share the same
+// `.tmp/editor-cache/` tree, so the recursive `garbageCollectEditorCache` walk
+// already covers every subdirectory under one size limit.
+
+/** Reads a raw cache entry's text, or `null` on any miss (missing/unreadable). Never throws. */
+export async function readCacheTextEntry(cacheDir: string, key: string): Promise<string | null> {
+  try {
+    return await readFile(cacheEntryPath(cacheDir, key), "utf8");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Atomically writes a raw cache entry (unique temp file + `rename`). Best-effort:
+ * any failure is swallowed and the orphaned temp file removed, because a cache
+ * that cannot be written must never fail the request. Two writers of the same key
+ * produce byte-identical content (the artifact is a deterministic function of the
+ * key inputs), so a write race cannot corrupt an entry.
+ */
+export async function writeCacheTextEntryAtomic(cacheDir: string, key: string, text: string): Promise<void> {
   const tempPath = path.join(cacheDir, `.${key}.${process.pid}.${Math.random().toString(36).slice(2)}.tmp`);
   try {
     await mkdir(cacheDir, { recursive: true });
-    await writeFile(tempPath, `${JSON.stringify(serializeDocumentSnapshot(snapshot))}\n`, "utf8");
+    await writeFile(tempPath, text, "utf8");
     await rename(tempPath, cacheEntryPath(cacheDir, key));
   } catch {
     await rm(tempPath, { force: true }).catch(() => undefined);
   }
+}
+
+/**
+ * Resolves `.tmp/editor-cache/<subdir>` under the MAIN checkout root (never a
+ * worktree, so content-addressed entries are shared across sessions and branches).
+ */
+export async function resolveEditorCacheDir(subdir: string): Promise<string> {
+  return path.join(await resolveMainRepoRoot(), ".tmp", "editor-cache", subdir);
+}
+
+/** Cache is on by default; `CUBICA_EDITOR_CACHE=0`/`false` forces it off (e.g. for honest measurements). */
+export function isEditorCacheEnabled(): boolean {
+  const value = process.env.CUBICA_EDITOR_CACHE;
+  return value !== "0" && value !== "false";
 }
 
 /**
@@ -167,7 +212,7 @@ export async function loadDocumentSnapshotWithCache(input: {
   const buildSnapshot = (): DocumentSnapshot =>
     createDocumentStore({ filePath: input.filePath, text: input.text }).snapshot();
 
-  if (!(input.cacheEnabled ?? isEditorFileCacheEnabled())) {
+  if (!(input.cacheEnabled ?? isEditorCacheEnabled())) {
     return buildSnapshot();
   }
 
@@ -245,7 +290,7 @@ export async function garbageCollectEditorCache(input: {
 
 /** `.tmp/editor-cache/files` under the MAIN checkout root (never a worktree, so entries are shared). */
 async function resolveEditorCacheFilesDir(): Promise<string> {
-  return path.join(await resolveMainRepoRoot(), ".tmp", "editor-cache", "files");
+  return resolveEditorCacheDir("files");
 }
 
 /**
@@ -292,12 +337,6 @@ async function collectCacheFiles(root: string): Promise<readonly string[]> {
     }
   }
   return files;
-}
-
-/** Cache is on by default; `CUBICA_EDITOR_CACHE=0`/`false` forces it off (e.g. for honest measurements). */
-function isEditorFileCacheEnabled(): boolean {
-  const value = process.env.CUBICA_EDITOR_CACHE;
-  return value !== "0" && value !== "false";
 }
 
 function resolveEditorCacheMaxBytes(): number {

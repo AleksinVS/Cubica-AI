@@ -10,6 +10,7 @@ import { markEditorSessionSaved, repoRootForSession, touchEditorSession } from "
 import { allowedSavePathsForGame, saveProjectGitSession } from "@/lib/project-git-workspace";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import { validateAndBundleProjectPlugins } from "@/lib/project-plugin-validation";
+import { loadProjectionEnvelopeWithCache } from "@/lib/editor-project-cache";
 import { type NextRequest } from "next/server";
 
 export const runtime = "nodejs";
@@ -19,7 +20,22 @@ export async function GET(request: NextRequest) {
     const gameId = requireQueryParam(request, "gameId");
     const filePath = requireQueryParam(request, "filePath");
     const session = await repoRootForSession(request.nextUrl.searchParams.get("sessionId") ?? undefined, gameId);
-    return Response.json(await openAuthoringFile({ gameId, filePath, repoRoot: session.repoRoot ?? configuredEditorProjectRoot() }));
+    const document = await openAuthoringFile({
+      gameId,
+      filePath,
+      repoRoot: session.repoRoot ?? configuredEditorProjectRoot()
+    });
+
+    // Warm-start piggyback (ADR-057 §4.13 "Уровень 2"): ship the serialized entity
+    // projection alongside the text so the client hydrates its first view model
+    // instead of rebuilding it. Best-effort: any failure just omits the field and
+    // the client rebuilds exactly as today (the cache is one-shot, never required).
+    const projection = await loadProjectionEnvelopeWithCache({
+      filePath: document.filePath,
+      text: document.text
+    }).catch(() => undefined);
+
+    return Response.json({ ...document, ...(projection !== undefined ? { projection } : {}) });
   } catch (error) {
     return errorResponse(error);
   }

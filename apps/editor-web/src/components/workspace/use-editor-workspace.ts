@@ -28,9 +28,11 @@ import {
   dryRunEditorChangeSet,
   hashEditorText,
   readJsonPointer,
+  reviveEditorEntityProjection,
   type ChangedPointersByFile,
   type ClassifyChangeSetResult,
   type EditorDiffSummaryItem,
+  type EditorEntityProjection,
   type EditorEntityProjectionState,
   type EditorPatchIntent,
   type IncrementalProjectionReport,
@@ -370,6 +372,13 @@ export function useEditorWorkspace() {
   // context (a no-op edit, a Monaco free-text edit, a file reload) is ignored and
   // the build falls back to a full rebuild — identical to the previous behaviour.
   const pendingProjectionEditRef = useRef<{ readonly changedPointersByFile: ChangedPointersByFile; readonly text: string } | null>(null);
+  // A ONE-SHOT warm-start hydration (ADR-057 §4.13, Phase 2.2b): a projection
+  // revived from the Level-2 disk cache and shipped with a freshly opened
+  // document, paired with the exact `text` it was built from. The view-model memo
+  // reads-and-clears it and only uses it when `text === jsonText` and there is no
+  // pending edit, so a stale envelope (a reload, an edit that raced the open)
+  // silently falls back to a full rebuild — identical to today's behaviour.
+  const pendingHydrationRef = useRef<{ readonly projection: EditorEntityProjection; readonly text: string } | null>(null);
   // Telemetry-only: the report of the most recent incremental/full projection
   // update (design-spec §5). No UI depends on it in this slice; it is exposed on
   // the controller for the status data and future surfacing.
@@ -393,6 +402,14 @@ export function useEditorWorkspace() {
           ? { previousState, changedPointersByFile: pending.changedPointersByFile }
           : undefined;
 
+      // Consume the one-shot warm-start hydration for THIS build only. It wins
+      // over a pending edit (a fresh open has no edit) and is used only when its
+      // text still matches; a stale envelope falls back to a normal build.
+      const hydration = pendingHydrationRef.current;
+      pendingHydrationRef.current = null;
+      const hydratedProjection =
+        hydration !== null && incremental === undefined && hydration.text === jsonText ? hydration.projection : undefined;
+
       return createEditorViewModel(jsonText, {
         filePath: currentDocument.filePath,
         schemaRegistry,
@@ -408,7 +425,8 @@ export function useEditorWorkspace() {
         extraDiagnostics: reverseDiagnostics
           .concat(aiDiagnostics)
           .concat(workflowDiagnostics),
-        incremental
+        incremental,
+        hydratedProjection
       });
     },
     [
@@ -2339,6 +2357,7 @@ export function useEditorWorkspace() {
     setEditorLayout(nextLayout);
     setLayoutVersionHash(layoutDocument?.versionHash);
     setLocalNodePositions(positionsFromLayout(nextLayout));
+    stashHydrationFromDocument(document);
     setJsonText(document.text);
     setSavedText(document.text);
     setSelectedNodeId("$");
@@ -2355,6 +2374,31 @@ export function useEditorWorkspace() {
     clearPreparedPreview();
     setWorkflowState("idle");
     setLastEditSource("repository");
+  }
+
+  /**
+   * Stashes the warm-start hydration (ADR-057 §4.13, Phase 2.2b) for a just-loaded
+   * document, if the server shipped a serialized projection. The projection is
+   * REVIVED strictly (a corrupt/foreign/version-mismatched envelope revives to
+   * `null`) and then VERIFIED against the current text via the envelope's document
+   * hash: only a projection that provably matches `document.text` is stashed, so
+   * hydration can never substitute a stale projection. Any failure clears the ref,
+   * and the next build rebuilds the projection exactly as today.
+   */
+  function stashHydrationFromDocument(document: AuthoringFileDocument) {
+    pendingHydrationRef.current = null;
+    const envelope = document.projection;
+    if (envelope === undefined) {
+      return;
+    }
+    const projection = reviveEditorEntityProjection(envelope);
+    if (projection === null) {
+      return;
+    }
+    if (envelope.documentHashes?.[document.filePath] !== hashEditorText(document.text)) {
+      return;
+    }
+    pendingHydrationRef.current = { projection, text: document.text };
   }
 
   function loadEmbeddedFallback(error?: unknown) {

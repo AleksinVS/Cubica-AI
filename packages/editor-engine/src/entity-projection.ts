@@ -83,18 +83,45 @@ export function buildEditorEntityProjection(input: BuildEditorEntityProjectionIn
   const entities = [...builders.values()]
     .map(finalizeEditorEntityBuilder)
     .sort((left, right) => left.entityId.localeCompare(right.entityId));
-  const entityById = new Map(entities.map((entity) => [entity.entityId, entity]));
-  const entitiesBySourcePointer = buildEntitiesBySourcePointer(entities);
   const entityDiagnostics = entities.flatMap((entity) => entity.diagnostics);
 
-  return {
+  return reindexEditorEntityProjection({
     projectionVersion: 1,
     gameId: input.gameId,
     sourceHashes,
     entities,
-    entityById,
-    entitiesBySourcePointer,
     diagnostics: [...diagnostics, ...entityDiagnostics]
+  });
+}
+
+/**
+ * Rebuilds the two DERIVED lookup indexes (`entityById`,
+ * `entitiesBySourcePointer`) of a projection from its `entities`, producing a
+ * complete `EditorEntityProjection`.
+ *
+ * `buildEditorEntityProjection` and the incremental updater both funnel through
+ * here so the indexes are constructed in exactly ONE place. The Level-2 disk
+ * warm-start cache revive (`reviveEditorEntityProjection`, ADR-057 §4.13
+ * "Уровень 2") reuses it to reconstruct the Map indexes after a JSON round-trip:
+ * the maps are intentionally NOT serialized, because they are a pure function of
+ * `entities`, so rebuilding them here keeps a revived projection byte-for-byte
+ * equal to a freshly built one.
+ */
+export function reindexEditorEntityProjection(base: {
+  readonly projectionVersion: 1;
+  readonly gameId: string | undefined;
+  readonly sourceHashes: Readonly<Record<string, string>>;
+  readonly entities: readonly EditorEntity[];
+  readonly diagnostics: readonly EditorEntityProjectionDiagnostic[];
+}): EditorEntityProjection {
+  return {
+    projectionVersion: base.projectionVersion,
+    gameId: base.gameId,
+    sourceHashes: base.sourceHashes,
+    entities: base.entities,
+    entityById: new Map(base.entities.map((entity) => [entity.entityId, entity])),
+    entitiesBySourcePointer: buildEntitiesBySourcePointer(base.entities),
+    diagnostics: base.diagnostics
   };
 }
 
@@ -324,17 +351,15 @@ export function updateEditorEntityProjection(
     return refreshEntityLabels(entity, nextDocumentJsonByPath);
   });
 
-  const projection: EditorEntityProjection = {
+  const projection = reindexEditorEntityProjection({
     projectionVersion: 1,
     gameId: next.input.gameId,
     sourceHashes: buildProjectionSourceHashes(next.input.documents.map(normalizeEditorEntityDocument)),
     entities,
-    entityById: new Map(entities.map((entity) => [entity.entityId, entity])),
-    entitiesBySourcePointer: buildEntitiesBySourcePointer(entities),
     // Aggregate diagnostics are unchanged: the fast path never fires when an
     // affected entity has diagnostics, and unaffected entities keep theirs.
     diagnostics: previous.projection.diagnostics
-  };
+  });
 
   return {
     state: { projection, input: next.input },

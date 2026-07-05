@@ -91,6 +91,7 @@ export {
   collectAffectedEntities,
   createEditorEntityProjectionState,
   pointerAffectsLens,
+  reindexEditorEntityProjection,
   updateEditorEntityProjection
 } from "./entity-projection.ts";
 
@@ -112,6 +113,21 @@ export type {
   SerializedDocumentSnapshotEnvelope
 } from "./document-snapshot-serialization.ts";
 export { createTextLocationMapFromEntries } from "./document-store.ts";
+
+// Disk warm-start cache serialization for the ENTITY PROJECTION (ADR-057 §4.13
+// "Уровень 2 — проектные артефакты"). Pure JSON transforms with NO node
+// dependency, so they are safe in this browser-reachable barrel: the disk I/O
+// lives in the editor-web server library, while the REVIVE runs in the browser
+// during client hydration (warm start).
+export {
+  EDITOR_ENTITY_PROJECTION_CACHE_FORMAT_VERSION,
+  reviveEditorEntityProjection,
+  serializeEditorEntityProjection
+} from "./editor-entity-projection-serialization.ts";
+export type {
+  SerializedEditorEntityProjection,
+  SerializedEditorEntityProjectionEnvelope
+} from "./editor-entity-projection-serialization.ts";
 
 // JSON Schema validation and semantic diagnostics.
 export { createSchemaRegistry, validateDocument, validateJsonValue } from "./schema.ts";

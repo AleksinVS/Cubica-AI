@@ -14,7 +14,8 @@ import type {
   EditorChangeSet,
   EditorDiffSummaryItem,
   EditorPatchIntent,
-  PrototypeExtractionProposal
+  PrototypeExtractionProposal,
+  SerializedEditorEntityProjectionEnvelope
 } from "@cubica/editor-engine";
 import type {
   EditorViewEdge,
@@ -43,6 +44,13 @@ export interface AuthoringListResult {
 
 export interface AuthoringFileDocument extends AuthoringFileSummary {
   readonly text: string;
+  /**
+   * Optional warm-start payload (ADR-057 §4.13 "Уровень 2"): the serialized entity
+   * projection for `text`, shipped by the file route so the client can hydrate its
+   * first view model instead of rebuilding the projection. Absent when the cache
+   * is disabled or a build failed — the client then rebuilds exactly as today.
+   */
+  readonly projection?: SerializedEditorEntityProjectionEnvelope;
 }
 
 export interface EditorSessionSummary {
