@@ -1052,6 +1052,115 @@ describe("EntityTreeViewModelBuilder", () => {
   });
 });
 
+describe("entity tree occurrences (ADR-057 §4.6)", () => {
+  // Shared fixture: a game step whose CONTENT facet is a separate tree-visible
+  // node. The step entity therefore surfaces twice — at its own logic position
+  // and at the content block it owns — which is exactly a primary + occurrence.
+  // The action is referenced by the step but is its own entity, so it stays a
+  // single primary node and must NOT be claimed as a step occurrence.
+  const gameAuthoring = {
+    _schemaVersion: "2.0",
+    _manifestType: "game",
+    root: {
+      _type: "game.Game",
+      _label: "Occurrence Fixture",
+      content: {
+        data: {
+          infos: [
+            {
+              id: "intro-info",
+              _type: "game.Info",
+              _label: "Intro info",
+              body: "Explain the first decision."
+            }
+          ]
+        }
+      },
+      logic: {
+        flows: [
+          {
+            id: "main",
+            _type: "game.Flow",
+            _label: "Main flow",
+            steps: [
+              {
+                id: "main.start",
+                _type: "game.Step",
+                _label: "Start step",
+                contentId: "intro-info",
+                actionIds: ["choice.accept"]
+              }
+            ]
+          }
+        ],
+        actions: [
+          {
+            id: "choice.accept",
+            _type: "game.Action",
+            _label: "Accept choice"
+          }
+        ]
+      }
+    }
+  } satisfies JsonValue;
+
+  const filePath = "game.authoring.json";
+  const buildFixtureTree = (withProjection: boolean) => {
+    const snapshot = createDocumentStore({ filePath, text: JSON.stringify(gameAuthoring, null, 2) }).snapshot();
+    if (!withProjection) {
+      return buildEntityTreeViewModel({ snapshot });
+    }
+    const projection = buildEditorEntityProjection({ documents: [{ filePath, json: gameAuthoring }] });
+    return buildEntityTreeViewModel({ snapshot, projection });
+  };
+
+  it("gives both appearances of one entity the same entityId with exactly one primary", () => {
+    const tree = buildFixtureTree(true);
+    const stepNode = tree.nodeByPointer.get("/root/logic/flows/0/steps/0");
+    const contentNode = tree.nodeByPointer.get("/root/content/data/infos/0");
+
+    expect(stepNode?.entityId).toBe("game-step:main.start");
+    expect(contentNode?.entityId).toBe("game-step:main.start");
+    expect(stepNode?.occurrenceKind).toBe("primary");
+    expect(contentNode?.occurrenceKind).toBe("occurrence");
+
+    const occurrences = tree.nodesByEntityId.get("game-step:main.start") ?? [];
+    expect(occurrences).toHaveLength(2);
+    expect(occurrences.filter((node) => node.occurrenceKind === "primary")).toHaveLength(1);
+  });
+
+  it("finds every occurrence node from a single entity selection", () => {
+    const tree = buildFixtureTree(true);
+    const occurrences = tree.nodesByEntityId.get("game-step:main.start") ?? [];
+
+    expect(occurrences.map((node) => node.pointer).sort()).toEqual([
+      "/root/content/data/infos/0",
+      "/root/logic/flows/0/steps/0"
+    ]);
+    // Node identity stays unique even though the entity identity is shared.
+    expect(new Set(occurrences.map((node) => node.id)).size).toBe(occurrences.length);
+  });
+
+  it("marks a single-appearance entity as primary with no occurrence", () => {
+    const tree = buildFixtureTree(true);
+    const actionNode = tree.nodeByPointer.get("/root/logic/actions/0");
+
+    expect(actionNode?.entityId).toBe("game-action:choice.accept");
+    expect(actionNode?.occurrenceKind).toBe("primary");
+    expect(tree.nodesByEntityId.get("game-action:choice.accept")).toHaveLength(1);
+  });
+
+  it("behaves exactly as before when no projection is supplied", () => {
+    const tree = buildFixtureTree(false);
+
+    expect(tree.nodesByEntityId.size).toBe(0);
+    for (const node of tree.flatNodes) {
+      expect(node.occurrenceKind).toBe("primary");
+      expect(node.entityId).toBeUndefined();
+    }
+  });
+});
+
 describe("preview renderer adapter protocol", () => {
   const baseEntities: readonly PreviewEntityDescriptor[] = [
     previewEntity("background", "/root/background", { x: 0, y: 0, width: 400, height: 300 }, { zIndex: 0, layer: "scene" }),

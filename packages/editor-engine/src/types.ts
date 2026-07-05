@@ -214,6 +214,17 @@ export type TreeViewNodeKind =
    */
   | "reference";
 
+/**
+ * Whether a tree node is an entity's canonical position or a repeat appearance.
+ *
+ * A single editor entity (ADR-057 §4.6) can surface at several places in the
+ * entity tree. The one canonical position for the active grouping mode is
+ * `primary`; every additional appearance of THE SAME entity is an `occurrence`
+ * ("вхождение" — the same object shown again, never a copy). Nodes that map to
+ * no entity default to `primary`, so single-appearance trees are unchanged.
+ */
+export type TreeViewNodeOccurrenceKind = "primary" | "occurrence";
+
 export interface TreeViewNodeActionHints {
   /**
    * Whether the value is editable as a scalar replacement.
@@ -233,8 +244,32 @@ export interface TreeViewNode {
    *
    * For non-root nodes it matches the JSON Pointer. The root uses `$` to align
    * with graph projection node ids.
+   *
+   * This is the `nodeId` from ADR-057 §4.6: unique within the tree (it already
+   * encodes the occurrence path via the JSON Pointer). Occurrences share an
+   * `entityId` but always keep distinct `id`s.
    */
   readonly id: string;
+  /**
+   * Editor entity this node belongs to (ADR-057 §4.6), shared by every
+   * occurrence of the same entity.
+   *
+   * Populated only for the entity tree and only when an
+   * `EditorEntityProjection` (ADR-052) is supplied to the builder. The tree
+   * reads this link from the projection and never builds its own entity index.
+   * `undefined` means the node maps to no projection entity (or no projection
+   * was given), which keeps the pointer-complete JSON tree unaffected.
+   */
+  readonly entityId?: string;
+  /**
+   * Whether this node is the entity's canonical position (`primary`) or a
+   * repeat appearance of the same entity elsewhere (`occurrence`).
+   *
+   * Defaults to `primary` for every node — including nodes with no `entityId`
+   * and every node of the pointer-complete JSON tree — so existing
+   * single-appearance trees keep their behaviour.
+   */
+  readonly occurrenceKind: TreeViewNodeOccurrenceKind;
   /** JSON Pointer for this node (empty string is the document root). */
   readonly pointer: string;
   /** Parent JSON Pointer, or undefined for the document root. */
@@ -273,6 +308,15 @@ export interface TreeViewModel {
   readonly flatNodes: readonly TreeViewNode[];
   /** Lookup map for pointer-based selection sync. */
   readonly nodeByPointer: ReadonlyMap<string, TreeViewNode>;
+  /**
+   * All nodes grouped by their `entityId` (ADR-057 §4.6).
+   *
+   * Selecting an entity uses this inverse index to find and soft-highlight
+   * every occurrence at once. Exactly one node per entity is `primary`; the
+   * rest are `occurrence`. Empty when no `EditorEntityProjection` was supplied
+   * (for example the pointer-complete JSON tree always leaves it empty).
+   */
+  readonly nodesByEntityId: ReadonlyMap<string, readonly TreeViewNode[]>;
 }
 
 export interface BuildTreeViewModelInput {
@@ -293,12 +337,23 @@ export interface BuildTreeViewModelInput {
 /**
  * Input for the entity tree projection.
  *
- * LEGACY-0018: this used to be an empty interface extending
- * `BuildTreeViewModelInput`, which added no fields and only widened the API
- * surface. It is now a plain type alias so the distinct public name stays
- * available while the empty-interface anti-pattern is gone.
+ * Extends `BuildTreeViewModelInput` with the optional editor entity projection.
+ * When `projection` is supplied, entity-tree nodes are tagged with
+ * `entityId`/`occurrenceKind` and grouped in `TreeViewModel.nodesByEntityId`;
+ * without it the tree behaves exactly as before (every node `primary`, no
+ * `entityId`). The tree reads entity links from the projection and never builds
+ * its own entity index (ADR-057 §4.6).
  */
-export type BuildEntityTreeViewModelInput = BuildTreeViewModelInput;
+export interface BuildEntityTreeViewModelInput extends BuildTreeViewModelInput {
+  /**
+   * Editor entity projection (ADR-052) used to connect tree nodes to entities.
+   *
+   * The projection's source pointers must address the same document as
+   * `snapshot` (matched by `snapshot.filePath`). Cross-document occurrences are
+   * out of scope for this single-document tree.
+   */
+  readonly projection?: EditorEntityProjection;
+}
 
 export type AuthoringGraphNodeRole =
   | "document"

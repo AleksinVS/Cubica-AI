@@ -7,6 +7,14 @@
  * technical containers. Both models are immutable and framework-agnostic; UI
  * layers keep collapse/expand state separately and route edits back through
  * JSON Patch.
+ *
+ * The entity tree separates NODE identity from ENTITY identity (ADR-057 §4.6):
+ * one entity can surface at several nodes ("вхождения"/occurrences). When an
+ * `EditorEntityProjection` (ADR-052) is supplied, each node carries the
+ * `entityId` it belongs to and an `occurrenceKind` ("primary" for the canonical
+ * position, "occurrence" for repeat appearances), and the model exposes an
+ * `entityId -> nodes` inverse index. Entity links come only from the projection;
+ * this module never builds its own entity index.
  */
 import { isPlainJsonObject, compactSummary, shortTypeName, truncate } from "./shared.ts";
 import { appendPointerSegment, buildJsonPointer, parseJsonPointer, readJsonPointer } from "./json-pointer-patch.ts";
@@ -16,11 +24,13 @@ import type {
   BuildEntityTreeViewModelInput,
   BuildTreeViewModelInput,
   DocumentDiagnostic,
+  EditorEntityProjection,
   JsonObject,
   JsonValue,
   TreeViewModel,
   TreeViewNode,
   TreeViewNodeKind,
+  TreeViewNodeOccurrenceKind,
   TreeViewNodeValueType
 } from "./types.ts";
 
@@ -201,6 +211,10 @@ export class TreeViewModelBuilder {
 
       const node: TreeViewNode = {
         id: pointer === "" ? "$" : pointer,
+        // The pointer-complete JSON tree carries no entity semantics: every
+        // node is its own primary appearance and never maps to a projection
+        // entity. Occurrence tagging lives in `buildEntityTreeViewModel`.
+        occurrenceKind: "primary",
         pointer,
         parentPointer,
         label,
@@ -226,6 +240,7 @@ export class TreeViewModelBuilder {
     if (snapshot.json === undefined) {
       const root: TreeViewNode = {
         id: "$",
+        occurrenceKind: "primary",
         pointer: "",
         parentPointer: undefined,
         label: "/",
@@ -241,11 +256,11 @@ export class TreeViewModelBuilder {
       };
       nodeByPointer.set("", root);
       flatNodes.push(root);
-      return { root, flatNodes, nodeByPointer };
+      return { root, flatNodes, nodeByPointer, nodesByEntityId: new Map() };
     }
 
     const rootNode = buildNode(snapshot.json, "", undefined, "/", "document");
-    return { root: rootNode, flatNodes, nodeByPointer };
+    return { root: rootNode, flatNodes, nodeByPointer, nodesByEntityId: new Map() };
   }
 }
 
@@ -260,6 +275,12 @@ export function buildTreeViewModel(input: BuildTreeViewModelInput): TreeViewMode
  * shows only tree-visible semantic entities and connects each entity to the
  * nearest visible semantic ancestor, so technical containers and scalar
  * parameters stay in Monaco/property panels instead of crowding navigation.
+ *
+ * When `input.projection` is supplied, nodes are additionally tagged with
+ * `entityId`/`occurrenceKind` and grouped in `nodesByEntityId` so a UI layer can
+ * treat every occurrence of one entity as "the same object" (ADR-057 §4.6).
+ * Without a projection the output is byte-for-byte the previous behaviour: every
+ * node `primary`, no `entityId`, and an empty `nodesByEntityId`.
  */
 export function buildEntityTreeViewModel(input: BuildEntityTreeViewModelInput): TreeViewModel {
   const snapshot = input.snapshot;
@@ -271,6 +292,16 @@ export function buildEntityTreeViewModel(input: BuildEntityTreeViewModelInput): 
 
   const nodeByPointer = new Map<string, TreeViewNode>();
   const flatNodes: TreeViewNode[] = [];
+  // Inverse index `entityId -> nodes`, so a UI layer can find and soft-highlight
+  // every occurrence of one entity from a single selection (ADR-057 §4.6).
+  const nodesByEntityId = new Map<string, TreeViewNode[]>();
+  // Resolves which editor entity a tree node belongs to. The projection is the
+  // single source of entity links (ADR-052/ADR-057 §4.6): the tree never builds
+  // its own index. A node is `primary` when it sits at an entity's canonical
+  // `primarySource`; otherwise, if the projection lists this pointer among an
+  // entity's facet sources, the node is an additional `occurrence` of that
+  // entity. Deterministic tie-break: lowest `entityId` wins.
+  const resolveNodeEntity = createEntityTreeNodeResolver(input.projection, snapshot.filePath);
 
   if (snapshot.json === undefined) {
     return new TreeViewModelBuilder().build(input);
@@ -294,8 +325,11 @@ export function buildEntityTreeViewModel(input: BuildEntityTreeViewModelInput): 
     const children = childEntries.map(buildEntityNode);
     const directDiagnostics = diagnostics.filter((diagnostic) => diagnostic.pointer === entry.pointer);
     const subtreeDiagnosticCount = diagnostics.filter((diagnostic) => isSameOrDescendantPointer(diagnostic.pointer, entry.pointer)).length;
+    const entityBinding = resolveNodeEntity(entry.pointer);
     const node: TreeViewNode = {
       id: entry.pointer,
+      entityId: entityBinding.entityId,
+      occurrenceKind: entityBinding.occurrenceKind,
       pointer: entry.pointer,
       parentPointer: entry.parentPointer ?? "",
       label: entry.label,
@@ -314,6 +348,14 @@ export function buildEntityTreeViewModel(input: BuildEntityTreeViewModelInput): 
     };
     nodeByPointer.set(node.pointer, node);
     flatNodes.push(node);
+    if (node.entityId !== undefined) {
+      const siblings = nodesByEntityId.get(node.entityId);
+      if (siblings === undefined) {
+        nodesByEntityId.set(node.entityId, [node]);
+      } else {
+        siblings.push(node);
+      }
+    }
     return node;
   };
 
@@ -321,6 +363,8 @@ export function buildEntityTreeViewModel(input: BuildEntityTreeViewModelInput): 
   const rootDiagnostics = diagnostics.filter((diagnostic) => diagnostic.pointer === "");
   const root: TreeViewNode = {
     id: "$entities",
+    // The synthetic "Entities" root is a navigation container, not an entity.
+    occurrenceKind: "primary",
     pointer: "",
     parentPointer: undefined,
     label: "Entities",
@@ -337,7 +381,68 @@ export function buildEntityTreeViewModel(input: BuildEntityTreeViewModelInput): 
   nodeByPointer.set("", root);
   flatNodes.unshift(root);
 
-  return { root, flatNodes, nodeByPointer };
+  return { root, flatNodes, nodeByPointer, nodesByEntityId };
+}
+
+/**
+ * Result of mapping one entity-tree node to its editor entity.
+ *
+ * `entityId` is shared by every occurrence of the same entity; `occurrenceKind`
+ * distinguishes the canonical position from repeat appearances.
+ */
+interface EntityTreeNodeBinding {
+  readonly entityId?: string;
+  readonly occurrenceKind: TreeViewNodeOccurrenceKind;
+}
+
+/**
+ * Builds the per-node entity resolver for the entity tree.
+ *
+ * Without a projection (or for the document root), every node is its own
+ * `primary` appearance with no `entityId`, so the tree behaves exactly as it
+ * did before this slice. With a projection, entity links come only from the
+ * projection (ADR-052/ADR-057 §4.6): the tree does not build its own index.
+ *
+ * The projection keys source pointers as `"<filePath>#<pointer>"`, so a node is
+ * matched only inside the document the projection was built over (matched by
+ * `filePath`). Cross-document occurrences are out of scope for this
+ * single-document tree.
+ */
+function createEntityTreeNodeResolver(
+  projection: EditorEntityProjection | undefined,
+  filePath: string
+): (pointer: string) => EntityTreeNodeBinding {
+  const primaryBinding: EntityTreeNodeBinding = { occurrenceKind: "primary" };
+
+  if (projection === undefined) {
+    return () => primaryBinding;
+  }
+
+  return (pointer: string): EntityTreeNodeBinding => {
+    if (pointer === "") {
+      return primaryBinding;
+    }
+
+    const candidates = projection.entitiesBySourcePointer.get(`${filePath}#${pointer}`);
+    if (candidates === undefined || candidates.length === 0) {
+      return primaryBinding;
+    }
+
+    // Prefer the entity whose canonical `primarySource` is exactly this node:
+    // that entity owns the node as its `primary` appearance.
+    const owner = candidates.find((entity) => entity.primarySource.pointer === pointer);
+    if (owner !== undefined) {
+      return { entityId: owner.entityId, occurrenceKind: "primary" };
+    }
+
+    // Otherwise this pointer is a facet source of one or more entities but the
+    // canonical position of none, so it is an additional `occurrence`. Pick the
+    // lowest `entityId` for a stable, deterministic binding.
+    const occurrenceOwner = candidates.reduce((lowest, entity) =>
+      entity.entityId.localeCompare(lowest.entityId) < 0 ? entity : lowest
+    );
+    return { entityId: occurrenceOwner.entityId, occurrenceKind: "occurrence" };
+  };
 }
 
 interface EntityTreeEntry {
