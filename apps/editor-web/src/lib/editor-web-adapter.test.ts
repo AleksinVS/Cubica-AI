@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { createSchemaRegistry } from "@cubica/editor-engine";
+import { applyJsonPatch, createSchemaRegistry, type JsonPatchOperation, type JsonValue } from "@cubica/editor-engine";
 
 import { embeddedAuthoringSample } from "./authoring-sample";
 import { registerLocalAuthoringSchemas, gameAuthoringSchemaId, uiAuthoringSchemaId } from "./editor-json-schema";
@@ -401,5 +404,87 @@ describe("editor web adapter", () => {
       referencePointer: "/link/$ref"
     });
     expect(disconnected.text).not.toContain("\"$ref\"");
+  });
+});
+
+/**
+ * Incremental entity-projection wiring (ADR-057 §4.13, Phase 2.1) exercised at
+ * the adapter surface. The equivalence gate mirrors
+ * `packages/editor-engine/tests/incremental-projection.test.ts` but through
+ * `createEditorViewModel`: an incremental build must produce the SAME
+ * `editorEntityProjection` as a full rebuild of the same text, and a build with
+ * no `incremental` context (the controller's fallback when no previous state
+ * exists yet) must behave exactly as before.
+ */
+describe("editor web adapter — incremental entity projection", () => {
+  const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "..", "..");
+  const antarcticaGamePath = "games/antarctica/authoring/game.authoring.json";
+  const baseText = fs.readFileSync(path.join(repoRoot, antarcticaGamePath), "utf8");
+
+  /** Applies JSON Patch to `baseText` and returns the pretty-printed next text. */
+  function patchedText(operations: readonly JsonPatchOperation[]): string {
+    const nextJson = applyJsonPatch(JSON.parse(baseText) as JsonValue, operations);
+    return `${JSON.stringify(nextJson, null, 2)}\n`;
+  }
+
+  it("takes the incremental fast path for a scalar _label edit and equals a full rebuild", () => {
+    const baseline = createEditorViewModel(baseText, { filePath: antarcticaGamePath });
+    const nextText = patchedText([{ op: "replace", path: "/root/_label", value: "Антарктида (ред.)" }]);
+
+    const incrementalView = createEditorViewModel(nextText, {
+      filePath: antarcticaGamePath,
+      incremental: {
+        previousState: baseline.projectionState,
+        changedPointersByFile: { [antarcticaGamePath]: ["/root/_label"] }
+      }
+    });
+    const fullView = createEditorViewModel(nextText, { filePath: antarcticaGamePath });
+
+    // The projection is deeply equal to a full rebuild (the main correctness gate).
+    expect(incrementalView.editorEntityProjection).toEqual(fullView.editorEntityProjection);
+    expect(incrementalView.incrementalReport?.mode).toBe("incremental");
+    expect(incrementalView.incrementalReport?.reusedEntityCount).toBeGreaterThan(0);
+    expect(incrementalView.incrementalReport?.rebuiltEntityIds.length).toBeGreaterThan(0);
+  });
+
+  it("falls back to a full rebuild for a structural edit but stays equal to a full rebuild", () => {
+    const baseline = createEditorViewModel(baseText, { filePath: antarcticaGamePath });
+    const nextText = patchedText([
+      { op: "add", path: "/root/logic/actions/0/note", value: "structural add" }
+    ]);
+
+    const incrementalView = createEditorViewModel(nextText, {
+      filePath: antarcticaGamePath,
+      incremental: {
+        previousState: baseline.projectionState,
+        changedPointersByFile: { [antarcticaGamePath]: ["/root/logic/actions/0/note"] }
+      }
+    });
+    const fullView = createEditorViewModel(nextText, { filePath: antarcticaGamePath });
+
+    expect(incrementalView.editorEntityProjection).toEqual(fullView.editorEntityProjection);
+    expect(incrementalView.incrementalReport?.mode).toBe("full");
+  });
+
+  it("without an incremental context builds from scratch (no previous state) and matches the incremental result", () => {
+    const baseline = createEditorViewModel(baseText, { filePath: antarcticaGamePath });
+    const nextText = patchedText([{ op: "replace", path: "/root/logic/actions/0/_label", value: "Действие (ред.)" }]);
+
+    // The controller passes no `incremental` option when it has no previous state.
+    const fallbackView = createEditorViewModel(nextText, { filePath: antarcticaGamePath });
+    expect(fallbackView.incrementalReport).toBeUndefined();
+
+    const incrementalView = createEditorViewModel(nextText, {
+      filePath: antarcticaGamePath,
+      incremental: {
+        previousState: baseline.projectionState,
+        changedPointersByFile: { [antarcticaGamePath]: ["/root/logic/actions/0/_label"] }
+      }
+    });
+
+    expect(incrementalView.editorEntityProjection).toEqual(fallbackView.editorEntityProjection);
+    expect(incrementalView.incrementalReport?.mode).toBe("incremental");
+    // The returned state can seed a further incremental step.
+    expect(incrementalView.projectionState.projection).toBe(incrementalView.editorEntityProjection);
   });
 });

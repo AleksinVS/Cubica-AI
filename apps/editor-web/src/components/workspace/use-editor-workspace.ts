@@ -28,9 +28,12 @@ import {
   dryRunEditorChangeSet,
   hashEditorText,
   readJsonPointer,
+  type ChangedPointersByFile,
   type ClassifyChangeSetResult,
   type EditorDiffSummaryItem,
+  type EditorEntityProjectionState,
   type EditorPatchIntent,
+  type IncrementalProjectionReport,
   type JsonValue,
   type PatchJournalStep,
   type PreviewEntityDescriptor,
@@ -44,6 +47,8 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
+  useState,
   type CSSProperties,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent
@@ -68,6 +73,7 @@ import {
   getNodeAncestorIds,
   selectProperties,
   toRoutedDiagnostic,
+  type EditorAuthoringEditResult,
   type EditorProperty,
   type EditorViewNode,
   type RoutedEditorDiagnostic,
@@ -351,14 +357,43 @@ export function useEditorWorkspace() {
     return registry;
   }, []);
 
+  // --- Incremental entity-projection wiring (ADR-057 §4.13, Phase 2.1) --------
+  //
+  // `projectionStateRef` holds the projection state (projection + its build
+  // input) from the LAST COMMITTED view model; the next build diffs against it.
+  // It is updated in a post-commit effect so it only ever reflects a state React
+  // actually kept.
+  const projectionStateRef = useRef<EditorEntityProjectionState | null>(null);
+  // A ONE-SHOT context describing the pointers a just-applied JSON Patch touched,
+  // paired with the exact `text` those pointers apply to. The view-model memo
+  // reads-and-clears it, and only uses it when `text === jsonText`, so any stale
+  // context (a no-op edit, a Monaco free-text edit, a file reload) is ignored and
+  // the build falls back to a full rebuild — identical to the previous behaviour.
+  const pendingProjectionEditRef = useRef<{ readonly changedPointersByFile: ChangedPointersByFile; readonly text: string } | null>(null);
+  // Telemetry-only: the report of the most recent incremental/full projection
+  // update (design-spec §5). No UI depends on it in this slice; it is exposed on
+  // the controller for the status data and future surfacing.
+  const [projectionIncrementalReport, setProjectionIncrementalReport] = useState<IncrementalProjectionReport | null>(null);
+
   const schemaId = useMemo(
     () => schemaIdForAuthoringDocument(currentDocument.filePath, undefined),
     [currentDocument.filePath]
   );
   const monacoModelUri = useMemo(() => toMonacoModelUri(currentDocument), [currentDocument]);
   const viewModel = useMemo(
-    () =>
-      createEditorViewModel(jsonText, {
+    () => {
+      // Consume the one-shot changed-pointer context for THIS build only. It is
+      // used solely when it matches the current text and a previous state exists;
+      // every miss falls back to a full rebuild (unchanged behaviour).
+      const pending = pendingProjectionEditRef.current;
+      pendingProjectionEditRef.current = null;
+      const previousState = projectionStateRef.current;
+      const incremental =
+        pending !== null && previousState !== null && pending.text === jsonText
+          ? { previousState, changedPointersByFile: pending.changedPointersByFile }
+          : undefined;
+
+      return createEditorViewModel(jsonText, {
         filePath: currentDocument.filePath,
         schemaRegistry,
         schemaId,
@@ -372,8 +407,10 @@ export function useEditorWorkspace() {
         },
         extraDiagnostics: reverseDiagnostics
           .concat(aiDiagnostics)
-          .concat(workflowDiagnostics)
-      }),
+          .concat(workflowDiagnostics),
+        incremental
+      });
+    },
     [
       activeBranchRootId,
       collapsedNodeIds,
@@ -388,6 +425,18 @@ export function useEditorWorkspace() {
       workflowDiagnostics
     ]
   );
+
+  // Post-commit: remember the committed projection state so the NEXT edit can
+  // diff against it, and surface the update telemetry (design-spec §5). Reading
+  // the ref during render and writing it here (not during render) keeps the
+  // "previous state" strictly a value React actually kept.
+  useEffect(() => {
+    projectionStateRef.current = viewModel.projectionState;
+    if (viewModel.incrementalReport !== undefined) {
+      setProjectionIncrementalReport(viewModel.incrementalReport);
+    }
+  }, [viewModel]);
+
   const selectedNode = findEditorNodeById(viewModel.fullNodes, selectedNodeId) ?? viewModel.fullNodes[0];
   const activeTree = treeDetailMode === "entities" ? viewModel.tree : viewModel.jsonTree;
   const selectedValue = selectedNode === undefined || viewModel.snapshot.json === undefined ? undefined : readJsonPointer(viewModel.snapshot.json, selectedNode.pointer);
@@ -1105,6 +1154,9 @@ export function useEditorWorkspace() {
   }
 
   function handleJsonChange(value: string | undefined) {
+    // Monaco free-text edits carry no known pointers: force a full projection
+    // rebuild by clearing any pending incremental context (Phase 2.1).
+    pendingProjectionEditRef.current = null;
     setJsonText(value ?? "");
     setReverseDiagnostics([]);
     clearWorkflowAndPluginDiagnostics();
@@ -1961,6 +2013,17 @@ export function useEditorWorkspace() {
       diagnostics: dryRun.diagnostics
     });
 
+    // Feed the incremental projection updater the pointers this ChangeSet touches
+    // in the ACTIVE document (Phase 2.1). Only JSON Patch ops map to pointers; if
+    // the ChangeSet also carries an active-file text patch (no pointer form), the
+    // empty set forces a full rebuild.
+    const activeFilePath = currentDocument.filePath;
+    const changedPointers = (plan.changeSet.textPatches ?? []).some((patch) => patch.filePath === activeFilePath)
+      ? []
+      : plan.changeSet.jsonPatches
+          .filter((patch) => patch.filePath === activeFilePath)
+          .flatMap((patch) => patch.operations.map((operation) => operation.path));
+    stashIncrementalProjectionEdit(changedPointers, dryRun.after.text);
     setJsonText(dryRun.after.text);
     setAiPatchJournal((current) => [...current, step]);
     setAiRedoJournal([]);
@@ -2330,11 +2393,29 @@ export function useEditorWorkspace() {
     setStatusMessage(error instanceof Error ? `Repository unavailable: ${error.message}` : "Using embedded sample");
   }
 
+  /**
+   * Stashes the one-shot incremental-projection context for the edit about to be
+   * committed (ADR-057 §4.13, Phase 2.1). `changedPointers` are the paths of the
+   * JSON Patch operations that actually ran, keyed to the active document; an
+   * empty set clears the context so the next build is a full rebuild. Pairing the
+   * pointers with `nextText` lets the view-model memo ignore any stale context.
+   */
+  function stashIncrementalProjectionEdit(changedPointers: readonly string[], nextText: string) {
+    pendingProjectionEditRef.current =
+      changedPointers.length === 0
+        ? null
+        : { changedPointersByFile: { [currentDocument.filePath]: [...changedPointers] }, text: nextText };
+  }
+
   function applyAuthoringEditResult(
-    result: { readonly text: string; readonly diagnostics: readonly RoutedEditorDiagnostic[] },
+    result: EditorAuthoringEditResult,
     source: "graph" | "property",
     pointer: string
   ) {
+    stashIncrementalProjectionEdit(
+      result.operations.map((operation) => operation.path),
+      result.text
+    );
     setJsonText(result.text);
     setReverseDiagnostics(result.diagnostics);
     clearWorkflowAndPluginDiagnostics();
@@ -2512,7 +2593,10 @@ export function useEditorWorkspace() {
     handleDiagnosticClick,
     prototypeAuditSnoozed,
     prototypeAuditNotice,
-    setPrototypeAuditSnoozed
+    setPrototypeAuditSnoozed,
+    // Telemetry for the last entity-projection update (design-spec §5, Phase 2.1).
+    // No UI consumes it yet; it is available on the controller for status data.
+    projectionIncrementalReport
   };
 }
 

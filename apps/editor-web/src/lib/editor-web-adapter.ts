@@ -7,24 +7,30 @@
 import {
   applyJsonPatch,
   buildAuthoringGraphProjection,
-  buildEditorEntityProjection,
   buildEntityTreeViewModel,
   buildManifestChronologyTimeline,
   buildVisibleAuthoringGraphProjection,
   buildTreeViewModel,
   createDocumentStore,
+  createEditorEntityProjectionState,
   parseJsonPointer,
   readJsonPointer,
   reverseProjectIntent,
+  updateEditorEntityProjection,
   validateDocument,
   type AuthoringGraphEdge,
   type AuthoringGraphExpansionState,
   type AuthoringGraphNode,
+  type BuildEditorEntityProjectionInput,
+  type ChangedPointersByFile,
   type DiagnosticSeverity,
   type DocumentDiagnostic,
   type DocumentSnapshot,
   type EditorEntityProjection,
   type EditorEntityProjectionDocument,
+  type EditorEntityProjectionState,
+  type IncrementalProjectionReport,
+  type JsonPatchOperation,
   type SchemaRegistry,
   type JsonValue,
   type ManifestTimeline,
@@ -53,6 +59,22 @@ export interface EditorViewModel {
    * and all durable edits still go through EditorChangeSet.
    */
   readonly editorEntityProjection: EditorEntityProjection;
+  /**
+   * The projection paired with the input that produced it (ADR-057 §4.13,
+   * Phase 2.1). Callers pass it back as `incremental.previousState` on the next
+   * build so `updateEditorEntityProjection` can reuse untouched entity records
+   * instead of rebuilding the whole projection. Additive: consumers that only
+   * read `editorEntityProjection` are unaffected.
+   */
+  readonly projectionState: EditorEntityProjectionState;
+  /**
+   * Telemetry for how `editorEntityProjection` was produced (design-spec §5).
+   *
+   * `undefined` when the projection was built from scratch (no `incremental`
+   * option). Present with `mode: "incremental"` when the fast path was taken and
+   * `mode: "full"` when the updater fell back to a full rebuild.
+   */
+  readonly incrementalReport?: IncrementalProjectionReport;
   /** Default semantic entity tree model derived from the same authoring snapshot. */
   readonly tree: TreeViewModel;
   /** Advanced pointer-complete JSON tree for technical debugging. */
@@ -91,6 +113,21 @@ export interface RoutedEditorDiagnostic {
 export type EditorTreeViewModel = TreeViewModel;
 export type EditorTreeViewNode = TreeViewNode;
 
+/**
+ * Result of applying a single authoring edit through reverse projection.
+ *
+ * `operations` is the exact set of JSON Patch operations that were applied
+ * (empty when the edit was rejected). Their `path`s are the authoritative
+ * "changed pointers" the controller feeds into the incremental projection
+ * updater (ADR-057 §4.13, Phase 2.1); reporting them from the operations that
+ * really ran keeps the incremental input complete, never under-reported.
+ */
+export interface EditorAuthoringEditResult {
+  readonly text: string;
+  readonly diagnostics: readonly RoutedEditorDiagnostic[];
+  readonly operations: readonly JsonPatchOperation[];
+}
+
 export interface EditorProperty {
   readonly pointer: string;
   readonly label: string;
@@ -119,6 +156,20 @@ export function createEditorViewModel(
     readonly graphState?: AuthoringGraphExpansionState;
     readonly gameId?: string;
     readonly editorEntityProjectionDocuments?: readonly EditorEntityProjectionDocument[];
+    /**
+     * Optional incremental-projection context (ADR-057 §4.13, Phase 2.1).
+     *
+     * When present, the entity projection is produced by
+     * `updateEditorEntityProjection(previousState, …)`, which itself decides
+     * between the incremental fast path and a full rebuild. When absent, the
+     * projection is built from scratch exactly as before. Either way the returned
+     * projection is deeply equal to a full rebuild of the same input, so behaviour
+     * is unchanged on any miss.
+     */
+    readonly incremental?: {
+      readonly previousState: EditorEntityProjectionState;
+      readonly changedPointersByFile: ChangedPointersByFile;
+    };
   } = {}
 ): EditorViewModel {
   const store = createDocumentStore({ filePath: options.filePath ?? "embedded-sample.game.authoring.json", text });
@@ -136,16 +187,21 @@ export function createEditorViewModel(
   const tree = buildEntityTreeViewModel({ snapshot, diagnostics: documentDiagnostics, graphProjection: fullProjection });
   const jsonTree = buildTreeViewModel({ snapshot, diagnostics: documentDiagnostics, graphProjection: fullProjection });
   const timeline = buildManifestChronologyTimeline({ snapshot });
-  const editorEntityProjection = buildEditorEntityProjection({
-    gameId: options.gameId,
-    documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments)
-  });
+  const { editorEntityProjection, projectionState, incrementalReport } = buildViewModelProjection(
+    {
+      gameId: options.gameId,
+      documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments)
+    },
+    options.incremental
+  );
 
   return {
     snapshot,
     documentDiagnostics,
     diagnostics,
     editorEntityProjection,
+    projectionState,
+    incrementalReport,
     tree,
     jsonTree,
     timeline,
@@ -153,6 +209,41 @@ export function createEditorViewModel(
     fullEdges: fullProjection.edges.map(toEditorEdge),
     nodes: visibleProjection.nodes,
     edges: visibleProjection.edges.map(toEditorEdge)
+  };
+}
+
+/**
+ * Produces the entity projection for the view model, plus the state needed for
+ * the NEXT incremental step and its telemetry (ADR-057 §4.13, Phase 2.1).
+ *
+ * Without an `incremental` context the projection is built from scratch (the
+ * historical behaviour). With one, `updateEditorEntityProjection` decides between
+ * the incremental fast path and a full rebuild; either result is deeply equal to
+ * a full rebuild of the same input, so callers never observe a difference.
+ */
+function buildViewModelProjection(
+  input: BuildEditorEntityProjectionInput,
+  incremental:
+    | { readonly previousState: EditorEntityProjectionState; readonly changedPointersByFile: ChangedPointersByFile }
+    | undefined
+): {
+  readonly editorEntityProjection: EditorEntityProjection;
+  readonly projectionState: EditorEntityProjectionState;
+  readonly incrementalReport: IncrementalProjectionReport | undefined;
+} {
+  if (incremental === undefined) {
+    const projectionState = createEditorEntityProjectionState(input);
+    return { editorEntityProjection: projectionState.projection, projectionState, incrementalReport: undefined };
+  }
+
+  const update = updateEditorEntityProjection(incremental.previousState, {
+    input,
+    changedPointersByFile: incremental.changedPointersByFile
+  });
+  return {
+    editorEntityProjection: update.state.projection,
+    projectionState: update.state,
+    incrementalReport: update.report
   };
 }
 
@@ -361,19 +452,20 @@ export function applyPropertyEditResult(
   snapshot: DocumentSnapshot,
   pointer: string,
   value: JsonValue
-): { readonly text: string; readonly diagnostics: readonly RoutedEditorDiagnostic[] } {
+): EditorAuthoringEditResult {
   const result = reverseProjectIntent(snapshot, { type: "setValue", pointer, value });
   if (snapshot.json === undefined) {
-    return { text: snapshot.text, diagnostics: [] };
+    return { text: snapshot.text, diagnostics: [], operations: [] };
   }
 
   if (result.target !== "authoring") {
-    return { text: snapshot.text, diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic) };
+    return { text: snapshot.text, diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic), operations: [] };
   }
 
   return {
     text: `${JSON.stringify(applyJsonPatch(snapshot.json, result.operations), null, 2)}\n`,
-    diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic)
+    diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic),
+    operations: result.operations
   };
 }
 
@@ -381,7 +473,7 @@ export function applyJsonPropertyEditResult(
   snapshot: DocumentSnapshot,
   pointer: string,
   rawJson: string
-): { readonly text: string; readonly diagnostics: readonly RoutedEditorDiagnostic[] } {
+): EditorAuthoringEditResult {
   try {
     return applyPropertyEditResult(snapshot, pointer, JSON.parse(rawJson) as JsonValue);
   } catch (error) {
@@ -396,7 +488,8 @@ export function applyJsonPropertyEditResult(
           message: error instanceof Error ? error.message : "Invalid JSON value.",
           range: snapshot.locationMap.get(pointer)
         }
-      ]
+      ],
+      operations: []
     };
   }
 }
@@ -425,9 +518,9 @@ export type WritableGraphOperation =
 export function applyWritableGraphOperation(
   snapshot: DocumentSnapshot,
   operation: WritableGraphOperation
-): { readonly text: string; readonly diagnostics: readonly RoutedEditorDiagnostic[] } {
+): EditorAuthoringEditResult {
   if (snapshot.json === undefined) {
-    return { text: snapshot.text, diagnostics: [] };
+    return { text: snapshot.text, diagnostics: [], operations: [] };
   }
 
   const intent = toReverseProjectionIntent(snapshot, operation);
@@ -443,18 +536,20 @@ export function applyWritableGraphOperation(
           message: "The selected value is not compatible with this graph operation.",
           range: undefined
         }
-      ]
+      ],
+      operations: []
     };
   }
 
   const result = reverseProjectIntent(snapshot, intent);
   if (result.target !== "authoring") {
-    return { text: snapshot.text, diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic) };
+    return { text: snapshot.text, diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic), operations: [] };
   }
 
   return {
     text: `${JSON.stringify(applyJsonPatch(snapshot.json, result.operations), null, 2)}\n`,
-    diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic)
+    diagnostics: (result.diagnostics ?? []).map(toRoutedDiagnostic),
+    operations: result.operations
   };
 }
 

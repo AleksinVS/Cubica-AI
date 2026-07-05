@@ -363,3 +363,20 @@ game-agnostic CI invariant.
   + typecheck + 105. Клиентская привязка НЕ подключена (точки зафиксированы в
   §9.8/отчёте: previousState ref в контроллере, changed pointers на трёх
   patch-точках, full rebuild для Monaco free-text) — следующий срез.
+- 2026-07-05 (Phase 2.1b — клиентская привязка инкремента, готово; + фикс barrel):
+  срез вскрыл пред-существующий дефект Phase 1.4 — `computeManifestContentHash`
+  (node:crypto) ре-экспортировался из barrel, достижимого из браузерных
+  компонентов → `next build` editor-web был сломан с d19f999 (гейты срезов
+  typecheck+unit это не ловили). Исправлено: node-only модуль
+  `state-fixture-hash.ts` + subpath-export `@cubica/editor-engine/state-fixture-hash`;
+  barrel хранит только browser-safe семантическую валидацию. **Урок процесса:
+  после любого изменения фасада engine гонять `verify:editor-web` (build).**
+  Привязка 2.1b: `createEditorViewModel` принимает `incremental`
+  (previousState+changedPointersByFile) и возвращает `projectionState`+
+  `incrementalReport`; контроллер держит projectionStateRef, одноразовый
+  pendingProjectionEditRef с text-guard (защита от гонок/StrictMode), указатели
+  берутся из реально применённых операций на трёх patch-точках (property/graph/
+  единая точка ChangeSet), Monaco free-text и undo/redo/load — полный rebuild.
+  apply-функции адаптера возвращают операции (EditorAuthoringEditResult).
+  Гейты: engine 107, typecheck, unit 108 (3 новых adapter-теста эквивалентности),
+  build восстановлен, e2e 8/8 (34.6с).
