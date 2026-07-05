@@ -9,9 +9,9 @@
 
 const { runCli } = require("./authoring-compiler.cjs");
 
-try {
-  runCli(process.argv);
-} catch (error) {
+// runCli is async: it may compile on a pool of worker threads. Surface any
+// rejection as a non-zero exit with the same message shape as before.
+runCli(process.argv).catch((error) => {
   console.error(`compile-authoring-manifests: ${error.message}`);
   process.exit(1);
-}
+});

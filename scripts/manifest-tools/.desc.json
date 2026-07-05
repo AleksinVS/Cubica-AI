@@ -1,5 +1,7 @@
 {
   ".": "Manifest transformation and generation tools used by development and CI workflows.",
   "audit-prototype-candidates.cjs": "Read-only ADR-050 prototype candidate audit CLI for local, PR, weekly, LLM-semantic and platform promotion backlog workflows.",
-  "compile-authoring-manifests.cjs": "Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files."
+  "compile-authoring-manifests.cjs": "Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.",
+  "compile-cache.cjs": "Level-3 compile cache (ADR-057) and hit/miss telemetry: content-hash-keyed, atomic, one-shot .tmp storage that is never a source of truth.",
+  "compile-worker.cjs": "Worker-thread entry point that compiles one authoring job as a pure function so the compile pool stays byte-identical to a sequential run."
 }

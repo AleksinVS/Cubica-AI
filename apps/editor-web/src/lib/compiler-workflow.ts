@@ -14,7 +14,6 @@ import { pathToFileURL } from "node:url";
 import {
   createDocumentStore,
   createPrototypeExtractionProposal,
-  createSchemaRegistry,
   discoverPrototypeExtractionCandidates,
   dryRunEditorChangeSet,
   readJsonPointer,
@@ -32,7 +31,7 @@ import {
 
 import { EditorRepositoryError, normalizeAuthoringFilePath } from "./editor-repository";
 import {
-  registerLocalAuthoringSchemas,
+  getSharedAuthoringSchemaRegistry,
   schemaIdForAuthoringDocument
 } from "./editor-json-schema";
 
@@ -74,6 +73,7 @@ export interface EditorValidationResult {
   readonly filePath: string;
   readonly diagnostics: readonly EditorCompilerDiagnostic[];
   readonly artifacts: readonly EditorCompileArtifact[];
+  readonly telemetry: EditorCompileTelemetry;
 }
 
 export interface EditorCompileResult {
@@ -82,6 +82,7 @@ export interface EditorCompileResult {
   readonly checkOnly: boolean;
   readonly diagnostics: readonly EditorCompilerDiagnostic[];
   readonly artifacts: readonly EditorCompileArtifact[];
+  readonly telemetry: EditorCompileTelemetry;
 }
 
 export interface EditorPrototypeExtractionGate {
@@ -111,12 +112,37 @@ export interface EditorPreviewSourceMap {
 interface AuthoringCompilerModule {
   readonly CompileError: new (message: string, filePath?: string, pointer?: string) => Error;
   buildAjv(): unknown;
+  getSharedAjv(): unknown;
   compileAuthoringFile(job: CompilerJob, ajv?: unknown): CompilerOutput;
   compileAuthoringText(job: CompilerJob, text: string, ajv?: unknown): CompilerOutput;
+  compileAuthoringTextCached(
+    job: CompilerJob,
+    text: string,
+    ajv?: unknown,
+    options?: { readonly telemetry?: CompileTelemetryRecorder; readonly cacheEnabled?: boolean }
+  ): CompilerOutput;
+  createCompileTelemetry(): CompileTelemetryRecorder;
   compareGenerated(filePath: string, expected: unknown): string | null;
   discoverJobs(options?: { readonly gameId?: string | null }): readonly CompilerJob[];
   relativePath(filePath: string): string;
   validateRuntimeManifest(job: CompilerJob, manifest: unknown, ajv?: unknown): RuntimeValidationResult;
+}
+
+interface CompileTelemetryRecorder {
+  recordHit(ms: number): void;
+  recordMiss(ms: number): void;
+  snapshot(): EditorCompileTelemetry;
+}
+
+/**
+ * Level-3 compile cache telemetry surfaced to the editor client (design-spec
+ * §5) so a future status bar can show warm/cold compile behaviour.
+ */
+export interface EditorCompileTelemetry {
+  readonly cacheHits: number;
+  readonly cacheMisses: number;
+  readonly hitReadMs: number;
+  readonly missCompileMs: number;
 }
 
 interface CompilerJob {
@@ -165,14 +191,17 @@ export async function validateAuthoringForEditor(input: {
   const snapshot = createDocumentStore({ filePath, text: input.text }).snapshot();
   const diagnostics = collectAuthoringDiagnostics(snapshot, filePath);
   const artifacts: EditorCompileArtifact[] = [];
+  const compiler = await getCompiler(input.repoRoot);
+  const telemetry = compiler.createCompileTelemetry();
 
   if (!hasBlockingSource(diagnostics, new Set(["syntax", "schema"]))) {
-    const compiler = await getCompiler(input.repoRoot);
     const job = findJob(compiler, input.gameId, filePath);
-    const ajv = compiler.buildAjv();
+    const ajv = compiler.getSharedAjv();
 
     try {
-      const output = compiler.compileAuthoringText(job, input.text, ajv);
+      // Hot path: reuse the level-3 compile cache so re-validating unchanged
+      // authoring on load/edit skips the recompile.
+      const output = compiler.compileAuthoringTextCached(job, input.text, ajv, { telemetry });
       artifacts.push(toArtifact(compiler, job));
       diagnostics.push(...runtimeDiagnostics(compiler, job, output, snapshot, ajv));
     } catch (error) {
@@ -185,7 +214,8 @@ export async function validateAuthoringForEditor(input: {
     gameId: input.gameId,
     filePath,
     diagnostics,
-    artifacts
+    artifacts,
+    telemetry: telemetry.snapshot()
   };
 }
 
@@ -201,13 +231,15 @@ export async function compileGameForEditor(input: {
     throw new EditorRepositoryError(`No authoring compiler jobs were found for game: ${input.gameId}`, 404);
   }
 
-  const ajv = compiler.buildAjv();
+  const ajv = compiler.getSharedAjv();
+  const telemetry = compiler.createCompileTelemetry();
   const diagnostics: EditorCompilerDiagnostic[] = [];
   const artifacts: EditorCompileArtifact[] = [];
 
   for (const job of jobs) {
     try {
-      const output = compiler.compileAuthoringFile(job, ajv);
+      const text = await readFile(job.sourceFile, "utf8");
+      const output = compiler.compileAuthoringTextCached(job, text, ajv, { telemetry });
       const runtime = compiler.validateRuntimeManifest(job, output.manifest, ajv);
       artifacts.push(toArtifact(compiler, job));
       diagnostics.push(...runtime.errors.map((error) => runtimeErrorToDiagnostic(compiler, job, output.sourceMap, error)));
@@ -240,7 +272,8 @@ export async function compileGameForEditor(input: {
     gameId: input.gameId,
     checkOnly,
     diagnostics,
-    artifacts
+    artifacts,
+    telemetry: telemetry.snapshot()
   };
 }
 
@@ -287,8 +320,7 @@ export async function planPrototypeExtractionForEditor(input: {
 
   gates.push(makeGate("proposal", "Prototype proposal", []));
 
-  const registry = createSchemaRegistry();
-  registerLocalAuthoringSchemas(registry);
+  const registry = getSharedAuthoringSchemaRegistry();
   const dryRun = dryRunEditorChangeSet({
     snapshot,
     changeSet: proposalResult.proposal.changeSet,
@@ -306,7 +338,7 @@ export async function planPrototypeExtractionForEditor(input: {
   const compiler = await getCompiler(input.repoRoot);
   const job = findJob(compiler, input.gameId, filePath);
   artifacts.push(toArtifact(compiler, job));
-  const ajv = compiler.buildAjv();
+  const ajv = compiler.getSharedAjv();
 
   let beforeOutput: CompilerOutput;
   let afterOutput: CompilerOutput;
@@ -416,8 +448,7 @@ export async function compilerExportsForTests(): Promise<readonly string[]> {
 }
 
 function collectAuthoringDiagnostics(snapshot: DocumentSnapshot, filePath: string): EditorCompilerDiagnostic[] {
-  const registry = createSchemaRegistry();
-  registerLocalAuthoringSchemas(registry);
+  const registry = getSharedAuthoringSchemaRegistry();
   const schemaId = schemaIdForAuthoringDocument(filePath, snapshot.json);
 
   return validateDocument(snapshot, {

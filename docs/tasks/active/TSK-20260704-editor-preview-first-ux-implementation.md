@@ -329,3 +329,19 @@ game-agnostic CI invariant.
   availableParallelism, env-override для слабых хостов), Ajv-кэш per-worker по
   хешу схемы, дисковый кэш L2/L3 с атомарной записью и конкурентным доступом.
   Статус: остановка перед Phase 2.3 сохраняется — ждём команды на старт.
+- 2026-07-05 (Phase 2.3 — кэш уровня 3, готово): compile-cache.cjs (ключ =
+  formatVersion + хеш кода компилятора + хеш 8 схем + kind/пути + хеш authoring;
+  атомарная запись temp+rename в .tmp/editor-cache/compile/, любой сбой чтения —
+  молчаливый промах) + per-worker/per-process переиспользование Ajv
+  (getSharedAjv, shared schema registry editor-web ≈ −137мс/запрос) +
+  worker_threads-пул compileJobs (§9.6: default availableParallelism,
+  CUBICA_COMPILE_CONCURRENCY override; воркеры чистые, все side effects в главном
+  потоке в порядке заданий — выход детерминирован и байт-идентичен
+  последовательному) + телеметрия hit/miss/длительностей (CLI-сводка + поля в
+  результате compile-workflow editor-web). Кэш включён в editor-пути и
+  compile:manifests, ВЫКЛЮЧЕН в CI drift-check (честная компиляция; env-override).
+  Числа: warm hit antarctica 264.5→29.5мс (7.6×); CLI-пул на нагруженном 4-ядернике
+  медленнее последовательного (ожидаемо по §9.6 — ценность в конфигурируемости).
+  Гейты: байт-идентичность ×2 (cold/warm) + seq-режим, manifest-authoring,
+  engine 91, editor-web typecheck+105. Замер в §9.7 baseline. Планируемый
+  остаток: GC/LRU дискового кэша — вместе с L2 (запись §9.7.6).

@@ -9,14 +9,42 @@
  */
 
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { Worker } = require("node:worker_threads");
 const AjvLib = require("ajv");
 const Ajv = AjvLib.default || AjvLib;
 const addFormatsLib = require("ajv-formats");
 const addFormats = addFormatsLib.default || addFormatsLib;
+const {
+  COMPILE_CACHE_FORMAT_VERSION,
+  hashText,
+  resolveCompileCacheEnabled,
+  readCacheEntry,
+  writeCacheEntry,
+  createCompileTelemetry
+} = require("./compile-cache.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
+
+// The schema set the compiler validates against. Declared once so both buildAjv
+// (which compiles them) and the cache key (which hashes their contents) stay in
+// sync: if a validation schema changes, cached compile results must invalidate.
+const COMPILER_SCHEMA_FILES = [
+  "manifest-authoring-common.schema.json",
+  "game-authoring.schema.json",
+  "ui-authoring.schema.json",
+  "game-authoring-v2.schema.json",
+  "ui-authoring-v2.schema.json",
+  "manifest-source-map.schema.json",
+  "game-manifest.schema.json",
+  "ui-manifest.schema.json"
+];
+
+// Directory for level-3 compile cache entries. Under `.tmp/` (outside Git);
+// deleting it is always safe (ADR-057 §5).
+const COMPILE_CACHE_DIR = path.join(repoRoot, ".tmp", "editor-cache", "compile");
 const AUTHORING_KEYS = new Set([
   "_type",
   "_extends",
@@ -91,22 +119,47 @@ function buildAjv() {
   // lint is relaxed. Documented bounded exception in LEGACY-0016.
   const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
   addFormats(ajv);
-  for (const schemaFile of [
-    "manifest-authoring-common.schema.json",
-    "game-authoring.schema.json",
-    "ui-authoring.schema.json",
-    "game-authoring-v2.schema.json",
-    "ui-authoring-v2.schema.json",
-    "manifest-source-map.schema.json",
-    "game-manifest.schema.json",
-    "ui-manifest.schema.json"
-  ]) {
+  for (const schemaFile of COMPILER_SCHEMA_FILES) {
     const schema = readJson(path.join(schemasRoot, schemaFile));
     if (schemaFile === "game-manifest.schema.json") {
       ajv.addSchema(schema, "https://cubica.platform/schemas/game-manifest.schema.json");
     } else {
       ajv.addSchema(schema);
     }
+  }
+  return ajv;
+}
+
+// Per-process (per-worker) cache of built Ajv instances, keyed by the hash of
+// the schema set. Building Ajv and compiling its validators costs ~120 ms
+// (profiling-baseline §2.1), so buildAjv() on every request was wasteful. This
+// reuses one instance for the whole process; the key means a schema change on
+// disk yields a fresh instance. Worker threads each get their own module copy,
+// hence their own cache — validators are never shared across threads (§9.6).
+const sharedAjvBySchemaHash = new Map();
+
+/**
+ * Combined SHA-256 of every compiler schema file's contents, computed once and
+ * memoised. Used both to key the shared Ajv and to invalidate the compile cache
+ * when a validation schema changes.
+ */
+let cachedSchemasHash;
+function getSchemasHash() {
+  if (cachedSchemasHash === undefined) {
+    cachedSchemasHash = hashText(
+      COMPILER_SCHEMA_FILES.map((file) => fs.readFileSync(path.join(schemasRoot, file), "utf8")).join("\0")
+    );
+  }
+  return cachedSchemasHash;
+}
+
+/** Returns a process-wide reused Ajv instance (see sharedAjvBySchemaHash). */
+function getSharedAjv() {
+  const schemaHash = getSchemasHash();
+  let ajv = sharedAjvBySchemaHash.get(schemaHash);
+  if (ajv === undefined) {
+    ajv = buildAjv();
+    sharedAjvBySchemaHash.set(schemaHash, ajv);
   }
   return ajv;
 }
@@ -436,6 +489,74 @@ function compileAuthoringText(job, text, ajv = buildAjv()) {
 
 function compileAuthoringFile(job, ajv = buildAjv()) {
   return compileAuthoringDocument(job, readJson(job.sourceFile), ajv);
+}
+
+/**
+ * Combines every compile-invariant input into one hash prefix, computed once:
+ * the cache format version, the compiler's own source hash (so a compiler code
+ * change invalidates the cache — otherwise the cache would mask the change and
+ * break the drift-check), and the schema-set hash.
+ */
+let cachedKeyPrefix;
+function getCacheKeyPrefix() {
+  if (cachedKeyPrefix === undefined) {
+    const compilerHash = hashText(fs.readFileSync(__filename, "utf8"));
+    cachedKeyPrefix = hashText(
+      [COMPILE_CACHE_FORMAT_VERSION, compilerHash, getSchemasHash()].join("\0")
+    );
+  }
+  return cachedKeyPrefix;
+}
+
+/**
+ * Cache key for one compile job: the invariant prefix plus the job identity
+ * (kind + generated/source paths, which the output embeds) plus the hash of the
+ * authoring text. Any input not folded in here would be a cache-design bug.
+ */
+function computeJobCacheKey(job, authoringText) {
+  return hashText(
+    [
+      getCacheKeyPrefix(),
+      job.kind,
+      relativePath(job.sourceFile),
+      relativePath(job.outputFile),
+      relativePath(job.sourceMapFile),
+      hashText(authoringText)
+    ].join("\0")
+  );
+}
+
+/**
+ * Compiles authoring text through the level-3 cache when enabled: returns a
+ * cached `{ manifest, sourceMap }` on a hit, otherwise compiles and repopulates.
+ * `options.telemetry` (optional) records hit/miss counts and durations.
+ * `options.cacheEnabled` overrides the default resolution (env / honest-check).
+ */
+function compileAuthoringTextCached(job, text, ajv = getSharedAjv(), options = {}) {
+  const telemetry = options.telemetry;
+  const cacheEnabled = options.cacheEnabled !== undefined
+    ? options.cacheEnabled
+    : resolveCompileCacheEnabled({});
+
+  if (cacheEnabled) {
+    const key = computeJobCacheKey(job, text);
+    const readStart = process.hrtime.bigint();
+    const cached = readCacheEntry(COMPILE_CACHE_DIR, key);
+    if (cached !== null) {
+      telemetry?.recordHit(Number(process.hrtime.bigint() - readStart) / 1e6);
+      return cached;
+    }
+    const compileStart = process.hrtime.bigint();
+    const output = compileAuthoringText(job, text, ajv);
+    telemetry?.recordMiss(Number(process.hrtime.bigint() - compileStart) / 1e6);
+    writeCacheEntry(COMPILE_CACHE_DIR, key, output);
+    return output;
+  }
+
+  const compileStart = process.hrtime.bigint();
+  const output = compileAuthoringText(job, text, ajv);
+  telemetry?.recordMiss(Number(process.hrtime.bigint() - compileStart) / 1e6);
+  return output;
 }
 
 function normalizeRuntimePointers(mappings) {
@@ -948,18 +1069,165 @@ function compareGenerated(filePath, expected) {
   return actualText === expectedText ? null : `generated file is stale: ${relativePath(filePath)}`;
 }
 
-function compileJobs(options = {}) {
-  const ajv = buildAjv();
+/**
+ * Degree of parallelism for the compile pool. Default: min(jobCount, cores).
+ * `CUBICA_COMPILE_CONCURRENCY` overrides it; =1 forces the inline sequential
+ * path, which must behave identically to the pool (profiling-baseline §9.6).
+ */
+function resolveConcurrency(jobCount) {
+  const env = process.env.CUBICA_COMPILE_CONCURRENCY;
+  if (env !== undefined && env !== "") {
+    const parsed = Number.parseInt(env, 10);
+    if (Number.isFinite(parsed) && parsed >= 1) {
+      return Math.min(parsed, Math.max(1, jobCount));
+    }
+  }
+  const cores = typeof os.availableParallelism === "function" ? os.availableParallelism() : os.cpus().length;
+  return Math.max(1, Math.min(cores, Math.max(1, jobCount)));
+}
+
+/** Rebuilds a CompileError (or plain Error) from a worker's serialized error. */
+function restoreWorkerError(serialized) {
+  if (serialized.name === "CompileError" && typeof serialized.rawMessage === "string") {
+    return new CompileError(serialized.rawMessage, serialized.filePath, serialized.pointer);
+  }
+  return new Error(serialized.message);
+}
+
+/**
+ * Runs compile tasks on a pool of worker threads and resolves with a
+ * Map<taskIndex, workerResult>. Each worker handles one task at a time and pulls
+ * the next when done (simple work queue). Results carry their taskIndex, so the
+ * caller re-applies side effects in deterministic job order regardless of which
+ * worker finished first.
+ */
+function compileTasksInPool(tasks, concurrency) {
+  return new Promise((resolve, reject) => {
+    const workerPath = path.join(__dirname, "compile-worker.cjs");
+    const results = new Map();
+    const workers = [];
+    let next = 0;
+    let completed = 0;
+    let settled = false;
+
+    const dispatch = (worker) => {
+      if (next >= tasks.length) {
+        return;
+      }
+      const task = tasks[next];
+      next += 1;
+      worker.postMessage({ type: "compile", taskIndex: task.taskIndex, job: task.job, text: task.text });
+    };
+
+    const fail = (error) => {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      for (const worker of workers) {
+        worker.terminate();
+      }
+      reject(error);
+    };
+
+    const workerCount = Math.max(1, Math.min(concurrency, tasks.length));
+    for (let i = 0; i < workerCount; i += 1) {
+      const worker = new Worker(workerPath);
+      workers.push(worker);
+      worker.on("message", (message) => {
+        if (settled) {
+          return;
+        }
+        results.set(message.taskIndex, message);
+        completed += 1;
+        if (completed === tasks.length) {
+          settled = true;
+          // Ask workers to close their ports so their threads exit cleanly.
+          for (const idle of workers) {
+            idle.postMessage({ type: "shutdown" });
+          }
+          resolve(results);
+          return;
+        }
+        dispatch(worker);
+      });
+      worker.on("error", fail);
+    }
+
+    for (const worker of workers) {
+      dispatch(worker);
+    }
+  });
+}
+
+async function compileJobs(options = {}) {
   const jobs = discoverJobs(options);
+  const cacheEnabled = resolveCompileCacheEnabled({ check: Boolean(options.check) });
+  const telemetry = createCompileTelemetry();
   const stale = [];
   const results = [];
 
   if (jobs.length === 0) {
-    return { jobs, results, stale };
+    return { jobs, results, stale, telemetry: { ...telemetry.snapshot(), cacheEnabled, concurrency: 0 } };
   }
 
-  for (const job of jobs) {
-    const output = compileAuthoringFile(job, ajv);
+  const sharedAjv = getSharedAjv();
+  const concurrency = resolveConcurrency(jobs.length);
+
+  // Phase 1 (main thread, deterministic): read authoring text and probe the
+  // cache. A hit resolves the output immediately; misses are queued for compile.
+  const prepared = jobs.map((job) => {
+    const text = fs.readFileSync(job.sourceFile, "utf8");
+    const entry = { job, text, key: null, output: undefined, fromCache: false };
+    if (cacheEnabled) {
+      entry.key = computeJobCacheKey(job, text);
+      const readStart = process.hrtime.bigint();
+      const cached = readCacheEntry(COMPILE_CACHE_DIR, entry.key);
+      if (cached !== null) {
+        telemetry.recordHit(Number(process.hrtime.bigint() - readStart) / 1e6);
+        entry.output = cached;
+        entry.fromCache = true;
+      }
+    }
+    return entry;
+  });
+
+  // Phase 2: compile the misses — on the worker pool when concurrency > 1,
+  // inline otherwise. Both paths produce identical outputs; only ordering of
+  // side effects (phase 3) is what makes output byte-identical, and that is
+  // always driven by job order on the main thread.
+  const missTasks = [];
+  prepared.forEach((entry, index) => {
+    if (!entry.fromCache) {
+      missTasks.push({ taskIndex: index, job: entry.job, text: entry.text });
+    }
+  });
+
+  if (missTasks.length > 0 && concurrency > 1) {
+    const poolResults = await compileTasksInPool(missTasks, concurrency);
+    for (const task of missTasks) {
+      const message = poolResults.get(task.taskIndex);
+      if (message === undefined) {
+        throw new Error(`Compile worker returned no result for ${relativePath(task.job.sourceFile)}`);
+      }
+      if (!message.ok) {
+        throw restoreWorkerError(message.error);
+      }
+      prepared[task.taskIndex].output = message.output;
+      telemetry.recordMiss(message.compileMs);
+    }
+  } else {
+    for (const task of missTasks) {
+      const compileStart = process.hrtime.bigint();
+      const output = compileAuthoringText(task.job, task.text, sharedAjv);
+      telemetry.recordMiss(Number(process.hrtime.bigint() - compileStart) / 1e6);
+      prepared[task.taskIndex].output = output;
+    }
+  }
+
+  // Phase 3 (main thread, in job order): write/compare, populate cache, log.
+  for (const entry of prepared) {
+    const { job, output, key, fromCache } = entry;
     if (options.check) {
       const manifestDiff = compareGenerated(job.outputFile, output.manifest);
       const sourceMapDiff = compareGenerated(job.sourceMapFile, output.sourceMap);
@@ -969,6 +1237,9 @@ function compileJobs(options = {}) {
       writeJson(job.outputFile, output.manifest);
       writeJson(job.sourceMapFile, output.sourceMap);
     }
+    if (cacheEnabled && key !== null && !fromCache) {
+      writeCacheEntry(COMPILE_CACHE_DIR, key, output);
+    }
     results.push({ job, output });
     if (!options.quiet) {
       const action = options.check ? "checked" : "compiled";
@@ -976,11 +1247,11 @@ function compileJobs(options = {}) {
     }
   }
 
-  return { jobs, results, stale };
+  return { jobs, results, stale, telemetry: { ...telemetry.snapshot(), cacheEnabled, concurrency } };
 }
 
-function run(options = {}) {
-  const result = compileJobs(options);
+async function run(options = {}) {
+  const result = await compileJobs(options);
 
   if (result.jobs.length === 0) {
     if (!options.quiet) {
@@ -993,25 +1264,40 @@ function run(options = {}) {
     throw new Error(`Authoring/generated drift detected:\n- ${result.stale.join("\n- ")}`);
   }
 
+  if (!options.quiet) {
+    const t = result.telemetry;
+    console.log(
+      `compile cache: ${t.cacheEnabled ? "on" : "off"} — ` +
+        `${t.cacheHits} hit / ${t.cacheMisses} miss ` +
+        `(read ${t.hitReadMs.toFixed(1)} ms, compile ${t.missCompileMs.toFixed(1)} ms), ` +
+        `concurrency ${t.concurrency}`
+    );
+  }
+
   return result;
 }
 
-function runCli(argv = process.argv) {
+async function runCli(argv = process.argv) {
   return run(parseArgs(argv));
 }
 
 module.exports = {
   CompileError,
   buildAjv,
+  getSharedAjv,
   compileAuthoringFile,
   compileAuthoringText,
+  compileAuthoringTextCached,
   compileJobs,
   compareGenerated,
+  createCompileTelemetry,
+  computeJobCacheKey,
   discoverJobs,
   formatErrors,
   normalizeRuntimePointers,
   parseArgs,
   relativePath,
+  resolveConcurrency,
   run,
   runCli,
   schemaIdForRuntimeJob,

@@ -5,7 +5,7 @@
  * registered in Monaco and @cubica/editor-engine. Remote schema loading stays
  * disabled so diagnostics are deterministic and do not depend on network state.
  */
-import type { JsonSchema, JsonValue, SchemaRegistry } from "@cubica/editor-engine";
+import { createSchemaRegistry, type JsonSchema, type JsonValue, type SchemaRegistry } from "@cubica/editor-engine";
 
 import gameAuthoringSchemaV2 from "../../../../docs/architecture/schemas/game-authoring-v2.schema.json";
 import manifestAuthoringCommonSchema from "../../../../docs/architecture/schemas/manifest-authoring-common.schema.json";
@@ -30,6 +30,23 @@ export function registerLocalAuthoringSchemas(registry: SchemaRegistry): void {
   for (const item of localAuthoringSchemas) {
     registry.registerSchema(item.uri, item.schema);
   }
+}
+
+// Process-wide reused registry for authoring validation. Building the registry
+// and compiling its Ajv validators costs ~137 ms (profiling-baseline §2.1), so a
+// fresh registry per request wasted that on every keystroke. The registry is
+// registered once and only ever read afterwards (validateDocument does not
+// re-register), so reuse across requests is safe.
+let sharedAuthoringSchemaRegistry: SchemaRegistry | undefined;
+
+/** Returns a shared authoring schema registry, building it once per process. */
+export function getSharedAuthoringSchemaRegistry(): SchemaRegistry {
+  if (sharedAuthoringSchemaRegistry === undefined) {
+    const registry = createSchemaRegistry();
+    registerLocalAuthoringSchemas(registry);
+    sharedAuthoringSchemaRegistry = registry;
+  }
+  return sharedAuthoringSchemaRegistry;
 }
 
 export function schemaIdForAuthoringDocument(filePath: string, json: JsonValue | undefined): string | undefined {

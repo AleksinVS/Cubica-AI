@@ -41,6 +41,7 @@ docs: # Архитектура, задачи, планирование
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
       manifest-authoring-common.schema.json: file # Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.
       manifest-source-map.schema.json: file # JSON Schema for tooling-only source map companion files generated next to runtime manifests.
+      state-fixture.schema.json: file # JSON Schema for pinned editor state fixtures under games/<id>/authoring/fixtures/*.json (ADR-057); runtime/player never read these files.
       ui-authoring.schema.json: file # JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.
     agent-ui-foundation.md: file # Проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI: границы, контекст, инструменты, безопасность и future assistant surfaces.
     agent-ui-portability-and-risk-controls.md: file # Проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест вокруг CopilotKit, AG-UI и production LLM backend.
@@ -126,6 +127,8 @@ scripts: # Скрипты разработки и индексирования
   manifest-tools: # Manifest transformation and generation tools used by development and CI workflows.
     audit-prototype-candidates.cjs: file # Read-only ADR-050 prototype candidate audit CLI for local, PR, weekly, LLM-semantic and platform promotion backlog workflows.
     compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
+    compile-cache.cjs: file # Level-3 compile cache (ADR-057) and hit/miss telemetry: content-hash-keyed, atomic, one-shot .tmp storage that is never a source of truth.
+    compile-worker.cjs: file # Worker-thread entry point that compiles one authoring job as a pure function so the compile pool stays byte-identical to a sequential run.
 SDK: # SDK и вспомогательные библиотеки 
   core: directory... # Базовые компоненты SDK и общая логика 
   react-sdk: directory... # SDK для React/Next.js‑приложений 

@@ -358,11 +358,20 @@ async function main() {
         return engine.buildEditorEntityYamlProjection({ entity, documents: projectionDocuments });
       });
 
-      // 10. Компиляция game authoring → runtime manifest.
+      // 10. Компиляция game authoring → runtime manifest (холодная, без кэша).
       const gameInput = inputs.find((input) => input.kind === "game");
       const gameText = texts.find(({ input }) => input.kind === "game").text;
       timed(bucket, "compile.game", () =>
         authoringCompiler.compileAuthoringText(gameInput.job, gameText, compilerAjv)
+      );
+
+      // 10b. Тёплая компиляция через кэш уровня 3 (первый вызов — промах, пишет
+      // кэш; последующие — попадание, читают с диска). Диагностический разрез:
+      // НЕ входит в composite. Даёт число «warm, cache hit» для §9.7.
+      timed(bucket, "compile.gameWarm", () =>
+        authoringCompiler.compileAuthoringTextCached(gameInput.job, gameText, compilerAjv, {
+          cacheEnabled: true
+        })
       );
 
       // 11. Компиляция ui authoring → runtime manifest (сумма по каналам).
@@ -482,6 +491,7 @@ function printReport(result, compositeStages) {
     console.log("  " + "-".repeat(58));
     console.log(row("composite.projectionLoad", bucket["composite.projectionLoad"]));
     console.log(row("parse.jsonOnly (диагн.)", bucket["parse.jsonOnly"]));
+    console.log(row("compile.game (warm, hit)", bucket["compile.gameWarm"]));
     const rep = result.representativeEntity[gameId];
     if (rep) {
       console.log(`  представит. сущность YAML: ${rep.entityId} (facet-источников: ${rep.facetSourceCount})`);
