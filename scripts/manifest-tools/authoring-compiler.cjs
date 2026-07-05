@@ -185,40 +185,80 @@ function mergeObjects(parentValue, childValue) {
 function createCompilerContext(sourceFile, authoring) {
   return {
     sourceFile,
+    // The authoring file's repository-relative path is stable for the whole
+    // compile, so we compute it once here instead of re-running path.relative
+    // (plus its regex) inside the hot source-existence check for every child of
+    // every node.
+    sourceFileRelative: relativePath(sourceFile),
     authoring,
     definitions: authoring._definitions || {},
     definitionCache: new Map(),
+    // Memoises JSON Pointer resolution against `authoring` for this compile.
+    // `authoring` is never mutated while compiling, so a pointer always resolves
+    // to the same {exists, value}; see resolveAuthoringPointer for why this
+    // removes the super-linear "walk from the document root for every child"
+    // cost the previous readPointer paid.
+    pointerCache: new Map(),
     allowUnresolvedTypes: authoring._schemaVersion === "2.0"
   };
 }
 
-function readPointer(document, pointer) {
-  if (pointer === "") {
-    return { exists: true, value: document };
-  }
-  if (!pointer.startsWith("/")) {
-    return { exists: false, value: undefined };
+/**
+ * Resolves a JSON Pointer inside the authoring document, memoised per compile.
+ *
+ * WHY this shape (and not a fresh walk from the root each time): the compiler
+ * derives child sources by extending a parent pointer with one more segment,
+ * then asks "does this pointer exist in the authoring file?". The old readPointer
+ * re-walked the entire path from the document root for every such question, so a
+ * node at depth d cost O(d) per child — super-linear across a deep, wide manifest
+ * (antarctica: 141 actions with nested effects). Here each pointer is resolved
+ * from its already-cached parent in O(1) and stored, so the whole traversal is
+ * linear in the number of distinct pointers queried. Semantics are identical to
+ * the previous readPointer: descending requires an object/array with an own
+ * property for the (unescaped) segment, otherwise the pointer does not exist.
+ */
+function resolveAuthoringPointer(context, pointer) {
+  const cache = context.pointerCache;
+  const cached = cache.get(pointer);
+  if (cached !== undefined) {
+    return cached;
   }
 
-  let current = document;
-  for (const rawSegment of pointer.slice(1).split("/")) {
-    const segment = rawSegment.replace(/~1/g, "/").replace(/~0/g, "~");
-    if (!hasPlainObject(current) && !Array.isArray(current)) {
-      return { exists: false, value: undefined };
+  let result;
+  if (pointer === "") {
+    result = { exists: true, value: context.authoring };
+  } else if (!pointer.startsWith("/")) {
+    result = { exists: false, value: undefined };
+  } else {
+    // Split off only the last segment; the parent prefix is resolved (and
+    // cached) recursively. JSON Pointer separators are literal "/" characters —
+    // slashes inside a segment are escaped as "~1" — so lastIndexOf finds the
+    // real boundary, matching how the previous readPointer split the path.
+    const lastSlash = pointer.lastIndexOf("/");
+    const parentPointer = pointer.slice(0, lastSlash);
+    const segment = pointer.slice(lastSlash + 1).replace(/~1/g, "/").replace(/~0/g, "~");
+    const parent = resolveAuthoringPointer(context, parentPointer);
+    const current = parent.value;
+    if (
+      !parent.exists ||
+      (!hasPlainObject(current) && !Array.isArray(current)) ||
+      !Object.prototype.hasOwnProperty.call(current, segment)
+    ) {
+      result = { exists: false, value: undefined };
+    } else {
+      result = { exists: true, value: current[segment] };
     }
-    if (!Object.prototype.hasOwnProperty.call(current, segment)) {
-      return { exists: false, value: undefined };
-    }
-    current = current[segment];
   }
-  return { exists: true, value: current };
+
+  cache.set(pointer, result);
+  return result;
 }
 
 function sourceExists(context, source) {
-  if (source.file !== relativePath(context.sourceFile)) {
+  if (source.file !== context.sourceFileRelative) {
     return false;
   }
-  return readPointer(context.authoring, source.pointer).exists;
+  return resolveAuthoringPointer(context, source.pointer).exists;
 }
 
 function uniqueSources(sources) {
@@ -446,14 +486,86 @@ function addRuntimeMapping(mappings, targetPointer, compiled, sourceFile, source
   mappings[targetPointer] = sourceFor(compiled, sourceFile, sourcePointer);
 }
 
-function copySubtreeMappings(mappings, compiled, sourceFile, sourcePrefix, targetPrefix) {
-  for (const sourcePointer of Object.keys(compiled.mappings)) {
-    if (sourcePointer !== sourcePrefix && !sourcePointer.startsWith(`${sourcePrefix}/`)) {
-      continue;
+// Per-compiled-document index used to copy a source-map subtree without
+// rescanning every mapping key. Keyed by the compiled result object so it is
+// built at most once per compile and garbage-collected with it.
+const subtreeIndexCache = new WeakMap();
+
+/**
+ * Builds (once) the ordered key list and a pointer→position lookup for a
+ * compiled document's mappings.
+ *
+ * WHY this is safe to exploit: compileNode emits mappings in depth-first order,
+ * so every node's own pointer and all of its descendant pointers form one
+ * *contiguous* run in Object.keys order (an object node sits first in its run,
+ * an array node last, but the run is unbroken either way — no sibling subtree is
+ * ever interleaved because each node has a unique pointer). That lets
+ * copySubtreeMappings find a whole subtree by expanding outward from the
+ * prefix's own position instead of filtering all keys.
+ */
+function getSubtreeIndex(compiled) {
+  let index = subtreeIndexCache.get(compiled);
+  if (index === undefined) {
+    const orderedKeys = Object.keys(compiled.mappings);
+    const positionByKey = new Map();
+    for (let i = 0; i < orderedKeys.length; i += 1) {
+      positionByKey.set(orderedKeys[i], i);
     }
-    const suffix = sourcePointer.slice(sourcePrefix.length);
-    const targetPointer = `${targetPrefix}${suffix}`;
-    mappings[targetPointer] = sourceFor(compiled, sourceFile, sourcePointer);
+    index = { orderedKeys, positionByKey };
+    subtreeIndexCache.set(compiled, index);
+  }
+  return index;
+}
+
+function isInSubtree(pointer, prefix) {
+  return pointer === prefix || pointer.startsWith(`${prefix}/`);
+}
+
+/**
+ * Copies every source-map entry under `sourcePrefix` to `targetPrefix`,
+ * preserving the original key order (so the serialized source map stays
+ * byte-identical).
+ *
+ * WHY the rewrite: this used to scan *all* mapping keys on every call, and it is
+ * called once per action / per screen. On antarctica that was 141 actions ×
+ * ~9000 keys — the dominant, super-linear cost of the whole compile. Because a
+ * subtree is a contiguous run in Object.keys order (see getSubtreeIndex), we
+ * locate the prefix's own position and expand left/right only across its own
+ * run, making each call proportional to the subtree it copies and the total
+ * work linear in the number of mappings.
+ */
+function copySubtreeMappings(mappings, compiled, sourceFile, sourcePrefix, targetPrefix) {
+  const { orderedKeys, positionByKey } = getSubtreeIndex(compiled);
+  const anchor = positionByKey.get(sourcePrefix);
+
+  // Fallback for the (unused by current callers) case where the exact prefix
+  // pointer is not itself a mapping key: fall back to the exhaustive scan so
+  // semantics never depend on the contiguity assumption.
+  if (anchor === undefined) {
+    for (const sourcePointer of orderedKeys) {
+      if (!isInSubtree(sourcePointer, sourcePrefix)) {
+        continue;
+      }
+      mappings[`${targetPrefix}${sourcePointer.slice(sourcePrefix.length)}`] = sourceFor(compiled, sourceFile, sourcePointer);
+    }
+    return;
+  }
+
+  // Expand outward from the prefix's own position to cover the contiguous run
+  // of its subtree; the run includes the prefix regardless of whether it sits
+  // first (object node) or last (array node) within it.
+  let lo = anchor;
+  while (lo > 0 && isInSubtree(orderedKeys[lo - 1], sourcePrefix)) {
+    lo -= 1;
+  }
+  let hi = anchor;
+  while (hi + 1 < orderedKeys.length && isInSubtree(orderedKeys[hi + 1], sourcePrefix)) {
+    hi += 1;
+  }
+
+  for (let i = lo; i <= hi; i += 1) {
+    const sourcePointer = orderedKeys[i];
+    mappings[`${targetPrefix}${sourcePointer.slice(sourcePrefix.length)}`] = sourceFor(compiled, sourceFile, sourcePointer);
   }
 }
 

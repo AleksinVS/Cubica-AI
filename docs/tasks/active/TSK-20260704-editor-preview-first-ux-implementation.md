@@ -307,3 +307,17 @@ game-agnostic CI invariant.
   Замеры при фоновой нагрузке хоста (±20% абсолютных мс), доли/ранжирование
   стабильны. verify:editor-engine 91/91; продуктовый код не менялся.
   СТОП по указанию владельца: Phase 2 не начата — ожидает подтверждения.
+- 2026-07-05 (алгофикс компилятора, готово): CPU-профиль уточнил диагноз baseline —
+  главная квадратичность была в `copySubtreeMappings` (62.7% self-time: линейный
+  скан ВСЕХ ключей mappings на каждое действие/экран), а не в
+  deriveChildSources/readPointer (~6%). Фикс в authoring-compiler.cjs:
+  (1) copySubtreeMappings — O(поддерева) через индекс pointer→позиция (WeakMap,
+  DFS-непрерывные диапазоны ключей); (2) мемоизированное инкрементальное
+  разрешение указателей resolveAuthoringPointer. Байт-идентичность выхода
+  подтверждена (compile:manifests → пустой diff). compile.game antarctica
+  895.9→262.2мс (3.42×), composite 1770.9→1158.6мс (1.53×); нормировка на узел
+  3.2×→1.24× — сверхлинейность устранена, кэш L3 больше не замаскирует проблему.
+  Замеры и уточнение диагноза — в §4/§9 profiling-baseline-2026-07-05.md.
+  verify:manifest-authoring OK, verify:editor-engine 91/91,
+  compiler-workflow.test 7/7. СТОП по указанию владельца: следующий шаг
+  (Phase 2.3 кэш уровня 3: компиляция+Ajv) не начат.
