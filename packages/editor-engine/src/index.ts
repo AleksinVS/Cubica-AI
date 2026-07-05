@@ -97,6 +97,22 @@ export {
 // Cross-cutting semantic pointer predicate for incremental invalidation.
 export { pointersOverlap } from "./semantics.ts";
 
+// Disk warm-start cache serialization for DocumentStore snapshots (ADR-057
+// §4.13 "Уровень 2"). These are pure JSON transforms with NO node dependency, so
+// they are safe in this browser-reachable barrel; the actual disk I/O lives in
+// the editor-web server library. `createTextLocationMapFromEntries` is the
+// map-rebuild primitive the revive step relies on.
+export {
+  DOCUMENT_SNAPSHOT_CACHE_FORMAT_VERSION,
+  reviveDocumentSnapshot,
+  serializeDocumentSnapshot
+} from "./document-snapshot-serialization.ts";
+export type {
+  SerializedDocumentSnapshot,
+  SerializedDocumentSnapshotEnvelope
+} from "./document-snapshot-serialization.ts";
+export { createTextLocationMapFromEntries } from "./document-store.ts";
+
 // JSON Schema validation and semantic diagnostics.
 export { createSchemaRegistry, validateDocument, validateJsonValue } from "./schema.ts";
 

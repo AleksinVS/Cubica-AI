@@ -380,3 +380,19 @@ game-agnostic CI invariant.
   apply-функции адаптера возвращают операции (EditorAuthoringEditResult).
   Гейты: engine 107, typecheck, unit 108 (3 новых adapter-теста эквивалентности),
   build восстановлен, e2e 8/8 (34.6с).
+- 2026-07-05 (Phase 2.2a — дисковый кэш L2, серверная часть, готово):
+  сериализация снапшота DocumentStore (document-snapshot-serialization.ts,
+  версионированный конверт, строгий revive → null при несовпадении;
+  createTextLocationMapFromEntries для восстановления карты без повторного
+  парсинга) + editor-file-cache.ts (.tmp/editor-cache/files/, ключ =
+  SHA-256(FILE_ARTIFACT_CACHE_FORMAT_VERSION + DOCUMENT_SNAPSHOT_CACHE_FORMAT_VERSION
+  + filePath + текст); версия линз в ключ сознательно НЕ включена — снапшот от
+  неё не зависит; schema/semantic-валидация в L2 НЕ кэшируется — text-only ключ
+  не хеширует схемы, это покрывает L3). Подключено в оба snapshot-места
+  compiler-workflow (отложенная fire-and-forget запись), телеметрия
+  fileCacheTelemetry рядом с L3. GC/LRU ВСЕГО .tmp/editor-cache/ (env
+  CUBICA_EDITOR_CACHE_MAX_BYTES, дефолт 256MB, LRU по max(atime,mtime)) подключён
+  к garbageCollectEditorSessions ADR-042 (+ручной вызов) — закрыт хвост §9.7.6.
+  Замер: antarctica 538KB — build 169.2мс / revive 56.1мс (3.0×). Гейты: engine
+  111 (+4), editor-web 116 (+8), typecheck, build, e2e 8/8. Остаток L2: проектные
+  артефакты (проекция/граф) + гидратация клиента — срез 2.2b.

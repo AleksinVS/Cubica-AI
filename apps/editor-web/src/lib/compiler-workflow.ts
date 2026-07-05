@@ -12,7 +12,6 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 import {
-  createDocumentStore,
   createPrototypeExtractionProposal,
   discoverPrototypeExtractionCandidates,
   dryRunEditorChangeSet,
@@ -34,6 +33,11 @@ import {
   getSharedAuthoringSchemaRegistry,
   schemaIdForAuthoringDocument
 } from "./editor-json-schema";
+import {
+  createEditorFileCacheTelemetry,
+  loadDocumentSnapshotWithCache,
+  type EditorFileCacheTelemetry
+} from "./editor-file-cache";
 
 interface CompilerCacheEntry {
   compiler?: AuthoringCompilerModule;
@@ -74,6 +78,8 @@ export interface EditorValidationResult {
   readonly diagnostics: readonly EditorCompilerDiagnostic[];
   readonly artifacts: readonly EditorCompileArtifact[];
   readonly telemetry: EditorCompileTelemetry;
+  /** Level-2 per-file snapshot cache hit/miss + revive/build durations (design-spec §5). */
+  readonly fileCacheTelemetry: EditorFileCacheTelemetry;
 }
 
 export interface EditorCompileResult {
@@ -188,7 +194,11 @@ export async function validateAuthoringForEditor(input: {
   readonly repoRoot?: string;
 }): Promise<EditorValidationResult> {
   const filePath = normalizeAuthoringFilePath(input.filePath);
-  const snapshot = createDocumentStore({ filePath, text: input.text }).snapshot();
+  // Level-2 warm-start cache: revive the DocumentStore snapshot (parse tree +
+  // location map) when this exact file content was parsed before, skipping the
+  // ~98%-of-parse cost of rebuilding the location map (profiling baseline §9).
+  const fileCacheTelemetry = createEditorFileCacheTelemetry();
+  const snapshot = await loadDocumentSnapshotWithCache({ filePath, text: input.text, telemetry: fileCacheTelemetry });
   const diagnostics = collectAuthoringDiagnostics(snapshot, filePath);
   const artifacts: EditorCompileArtifact[] = [];
   const compiler = await getCompiler(input.repoRoot);
@@ -215,7 +225,8 @@ export async function validateAuthoringForEditor(input: {
     filePath,
     diagnostics,
     artifacts,
-    telemetry: telemetry.snapshot()
+    telemetry: telemetry.snapshot(),
+    fileCacheTelemetry: fileCacheTelemetry.snapshot()
   };
 }
 
@@ -290,7 +301,9 @@ export async function planPrototypeExtractionForEditor(input: {
   readonly repoRoot?: string;
 }): Promise<EditorPrototypeExtractionResult> {
   const filePath = normalizeAuthoringFilePath(input.filePath);
-  const snapshot = createDocumentStore({ filePath, text: input.text }).snapshot();
+  // Same Level-2 warm-start cache as validate: the revived snapshot is identical
+  // to a freshly built one, so caching is transparent to prototype extraction.
+  const snapshot = await loadDocumentSnapshotWithCache({ filePath, text: input.text });
   const diagnostics: EditorCompilerDiagnostic[] = [];
   const gates: EditorPrototypeExtractionGate[] = [];
   const artifacts: EditorCompileArtifact[] = [];

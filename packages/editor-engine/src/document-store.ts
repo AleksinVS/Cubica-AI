@@ -281,6 +281,26 @@ class JsonTextLocationParser {
   }
 }
 
+/**
+ * Rebuilds a {@link TextLocationMap} from a flat list of entries.
+ *
+ * This is the inverse of `TextLocationMap.entries()`: given the entries a
+ * snapshot produced, it reconstructs a map that answers `get`/`getEntry`/
+ * `entries` identically, WITHOUT re-parsing the source text. The disk warm-start
+ * cache (see `document-snapshot-serialization.ts`) uses it to restore a cached
+ * snapshot's location map, which is what makes a cache hit far cheaper than a
+ * rebuild (building the location map is ~98% of the parse cost — profiling
+ * baseline §9). Lookups are keyed by pointer, so the reconstructed map is
+ * order-independent even though `entries()` re-sorts by text offset.
+ */
+export function createTextLocationMapFromEntries(entries: readonly TextLocationEntry[]): TextLocationMap {
+  const byPointer = new Map<string, TextLocationEntry>();
+  for (const entry of entries) {
+    byPointer.set(entry.pointer, entry);
+  }
+  return createTextLocationMap(byPointer);
+}
+
 function createTextLocationMap(entries: ReadonlyMap<string, TextLocationEntry>): TextLocationMap {
   const copiedEntries = new Map(entries);
   const orderedEntries = [...copiedEntries.values()].sort((left, right) => left.value.start.offset - right.value.start.offset);

@@ -23,6 +23,7 @@ import {
   listAuthoringFiles,
   type AuthoringListResult
 } from "./editor-repository";
+import { EDITOR_CACHE_DEFAULT_MAX_BYTES, garbageCollectEditorCache } from "./editor-file-cache";
 
 export type EditorSessionStatus = "active" | "idle" | "dirty" | "saved" | "closed" | "expired" | "orphaned";
 
@@ -107,6 +108,8 @@ export interface EditorSessionGarbageCollectResult {
   readonly removedWorktrees: readonly string[];
   readonly removedPluginBundles: readonly string[];
   readonly removedPreviewTraces: readonly string[];
+  /** Level-2/3 editor-cache files evicted by the size/LRU sweep (editor-preview-first-ux §10). */
+  readonly removedCacheEntries: readonly string[];
   readonly skippedDirtySessions: readonly string[];
   readonly diagnostics: readonly string[];
 }
@@ -119,6 +122,7 @@ const supportedPlayerPluginApiVersion = "1.0";
 const cleanSessionTtlMs = readPositiveIntegerEnv("CUBICA_EDITOR_CLEAN_SESSION_TTL_MS", 24 * 60 * 60 * 1000);
 const dirtySessionTtlMs = readPositiveIntegerEnv("CUBICA_EDITOR_DIRTY_SESSION_TTL_MS", 7 * 24 * 60 * 60 * 1000);
 const generatedArtifactTtlMs = readPositiveIntegerEnv("CUBICA_EDITOR_GENERATED_ARTIFACT_TTL_MS", 24 * 60 * 60 * 1000);
+const editorCacheMaxBytes = readPositiveIntegerEnv("CUBICA_EDITOR_CACHE_MAX_BYTES", EDITOR_CACHE_DEFAULT_MAX_BYTES);
 
 export async function createEditorSession(input: {
   readonly gameId?: string | null;
@@ -489,6 +493,15 @@ export async function garbageCollectEditorSessions(input: {
     dryRun
   });
 
+  // Size/LRU sweep of the whole editor cache tree (Level-2 per-file snapshots and
+  // Level-3 compile entries). Runs on the same GC cycle as session cleanup so the
+  // one-shot cache cannot grow without bound (editor-preview-first-ux §10).
+  const removedCacheEntries = await garbageCollectEditorCache({
+    cacheRoot: path.join(repoRoot, ".tmp", "editor-cache"),
+    maxBytes: editorCacheMaxBytes,
+    dryRun
+  });
+
   if (!dryRun) {
     for (const projectRoot of projectRoots) {
       await pruneProjectGitWorktrees(projectRoot).catch(() => undefined);
@@ -503,6 +516,7 @@ export async function garbageCollectEditorSessions(input: {
     removedWorktrees: uniqueSorted(removedWorktrees),
     removedPluginBundles,
     removedPreviewTraces,
+    removedCacheEntries,
     skippedDirtySessions,
     diagnostics
   };
