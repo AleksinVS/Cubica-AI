@@ -1,6 +1,6 @@
 # ADR-058: Платформенные возможности пошаговых настольных игр
 
-- **Status**: Proposed
+- **Status**: Accepted (2026-07-06)
 - **Date**: 2026-07-05
 - **Author**: AI Agent (по заказу владельца проекта)
 - **Context**: Runtime platform capabilities / board game class support

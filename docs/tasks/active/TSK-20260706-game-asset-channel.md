@@ -18,7 +18,7 @@
 
 ## Status
 
-- Состояние: planned (ADR-063 Proposed; запуск промта оркестратора = принятие)
+- Состояние: ready (ADR-063 принят 2026-07-06)
 - Владелец: оркестратор (промт — `docs/tasks/artifacts/TSK-20260706-game-asset-channel/orchestrator-prompt.md`)
 - Создана: 2026-07-06
 
@@ -175,3 +175,5 @@ node scripts/dev/generate-structure.js && git diff --exit-code PROJECT_STRUCTURE
   `docs/architecture/game-asset-channel-design.md`; LEGACY-0023 внесён в
   debt-log; статус planned; кода нет. Первый потребитель —
   `TSK-20260706-rail-tycoon-mini-game` (её зависимость D4).
+- 2026-07-06 (позже) — ADR-063 принят владельцем проекта (Accepted
+  2026-07-06); статус ready. Реализация не начата.
