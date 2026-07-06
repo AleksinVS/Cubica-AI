@@ -90,6 +90,8 @@ export {
   buildManifestChronologyTimeline,
   collectAffectedEntities,
   createEditorEntityProjectionState,
+  inferEditorEntityDocumentChannel,
+  inferEditorEntityDocumentKind,
   pointerAffectsLens,
   reindexEditorEntityProjection,
   updateEditorEntityProjection

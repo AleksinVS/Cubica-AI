@@ -42,15 +42,41 @@ export interface AuthoringListResult {
   readonly defaultFilePath: string | undefined;
 }
 
+/**
+ * A sibling authoring document that participates in the project-level projection
+ * (ADR-057 §4.1): its path, full text, and game-agnostic classification. The file
+ * route ships every game+ui document of the game EXCEPT the active one (the client
+ * already holds the active document via `AuthoringFileDocument.text`).
+ */
+export interface ProjectionSiblingDocument {
+  readonly filePath: string;
+  readonly text: string;
+  readonly documentKind: "game" | "ui";
+  readonly channel?: string;
+}
+
 export interface AuthoringFileDocument extends AuthoringFileSummary {
   readonly text: string;
   /**
-   * Optional warm-start payload (ADR-057 §4.13 "Уровень 2"): the serialized entity
-   * projection for `text`, shipped by the file route so the client can hydrate its
+   * Optional warm-start payload (ADR-057 §4.13 "Уровень 2"): the serialized PROJECT
+   * entity projection (built over the game document plus every UI-channel document)
+   * for the current texts, shipped by the file route so the client can hydrate its
    * first view model instead of rebuilding the projection. Absent when the cache
    * is disabled or a build failed — the client then rebuilds exactly as today.
    */
   readonly projection?: SerializedEditorEntityProjectionEnvelope;
+  /**
+   * The other authoring documents of the game that participate in the projection
+   * (ADR-057 §4.1, Phase 3.a). Absent when the project payload could not be
+   * gathered — the client then builds a single-document projection as before.
+   */
+  readonly projectionDocuments?: readonly ProjectionSiblingDocument[];
+  /**
+   * The active preview channel: the channel of the open UI document, or undefined
+   * when a game document is open (ADR-057 §4.2, §7). The client passes it into the
+   * projection so `entity-missing-view` is evaluated against the right channel.
+   */
+  readonly activeChannel?: string;
 }
 
 export interface EditorSessionSummary {

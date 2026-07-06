@@ -435,3 +435,21 @@ game-agnostic CI invariant.
   (~700мс тяжёлой игры), (B) проектная game+ui проекция в контроллере —
   естественная часть Phase 3 (дереву нужна мультидок-проекция).
   ОСТАНОВКА по указанию владельца: Phase 3 не начата.
+- 2026-07-07 (Phase 3.a — проектная game+ui проекция, готово; фундамент дерева):
+  контроллер editor-web переведён с однодок- на ПРОЕКТНУЮ EditorEntityProjection
+  (game authoring + все ui-каналы). Сервер (`/api/editor/file` GET, без нового
+  маршрута) отдаёт sibling-документы `{filePath,text,documentKind,channel?}`,
+  server-derived `activeChannel` и проектный конверт проекции; классификация
+  game/ui по `_manifestType` (game-agnostic, не по именам), best-effort с
+  fallback на однодок. Контроллер парсит siblings разово на открытие (memo),
+  прокидывает `activeChannel`, инкремент сохранён пофайлово (правка game-дока
+  пересобирает свои сущности, ui переиспользуются — доказано мультидок-fuzz
+  ядра 2.1). Ключ проекционного кэша (закрыт follow-up B / §10-инвариант
+  ADR-052) хеширует ВСЕ документы (length-prefixed путь+текст, сортировка) +
+  activeChannel + версии; `PROJECT_ARTIFACT_CACHE_FORMAT_VERSION` 1→2; гидратация
+  проверяет хеши всех документов + счётчик. Бонус: verbatim-reuse проекции на
+  selection/expand-рекомпутах (было — полный rebuild). Числа antarctica: 217
+  сущностей, 39 с view-фасетами (кросс-документные game↔UI связи есть); тёплое
+  открытие revive 1.1мс vs build 88.4мс (≈83×). Гейты: engine 114, editor-web
+  typecheck+123, build, e2e 8/8. Окружение: `npm install` штатно создаёт symlink
+  `@cubica/view-protocol` (после ADR-064) — воспроизводимо, не хак.

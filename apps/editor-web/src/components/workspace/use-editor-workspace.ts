@@ -33,6 +33,7 @@ import {
   type ClassifyChangeSetResult,
   type EditorDiffSummaryItem,
   type EditorEntityProjection,
+  type EditorEntityProjectionDocument,
   type EditorEntityProjectionState,
   type EditorPatchIntent,
   type IncrementalProjectionReport,
@@ -182,6 +183,7 @@ import type {
   PlannedAiChangeSet,
   PlannedPrototypeExtractionProposal,
   PreviewViewportMode,
+  ProjectionSiblingDocument,
   RightSidebarPanel,
   SavedAuthoringFileDocument,
   SemanticFlowEdge,
@@ -195,6 +197,21 @@ import {
   useSelectionGraphState,
   useSessionDocumentState
 } from "@/components/workspace/use-editor-workspace-state";
+
+
+/**
+ * Parses a sibling authoring document's text into projection JSON. An unparseable
+ * sibling yields `undefined` json: the projection builder treats such a document
+ * as contributing no entities (mirroring the active document, whose invalid JSON
+ * also yields no projection), so a broken sibling never throws or blocks the open.
+ */
+function safeParseProjectionDocumentJson(text: string): JsonValue | undefined {
+  try {
+    return JSON.parse(text) as JsonValue;
+  } catch {
+    return undefined;
+  }
+}
 
 
 /**
@@ -384,6 +401,43 @@ export function useEditorWorkspace() {
   // the controller for the status data and future surfacing.
   const [projectionIncrementalReport, setProjectionIncrementalReport] = useState<IncrementalProjectionReport | null>(null);
 
+  // --- Project-level projection wiring (ADR-057 §4.1, Phase 3.a) --------------
+  //
+  // The editor now builds ONE cross-document entity projection over the whole
+  // game: the active edited document (via `jsonText`) plus every SIBLING authoring
+  // document (game + each ui/<channel>), shipped by the file route. A UI element
+  // referencing a game entity contributes its view facet to that game entity, so
+  // the projection carries all facets and cross-document occurrences.
+  const [projectionSiblingDocuments, setProjectionSiblingDocuments] = useState<readonly ProjectionSiblingDocument[]>([]);
+  // The active preview channel (the open UI document's channel, or undefined for a
+  // game document). Server-derived and stable per open; a projection input, so it
+  // is in the incremental/full-rebuild decision AND the warm-start cache key.
+  const [activeChannel, setActiveChannel] = useState<string | undefined>(undefined);
+  // The sibling documents parsed into projection inputs ONCE per open (not per
+  // render): the active document is supplied separately by `createEditorViewModel`
+  // from its live snapshot, so it is intentionally not in this list.
+  const projectionDocumentInputs = useMemo<readonly EditorEntityProjectionDocument[]>(
+    () =>
+      projectionSiblingDocuments.map((document) => ({
+        filePath: document.filePath,
+        json: safeParseProjectionDocumentJson(document.text),
+        documentKind: document.documentKind,
+        ...(document.channel !== undefined ? { channel: document.channel } : {})
+      })),
+    [projectionSiblingDocuments]
+  );
+  // The projection inputs (text + channel + sibling set) that produced the LAST
+  // COMMITTED projection. When a render recomputes the view model for a reason
+  // that does NOT touch the projection (selection, expand/collapse), these still
+  // match, so the previous projection is reused verbatim instead of rebuilt. The
+  // match is by value/reference equality, so a reused projection is provably equal
+  // to a rebuild (ADR-057 §5 transparency). Updated in the post-commit effect.
+  const committedProjectionInputsRef = useRef<{
+    readonly text: string;
+    readonly activeChannel: string | undefined;
+    readonly documents: readonly EditorEntityProjectionDocument[];
+  } | null>(null);
+
   const schemaId = useMemo(
     () => schemaIdForAuthoringDocument(currentDocument.filePath, undefined),
     [currentDocument.filePath]
@@ -407,8 +461,26 @@ export function useEditorWorkspace() {
       // text still matches; a stale envelope falls back to a normal build.
       const hydration = pendingHydrationRef.current;
       pendingHydrationRef.current = null;
-      const hydratedProjection =
-        hydration !== null && incremental === undefined && hydration.text === jsonText ? hydration.projection : undefined;
+
+      // Choose the projection substitute (built-as-is, not rebuilt): the hydrated
+      // warm-start projection, or — when the projection inputs are byte-identical
+      // to the last committed build (a selection/expand recompute) — the previous
+      // projection reused verbatim. Both are provably equal to a rebuild.
+      const committed = committedProjectionInputsRef.current;
+      let hydratedProjection: EditorEntityProjection | undefined;
+      if (hydration !== null && incremental === undefined && hydration.text === jsonText) {
+        hydratedProjection = hydration.projection;
+      } else if (
+        pending === null &&
+        incremental === undefined &&
+        previousState !== null &&
+        committed !== null &&
+        committed.text === jsonText &&
+        committed.activeChannel === activeChannel &&
+        committed.documents === projectionDocumentInputs
+      ) {
+        hydratedProjection = previousState.projection;
+      }
 
       return createEditorViewModel(jsonText, {
         filePath: currentDocument.filePath,
@@ -425,17 +497,21 @@ export function useEditorWorkspace() {
         extraDiagnostics: reverseDiagnostics
           .concat(aiDiagnostics)
           .concat(workflowDiagnostics),
+        editorEntityProjectionDocuments: projectionDocumentInputs,
+        activeChannel,
         incremental,
         hydratedProjection
       });
     },
     [
       activeBranchRootId,
+      activeChannel,
       collapsedNodeIds,
       currentDocument.filePath,
       expandedNodeIds,
       jsonText,
       aiDiagnostics,
+      projectionDocumentInputs,
       reverseDiagnostics,
       schemaId,
       schemaRegistry,
@@ -450,6 +526,9 @@ export function useEditorWorkspace() {
   // "previous state" strictly a value React actually kept.
   useEffect(() => {
     projectionStateRef.current = viewModel.projectionState;
+    // Remember the exact projection inputs this committed build used, so a later
+    // recompute that leaves them untouched can reuse the projection verbatim.
+    committedProjectionInputsRef.current = { text: jsonText, activeChannel, documents: projectionDocumentInputs };
     if (viewModel.incrementalReport !== undefined) {
       setProjectionIncrementalReport(viewModel.incrementalReport);
     }
@@ -2353,6 +2432,11 @@ export function useEditorWorkspace() {
       filePath: document.filePath,
       versionHash: document.versionHash
     });
+    // Adopt the project-level projection inputs shipped with the document: the
+    // sibling authoring documents and the active channel (ADR-057 §4.1, Phase 3.a).
+    // Absent fields degrade to a single-document projection, exactly as before.
+    setProjectionSiblingDocuments(document.projectionDocuments ?? []);
+    setActiveChannel(document.activeChannel);
     const nextLayout = layoutDocument?.layout ?? createEmptyEditorLayout();
     setEditorLayout(nextLayout);
     setLayoutVersionHash(layoutDocument?.versionHash);
@@ -2377,13 +2461,15 @@ export function useEditorWorkspace() {
   }
 
   /**
-   * Stashes the warm-start hydration (ADR-057 §4.13, Phase 2.2b) for a just-loaded
-   * document, if the server shipped a serialized projection. The projection is
-   * REVIVED strictly (a corrupt/foreign/version-mismatched envelope revives to
-   * `null`) and then VERIFIED against the current text via the envelope's document
-   * hash: only a projection that provably matches `document.text` is stashed, so
-   * hydration can never substitute a stale projection. Any failure clears the ref,
-   * and the next build rebuilds the projection exactly as today.
+   * Stashes the warm-start hydration (ADR-057 §4.13, Phase 2.2b/3.a) for a
+   * just-loaded document, if the server shipped a serialized PROJECT projection.
+   * The projection is REVIVED strictly (a corrupt/foreign/version-mismatched
+   * envelope revives to `null`) and then VERIFIED against the current text of
+   * EVERY document it was built over — the active document plus every sibling —
+   * via the envelope's per-document hashes. The hash key set must match the client
+   * document set EXACTLY (no missing or extra document), so the hydrated projection
+   * can never differ from a client rebuild. Any mismatch clears the ref and the
+   * next build rebuilds the projection exactly as today.
    */
   function stashHydrationFromDocument(document: AuthoringFileDocument) {
     pendingHydrationRef.current = null;
@@ -2395,8 +2481,22 @@ export function useEditorWorkspace() {
     if (projection === null) {
       return;
     }
-    if (envelope.documentHashes?.[document.filePath] !== hashEditorText(document.text)) {
+    const documentHashes = envelope.documentHashes;
+    if (documentHashes === undefined) {
       return;
+    }
+    const siblings = document.projectionDocuments ?? [];
+    // Exact coverage: one hash per document the client will use, no more, no less.
+    if (Object.keys(documentHashes).length !== siblings.length + 1) {
+      return;
+    }
+    if (documentHashes[document.filePath] !== hashEditorText(document.text)) {
+      return;
+    }
+    for (const sibling of siblings) {
+      if (documentHashes[sibling.filePath] !== hashEditorText(sibling.text)) {
+        return;
+      }
     }
     pendingHydrationRef.current = { projection, text: document.text };
   }
@@ -2405,6 +2505,8 @@ export function useEditorWorkspace() {
     const fallbackText = `${JSON.stringify(embeddedAuthoringSample, null, 2)}\n`;
     setAvailableGames([]);
     setAvailableFiles([]);
+    setProjectionSiblingDocuments([]);
+    setActiveChannel(undefined);
     setEditorSession(null);
     editorSessionRef.current = null;
     setCurrentDocument({

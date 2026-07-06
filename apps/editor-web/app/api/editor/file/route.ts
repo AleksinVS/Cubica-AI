@@ -5,7 +5,13 @@
  * content. The shared repository adapter enforces path traversal and symlink
  * escape checks before any file read or write.
  */
-import { EditorRepositoryError, openAuthoringFile, saveAuthoringFile } from "@/lib/editor-repository";
+import {
+  inferEditorEntityDocumentChannel,
+  inferEditorEntityDocumentKind,
+  type JsonValue
+} from "@cubica/editor-engine";
+
+import { EditorRepositoryError, listAuthoringFiles, openAuthoringFile, saveAuthoringFile } from "@/lib/editor-repository";
 import { markEditorSessionSaved, repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
 import { allowedSavePathsForGame, saveProjectGitSession } from "@/lib/project-git-workspace";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
@@ -15,29 +21,110 @@ import { type NextRequest } from "next/server";
 
 export const runtime = "nodejs";
 
+/**
+ * One authoring document shipped to the client as part of the project-level
+ * projection payload (ADR-057 §4.1): its path, full text, and the GAME-AGNOSTIC
+ * classification (`documentKind`/`channel`) derived from its `_manifestType` /
+ * `_channel` header. Only game + ui documents participate in the projection.
+ */
+interface ProjectionDocumentPayload {
+  readonly filePath: string;
+  readonly text: string;
+  readonly documentKind: "game" | "ui";
+  readonly channel?: string;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const gameId = requireQueryParam(request, "gameId");
     const filePath = requireQueryParam(request, "filePath");
     const session = await repoRootForSession(request.nextUrl.searchParams.get("sessionId") ?? undefined, gameId);
-    const document = await openAuthoringFile({
-      gameId,
-      filePath,
-      repoRoot: session.repoRoot ?? configuredEditorProjectRoot()
-    });
+    const repoRoot = session.repoRoot ?? configuredEditorProjectRoot();
+    const document = await openAuthoringFile({ gameId, filePath, repoRoot });
 
-    // Warm-start piggyback (ADR-057 §4.13 "Уровень 2"): ship the serialized entity
-    // projection alongside the text so the client hydrates its first view model
-    // instead of rebuilding it. Best-effort: any failure just omits the field and
-    // the client rebuilds exactly as today (the cache is one-shot, never required).
-    const projection = await loadProjectionEnvelopeWithCache({
-      filePath: document.filePath,
-      text: document.text
+    // Project-level projection payload (ADR-057 §4.1, Phase 3.a). Gather EVERY
+    // authoring document of the game that participates in the projection — the
+    // game authoring manifest plus each ui/<channel> manifest — so the client can
+    // build one cross-document entity projection (game meaning + UI facets by
+    // channel). The composition comes from the existing file listing and the
+    // classification is by document TYPE (game/ui), never by hardcoded names.
+    // Best-effort: any failure omits the extra fields and the client rebuilds a
+    // single-document projection exactly as before.
+    const project = await collectProjectionDocuments({
+      gameId,
+      repoRoot,
+      activeFilePath: document.filePath,
+      activeText: document.text
     }).catch(() => undefined);
 
-    return Response.json({ ...document, ...(projection !== undefined ? { projection } : {}) });
+    // Warm-start piggyback (ADR-057 §4.13 "Уровень 2"): ship the serialized project
+    // projection alongside the text so the client hydrates its first view model
+    // instead of rebuilding it. Best-effort for the same reason as above.
+    const projection =
+      project === undefined
+        ? undefined
+        : await loadProjectionEnvelopeWithCache({
+            documents: project.documents.map((entry) => ({ filePath: entry.filePath, text: entry.text })),
+            activeChannel: project.activeChannel
+          }).catch(() => undefined);
+
+    // The client already holds the active document via `text`, so ship only the
+    // SIBLING documents (its own text is not duplicated on the wire).
+    const projectionDocuments = project?.documents.filter((entry) => entry.filePath !== document.filePath);
+
+    return Response.json({
+      ...document,
+      ...(projectionDocuments !== undefined ? { projectionDocuments } : {}),
+      ...(project !== undefined ? { activeChannel: project.activeChannel } : {}),
+      ...(projection !== undefined ? { projection } : {})
+    });
   } catch (error) {
     return errorResponse(error);
+  }
+}
+
+/**
+ * Lists the game's authoring files and returns every one that participates in the
+ * entity projection (game + ui documents), each with its text and game-agnostic
+ * classification, plus the ACTIVE channel derived from the opened document (the
+ * channel of the open UI document, or undefined when a game document is open).
+ * Reuses the already-read active text instead of re-reading it from disk.
+ */
+async function collectProjectionDocuments(input: {
+  readonly gameId: string;
+  readonly repoRoot: string | undefined;
+  readonly activeFilePath: string;
+  readonly activeText: string;
+}): Promise<{ readonly documents: readonly ProjectionDocumentPayload[]; readonly activeChannel: string | undefined }> {
+  const list = await listAuthoringFiles({ gameId: input.gameId, repoRoot: input.repoRoot });
+  const documents: ProjectionDocumentPayload[] = [];
+  let activeChannel: string | undefined;
+
+  for (const file of list.files) {
+    const text =
+      file.filePath === input.activeFilePath
+        ? input.activeText
+        : (await openAuthoringFile({ gameId: input.gameId, filePath: file.filePath, repoRoot: input.repoRoot })).text;
+    const json = safeParseJson(text);
+    const documentKind = inferEditorEntityDocumentKind(json);
+    if (documentKind !== "game" && documentKind !== "ui") {
+      continue;
+    }
+    const channel = inferEditorEntityDocumentChannel(json);
+    documents.push({ filePath: file.filePath, text, documentKind, ...(channel !== undefined ? { channel } : {}) });
+    if (file.filePath === input.activeFilePath && documentKind === "ui") {
+      activeChannel = channel;
+    }
+  }
+
+  return { documents, activeChannel };
+}
+
+function safeParseJson(text: string): JsonValue | undefined {
+  try {
+    return JSON.parse(text) as JsonValue;
+  } catch {
+    return undefined;
   }
 }
 

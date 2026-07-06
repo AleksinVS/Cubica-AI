@@ -157,6 +157,17 @@ export function createEditorViewModel(
     readonly gameId?: string;
     readonly editorEntityProjectionDocuments?: readonly EditorEntityProjectionDocument[];
     /**
+     * Active preview channel of the currently open document (ADR-057 §4.2, §7).
+     *
+     * Passed straight into `BuildEditorEntityProjectionInput.activeChannel`: the
+     * `entity-missing-view` diagnostic is computed per channel, and the future
+     * "По экранам" tree lists the screens of THIS channel. Derived from the open
+     * UI document's `_channel` (undefined when a game document is open). It is a
+     * projection input, so it participates in the incremental/full-rebuild
+     * decision and in the warm-start cache key.
+     */
+    readonly activeChannel?: string;
+    /**
      * Optional incremental-projection context (ADR-057 §4.13, Phase 2.1).
      *
      * When present, the entity projection is produced by
@@ -202,7 +213,8 @@ export function createEditorViewModel(
   const { editorEntityProjection, projectionState, incrementalReport } = buildViewModelProjection(
     {
       gameId: options.gameId,
-      documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments)
+      documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments),
+      ...(options.activeChannel !== undefined ? { activeChannel: options.activeChannel } : {})
     },
     options.incremental,
     options.hydratedProjection

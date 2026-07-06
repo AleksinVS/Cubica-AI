@@ -799,7 +799,17 @@ function normalizeEditorEntityDocument(document: EditorEntityProjectionDocument)
   };
 }
 
-function inferEditorEntityDocumentKind(json: JsonValue | undefined): EditorEntityDocumentKind {
+/**
+ * Classifies an authoring document by its `_manifestType` header (game/ui/design).
+ *
+ * Exported so the editor-web server can decide, GAME-AGNOSTICALLY, which authoring
+ * documents of a game participate in the project-level entity projection (game +
+ * every ui channel) without duplicating the rule or hardcoding file names
+ * (ADR-057 §4.1; ADR-052 §11 "Projection builder and lenses must stay
+ * game-agnostic"). It is the exact rule the builder itself uses on each document,
+ * so a server classification always agrees with the engine's inference.
+ */
+export function inferEditorEntityDocumentKind(json: JsonValue | undefined): EditorEntityDocumentKind {
   if (!isPlainJsonObject(json)) {
     return "unknown";
   }
@@ -816,7 +826,16 @@ function inferEditorEntityDocumentKind(json: JsonValue | undefined): EditorEntit
   return "unknown";
 }
 
-function inferEditorEntityDocumentChannel(json: JsonValue | undefined): string | undefined {
+/**
+ * Reads the preview channel of an authoring document from its `_channel` header
+ * (for example "web", "telegram"); `undefined` when absent (a game document).
+ *
+ * Exported alongside {@link inferEditorEntityDocumentKind} so the server can derive
+ * the ACTIVE channel of a just-opened UI document identically to the client — the
+ * value feeds `BuildEditorEntityProjectionInput.activeChannel`, which the
+ * `entity-missing-view` diagnostic is computed against (ADR-057 §4.2).
+ */
+export function inferEditorEntityDocumentChannel(json: JsonValue | undefined): string | undefined {
   if (!isPlainJsonObject(json)) {
     return undefined;
   }
