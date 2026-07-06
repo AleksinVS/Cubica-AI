@@ -13,6 +13,7 @@
  *   compare <ref.png> <impl.png> [--out-dir D]      пиксельное сравнение + сетка регионов
  *   compare-elements <ref.png> <url> --regions ...  двухуровневая проверка по элементам:
  *                                                   геометрия (DOM) + внешний вид (кропы)
+ *   coverage <img.png> --regions <файл>             полнота разметки: доля площади вне зон
  *   crop    <img.png> --rect x,y,w,h --out <png>    вырезать зону (с увеличением --scale)
  *   sample  <img.png> --points "x,y;..."|--rect ... точные цвета пикселей/зоны
  *
@@ -62,7 +63,12 @@ const DEFAULT_OUT_DIR = path.join(".tmp", "ui-compare");
 // ---------------------------------------------------------------------------
 // Разбор аргументов командной строки (без внешних библиотек, чтобы не тянуть
 // лишние зависимости: --flag value и --flag без значения → true).
+// Булевы флаги перечислены явно: иначе флаг, стоящий перед позиционным
+// аргументом, «съедал» бы его как своё значение (--full-page <url> → url
+// пропадал бы).
 // ---------------------------------------------------------------------------
+const BOOLEAN_FLAGS = new Set(["full-page", "include-aa", "no-crops", "no-freeze", "ci"]);
+
 function parseArgs(argv) {
   const positional = [];
   const flags = {};
@@ -71,7 +77,7 @@ function parseArgs(argv) {
     if (a.startsWith("--")) {
       const key = a.slice(2);
       const next = argv[i + 1];
-      if (next === undefined || next.startsWith("--")) {
+      if (BOOLEAN_FLAGS.has(key) || next === undefined || next.startsWith("--")) {
         flags[key] = true;
       } else {
         flags[key] = next;
@@ -279,6 +285,57 @@ async function cmdToPng(positional, flags) {
 }
 
 // ---------------------------------------------------------------------------
+// Подготовка страницы к детерминированному скриншоту.
+// 1) Сценарий --steps: последовательность действий (клики, ожидания) для
+//    доведения приложения до целевого состояния — методология §8 требует
+//    сравнивать целевой экран, а не стартовый.
+// 2) Ожидание document.fonts.ready: скриншот, снятый до подгрузки
+//    веб-шрифта, даёт ложный diff по всему тексту.
+// 3) Заморозка анимаций и переходов: без неё региональный diff нестабилен
+//    от прогона к прогону (методология §10.5 п.5). Отключается --no-freeze.
+// ---------------------------------------------------------------------------
+async function runSteps(page, stepsFile) {
+  const steps = JSON.parse(fs.readFileSync(stepsFile, "utf8"));
+  if (!Array.isArray(steps)) throw new Error("--steps: ожидается JSON-массив шагов");
+  for (const [i, step] of steps.entries()) {
+    if (step.click) {
+      await page.locator(step.click).first().click({ timeout: 15000 });
+      console.log(`  шаг ${i + 1}: click ${step.click}`);
+    } else if (step.waitSelector) {
+      await page.waitForSelector(step.waitSelector, { timeout: 30000 });
+      console.log(`  шаг ${i + 1}: waitSelector ${step.waitSelector}`);
+    } else if (step.fill) {
+      await page.locator(step.fill.selector).first().fill(String(step.fill.value));
+      console.log(`  шаг ${i + 1}: fill ${step.fill.selector}`);
+    } else if (step.wait) {
+      await page.waitForTimeout(step.wait);
+      console.log(`  шаг ${i + 1}: wait ${step.wait}ms`);
+    } else {
+      throw new Error(
+        `Неизвестный шаг сценария #${i + 1}: ${JSON.stringify(step)} ` +
+        `(поддерживаются {"click":"css"}, {"waitSelector":"css"}, ` +
+        `{"fill":{"selector":"css","value":"..."}}, {"wait":ms})`
+      );
+    }
+  }
+}
+
+async function preparePage(page, flags) {
+  if (typeof flags.steps === "string") {
+    console.log("Сценарий достижения состояния:");
+    await runSteps(page, flags.steps);
+  }
+  await page.evaluate(() => (document.fonts ? document.fonts.ready : null)).catch(() => {});
+  if (!flags["no-freeze"]) {
+    await page.addStyleTag({
+      content:
+        "*,*::before,*::after{animation:none!important;transition:none!important;" +
+        "caret-color:transparent!important;scroll-behavior:auto!important}",
+    }).catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------------------
 // capture: скриншот работающего UI с фиксированными viewport и DPR.
 // DPR (device pixel ratio, плотность пикселей) фиксируем = 1, иначе на разных
 // машинах один и тот же UI даёт разные пиксели и diff становится шумным.
@@ -288,7 +345,8 @@ async function cmdCapture(positional, flags) {
   if (!url || !flags.out) {
     throw new Error(
       "Использование: capture <url> --out <png> [--viewport WxH] [--dpr N] " +
-      "[--wait-selector <css>] [--wait-ms N] [--element <css>] [--full-page]"
+      "[--wait-selector <css>] [--wait-ms N] [--element <css>] [--full-page] " +
+      "[--steps <steps.json>] [--no-freeze]"
     );
   }
   const viewport = parseViewport(flags.viewport);
@@ -304,7 +362,8 @@ async function cmdCapture(positional, flags) {
     if (flags["wait-selector"]) {
       await page.waitForSelector(flags["wait-selector"], { timeout: 30000 });
     }
-    // Небольшая пауза после networkidle: даём дорисоваться анимациям/шрифтам.
+    await preparePage(page, flags);
+    // Небольшая пауза после подготовки: даём завершиться перерисовке.
     await page.waitForTimeout(waitMs);
     fs.mkdirSync(path.dirname(path.resolve(flags.out)), { recursive: true });
     if (flags.element) {
@@ -483,6 +542,7 @@ async function cmdCompare(positional, flags) {
   }
   console.log(`Артефакты: ${outDir} (ref.png, impl.png, diff.png, side-by-side.png, report.json)`);
   console.log(`СТАТУС: ${status}${failReasons.length ? " — " + failReasons.join("; ") : ""}`);
+  if (flags.ci && status === "FAIL") process.exitCode = 2;
   if (status === "FAIL" && !cropOutputs.length) {
     const worst = cells[0];
     console.log(
@@ -512,9 +572,16 @@ async function cmdCompareElements(positional, flags) {
   if (!refPath || !url || typeof flags.regions !== "string") {
     throw new Error(
       "Использование: compare-elements <reference.png> <url> --regions <файл> " +
-      "[--selectors <map.json>] [--viewport WxH] [--dpr 1] [--tolerance 2] [--gate 10] " +
-      "[--threshold 0.1] [--wait-selector <css>] [--wait-ms N] [--out-dir D] [--include-aa]"
+      "[--selectors <map.json>] [--viewport WxH] [--tolerance 2] [--gate 10] " +
+      "[--threshold 0.1] [--wait-selector <css>] [--wait-ms N] [--out-dir D] " +
+      "[--steps <steps.json>] [--no-freeze] [--include-aa] [--ci]"
     );
+  }
+  // DPR всегда 1: координаты разметки заданы в пикселях изображения-образца,
+  // getBoundingClientRect возвращает CSS-пиксели, а скриншот при DPR=2 был бы
+  // в физических пикселях — смешение масштабов дало бы кропы не тех областей.
+  if (flags.dpr && parseFloat(flags.dpr) !== 1) {
+    console.warn("ВНИМАНИЕ: compare-elements всегда работает при DPR=1; --dpr проигнорирован.");
   }
   const outDir = typeof flags["out-dir"] === "string" ? flags["out-dir"] : DEFAULT_OUT_DIR;
   // Допуск геометрии в пикселях: субпиксельные округления браузера дают ±1px,
@@ -562,13 +629,11 @@ async function cmdCompareElements(positional, flags) {
   let shot;
   const probes = [];
   try {
-    const context = await browser.newContext({
-      viewport,
-      deviceScaleFactor: flags.dpr ? parseFloat(flags.dpr) : 1,
-    });
+    const context = await browser.newContext({ viewport, deviceScaleFactor: 1 });
     const page = await context.newPage();
     await page.goto(url, { waitUntil: "networkidle", timeout: 60000 });
     if (flags["wait-selector"]) await page.waitForSelector(flags["wait-selector"], { timeout: 30000 });
+    await preparePage(page, flags);
     await page.waitForTimeout(waitMs);
     shot = PNG.sync.read(await page.screenshot());
 
@@ -577,13 +642,21 @@ async function cmdCompareElements(positional, flags) {
         const el = document.querySelector(sel);
         if (!el) return { found: false };
         const r = el.getBoundingClientRect();
+        const cx = r.left + r.width / 2;
+        const cy = r.top + r.height / 2;
+        // Элемент вне видимой области (или нулевого размера): прокрутка этим
+        // инструментом не поддерживается, сравнение пикселей было бы мусорным,
+        // а elementFromPoint вернул бы null (ложное «перекрыт»).
+        const offscreen = r.width === 0 || r.height === 0 ||
+          cx < 0 || cy < 0 || cx >= window.innerWidth || cy >= window.innerHeight;
         // elementFromPoint возвращает верхний элемент в точке; если это не сам
         // элемент, не его потомок и не предок — элемент перекрыт чужим слоем.
-        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const top = offscreen ? null : document.elementFromPoint(cx, cy);
         return {
           found: true,
+          offscreen,
           rect: { x: r.left, y: r.top, w: r.width, h: r.height },
-          occluded: !(top === el || el.contains(top) || (top && top.contains(el))),
+          occluded: offscreen ? false : !(top === el || el.contains(top) || (top && top.contains(el))),
         };
       }, spec.selector);
       probes.push({ spec, info });
@@ -598,6 +671,16 @@ async function cmdCompareElements(positional, flags) {
       // Отсутствующий элемент — самый частый «незамеченный» дефект; он
       // фиксируется явно, а не растворяется в пиксельном проценте.
       rows.push({ id: spec.id, selector: spec.selector, status: "MISSING" });
+      continue;
+    }
+    if (info.offscreen) {
+      rows.push({
+        id: spec.id, selector: spec.selector, status: "OFFSCREEN",
+        geometry: {
+          expected: { x: spec.x, y: spec.y, w: spec.w, h: spec.h },
+          actual: info.rect,
+        },
+      });
       continue;
     }
     const a = info.rect;
@@ -643,8 +726,9 @@ async function cmdCompareElements(positional, flags) {
   }
 
   const missing = rows.filter((r) => r.status === "MISSING");
+  const offscreen = rows.filter((r) => r.status === "OFFSCREEN");
   const failed = rows.filter((r) => r.status === "FAIL");
-  const status = missing.length || failed.length ? "FAIL" : "PASS";
+  const status = missing.length || offscreen.length || failed.length ? "FAIL" : "PASS";
   const report = {
     reference: path.resolve(refPath), url, viewport, tolerance, gate,
     elements: rows, noSelector, skippedRegions, status,
@@ -658,6 +742,15 @@ async function cmdCompareElements(positional, flags) {
       console.log(`  ${r.id} [MISSING] элемент не найден по селектору: ${r.selector}`);
       continue;
     }
+    if (r.status === "OFFSCREEN") {
+      console.log(
+        `  ${r.id} [OFFSCREEN] элемент вне вьюпорта или нулевого размера ` +
+        `(факт: x=${r.geometry.actual.x.toFixed(0)}, y=${r.geometry.actual.y.toFixed(0)}, ` +
+        `w=${r.geometry.actual.w.toFixed(0)}, h=${r.geometry.actual.h.toFixed(0)}) — ` +
+        `проверь layout или увеличь viewport`
+      );
+      continue;
+    }
     const g = r.geometry;
     const gTxt = `Δx=${g.delta.dx.toFixed(0)} Δy=${g.delta.dy.toFixed(0)} Δw=${g.delta.dw.toFixed(0)} Δh=${g.delta.dh.toFixed(0)} ${g.pass ? "OK" : "СДВИГ/РАЗМЕР"}`;
     const ap = r.appearance;
@@ -669,8 +762,111 @@ async function cmdCompareElements(positional, flags) {
   console.log(`Отчёт: ${path.join(outDir, "elements-report.json")}`);
   console.log(
     `СТАТУС: ${status}` +
-    (status === "FAIL" ? ` — не найдено: ${missing.length}, с расхождениями: ${failed.length}` : "")
+    (status === "FAIL"
+      ? ` — не найдено: ${missing.length}, вне вьюпорта: ${offscreen.length}, с расхождениями: ${failed.length}`
+      : "")
   );
+  if (flags.ci && status === "FAIL") process.exitCode = 2;
+}
+
+// ---------------------------------------------------------------------------
+// coverage: числовая проверка полноты разметки/инвентаря макета.
+// Зачем: главный источник ошибок при верстке по образцу — ПРОПУЩЕННЫЕ
+// элементы; полагаться на внимательность модели нельзя. Команда считает долю
+// площади изображения, не покрытую ни одной зоной разметки, и пишет маску,
+// где непокрытые места залиты красным: пропущенная кнопка видна как яркое
+// пятно и как число, а не как надежда на дисциплину.
+// Фон и декор тоже должны быть зонами (хотя бы одной общей "background").
+// ---------------------------------------------------------------------------
+async function cmdCoverage(positional, flags) {
+  const [imgPath] = positional;
+  if (!imgPath || typeof flags.regions !== "string") {
+    throw new Error(
+      "Использование: coverage <img.png> --regions <файл> [--out <mask.png>] " +
+      "[--gate 2] [--grid 8x8] [--ci]"
+    );
+  }
+  const gate = flags.gate ? parseFloat(flags.gate) : 2;
+  const img = readPng(imgPath);
+  const skipped = [];
+  const raw = JSON.parse(fs.readFileSync(flags.regions, "utf8"));
+  const specs = flattenRegionSpec(raw, skipped);
+  if (skipped.length) console.warn(`ВНИМАНИЕ: зоны без bounds пропущены: ${skipped.join(", ")}`);
+  if (!specs.length) throw new Error("В файле разметки нет ни одной зоны с bounds");
+
+  // Маска покрытия: 1 = пиксель принадлежит хотя бы одной зоне разметки.
+  const covered = new Uint8Array(img.width * img.height);
+  for (const s of specs) {
+    const x0 = Math.max(0, Math.round(s.x));
+    const y0 = Math.max(0, Math.round(s.y));
+    const x1 = Math.min(img.width, Math.round(s.x + s.w));
+    const y1 = Math.min(img.height, Math.round(s.y + s.h));
+    for (let y = y0; y < y1; y++) {
+      covered.fill(1, y * img.width + x0, y * img.width + x1);
+    }
+  }
+  let uncoveredCount = 0;
+  for (let i = 0; i < covered.length; i++) if (!covered[i]) uncoveredCount++;
+  const uncoveredPercent = (uncoveredCount / covered.length) * 100;
+
+  // Маска: покрытое — приглушённый серый, непокрытое — красный.
+  const outPath = typeof flags.out === "string" ? flags.out : path.join(DEFAULT_OUT_DIR, "coverage-mask.png");
+  const mask = new PNG({ width: img.width, height: img.height });
+  for (let i = 0; i < covered.length; i++) {
+    const si = i * 4;
+    if (covered[i]) {
+      const v = Math.round(((img.data[si] + img.data[si + 1] + img.data[si + 2]) / 3) * 0.5);
+      mask.data[si] = v; mask.data[si + 1] = v; mask.data[si + 2] = v;
+    } else {
+      mask.data[si] = 255; mask.data[si + 1] = 40; mask.data[si + 2] = 40;
+    }
+    mask.data[si + 3] = 255;
+  }
+  writePng(outPath, mask);
+
+  // Локализация непокрытых мест по сетке — чтобы агент знал, куда смотреть.
+  const gridSpec = typeof flags.grid === "string" ? flags.grid : "8x8";
+  const gm = gridSpec.match(/^(\d+)x(\d+)$/);
+  if (!gm) throw new Error(`Неверный формат --grid: "${gridSpec}" (ожидается ColsxRows)`);
+  const cols = parseInt(gm[1], 10);
+  const rowsN = parseInt(gm[2], 10);
+  const cellsOut = [];
+  for (let r = 0; r < rowsN; r++) {
+    for (let c = 0; c < cols; c++) {
+      const x = Math.floor((img.width * c) / cols);
+      const y = Math.floor((img.height * r) / rowsN);
+      const x2 = c === cols - 1 ? img.width : Math.floor((img.width * (c + 1)) / cols);
+      const y2 = r === rowsN - 1 ? img.height : Math.floor((img.height * (r + 1)) / rowsN);
+      let un = 0;
+      for (let yy = y; yy < y2; yy++) {
+        for (let xx = x; xx < x2; xx++) if (!covered[yy * img.width + xx]) un++;
+      }
+      const pct = (un / ((x2 - x) * (y2 - y))) * 100;
+      if (pct > 0.5) cellsOut.push({ cell: `r${r + 1}c${c + 1}`, x, y, w: x2 - x, h: y2 - y, percent: pct });
+    }
+  }
+  cellsOut.sort((a, b) => b.percent - a.percent);
+
+  const status = uncoveredPercent < gate ? "PASS" : "FAIL";
+  console.log(
+    `Покрытие разметкой: ${(100 - uncoveredPercent).toFixed(2)}% ` +
+    `(непокрыто ${uncoveredPercent.toFixed(2)}%, порог ${gate}%)`
+  );
+  if (cellsOut.length) {
+    console.log(`Непокрытые области (сетка ${gridSpec}, худшие сверху):`);
+    for (const cc of cellsOut.slice(0, 10)) {
+      console.log(`  ${cc.cell}  rect=${cc.x},${cc.y},${cc.w},${cc.h}  непокрыто ${cc.percent.toFixed(1)}%`);
+    }
+  }
+  console.log(`Маска: ${outPath} (красное = вне зон разметки)`);
+  console.log(`СТАТУС: ${status}`);
+  if (status === "FAIL") {
+    console.log(
+      "Красные области — кандидаты в пропущенные элементы: рассмотри их кропами " +
+      "и добавь зоны в разметку (фон/декор — тоже зоны)."
+    );
+  }
+  if (flags.ci && status === "FAIL") process.exitCode = 2;
 }
 
 // ---------------------------------------------------------------------------
@@ -755,21 +951,30 @@ function usage() {
 Команды:
   to-png  <image> --out <png> [--width N]
   capture <url> --out <png> [--viewport WxH] [--dpr N] [--wait-selector <css>]
-          [--wait-ms N] [--element <css>] [--full-page]
+          [--wait-ms N] [--element <css>] [--full-page] [--steps <steps.json>]
+          [--no-freeze]
+          --steps — сценарий достижения состояния: JSON-массив шагов
+          {"click":"css"} | {"waitSelector":"css"} | {"wait":ms} |
+          {"fill":{"selector":"css","value":"..."}}.
+          Анимации замораживаются по умолчанию (--no-freeze отключает).
   compare <reference.png> <implementation.png> [--out-dir D] [--threshold 0.1]
           [--grid 4x4] [--regions <файл>] [--gate 5] [--cell-gate 10]
-          [--include-aa] [--no-crops]
+          [--include-aa] [--no-crops] [--ci]
           --regions принимает простой массив [{id,x,y,w,h}] или *.design.json
           (ADR-016); для проблемных зон автоматически пишутся кропы
-          «образец|реализация|diff».
+          «образец|реализация|diff». --ci: код выхода 2 при FAIL.
   compare-elements <reference.png> <url> --regions <файл> [--selectors <map.json>]
-          [--viewport WxH] [--dpr 1] [--tolerance 2] [--gate 10] [--threshold 0.1]
-          [--wait-selector <css>] [--wait-ms N] [--out-dir D] [--include-aa]
+          [--viewport WxH] [--tolerance 2] [--gate 10] [--threshold 0.1]
+          [--wait-selector <css>] [--wait-ms N] [--out-dir D]
+          [--steps <steps.json>] [--no-freeze] [--include-aa] [--ci]
           Двухуровневая проверка по элементам с селекторами: геометрия
           (bounds разметки против getBoundingClientRect, «не там»), внешний
-          вид (кропы с нормализацией размера, «не такой») и перекрытие
-          (elementFromPoint). Селектор — поле selector в разметке или карта
-          --selectors {"id":"css"}.
+          вид (кропы с нормализацией размера, «не такой»), перекрытие
+          (elementFromPoint), статусы MISSING/OFFSCREEN. Всегда DPR=1.
+          Селектор — поле selector в разметке или карта --selectors {"id":"css"}.
+  coverage <img.png> --regions <файл> [--out <mask.png>] [--gate 2] [--grid 8x8] [--ci]
+          Полнота разметки: % площади вне зон + маска (красное = непокрыто).
+          Непокрытые области — кандидаты в пропущенные элементы.
   crop    <img.png> --rect x,y,w,h --out <png> [--scale N]
   sample  <img.png> --points "x,y;x,y" | --rect x,y,w,h [--top 6]
 
@@ -783,6 +988,7 @@ const commands = {
   capture: cmdCapture,
   compare: cmdCompare,
   "compare-elements": cmdCompareElements,
+  coverage: cmdCoverage,
   crop: cmdCrop,
   sample: cmdSample,
 };
