@@ -79,6 +79,8 @@
 - Заменить local-file game repository adapter на конфигурируемую repository boundary.
 - Очистить общие contracts от Antarctica-specific комментариев и примеров.
 - Ввести TypeScript project references для рабочих пакетов.
+- Проработать архитектурные белые пятна из ревью 2026-07-06 ([docs/reviews/2026-07-06-architecture-review.md](docs/reviews/2026-07-06-architecture-review.md), записи LEGACY-0024..0036): production-обвязка — наблюдаемость (LEGACY-0024), authn/authz (LEGACY-0025, блокер публичного test VPS), развёртывание (LEGACY-0026); бизнес-слой — лицензии/платежи (LEGACY-0027), каталог/публикация (LEGACY-0028); AI-слой — реальный LLM provider adapter (LEGACY-0029), replay/eval runner (LEGACY-0030); статусный дрейф — судьба SDK-слоя/ADR-014 (LEGACY-0031), статус ADR-030 (LEGACY-0032), классификация черновиков hybrid-knowledge и mockup-flow (LEGACY-0033/0034); каналы Telegram/Mobile (LEGACY-0035); хостируемый редактор (LEGACY-0036).
+- Составить межтрековую карту очерёдности срезов для параллельных треков ADR-058/059/060 и ADR-061..063: общие точки — `PhaserSceneContext` (владелец — трек flow-simulation), `services/runtime-api/src/modules/player-api/httpServer.ts` (треки мультиплеера и канала ассетов), PRNG-модуль ADR-058 Phase 1 (нужен flow-simulation Phase 2 и rail-tycoon).
 
 ## Blocked
 
@@ -97,5 +99,6 @@
 - `packages/contracts/*` — общий contracts layer.
 - `docs/architecture/agent-ui-foundation.md`, `docs/architecture/agent-ui-portability-and-risk-controls.md`, `docs/architecture/generative-ui-surface-protocol.md`, `docs/architecture/ai-agent-safety-remediation.md`, `docs/architecture/element-prompt-contract.md`, ADR-043, ADR-044, ADR-045, ADR-046, accepted ADR-047 и accepted ADR-048 — принятая Agent UI основа, контроль переносимости, целевой Cubica-owned Generative UI path, first-class AI-driven game runtime mode, remediation gates before real provider traffic and element prompt authoring contract.
 - `docs/reviews/2026-06-27-full-project-review.md` — полное ревью проекта 2026-06-27; источник задач TSK-20260630-* и записей LEGACY-0018..0022.
+- `docs/reviews/2026-07-06-architecture-review.md` — архитектурное ревью 2026-07-06 (белые пятна и статусный дрейф документации); источник записей LEGACY-0024..0036.
 - `draft/cubica-portal-nextjs/` — текущий portal draft для анализа и подготовки test VPS launch; не является source of truth для игровой логики.
 - `draft/Antarctica/GameFull.html` — legacy extraction source на время миграции, не runtime source of truth.
