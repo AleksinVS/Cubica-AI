@@ -1,0 +1,3 @@
+{
+  ".": "Framework-agnostic package with the Abstract View Protocol contracts (ADR-002: Presenter -> View commands) and JSON state patch utilities (RFC 7396 Merge Patch, RFC 6902 JSON Patch). Seed of the future extracted player core per ADR-064."
+}

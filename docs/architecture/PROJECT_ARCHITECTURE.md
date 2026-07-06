@@ -123,21 +123,32 @@ production coverage, until those services exist as deployable boundaries.
 
 Outside the current canonical `runtime-api` slice, most service folders remain scaffolds with `DEV_GUIDE.md` and mostly empty `src/`/`tests/`. Это target architecture scaffolding, а не текущая runtime reality.
 
-### 2.2. Клиентские компоненты и SDK
+### 2.2. Клиентские компоненты и стратегия клиентского ядра
 
-Клиентская часть построена вокруг модульного SDK и конкретных приложений‑клиентов.
+Клиентская часть построена вокруг игро-агностичного плеера `apps/player-web`
+(декларативный рендерер UI-манифестов по ADR-055 + проектные плагины по
+ADR-037/039), общих контрактов и стратегии «headless core + адаптеры каналов»
+(ADR-064). Headless core — ядро без привязки к UI-фреймворку; адаптер канала —
+тонкий слой, связывающий ядро с конкретным способом доставки (React/DOM,
+Phaser, будущие каналы).
 
-**Базовые пакеты SDK (`SDK/`):**
-- `SDK/core/` — общие контракты и транспортный слой.
-  - Предоставляет тип `SessionOptions`, функцию `createSession` (`SDK/core/src/index.ts`) и протоколы представления (`view-protocol.ts`).
-- `SDK/shared/` — переиспользуемые UI‑компоненты и темы (`SDK/shared/src/index.ts`).
-- `SDK/react-sdk/` — основной веб‑SDK для React/Next.js.
-  - Адаптер Router (`src/adapters/routerClient.ts`) пока реализован как заглушка.
-  - Хук `useCubicaSession` (`src/features/session.ts`) инкапсулирует подключение к игровым сессиям.
-  - Компонент `GameCanvas` (`src/ui/GameCanvas.tsx`) задаёт базовый макет игрового полотна.
-- `SDK/viewers/` — библиотека готовых плееров (Viewers) для различных типов контента.
-- `SDK/simulators/` — симуляторы для разработки и тестирования сценариев.
-- `SDK/custom-examples/` — примерные и вспомогательные пакеты с документацией.
+**Опорные слои клиентской части:**
+- `packages/contracts/*` — генерируемые из JSON Schema контракты (ADR-056);
+  вместе с OpenAPI `runtime-api` (ADR-051) это универсальная интеграционная
+  поверхность платформы для любого канала на любом стеке.
+- `packages/view-protocol/` — Abstract View Protocol (ADR-002: команды
+  Presenter → View) и утилиты JSON Merge Patch / JSON Patch; framework-agnostic
+  пакет, семя будущего `player-core`.
+- `apps/player-web/src/presenter/` и `src/lib/` — presenter-слой и клиент
+  runtime-api; по ADR-064 эти каталоги не импортируют React/Next (шов охраняет
+  `npm run verify:player-core-seam`), поэтому извлечение `packages/player-core`
+  по триггерам ADR-064 (агентный headless-клиент ADR-060, Phaser-канал ADR-062,
+  встраивание вне Next.js) останется механическим переносом.
+
+Историческая слоистая SDK-стратегия (`SDK/core`/`shared`/`react-sdk`/`viewers`,
+ADR-014) заменена ADR-064: каталог `SDK/` упразднён, живой код перенесён в
+`packages/view-protocol`, внешний публикуемый SDK отложен как планируемая
+работа (LEGACY-0037).
 
 **Клиентские приложения:**
 - `draft/antarctica-nextjs-player/` — archived UI prototype and visual reference only.
@@ -328,7 +339,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - **ADR-011 (Multiplayer):** Free-form модель с очередью событий для поддержки нескольких игроков в сессии, явной версионностью состояния (`state_version`) и последовательностью событий (`sequence`), а также правилами обработки зависших и ошибочных событий.
 - **ADR-012 (Training Metadata):** Обучающие метаданные и методические материалы в манифесте игры.
 - **ADR-013 (Text Anchors & Manifest Split):** Текстовые якоря для синхронизации с источниками и разделение логического и UI-манифестов.
-- **ADR-014 (Viewers Library Architecture):** proposed путь для библиотеки viewers в `SDK/viewers/` и проверенных клиентских скриптов: игры хранят контент, viewer выбирается через `meta.viewer`, а клиентские скрипты загружаются только из проверенного реестра с подписью, хешем и CSP-ограничениями.
+- **ADR-014 (Viewers Library Architecture):** superseded by ADR-064. Исторический proposed путь для библиотеки viewers в `SDK/viewers/` и проверенных клиентских скриптов; роль viewer закрыта декларативным рендерером (ADR-055) и плагинами (ADR-037/039), а подпись/реестр стороннего кода отложены до появления недоверенного кода (LEGACY-0036).
 - **ADR-015 (Extension Packs):** Историческая архитектура пакетов расширений и гибридная модель движка; текущая runtime-api политика уточнена ADR-040.
 - **ADR-016 (Design Artifacts):** Дизайн-артефакты для ИИ-агентов в UI-манифесте — JSON-описания изображений с семантической разметкой и дизайн-токенами.
 - **ADR-017 (Modular Monolith Transition):** Ближайшая backend‑фаза строится как модульный монолит с жёсткими внутренними границами; выделение микросервисов откладывается до появления подтверждённых operational boundaries.
@@ -374,6 +385,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - **ADR-061 (Action Parameters):** accepted параметры действий манифеста: действие объявляет `paramsSchema` (плоский объект со скалярными свойствами, явный `additionalProperties: false`), клиент передаёт `params` в `POST /actions`, runtime валидирует их Ajv до guards, провалидированные значения доступны выражениям через ветку `params` контекста JsonLogic и попадают в состояние только явными эффектами. Params — инертные данные: они никогда не интерпретируются как пути, идентификаторы или выражения (нормативные анти-инъекционные правила — `docs/architecture/flow-simulation-platform-design.md` §4.1). Потребители: игры-симуляции (ADR-062), торги/аукционы настольных игр (ADR-058 §2.7), проекция `availableActions` (ADR-060).
 - **ADR-062 (Realtime Client Simulation And Phaser Channel):** accepted класс игр «клиентская симуляция реального времени» и Phaser-канал доставки: реальное время живёт в клиентской сцене плагина игры, runtime владеет границами раундов через обычные детерминированные действия (старт раунда фиксирует зерно эффектом `random.seed`, фиксация итогов идёт параметрами по ADR-061 с guard-инвариантами); вся случайность сцены выводится из зерна платформенной утилитой seeded PRNG (алгоритм идентичен серверному xoshiro128**); Phaser — зависимость платформы (`apps/player-web`, ленивая загрузка) с инъекцией в плагин через точку вклада `phaserSceneFactory` и компонент UI-манифеста `simulationSurface`; граница честности MVP — сервер проверяет итоги схемой и инвариантами, но не пересимулирует (соревновательные режимы — только через новый ADR). Детальный источник — `docs/architecture/flow-simulation-platform-design.md`.
 - **ADR-063 (Game Asset Channel):** accepted канал игровых ассетов: файлы изображений живут в `games/<id>/assets/` с декларативным реестром `assets.json` (новая JSON Schema, обязательное происхождение/лицензия), runtime-api раздаёт их контент-адресуемо (индекс id→URL + файлы `/game-assets/{gameId}/{assetId}/{sha256}.{ext}` с иммутабельным кэшем) по образцу published-бандлов плагинов; Phaser-сцена получает резолвер `assets` в контексте (по id, не по пути), UI-манифест использует форму `asset:<id>`, SVG — основной агенто-писаемый формат с нормативной CI-санитизацией и защитными заголовками. Существующее размещение картинок «Антарктиды» в `apps/player-web/public/` оформлено долгом LEGACY-0023. Детальный источник — `docs/architecture/game-asset-channel-design.md`.
+- **ADR-064 (Headless Core And Channel Adapters, supersedes ADR-014):** accepted стратегия клиентского ядра: универсальная интеграционная поверхность платформы — контракты (OpenAPI ADR-051 + JSON Schema ADR-025/056), а не код-библиотека; каталог `SDK/` упразднён, живой код бывшего `SDK/core` (Abstract View Protocol ADR-002 + JSON Merge Patch/JSON Patch) перенесён в `packages/view-protocol`; шов будущего `player-core` (`presenter/`+`lib/` в `player-web` без React/Next-импортов) охраняется CI-проверкой `verify:player-core-seam`; извлечение `packages/player-core` выполняется по именованным триггерам (первый не-React потребитель: headless-клиент агентного игрока ADR-060, Phaser-канал ADR-062, встраивание вне Next.js); внешний публикуемый SDK — отложенная планируемая работа (LEGACY-0037); транспортные клиенты при росте API генерируются из OpenAPI, а не пишутся вручную.
 
 
 ---
@@ -400,8 +412,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 
 - `services/*` — backend‑сервисы платформы (Editor, Repository, Router, Engine, Catalog, Metadata DB).
 - `apps/*` — web applications and prototypes, including canonical `apps/player-web` and current authoring editor prototype `apps/editor-web`.
-- `packages/*` — shared TypeScript packages, including contracts and the framework-agnostic `packages/editor-engine`.
-- `SDK/*` — SDK‑пакеты и вспомогательные библиотеки для клиентских приложений.
+- `packages/*` — shared TypeScript packages, including contracts, the framework-agnostic `packages/editor-engine` and `packages/view-protocol` (ADR-064).
 - `draft/*` — прототипы и экспериментальные реализации (портал, плеер, legacy‑игра).
 - `data/fixtures/` и `data/mocks/` — игровые данные и моки внешних интеграций (LLM, Router).
 - `docs/architecture/*` — архитектурные артефакты (ADR, gameplay slice records, схемы, SQL, поиск, протоколы).
@@ -422,7 +433,7 @@ assistant suggestion -> Cubica command/change set -> Cubica validation -> Cubica
 - В этом canonical slice bounded gameplay records `GSR-020`..`GSR-029` уже реализованы и доводят opening flow до terminal `i21`; архитектурные ограничения для такого моделирования зафиксированы в ADR-024.
 - Внутри этого slice filesystem ownership для `games/*` закреплён за `runtime-api`; `player-web` должен зависеть от player-facing backend contracts, а не от прямого чтения repo content.
 - `draft/antarctica-nextjs-player/` и imported portal drafts остаются reference/draft artifacts.
-- `SDK/core`, `SDK/shared` и `SDK/react-sdk` остаются legacy/supporting packages and do not define the current canonical runtime boundary.
+- Каталог `SDK/` упразднён по ADR-064: живой код бывшего `SDK/core` живёт в `packages/view-protocol`, мёртвые пакеты (`react-sdk`, `shared`, `viewers`) удалены.
 - Future games should be added through `games/*`, `packages/contracts/*` and `runtime-api`, not by extending old draft paths. Новые серверные механики должны проходить через `docs/architecture/runtime-mechanics-language.md` and ADR-040 before runtime code is added.
 
 ---

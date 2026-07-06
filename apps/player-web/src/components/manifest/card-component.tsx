@@ -3,7 +3,7 @@ import type {
   GameUiCardComponentProps
 } from "@cubica/contracts-manifest";
 import { resolveExpression, resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
-import { useLocale } from "@/lib/locale";
+import { useLocale } from "@/components/locale-context";
 import type { PreviewElementAttributes } from "./preview-metadata";
 
 /**

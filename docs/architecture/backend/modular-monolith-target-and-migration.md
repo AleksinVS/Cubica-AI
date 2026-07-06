@@ -181,6 +181,10 @@ Cubica/
    - `SDK/react-sdk -> packages/sdk-react`
    - `SDK/shared -> packages/ui-kit`
    - `SDK/viewers/web-base -> packages/viewer-web`
+
+   > Примечание (2026-07-07): шаг выполнен иначе — по ADR-064 живой код
+   > `SDK/core` перенесён в `packages/view-protocol`, а `react-sdk`,
+   > `shared` и `viewers` удалены без переноса (не имели потребителей).
 3. Оставить `games/` как есть, но считать его каноническим content layer.
 4. Перенести или пересобрать рабочий web player в `apps/player-web`.
 5. Очистить роль `draft/`: оставить только то, что действительно экспериментально и временно.

@@ -1,4 +1,4 @@
-import type { IViewGateway, ViewCommand, ViewResponse } from "@cubica/sdk-core";
+import type { IViewGateway, ViewCommand, ViewResponse } from "@cubica/view-protocol";
 
 /**
  * Реализация IViewGateway для React.

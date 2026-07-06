@@ -16,20 +16,6 @@
       "expires_at": "2026-06-30"
     },
     {
-      "path": "SDK/*/package.json",
-      "markers": ["TODO"],
-      "owner": "SDK Team",
-      "reason": "SDK package lifecycle scripts are placeholders covered by the workspace project references cleanup task.",
-      "expires_at": "2026-06-30"
-    },
-    {
-      "path": "SDK/viewers/web-base/package.json",
-      "markers": ["TODO"],
-      "owner": "SDK Team",
-      "reason": "Viewer package lifecycle scripts are placeholders while LEGACY-0011 is active.",
-      "expires_at": "2026-06-30"
-    },
-    {
       "path": "apps/player-web/package.json",
       "markers": ["TODO"],
       "owner": "Frontend Team",
@@ -62,41 +48,6 @@
       "markers": ["mock", "заглушка", "временно"],
       "owner": "Backend Team",
       "reason": "Historical service development guide describes future editor integration work rather than active runtime code.",
-      "expires_at": "2026-06-30"
-    },
-    {
-      "path": "SDK/simulators/README.md",
-      "markers": ["TODO"],
-      "owner": "SDK Team",
-      "reason": "Simulator documentation is a historical SDK planning note pending workspace classification.",
-      "expires_at": "2026-06-30"
-    },
-    {
-      "path": "SDK/shared/README.md",
-      "markers": ["TODO"],
-      "owner": "SDK Team",
-      "reason": "Shared SDK documentation keeps a placeholder task list until SDK package ownership is classified.",
-      "expires_at": "2026-06-30"
-    },
-    {
-      "path": "SDK/react-sdk/DEV_GUIDE.md",
-      "markers": ["TODO", "stub", "заглушка", "временно"],
-      "owner": "SDK Team",
-      "reason": "React SDK guide describes planned package work while SDK scaffolding is covered by cleanup tasks.",
-      "expires_at": "2026-06-30"
-    },
-    {
-      "path": "SDK/custom-examples/README.md",
-      "markers": ["заглушка"],
-      "owner": "SDK Team",
-      "reason": "Custom examples guide states the registration rule for future examples rather than adding an active stub.",
-      "expires_at": "2026-06-30"
-    },
-    {
-      "path": "SDK/core/tests/README.md",
-      "markers": ["mock"],
-      "owner": "SDK Team",
-      "reason": "Test README uses mock as test terminology, not as an active production stub.",
       "expires_at": "2026-06-30"
     },
     {

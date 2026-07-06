@@ -1,4 +1,4 @@
-const { applyJsonMergePatch } = require("@cubica/sdk-core");
+const { applyJsonMergePatch } = require("@cubica/view-protocol");
 
 const currentSession = {
   sessionId: "test",

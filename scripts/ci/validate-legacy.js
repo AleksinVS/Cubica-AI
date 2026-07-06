@@ -30,7 +30,7 @@ const requiredDebtColumns = [
   "status"
 ];
 
-const scanRoots = ["apps", "services", "SDK", "packages", "docs"];
+const scanRoots = ["apps", "services", "packages", "docs"];
 const excludedPathParts = new Set([".git", ".next", ".tmp", "node_modules", "package-lock.json", "PROJECT_STRUCTURE.yaml"]);
 const excludedPrefixes = [
   "docs/reviews/",

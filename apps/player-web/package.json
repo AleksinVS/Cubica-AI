@@ -16,7 +16,7 @@
     "@cubica/contracts-manifest": "file:../../packages/contracts/manifest",
     "@cubica/contracts-runtime": "file:../../packages/contracts/runtime",
     "@cubica/contracts-session": "file:../../packages/contracts/session",
-    "@cubica/sdk-core": "file:../../SDK/core",
+    "@cubica/view-protocol": "file:../../packages/view-protocol",
     "next": "15.1.6",
     "react": "18.3.1",
     "react-dom": "18.3.1"

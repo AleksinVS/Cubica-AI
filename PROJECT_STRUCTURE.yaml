@@ -115,6 +115,7 @@ packages: # Переиспользуемые платформенные паке
     runtime: directory... # Runtime execution contracts for Cubica.
     session: directory... # Session lifecycle and player API contracts for Cubica.
   editor-engine: directory... # Framework-agnostic editor engine package for ADR-034 authoring manifest editing. It owns JSON document state, neutral graph projection, reverse projection intents, and deterministic diagnostics helpers.
+  view-protocol: directory... # Framework-agnostic package with the Abstract View Protocol contracts (ADR-002: Presenter -> View commands) and JSON state patch utilities (RFC 7396 Merge Patch, RFC 6902 JSON Patch). Seed of the future extracted player core per ADR-064.
 scripts: # Скрипты разработки и индексирования 
   ci: # Cross-platform CI validation scripts that enforce repository governance rules before merge.
     validate-agent-ui-boundaries.js: file # Node.js validator for ADR-044 Agent UI import boundaries: CopilotKit and AG-UI imports are allowed only in approved adapter files.
@@ -129,12 +130,6 @@ scripts: # Скрипты разработки и индексирования
     compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
     compile-cache.cjs: file # Level-3 compile cache (ADR-057) and hit/miss telemetry: content-hash-keyed, atomic, one-shot .tmp storage that is never a source of truth.
     compile-worker.cjs: file # Worker-thread entry point that compiles one authoring job as a pure function so the compile pool stays byte-identical to a sequential run.
-SDK: # SDK и вспомогательные библиотеки 
-  core: directory... # Базовые компоненты SDK и общая логика 
-  react-sdk: directory... # SDK для React/Next.js‑приложений 
-  shared: directory... # Общие UI‑компоненты и утилиты 
-  viewers: # Библиотека плееров для отображения игр 
-    web-base: directory... # Базовый веб-viewer для платформы Cubica. Содержит переиспользуемые компоненты для загрузки манифестов, управления состоянием и маршрутизации действий.
 services: # Сервисы и инфраструктура 
   game-editor: # Service boundary for the future Cubica game editor. It contains authoring workspace documentation and will host editor-specific implementation when this boundary is activated.
     docs: # Project documentation for Game Editor features, authoring workflows and editor-engine design.

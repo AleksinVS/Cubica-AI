@@ -1,36 +1,16 @@
 /**
- * Locale context for game UI strings.
+ * Locale strings for game UI text (framework-free).
  *
- * Provides localized strings via React context so components
- * can display user-facing text without hardcoded string literals.
+ * This module only exports the locale data and its types so that the
+ * lib/ layer stays inside the future player-core seam (ADR-064: no
+ * React/Next imports in presenter/ and lib/). The React context and the
+ * useLocale hook live in the components layer:
+ * apps/player-web/src/components/locale-context.ts.
+ *
  * Manifest-driven screens carry their own text (via component props),
- * so this context only affects convention-based fallback rendering
+ * so these strings only affect convention-based fallback rendering
  * and panel labels.
- *
- * Usage:
- *   import { useLocale } from "@/lib/locale";
- *   const t = useLocale();
- *   <span>{t.continue}</span>
  */
 
-import { createContext, useContext } from "react";
-import { ru, type LocaleStrings, type LocaleKey } from "./ru";
-
-const LocaleContext = createContext<LocaleStrings>(ru);
-
-/**
- * Provider that makes locale strings available to child components.
- * Defaults to Russian. Pass a different locale object for other languages.
- */
-export const LocaleProvider = LocaleContext.Provider;
-
-/**
- * Hook to access the current locale strings.
- * Returns the locale object with all user-facing text keys.
- */
-export function useLocale(): LocaleStrings {
-  return useContext(LocaleContext);
-}
-
-export { ru };
-export type { LocaleStrings, LocaleKey };
+export { ru } from "./ru";
+export type { LocaleStrings, LocaleKey } from "./ru";

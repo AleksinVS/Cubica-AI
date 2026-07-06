@@ -8,9 +8,9 @@ import type {
   GamePlayerUiContent
 } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
-import { useLocale } from "@/lib/locale";
+import { useLocale } from "@/components/locale-context";
 import type { PlayerState } from "@/presenter/types";
-import type { ViewCommand } from "@cubica/sdk-core";
+import type { ViewCommand } from "@cubica/view-protocol";
 import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";

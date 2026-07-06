@@ -1,6 +1,6 @@
 import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
 import type { PlayerRuntimeStatus } from "@/presenter/types";
-import { useLocale } from "@/lib/locale";
+import { useLocale } from "@/components/locale-context";
 
 interface RuntimeStatusPanelProps {
   readonly status: PlayerRuntimeStatus;

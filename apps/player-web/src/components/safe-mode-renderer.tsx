@@ -4,7 +4,8 @@ import type { FallbackMetricSpec } from "@/presenter/game-config";
 import type { MetricsSnapshot } from "@/types/game-state";
 import { getFallbackActionEntries } from "@/lib/game-content-resolvers";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
-import { useLocale, type LocaleStrings } from "@/lib/locale";
+import { useLocale } from "@/components/locale-context";
+import type { LocaleStrings } from "@/lib/locale";
 
 /**
  * Безопасный рендерер для экранов без манифестного описания.

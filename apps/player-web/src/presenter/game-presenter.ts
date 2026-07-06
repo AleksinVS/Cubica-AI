@@ -1,5 +1,5 @@
-import { applyJsonMergePatch } from "@cubica/sdk-core";
-import type { ViewCommand } from "@cubica/sdk-core";
+import { applyJsonMergePatch } from "@cubica/view-protocol";
+import type { ViewCommand } from "@cubica/view-protocol";
 import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import type {
@@ -341,8 +341,8 @@ export class GamePresenter {
 
       // Merge snapshot: объединяем текущее состояние с новым delta
       const merged = applyJsonMergePatch(
-        this.session as unknown as import("@cubica/sdk-core").JsonValue,
-        next as unknown as import("@cubica/sdk-core").JsonValue
+        this.session as unknown as import("@cubica/view-protocol").JsonValue,
+        next as unknown as import("@cubica/view-protocol").JsonValue
       ) as unknown as GameSession;
 
       this.session = merged;

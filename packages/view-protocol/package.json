@@ -1,0 +1,21 @@
+{
+  "name": "@cubica/view-protocol",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Abstract View Protocol (ADR-002) contracts and JSON state patch utilities shared by Cubica delivery channels (ADR-064).",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "echo \"[view-protocol] source-only TS package consumed via src; no build step\"",
+    "test": "echo \"[view-protocol] source-only package; behavior is covered by consumer test suites (player-web)\"",
+    "lint": "echo \"[view-protocol] no dedicated lint step\""
+  },
+  "keywords": [
+    "cubica",
+    "view-protocol"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

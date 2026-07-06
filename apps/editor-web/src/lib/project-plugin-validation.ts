@@ -436,8 +436,7 @@ async function writeGeneratedTypecheckConfig(
         "@cubica/player-web/plugin-api": ["apps/player-web/src/plugins/player-plugin-api.ts"],
         "@cubica/contracts-manifest": ["packages/contracts/manifest/src/index.ts"],
         "@cubica/contracts-session": ["packages/contracts/session/src/index.ts"],
-        "@cubica/sdk-core": ["SDK/core/src/index.ts"],
-        "@cubica/sdk-shared": ["SDK/shared/src/index.ts"]
+        "@cubica/view-protocol": ["packages/view-protocol/src/index.ts"]
       }
     },
     include: [path.join(plugin.pluginRoot, "src/**/*.ts")]
