@@ -28,15 +28,24 @@ import {
   buildEditorEntityYamlProjection,
   buildEntityGroupingTreeViewModel,
   buildPreviewTraceRestorePlan,
+  changedPointersFromDiffSummary,
   classifyChangeSet,
   createPatchJournalStep,
   createPreviewPlaythroughTrace,
   createSchemaRegistry,
+  detectIntentConflict,
   dryRunEditorChangeSet,
+  enqueueIntent,
+  hasActiveIntent,
+  INTENT_STALE_DIAGNOSTIC_CODE,
   hashEditorText,
   interpretReturnedIntent,
+  nextPendingIntentId,
+  promoteNextRunnableIntent,
   readJsonPointer,
+  refineIntentPointers,
   reviveEditorEntityProjection,
+  transitionIntent,
   type ChangedPointersByFile,
   type ClassifyChangeSetResult,
   type EditorChangeSet,
@@ -48,8 +57,11 @@ import {
   type EditorEntitySourcePointer,
   type EditorPatchIntent,
   type IncrementalProjectionReport,
+  type IntentJournalEntry,
+  type IntentQueueEntry,
   type JsonValue,
   type PatchJournalStep,
+  type QueuedIntentStatus,
   type PreviewEntityDescriptor,
   type PreviewPoint,
   type PreviewPlaythroughTrace,
@@ -146,6 +158,11 @@ import {
   toPrototypeAuditNotice
 } from "@/components/workspace/api-client";
 import { dryRunMultiDocumentChangeSet } from "@/components/workspace/multi-document-apply";
+import {
+  deriveIntentJournalEntries,
+  scopeActiveFilePointers,
+  scopeChangeSetWritePointers
+} from "@/components/workspace/intent-queue-controller";
 import { collectEntityTypeOptions, type EntityTypeOption } from "@/components/workspace/entity-create-options";
 import type { EntityTreeCreateRequest } from "@/components/workspace/entity-tree";
 import {
@@ -274,6 +291,20 @@ const emptyReturnedIntentTelemetry: ReturnedIntentTelemetry = {
   recognizedNoChangeFragments: 0,
   unrecognizedFragments: 0
 };
+
+/**
+ * The execution side of a queued agent intent (ADR-057 §4.11). Kept in a ref, not
+ * React state: `run` is the async closure that plans (if needed) and applies the
+ * intent when it reaches the front of the queue; `cancelled` is set by a cancel
+ * request so the runner skips the apply when it resumes; `plan` is the resolved
+ * ChangeSet stashed when the intent went `stale`, so an "apply anyway" choice can
+ * re-run the apply without re-planning.
+ */
+interface IntentRunnerRecord {
+  cancelled: boolean;
+  readonly run: (intentId: string) => void | Promise<void>;
+  plan?: PlannedAiChangeSet;
+}
 
 /**
  * The open entity refactor dialog (Phase 6.2b, design-spec §3.2). `delete` carries
@@ -505,6 +536,41 @@ export function useEditorWorkspace() {
   // each report bucket. No UI depends on it in this slice; it is exposed on the
   // controller (and a compact badge could read it) for the §5 telemetry.
   const [returnedIntentTelemetry, setReturnedIntentTelemetry] = useState<ReturnedIntentTelemetry>(emptyReturnedIntentTelemetry);
+
+  // --- Agent intent queue with optimistic concurrency (ADR-057 §4.11; UX §9.5;
+  //     design-spec §2.4) --------------------------------------------------------
+  //
+  // Only AGENT intents (preview entity/region prompt, text-mode "apply as
+  // intent") enter this queue; MANUAL form edits (property edit, «+» create,
+  // delete/rename) apply immediately and never queue (§9.5). Each queued intent
+  // captures the journal sequence + the pointers it read/writes; at apply time it
+  // is dry-run against the LIVE document and its captured pointers are checked for
+  // conflict against journal edits committed since capture (`intent-stale`).
+  //
+  // `intentQueue` is the render mirror; `intentQueueRef` is the synchronous truth
+  // the runners read. `intentRunnersRef` holds each intent's execution closure and
+  // its cancel flag (kept off React state — closures are not serialisable and must
+  // not trigger renders). `intentStartedRef` guards against double-invoking a
+  // runner if the promotion effect fires twice for the same commit.
+  const [intentQueue, setIntentQueue] = useState<readonly IntentQueueEntry[]>([]);
+  const intentQueueRef = useRef<readonly IntentQueueEntry[]>([]);
+  const intentRunnersRef = useRef(new Map<string, IntentRunnerRecord>());
+  const intentStartedRef = useRef(new Set<string>());
+  const intentSeqRef = useRef(0);
+  // A queued runner is a closure from the render that submitted it, but it runs
+  // later (from the promotion effect), so it must NOT apply against that old
+  // render's snapshot — it would dry-run against a stale document and clobber an
+  // intervening non-overlapping edit. This ref always points at the LATEST apply
+  // pipeline, which dry-runs against the CURRENT `viewModel.snapshot` (§2.4
+  // "dry-run против актуального состояния"). Assigned after the function exists.
+  const latestApplyPlannedRef = useRef<
+    ((plan: PlannedAiChangeSet, options?: { readonly approval?: CubicaAgentApprovalEnvelope; readonly classification?: ClassifyChangeSetResult }) => EditorAgentToolResult) | null
+  >(null);
+  // Render-synced mirror of the session AI-patch journal so a runner (which fires
+  // from a post-commit effect) always reads the CURRENT journal for conflict
+  // detection, even after an earlier serialized intent committed its edit.
+  const aiPatchJournalRef = useRef<readonly PatchJournalStep[]>(aiPatchJournal);
+  aiPatchJournalRef.current = aiPatchJournal;
 
   // --- Pinned state fixtures (ADR-057 §4.9, §9.3; design-spec §3.3) ------------
   //
@@ -2219,20 +2285,53 @@ export function useEditorWorkspace() {
       return;
     }
 
-    try {
-      const planned = await planCurrentAiChangeSet(context.draft.trim());
-      if (!planned.ok) {
-        setAiDiagnostics(planned.diagnostics);
-        setAiApplyState("blocked");
-        setStatusMessage(planned.summary);
-        return;
-      }
-
-      applyPlannedAiChangeSet(planned.plan);
-    } catch (error) {
-      setAiApplyState("error");
-      setStatusMessage(error instanceof Error ? error.message : "AI ChangeSet apply failed.");
+    // Build the plan context (intent + targets) SYNCHRONOUSLY now, so the queued
+    // runner is self-contained and does not read `previewPromptContext` later (it
+    // may have moved on by the time a serialized intent is promoted). The entity/
+    // region preview prompt is an AGENT intent → it goes through the queue (§9.5).
+    const planContext = buildCurrentAiPlanContext(context.draft.trim());
+    if (!planContext.ok) {
+      setAiDiagnostics(planContext.diagnostics);
+      setAiApplyState("blocked");
+      setStatusMessage(planContext.summary);
+      return;
     }
+
+    setPreviewAiIntent(planContext.previewIntent);
+    const readWritePointers = scopeActiveFilePointers(currentDocument.filePath, planContext.intent.targetPointers);
+    enqueueAgentIntent({
+      readPointers: readWritePointers,
+      writePointers: readWritePointers,
+      run: async (intentId) => {
+        setAiApplyState("planning");
+        setAiDiagnostics([]);
+        setStatusMessage(
+          `Planning AI ChangeSet for ${planContext.targets.length} target pointer${planContext.targets.length === 1 ? "" : "s"}...`
+        );
+        try {
+          const response = await requestAiChangeSet(planContext.intent, planContext.targets);
+          if (isIntentCancelled(intentId)) {
+            forgetIntentRunner(intentId);
+            return;
+          }
+          if (!response.ok || response.changeSet === undefined) {
+            const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+            setAiDiagnostics(diagnostics);
+            failIntent(intentId, diagnostics[0]?.message ?? "AI planner did not return an applicable ChangeSet.");
+            return;
+          }
+          setAgentPlannedChangeSet(null);
+          reconcileAndApplyIntent(intentId, {
+            intent: planContext.intent,
+            changeSet: response.changeSet,
+            diagnostics: response.diagnostics ?? [],
+            targetPointers: planContext.intent.targetPointers
+          });
+        } catch (error) {
+          failIntent(intentId, error instanceof Error ? error.message : "AI ChangeSet apply failed.");
+        }
+      }
+    });
   }
 
   async function runAgentPlanTool(prompt: string | undefined): Promise<EditorAgentToolResult> {
@@ -2468,12 +2567,20 @@ export function useEditorWorkspace() {
       return approvalError;
     }
 
-    const applied = applyPlannedAiChangeSet(planned, { approval, classification });
+    // The panel/session chat apply is an AGENT intent (§9.5) → it goes through the
+    // queue so it serializes behind any other running intent and is conflict-checked
+    // against journal edits since it was planned. The approval already validated
+    // above is carried into the deferred apply. The tool returns "queued": the diff
+    // and any `intent-stale` verdict surface in the session journal on apply.
+    const readPointers = scopeActiveFilePointers(currentDocument.filePath, planned.targetPointers);
+    enqueueAgentIntent({
+      readPointers,
+      writePointers: scopeChangeSetWritePointers(planned.changeSet),
+      run: (intentId) => reconcileAndApplyIntent(intentId, planned, { approval, classification })
+    });
     return {
-      ok: applied.ok,
-      summary: applied.summary,
-      diagnostics: applied.diagnostics?.map(toAgentDiagnostic),
-      diffSummary: applied.diffSummary,
+      ok: true,
+      summary: `ChangeSet queued for apply: ${planned.changeSet.summary}`,
       changeSetId: planned.changeSet.id
     };
   }
@@ -2735,6 +2842,185 @@ export function useEditorWorkspace() {
       changeSetId: plan.changeSet.id
     };
   }
+
+  // === Agent intent queue integration (ADR-057 §4.11; UX §9.5; design-spec §2.4)
+  //
+  // The queue WRAPS the agent apply path; it never replaces the safety pipeline.
+  // `applyPlannedAiChangeSet` above stays the single convergence point
+  // (classify → approval → dry-run → validation → undo journal). A queued intent
+  // adds, in front of that point, optimistic-concurrency conflict detection and
+  // MVP one-at-a-time serialization; manual form edits bypass all of this.
+
+  // Keep the ref pointing at the current-render apply pipeline so a deferred
+  // runner applies against the LIVE document (see the ref's declaration).
+  latestApplyPlannedRef.current = applyPlannedAiChangeSet;
+
+  /** Updates the queue ref (synchronous truth) and the render mirror together. */
+  function updateIntentQueue(
+    reducer: (entries: readonly IntentQueueEntry[]) => readonly IntentQueueEntry[]
+  ): readonly IntentQueueEntry[] {
+    const next = reducer(intentQueueRef.current);
+    intentQueueRef.current = next;
+    setIntentQueue(next);
+    return next;
+  }
+
+  /**
+   * Enqueues an agent intent (pending) and stores its execution closure. The
+   * intent captures the CURRENT journal length as its `baseJournalSeq` plus the
+   * pointers it read and (best-known) writes. The promotion effect starts it once
+   * nothing else is active (MVP one running). Returns the new intent id.
+   */
+  function enqueueAgentIntent(input: {
+    readonly readPointers: readonly string[];
+    readonly writePointers: readonly string[];
+    readonly run: (intentId: string) => void | Promise<void>;
+  }): string {
+    intentSeqRef.current += 1;
+    const id = `intent-${Date.now()}-${intentSeqRef.current}`;
+    intentRunnersRef.current.set(id, { cancelled: false, run: input.run });
+    updateIntentQueue((entries) =>
+      enqueueIntent(entries, {
+        id,
+        baseJournalSeq: aiPatchJournalRef.current.length,
+        readPointers: input.readPointers,
+        writePointers: input.writePointers
+      })
+    );
+    return id;
+  }
+
+  /** True when a cancel request arrived for this intent (flag or queue status). */
+  function isIntentCancelled(intentId: string): boolean {
+    if (intentRunnersRef.current.get(intentId)?.cancelled === true) {
+      return true;
+    }
+    return intentQueueRef.current.find((entry) => entry.id === intentId)?.status === "cancelled";
+  }
+
+  /** Drops a finished intent's runner bookkeeping (keeps the queue entry for the UI). */
+  function forgetIntentRunner(intentId: string): void {
+    intentRunnersRef.current.delete(intentId);
+    intentStartedRef.current.delete(intentId);
+  }
+
+  /**
+   * Reconciles a running intent against the live document and either applies it or
+   * marks it `stale` (design-spec §2.4). The intent's write set is first refined to
+   * the ChangeSet's real pointers; then, if any journal edit committed since the
+   * intent was captured overlaps its read ∪ write pointers, the intent goes
+   * `stale` and the author chooses (apply anyway / cancel) — the ChangeSet is
+   * stashed for a later "apply anyway". No conflict → the normal apply runs.
+   */
+  function reconcileAndApplyIntent(
+    intentId: string,
+    plan: PlannedAiChangeSet,
+    options: { readonly approval?: CubicaAgentApprovalEnvelope; readonly classification?: ClassifyChangeSetResult } = {}
+  ): void {
+    if (isIntentCancelled(intentId)) {
+      forgetIntentRunner(intentId);
+      return;
+    }
+    const writePointers = scopeChangeSetWritePointers(plan.changeSet);
+    const entries = updateIntentQueue((current) => refineIntentPointers(current, intentId, { writePointers }));
+    const entry = entries.find((candidate) => candidate.id === intentId);
+    if (entry !== undefined && detectIntentConflict(entry, deriveIntentJournalEntries(aiPatchJournalRef.current))) {
+      const runner = intentRunnersRef.current.get(intentId);
+      if (runner !== undefined) {
+        runner.plan = plan;
+      }
+      updateIntentQueue((current) => transitionIntent(current, intentId, "stale"));
+      setStatusMessage(`Правки в журнале затронули цели интента — интент устарел (${INTENT_STALE_DIAGNOSTIC_CODE}). Выберите действие.`);
+      return;
+    }
+    performIntentApply(intentId, plan, options);
+  }
+
+  /** Runs the shared apply pipeline for an intent and records the terminal status. */
+  function performIntentApply(
+    intentId: string,
+    plan: PlannedAiChangeSet,
+    options: { readonly approval?: CubicaAgentApprovalEnvelope; readonly classification?: ClassifyChangeSetResult } = {}
+  ): void {
+    updateIntentQueue((current) => transitionIntent(current, intentId, "applying"));
+    // Use the LATEST apply pipeline (not the runner's capture) so the dry-run
+    // runs against the current document (§2.4 "dry-run против актуального").
+    const applied = (latestApplyPlannedRef.current ?? applyPlannedAiChangeSet)(plan, options);
+    updateIntentQueue((current) => transitionIntent(current, intentId, applied.ok ? "done" : "failed"));
+    forgetIntentRunner(intentId);
+  }
+
+  /** Marks an intent `failed` (its planning/agent step was blocked) and cleans up. */
+  function failIntent(intentId: string, message: string): void {
+    updateIntentQueue((current) => transitionIntent(current, intentId, "failed"));
+    setAiApplyState("blocked");
+    setStatusMessage(message);
+    forgetIntentRunner(intentId);
+  }
+
+  /**
+   * Cancels a queued intent (design-spec §2.4; UX §9.5 «отмена в полёте»). A
+   * pending/running/stale intent transitions to `cancelled` and, if it is still
+   * planning, its runner's cancel flag makes it skip the apply when it resumes.
+   * The provider fetch is not aborted (that would change the api-client contract);
+   * cancel is enforced at the queue level by never applying the result. `applying`
+   * (durable mutation underway) and terminal intents are left untouched.
+   */
+  function handleCancelIntent(intentId: string): void {
+    const runner = intentRunnersRef.current.get(intentId);
+    if (runner !== undefined) {
+      runner.cancelled = true;
+    }
+    const status = intentQueueRef.current.find((entry) => entry.id === intentId)?.status;
+    if (status === "pending" || status === "running" || status === "stale") {
+      updateIntentQueue((current) => transitionIntent(current, intentId, "cancelled"));
+      forgetIntentRunner(intentId);
+      setStatusMessage("Интент отменён.");
+    }
+  }
+
+  /**
+   * Resolves a `stale` intent by the author's choice (design-spec §2.4):
+   * "apply" re-runs the apply against the current document with the stashed plan;
+   * "cancel" drops it.
+   */
+  function handleResolveStaleIntent(intentId: string, choice: "apply" | "cancel"): void {
+    const runner = intentRunnersRef.current.get(intentId);
+    if (choice === "cancel" || runner?.plan === undefined) {
+      updateIntentQueue((current) => transitionIntent(current, intentId, "cancelled"));
+      forgetIntentRunner(intentId);
+      setStatusMessage("Устаревший интент отменён.");
+      return;
+    }
+    performIntentApply(intentId, runner.plan);
+  }
+
+  // Promotion effect: when nothing is active, start the oldest pending intent
+  // (MVP one running). Effects run AFTER commit, so a serialized follow-up intent
+  // sees the previous intent's journal edit for conflict detection. `intentStarted`
+  // guards against a double-fire starting the same runner twice.
+  useEffect(() => {
+    if (hasActiveIntent(intentQueue)) {
+      return;
+    }
+    const id = nextPendingIntentId(intentQueue);
+    if (id === undefined || intentStartedRef.current.has(id)) {
+      return;
+    }
+    const runner = intentRunnersRef.current.get(id);
+    if (runner === undefined) {
+      return;
+    }
+    intentStartedRef.current.add(id);
+    updateIntentQueue((current) => transitionIntent(current, id, "running"));
+    if (runner.cancelled) {
+      updateIntentQueue((current) => transitionIntent(current, id, "cancelled"));
+      forgetIntentRunner(id);
+      return;
+    }
+    void runner.run(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable; only the queue drives promotion.
+  }, [intentQueue]);
 
   /**
    * Stashes a MULTI-FILE incremental-projection context (ADR-057 §4.13, Phase
@@ -3406,29 +3692,39 @@ export function useEditorWorkspace() {
       }
     ];
 
-    setAiApplyState("planning");
+    // The agent sub-path of the text mode is a genuine AGENT intent → it goes
+    // through the queue (§9.5): captured base journal seq + read/write pointers,
+    // conflict-checked at apply, cancellable in flight.
+    const readWritePointers = scopeActiveFilePointers(currentDocument.filePath, intent.targetPointers);
     setStatusMessage("Передача намерения агенту (существующий контур)...");
-    void (async () => {
-      try {
-        const response = await requestAiChangeSet(intent, targets);
-        if (!response.ok || response.changeSet === undefined) {
-          const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
-          setAiDiagnostics(diagnostics);
-          setAiApplyState("blocked");
-          setStatusMessage(diagnostics[0]?.message ?? "Агент не вернул применимое изменение.");
-          return;
+    enqueueAgentIntent({
+      readPointers: readWritePointers,
+      writePointers: readWritePointers,
+      run: async (intentId) => {
+        setAiApplyState("planning");
+        try {
+          const response = await requestAiChangeSet(intent, targets);
+          if (isIntentCancelled(intentId)) {
+            forgetIntentRunner(intentId);
+            return;
+          }
+          if (!response.ok || response.changeSet === undefined) {
+            const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+            setAiDiagnostics(diagnostics);
+            failIntent(intentId, diagnostics[0]?.message ?? "Агент не вернул применимое изменение.");
+            return;
+          }
+          reconcileAndApplyIntent(intentId, {
+            intent,
+            changeSet: response.changeSet,
+            diagnostics: response.diagnostics ?? [],
+            targetPointers: intent.targetPointers
+          });
+        } catch (error) {
+          failIntent(intentId, error instanceof Error ? error.message : "Передача намерения агенту не удалась.");
         }
-        applyPlannedAiChangeSet({
-          intent,
-          changeSet: response.changeSet,
-          diagnostics: response.diagnostics ?? [],
-          targetPointers: intent.targetPointers
-        });
-      } catch (error) {
-        setAiApplyState("error");
-        setStatusMessage(error instanceof Error ? error.message : "Передача намерения агенту не удалась.");
       }
-    })();
+    });
     return true;
   }
 
@@ -3975,6 +4271,11 @@ export function useEditorWorkspace() {
     aiRedoJournal,
     aiApplyState,
     aiDiffSummary,
+    // Agent intent queue (ADR-057 §4.11; UX §9.5; design-spec §2.4): the live
+    // queue for the "Журнал" surface, plus cancel + stale-resolution handlers.
+    intentQueue,
+    handleCancelIntent,
+    handleResolveStaleIntent,
     rightSidebarOpen,
     leftSidebarOpen,
     rightSidebarPanel,

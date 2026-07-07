@@ -29,6 +29,7 @@
  * - `state-fixture.ts`       — state fixture hash + semantic validation (ADR-057)
  * - `prototype-extraction.ts`— local prototype extraction (ADR-050)
  * - `reverse-projection.ts`  — UI edit intents back into JSON Patch
+ * - `intent-queue.ts`        — agent intent queue + optimistic-concurrency conflict (ADR-057 §4.11)
  */
 
 // All public type contracts.
@@ -196,3 +197,32 @@ export { reverseProjectIntent } from "./reverse-projection.ts";
 // browser-reachable barrel; the LLM agent call it signals lives in Phase 4.2.
 export { interpretReturnedIntent } from "./returned-intent.ts";
 export type { InterpretReturnedIntentOptions } from "./returned-intent.ts";
+
+// Agent intent queue with optimistic concurrency (ADR-057 §4.11;
+// editor-preview-first-ux §9.5; design-spec §2.4). Pure, deterministic,
+// framework-agnostic queue structure + conflict detection; the agent-path
+// integration and cancel wiring live in editor-web. Manual form edits NEVER
+// enter this queue — they apply immediately.
+export {
+  INTENT_STALE_DIAGNOSTIC_CODE,
+  canTransitionIntentStatus,
+  changedPointersFromDiffSummary,
+  createIntentQueue,
+  detectIntentConflict,
+  enqueueIntent,
+  hasActiveIntent,
+  nextPendingIntentId,
+  promoteNextRunnableIntent,
+  refineIntentPointers,
+  selectJournalEntriesSince,
+  transitionIntent,
+  unionIntentPointers
+} from "./intent-queue.ts";
+export type {
+  EnqueueIntentInput,
+  IntentJournalEntry,
+  IntentQueue,
+  IntentQueueEntry,
+  QueuedIntent,
+  QueuedIntentStatus
+} from "./intent-queue.ts";

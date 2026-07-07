@@ -1344,6 +1344,85 @@ textarea {
   cursor: not-allowed;
 }
 
+/* Agent intent queue (ADR-057 §4.11; UX §9.5; design-spec §2.4). */
+.intent-queue {
+  border-bottom: 1px solid #e2e7ef;
+  padding: 8px 10px;
+}
+
+.intent-queue-heading {
+  color: #5a6678;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.intent-queue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.intent-queue-item {
+  align-items: center;
+  background: #f4f6fa;
+  border: 1px solid #dde3ec;
+  border-radius: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 8px;
+}
+
+.intent-queue-item-running,
+.intent-queue-item-applying {
+  border-color: #4c8bf5;
+}
+
+.intent-queue-item-stale {
+  border-color: #d9a441;
+  background: #fdf6e6;
+}
+
+.intent-queue-item-failed {
+  border-color: #d46a6a;
+}
+
+.intent-queue-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1e2a3b;
+}
+
+.intent-queue-targets {
+  color: #6a7688;
+  font-size: 11px;
+  margin-right: auto;
+}
+
+.intent-queue-cancel,
+.intent-queue-stale-choice button {
+  background: #ffffff;
+  border: 1px solid #b8c2d3;
+  border-radius: 6px;
+  color: #1e2a3b;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 26px;
+  padding: 3px 7px;
+}
+
+.intent-queue-stale-choice {
+  display: flex;
+  gap: 6px;
+}
+
 .right-sidebar-panel,
 .json-panel {
   background: #ffffff;

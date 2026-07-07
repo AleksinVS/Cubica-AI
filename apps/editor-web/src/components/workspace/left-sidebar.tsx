@@ -13,6 +13,7 @@ import { JsonTreeView } from "@/components/json-tree-view";
 import { EditorCopilotChatPanel } from "@/components/editor-agent-ui";
 
 import { AiChatSidebarPanel } from "./ai-chat-sidebar-panel.tsx";
+import { IntentQueuePanel } from "./intent-queue-panel.tsx";
 import { EntityTree } from "./entity-tree.tsx";
 import { edgeTypes, nodeTypes } from "./semantic-graph.tsx";
 import { TimelineSidebarPanel } from "./timeline-sidebar-panel.tsx";
@@ -62,6 +63,9 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     aiDiffSummary,
     prototypeExtractionProposal,
     runAgentPreparePrototypeChangeSetTool,
+    intentQueue,
+    handleCancelIntent,
+    handleResolveStaleIntent,
     handleSidebarResizeStart
   } = controller;
 
@@ -172,26 +176,35 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
           onPinFixture={handlePinFixture}
         />
       ) : (
-        <EditorCopilotChatPanel
-          enabled={agentConnection.copilotReady}
-          connection={agentConnection}
-          onCollapse={() => setLeftSidebarPanel(undefined)}
-          surface={editorAgentSurface}
-          tools={editorAgentTools}
-          fallback={
-            <AiChatSidebarPanel
-              proposedIntent={previewAiIntent}
-              aiApplyState={aiApplyState}
-              aiDiffSummary={aiDiffSummary}
-              prototypeExtractionProposal={prototypeExtractionProposal}
-              selectedNodeTitle={selectedNode?.semanticTitle}
-              onUsePrototypeProposal={() => {
-                void runAgentPreparePrototypeChangeSetTool();
-              }}
-              onCollapse={() => setLeftSidebarPanel(undefined)}
-            />
-          }
-        />
+        <>
+          {/* Agent intent queue (ADR-057 §4.11; UX §9.5) — always visible in the
+              session "Журнал"/chat surface, above whichever chat variant renders. */}
+          <IntentQueuePanel
+            intents={intentQueue}
+            onCancelIntent={handleCancelIntent}
+            onResolveStaleIntent={handleResolveStaleIntent}
+          />
+          <EditorCopilotChatPanel
+            enabled={agentConnection.copilotReady}
+            connection={agentConnection}
+            onCollapse={() => setLeftSidebarPanel(undefined)}
+            surface={editorAgentSurface}
+            tools={editorAgentTools}
+            fallback={
+              <AiChatSidebarPanel
+                proposedIntent={previewAiIntent}
+                aiApplyState={aiApplyState}
+                aiDiffSummary={aiDiffSummary}
+                prototypeExtractionProposal={prototypeExtractionProposal}
+                selectedNodeTitle={selectedNode?.semanticTitle}
+                onUsePrototypeProposal={() => {
+                  void runAgentPreparePrototypeChangeSetTool();
+                }}
+                onCollapse={() => setLeftSidebarPanel(undefined)}
+              />
+            }
+          />
+        </>
       )}
       <div
         className="sidebar-resize-handle sidebar-resize-handle-left"

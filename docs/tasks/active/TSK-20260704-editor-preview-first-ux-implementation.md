@@ -678,3 +678,27 @@ game-agnostic CI invariant.
   intent путей. **Итог Phase 6 (core): создание/удаление/переименование/создание
   вида — атомарные кросс-манифестные операции через единый мультидок-конвейер с
   approval для опасных; drag остаётся follow-up.**
+- 2026-07-07 (Phase 7 — очередь интентов, готово): ядро `intent-queue.ts`
+  (контракт `QueuedIntent` §2.4 дословно; неизменяемый reducer `IntentQueueEntry`
+  + `createIntentQueue()` со stateful-обёрткой, выдающей объекты с `cancel()`;
+  `detectIntentConflict` — запись журнала с seq≥baseJournalSeq тронула указатель
+  из readPointers∪writePointers через `pointersOverlap`, file-scoped;
+  `promoteNextRunnableIntent` — MVP один running; guarded-переходы статусов).
+  Интеграция: агентские пути через очередь (промт сущности/региона preview,
+  агентский под-путь текстового режима, панельный/сессионный чат — теперь
+  «queued», diff/stale в журнале); ручные правки (property/create/delete/rename)
+  и ДЕТЕРМИНИРОВАННЫЙ быстрый путь returned-intent — мимо очереди (§9.5
+  «детерминированно и дёшево»). Захват baseJournalSeq + read/write указателей при
+  submit; writePointers уточняются реальными указателями planned ChangeSet при
+  применении; конфликт → `stale` + выбор автора (применить/показать/отменить),
+  `intent-stale` info. Очередь ОБОРАЧИВАЕТ единую точку applyPlannedAiChangeSet
+  (classify→approval→dry-run→validation→undo), не заменяет. Отмена в полёте на
+  уровне очереди (provider-abort — follow-up, нужен AbortSignal). UI-панель
+  `intent-queue-panel.tsx` (статусы ожидает/выполняется/применяется/готово/
+  ошибка/отменён/устарел + отмена + stale-выбор) в сессионном журнале левого
+  сайдбара (правой вкладки «Журнал» ещё нет — mockup right-tabs не реализованы).
+  Гейты независимо переподтверждены: verify:editor-engine 187 (+20), editor-web
+  typecheck + 197 unit (+12), сборки в одиночку, e2e 8/8 (29.8с). Follow-ups:
+  provider-abort (AbortSignal), «применить всё равно» для dangerous stale
+  (сейчас fails-closed на approval — безопасно, re-approval future), append-only
+  журнал для baseJournalSeq при undo mid-flight.
