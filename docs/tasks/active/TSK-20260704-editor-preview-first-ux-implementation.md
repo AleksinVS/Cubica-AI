@@ -742,3 +742,26 @@ game-agnostic CI invariant.
   переподтверждены: typecheck, unit 215 (+19), сборки в одиночку, e2e 8/8 (30.9с).
   **Итог Phase 8: диагностический поток (вкладка «Проверки» + навигация + быстрые
   исправления) и сломанная компиляция не гасит предпросмотр — завершены.**
+- 2026-07-07 (Phase 9.1 — снимок области как optional adapter capability, готово):
+  контракт ядра — `PreviewRegionSnapshot {mediaType,width,height,rect,dataUrl,
+  capturedAt}` (base64 data URL, JSON-safe — осознанно вместо `ImageData` из
+  эскиза §2.7, т.к. ImageData это lib.dom и ломает framework-agnostic ядро) +
+  необязательный `captureRegionSnapshot?(rect)` на `PreviewRendererAdapter`
+  (аддитивно, `?`; отсутствие/null → деградация до списка сущностей, §8). DOM-адаптер
+  (`preview-dom-adapter.ts`) кропит область из same-origin `<canvas>` в offscreen
+  canvas → toDataURL; возвращает `null` (честная деградация, задокументирована) при
+  отсутствии canvas / tainted cross-origin / нулевой области / не-браузерном хосте.
+  Реальный preview — cross-origin iframe player-web, пиксели которого браузер читать
+  из другого фрейма отказывается → в поставке возможность даёт null, регион уходит
+  со списком сущностей (корректно); `previewRendererAdapterRef` pluggable под будущий
+  same-origin рендерер. Проводка `handlePreviewRegionSelect`: сущности+rect сразу,
+  снимок асинхронно (монотонный token против устаревших выборов), в
+  `editorAgentContext` только при `kind==="region"`; YAML для региона НЕ строится;
+  очередь интентов (Phase 7) не тронута. Гейт ADR-044: снимок идёт через ту же
+  единую точку `buildEditorAgentContextProjection`, что весь agent context, с
+  бюджетом байт (`maxSnapshotBytes` дефолт 512КБ): сверх — dataUrl дропается,
+  метаданные остаются, `dataOmitted`+`limits.truncated`. Без новых зависимостей
+  (html2canvas не добавлялся). Гейты независимо переподтверждены: verify:editor-engine
+  187, editor-web typecheck + 227 unit (+12), сборки в одиночку, e2e 8/8 (30.9с).
+  Follow-up: подключить `previewRendererAdapterRef` к same-origin рендереру (канальный
+  просмотрщик/canvas) — тогда снимки реально сработают.

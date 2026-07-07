@@ -14,7 +14,8 @@ import {
   type EditorEntity,
   type EditorEntityFacetKind,
   type EditorEntitySourcePointer,
-  type JsonValue
+  type JsonValue,
+  type PreviewRegionSnapshot
 } from "@cubica/editor-engine";
 
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "./agent-assistant-registry";
@@ -45,6 +46,27 @@ export interface EditorAgentEntitySourcePointerContext {
   readonly label?: string;
 }
 
+/**
+ * Region snapshot as it appears INSIDE the audited agent-context envelope
+ * (ADR-057 §4.7; design-spec §2.7). Routing the snapshot through this projection
+ * is what keeps it on the same ADR-044 redaction/audit path as the rest of the
+ * agent context instead of a separate binary side-channel: the image payload is
+ * subject to an explicit byte-size budget here, and `dataOmitted` records when
+ * the gate dropped it.
+ */
+export interface EditorAgentRegionSnapshotContext {
+  readonly mediaType: string;
+  readonly width: number;
+  readonly height: number;
+  readonly rect: { readonly x: number; readonly y: number; readonly width: number; readonly height: number };
+  /** Encoded image `data:` URL, present ONLY when within the size budget. */
+  readonly dataUrl?: string;
+  /** True when the byte-size budget dropped the image payload (ADR-044 gate). */
+  readonly dataOmitted: boolean;
+  /** Approximate decoded byte length of the image payload, kept as an audit signal. */
+  readonly approxByteLength: number;
+}
+
 interface EditorAgentContextSource extends CubicaAgentContextSource {
   readonly app: "apps/editor-web";
   readonly sessionId?: string;
@@ -65,6 +87,12 @@ export interface EditorAgentContextProjection extends CubicaAgentContext<EditorA
     readonly authoringPointer: string;
   }[];
   readonly selectedEditorEntities: readonly EditorAgentSelectedEntityContext[];
+  /**
+   * OPTIONAL region snapshot for a region prompt (ADR-057 §4.7; design-spec
+   * §2.7). Absent when the renderer adapter does not support the capability, so
+   * the agent then sees only the captured entity list.
+   */
+  readonly regionSnapshot?: EditorAgentRegionSnapshotContext;
   readonly diagnostics: readonly {
     readonly severity: DocumentDiagnostic["severity"];
     readonly source: string;
@@ -81,6 +109,7 @@ export interface EditorAgentContextProjection extends CubicaAgentContext<EditorA
     readonly maxSelectedPointers: number;
     readonly maxDiagnostics: number;
     readonly maxExcerptLength: number;
+    readonly maxSnapshotBytes: number;
     readonly truncated: boolean;
   };
 }
@@ -99,17 +128,24 @@ export interface BuildEditorAgentContextProjectionInput {
     readonly authoringPointer: string;
   }[];
   readonly selectedEditorEntities?: readonly EditorEntity[];
+  /** Optional region snapshot to gate and include (ADR-057 §4.7; ADR-044). */
+  readonly regionSnapshot?: PreviewRegionSnapshot;
   readonly diagnostics?: readonly (DocumentDiagnostic | RoutedEditorDiagnostic)[];
   readonly previewTraceSummary?: EditorAgentContextProjection["previewTraceSummary"];
   readonly maxSelectedPointers?: number;
   readonly maxDiagnostics?: number;
   readonly maxExcerptLength?: number;
+  readonly maxSnapshotBytes?: number;
 }
 
 const secretPathPattern = /(^|\/|\.)(secret|secrets|password|token|api[-_]?key|private|credential|authorization)(\/|\.|$)/iu;
 const defaultMaxSelectedPointers = 8;
 const defaultMaxDiagnostics = 12;
 const defaultMaxExcerptLength = 900;
+// Byte budget for a region snapshot inside the agent context. A screenshot is
+// potentially sensitive and heavy, so the ADR-044 gate caps the payload: over
+// budget, the image is dropped (metadata is kept) and `limits.truncated` is set.
+const defaultMaxSnapshotBytes = 512 * 1024;
 
 export function buildEditorAgentContextProjection(
   input: BuildEditorAgentContextProjectionInput
@@ -117,6 +153,12 @@ export function buildEditorAgentContextProjection(
   const maxSelectedPointers = input.maxSelectedPointers ?? defaultMaxSelectedPointers;
   const maxDiagnostics = input.maxDiagnostics ?? defaultMaxDiagnostics;
   const maxExcerptLength = input.maxExcerptLength ?? defaultMaxExcerptLength;
+  const maxSnapshotBytes = input.maxSnapshotBytes ?? defaultMaxSnapshotBytes;
+  // Route the region snapshot through the SAME projection point as the rest of
+  // the agent context (ADR-044): the byte-size budget is enforced here so the
+  // image can never bypass the gate on its way to an external provider.
+  const projectedRegionSnapshot =
+    input.regionSnapshot === undefined ? undefined : projectRegionSnapshot(input.regionSnapshot, maxSnapshotBytes);
   // WHY: dedup BEFORE measuring for the `truncated` flag. Callers (e.g. multi-select in the
   // editor UI) can legitimately send the same pointer twice; collapsing duplicates is not a
   // limit-driven truncation and must never flip `limits.truncated` to true on its own
@@ -163,12 +205,14 @@ export function buildEditorAgentContextProjection(
     selectedPointers,
     selectedPreviewEntities,
     selectedEditorEntities,
+    regionSnapshot: projectedRegionSnapshot,
     diagnostics,
     previewTraceSummary: input.previewTraceSummary,
     limits: {
       maxSelectedPointers,
       maxDiagnostics,
       maxExcerptLength,
+      maxSnapshotBytes,
       // WHY: compare the DEDUPED pointer count against the limit — comparing the raw,
       // pre-dedup input length here was the root cause of Finding 6: sending duplicate
       // pointers that fit under the limit once collapsed would still report `truncated: true`
@@ -177,9 +221,42 @@ export function buildEditorAgentContextProjection(
         dedupedSelectedPointers.length > maxSelectedPointers ||
         (input.selectedEditorEntities?.length ?? 0) > maxSelectedPointers ||
         (input.diagnostics?.length ?? 0) > maxDiagnostics ||
-        anyPointerValueTruncated
+        anyPointerValueTruncated ||
+        (projectedRegionSnapshot?.dataOmitted ?? false)
     }
   };
+}
+
+/**
+ * Projects a region snapshot into the audited agent context under the ADR-044
+ * byte-size budget. Over budget, the image payload is dropped (metadata stays)
+ * and `dataOmitted` is set so the caller flags `limits.truncated`.
+ */
+function projectRegionSnapshot(snapshot: PreviewRegionSnapshot, maxBytes: number): EditorAgentRegionSnapshotContext {
+  const approxByteLength = approxDataUrlByteLength(snapshot.dataUrl);
+  const dataOmitted = approxByteLength > maxBytes;
+  return {
+    mediaType: snapshot.mediaType,
+    width: snapshot.width,
+    height: snapshot.height,
+    rect: {
+      x: snapshot.rect.x,
+      y: snapshot.rect.y,
+      width: snapshot.rect.width,
+      height: snapshot.rect.height
+    },
+    dataUrl: dataOmitted ? undefined : snapshot.dataUrl,
+    dataOmitted,
+    approxByteLength
+  };
+}
+
+/** Approximate decoded byte length of a base64 `data:` URL payload. */
+function approxDataUrlByteLength(dataUrl: string): number {
+  const commaIndex = dataUrl.indexOf(",");
+  const base64 = commaIndex === -1 ? dataUrl : dataUrl.slice(commaIndex + 1);
+  const padding = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+  return Math.max(0, Math.floor((base64.length * 3) / 4) - padding);
 }
 
 function toAgentSelectedEntityContext(entity: EditorEntity): EditorAgentSelectedEntityContext {

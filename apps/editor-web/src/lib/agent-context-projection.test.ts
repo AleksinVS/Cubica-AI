@@ -160,6 +160,78 @@ describe("editor agent context projection", () => {
     expect(isForbiddenAgentContextPath("/root/public/title")).toBe(false);
   });
 
+  // Region snapshot as audited agent context (ADR-057 §4.7; design-spec §2.7;
+  // ADR-044). The snapshot must ride the SAME projection/redaction/audit gate as
+  // the rest of the context, never a separate binary side-channel.
+  describe("region snapshot gate (ADR-044)", () => {
+    it("omits regionSnapshot when the adapter provides none (entity list only)", () => {
+      const projection = buildEditorAgentContextProjection({
+        gameId: "demo",
+        activeFilePath: "ui/web.authoring.json",
+        document: { root: {} },
+        selectedPointers: [],
+        diagnostics: []
+      });
+
+      expect(projection.regionSnapshot).toBeUndefined();
+    });
+
+    it("includes a small snapshot through the gate with its metadata", () => {
+      const projection = buildEditorAgentContextProjection({
+        gameId: "demo",
+        activeFilePath: "ui/web.authoring.json",
+        document: { root: {} },
+        selectedPointers: [],
+        diagnostics: [],
+        regionSnapshot: {
+          mediaType: "image/png",
+          width: 40,
+          height: 20,
+          rect: { x: 4, y: 6, width: 40, height: 20 },
+          dataUrl: "data:image/png;base64,AAAA",
+          capturedAt: "2026-07-07T00:00:00.000Z"
+        }
+      });
+
+      expect(projection.regionSnapshot).toMatchObject({
+        mediaType: "image/png",
+        width: 40,
+        height: 20,
+        rect: { x: 4, y: 6, width: 40, height: 20 },
+        dataUrl: "data:image/png;base64,AAAA",
+        dataOmitted: false
+      });
+      expect(projection.limits.truncated).toBe(false);
+    });
+
+    it("drops an over-budget image payload but keeps metadata and flags truncation", () => {
+      const bigBase64 = "A".repeat(4096);
+      const projection = buildEditorAgentContextProjection({
+        gameId: "demo",
+        activeFilePath: "ui/web.authoring.json",
+        document: { root: {} },
+        selectedPointers: [],
+        diagnostics: [],
+        maxSnapshotBytes: 64,
+        regionSnapshot: {
+          mediaType: "image/png",
+          width: 64,
+          height: 64,
+          rect: { x: 0, y: 0, width: 64, height: 64 },
+          dataUrl: `data:image/png;base64,${bigBase64}`,
+          capturedAt: "2026-07-07T00:00:00.000Z"
+        }
+      });
+
+      expect(projection.regionSnapshot?.dataOmitted).toBe(true);
+      expect(projection.regionSnapshot?.dataUrl).toBeUndefined();
+      expect(projection.regionSnapshot?.width).toBe(64);
+      expect(projection.limits.truncated).toBe(true);
+      // The heavy payload must not leak past the gate.
+      expect(JSON.stringify(projection)).not.toContain(bigBase64);
+    });
+  });
+
   // Regression coverage for Finding 6 (false/silent truncation reporting).
   describe("limits.truncated accuracy (Finding 6)", () => {
     it("does not report truncation when duplicate pointers collapse under the limit", () => {

@@ -8,18 +8,36 @@
 import {
   hitTestPreviewPoint,
   hitTestPreviewRect,
+  normalizePreviewRect,
   type PreviewEntityDescriptor,
   type PreviewHighlightCommand,
   type PreviewHitTestOptions,
   type PreviewHitTestResult,
   type PreviewPoint,
   type PreviewRect,
+  type PreviewRegionSnapshot,
   type PreviewRendererAdapter
 } from "@cubica/editor-engine";
 
 export interface DomPreviewAdapterOptions {
   /** CSS selector used to find preview entities. */
   readonly selector?: string;
+  /**
+   * Optional raster source for the "region snapshot" capability
+   * (ADR-057 §4.7; design-spec §2.7). Pass a `<canvas>` element or a selector
+   * resolved within `root`; when omitted the adapter auto-detects the first
+   * `<canvas>` descendant.
+   *
+   * IMPORTANT boundary: browsers cannot rasterize arbitrary HTML DOM without a
+   * heavy dependency (html2canvas and the like are explicitly disallowed here),
+   * and they refuse to read pixels across a CROSS-ORIGIN iframe at all — the
+   * real editor preview is exactly such an iframe (player-web). A same-origin
+   * `<canvas>` (2D/WebGL renderer) is the one browser-native raster source, so a
+   * snapshot is only produced when one is available and untainted. No canvas, a
+   * cross-origin/tainted canvas, or a non-browser host all yield `null`, which
+   * degrades the region prompt to the entity list (correct per §8).
+   */
+  readonly snapshotCanvas?: HTMLCanvasElement | string;
 }
 
 const defaultEntitySelector = "[data-editor-entity-id][data-authoring-pointer]";
@@ -39,8 +57,89 @@ export function createDomPreviewAdapter(root: ParentNode, options: DomPreviewAda
     },
     highlight(command: PreviewHighlightCommand) {
       applyDomHighlight(root, selector, command);
+    },
+    async captureRegionSnapshot(rect: PreviewRect): Promise<PreviewRegionSnapshot | null> {
+      return captureDomRegionSnapshot(root, rect, options.snapshotCanvas);
     }
   };
+}
+
+/**
+ * Best-effort browser-native region snapshot (ADR-057 §4.7; design-spec §2.7).
+ *
+ * Returns `null` (honest degradation, never throws) whenever a real image cannot
+ * be produced: no `<canvas>` raster source, a zero-sized region, a tainted or
+ * cross-origin canvas (`toDataURL` raises `SecurityError`), or a non-browser
+ * host. Only a same-origin `<canvas>` yields a snapshot — see the boundary note
+ * on {@link DomPreviewAdapterOptions.snapshotCanvas}.
+ */
+export function captureDomRegionSnapshot(
+  root: ParentNode,
+  rect: PreviewRect,
+  snapshotCanvas?: HTMLCanvasElement | string
+): PreviewRegionSnapshot | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const source = resolveSnapshotCanvas(root, snapshotCanvas);
+  if (source === null) {
+    return null;
+  }
+
+  const normalized = normalizePreviewRect(rect);
+  const width = Math.round(normalized.width);
+  const height = Math.round(normalized.height);
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  // Map the viewport-space region (entity bounds use getBoundingClientRect) into
+  // the canvas intrinsic pixel space, accounting for CSS scaling of the canvas.
+  const canvasRect = source.getBoundingClientRect();
+  if (canvasRect.width <= 0 || canvasRect.height <= 0) {
+    return null;
+  }
+  const scaleX = source.width / canvasRect.width;
+  const scaleY = source.height / canvasRect.height;
+  const sourceX = (normalized.x - canvasRect.left) * scaleX;
+  const sourceY = (normalized.y - canvasRect.top) * scaleY;
+  const sourceWidth = normalized.width * scaleX;
+  const sourceHeight = normalized.height * scaleY;
+
+  const target = document.createElement("canvas");
+  target.width = width;
+  target.height = height;
+  const context = target.getContext("2d");
+  if (context === null) {
+    return null;
+  }
+
+  try {
+    context.drawImage(source, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+    // toDataURL throws SecurityError when the canvas was tainted by cross-origin
+    // pixels; we treat that as a clean "no snapshot" rather than an error.
+    const dataUrl = target.toDataURL("image/png");
+    return {
+      mediaType: "image/png",
+      width,
+      height,
+      rect: normalized,
+      dataUrl,
+      capturedAt: new Date().toISOString()
+    };
+  } catch {
+    return null;
+  }
+}
+
+function resolveSnapshotCanvas(root: ParentNode, snapshotCanvas?: HTMLCanvasElement | string): HTMLCanvasElement | null {
+  if (typeof snapshotCanvas === "object" && snapshotCanvas !== null) {
+    return snapshotCanvas;
+  }
+
+  const candidate = typeof snapshotCanvas === "string" ? root.querySelector(snapshotCanvas) : root.querySelector("canvas");
+  return candidate instanceof HTMLCanvasElement ? candidate : null;
 }
 
 export function collectDomPreviewEntities(root: ParentNode, selector = defaultEntitySelector): readonly PreviewEntityDescriptor[] {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { collectDomPreviewEntities, createDomPreviewAdapter } from "./preview-dom-adapter";
 
@@ -82,6 +82,95 @@ describe("preview DOM adapter", () => {
 
     adapter.highlight({ type: "clearHighlight" });
     expect(root.children[1]?.getAttribute("data-editor-highlighted")).toBeNull();
+  });
+
+  // Optional "region snapshot" capability (ADR-057 §4.7; design-spec §2.7).
+  describe("captureRegionSnapshot", () => {
+    it("exposes the optional capability on the adapter", () => {
+      const adapter = createDomPreviewAdapter(document.createElement("div"));
+      expect(typeof adapter.captureRegionSnapshot).toBe("function");
+    });
+
+    it("degrades to null when the root has no canvas raster source (plain DOM / iframe)", async () => {
+      const root = document.createElement("div");
+      root.innerHTML = `<div data-editor-entity-id="a" data-authoring-pointer="/root/a"></div>`;
+      const adapter = createDomPreviewAdapter(root);
+      await expect(adapter.captureRegionSnapshot?.({ x: 0, y: 0, width: 20, height: 10 })).resolves.toBeNull();
+    });
+
+    it("degrades to null for a zero-sized region", async () => {
+      const source = document.createElement("canvas");
+      source.width = 100;
+      source.height = 100;
+      setRect(source, { x: 0, y: 0, width: 100, height: 100 });
+      const adapter = createDomPreviewAdapter(document.createElement("div"), { snapshotCanvas: source });
+      await expect(adapter.captureRegionSnapshot?.({ x: 0, y: 0, width: 0, height: 0 })).resolves.toBeNull();
+    });
+
+    it("captures a region snapshot from a same-origin canvas raster source", async () => {
+      const source = document.createElement("canvas");
+      source.width = 200;
+      source.height = 100;
+      setRect(source, { x: 0, y: 0, width: 200, height: 100 });
+
+      // happy-dom does not rasterize; stub the TARGET canvas the adapter creates
+      // so the browser-native drawImage/toDataURL path is deterministic here.
+      const realCreateElement = document.createElement.bind(document);
+      const createSpy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+        if (tag === "canvas") {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ({ drawImage: () => undefined }),
+            toDataURL: () => "data:image/png;base64,SNAPSHOT"
+          } as unknown as HTMLCanvasElement;
+        }
+        return realCreateElement(tag) as HTMLElement;
+      });
+
+      try {
+        const adapter = createDomPreviewAdapter(document.createElement("div"), { snapshotCanvas: source });
+        const snapshot = await adapter.captureRegionSnapshot?.({ x: 10, y: 10, width: 40, height: 20 });
+        expect(snapshot).toMatchObject({
+          mediaType: "image/png",
+          width: 40,
+          height: 20,
+          rect: { x: 10, y: 10, width: 40, height: 20 },
+          dataUrl: "data:image/png;base64,SNAPSHOT"
+        });
+      } finally {
+        createSpy.mockRestore();
+      }
+    });
+
+    it("degrades to null when the canvas is tainted (toDataURL throws)", async () => {
+      const source = document.createElement("canvas");
+      source.width = 200;
+      source.height = 100;
+      setRect(source, { x: 0, y: 0, width: 200, height: 100 });
+
+      const realCreateElement = document.createElement.bind(document);
+      const createSpy = vi.spyOn(document, "createElement").mockImplementation((tag: string) => {
+        if (tag === "canvas") {
+          return {
+            width: 0,
+            height: 0,
+            getContext: () => ({ drawImage: () => undefined }),
+            toDataURL: () => {
+              throw new Error("SecurityError");
+            }
+          } as unknown as HTMLCanvasElement;
+        }
+        return realCreateElement(tag) as HTMLElement;
+      });
+
+      try {
+        const adapter = createDomPreviewAdapter(document.createElement("div"), { snapshotCanvas: source });
+        await expect(adapter.captureRegionSnapshot?.({ x: 10, y: 10, width: 40, height: 20 })).resolves.toBeNull();
+      } finally {
+        createSpy.mockRestore();
+      }
+    });
   });
 });
 

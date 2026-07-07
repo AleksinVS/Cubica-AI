@@ -660,6 +660,34 @@ export type PreviewHighlightCommand =
       };
     };
 
+/**
+ * Framework-agnostic screenshot of a preview region (ADR-057 §4.7;
+ * editor-preview-first-ux §4/§8; design-spec §2.7).
+ *
+ * WHY a custom value instead of the web `ImageData` type the design-spec sketch
+ * mentions: this engine package must stay free of `lib.dom` types so it keeps
+ * compiling in non-browser hosts (Node tests, workers) and stays renderer-
+ * agnostic. `ImageData` is a DOM type and its raw `Uint8ClampedArray` pixel
+ * buffer is neither JSON-serializable nor compact. A base64 `data:` URL is
+ * self-contained and JSON-safe, so the snapshot can travel through the SAME
+ * agent-context projection / redaction / audit gate (ADR-044) as the rest of
+ * the agent context, without a special binary side-channel.
+ */
+export interface PreviewRegionSnapshot {
+  /** Media (MIME) type of the encoded image, for example `image/png`. */
+  readonly mediaType: string;
+  /** Pixel width of the captured region image. */
+  readonly width: number;
+  /** Pixel height of the captured region image. */
+  readonly height: number;
+  /** Source region in the adapter-declared preview coordinate space. */
+  readonly rect: PreviewRect;
+  /** Self-contained, JSON-safe base64 `data:` URL of the encoded region image. */
+  readonly dataUrl: string;
+  /** ISO-8601 capture timestamp, used for audit trails (ADR-044). */
+  readonly capturedAt: string;
+}
+
 export interface PreviewRendererAdapter {
   /**
    * Returns the latest renderer-neutral descriptors.
@@ -673,6 +701,16 @@ export interface PreviewRendererAdapter {
   highlight(command: PreviewHighlightCommand): void;
   /** Optional invalidation hook for UI layers that subscribe to renderer changes. */
   subscribe?(listener: () => void): () => void;
+  /**
+   * OPTIONAL "region snapshot" capability (ADR-057 §4.7; editor-preview-first-ux
+   * §8; design-spec §2.7). When present, the region prompt carries a screenshot
+   * of the selected area alongside the captured entity list. Additive by design:
+   * an adapter that omits this method — or returns `null` (capture infeasible,
+   * for example a cross-origin iframe whose pixels the browser refuses to read)
+   * — degrades the region contract to the entity list, which is CORRECT, not an
+   * error. Returning `null` and omitting the method are equivalent degradations.
+   */
+  captureRegionSnapshot?(rect: PreviewRect): Promise<PreviewRegionSnapshot | null>;
 }
 
 export interface StaticPreviewRendererAdapter extends PreviewRendererAdapter {

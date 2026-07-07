@@ -33,7 +33,9 @@ import {
   type EntityTreeGrouping,
   type PatchJournalStep,
   type PreviewEntityDescriptor,
-  type PreviewPlaythroughTrace
+  type PreviewPlaythroughTrace,
+  type PreviewRegionSnapshot,
+  type PreviewRendererAdapter
 } from "@cubica/editor-engine";
 
 import { embeddedAuthoringSample } from "@/lib/authoring-sample";
@@ -180,6 +182,12 @@ export function usePreviewRuntimeState() {
   const [previewUnresolvedEntityCount, setPreviewUnresolvedEntityCount] = useState(0);
   const [selectedPreviewEntityId, setSelectedPreviewEntityId] = useState<string | undefined>(undefined);
   const [previewPromptContext, setPreviewPromptContext] = useState<PreviewPromptContext | null>(null);
+  // OPTIONAL region snapshot for the active region prompt (ADR-057 §4.7;
+  // design-spec §2.7). `null` when the renderer adapter has no snapshot
+  // capability (the cross-origin iframe preview), so the region prompt degrades
+  // to the entity list. Only meaningful while `previewPromptContext.kind` is
+  // "region"; the agent-context memo gates on that.
+  const [previewRegionSnapshot, setPreviewRegionSnapshot] = useState<PreviewRegionSnapshot | null>(null);
   const [previewAiIntent, setPreviewAiIntent] = useState<PreviewAiIntent | null>(null);
   const [previewTrace, setPreviewTrace] = useState<PreviewPlaythroughTrace>(() =>
     createPreviewPlaythroughTrace({ traceId: "preview-trace-initial" })
@@ -202,6 +210,16 @@ export function usePreviewRuntimeState() {
   const [previewAppliedVersionHash, setPreviewAppliedVersionHash] = useState<string | undefined>(undefined);
   const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewPointerPlayResetRef = useRef<number | undefined>(undefined);
+  // Pluggable renderer adapter that MAY advertise the optional region-snapshot
+  // capability (ADR-057 §4.7). The current preview is a cross-origin iframe
+  // (player-web) whose pixels the browser refuses to read across the frame, so
+  // this stays `null` and region prompts degrade to the entity list (correct per
+  // §8). A future same-origin renderer (canvas/channel viewer) can set it to
+  // enable snapshots without touching the region wiring.
+  const previewRendererAdapterRef = useRef<PreviewRendererAdapter | null>(null);
+  // Monotonic token guarding async snapshot capture against a superseded
+  // selection, so a late snapshot never attaches to a newer region/entity.
+  const regionSnapshotTokenRef = useRef(0);
 
   return {
     previewUrl,
@@ -218,6 +236,8 @@ export function usePreviewRuntimeState() {
     setSelectedPreviewEntityId,
     previewPromptContext,
     setPreviewPromptContext,
+    previewRegionSnapshot,
+    setPreviewRegionSnapshot,
     previewAiIntent,
     setPreviewAiIntent,
     previewTrace,
@@ -241,7 +261,9 @@ export function usePreviewRuntimeState() {
     previewAppliedVersionHash,
     setPreviewAppliedVersionHash,
     previewIframeRef,
-    previewPointerPlayResetRef
+    previewPointerPlayResetRef,
+    previewRendererAdapterRef,
+    regionSnapshotTokenRef
   };
 }
 

@@ -121,6 +121,7 @@ import {
   type PreviewSelectionSourceMap
 } from "@/lib/preview-message-adapter";
 import { buildEditorAgentContextProjection } from "@/lib/agent-context-projection";
+import { captureRegionSnapshotForAgent } from "@/lib/preview-region-snapshot";
 import {
   useEditorAgentConnection,
   type EditorAgentToolResult,
@@ -435,6 +436,8 @@ export function useEditorWorkspace() {
     setSelectedPreviewEntityId,
     previewPromptContext,
     setPreviewPromptContext,
+    previewRegionSnapshot,
+    setPreviewRegionSnapshot,
     previewAiIntent,
     setPreviewAiIntent,
     previewTrace,
@@ -458,7 +461,9 @@ export function useEditorWorkspace() {
     previewAppliedVersionHash,
     setPreviewAppliedVersionHash,
     previewIframeRef,
-    previewPointerPlayResetRef
+    previewPointerPlayResetRef,
+    previewRendererAdapterRef,
+    regionSnapshotTokenRef
   } = usePreviewRuntimeState();
 
   const {
@@ -936,6 +941,9 @@ export function useEditorWorkspace() {
         selectedPointers: agentSelectedPointers,
         selectedPreviewEntities: agentSelectedPreviewEntities,
         selectedEditorEntities: agentSelectedEditorEntities,
+        // Region snapshot only applies to a REGION prompt; gate on the kind so a
+        // lingering snapshot never leaks into an entity/document context.
+        regionSnapshot: previewPromptContext?.kind === "region" ? (previewRegionSnapshot ?? undefined) : undefined,
         diagnostics: viewModel.documentDiagnostics,
         previewTraceSummary:
           previewTrace.events.length === 0
@@ -956,6 +964,8 @@ export function useEditorWorkspace() {
       currentDocument.versionHash,
       currentPreviewTraceEvent?.label,
       editorSession?.sessionId,
+      previewPromptContext?.kind,
+      previewRegionSnapshot,
       previewTrace.events.length,
       previewTrace.traceId,
       selectedPreviewTraceEvent?.label,
@@ -1618,6 +1628,8 @@ export function useEditorWorkspace() {
     setPreviewUnresolvedEntityCount(0);
     setSelectedPreviewEntityId(undefined);
     setPreviewPromptContext(null);
+    regionSnapshotTokenRef.current += 1;
+    setPreviewRegionSnapshot(null);
     setPreviewAiIntent(null);
     setPreviewInspectMode(false);
     setAltPlayActive(false);
@@ -1648,6 +1660,8 @@ export function useEditorWorkspace() {
     setEditsSincePreview((count) => count + 1);
     setSelectedPreviewEntityId(undefined);
     setPreviewPromptContext(null);
+    regionSnapshotTokenRef.current += 1;
+    setPreviewRegionSnapshot(null);
     setPreviewAiIntent(null);
     setPreviewPointSelectionMode(false);
   }
@@ -2328,6 +2342,11 @@ export function useEditorWorkspace() {
     point: PreviewPoint,
     layeredEntities: readonly PreviewEntityDescriptor[]
   ) {
+    // Invalidate any in-flight region snapshot: this is an entity selection, not
+    // a region, so the region contract (entity list [+ optional snapshot]) does
+    // not apply here.
+    regionSnapshotTokenRef.current += 1;
+    setPreviewRegionSnapshot(null);
     setSelectedPreviewEntityId(entity.entityId);
     selectAuthoringPointerFromPreview(entity);
     setPreviewPromptContext({
@@ -2339,7 +2358,20 @@ export function useEditorWorkspace() {
     setPreviewAiIntent(null);
   }
 
-  function handlePreviewRegionSelect(entities: readonly PreviewEntityDescriptor[], rect: PreviewRect, point: PreviewPoint) {
+  /**
+   * Region selection (ADR-057 §4.7; editor-preview-first-ux §4). The agent
+   * receives the prompt + the captured entity list, and — ONLY when the active
+   * renderer adapter advertises the optional "region snapshot" capability — a
+   * screenshot of the selected area. The region NEVER builds a YAML projection
+   * (that stays a single-entity text-mode concept); it goes through the intent
+   * queue unchanged (Phase 7). The snapshot flows into the agent context through
+   * the same ADR-044 redaction/audit gate as the rest of the context.
+   */
+  async function handlePreviewRegionSelect(entities: readonly PreviewEntityDescriptor[], rect: PreviewRect, point: PreviewPoint) {
+    // Reset first: the region prompt is usable immediately with the entity list;
+    // a snapshot (if any) is attached asynchronously below.
+    const token = (regionSnapshotTokenRef.current += 1);
+    setPreviewRegionSnapshot(null);
     setSelectedPreviewEntityId(undefined);
     setPropertyPanelOpen(false);
     setPreviewPromptContext({
@@ -2350,6 +2382,14 @@ export function useEditorWorkspace() {
       draft: previewPromptContext?.draft ?? ""
     });
     setPreviewAiIntent(null);
+
+    const snapshot = await captureRegionSnapshotForAgent(previewRendererAdapterRef.current, rect);
+    // Guard against a superseded selection: only attach if this is still the
+    // latest region/entity selection. `null` (capability absent or capture
+    // infeasible) leaves the region prompt on the entity list, which is correct.
+    if (snapshot !== null && regionSnapshotTokenRef.current === token) {
+      setPreviewRegionSnapshot(snapshot);
+    }
   }
 
   async function handlePreviewPromptSubmit() {
