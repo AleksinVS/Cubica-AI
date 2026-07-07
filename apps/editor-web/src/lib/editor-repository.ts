@@ -159,6 +159,69 @@ export async function saveAuthoringFile(input: SaveAuthoringFileInput): Promise<
   };
 }
 
+/** One file to write during a multi-document apply: its path and full new text. */
+export interface WorktreeFileWrite {
+  readonly filePath: string;
+  readonly text: string;
+}
+
+/** Per-file outcome of an apply: its normalized path and the new content hash. */
+export interface AppliedWorktreeFile {
+  readonly filePath: string;
+  readonly versionHash: string;
+}
+
+/**
+ * Writes several authoring files into a session worktree in ONE best-effort
+ * ATOMIC batch (ADR-057 §4.10, §5; Phase 6.2a). Used to persist the SIBLING
+ * facets of a cross-manifest entity operation (the active facet stays in the
+ * in-memory editor and commits on Save like today); the whole batch commits
+ * together on the next Save, exactly like any other authoring edit.
+ *
+ * All targets are resolved and their originals snapshotted FIRST; then every file
+ * is written. If any write throws, the already-written files are restored from
+ * their snapshots so a partial batch never lands on disk. The client has already
+ * dry-run/validated every file, so this path never re-parses — it only persists.
+ */
+export async function applyAuthoringFilesToWorktree(input: {
+  readonly gameId: string;
+  readonly repoRoot: string;
+  readonly files: readonly WorktreeFileWrite[];
+}): Promise<{ readonly files: readonly AppliedWorktreeFile[] }> {
+  if (input.files.length === 0) {
+    return { files: [] };
+  }
+
+  const repoRoot = await resolveRepositoryRoot(input.repoRoot);
+  const resolved = await Promise.all(
+    input.files.map(async (file) => {
+      const target = await resolveExistingAuthoringFile(repoRoot, input.gameId, file.filePath);
+      const originalText = await readFile(target.realPath, "utf8");
+      return { ...target, text: file.text, originalText };
+    })
+  );
+
+  const written: typeof resolved = [];
+  try {
+    for (const file of resolved) {
+      await writeFile(file.realPath, file.text, "utf8");
+      written.push(file);
+    }
+  } catch (error) {
+    // Roll back everything already written so the batch is all-or-nothing.
+    for (const file of written) {
+      await writeFile(file.realPath, file.originalText, "utf8").catch(() => undefined);
+    }
+    throw error instanceof EditorRepositoryError
+      ? error
+      : new EditorRepositoryError("Applying entity operation to the worktree failed.", 500);
+  }
+
+  return {
+    files: resolved.map((file) => ({ filePath: file.filePath, versionHash: hashText(file.text) }))
+  };
+}
+
 export async function openEditorLayout(input: {
   readonly gameId: string;
   readonly authoringFilePath: string;

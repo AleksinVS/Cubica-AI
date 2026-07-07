@@ -20,6 +20,8 @@ import {
   type NodeChange
 } from "@xyflow/react";
 import {
+  buildCreateEntityChangeSet,
+  buildCreatePrototypeChangeSet,
   buildEditorEntityYamlProjection,
   buildEntityGroupingTreeViewModel,
   buildPreviewTraceRestorePlan,
@@ -119,6 +121,7 @@ import {
   validateEditorAgentApproval
 } from "@/components/workspace/agent-surface";
 import {
+  applyEditorSiblingDocuments,
   createEditorSession,
   fetchAuthoringFile,
   fetchAuthoringList,
@@ -132,6 +135,9 @@ import {
   saveEditorLayout,
   toPrototypeAuditNotice
 } from "@/components/workspace/api-client";
+import { dryRunMultiDocumentChangeSet } from "@/components/workspace/multi-document-apply";
+import { collectEntityTypeOptions, type EntityTypeOption } from "@/components/workspace/entity-create-options";
+import type { EntityTreeCreateRequest } from "@/components/workspace/entity-tree";
 import {
   defaultJsonSidebarWidth,
   defaultLeftSidebarWidth,
@@ -660,6 +666,34 @@ export function useEditorWorkspace() {
       }),
     [viewModel.editorEntityProjection, entityTreeGrouping, viewModel.entityProjectionDocuments, activeChannel, activeScreenEntityId]
   );
+  // --- «+» create menu inputs (Phase 6.2a, part B; design-spec §3.1) ----------
+  //
+  // The UI-facet channel for a newly created visual entity: the active channel,
+  // else the first UI channel the project declares (game-agnostic). The searchable
+  // menu lists every type + local prototype the project declares.
+  const entityCreateChannel = useMemo(() => {
+    if (activeChannel !== undefined) {
+      return activeChannel;
+    }
+    return viewModel.entityProjectionDocuments.find((document) => document.documentKind === "ui" && document.channel !== undefined)?.channel;
+  }, [activeChannel, viewModel.entityProjectionDocuments]);
+  const entityCreateOptions = useMemo<readonly EntityTypeOption[]>(
+    () => collectEntityTypeOptions({ documents: viewModel.entityProjectionDocuments, channel: entityCreateChannel }),
+    [viewModel.entityProjectionDocuments, entityCreateChannel]
+  );
+  // In «По экранам», a selected entity in the ACTIVE document becomes the drop
+  // container (a component in that container); otherwise the new node is top-level
+  // (a new screen). Cross-document containers are out of scope for this slice.
+  const entityCreateContainerPointer = useMemo(() => {
+    if (entityTreeGrouping !== "byScreen" || entityTreeActiveEntityId === undefined) {
+      return undefined;
+    }
+    const entity = viewModel.editorEntityProjection.entityById.get(entityTreeActiveEntityId);
+    if (entity === undefined || entity.primarySource.filePath !== currentDocument.filePath) {
+      return undefined;
+    }
+    return `${entity.primarySource.pointer}/children`;
+  }, [entityTreeGrouping, entityTreeActiveEntityId, viewModel.editorEntityProjection.entityById, currentDocument.filePath]);
   const graphTargetNodes = useMemo(
     () =>
       viewModel.fullNodes.filter(
@@ -2662,6 +2696,187 @@ export function useEditorWorkspace() {
   }
 
   /**
+   * Stashes a MULTI-FILE incremental-projection context (ADR-057 §4.13, Phase
+   * 2.1b). Unlike `stashIncrementalProjectionEdit` (active document only), this
+   * carries the changed JSON-Patch pointers of EVERY touched document, so a
+   * cross-manifest entity operation feeds the projection updater the pointers it
+   * changed in the game AND the UI facet at once. Paired with the active text so
+   * the view-model memo ignores a stale context (same guard as the single-file
+   * stash).
+   */
+  function stashIncrementalProjectionEditByFile(changedPointersByFile: ChangedPointersByFile, activeNextText: string) {
+    pendingProjectionEditRef.current =
+      Object.keys(changedPointersByFile).length === 0 ? null : { changedPointersByFile, text: activeNextText };
+  }
+
+  /** Outcome of {@link commitMultiDocumentChangeSet}: active facet texts + inverse. */
+  type MultiDocumentCommitResult =
+    | {
+        readonly ok: true;
+        readonly activeBeforeText: string;
+        readonly activeAfterText: string;
+        readonly inverseChangeSet: EditorChangeSet;
+        readonly diffSummary: readonly EditorDiffSummaryItem[];
+      }
+    | { readonly ok: false; readonly diagnostics: readonly RoutedEditorDiagnostic[] };
+
+  /**
+   * Applies a (possibly multi-document) ChangeSet ATOMICALLY (ADR-057 §4.10, §5;
+   * Phase 6.2a, part A).
+   *
+   * Atomicity model chosen for this slice (see the task report for the rationale):
+   *   1. Dry-run/validate EVERY touched document IN MEMORY first
+   *      (`dryRunMultiDocumentChangeSet`). Any failure → apply NOTHING.
+   *   2. Persist the SIBLING facets to the session worktree via `/api/editor/apply`
+   *      (durable; commits on Save like every other edit — ADR-052). A server
+   *      failure → apply nothing (the active facet is still untouched).
+   *   3. Only AFTER the durable sibling write succeeds, apply the ACTIVE facet
+   *      in-memory (synchronous, cannot fail — it was already dry-run) and mirror
+   *      the persisted sibling texts into the projection inputs.
+   * The single async boundary is crossed BEFORE the active facet mutates, so a
+   * half-applied facet split is never observable. Undo replays this routine with
+   * the inverse ChangeSet, reverting siblings on disk and the active in memory.
+   */
+  async function commitMultiDocumentChangeSet(changeSet: EditorChangeSet): Promise<MultiDocumentCommitResult> {
+    const activeFilePath = currentDocument.filePath;
+    const activeBeforeText = jsonText;
+    const dryRun = dryRunMultiDocumentChangeSet({
+      changeSet,
+      documentTextByPath: liveAuthoringTextByFilePath(),
+      schemaRegistry,
+      resolveSchemaId: (filePath) => schemaIdForAuthoringDocument(filePath, undefined),
+      includeSemanticDiagnostics: true
+    });
+    const routedDiagnostics = dryRun.diagnostics.map(toRoutedDiagnostic);
+    setAiDiagnostics(routedDiagnostics);
+    if (!dryRun.ok) {
+      return { ok: false, diagnostics: routedDiagnostics };
+    }
+
+    const siblingAfters = [...dryRun.afterTextByPath]
+      .filter(([filePath]) => filePath !== activeFilePath)
+      .map(([filePath, text]) => ({ filePath, text }));
+    const activeAfterText = dryRun.afterTextByPath.get(activeFilePath) ?? activeBeforeText;
+
+    // Step 2: durable sibling write BEFORE the active facet changes.
+    if (siblingAfters.length > 0) {
+      try {
+        await applyEditorSiblingDocuments({
+          gameId: currentDocument.gameId,
+          sessionId: editorSession?.sessionId,
+          files: siblingAfters
+        });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Applying entity operation to the worktree failed.";
+        const diagnostics: RoutedEditorDiagnostic[] = [
+          { severity: "error", source: "change-set", pointer: "", label: "/", message, range: undefined }
+        ];
+        setAiDiagnostics(diagnostics);
+        return { ok: false, diagnostics };
+      }
+      // Mirror the persisted sibling texts into the projection inputs (Phase 3.a).
+      setProjectionSiblingDocuments((current) =>
+        current.map((document) => {
+          const after = siblingAfters.find((entry) => entry.filePath === document.filePath);
+          return after === undefined ? document : { ...document, text: after.text };
+        })
+      );
+    }
+
+    // Step 3: apply the active facet in-memory + feed the incremental projection
+    // updater the pointers changed across ALL documents (Phase 2.1b).
+    stashIncrementalProjectionEditByFile(dryRun.changedPointersByFile, activeAfterText);
+    if (dryRun.afterTextByPath.has(activeFilePath)) {
+      setJsonText(activeAfterText);
+    }
+    return { ok: true, activeBeforeText, activeAfterText, inverseChangeSet: dryRun.inverseChangeSet, diffSummary: dryRun.diffSummary };
+  }
+
+  /**
+   * «+» entity/prototype creation from the entity tree (Phase 6.2a, part B;
+   * design-spec §3.1). «По экранам» → a new entity (`buildCreateEntityChangeSet`),
+   * «По типам» → a new local prototype (`buildCreatePrototypeChangeSet`, ADR-050).
+   * The deterministic builder generates the `id` from the label; the resulting
+   * (possibly multi-document) ChangeSet flows through the SHARED atomic apply
+   * (`commitMultiDocumentChangeSet`) and is recorded on the undo journal. On
+   * success the new entity is auto-selected in the tree.
+   */
+  async function handleCreateEntityFromTree(request: EntityTreeCreateRequest) {
+    const documents = viewModel.entityProjectionDocuments;
+    const projection = viewModel.editorEntityProjection;
+    const label = request.label.trim();
+
+    const build =
+      entityTreeGrouping === "byType"
+        ? buildCreatePrototypeChangeSet({ baseType: request.typeKey }, projection, documents)
+        : buildCreateEntityChangeSet(
+            {
+              typeOrPrototype: request.typeKey,
+              channel: entityCreateChannel ?? "",
+              ...(entityCreateContainerPointer !== undefined ? { containerPointer: entityCreateContainerPointer } : {}),
+              ...(label !== "" ? { label } : {})
+            },
+            projection,
+            documents
+          );
+    if (!build.ok) {
+      setAiApplyState("blocked");
+      setStatusMessage(build.reason);
+      setAiDiagnostics([{ severity: "error", source: "change-set", pointer: "", label: "/", message: build.reason, range: undefined }]);
+      return;
+    }
+
+    setAiApplyState("applying");
+    const committed = await commitMultiDocumentChangeSet(build.changeSet);
+    if (!committed.ok) {
+      setAiApplyState("blocked");
+      setStatusMessage(committed.diagnostics[0]?.message ?? "Не удалось выполнить создание.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const step = createPatchJournalStep({
+      id: `create-step-${Date.now()}`,
+      createdAt: now,
+      intent: {
+        id: `entity-operation:${Date.now()}`,
+        kind: "entity-operation",
+        prompt: build.changeSet.summary,
+        activeFilePath: currentDocument.filePath,
+        targetPointers: [],
+        createdAt: now,
+        selectionKind: "document"
+      },
+      forward: build.changeSet,
+      inverse: committed.inverseChangeSet,
+      beforeText: committed.activeBeforeText,
+      afterText: committed.activeAfterText,
+      diffSummary: committed.diffSummary,
+      diagnostics: []
+    });
+    setAiPatchJournal((current) => [...current, step]);
+    setAiRedoJournal([]);
+    setAiDiffSummary(committed.diffSummary);
+    setAgentPlannedChangeSet(null);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    softenPreviewForEdit();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("applied");
+
+    // Auto-select the newly created entity in the tree (design-spec §3.1). A new
+    // prototype surfaces as a header (no entity id) and is left simply visible.
+    if ("entityId" in build) {
+      setEntityTreeSelectedEntityId(build.entityId);
+      setStatusMessage(`Создана сущность «${label === "" ? build.entityId : label}» (${build.entityId}).`);
+    } else {
+      setStatusMessage(`Создан прототип ${build.definitionType}.`);
+    }
+  }
+
+  /**
    * Records a dangerous ChangeSet that was blocked for lack of a matching
    * ADR-047 approval envelope. The rejection is surfaced through the existing
    * diagnostics/status log (the "Проверки" tab and status bar); it never
@@ -2934,6 +3149,44 @@ export function useEditorWorkspace() {
     }
   }
 
+  /** True when a journal step touched any document other than the active one. */
+  function isMultiDocumentStep(step: PatchJournalStep): boolean {
+    return step.affectedFiles.some((filePath) => filePath !== currentDocument.filePath);
+  }
+
+  /**
+   * Undo/redo of a MULTI-DOCUMENT journal step (Phase 6.2a). Replays the shared
+   * atomic apply with the step's inverse (undo) or forward (redo) ChangeSet, which
+   * reverts/re-applies the sibling facets on disk and the active facet in memory
+   * together, then moves the step between the undo and redo journals.
+   */
+  async function reapplyMultiDocumentStep(step: PatchJournalStep, direction: "undo" | "redo") {
+    setAiApplyState("applying");
+    const committed = await commitMultiDocumentChangeSet(direction === "undo" ? step.inverse : step.forward);
+    if (!committed.ok) {
+      setAiApplyState("blocked");
+      setStatusMessage(committed.diagnostics[0]?.message ?? `AI ${direction} failed validation.`);
+      return;
+    }
+
+    if (direction === "undo") {
+      setAiPatchJournal((current) => current.slice(0, -1));
+      setAiRedoJournal((current) => [...current, step]);
+    } else {
+      setAiPatchJournal((current) => [...current, step]);
+      setAiRedoJournal((current) => current.slice(0, -1));
+    }
+    setAiDiffSummary(committed.diffSummary);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    softenPreviewForEdit();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState(direction === "undo" ? "undone" : "applied");
+    setStatusMessage(`${direction === "undo" ? "Undid" : "Reapplied"} AI ChangeSet: ${step.summary}`);
+  }
+
   function handleUndoAiChange() {
     const step = aiPatchJournal.at(-1);
     if (step === undefined) {
@@ -2943,6 +3196,11 @@ export function useEditorWorkspace() {
     if (hashEditorText(jsonText) !== step.afterHash) {
       setAiApplyState("blocked");
       setStatusMessage("Undo is blocked because the document changed outside the AI journal.");
+      return;
+    }
+
+    if (isMultiDocumentStep(step)) {
+      void reapplyMultiDocumentStep(step, "undo");
       return;
     }
 
@@ -2984,6 +3242,11 @@ export function useEditorWorkspace() {
     if (hashEditorText(jsonText) !== step.beforeHash) {
       setAiApplyState("blocked");
       setStatusMessage("Redo is blocked because the document changed outside the AI journal.");
+      return;
+    }
+
+    if (isMultiDocumentStep(step)) {
+      void reapplyMultiDocumentStep(step, "redo");
       return;
     }
 
@@ -3423,6 +3686,10 @@ export function useEditorWorkspace() {
     entityGroupingTree,
     entityTreeActiveEntityId,
     handleEntityTreeSelectEntity,
+    // «+» entity/prototype creation (Phase 6.2a, part B; design-spec §3.1).
+    entityCreateOptions,
+    canCreateEntity: currentDocument.source === "repository",
+    handleCreateEntityFromTree,
     // Floating entity inspector wiring (Phase 3.c).
     activeChannel,
     inspectorEntityId,

@@ -40,6 +40,9 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     entityGroupingTree,
     entityTreeActiveEntityId,
     handleEntityTreeSelectEntity,
+    entityCreateOptions,
+    canCreateEntity,
+    handleCreateEntityFromTree,
     previewTraceEntries,
     selectedPreviewTraceEvent,
     selectedPreviewTraceSnapshot,
@@ -133,6 +136,9 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
                 tree={entityGroupingTree}
                 selectedEntityId={entityTreeActiveEntityId}
                 onSelectEntity={handleEntityTreeSelectEntity}
+                canCreate={canCreateEntity}
+                typeOptions={entityCreateOptions}
+                onCreate={(request) => void handleCreateEntityFromTree(request)}
               />
             ) : (
               <JsonTreeView

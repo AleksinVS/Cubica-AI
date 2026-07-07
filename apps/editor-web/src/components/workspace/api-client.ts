@@ -224,6 +224,37 @@ export async function pinStateFixture(input: {
   return (await response.json()) as PinStateFixtureResult;
 }
 
+/** Outcome of persisting sibling facets of a multi-document apply (Phase 6.2a). */
+export interface ApplyEditorSiblingDocumentsResult {
+  readonly ok: boolean;
+  readonly files: readonly { readonly filePath: string; readonly versionHash: string }[];
+}
+
+/**
+ * Persists the SIBLING documents of a multi-document EditorChangeSet into the
+ * session worktree (ADR-057 §4.10, §5). The active document stays in-memory; only
+ * the other touched authoring files are written here. Throws on any failure so the
+ * caller applies NOTHING (atomicity: siblings are written only after every touched
+ * document has already dry-run/validated cleanly on the client).
+ */
+export async function applyEditorSiblingDocuments(input: {
+  readonly gameId: string;
+  readonly sessionId?: string;
+  readonly files: readonly { readonly filePath: string; readonly text: string }[];
+}): Promise<ApplyEditorSiblingDocumentsResult> {
+  const response = await fetch("/api/editor/apply", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { readonly error?: string };
+    throw new Error(body.error ?? `Applying entity operation failed with HTTP ${response.status}.`);
+  }
+
+  return (await response.json()) as ApplyEditorSiblingDocumentsResult;
+}
+
 export async function postEditorWorkflow(path: string, body: Record<string, unknown>): Promise<EditorWorkflowResponse> {
   const response = await fetch(path, {
     method: "POST",

@@ -24,6 +24,15 @@ import React, { useMemo, useState, type KeyboardEvent } from "react";
 
 import type { EntityTreeGrouping, TreeViewModel, TreeViewNode } from "@cubica/editor-engine";
 
+import type { EntityTypeOption } from "./entity-create-options.ts";
+
+export interface EntityTreeCreateRequest {
+  /** The picked type / prototype / base-type key. */
+  readonly typeKey: string;
+  /** Author-supplied `_label` (may be empty — the builder then generates one). */
+  readonly label: string;
+}
+
 export interface EntityTreeProps {
   readonly grouping: EntityTreeGrouping;
   readonly onGroupingChange: (next: EntityTreeGrouping) => void;
@@ -31,6 +40,16 @@ export interface EntityTreeProps {
   /** Entity id to soft-highlight (every occurrence), or `undefined` for none. */
   readonly selectedEntityId: string | undefined;
   readonly onSelectEntity: (entityId: string) => void;
+  /**
+   * Create-menu wiring (design-spec §3.1, editor-preview-first-ux §9.1). When
+   * `canCreate` is false the «+» control is hidden (e.g. the embedded fallback,
+   * where there is no worktree to persist sibling facets into).
+   */
+  readonly canCreate: boolean;
+  /** Types + local prototypes offered by the searchable «+» menu. */
+  readonly typeOptions: readonly EntityTypeOption[];
+  /** Called when the author picks a type/prototype (and optional label) to create. */
+  readonly onCreate: (request: EntityTreeCreateRequest) => void;
 }
 
 /** One flattened row: the node, its nesting depth, and its ancestor LABELS (used only for search breadcrumbs — the normal nested view shows hierarchy through indentation instead). */
@@ -83,8 +102,83 @@ function matchesQuery(row: EntityTreeRow, query: string): boolean {
   return haystack.includes(query);
 }
 
-export function EntityTree({ grouping, onGroupingChange, tree, selectedEntityId, onSelectEntity }: EntityTreeProps) {
+/**
+ * The «+» create menu (design-spec §3.1): a compact, searchable list of types and
+ * local prototypes plus an optional `_label`. Picking an option creates a new
+ * entity (in «По экранам») or a new prototype (in «По типам»); the id is generated
+ * from the label by the deterministic builder (ADR-057 §4.10). Presentational —
+ * all creation logic lives behind `onCreate` in the controller.
+ */
+function CreateEntityMenu({
+  grouping,
+  typeOptions,
+  onCreate,
+  onClose
+}: {
+  readonly grouping: EntityTreeGrouping;
+  readonly typeOptions: readonly EntityTypeOption[];
+  readonly onCreate: (request: EntityTreeCreateRequest) => void;
+  readonly onClose: () => void;
+}) {
+  const [typeQuery, setTypeQuery] = useState("");
+  const [label, setLabel] = useState("");
+  const query = typeQuery.trim().toLowerCase();
+  const filtered = query === "" ? typeOptions : typeOptions.filter((option) => `${option.label} ${option.key}`.toLowerCase().includes(query));
+  const noun = grouping === "byType" ? "прототипа" : "сущности";
+
+  return (
+    <div className="entity-tree-create-menu" data-testid="entity-tree-create-menu" role="dialog" aria-label="Create entity">
+      <input
+        className="entity-tree-create-label"
+        data-testid="entity-tree-create-label"
+        aria-label="New entity label"
+        placeholder={`Название ${noun}…`}
+        value={label}
+        onChange={(event) => setLabel(event.target.value)}
+      />
+      <input
+        className="entity-tree-create-search"
+        data-testid="entity-tree-create-search"
+        aria-label="Search types"
+        placeholder="Поиск типа или прототипа…"
+        autoFocus
+        value={typeQuery}
+        onChange={(event) => setTypeQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            onClose();
+          }
+        }}
+      />
+      <div className="entity-tree-create-options" role="listbox" aria-label="Types">
+        {filtered.length === 0 ? (
+          <p className="entity-tree-empty">Нет подходящих типов.</p>
+        ) : (
+          filtered.map((option) => (
+            <button
+              type="button"
+              key={`${option.kind}:${option.key}`}
+              className="entity-tree-create-option"
+              data-testid="entity-tree-create-option"
+              data-type-key={option.key}
+              role="option"
+              aria-selected={false}
+              onClick={() => onCreate({ typeKey: option.key, label: label.trim() })}
+            >
+              <span className="entity-tree-create-option-label">{option.label}</span>
+              {option.kind === "prototype" ? <span className="tree-count entity-tree-tag-proto">Прототип</span> : null}
+              {!option.isVisual ? <span className="tree-count">невизуальный</span> : null}
+            </button>
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function EntityTree({ grouping, onGroupingChange, tree, selectedEntityId, onSelectEntity, canCreate, typeOptions, onCreate }: EntityTreeProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   // Explicit user overrides of the default collapse rule, keyed by node id.
   // Re-seeded (cleared) when `grouping` changes: the two groupings use disjoint
   // node-id namespaces, so a map built for one never matches the other's ids —
@@ -231,10 +325,49 @@ export function EntityTree({ grouping, onGroupingChange, tree, selectedEntityId,
         >
           По типам
         </button>
+        {canCreate ? (
+          <button
+            type="button"
+            className={`entity-tree-create-button${createMenuOpen ? " is-active" : ""}`}
+            data-testid="entity-tree-create-button"
+            aria-label={grouping === "byType" ? "Создать прототип" : "Создать сущность"}
+            aria-expanded={createMenuOpen}
+            title={grouping === "byType" ? "Новый прототип" : "Новый экран или компонент"}
+            onClick={() => setCreateMenuOpen((open) => !open)}
+          >
+            +
+          </button>
+        ) : null}
       </div>
+      {canCreate && createMenuOpen ? (
+        <CreateEntityMenu
+          grouping={grouping}
+          typeOptions={typeOptions}
+          onClose={() => setCreateMenuOpen(false)}
+          onCreate={(request) => {
+            setCreateMenuOpen(false);
+            onCreate(request);
+          }}
+        />
+      ) : null}
       <div className="tree-list" role="tree" aria-label="Entity tree rows">
         {visibleRows.length === 0 ? (
-          <p className="entity-tree-empty">{isSearching ? "No matches." : "Nothing to show yet."}</p>
+          isSearching ? (
+            <p className="entity-tree-empty">No matches.</p>
+          ) : (
+            // Empty-section invitation (design-spec §3.1, editor-preview-first-ux §9.1).
+            <p className="entity-tree-empty">
+              {grouping === "byType" ? "Нет прототипов." : "Нет экранов."}
+              {canCreate ? (
+                <>
+                  {" "}
+                  <button type="button" className="entity-tree-empty-create" data-testid="entity-tree-empty-create" onClick={() => setCreateMenuOpen(true)}>
+                    Добавьте первый
+                  </button>
+                </>
+              ) : null}
+            </p>
+          )
         ) : (
           visibleRows.map((row) => renderRow(row))
         )}

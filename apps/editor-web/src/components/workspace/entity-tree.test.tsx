@@ -91,7 +91,12 @@ function renderEntityTree(overrides: Partial<React.ComponentProps<typeof EntityT
   document.body.appendChild(container);
   const onGroupingChange = vi.fn<(next: "byScreen" | "byType") => void>();
   const onSelectEntity = vi.fn<(entityId: string) => void>();
+  const onCreate = vi.fn<(request: { typeKey: string; label: string }) => void>();
   const tree = buildFixtureTree();
+  const typeOptions = overrides.typeOptions ?? [
+    { key: "ui.MetricBar", label: "MetricBar", kind: "prototype" as const, isVisual: true },
+    { key: "core.rule", label: "rule", kind: "type" as const, isVisual: false }
+  ];
   let root: Root | undefined;
 
   function Harness() {
@@ -106,11 +111,14 @@ function renderEntityTree(overrides: Partial<React.ComponentProps<typeof EntityT
         tree={overrides.tree ?? tree}
         selectedEntityId={overrides.selectedEntityId}
         onSelectEntity={onSelectEntity}
+        canCreate={overrides.canCreate ?? true}
+        typeOptions={typeOptions}
+        onCreate={onCreate}
       />
     );
   }
 
-  return { container, onGroupingChange, onSelectEntity, tree, Harness, mount: () => { root = createRoot(container); root?.render(<Harness />); }, unmount: () => root?.unmount() };
+  return { container, onGroupingChange, onSelectEntity, onCreate, tree, Harness, mount: () => { root = createRoot(container); root?.render(<Harness />); }, unmount: () => root?.unmount() };
 }
 
 describe("EntityTree", () => {
@@ -178,6 +186,60 @@ describe("EntityTree", () => {
     const badge = harness.container.querySelector(".tree-diagnostics");
     expect(badge).not.toBeNull();
     expect(badge?.textContent).toBe("2");
+
+    await act(async () => harness.unmount());
+  });
+
+  it("opens the «+» type menu and creates the picked type with the entered label", async () => {
+    const harness = renderEntityTree();
+    await act(async () => harness.mount());
+
+    // The compact menu is closed until the «+» control is pressed.
+    expect(harness.container.querySelector('[data-testid="entity-tree-create-menu"]')).toBeNull();
+
+    const createButton = harness.container.querySelector<HTMLButtonElement>('[data-testid="entity-tree-create-button"]');
+    expect(createButton).not.toBeNull();
+    await act(async () => {
+      createButton?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const menu = harness.container.querySelector('[data-testid="entity-tree-create-menu"]');
+    expect(menu).not.toBeNull();
+    // The searchable list offers every type + prototype, with visuality marked.
+    const options = harness.container.querySelectorAll('[data-testid="entity-tree-create-option"]');
+    expect(options.length).toBe(2);
+
+    // Type a label, then filter the list to the prototype and pick it.
+    const labelInput = harness.container.querySelector<HTMLInputElement>('[data-testid="entity-tree-create-label"]');
+    const searchInput = harness.container.querySelector<HTMLInputElement>('[data-testid="entity-tree-create-search"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")?.set;
+    await act(async () => {
+      setter?.call(labelInput, "Панель здоровья");
+      labelInput?.dispatchEvent(new Event("input", { bubbles: true }));
+      setter?.call(searchInput, "Metric");
+      searchInput?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const metricOption = [...harness.container.querySelectorAll<HTMLButtonElement>('[data-testid="entity-tree-create-option"]')].find(
+      (button) => button.getAttribute("data-type-key") === "ui.MetricBar"
+    );
+    expect(metricOption).not.toBeUndefined();
+    await act(async () => {
+      metricOption?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    expect(harness.onCreate).toHaveBeenCalledWith({ typeKey: "ui.MetricBar", label: "Панель здоровья" });
+    // Picking an option closes the menu again.
+    expect(harness.container.querySelector('[data-testid="entity-tree-create-menu"]')).toBeNull();
+
+    await act(async () => harness.unmount());
+  });
+
+  it("hides the «+» control when creation is unavailable", async () => {
+    const harness = renderEntityTree({ canCreate: false });
+    await act(async () => harness.mount());
+
+    expect(harness.container.querySelector('[data-testid="entity-tree-create-button"]')).toBeNull();
 
     await act(async () => harness.unmount());
   });
