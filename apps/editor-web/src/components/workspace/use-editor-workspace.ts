@@ -217,6 +217,12 @@ import {
   truncatePreviewTrace,
   upsertRuntimeSnapshotInTrace
 } from "@/components/workspace/workspace-helpers";
+import {
+  aggregateWorkspaceChecks,
+  groupChecksBySeverity,
+  summarizeCheckCounts,
+  type WorkspaceCheckItem
+} from "@/components/workspace/checks-helpers";
 import type {
   AuthoringFileDocument,
   AuthoringFileSummary,
@@ -814,6 +820,26 @@ export function useEditorWorkspace() {
   );
   const isDirty = jsonText !== savedText;
   const nonVisualEntityCounts = useMemo(() => summarizeNonVisualEntities(viewModel.fullNodes), [viewModel.fullNodes]);
+  // --- «Проверки» tab model (Phase 8.1; design-spec §3.5; UX §9.6; ADR-057 §4.12) ---
+  //
+  // The Checks tab shows EVERY diagnostic the editor already collects: the
+  // schema/syntax/semantic + reverse + AI + workflow stream merged onto the view
+  // model, the plugin-validation stream, and the entity-projection identity
+  // checks. Aggregation is a pure, deduplicated transform (`checks-helpers`); the
+  // panel groups the result by severity and the counts drive the status bar.
+  const workspaceChecks = useMemo(
+    () =>
+      aggregateWorkspaceChecks({
+        routedDiagnostics: viewModel.diagnostics,
+        pluginDiagnostics,
+        projectionDiagnostics: viewModel.editorEntityProjection.diagnostics,
+        projection: viewModel.editorEntityProjection,
+        activeFilePath: currentDocument.filePath
+      }),
+    [viewModel.diagnostics, viewModel.editorEntityProjection, pluginDiagnostics, currentDocument.filePath]
+  );
+  const checkGroups = useMemo(() => groupChecksBySeverity(workspaceChecks), [workspaceChecks]);
+  const checkCounts = useMemo(() => summarizeCheckCounts(workspaceChecks), [workspaceChecks]);
   const previewTraceEntries = previewTrace.events.slice(-8);
   const currentPreviewTraceEvent = previewTrace.events.length === 0
     ? undefined
@@ -3993,6 +4019,139 @@ export function useEditorWorkspace() {
     openJsonSidebar(diagnostic.pointer);
   }
 
+  /**
+   * Navigation from a Checks row: diagnostic → entity → field (§9.6). When the
+   * diagnostic resolves to a projection entity, select it so the tree reveals it
+   * and the floating inspector opens (reusing `handleEntityTreeSelectEntity`);
+   * then select the exact problematic pointer so the field panel focuses it. A
+   * pointer with no graph node still opens the JSON sidebar at that pointer.
+   */
+  function handleCheckNavigate(item: WorkspaceCheckItem) {
+    if (item.entityId !== undefined) {
+      handleEntityTreeSelectEntity(item.entityId);
+    }
+    const node = findEditorNodeForPointer(viewModel.fullNodes, item.pointer);
+    if (node !== undefined) {
+      selectPointerNode(node, { openJson: true });
+      return;
+    }
+    if (item.pointer !== "") {
+      openJsonSidebar(item.pointer);
+    }
+  }
+
+  /**
+   * Runs a prepared, deterministic quick fix for a Checks row. The only fix in
+   * this slice is «Создать вид» for `entity-missing-view`, which delegates to the
+   * existing `handleCreateEntityView` (it builds the add-view-facet ChangeSet and
+   * applies it through the single approval/dry-run/validation/undo entry point).
+   */
+  function handleCheckQuickFix(item: WorkspaceCheckItem) {
+    if (item.quickFix === "create-view" && item.entityId !== undefined) {
+      const entity = viewModel.editorEntityProjection.entityById.get(item.entityId);
+      if (entity !== undefined) {
+        void handleCreateEntityView(entity);
+      }
+    }
+  }
+
+  /**
+   * «Исправить агентом» for a Checks row: the diagnostic (message + entity/pointer
+   * context) is handed to the agent as an AGENT intent through the existing queue
+   * (Phase 7). The intent targets the diagnostic's active-file pointer (the
+   * entity's primary source when one resolves); its result converges through the
+   * same `reconcileAndApplyIntent` → single apply point. Non-active-file
+   * diagnostics have no local target and surface a status note instead.
+   */
+  function handleCheckFixWithAgent(item: WorkspaceCheckItem) {
+    if (viewModel.snapshot.json === undefined) {
+      setStatusMessage("Активный документ невалиден — интент не создан.");
+      return;
+    }
+    const targetPointer = resolveCheckAgentTargetPointer(item);
+    if (targetPointer === undefined) {
+      setStatusMessage("Диагностика вне активного документа — используйте навигацию, затем чат.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const contextLabel = item.entityLabel !== undefined ? ` (сущность «${item.entityLabel}»)` : "";
+    const codeSuffix = item.code !== undefined ? ` [${item.code}]` : "";
+    const intent: EditorPatchIntent = {
+      id: `check-fix-agent:${item.id}:${Date.now()}`,
+      kind: "property-prompt",
+      prompt: `Исправь проблему: «${item.message}»${contextLabel}${codeSuffix}.`,
+      activeFilePath: currentDocument.filePath,
+      targetPointers: [targetPointer],
+      createdAt: now,
+      selectionKind: "entity"
+    };
+    const targets = [
+      {
+        filePath: currentDocument.filePath,
+        pointer: targetPointer,
+        label: item.entityLabel ?? item.message,
+        value: readJsonPointer(viewModel.snapshot.json, targetPointer) ?? null
+      }
+    ];
+
+    const readWritePointers = scopeActiveFilePointers(currentDocument.filePath, intent.targetPointers);
+    setStatusMessage("Передача диагностики агенту (существующий контур)...");
+    enqueueAgentIntent({
+      readPointers: readWritePointers,
+      writePointers: readWritePointers,
+      run: async (intentId) => {
+        setAiApplyState("planning");
+        setAiDiagnostics([]);
+        try {
+          const response = await requestAiChangeSet(intent, targets);
+          if (isIntentCancelled(intentId)) {
+            forgetIntentRunner(intentId);
+            return;
+          }
+          if (!response.ok || response.changeSet === undefined) {
+            const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+            setAiDiagnostics(diagnostics);
+            failIntent(intentId, diagnostics[0]?.message ?? "Агент не вернул применимое изменение.");
+            return;
+          }
+          reconcileAndApplyIntent(intentId, {
+            intent,
+            changeSet: response.changeSet,
+            diagnostics: response.diagnostics ?? [],
+            targetPointers: intent.targetPointers
+          });
+        } catch (error) {
+          failIntent(intentId, error instanceof Error ? error.message : "Передача диагностики агенту не удалась.");
+        }
+      }
+    });
+  }
+
+  /**
+   * The active-file pointer an agent fix should target for a Checks row: the
+   * resolved entity's primary source (or a facet) in the active document, else the
+   * diagnostic's own pointer when it belongs to the active file. `undefined` means
+   * the diagnostic points into another document (no local target).
+   */
+  function resolveCheckAgentTargetPointer(item: WorkspaceCheckItem): string | undefined {
+    if (item.entityId !== undefined) {
+      const entity = viewModel.editorEntityProjection.entityById.get(item.entityId);
+      if (entity !== undefined) {
+        const activePointer = [entity.primarySource, ...Object.values(entity.facets).flat()]
+          .filter((source): source is NonNullable<typeof source> => source !== undefined && source.filePath === currentDocument.filePath)
+          .map((source) => source.pointer)[0];
+        if (activePointer !== undefined) {
+          return activePointer;
+        }
+      }
+    }
+    if ((item.filePath ?? currentDocument.filePath) === currentDocument.filePath && item.pointer !== "") {
+      return item.pointer;
+    }
+    return undefined;
+  }
+
   function replaceUrlState(gameId: string, filePath: string) {
     const next = new URLSearchParams();
     next.set("gameId", gameId);
@@ -4276,6 +4435,14 @@ export function useEditorWorkspace() {
     intentQueue,
     handleCancelIntent,
     handleResolveStaleIntent,
+    // «Проверки» tab (Phase 8.1; design-spec §3.5; UX §9.6; ADR-057 §4.12): the
+    // aggregated diagnostics grouped by severity, their counts, and the
+    // navigate / quick-fix / fix-with-agent handlers.
+    checkGroups,
+    checkCounts,
+    handleCheckNavigate,
+    handleCheckQuickFix,
+    handleCheckFixWithAgent,
     rightSidebarOpen,
     leftSidebarOpen,
     rightSidebarPanel,

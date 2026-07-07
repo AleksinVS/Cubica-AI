@@ -263,7 +263,7 @@ export interface SemanticNodeData extends Record<string, unknown> {
 
 export type SemanticFlowNode = Node<SemanticNodeData, "semantic">;
 export type SemanticFlowEdge = Edge<{ readonly role: EditorViewEdge["role"]; readonly label?: string }, "semantic">;
-export type LeftSidebarPanel = "tree" | "timeline" | "chat";
+export type LeftSidebarPanel = "tree" | "timeline" | "chat" | "checks";
 export type RightSidebarPanel = "properties" | "json";
 export type PreviewViewportMode = "desktop" | "tablet" | "mobile";
 

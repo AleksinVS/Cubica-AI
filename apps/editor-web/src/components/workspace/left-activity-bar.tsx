@@ -8,8 +8,11 @@
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
 export function LeftActivityBar({ controller }: { controller: EditorWorkspaceController }) {
-  const { leftSidebarPanel, setLeftSidebarPanel, rightSidebarPanel, setJsonPanelOpen, openJsonSidebar, selectedNode } =
+  const { leftSidebarPanel, setLeftSidebarPanel, rightSidebarPanel, setJsonPanelOpen, openJsonSidebar, selectedNode, checkCounts } =
     controller;
+  // Non-info problem count for the «Проверки» activity-bar badge (§9.6): errors +
+  // warnings are the actionable ones; a zero count shows no badge.
+  const checkBadgeCount = checkCounts.error + checkCounts.warning;
 
   return (
     <nav className="left-activity-bar" aria-label="Editor sidebars">
@@ -42,6 +45,22 @@ export function LeftActivityBar({ controller }: { controller: EditorWorkspaceCon
         onClick={() => setLeftSidebarPanel((current) => (current === "chat" ? undefined : "chat"))}
       >
         <span aria-hidden="true">AI</span>
+      </button>
+      <button
+        type="button"
+        className={`left-activity-bar-checks ${leftSidebarPanel === "checks" ? "is-active" : ""}`}
+        aria-pressed={leftSidebarPanel === "checks"}
+        aria-label="Проверки"
+        title="Проверки"
+        data-testid="activity-bar-checks"
+        onClick={() => setLeftSidebarPanel((current) => (current === "checks" ? undefined : "checks"))}
+      >
+        <span aria-hidden="true">Chk</span>
+        {checkBadgeCount > 0 ? (
+          <span className="left-activity-bar-badge" data-testid="activity-bar-checks-badge">
+            {checkBadgeCount}
+          </span>
+        ) : null}
       </button>
       <button
         type="button"

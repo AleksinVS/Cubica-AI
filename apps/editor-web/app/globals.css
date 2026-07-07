@@ -1423,6 +1423,153 @@ textarea {
   gap: 6px;
 }
 
+/* «Проверки» (Checks) tab — Phase 8.1, design-spec §3.5, UX §9.6. */
+.checks-body {
+  grid-row: 2;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px;
+}
+
+.checks-empty {
+  color: #6a7688;
+  font-size: 13px;
+  margin: 12px 4px;
+}
+
+.checks-group {
+  margin-bottom: 12px;
+}
+
+.checks-group-heading {
+  color: #5a6678;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.checks-group-heading span {
+  color: #8a94a6;
+}
+
+.checks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.checks-item {
+  background: #f4f6fa;
+  border: 1px solid #dde3ec;
+  border-left-width: 3px;
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.checks-item-error {
+  border-left-color: #d46a6a;
+}
+
+.checks-item-warning {
+  border-left-color: #d9a441;
+}
+
+.checks-item-info {
+  border-left-color: #4c8bf5;
+}
+
+.checks-item-main {
+  align-items: baseline;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  text-align: left;
+  width: 100%;
+}
+
+.checks-item-severity {
+  font-weight: 700;
+}
+
+.checks-item-message {
+  color: #1e2a3b;
+  flex: 1 1 auto;
+  font-size: 12px;
+}
+
+.checks-item-label {
+  color: #37507f;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.checks-item-badge {
+  background: #e7ecf5;
+  border-radius: 10px;
+  color: #5a6678;
+  font-size: 10px;
+  padding: 1px 7px;
+}
+
+.checks-item-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.checks-item-fix,
+.checks-item-agent {
+  background: #ffffff;
+  border: 1px solid #b8c2d3;
+  border-radius: 6px;
+  color: #1e2a3b;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  min-height: 26px;
+  padding: 3px 7px;
+}
+
+.left-activity-bar-checks {
+  position: relative;
+}
+
+.left-activity-bar-badge {
+  background: #d9a441;
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 1px 4px;
+  position: absolute;
+  right: 1px;
+  top: 1px;
+}
+
+.status-checks {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.status-checks-active {
+  color: #b8791f;
+  font-weight: 600;
+}
+
 .right-sidebar-panel,
 .json-panel {
   background: #ffffff;

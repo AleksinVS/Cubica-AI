@@ -13,6 +13,7 @@ import { JsonTreeView } from "@/components/json-tree-view";
 import { EditorCopilotChatPanel } from "@/components/editor-agent-ui";
 
 import { AiChatSidebarPanel } from "./ai-chat-sidebar-panel.tsx";
+import { ChecksSidebarPanel } from "./checks-sidebar-panel.tsx";
 import { IntentQueuePanel } from "./intent-queue-panel.tsx";
 import { EntityTree } from "./entity-tree.tsx";
 import { edgeTypes, nodeTypes } from "./semantic-graph.tsx";
@@ -66,11 +67,26 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     intentQueue,
     handleCancelIntent,
     handleResolveStaleIntent,
+    checkGroups,
+    handleCheckNavigate,
+    handleCheckQuickFix,
+    handleCheckFixWithAgent,
     handleSidebarResizeStart
   } = controller;
 
   return (
-    <aside className="left-sidebar-panel" aria-label={leftSidebarPanel === "timeline" ? "Timeline" : leftSidebarPanel === "chat" ? "AI chat" : "Manifest navigation"}>
+    <aside
+      className="left-sidebar-panel"
+      aria-label={
+        leftSidebarPanel === "timeline"
+          ? "Timeline"
+          : leftSidebarPanel === "chat"
+            ? "AI chat"
+            : leftSidebarPanel === "checks"
+              ? "Проверки"
+              : "Manifest navigation"
+      }
+    >
       {leftSidebarPanel === "tree" ? (
         <>
           <div className="panel-heading manifest-heading">
@@ -174,6 +190,16 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
           onReplayCurrent={handlePreviewReplayCurrent}
           canPinFixture={canPinFixture}
           onPinFixture={handlePinFixture}
+        />
+      ) : leftSidebarPanel === "checks" ? (
+        /* «Проверки» tab (Phase 8.1; design-spec §3.5; UX §9.6; ADR-057 §4.12):
+           all diagnostics grouped by severity, with navigation and quick fixes. */
+        <ChecksSidebarPanel
+          groups={checkGroups}
+          onNavigate={handleCheckNavigate}
+          onQuickFix={handleCheckQuickFix}
+          onFixWithAgent={handleCheckFixWithAgent}
+          onCollapse={() => setLeftSidebarPanel(undefined)}
         />
       ) : (
         <>

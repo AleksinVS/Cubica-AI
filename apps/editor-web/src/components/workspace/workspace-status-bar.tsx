@@ -40,8 +40,13 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
     prototypeAuditNotice,
     setPrototypeAuditSnoozed,
     aiDiffSummary,
-    aiApplyState
+    aiApplyState,
+    checkCounts,
+    setLeftSidebarPanel
   } = controller;
+  // Compact «Проверки» counter (mockup zone 7): errors + warnings; clicking it
+  // opens the Checks tab (§9.6 "счётчики в статус-баре открывают Проверки").
+  const checkActionable = checkCounts.error + checkCounts.warning;
 
   return (
     <footer className="diagnostics-strip" aria-label="Diagnostics">
@@ -60,6 +65,15 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
         <span>{previewTrace.events.length} trace events</span>
         <span>Workflow: {workflowState}</span>
         <span>Rollback: {previewRollbackState}</span>
+        <button
+          type="button"
+          className={`status-checks ${checkActionable > 0 ? "status-checks-active" : ""}`}
+          data-testid="status-checks-counter"
+          onClick={() => setLeftSidebarPanel("checks")}
+          title="Открыть «Проверки»"
+        >
+          Проверки: {checkActionable > 0 ? `${checkActionable}` : "ок"}
+        </button>
         <span>Selection: {selectedNode?.semanticTitle ?? "none"}</span>
         <span>{getVisibleGraphBudgetLabel(viewModel)}</span>
         <span>{flowEdges.length} edges</span>
