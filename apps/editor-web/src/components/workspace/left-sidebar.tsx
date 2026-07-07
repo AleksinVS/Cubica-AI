@@ -13,6 +13,7 @@ import { JsonTreeView } from "@/components/json-tree-view";
 import { EditorCopilotChatPanel } from "@/components/editor-agent-ui";
 
 import { AiChatSidebarPanel } from "./ai-chat-sidebar-panel.tsx";
+import { EntityTree } from "./entity-tree.tsx";
 import { edgeTypes, nodeTypes } from "./semantic-graph.tsx";
 import { TimelineSidebarPanel } from "./timeline-sidebar-panel.tsx";
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
@@ -34,6 +35,11 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     treeCollapsedPointers,
     setTreeCollapsedPointers,
     handleTreeSelectPointer,
+    entityTreeGrouping,
+    setEntityTreeGrouping,
+    entityGroupingTree,
+    entityTreeActiveEntityId,
+    handleEntityTreeSelectEntity,
     previewTraceEntries,
     selectedPreviewTraceEvent,
     selectedPreviewTraceSnapshot,
@@ -79,6 +85,15 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
               >
                 Graph
               </button>
+              <button
+                type="button"
+                className={surfaceMode === "entities" ? "is-active" : ""}
+                role="tab"
+                aria-selected={surfaceMode === "entities"}
+                onClick={() => setSurfaceMode("entities")}
+              >
+                Entities
+              </button>
             </div>
             <button type="button" onClick={() => setLeftSidebarPanel(undefined)} aria-label="Collapse manifest panel">
               Collapse
@@ -109,6 +124,14 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
                 <MiniMap pannable zoomable nodeStrokeWidth={2} maskColor="rgba(247, 249, 252, 0.7)" />
                 <Controls showInteractive={false} />
               </ReactFlow>
+            ) : surfaceMode === "entities" ? (
+              <EntityTree
+                grouping={entityTreeGrouping}
+                onGroupingChange={setEntityTreeGrouping}
+                tree={entityGroupingTree}
+                selectedEntityId={entityTreeActiveEntityId}
+                onSelectEntity={handleEntityTreeSelectEntity}
+              />
             ) : (
               <JsonTreeView
                 tree={activeTree}

@@ -18,6 +18,8 @@
  *    diff summary, diagnostics, and the prototype extraction proposal.
  *  - `useLayoutUiState`        — sidebar visibility/width, resize drag state, and
  *    the Monaco editor handle.
+ *  - `useEntityTreeState`      — entity tree grouping preference (persisted in
+ *    the browser) and the entity last selected through the tree.
  *
  * Grouping is purely structural: each `useState` keeps its original initializer,
  * so first-render values and update semantics are unchanged. The only cross-state
@@ -28,6 +30,7 @@ import type { Node, ReactFlowInstance } from "@xyflow/react";
 import {
   createPreviewPlaythroughTrace,
   type EditorDiffSummaryItem,
+  type EntityTreeGrouping,
   type PatchJournalStep,
   type PreviewEntityDescriptor,
   type PreviewPlaythroughTrace
@@ -136,7 +139,7 @@ export function useSelectionGraphState() {
   const [activeBranchRootId, setActiveBranchRootId] = useState<string | undefined>(undefined);
   const [expandedNodeIds, setExpandedNodeIds] = useState<ReadonlySet<string>>(() => new Set());
   const [collapsedNodeIds, setCollapsedNodeIds] = useState<ReadonlySet<string>>(() => new Set());
-  const [surfaceMode, setSurfaceMode] = useState<"graph" | "tree">("tree");
+  const [surfaceMode, setSurfaceMode] = useState<"graph" | "tree" | "entities">("tree");
   const [treeDetailMode, setTreeDetailMode] = useState<"entities" | "json">("entities");
   const [treeCollapsedPointers, setTreeCollapsedPointers] = useState<ReadonlySet<string>>(() => new Set());
   const flowRef = useRef<ReactFlowInstance<Node, SemanticFlowEdge> | null>(null);
@@ -255,6 +258,42 @@ export function useAiPatchState() {
     prototypeExtractionProposal,
     setPrototypeExtractionProposal
   };
+}
+
+/** localStorage key for the persisted entity-tree grouping preference (below). */
+const entityTreeGroupingStorageKey = "cubica.editor.entityTreeGrouping";
+
+/** Reads the persisted grouping preference; falls back to "byScreen" (the mockup's default active tab) when unset, invalid, or run without a `window` (SSR/tests). */
+function readPersistedEntityTreeGrouping(): EntityTreeGrouping {
+  if (typeof window === "undefined") {
+    return "byScreen";
+  }
+
+  return window.localStorage.getItem(entityTreeGroupingStorageKey) === "byType" ? "byType" : "byScreen";
+}
+
+/**
+ * Entity-tree grouping preference ("По экранам"/"По типам", design-spec §3.1)
+ * and the entity last selected THROUGH the tree.
+ *
+ * The grouping choice is a per-author UI preference, not authoring data, so
+ * it is persisted directly in the browser rather than through the project's
+ * `editor.layout.json` companion file (that file is scoped to ONE document's
+ * canvas positions, not a cross-document UI toggle — and this app has no
+ * other per-user preference store at all).
+ */
+export function useEntityTreeState() {
+  const [entityTreeGrouping, setEntityTreeGroupingState] = useState<EntityTreeGrouping>(readPersistedEntityTreeGrouping);
+  const [entityTreeSelectedEntityId, setEntityTreeSelectedEntityId] = useState<string | undefined>(undefined);
+
+  function setEntityTreeGrouping(next: EntityTreeGrouping) {
+    setEntityTreeGroupingState(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(entityTreeGroupingStorageKey, next);
+    }
+  }
+
+  return { entityTreeGrouping, setEntityTreeGrouping, entityTreeSelectedEntityId, setEntityTreeSelectedEntityId };
 }
 
 /** Sidebar visibility/width, resize drag state, and the Monaco editor handle. */

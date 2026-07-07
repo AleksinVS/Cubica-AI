@@ -20,6 +20,7 @@ import {
   type NodeChange
 } from "@xyflow/react";
 import {
+  buildEntityGroupingTreeViewModel,
   buildPreviewTraceRestorePlan,
   classifyChangeSet,
   createPatchJournalStep,
@@ -74,6 +75,7 @@ import {
   findTreeNodeForPointer,
   getBranchRootNode,
   getNodeAncestorIds,
+  resolveActiveScreenEntityId,
   selectProperties,
   toRoutedDiagnostic,
   type EditorAuthoringEditResult,
@@ -192,6 +194,7 @@ import type {
 } from "@/components/workspace/types";
 import {
   useAiPatchState,
+  useEntityTreeState,
   useLayoutUiState,
   usePreviewRuntimeState,
   useSelectionGraphState,
@@ -370,6 +373,13 @@ export function useEditorWorkspace() {
     editorRef
   } = useLayoutUiState();
 
+  const {
+    entityTreeGrouping,
+    setEntityTreeGrouping,
+    entityTreeSelectedEntityId,
+    setEntityTreeSelectedEntityId
+  } = useEntityTreeState();
+
   const schemaRegistry = useMemo(() => {
     const registry = createSchemaRegistry();
     registerLocalAuthoringSchemas(registry);
@@ -538,6 +548,37 @@ export function useEditorWorkspace() {
   const activeTree = treeDetailMode === "entities" ? viewModel.tree : viewModel.jsonTree;
   const selectedValue = selectedNode === undefined || viewModel.snapshot.json === undefined ? undefined : readJsonPointer(viewModel.snapshot.json, selectedNode.pointer);
   const properties = selectedNode ? selectProperties(viewModel.snapshot, selectedNode.pointer) : [];
+
+  // --- Grouped entity tree wiring (Phase 3.b.2, design-spec §3.1) -------------
+  //
+  // The entity the CURRENT authoring selection resolves to (mirrors the
+  // pointer -> entities lookup `agentSelectedEditorEntities` uses below) — the
+  // "selection/preview" half of "activeScreenEntityId = активный экран из
+  // preview/selection, если доступен".
+  const selectedPointer = selectedNode?.pointer;
+  const selectionDerivedEntityId =
+    selectedPointer === undefined || selectedPointer === ""
+      ? undefined
+      : viewModel.editorEntityProjection.entitiesBySourcePointer.get(`${currentDocument.filePath}#${selectedPointer}`)?.[0]?.entityId;
+  // Entity the tree treats as "selected" for occurrence soft-highlighting: the
+  // last one picked THROUGH the tree wins (covers cross-document entities the
+  // authoritative selection above cannot resolve), else the current selection.
+  const entityTreeActiveEntityId = entityTreeSelectedEntityId ?? selectionDerivedEntityId;
+  const activeScreenEntityId = useMemo(
+    () => resolveActiveScreenEntityId(viewModel.editorEntityProjection, entityTreeActiveEntityId),
+    [viewModel.editorEntityProjection, entityTreeActiveEntityId]
+  );
+  const entityGroupingTree = useMemo(
+    () =>
+      buildEntityGroupingTreeViewModel({
+        projection: viewModel.editorEntityProjection,
+        grouping: entityTreeGrouping,
+        documents: viewModel.entityProjectionDocuments,
+        activeChannel,
+        activeScreenEntityId
+      }),
+    [viewModel.editorEntityProjection, entityTreeGrouping, viewModel.entityProjectionDocuments, activeChannel, activeScreenEntityId]
+  );
   const graphTargetNodes = useMemo(
     () =>
       viewModel.fullNodes.filter(
@@ -1313,6 +1354,24 @@ export function useEditorWorkspace() {
     }
 
     openPropertiesSidebar();
+  }
+
+  /**
+   * Selects an entity picked from the grouped entity tree (Phase 3.b.2).
+   *
+   * Always records it for the tree's own occurrence soft-highlight. When its
+   * primary source lives in the CURRENTLY OPEN document, this also reuses the
+   * existing pointer-selection path so preview/graph/properties stay in sync,
+   * same as the JSON tree. A SIBLING-document entity still gets the tree
+   * highlight; opening its document is out of scope here (belongs to the
+   * entity panel, Phase 3.c).
+   */
+  function handleEntityTreeSelectEntity(entityId: string) {
+    setEntityTreeSelectedEntityId(entityId);
+    const entity = viewModel.editorEntityProjection.entityById.get(entityId);
+    if (entity !== undefined && entity.primarySource.filePath === currentDocument.filePath) {
+      handleTreeSelectPointer(entity.primarySource.pointer);
+    }
   }
 
   async function handleSave() {
@@ -2698,6 +2757,11 @@ export function useEditorWorkspace() {
     treeCollapsedPointers,
     setTreeCollapsedPointers,
     handleTreeSelectPointer,
+    entityTreeGrouping,
+    setEntityTreeGrouping,
+    entityGroupingTree,
+    entityTreeActiveEntityId,
+    handleEntityTreeSelectEntity,
     previewTraceEntries,
     selectedPreviewTraceEvent,
     selectedPreviewTraceSnapshot,

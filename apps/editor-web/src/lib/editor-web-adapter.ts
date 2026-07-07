@@ -26,6 +26,7 @@ import {
   type DiagnosticSeverity,
   type DocumentDiagnostic,
   type DocumentSnapshot,
+  type EditorEntity,
   type EditorEntityProjection,
   type EditorEntityProjectionDocument,
   type EditorEntityProjectionState,
@@ -79,6 +80,14 @@ export interface EditorViewModel {
   readonly tree: TreeViewModel;
   /** Advanced pointer-complete JSON tree for technical debugging. */
   readonly jsonTree: TreeViewModel;
+  /**
+   * Authoring documents paired with `editorEntityProjection` (active document +
+   * every sibling), exactly as fed to the projection builder. The grouped
+   * entity tree (`buildEntityGroupingTreeViewModel`) needs this SAME set to
+   * read declarative `_type`/`_definitions`/`_decorative` fields the
+   * projection itself does not carry.
+   */
+  readonly entityProjectionDocuments: readonly EditorEntityProjectionDocument[];
   readonly timeline: ManifestTimeline;
   readonly fullNodes: readonly EditorViewNode[];
   readonly fullEdges: readonly {
@@ -210,10 +219,11 @@ export function createEditorViewModel(
   const tree = buildEntityTreeViewModel({ snapshot, diagnostics: documentDiagnostics, graphProjection: fullProjection });
   const jsonTree = buildTreeViewModel({ snapshot, diagnostics: documentDiagnostics, graphProjection: fullProjection });
   const timeline = buildManifestChronologyTimeline({ snapshot });
+  const entityProjectionDocuments = buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments);
   const { editorEntityProjection, projectionState, incrementalReport } = buildViewModelProjection(
     {
       gameId: options.gameId,
-      documents: buildEditorEntityProjectionDocuments(snapshot, options.editorEntityProjectionDocuments),
+      documents: entityProjectionDocuments,
       ...(options.activeChannel !== undefined ? { activeChannel: options.activeChannel } : {})
     },
     options.incremental,
@@ -229,6 +239,7 @@ export function createEditorViewModel(
     incrementalReport,
     tree,
     jsonTree,
+    entityProjectionDocuments,
     timeline,
     fullNodes: fullProjection.nodes,
     fullEdges: fullProjection.edges.map(toEditorEdge),
@@ -419,6 +430,51 @@ function toDocumentDiagnostic(diagnostic: RoutedEditorDiagnostic): DocumentDiagn
     pointer: diagnostic.pointer,
     range: diagnostic.range
   };
+}
+
+/**
+ * Finds the nearest "ui-screen" ancestor of a candidate entity, for the entity
+ * tree's "По экранам" auto-reveal (design-spec §3.1). Walks screen entities in
+ * the SAME file whose pointer is a proper prefix of the candidate's and keeps
+ * the deepest match — a single-purpose version of the nearest-ancestor search
+ * `entity-grouping-tree.ts` builds as a whole forest internally.
+ *
+ * Returns `undefined` when there is no candidate or no enclosing screen — the
+ * grouped tree then falls back to its own default (first screen, doc order).
+ */
+export function resolveActiveScreenEntityId(
+  projection: EditorEntityProjection,
+  candidateEntityId: string | undefined
+): string | undefined {
+  if (candidateEntityId === undefined) {
+    return undefined;
+  }
+
+  const candidate = projection.entityById.get(candidateEntityId);
+  if (candidate === undefined) {
+    return undefined;
+  }
+
+  if (candidate.kind === "ui-screen") {
+    return candidate.entityId;
+  }
+
+  let best: EditorEntity | undefined;
+  for (const entity of projection.entities) {
+    if (entity.kind !== "ui-screen" || entity.primarySource.filePath !== candidate.primarySource.filePath) {
+      continue;
+    }
+
+    const prefix = `${entity.primarySource.pointer}/`;
+    if (
+      candidate.primarySource.pointer.startsWith(prefix) &&
+      (best === undefined || entity.primarySource.pointer.length > best.primarySource.pointer.length)
+    ) {
+      best = entity;
+    }
+  }
+
+  return best?.entityId;
 }
 
 export function findTreeNodeForPointer(tree: EditorTreeViewModel, pointer: string): EditorTreeViewNode | undefined {

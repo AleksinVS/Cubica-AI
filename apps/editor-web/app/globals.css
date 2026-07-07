@@ -963,6 +963,35 @@ textarea {
   white-space: nowrap;
 }
 
+/* Entity tree (design-spec §3.1): reuses .tree-panel/.tree-row/.tree-count
+   styling above; these are the few additions specific to grouping/occurrence
+   states the JSON tree does not have. */
+.entity-tree-grouping-tabs {
+  border-bottom: 1px solid #d9dee7;
+  justify-content: center;
+  padding: 6px 0;
+}
+
+.entity-tree-tag-proto {
+  background: #eee9fb;
+  color: #4b3fa0;
+}
+
+.entity-tree-label-occurrence {
+  color: #6b7386;
+  font-style: italic;
+}
+
+.tree-row.is-same-entity {
+  background: rgba(232, 240, 255, 0.4);
+}
+
+.entity-tree-empty {
+  color: #8b96a8;
+  font-size: 12px;
+  padding: 12px;
+}
+
 .timeline-sidebar-body,
 .ai-sidebar-body {
   align-content: start;
