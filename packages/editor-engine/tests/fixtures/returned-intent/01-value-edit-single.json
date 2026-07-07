@@ -1,0 +1,78 @@
+{
+  "description": "Fast path: editing one known scalar value → deterministic replace.",
+  "documents": [
+    {
+      "filePath": "games/demo/authoring/game.authoring.json",
+      "json": {
+        "_manifestType": "game",
+        "root": {
+          "logic": {
+            "flows": [
+              {
+                "id": "main",
+                "steps": [
+                  {
+                    "id": "s1",
+                    "_label": "Шаг 1",
+                    "contentId": "card1",
+                    "title": "Заголовок",
+                    "order": 3
+                  }
+                ]
+              }
+            ],
+            "actions": []
+          },
+          "content": {
+            "cards": [
+              {
+                "id": "card1",
+                "_label": "Карточка",
+                "frontText": "Привет",
+                "choices": [
+                  {
+                    "text": "Да"
+                  },
+                  {
+                    "text": "Нет"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "sourceHash": "h-game-1"
+    }
+  ],
+  "entityId": "game-step:s1",
+  "sourceHashes": {
+    "games/demo/authoring/game.authoring.json": "h-game-1"
+  },
+  "transform": [
+    {
+      "kind": "replace-in-line",
+      "anchor": "Title:",
+      "from": "Заголовок",
+      "to": "Новый заголовок"
+    }
+  ],
+  "expect": {
+    "path": "deterministic",
+    "stale": false,
+    "buckets": {
+      "applied": 1,
+      "recognized-no-change": 0,
+      "unrecognized": 0
+    },
+    "changeSet": {
+      "ops": [
+        {
+          "op": "replace",
+          "path": "/root/logic/flows/0/steps/0/title",
+          "value": "Новый заголовок"
+        }
+      ]
+    }
+  }
+}

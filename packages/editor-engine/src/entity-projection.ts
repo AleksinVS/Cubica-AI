@@ -30,6 +30,8 @@ import type {
   EditorEntityProjectionState,
   EditorEntitySourcePointer,
   EditorEntityYamlProjection,
+  FacetSourceLine,
+  FacetSourceValueKind,
   IncrementalProjectionReport,
   JsonObject,
   JsonValue,
@@ -657,7 +659,15 @@ export function buildEditorEntityYamlProjection(input: BuildEditorEntityYamlProj
   const maxDepth = Math.max(1, input.maxDepth ?? 4);
   const hiddenTechnicalPointers: EditorEntitySourcePointer[] = [];
   const diagnostics: EditorEntityProjectionDiagnostic[] = [];
-  const lines = [`Сущность: ${formatYamlScalar(input.entity.label)}`, `Тип: ${formatYamlScalar(input.entity.kind)}`];
+  const lines: string[] = [];
+  // Per-line source map (ADR-057 §4.4, design-spec §2.2): exactly one entry per
+  // emitted line, index-aligned with `lines`, kept in lockstep by
+  // `pushProjectionLine`. Hidden technical fields emit no projection line, so
+  // they never enter the map (they stay in `hiddenTechnicalPointers`).
+  const sourceLines: FacetSourceLine[] = [];
+
+  pushProjectionLine(lines, sourceLines, `Сущность: ${formatYamlScalar(input.entity.label)}`, { kind: "entity-header", indent: 0 });
+  pushProjectionLine(lines, sourceLines, `Тип: ${formatYamlScalar(input.entity.kind)}`, { kind: "entity-header", indent: 0 });
 
   for (const facetKind of orderedEditorEntityFacetKinds) {
     const facetSources = input.entity.facets[facetKind] ?? [];
@@ -665,7 +675,7 @@ export function buildEditorEntityYamlProjection(input: BuildEditorEntityYamlProj
       continue;
     }
 
-    lines.push(`${editorEntityFacetLabel(facetKind)}:`);
+    pushProjectionLine(lines, sourceLines, `${editorEntityFacetLabel(facetKind)}:`, { kind: "facet", indent: 0, facetKind });
     for (const source of facetSources) {
       const document = documentsByPath.get(source.filePath);
       const value = document?.json === undefined ? undefined : readJsonPointer(document.json, source.pointer);
@@ -676,16 +686,34 @@ export function buildEditorEntityYamlProjection(input: BuildEditorEntityYamlProj
           source,
           message: `Cannot build YAML projection because ${source.filePath}#${source.pointer} does not resolve.`
         });
-        lines.push(`  - ${formatYamlScalar(source.label ?? source.role ?? source.pointer)}: "[unavailable]"`);
+        // An unresolved section renders a placeholder value; it is NOT editable
+        // (there is nothing to replace), so it carries no `valueStart`.
+        pushProjectionLine(lines, sourceLines, `  - ${formatYamlScalar(source.label ?? source.role ?? source.pointer)}: "[unavailable]"`, {
+          kind: "section",
+          indent: 2,
+          filePath: source.filePath,
+          pointer: source.pointer,
+          facetKind
+        });
         continue;
       }
 
       const sectionLabel = source.label ?? source.role ?? titleFromToken(lastPointerSegmentOrRoot(source.pointer));
-      lines.push(`  - ${formatYamlScalar(sectionLabel)}:`);
+      pushProjectionLine(lines, sourceLines, `  - ${formatYamlScalar(sectionLabel)}:`, {
+        kind: "section",
+        indent: 2,
+        filePath: source.filePath,
+        pointer: source.pointer,
+        valueKind: valueKindOf(value),
+        facetKind
+      });
       appendMeaningfulYamlLines({
         lines,
+        sourceLines,
         value,
         pointer: source.pointer,
+        filePath: source.filePath,
+        facetKind,
         indent: 6,
         fieldDictionary: input.fieldDictionary ?? [],
         hiddenTechnicalPointers,
@@ -707,8 +735,34 @@ export function buildEditorEntityYamlProjection(input: BuildEditorEntityYamlProj
   return {
     text: `${lines.join("\n")}\n`,
     hiddenTechnicalPointers,
-    diagnostics
+    diagnostics,
+    facetSourceMap: { lines: sourceLines }
   };
+}
+
+/**
+ * Pushes one projection line AND its index-aligned source-map entry.
+ *
+ * Every place that appends to the projection `lines` array must go through here
+ * so `sourceLines[i]` always describes `lines[i]` (ADR-057 §4.4). The `line`
+ * index is filled in from the current array length, so callers never track it.
+ */
+function pushProjectionLine(
+  lines: string[],
+  sourceLines: FacetSourceLine[],
+  text: string,
+  meta: Omit<FacetSourceLine, "line">
+): void {
+  lines.push(text);
+  sourceLines.push({ line: lines.length - 1, ...meta });
+}
+
+/** Classifies a rendered value as a scalar leaf, an array, or an object. */
+function valueKindOf(value: JsonValue): FacetSourceValueKind {
+  if (Array.isArray(value)) {
+    return "collection";
+  }
+  return isPlainJsonObject(value) ? "object" : "scalar";
 }
 
 /** Builds timeline entries from authoring v2 `root.logic.flows[].steps[]`. */
@@ -1763,31 +1817,53 @@ function collectMutableEntitySourcePointers(entity: MutableEditorEntityBuilder):
 
 function appendMeaningfulYamlLines(input: {
   readonly lines: string[];
+  readonly sourceLines: FacetSourceLine[];
   readonly value: JsonValue;
   readonly pointer: string;
+  readonly filePath: string;
+  readonly facetKind: EditorEntityFacetKind;
   readonly indent: number;
   readonly fieldDictionary: readonly EditorEntityFieldDictionaryEntry[];
   readonly hiddenTechnicalPointers: EditorEntitySourcePointer[];
   readonly hiddenSourceBase: EditorEntitySourcePointer;
   readonly maxDepth: number;
 }): void {
+  const pad = " ".repeat(input.indent);
+  // `base` carries the file + facet onto every emitted source-map entry; each
+  // call also sets the line's `kind`, `pointer`, and (for scalars) `valueStart`.
+  const base = { filePath: input.filePath, facetKind: input.facetKind, indent: input.indent };
+  const emit = (text: string, meta: Omit<FacetSourceLine, "line">): void =>
+    pushProjectionLine(input.lines, input.sourceLines, text, meta);
+
   if (input.maxDepth <= 0) {
-    input.lines.push(`${" ".repeat(input.indent)}${formatYamlScalar(summarizeYamlValue(input.value))}`);
+    // A depth-capped summary line is informational, never editable in place.
+    emit(`${pad}${formatYamlScalar(summarizeYamlValue(input.value))}`, {
+      ...base,
+      kind: "summary",
+      pointer: input.pointer,
+      valueKind: valueKindOf(input.value)
+    });
     return;
   }
 
   if (Array.isArray(input.value)) {
     if (input.value.length === 0) {
-      input.lines.push(`${" ".repeat(input.indent)}[]`);
+      emit(`${pad}[]`, { ...base, kind: "empty-branch", pointer: input.pointer, valueKind: "collection" });
       return;
     }
 
     input.value.forEach((item, index) => {
       const childPointer = appendPointerSegment(input.pointer, String(index));
       if (isScalar(item) || item === null) {
-        input.lines.push(`${" ".repeat(input.indent)}- ${formatYamlScalar(item)}`);
+        emit(`${pad}- ${formatYamlScalar(item)}`, {
+          ...base,
+          kind: "array-scalar",
+          pointer: childPointer,
+          valueKind: "scalar",
+          valueStart: input.indent + 2
+        });
       } else {
-        input.lines.push(`${" ".repeat(input.indent)}-`);
+        emit(`${pad}-`, { ...base, kind: "array-branch", pointer: childPointer, valueKind: valueKindOf(item) });
         appendMeaningfulYamlLines({ ...input, value: item, pointer: childPointer, indent: input.indent + 2, maxDepth: input.maxDepth - 1 });
       }
     });
@@ -1795,13 +1871,20 @@ function appendMeaningfulYamlLines(input: {
   }
 
   if (!isPlainJsonObject(input.value)) {
-    input.lines.push(`${" ".repeat(input.indent)}${formatYamlScalar(input.value)}`);
+    // A facet source that points straight at a scalar renders one bare line.
+    emit(`${pad}${formatYamlScalar(input.value)}`, {
+      ...base,
+      kind: "field-scalar",
+      pointer: input.pointer,
+      valueKind: "scalar",
+      valueStart: input.indent
+    });
     return;
   }
 
   const entries = Object.entries(input.value).filter(([key]) => shouldIncludeMeaningfulYamlField(key, appendPointerSegment(input.pointer, key), input.fieldDictionary));
   if (entries.length === 0) {
-    input.lines.push(`${" ".repeat(input.indent)}{}`);
+    emit(`${pad}{}`, { ...base, kind: "empty-branch", pointer: input.pointer, valueKind: "object" });
   }
 
   for (const [key, child] of Object.entries(input.value)) {
@@ -1820,9 +1903,16 @@ function appendMeaningfulYamlLines(input: {
 
     const label = resolveProjectionFieldLabel(key, childPointer, input.fieldDictionary);
     if (isScalar(child) || child === null) {
-      input.lines.push(`${" ".repeat(input.indent)}${label}: ${formatYamlScalar(child)}`);
+      emit(`${pad}${label}: ${formatYamlScalar(child)}`, {
+        ...base,
+        kind: "field-scalar",
+        pointer: childPointer,
+        valueKind: "scalar",
+        // Value text begins after the label and the two-character `": "`.
+        valueStart: input.indent + label.length + 2
+      });
     } else {
-      input.lines.push(`${" ".repeat(input.indent)}${label}:`);
+      emit(`${pad}${label}:`, { ...base, kind: "field-branch", pointer: childPointer, valueKind: valueKindOf(child) });
       appendMeaningfulYamlLines({ ...input, value: child, pointer: childPointer, indent: input.indent + 2, maxDepth: input.maxDepth - 1 });
     }
   }

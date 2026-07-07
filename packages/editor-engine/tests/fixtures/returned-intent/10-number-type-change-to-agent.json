@@ -1,0 +1,70 @@
+{
+  "description": "Replacing a numeric value with non-numeric text would change the value type → unrecognized → agent.",
+  "documents": [
+    {
+      "filePath": "games/demo/authoring/game.authoring.json",
+      "json": {
+        "_manifestType": "game",
+        "root": {
+          "logic": {
+            "flows": [
+              {
+                "id": "main",
+                "steps": [
+                  {
+                    "id": "s1",
+                    "_label": "Шаг 1",
+                    "contentId": "card1",
+                    "title": "Заголовок",
+                    "order": 3
+                  }
+                ]
+              }
+            ],
+            "actions": []
+          },
+          "content": {
+            "cards": [
+              {
+                "id": "card1",
+                "_label": "Карточка",
+                "frontText": "Привет",
+                "choices": [
+                  {
+                    "text": "Да"
+                  },
+                  {
+                    "text": "Нет"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "sourceHash": "h-game-1"
+    }
+  ],
+  "entityId": "game-step:s1",
+  "sourceHashes": {
+    "games/demo/authoring/game.authoring.json": "h-game-1"
+  },
+  "transform": [
+    {
+      "kind": "replace-in-line",
+      "anchor": "Order:",
+      "from": "3",
+      "to": "three"
+    }
+  ],
+  "expect": {
+    "path": "agent",
+    "stale": false,
+    "buckets": {
+      "applied": 0,
+      "recognized-no-change": 0,
+      "unrecognized": 1
+    },
+    "changeSetNull": true
+  }
+}

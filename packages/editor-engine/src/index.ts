@@ -161,3 +161,9 @@ export { createPrototypeExtractionProposal, discoverPrototypeExtractionCandidate
 
 // Reverse projection of UI edit intents into JSON Patch.
 export { reverseProjectIntent } from "./reverse-projection.ts";
+
+// Returned-intent interpreter for text-mode editing (ADR-057 §4.4, §5;
+// design-spec §2.2). Pure, network-free JSON logic — safe in this
+// browser-reachable barrel; the LLM agent call it signals lives in Phase 4.2.
+export { interpretReturnedIntent } from "./returned-intent.ts";
+export type { InterpretReturnedIntentOptions } from "./returned-intent.ts";

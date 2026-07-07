@@ -1,0 +1,55 @@
+{
+  "description": "Deleting a collection element (unambiguous scalar item) → intent to delete → deterministic remove.",
+  "documents": [
+    {
+      "filePath": "games/demo/authoring/objects.authoring.json",
+      "json": {
+        "_manifestType": "game",
+        "root": {
+          "objectTypes": {
+            "hero": {
+              "_label": "Герой",
+              "tags": [
+                "alpha",
+                "beta",
+                "gamma"
+              ]
+            }
+          },
+          "logic": {
+            "flows": [],
+            "actions": []
+          }
+        }
+      },
+      "sourceHash": "h-obj-1"
+    }
+  ],
+  "entityId": "state-model:hero",
+  "sourceHashes": {
+    "games/demo/authoring/objects.authoring.json": "h-obj-1"
+  },
+  "transform": [
+    {
+      "kind": "delete-line",
+      "anchor": "beta"
+    }
+  ],
+  "expect": {
+    "path": "deterministic",
+    "stale": false,
+    "buckets": {
+      "applied": 1,
+      "recognized-no-change": 0,
+      "unrecognized": 0
+    },
+    "changeSet": {
+      "ops": [
+        {
+          "op": "remove",
+          "path": "/root/objectTypes/hero/tags/1"
+        }
+      ]
+    }
+  }
+}

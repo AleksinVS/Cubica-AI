@@ -520,3 +520,29 @@ game-agnostic CI invariant.
   согласован с 3.b.2 (англ. chrome / рус. доменные подписи; вопрос политики открыт).
   **Итог Phase 3: дерево (3.b) и панель (3.c) по эталонному макету (зоны 2, 4)
   реализованы поверх проектной проекции (3.a).**
+- 2026-07-07 (Phase 4.1 — интерпретатор возвращённого намерения в ядре, готово):
+  `interpretReturnedIntent(input, options)` в новом `returned-intent.ts` +
+  контракт §2.2 (`ReturnedIntentInput`/`InterpretationLineReport`/
+  `ReturnedIntentResult`) в types.ts. Проекция HAND-ROLLED (без yaml-зависимости),
+  поэтому быстрый путь — построчный LCS-диф возвращённого текста к исходной
+  проекции через новый `facetSourceMap` (добавлен АДДИТИВНО к
+  `EditorEntityYamlProjection`: по одной строке-источнику на строку text,
+  byte-identical, hidden-поля не в карте; 133 прежних теста целы). Правило
+  быстрого пути: пара удалённой/вставленной строк с идентичным префиксом
+  «ключ:» (до `valueStart`) = изменение значения известного ключа → replace по
+  pointer; инверсия `formatYamlScalar` через JSON.parse; тип-смена число→текст
+  отвергается → agent. ИНВАРИАНТ: applied ⇔ есть op в ChangeSet ⇔ path
+  "deterministic"; любой нераспознанный фрагмент → весь возврат в agent
+  (changeSet:null, would-be-applied → recognized-no-change), НЕТ частичного
+  механического применения (§5). Удаления консервативны: чисто удалённый
+  единичный блок коллекции → deterministic remove, неоднозначное (object-item
+  «-») → agent; скаляр → no-change; пустой ввод → no-op (не масс-удаление).
+  Три корзины applied/recognized-no-change/unrecognized, hard-guard против
+  пустого отчёта при непустом diff. prompt-stale: сверка sourceHashes с
+  options.currentSourceHashes до диффа, короткое замыкание. 11 eval-фикстур
+  (ADR-038/§6) как расширяемый JSON-корпус. verify:editor-engine 149 (+16),
+  editor-web typecheck. Контрактная заметка: свежие хеши как опциональный
+  options.currentSourceHashes (verbatim-вход §2.2 не тронут) — 4.2 их
+  пересчитывает из DocumentStore. Следующий срез 4.2 — текстовый режим панели
+  («источник», «Применить как намерение») + агентский путь + прогон детерм.
+  ChangeSet через classifyChangeSet→dry-run→validation→undo journal + телеметрия.

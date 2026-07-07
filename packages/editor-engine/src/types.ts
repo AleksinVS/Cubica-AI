@@ -901,6 +901,149 @@ export interface EditorEntityYamlProjection {
   readonly text: string;
   readonly hiddenTechnicalPointers: readonly EditorEntitySourcePointer[];
   readonly diagnostics: readonly EditorEntityProjectionDiagnostic[];
+  /**
+   * Line-indexed map from each projection line back to its authoring source
+   * (ADR-057 §4.4, design-spec §2.2 `facetSourceMap`). Additive: existing
+   * consumers that read only `text`/`hiddenTechnicalPointers`/`diagnostics` are
+   * unaffected. It is the input the returned-intent interpreter aligns the
+   * author's returned text against; see {@link FacetSourceMap}.
+   */
+  readonly facetSourceMap: FacetSourceMap;
+}
+
+/**
+ * What kind of authoring value a single projection line renders.
+ *
+ * - `scalar`     — a leaf value (string/number/boolean/null).
+ * - `collection` — an array (its elements follow on later lines).
+ * - `object`     — a JSON object (its fields follow on later lines).
+ */
+export type FacetSourceValueKind = "scalar" | "collection" | "object";
+
+/**
+ * Structural role of one projection line, used by the returned-intent
+ * interpreter to align the author's returned text line-by-line (ADR-057 §4.4).
+ *
+ * The hand-rolled YAML projection (`buildEditorEntityYamlProjection`) is NOT
+ * round-tripped by a generic YAML parser (ADR-049 §11). Instead the interpreter
+ * walks both texts in parallel and consults this per-line classification:
+ * - `entity-header`  — the `Сущность:`/`Тип:` scaffolding lines (no source).
+ * - `facet`          — a facet label line such as `Логика:` (no source).
+ * - `section`        — a `  - <label>:` facet-source header line.
+ * - `field-scalar`   — an editable `<label>: <scalar>` leaf line.
+ * - `field-branch`   — a `<label>:` object/array header line (children follow).
+ * - `array-scalar`   — an editable `- <scalar>` array element line.
+ * - `array-branch`   — a `-` array element that is an object/array (children follow).
+ * - `empty-branch`   — an empty collection/object rendered as `[]` / `{}`.
+ * - `summary`        — a depth-capped `N items` / `N fields` summary line.
+ *
+ * Only `field-scalar` and `array-scalar` lines carry an editable value (they
+ * expose `valueStart`); every other kind is structural. Hidden technical fields
+ * produce NO projection line, so they never appear in the map.
+ */
+export type FacetSourceLineKind =
+  | "entity-header"
+  | "facet"
+  | "section"
+  | "field-scalar"
+  | "field-branch"
+  | "array-scalar"
+  | "array-branch"
+  | "empty-branch"
+  | "summary";
+
+/**
+ * One projection line's link back to the authoring source it was rendered from
+ * (ADR-057 §4.4, design-spec §2.2). There is exactly one entry per line of the
+ * projection `text`, index-aligned, so a consumer can walk both texts together.
+ */
+export interface FacetSourceLine {
+  /** Zero-based index of this line inside the projection text. */
+  readonly line: number;
+  readonly kind: FacetSourceLineKind;
+  /** Count of leading spaces on the line (used to detect nested subtrees). */
+  readonly indent: number;
+  /** Authoring file the value comes from; absent for scaffolding lines. */
+  readonly filePath?: string;
+  /** JSON Pointer of the value/subtree on this line; absent for scaffolding lines. */
+  readonly pointer?: string;
+  readonly valueKind?: FacetSourceValueKind;
+  /**
+   * UTF-16 column where the scalar value text begins (after the label and
+   * `": "`, or after `"- "` for array scalars). Present ONLY on editable
+   * `field-scalar`/`array-scalar` lines, so `valueStart !== undefined` is the
+   * canonical "this line holds an editable scalar" test.
+   */
+  readonly valueStart?: number;
+  /** Facet this line belongs to; absent on the `Сущность:`/`Тип:` header lines. */
+  readonly facetKind?: EditorEntityFacetKind;
+}
+
+/**
+ * The hidden source map handed to the returned-intent interpreter alongside the
+ * projection text (design-spec §2.2). It is never shown to the author.
+ */
+export interface FacetSourceMap {
+  /** One entry per projection line, in line order. */
+  readonly lines: readonly FacetSourceLine[];
+}
+
+/**
+ * Input to the returned-intent interpreter (design-spec §2.2, verbatim).
+ *
+ * "Returned intent" (возвращённое намерение) is the free-form text the author
+ * hands back after editing the prompt projection. It is a COMMAND to interpret,
+ * never data to parse mechanically (ADR-057 §4.4, §5). All four projection-time
+ * artifacts travel with it so the interpreter can align, and — on the agent path
+ * — the caller can forward the same context to the LLM agent (Phase 4.2).
+ */
+export interface ReturnedIntentInput {
+  /** The original prompt projection text the author started editing. */
+  readonly projectionYaml: string;
+  /** The text the author returned (may be anything; need not be valid YAML). */
+  readonly returnedText: string;
+  /** Source map for `projectionYaml` (from `buildEditorEntityYamlProjection`). */
+  readonly facetSourceMap: FacetSourceMap;
+  /** File -> source hash captured WHEN the projection was built (ADR-049 §10). */
+  readonly sourceHashes: Record<string, string>;
+  /** Entity the projection belongs to (used to label the ChangeSet). */
+  readonly entityId: string;
+}
+
+/**
+ * Per-fragment line of the interpretation report (design-spec §2.2, verbatim).
+ *
+ * Every changed/added/removed fragment of the returned text lands in exactly one
+ * of three buckets — silently dropping a fragment is forbidden (ADR-057 §5):
+ * - `applied`             — a deterministic ChangeSet op was built for it
+ *                           (`targetPointer` is set); only on the deterministic path.
+ * - `recognized-no-change`— recognized as a known field but no change is applied
+ *                           (a deleted scalar defaults to "keep"; a cosmetic edit;
+ *                           or any recognized fragment deferred to the agent path).
+ * - `unrecognized`        — could not be mapped to a field; shown to the author.
+ *                           Any `unrecognized` fragment forces the agent path.
+ */
+export interface InterpretationLineReport {
+  readonly fragment: string;
+  readonly bucket: "applied" | "recognized-no-change" | "unrecognized";
+  readonly targetPointer?: string;
+}
+
+/**
+ * Result of the returned-intent interpreter (design-spec §2.2, verbatim).
+ *
+ * The interpreter never applies anything: on the deterministic path it returns a
+ * ready `changeSet` for the shared risk → dry-run → validation → undo-journal
+ * pipeline (Phase 4.2); on the agent path it returns `changeSet: null` and the
+ * caller forwards the captured context to the LLM agent. Telemetry (design-spec
+ * §5) is derived from `path` plus the `report` bucket counts.
+ */
+export interface ReturnedIntentResult {
+  readonly changeSet: EditorChangeSet | null;
+  readonly report: readonly InterpretationLineReport[];
+  readonly path: "deterministic" | "agent";
+  /** `true` only when the projection is stale (source hashes diverged, ADR-049). */
+  readonly stale?: true;
 }
 
 export type ManifestTimelineEntryKind = "flow" | "step";
