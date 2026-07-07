@@ -615,3 +615,22 @@ game-agnostic CI invariant.
   авторитетен), «обновить снимок» (пока — ручное пере-закрепление).
   **Итог Phase 5: оси времени разделены, фикстуры — проверяемый authoring-
   артефакт с preview-only restore и GC.**
+- 2026-07-07 (Phase 6.1 — строители операций сущностей в ядре, готово):
+  `entity-operations.ts` — 4 чистых детерминированных строителя EditorChangeSet
+  (§2.8 дословно): `buildCreateEntityChangeSet` (атомарный мультифайловый ChangeSet:
+  game-фасет `add /root/content/<id>` + для визуальных типов UI-узел
+  `{id,_type,_label,gameEntityId:<id>}` в UI-документ активного канала, контейнер
+  по `containerPointer` или дефолт `/root/children`; визуальность по декларативному
+  `_requiresView` из 1.5, не по хардкод-типу; невизуальный → только game),
+  `buildCreatePrototypeChangeSet` (baseType → `_definitions`; fromEntityId →
+  существующий prototype-extraction, ADR-050), `buildDeleteEntityChangeSet`
+  (referencePolicy abort/clean/retarget; входящие ссылки — тот же индекс, что
+  change-risk; удаление фасетов deepest-first), `buildRenameEntityIdChangeSet`
+  (replace id + всех входящих ссылок UI→game по всем документам; risk через
+  существующую classifyChangeSet = dangerous). id-слаг: инлайн кириллица→ASCII
+  (без зависимости), уникальность по проекции. Связи ТОЛЬКО из
+  EditorEntityProjection (ADR-052). 15 тестов, engine 164, editor-web typecheck.
+  (2 первично упавших теста были багами тестов — билдеры корректны, исправлены на
+  верной стороне.) Документированное допущение: game-фасет по умолчанию в
+  `/root/content/<id>` (§2.8 задаёт containerPointer только для UI). НЕ применяет
+  ChangeSet — мультидок-применение + UI это срез 6.2.

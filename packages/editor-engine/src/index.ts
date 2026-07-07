@@ -159,6 +159,32 @@ export type { ManifestContentFile } from "./state-fixture-hash.ts";
 // Local prototype extraction (ADR-050).
 export { createPrototypeExtractionProposal, discoverPrototypeExtractionCandidates } from "./prototype-extraction.ts";
 
+// Entity create/delete/refactor operations as EditorChangeSet builders
+// (ADR-057 §4.2/§4.5/§4.10; editor-preview-first-ux §9.1; design-spec §2.8;
+// ADR-050). Pure, deterministic, framework-agnostic builders — the multi-document
+// apply and UI are Phase 6.2. `slugifyEntityId` is exported for reuse/testing of
+// the id-slug rule.
+export {
+  buildCreateEntityChangeSet,
+  buildCreatePrototypeChangeSet,
+  buildDeleteEntityChangeSet,
+  buildRenameEntityIdChangeSet,
+  slugifyEntityId
+} from "./entity-operations.ts";
+export type {
+  BuildCreateEntityInput,
+  BuildCreateEntityResult,
+  BuildCreatePrototypeInput,
+  BuildCreatePrototypeResult,
+  BuildDeleteEntityInput,
+  BuildDeleteEntityResult,
+  BuildRenameEntityIdInput,
+  BuildRenameEntityIdResult,
+  DeleteReferencePolicy,
+  EntityIncomingReference,
+  EntityOperationReport
+} from "./entity-operations.ts";
+
 // Reverse projection of UI edit intents into JSON Patch.
 export { reverseProjectIntent } from "./reverse-projection.ts";
 
