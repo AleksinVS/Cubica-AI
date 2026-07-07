@@ -17,9 +17,13 @@ import {
 } from "@cubica/editor-engine";
 
 import {
+  derivePreviewBlockedPlate,
   derivePreviewFreshness,
   describePreviewFreshness,
+  formatPreviewBlockedMessage,
+  formatPreviewUnbuiltMessage,
   planPreviewRecoveryLadder,
+  pluralRu,
   shouldAutoApplyPreview,
   shouldOfferPreviewApply
 } from "./workspace-helpers.ts";
@@ -93,6 +97,81 @@ describe("apply policy predicates (design-spec §3.3)", () => {
     expect(shouldAutoApplyPreview({ editorMode: "design", freshness: "stale" })).toBe(true);
     expect(shouldAutoApplyPreview({ editorMode: "preview", freshness: "stale" })).toBe(false);
     expect(shouldAutoApplyPreview({ editorMode: "design", freshness: "fresh" })).toBe(false);
+  });
+});
+
+describe("broken-compile plate (ADR-057 §4.12; editor-preview-first-ux §9.6; design-spec §3.5)", () => {
+  it("selects the Russian plural form by grammar number", () => {
+    const forms: [string, string, string] = ["правка", "правки", "правок"];
+    expect(pluralRu(1, forms)).toBe("правка");
+    expect(pluralRu(3, forms)).toBe("правки");
+    expect(pluralRu(5, forms)).toBe("правок");
+    expect(pluralRu(0, forms)).toBe("правок");
+    // Teens are always the many-form, regardless of the last digit.
+    expect(pluralRu(11, forms)).toBe("правок");
+    expect(pluralRu(12, forms)).toBe("правок");
+    expect(pluralRu(21, forms)).toBe("правка");
+    expect(pluralRu(23, forms)).toBe("правки");
+  });
+
+  it("formats the plate message with N edits and M errors (mockup zone 3)", () => {
+    // Mirrors the mockup card literally: «— 3 правки назад. 2 ошибки … обновление.»
+    const message = formatPreviewBlockedMessage(3, 2);
+    expect(message).toContain("Показана последняя рабочая версия");
+    expect(message).toContain("3 правки назад");
+    expect(message).toContain("2 ошибки");
+    expect(message).toContain("блокируют обновление");
+    // Singular error uses the «блокирует» verb form and «1 ошибка».
+    expect(formatPreviewBlockedMessage(1, 1)).toContain("1 ошибка блокирует обновление");
+  });
+
+  it("formats the first-compile-broken empty-state message (§9.6 no blank screen)", () => {
+    expect(formatPreviewUnbuiltMessage(2)).toBe("Предпросмотр ещё не собран — исправьте 2 ошибки.");
+    expect(formatPreviewUnbuiltMessage(1)).toBe("Предпросмотр ещё не собран — исправьте 1 ошибку.");
+    expect(formatPreviewUnbuiltMessage(5)).toBe("Предпросмотр ещё не собран — исправьте 5 ошибок.");
+  });
+
+  it("shows the plate only when an ERROR blocks the compile (warnings do not block)", () => {
+    // A blocking error with a last valid snapshot -> plate over the kept render.
+    expect(
+      derivePreviewBlockedPlate({
+        compileBlocked: true,
+        blockingErrorCount: 2,
+        hasLastValidSnapshot: true,
+        editsSincePreview: 3,
+        hasFirstError: true
+      })
+    ).toEqual({ hasLastValidSnapshot: true, editsSincePreview: 3, blockingErrorCount: 2, canNavigateToError: true });
+    // Warnings alone never block: no error count -> no plate (§9.6).
+    expect(
+      derivePreviewBlockedPlate({
+        compileBlocked: false,
+        blockingErrorCount: 0,
+        hasLastValidSnapshot: true,
+        editsSincePreview: 4,
+        hasFirstError: false
+      })
+    ).toBeNull();
+    // First compile broken (no snapshot yet) -> plate flagged for the empty state.
+    expect(
+      derivePreviewBlockedPlate({
+        compileBlocked: true,
+        blockingErrorCount: 1,
+        hasLastValidSnapshot: false,
+        editsSincePreview: 0,
+        hasFirstError: true
+      })?.hasLastValidSnapshot
+    ).toBe(false);
+    // Errors fixed -> the plate disappears (compile no longer blocked).
+    expect(
+      derivePreviewBlockedPlate({
+        compileBlocked: false,
+        blockingErrorCount: 0,
+        hasLastValidSnapshot: true,
+        editsSincePreview: 3,
+        hasFirstError: false
+      })
+    ).toBeNull();
   });
 });
 

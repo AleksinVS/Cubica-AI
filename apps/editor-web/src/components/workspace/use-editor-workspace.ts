@@ -189,6 +189,7 @@ import {
   clampNumber,
   configureMonacoJson,
   createEmptyEditorLayout,
+  derivePreviewBlockedPlate,
   derivePreviewFreshness,
   describePreviewFreshness,
   diagnosticsFromPluginValidation,
@@ -588,6 +589,20 @@ export function useEditorWorkspace() {
   // default order (pinned fixture for the active screen → first pinned → none).
   const [stateFixtures, setStateFixtures] = useState<readonly StateFixtureSummary[]>([]);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | undefined>(undefined);
+
+  // --- Last valid preview snapshot retention (ADR-057 §4.12; §9.6; design-spec
+  //     §3.5, Phase 8.2) ----------------------------------------------------------
+  //
+  // `previewUrl` is the LAST VALID compiled snapshot: it is only ever set on a
+  // successful compile and is NEVER nulled by an edit (`softenPreviewForEdit`) or
+  // by a later BROKEN compile (see `preparePreviewSession`), so a working preview
+  // stays on screen behind the broken-compile plate. `editsSincePreview` counts
+  // the edits made since that snapshot (the plate's «N правок назад»): reset to 0
+  // whenever a fresh valid snapshot is prepared, incremented on every softened
+  // edit. It is the edit-number half of the "last valid" record; the version and
+  // timestamp halves are already carried by `previewAppliedVersionHash` and the
+  // trace. §9.6/§3.5/mockup render only N + M, so no timestamp is surfaced.
+  const [editsSincePreview, setEditsSincePreview] = useState(0);
 
   // --- Project-level projection wiring (ADR-057 §4.1, Phase 3.a) --------------
   //
@@ -1000,6 +1015,25 @@ export function useEditorWorkspace() {
     hasUnappliedEdits: previewHasUnappliedEdits
   });
   const previewFreshnessDescriptor = describePreviewFreshness(previewFreshness);
+  // --- Broken-compile plate model (ADR-057 §4.12; §9.6; design-spec §3.5) -------
+  //
+  // Present whenever compilation is blocked by error-severity diagnostics (M > 0).
+  // `hasLastValidSnapshot` selects the rendering: the plate OVER the kept snapshot
+  // (true — freshness is "заблокирован") vs. the "ещё не собран" empty state
+  // (false — the first compile is broken, nothing to keep on screen). N is the
+  // edit count since the last valid snapshot; M is the blocking-error count; the
+  // «К первой ошибке» target is the first error-severity check (reuses §8.1).
+  const firstBlockingCheck = useMemo(
+    () => workspaceChecks.find((item) => item.severity === "error"),
+    [workspaceChecks]
+  );
+  const previewBlockedPlate = derivePreviewBlockedPlate({
+    compileBlocked: previewCompileBlocked,
+    blockingErrorCount: checkCounts.error,
+    hasLastValidSnapshot: previewUrl !== null,
+    editsSincePreview,
+    hasFirstError: firstBlockingCheck !== undefined
+  });
   // "Применить" is offered only in "Превью" when the preview is genuinely behind
   // VALID edits and the apply pipeline can run (not mid-workflow).
   const canApplyEditsToPreview = shouldOfferPreviewApply({
@@ -1608,6 +1642,10 @@ export function useEditorWorkspace() {
     if (previewUrl === null) {
       return;
     }
+    // Count this edit against the last valid snapshot (design-spec §3.5 «N правок
+    // назад»). Only reached when a preview is on screen, so it never counts edits
+    // made before the first snapshot; a fresh valid compile resets it to 0.
+    setEditsSincePreview((count) => count + 1);
     setSelectedPreviewEntityId(undefined);
     setPreviewPromptContext(null);
     setPreviewAiIntent(null);
@@ -1873,12 +1911,21 @@ export function useEditorWorkspace() {
         setSelectedPreviewTraceSequence(undefined);
         setPreviewRollbackState("idle");
         setPreviewAppliedVersionHash(currentDocument.versionHash);
+        // A fresh valid snapshot: the "N правок назад" counter restarts (§3.5).
+        setEditsSincePreview(0);
         setWorkflowState("ready");
         setStatusMessage("Preview session is ready");
         return { ready: true, sessionId: runtimeSessionId, playerUrl: result.playerUrl };
       }
 
-      clearPreparedPreview();
+      // Broken compile: DO NOT blank a working preview (ADR-057 §4.12; §9.6
+      // "пустой экран запрещён"). Keep the last valid snapshot (previewUrl) and
+      // its trace mounted so the broken-compile plate can render over it; only
+      // tear down when there is no valid snapshot to preserve. The freshness axis
+      // flips to "заблокирован" via `previewCompileBlocked` and the plate appears.
+      if (previewUrl === null) {
+        clearPreparedPreview();
+      }
       setWorkflowState("blocked");
       setStatusMessage("Preview is not ready");
       return { ready: false };
@@ -4041,6 +4088,22 @@ export function useEditorWorkspace() {
   }
 
   /**
+   * «К первой ошибке» from the broken-compile plate (ADR-057 §4.12; §9.6;
+   * design-spec §3.5): open the «Проверки» panel and navigate to the FIRST
+   * error-severity diagnostic, reusing the §8.1 `handleCheckNavigate` path
+   * (диагностика → сущность → поле). No-op when there is no blocking error (the
+   * plate hides its button then), so the two stay consistent.
+   */
+  function handleNavigateToFirstError() {
+    const first = workspaceChecks.find((item) => item.severity === "error");
+    if (first === undefined) {
+      return;
+    }
+    setLeftSidebarPanel("checks");
+    handleCheckNavigate(first);
+  }
+
+  /**
    * Runs a prepared, deterministic quick fix for a Checks row. The only fix in
    * this slice is «Создать вид» for `entity-missing-view`, which delegates to the
    * existing `handleCreateEntityView` (it builds the add-view-facet ChangeSet and
@@ -4443,6 +4506,10 @@ export function useEditorWorkspace() {
     handleCheckNavigate,
     handleCheckQuickFix,
     handleCheckFixWithAgent,
+    // Broken compile does not blank the preview (Phase 8.2; ADR-057 §4.12; §9.6):
+    // the plate model (N/M + snapshot presence) and the «К первой ошибке» jump.
+    previewBlockedPlate,
+    handleNavigateToFirstError,
     rightSidebarOpen,
     leftSidebarOpen,
     rightSidebarPanel,

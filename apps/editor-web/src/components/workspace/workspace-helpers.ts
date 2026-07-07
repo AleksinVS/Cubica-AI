@@ -402,6 +402,93 @@ export function shouldAutoApplyPreview(input: {
 }
 
 /**
+ * Russian plural selector (грамматика русского числа). Picks one of three word
+ * forms by the numeric value: `forms[0]` for 1/21/31…, `forms[1]` for 2–4/22–24…,
+ * `forms[2]` for 0, 5–20 and the rest. Used so the broken-compile plate reads
+ * naturally ("1 правка", "3 правки", "5 правок") instead of a fixed form.
+ */
+export function pluralRu(count: number, forms: readonly [string, string, string]): string {
+  const absolute = Math.abs(count) % 100;
+  const lastDigit = absolute % 10;
+  if (absolute > 10 && absolute < 20) {
+    return forms[2];
+  }
+  if (lastDigit > 1 && lastDigit < 5) {
+    return forms[1];
+  }
+  if (lastDigit === 1) {
+    return forms[0];
+  }
+  return forms[2];
+}
+
+/**
+ * The broken-compile plate model (ADR-057 §4.12; §9.6; design-spec §3.5). It is
+ * present iff compilation is blocked by at least one ERROR-severity diagnostic;
+ * warnings alone never block a compile (§9.6), and a fixed error clears it, so the
+ * plate hides again. `hasLastValidSnapshot` selects the rendering: the plate over
+ * the kept last valid snapshot (true) vs. the "ещё не собран" empty state (false,
+ * the first compile is broken and there is nothing to keep on screen).
+ */
+export interface PreviewBlockedPlateState {
+  readonly hasLastValidSnapshot: boolean;
+  readonly editsSincePreview: number;
+  readonly blockingErrorCount: number;
+  readonly canNavigateToError: boolean;
+}
+
+/**
+ * Derives {@link PreviewBlockedPlateState} from the signals the controller already
+ * tracks. Returns `null` when the compile is fine or blocked only by warnings, so
+ * the plate is shown exactly when an error blocks the compile. Pure, so the
+ * "warnings do NOT block / a fixed error hides the plate / N & M values"
+ * acceptances are asserted directly rather than through full-controller mounting.
+ */
+export function derivePreviewBlockedPlate(input: {
+  readonly compileBlocked: boolean;
+  readonly blockingErrorCount: number;
+  readonly hasLastValidSnapshot: boolean;
+  readonly editsSincePreview: number;
+  readonly hasFirstError: boolean;
+}): PreviewBlockedPlateState | null {
+  if (!input.compileBlocked || input.blockingErrorCount <= 0) {
+    return null;
+  }
+  return {
+    hasLastValidSnapshot: input.hasLastValidSnapshot,
+    editsSincePreview: input.editsSincePreview,
+    blockingErrorCount: input.blockingErrorCount,
+    canNavigateToError: input.hasFirstError
+  };
+}
+
+/**
+ * The broken-compile plate text shown OVER the last valid preview snapshot
+ * (ADR-057 §4.12; editor-preview-first-ux §9.6; design-spec §3.5, mockup zone 3):
+ * «Показана последняя рабочая версия — N правок назад. M ошибок блокируют
+ * обновление.». `editsSincePreview` is the number of edits made since that
+ * snapshot; `blockingErrorCount` is the number of error-severity diagnostics
+ * blocking the compile. The «К первой ошибке» control is rendered separately.
+ */
+export function formatPreviewBlockedMessage(editsSincePreview: number, blockingErrorCount: number): string {
+  const edits = `${editsSincePreview} ${pluralRu(editsSincePreview, ["правка", "правки", "правок"])}`;
+  const errors = `${blockingErrorCount} ${pluralRu(blockingErrorCount, ["ошибка", "ошибки", "ошибок"])}`;
+  const verb = pluralRu(blockingErrorCount, ["блокирует", "блокируют", "блокируют"]);
+  return `Показана последняя рабочая версия — ${edits} назад. ${errors} ${verb} обновление.`;
+}
+
+/**
+ * The empty-state text when compilation is broken and NO valid snapshot exists
+ * yet (the very first compile failed, so there is nothing to keep on screen —
+ * ADR-057 §4.12; §9.6 "пустой экран запрещён"): «Предпросмотр ещё не собран —
+ * исправьте M ошибок.». Keeps the stage explanatory instead of a blank canvas.
+ */
+export function formatPreviewUnbuiltMessage(blockingErrorCount: number): string {
+  const errors = `${blockingErrorCount} ${pluralRu(blockingErrorCount, ["ошибку", "ошибки", "ошибок"])}`;
+  return `Предпросмотр ещё не собран — исправьте ${errors}.`;
+}
+
+/**
  * One rung of the preview recovery ladder (editor-preview-first-ux §9.2). When
  * edits are applied to a running playthrough, the editor tries to keep the
  * author as close as possible to where they were, degrading gracefully:

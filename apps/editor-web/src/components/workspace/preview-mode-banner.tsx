@@ -13,6 +13,24 @@
 import React from "react";
 
 import type { StateFixtureSummary } from "@/components/workspace/types";
+import { formatPreviewBlockedMessage } from "@/components/workspace/workspace-helpers";
+
+/**
+ * The broken-compile plate model (ADR-057 §4.12; §9.6; design-spec §3.5). When a
+ * last valid snapshot is on screen and compilation is blocked by errors, the plate
+ * renders over it: «Показана последняя рабочая версия — N правок назад. M ошибок…»
+ * plus «К первой ошибке». `undefined` means the compile is fine (no plate).
+ */
+export interface PreviewBlockedPlateModel {
+  /** Number of edits made since the last valid compiled snapshot (N). */
+  readonly editsSincePreview: number;
+  /** Number of error-severity diagnostics blocking the compile (M). */
+  readonly blockingErrorCount: number;
+  /** Whether there is a first blocking diagnostic to jump to. */
+  readonly canNavigateToError: boolean;
+  /** Jumps to the first blocking diagnostic (reuses §8.1 Checks navigation). */
+  readonly onNavigateToError: () => void;
+}
 
 export function PreviewModeBanner({
   editorMode,
@@ -22,7 +40,8 @@ export function PreviewModeBanner({
   onApply,
   fixtures = [],
   selectedFixtureId,
-  onSelectFixture = () => {}
+  onSelectFixture = () => {},
+  blockedPlate
 }: {
   readonly editorMode: "design" | "preview";
   readonly stepLabel: string | undefined;
@@ -34,6 +53,8 @@ export function PreviewModeBanner({
   /** The effective selected fixture id (author pick or §9.3 default), if any. */
   readonly selectedFixtureId?: string | undefined;
   readonly onSelectFixture?: (fixtureId: string) => void;
+  /** Broken-compile plate over the last valid snapshot, or `undefined`. */
+  readonly blockedPlate?: PreviewBlockedPlateModel | undefined;
 }) {
   // Whether the currently selected fixture carries the `fixture-stale` verdict —
   // drives the «устарела» badge next to the selector (design-spec §4).
@@ -77,6 +98,23 @@ export function PreviewModeBanner({
           <button type="button" onClick={onApply}>
             Применить
           </button>
+        </span>
+      ) : null}
+      {/* Broken compile does NOT blank the preview (ADR-057 §4.12; §9.6): the last
+          valid snapshot stays mounted below, and this red plate explains why the
+          preview is frozen and links straight to the first blocking error. */}
+      {blockedPlate !== undefined ? (
+        <span className="preview-blocked-plate" data-testid="preview-blocked-plate">
+          {formatPreviewBlockedMessage(blockedPlate.editsSincePreview, blockedPlate.blockingErrorCount)}
+          {blockedPlate.canNavigateToError ? (
+            <button
+              type="button"
+              data-testid="preview-blocked-first-error"
+              onClick={blockedPlate.onNavigateToError}
+            >
+              К первой ошибке
+            </button>
+          ) : null}
         </span>
       ) : null}
     </div>

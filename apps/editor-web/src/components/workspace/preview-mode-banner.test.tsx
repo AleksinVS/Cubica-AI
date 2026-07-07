@@ -61,4 +61,50 @@ describe("PreviewModeBanner (design-spec §3.3, mockup zone 3)", () => {
     );
     expect(container?.querySelector(".preview-stale-plate")).toBeNull();
   });
+
+  it("renders the broken-compile plate with N/M and «К первой ошибке» navigating (ADR-057 §4.12; §9.6)", () => {
+    const onNavigateToError = vi.fn();
+    render(
+      <PreviewModeBanner
+        editorMode="design"
+        stepLabel="T2"
+        playthroughRunning={false}
+        canApply={false}
+        onApply={vi.fn()}
+        blockedPlate={{ editsSincePreview: 3, blockingErrorCount: 2, canNavigateToError: true, onNavigateToError }}
+      />
+    );
+    const plate = container?.querySelector(".preview-blocked-plate");
+    expect(plate?.textContent).toContain("Показана последняя рабочая версия");
+    expect(plate?.textContent).toContain("3 правки назад");
+    expect(plate?.textContent).toContain("2 ошибки");
+    const button = container?.querySelector("[data-testid='preview-blocked-first-error']");
+    expect(button?.textContent).toBe("К первой ошибке");
+    act(() => {
+      button?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onNavigateToError).toHaveBeenCalledTimes(1);
+  });
+
+  it("omits the broken-compile plate when the compile is fine", () => {
+    render(
+      <PreviewModeBanner editorMode="design" stepLabel="T2" playthroughRunning={false} canApply={false} onApply={vi.fn()} />
+    );
+    expect(container?.querySelector(".preview-blocked-plate")).toBeNull();
+  });
+
+  it("hides «К первой ошибке» when no first blocking error resolves", () => {
+    render(
+      <PreviewModeBanner
+        editorMode="design"
+        stepLabel={undefined}
+        playthroughRunning={false}
+        canApply={false}
+        onApply={vi.fn()}
+        blockedPlate={{ editsSincePreview: 1, blockingErrorCount: 1, canNavigateToError: false, onNavigateToError: vi.fn() }}
+      />
+    );
+    expect(container?.querySelector(".preview-blocked-plate")).not.toBeNull();
+    expect(container?.querySelector("[data-testid='preview-blocked-first-error']")).toBeNull();
+  });
 });

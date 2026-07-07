@@ -12,6 +12,7 @@ import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay"
 import { EntityInspector } from "@/components/workspace/entity-inspector";
 import { DeleteEntityDialog, RenameEntityIdDialog } from "@/components/workspace/entity-refactor-dialog";
 import { PreviewModeBanner } from "@/components/workspace/preview-mode-banner";
+import { formatPreviewUnbuiltMessage } from "@/components/workspace/workspace-helpers";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
@@ -62,7 +63,9 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     confirmRenameEntityId,
     handlePropertyChange,
     handleFileChange,
-    aiDiffSummary
+    aiDiffSummary,
+    previewBlockedPlate,
+    handleNavigateToFirstError
   } = controller;
 
   // Refactor affordances only when there is a worktree to persist sibling facets
@@ -102,6 +105,16 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
               fixtures={stateFixtures}
               selectedFixtureId={selectedFixtureId}
               onSelectFixture={handleSelectFixture}
+              blockedPlate={
+                previewBlockedPlate !== null && previewBlockedPlate.hasLastValidSnapshot
+                  ? {
+                      editsSincePreview: previewBlockedPlate.editsSincePreview,
+                      blockingErrorCount: previewBlockedPlate.blockingErrorCount,
+                      canNavigateToError: previewBlockedPlate.canNavigateToError,
+                      onNavigateToError: handleNavigateToFirstError
+                    }
+                  : undefined
+              }
             />
             <iframe ref={previewIframeRef} title="Game preview" src={previewUrl} allow="fullscreen" />
             <PreviewSelectionOverlay
@@ -129,6 +142,18 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
               }}
               onTemporaryPlayChange={handlePreviewTemporaryPlayChange}
             />
+          </div>
+        ) : previewBlockedPlate !== null && !previewBlockedPlate.hasLastValidSnapshot ? (
+          // First compile is broken and there is NO valid snapshot to keep on
+          // screen (ADR-057 §4.12; §9.6 "пустой экран запрещён"): an explanatory
+          // message + a jump to the first blocking error, never a blank canvas.
+          <div className="preview-empty-state preview-empty-state-blocked" data-testid="preview-blocked-empty">
+            <strong>{formatPreviewUnbuiltMessage(previewBlockedPlate.blockingErrorCount)}</strong>
+            {previewBlockedPlate.canNavigateToError ? (
+              <button type="button" data-testid="preview-blocked-empty-first-error" onClick={handleNavigateToFirstError}>
+                К первой ошибке
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="preview-empty-state">
