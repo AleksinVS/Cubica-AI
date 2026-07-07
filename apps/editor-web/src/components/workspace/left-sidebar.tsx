@@ -49,6 +49,8 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     handlePreviewRollback,
     handlePreviewResetToStart,
     handlePreviewReplayCurrent,
+    canPinFixture,
+    handlePinFixture,
     agentConnection,
     editorAgentSurface,
     editorAgentTools,
@@ -160,6 +162,8 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
           }}
           onReset={handlePreviewResetToStart}
           onReplayCurrent={handlePreviewReplayCurrent}
+          canPinFixture={canPinFixture}
+          onPinFixture={handlePinFixture}
         />
       ) : (
         <EditorCopilotChatPanel

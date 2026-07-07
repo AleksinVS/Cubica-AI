@@ -124,6 +124,8 @@ import {
   fetchAuthoringList,
   fetchEditorLayout,
   fetchPrototypeAuditStatus,
+  fetchStateFixtures,
+  pinStateFixture,
   postEditorWorkflow,
   requestAiChangeSet,
   requestPrototypeExtractionProposal,
@@ -204,7 +206,8 @@ import type {
   SavedAuthoringFileDocument,
   SemanticFlowEdge,
   SemanticFlowNode,
-  SidebarResizeState
+  SidebarResizeState,
+  StateFixtureSummary
 } from "@/components/workspace/types";
 import {
   useAiPatchState,
@@ -463,6 +466,17 @@ export function useEditorWorkspace() {
   // controller (and a compact badge could read it) for the §5 telemetry.
   const [returnedIntentTelemetry, setReturnedIntentTelemetry] = useState<ReturnedIntentTelemetry>(emptyReturnedIntentTelemetry);
 
+  // --- Pinned state fixtures (ADR-057 §4.9, §9.3; design-spec §3.3) ------------
+  //
+  // The game's pinned fixtures, listed from `games/<id>/authoring/fixtures/` with
+  // their `fixture-stale` verdict. Selecting one seeds the Design-mode preview
+  // state through the EXISTING preview-only restore path; pinning writes a new
+  // fixture into the session worktree (committed on Save). `selectedFixtureId` is
+  // the author's explicit pick; the effective selection falls back to the §9.3
+  // default order (pinned fixture for the active screen → first pinned → none).
+  const [stateFixtures, setStateFixtures] = useState<readonly StateFixtureSummary[]>([]);
+  const [selectedFixtureId, setSelectedFixtureId] = useState<string | undefined>(undefined);
+
   // --- Project-level projection wiring (ADR-057 §4.1, Phase 3.a) --------------
   //
   // The editor now builds ONE cross-document entity projection over the whole
@@ -669,6 +683,30 @@ export function useEditorWorkspace() {
   const selectedPreviewTraceSnapshot = selectedPreviewTraceEvent === undefined
     ? undefined
     : previewTrace.snapshots.find((snapshot) => snapshot.eventSequence === selectedPreviewTraceEvent.sequence);
+  // The runtime snapshot a "Закрепить как фикстуру" action would capture: the
+  // selected trace point, or the latest snapshot when nothing is selected.
+  const pinnableTraceSnapshot = selectedPreviewTraceSnapshot ?? previewTrace.snapshots[previewTrace.snapshots.length - 1];
+  const pinnableFixtureState =
+    pinnableTraceSnapshot !== undefined &&
+    typeof pinnableTraceSnapshot.state === "object" &&
+    pinnableTraceSnapshot.state !== null &&
+    !Array.isArray(pinnableTraceSnapshot.state)
+      ? (pinnableTraceSnapshot.state as Record<string, unknown>)
+      : undefined;
+  // Pinning needs a session worktree (so the file commits on Save) and a runtime
+  // snapshot to capture. Both together gate the "Закрепить как фикстуру" control.
+  const canPinFixture = editorSession !== null && pinnableFixtureState !== undefined;
+  // §9.3 default order: a pinned fixture bound to the active screen wins, else the
+  // first pinned fixture; when none exist the preview keeps its synthetic/auto seed.
+  const defaultFixtureId = useMemo(() => {
+    if (stateFixtures.length === 0) {
+      return undefined;
+    }
+    const forScreen =
+      activeScreenEntityId === undefined ? undefined : stateFixtures.find((fixture) => fixture.screenRef === activeScreenEntityId);
+    return (forScreen ?? stateFixtures[0]).id;
+  }, [stateFixtures, activeScreenEntityId]);
+  const effectiveSelectedFixtureId = selectedFixtureId ?? defaultFixtureId;
   const agentConnection = useEditorAgentConnection();
   const agentSelectedPointers = useMemo(() => {
     const pointers = new Set<string>();
@@ -1036,6 +1074,14 @@ export function useEditorWorkspace() {
       cancelled = true;
     };
   }, [currentDocument.filePath, currentDocument.source, currentDocument.versionHash]);
+
+  // Load the game's pinned fixtures on open and whenever the game/session changes
+  // (design-spec §3.3). A saved edit changes `versionHash`, refreshing the list so
+  // the `fixture-stale` badges re-evaluate against the new manifest hash.
+  useEffect(() => {
+    void loadStateFixtures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDocument.gameId, currentDocument.source, currentDocument.versionHash, editorSession?.sessionId]);
 
   useEffect(() => {
     if (monacoApi === null) {
@@ -1890,6 +1936,131 @@ export function useEditorWorkspace() {
 
     setPreviewUrl(addPreviewReloadNonce(previewUrl, currentPreviewTraceEvent.sequence));
     setStatusMessage(`Replaying current preview event ${currentPreviewTraceEvent.sequence}.`);
+  }
+
+  // --- Pinned state fixtures (ADR-057 §9.3; design-spec §3.3) ------------------
+
+  /** Loads the game's pinned fixtures (with their stale verdict) into state. */
+  async function loadStateFixtures() {
+    if (currentDocument.source !== "repository") {
+      setStateFixtures([]);
+      return;
+    }
+    try {
+      const result = await fetchStateFixtures(currentDocument.gameId, editorSessionRef.current?.sessionId);
+      setStateFixtures(result.fixtures);
+    } catch {
+      // A missing fixtures directory or a listing failure just yields no fixtures;
+      // the selector falls back to the auto-checkpoint / synthetic seed (§9.3).
+      setStateFixtures([]);
+    }
+  }
+
+  /**
+   * Derives an ASCII-first fixture id from a (possibly Cyrillic) label plus a
+   * short uniqueness suffix, mirroring the authoring entity id rule (design-spec
+   * §2.8). Non-ASCII labels collapse to the `fixture` stem; the `_label` keeps the
+   * human-readable Cyrillic name.
+   */
+  function slugifyFixtureId(label: string): string {
+    const stem = label
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/gu, "-")
+      .replace(/^-+|-+$/gu, "")
+      .slice(0, 60);
+    return `${stem === "" ? "fixture" : stem}-${Date.now().toString(36)}`;
+  }
+
+  /**
+   * Pins the current preview state as a reviewable fixture (mockup zone 6). The
+   * server stamps the fresh manifest hash, validates (Ajv + semantics), and writes
+   * the file into the session worktree so it commits on Save like any edit.
+   */
+  async function handlePinFixture(input: { readonly label: string; readonly note?: string }) {
+    const label = input.label.trim();
+    if (label === "") {
+      return;
+    }
+    if (editorSession === null) {
+      setStatusMessage("Закрепить фикстуру можно только в сессии редактора.");
+      return;
+    }
+    if (pinnableFixtureState === undefined) {
+      setStatusMessage("Нет состояния предпросмотра для закрепления.");
+      return;
+    }
+
+    try {
+      const result = await pinStateFixture({
+        gameId: currentDocument.gameId,
+        sessionId: editorSession.sessionId,
+        id: slugifyFixtureId(label),
+        label,
+        state: pinnableFixtureState,
+        note: input.note,
+        ...(pinnableTraceSnapshot !== undefined
+          ? { sourceTraceRef: `.tmp/editor-playthroughs/${previewTrace.traceId}#${pinnableTraceSnapshot.eventSequence}` }
+          : {})
+      });
+      await loadStateFixtures();
+      setSelectedFixtureId(result.fixture.id);
+      setStatusMessage(`Закреплена фикстура «${result.fixture._label}».`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? `Не удалось закрепить фикстуру: ${error.message}` : "Не удалось закрепить фикстуру.");
+    }
+  }
+
+  /**
+   * Seeds the preview with a fixture's captured state through the EXISTING
+   * preview-only restore endpoint — the same path a trace-checkpoint restore
+   * uses, so no new runtime contract is introduced (ADR-057 §5). A fresh runtime
+   * session is prepared first when none is running.
+   */
+  async function applyFixtureToPreview(fixtureId: string) {
+    const fixture = stateFixtures.find((candidate) => candidate.id === fixtureId);
+    if (fixture === undefined) {
+      return;
+    }
+    setSelectedFixtureId(fixtureId);
+
+    let sessionId = previewRuntimeSessionId;
+    let playerUrl = previewUrl;
+    if (sessionId === undefined || playerUrl === null) {
+      const prepared = await preparePreviewSession();
+      if (!prepared.ready || prepared.sessionId === undefined || prepared.playerUrl === undefined) {
+        setStatusMessage("Не удалось подготовить предпросмотр для фикстуры.");
+        return;
+      }
+      sessionId = prepared.sessionId;
+      playerUrl = prepared.playerUrl;
+    }
+
+    setPreviewRollbackState("restoring");
+    setStatusMessage(`Загружаем состояние фикстуры «${fixture._label}»…`);
+    try {
+      const response = await fetch("/api/editor/preview/rollback", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId: currentDocument.gameId,
+          sessionId,
+          state: fixture.state,
+          version: { stateVersion: 0, lastEventSequence: 0 },
+          targetEventSequence: 0
+        })
+      });
+      const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
+      if (!response.ok || !result.ok) {
+        throw new Error(result.error ?? `Fixture restore failed with HTTP ${response.status}.`);
+      }
+      setPreviewUrl(addPreviewReloadNonce(playerUrl, 0));
+      setPreviewRollbackState("restored");
+      setStatusMessage(`Состояние фикстуры «${fixture._label}» загружено в предпросмотр.`);
+    } catch (error) {
+      setPreviewRollbackState("error");
+      setStatusMessage(error instanceof Error ? error.message : "Не удалось загрузить фикстуру.");
+    }
   }
 
   async function resetCurrentFile() {
@@ -3270,6 +3441,13 @@ export function useEditorWorkspace() {
     handlePreviewResetToStart,
     handlePreviewReplayCurrent,
     previewAiIntent,
+    // Pinned state fixtures (ADR-057 §9.3; design-spec §3.3): Design-mode state
+    // selector + "Закрепить как фикстуру" timeline action.
+    stateFixtures,
+    selectedFixtureId: effectiveSelectedFixtureId,
+    canPinFixture,
+    handleSelectFixture: applyFixtureToPreview,
+    handlePinFixture,
     prototypeExtractionProposal,
     runAgentPreparePrototypeChangeSetTool,
     handleSidebarResizeStart,

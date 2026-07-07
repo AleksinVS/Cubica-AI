@@ -1,0 +1,3 @@
+{
+  "description": "Editor API route for pinned state fixtures (ADR-057 §9.3): lists a game's fixtures with their fixture-stale verdict and pins the current preview state into the session worktree authoring tree. Runtime never reads these files."
+}

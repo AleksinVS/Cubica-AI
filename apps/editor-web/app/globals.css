@@ -608,6 +608,89 @@ textarea {
   padding: 2px 10px;
 }
 
+/* Design-mode state (fixture) selector in the modebar (ADR-057 §9.3, mockup zone
+   3). The modebar is click-through, so the interactive selector re-enables
+   pointer events for itself. */
+.preview-state-selector {
+  align-items: center;
+  background: #eef2f6;
+  border-radius: 6px;
+  color: #3a4a5a;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 6px;
+  padding: 3px 10px;
+  pointer-events: auto;
+}
+
+.preview-state-selector select {
+  background: #fff;
+  border: 1px solid #cdd6de;
+  border-radius: 5px;
+  color: #22303c;
+  font-size: 12px;
+  padding: 2px 6px;
+}
+
+.preview-state-stale-badge {
+  background: #faeeda;
+  border-radius: 5px;
+  color: #854f0b;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+}
+
+/* "Закрепить как фикстуру" control in the timeline panel (mockup zone 6). */
+.timeline-pin-fixture {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.timeline-pin-fixture-open {
+  background: #f0f4f8;
+  border: 1px solid #cdd6de;
+  border-radius: 6px;
+  color: #22303c;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+}
+
+.timeline-pin-fixture-open:disabled {
+  color: #9aa7b2;
+  cursor: not-allowed;
+}
+
+.timeline-pin-fixture-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.timeline-pin-fixture-dialog input {
+  border: 1px solid #cdd6de;
+  border-radius: 5px;
+  font-size: 12px;
+  padding: 4px 8px;
+}
+
+.timeline-pin-fixture-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.timeline-pin-fixture-actions button {
+  border: 1px solid #cdd6de;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 3px 10px;
+}
+
 /* Preview freshness marker in the status strip (editor-preview-first-ux §9.6,
    mockup zone 7). Colour tones mirror the mockup: green/amber/red/grey. */
 .status-strip .preview-freshness {

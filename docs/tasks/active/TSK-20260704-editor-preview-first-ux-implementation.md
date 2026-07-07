@@ -592,3 +592,26 @@ game-agnostic CI invariant.
   (36.6с, OOM-безопасно). Приглушение старых событий трассы (`.step.old`
   макета) — follow-up 5.2 (нужен per-event хеш манифеста + сохранение/replay
   трассы через apply). Следующий срез 5.2 — фикстуры.
+- 2026-07-07 (Phase 5.2 — фикстуры состояния, готово; Phase 5 закрыта): серверный
+  `editor-fixture-store.ts` (хеш+id-множества из worktree-манифестов, Ajv через
+  registry + `validateStateFixtureSemantics`, запись `games/<id>/authoring/
+  fixtures/<id>.json`, листинг с verdict stale; `computeManifestContentHash` из
+  node-only subpath — без утечки в браузер) + маршрут `/api/editor/fixtures`
+  (GET список / POST закрепление в session worktree → коммит на Save, ADR-052).
+  «Закрепить как фикстуру» (timeline зона 6): диалог `_label`, снимок текущего
+  состояния preview, server стампует manifestHash и валидирует до записи. Селектор
+  «Состояние: …» (модбар зона 3, только Дизайн): закреплённые + синтетика; выбор →
+  `applyFixtureToPreview` → состояние в preview через СУЩЕСТВУЮЩИЙ
+  `/api/editor/preview/rollback` (тот же путь, что рестор чекпоинта; runtime-
+  контракт не менялся). Порядок §9.3: фикстура активного экрана → первая
+  закреплённая → синтетика. `fixture-stale`: сервер сверяет хеш (list+pin),
+  селектор помечает «устарела». Удержание авто-чекпоинтов `retainPreviewCheckpoints`
+  (последние N/сессия, env дефолт 20) подключено в `garbageCollectEditorSessions`
+  (ADR-042, тот же GC-цикл, что кэш 2.2a). runtime/player файлы фикстур не читают
+  (инвариант §5). Гейты независимо переподтверждены: typecheck, unit 164 (+11),
+  сборки в одиночку, e2e 8/8 (44.5с). Отсрочки: приглушение старых событий трассы
+  (нужен per-event хеш + non-resetting трасса — вне среза), `screenRef`/`stepRef`
+  при закреплении (нет надёжного маппинга trace→step/screen; полный state
+  авторитетен), «обновить снимок» (пока — ручное пере-закрепление).
+  **Итог Phase 5: оси времени разделены, фикстуры — проверяемый authoring-
+  артефакт с preview-only restore и GC.**

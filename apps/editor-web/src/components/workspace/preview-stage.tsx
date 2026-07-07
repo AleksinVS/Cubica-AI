@@ -20,6 +20,9 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     currentPreviewTraceEvent,
     canApplyEditsToPreview,
     handleApplyEditsToPreview,
+    stateFixtures,
+    selectedFixtureId,
+    handleSelectFixture,
     previewViewportMode,
     previewUrl,
     previewIframeRef,
@@ -83,6 +86,9 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
               playthroughRunning={(currentPreviewTraceEvent?.sequence ?? 0) > 0}
               canApply={canApplyEditsToPreview}
               onApply={handleApplyEditsToPreview}
+              fixtures={stateFixtures}
+              selectedFixtureId={selectedFixtureId}
+              onSelectFixture={handleSelectFixture}
             />
             <iframe ref={previewIframeRef} title="Game preview" src={previewUrl} allow="fullscreen" />
             <PreviewSelectionOverlay

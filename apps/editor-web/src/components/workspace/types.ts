@@ -272,3 +272,31 @@ export interface SidebarResizeState {
   readonly startX: number;
   readonly startWidth: number;
 }
+
+/**
+ * A pinned state fixture as returned by `/api/editor/fixtures` (ADR-057 §9.3).
+ * Browser-safe mirror of the server `ListedStateFixture`; it never carries the
+ * node-only hashing code, only its comparison verdict (`stale`).
+ */
+export interface StateFixtureSummary {
+  readonly id: string;
+  readonly _label: string;
+  readonly screenRef?: string;
+  readonly stepRef?: string;
+  readonly state: Record<string, unknown>;
+  readonly manifestHash: string;
+  readonly sourceTraceRef?: string;
+  readonly note?: string;
+  readonly stale: boolean;
+}
+
+export interface StateFixtureListResult {
+  readonly ok: boolean;
+  readonly fixtures: readonly StateFixtureSummary[];
+  readonly manifestHash: string;
+}
+
+export interface PinStateFixtureResult {
+  readonly ok: boolean;
+  readonly fixture: StateFixtureSummary;
+}

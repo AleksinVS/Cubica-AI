@@ -24,6 +24,7 @@ import {
   type AuthoringListResult
 } from "./editor-repository";
 import { EDITOR_CACHE_DEFAULT_MAX_BYTES, garbageCollectEditorCache } from "./editor-file-cache";
+import { retainPreviewCheckpoints } from "./preview-checkpoint-retention";
 
 export type EditorSessionStatus = "active" | "idle" | "dirty" | "saved" | "closed" | "expired" | "orphaned";
 
@@ -108,6 +109,8 @@ export interface EditorSessionGarbageCollectResult {
   readonly removedWorktrees: readonly string[];
   readonly removedPluginBundles: readonly string[];
   readonly removedPreviewTraces: readonly string[];
+  /** Auto-checkpoints (`<traceFile>#<sequence>`) trimmed by the per-session retention (ADR-057 §9.3). */
+  readonly trimmedCheckpoints: readonly string[];
   /** Level-2/3 editor-cache files evicted by the size/LRU sweep (editor-preview-first-ux §10). */
   readonly removedCacheEntries: readonly string[];
   readonly skippedDirtySessions: readonly string[];
@@ -123,6 +126,10 @@ const cleanSessionTtlMs = readPositiveIntegerEnv("CUBICA_EDITOR_CLEAN_SESSION_TT
 const dirtySessionTtlMs = readPositiveIntegerEnv("CUBICA_EDITOR_DIRTY_SESSION_TTL_MS", 7 * 24 * 60 * 60 * 1000);
 const generatedArtifactTtlMs = readPositiveIntegerEnv("CUBICA_EDITOR_GENERATED_ARTIFACT_TTL_MS", 24 * 60 * 60 * 1000);
 const editorCacheMaxBytes = readPositiveIntegerEnv("CUBICA_EDITOR_CACHE_MAX_BYTES", EDITOR_CACHE_DEFAULT_MAX_BYTES);
+// Retention for auto-checkpoints (runtime preview snapshots) per editor session
+// (ADR-057 §9.3 "последние N на сессию"). The trace files themselves live under
+// `.tmp/editor-playthroughs/`; older-than-N snapshots are trimmed on each GC pass.
+const playthroughCheckpointsPerSession = readPositiveIntegerEnv("CUBICA_EDITOR_PLAYTHROUGH_CHECKPOINTS_PER_SESSION", 20);
 
 export async function createEditorSession(input: {
   readonly gameId?: string | null;
@@ -486,10 +493,21 @@ export async function garbageCollectEditorSessions(input: {
     olderThan: new Date(now.getTime() - generatedArtifactTtlMs),
     dryRun
   });
+  const retainedSessionIds = new Set(documents.map((session) => session.sessionId).filter((sessionId) => !removedSessions.includes(sessionId)));
   const removedPreviewTraces = await cleanupPreviewTraces({
     root: path.join(repoRoot, ".tmp", "editor-playthroughs"),
-    activeSessionIds: new Set(documents.map((session) => session.sessionId).filter((sessionId) => !removedSessions.includes(sessionId))),
+    activeSessionIds: retainedSessionIds,
     olderThan: new Date(now.getTime() - dirtySessionTtlMs),
+    dryRun
+  });
+  // Retention of auto-checkpoints (ADR-057 §9.3): after whole stale trace files
+  // are removed above, cap the number of runtime snapshots kept per surviving
+  // session to the newest N, rewriting the affected trace files. Dropping .tmp
+  // snapshots is always safe — the editor can re-snapshot from a replay.
+  const trimmedCheckpoints = await retainPreviewCheckpoints({
+    root: path.join(repoRoot, ".tmp", "editor-playthroughs"),
+    activeSessionIds: retainedSessionIds,
+    keepPerSession: playthroughCheckpointsPerSession,
     dryRun
   });
 
@@ -516,6 +534,7 @@ export async function garbageCollectEditorSessions(input: {
     removedWorktrees: uniqueSorted(removedWorktrees),
     removedPluginBundles,
     removedPreviewTraces,
+    trimmedCheckpoints,
     removedCacheEntries,
     skippedDirtySessions,
     diagnostics
