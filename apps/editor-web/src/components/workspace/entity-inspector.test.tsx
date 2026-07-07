@@ -232,4 +232,38 @@ describe("EntityInspector", () => {
 
     await act(async () => harness.unmount());
   });
+
+  // Asset-reference widget (Phase 9.2; design-spec §3.6). The UI view facet's
+  // `image: "card.png"` is an asset-reference; opening the UI document makes it
+  // editable, so the pick/upload/generate widget renders on that field.
+  it("renders the asset-reference widget on an editable media field and routes «выбрать»", async () => {
+    const onBeginAssetPick = vi.fn<(field: InspectorEditableField & { readonly label: string }) => void>();
+    const onUploadAsset = vi.fn<(files: FileList) => void>();
+    const harness = renderInspector({ currentFilePath: uiPath, onBeginAssetPick, onUploadAsset });
+    await act(async () => harness.mount());
+
+    const widget = harness.container.querySelector('[data-testid="asset-reference-widget"]');
+    expect(widget).not.toBeNull();
+
+    const select = harness.container.querySelector<HTMLButtonElement>('[data-testid="asset-widget-select"]');
+    expect(select?.textContent).toBe("выбрать");
+    await act(async () => select?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(onBeginAssetPick).toHaveBeenCalledTimes(1);
+    // The routed field carries the pointer + label of the media field.
+    expect(onBeginAssetPick.mock.calls[0]?.[0]?.label).toBe("image");
+
+    await act(async () => harness.unmount());
+  });
+
+  it("keeps «сгенерировать» disabled because no generation backend is connected", async () => {
+    const onBeginAssetPick = vi.fn<(field: InspectorEditableField & { readonly label: string }) => void>();
+    const harness = renderInspector({ currentFilePath: uiPath, onBeginAssetPick });
+    await act(async () => harness.mount());
+
+    const generate = harness.container.querySelector<HTMLButtonElement>('[data-testid="asset-widget-generate"]');
+    expect(generate?.disabled).toBe(true);
+    expect(generate?.textContent).toBe("сгенерировать");
+
+    await act(async () => harness.unmount());
+  });
 });

@@ -149,9 +149,12 @@ import {
   fetchAuthoringFile,
   fetchAuthoringList,
   fetchEditorLayout,
+  fetchGameAssets,
   fetchPrototypeAuditStatus,
   fetchStateFixtures,
+  gameAssetContentUrl,
   pinStateFixture,
+  uploadGameAsset,
   postEditorWorkflow,
   requestAiChangeSet,
   requestPrototypeExtractionProposal,
@@ -239,6 +242,7 @@ import type {
   MonacoApi,
   MonacoEditorInstance,
   PlanCurrentAiChangeSetResult,
+  GameAssetSummary,
   PlannedAiChangeSet,
   PlannedPrototypeExtractionProposal,
   PreviewViewportMode,
@@ -272,6 +276,23 @@ function safeParseProjectionDocumentJson(text: string): JsonValue | undefined {
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Reads a browser {@link File} into a base64 string (no `data:` prefix). Assets
+ * are binaries, so the upload route transports them base64-encoded over JSON.
+ */
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error ?? new Error("Failed to read file."));
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : "";
+      // `readAsDataURL` yields `data:<mime>;base64,<payload>`; keep only the payload.
+      resolve(result.slice(result.indexOf(",") + 1));
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 /**
@@ -593,6 +614,14 @@ export function useEditorWorkspace() {
   // the author's explicit pick; the effective selection falls back to the §9.3
   // default order (pinned fixture for the active screen → first pinned → none).
   const [stateFixtures, setStateFixtures] = useState<readonly StateFixtureSummary[]>([]);
+  // Asset library (ADR-057 §9.4; design-spec §3.6): the game's asset files with a
+  // usage counter + orphan flag. `assetPickField` is set while the inspector's
+  // asset-reference widget is picking an asset from the library for a field; the
+  // pick routes back through the single property-edit point (undoable, ADR-057 §5).
+  const [gameAssets, setGameAssets] = useState<readonly GameAssetSummary[]>([]);
+  const [assetPickField, setAssetPickField] = useState<
+    { readonly pointer: string; readonly value: JsonValue; readonly valueType: EditorProperty["valueType"]; readonly label: string } | undefined
+  >(undefined);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | undefined>(undefined);
 
   // --- Last valid preview snapshot retention (ADR-057 §4.12; §9.6; design-spec
@@ -847,17 +876,31 @@ export function useEditorWorkspace() {
   // model, the plugin-validation stream, and the entity-projection identity
   // checks. Aggregation is a pure, deduplicated transform (`checks-helpers`); the
   // panel groups the result by severity and the counts drive the status bar.
-  const workspaceChecks = useMemo(
-    () =>
-      aggregateWorkspaceChecks({
-        routedDiagnostics: viewModel.diagnostics,
-        pluginDiagnostics,
-        projectionDiagnostics: viewModel.editorEntityProjection.diagnostics,
-        projection: viewModel.editorEntityProjection,
-        activeFilePath: currentDocument.filePath
-      }),
-    [viewModel.diagnostics, viewModel.editorEntityProjection, pluginDiagnostics, currentDocument.filePath]
-  );
+  const workspaceChecks = useMemo(() => {
+    const base = aggregateWorkspaceChecks({
+      routedDiagnostics: viewModel.diagnostics,
+      pluginDiagnostics,
+      projectionDiagnostics: viewModel.editorEntityProjection.diagnostics,
+      projection: viewModel.editorEntityProjection,
+      activeFilePath: currentDocument.filePath
+    });
+    // Orphan assets (0 uses) surface as `asset-orphan` info rows in the Checks tab
+    // (design-spec §4). They point at a file, not an entity, so they carry no
+    // pointer/quick-fix; the library panel is where the author acts on them.
+    const orphanChecks: WorkspaceCheckItem[] = gameAssets
+      .filter((asset) => asset.orphan)
+      .map((asset) => ({
+        id: `asset-orphan-${asset.path}`,
+        severity: "info" as const,
+        message: `Ассет не используется: ${asset.name}`,
+        source: "asset",
+        code: "asset-orphan",
+        badge: "ассет",
+        filePath: asset.path,
+        pointer: ""
+      }));
+    return [...base, ...orphanChecks];
+  }, [viewModel.diagnostics, viewModel.editorEntityProjection, pluginDiagnostics, currentDocument.filePath, gameAssets]);
   const checkGroups = useMemo(() => groupChecksBySeverity(workspaceChecks), [workspaceChecks]);
   const checkCounts = useMemo(() => summarizeCheckCounts(workspaceChecks), [workspaceChecks]);
   const previewTraceEntries = previewTrace.events.slice(-8);
@@ -1291,6 +1334,14 @@ export function useEditorWorkspace() {
   // the `fixture-stale` badges re-evaluate against the new manifest hash.
   useEffect(() => {
     void loadStateFixtures();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentDocument.gameId, currentDocument.source, currentDocument.versionHash, editorSession?.sessionId]);
+
+  // Load the game's assets on open and whenever the game/session changes, and
+  // after each saved edit (`versionHash`) so the usage counters/orphan flags
+  // re-evaluate against the current authoring references (design-spec §3.6).
+  useEffect(() => {
+    void loadGameAssets();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentDocument.gameId, currentDocument.source, currentDocument.versionHash, editorSession?.sessionId]);
 
@@ -2182,6 +2233,80 @@ export function useEditorWorkspace() {
       // the selector falls back to the auto-checkpoint / synthetic seed (§9.3).
       setStateFixtures([]);
     }
+  }
+
+  // --- Asset library (ADR-057 §9.4; design-spec §3.6) -------------------------
+
+  /** Loads the game's assets (type, usage counter, orphan flag) into state. */
+  async function loadGameAssets() {
+    if (currentDocument.source !== "repository") {
+      setGameAssets([]);
+      return;
+    }
+    try {
+      const result = await fetchGameAssets(currentDocument.gameId, editorSessionRef.current?.sessionId);
+      setGameAssets(result.assets);
+    } catch {
+      // A missing assets directory / listing failure just yields an empty library.
+      setGameAssets([]);
+    }
+  }
+
+  /**
+   * Uploads dropped/selected files into the session worktree assets tree and
+   * reloads the library. Binaries travel as base64 over JSON (see the store); the
+   * write commits on the next Save. Upload is always an explicit user action.
+   */
+  async function handleUploadAsset(files: FileList) {
+    const sessionId = editorSessionRef.current?.sessionId;
+    if (sessionId === undefined) {
+      setStatusMessage("Загрузка ассета требует сессии редактора.");
+      return;
+    }
+    try {
+      for (const file of Array.from(files)) {
+        const contentBase64 = await readFileAsBase64(file);
+        await uploadGameAsset({ gameId: currentDocument.gameId, sessionId, filePath: file.name, contentBase64 });
+      }
+      await loadGameAssets();
+      setStatusMessage(`Загружено ассетов: ${files.length}.`);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Не удалось загрузить ассет.");
+    }
+  }
+
+  /** Builds a thumbnail/preview URL for an asset, scoped to the active session. */
+  function assetContentUrl(assetPath: string): string {
+    return gameAssetContentUrl(currentDocument.gameId, assetPath, editorSessionRef.current?.sessionId);
+  }
+
+  /**
+   * Opens the asset library in "pick" mode for a given asset-reference field (the
+   * inspector widget's «выбрать»). The chosen asset is routed back through the
+   * single property-edit point in {@link handlePickAssetForField}.
+   */
+  function beginAssetPick(field: { readonly pointer: string; readonly value: JsonValue; readonly valueType: EditorProperty["valueType"]; readonly label: string }) {
+    setAssetPickField(field);
+    setLeftSidebarPanel("assets");
+  }
+
+  /** Applies a picked asset path to the pending field as a normal, undoable edit. */
+  function handlePickAssetForField(assetPath: string) {
+    if (assetPickField === undefined) {
+      return;
+    }
+    handlePropertyChange(
+      {
+        pointer: assetPickField.pointer,
+        label: assetPickField.label,
+        value: assetPickField.value,
+        valueType: assetPickField.valueType,
+        editable: true,
+        enumValues: undefined
+      },
+      assetPath
+    );
+    setAssetPickField(undefined);
   }
 
   /**
@@ -4619,6 +4744,16 @@ export function useEditorWorkspace() {
     canPinFixture,
     handleSelectFixture: applyFixtureToPreview,
     handlePinFixture,
+    // Asset library (ADR-057 §9.4; design-spec §3.6): the game's asset files with
+    // usage counters + orphan flags, drag/upload into the worktree, and the
+    // inspector-widget «выбрать» pick flow routed through the property-edit point.
+    gameAssets,
+    canUploadAsset: editorSession !== null,
+    handleUploadAsset,
+    assetContentUrl,
+    assetPickField,
+    beginAssetPick,
+    handlePickAssetForField,
     prototypeExtractionProposal,
     runAgentPreparePrototypeChangeSetTool,
     handleSidebarResizeStart,

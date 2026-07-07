@@ -263,7 +263,7 @@ export interface SemanticNodeData extends Record<string, unknown> {
 
 export type SemanticFlowNode = Node<SemanticNodeData, "semantic">;
 export type SemanticFlowEdge = Edge<{ readonly role: EditorViewEdge["role"]; readonly label?: string }, "semantic">;
-export type LeftSidebarPanel = "tree" | "timeline" | "chat" | "checks";
+export type LeftSidebarPanel = "tree" | "timeline" | "chat" | "checks" | "assets";
 export type RightSidebarPanel = "properties" | "json";
 export type PreviewViewportMode = "desktop" | "tablet" | "mobile";
 
@@ -299,4 +299,30 @@ export interface StateFixtureListResult {
 export interface PinStateFixtureResult {
   readonly ok: boolean;
   readonly fixture: StateFixtureSummary;
+}
+
+/** Coarse asset kind the library filters by; derived from the file extension. */
+export type GameAssetType = "image" | "audio" | "markdown" | "other";
+
+/**
+ * A game asset as returned by `/api/editor/assets` (ADR-009, ADR-057 §9.4).
+ * Browser-safe mirror of the server `GameAssetSummary`.
+ */
+export interface GameAssetSummary {
+  readonly path: string;
+  readonly name: string;
+  readonly type: GameAssetType;
+  readonly size: number;
+  readonly usageCount: number;
+  readonly orphan: boolean;
+}
+
+export interface GameAssetListResult {
+  readonly ok: boolean;
+  readonly assets: readonly GameAssetSummary[];
+}
+
+export interface UploadGameAssetResult {
+  readonly ok: boolean;
+  readonly asset: GameAssetSummary;
 }

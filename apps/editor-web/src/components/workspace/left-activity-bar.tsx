@@ -48,6 +48,17 @@ export function LeftActivityBar({ controller }: { controller: EditorWorkspaceCon
       </button>
       <button
         type="button"
+        className={leftSidebarPanel === "assets" ? "is-active" : ""}
+        aria-pressed={leftSidebarPanel === "assets"}
+        aria-label="Ассеты"
+        title="Ассеты"
+        data-testid="activity-bar-assets"
+        onClick={() => setLeftSidebarPanel((current) => (current === "assets" ? undefined : "assets"))}
+      >
+        <span aria-hidden="true">Ast</span>
+      </button>
+      <button
+        type="button"
         className={`left-activity-bar-checks ${leftSidebarPanel === "checks" ? "is-active" : ""}`}
         aria-pressed={leftSidebarPanel === "checks"}
         aria-label="Проверки"

@@ -147,7 +147,21 @@ export async function saveProjectGitSession(input: SaveProjectGitSessionInput): 
     throw new EditorRepositoryError("Save commit requires at least one allowed path.", 400);
   }
 
-  await git(worktreePath, ["add", "--", ...allowedPaths]);
+  // Only `git add` allowed paths that actually exist in the worktree: `git add`
+  // errors on a pathspec that matches nothing, and some allowed roots (e.g.
+  // `games/<id>/assets`) are absent until the author uploads a first asset. The
+  // FULL allowed set still governs the disallowed-path policy check below.
+  const existingPaths: string[] = [];
+  for (const allowedPath of allowedPaths) {
+    if (await pathExists(path.join(worktreePath, allowedPath))) {
+      existingPaths.push(allowedPath);
+    }
+  }
+  if (existingPaths.length === 0) {
+    return { committed: false, changedPaths: [] };
+  }
+
+  await git(worktreePath, ["add", "--", ...existingPaths]);
   const changedPaths = await stagedChangedPaths(worktreePath);
   if (changedPaths.length === 0) {
     return { committed: false, changedPaths: [] };
@@ -175,7 +189,19 @@ export async function restoreSavedVersion(input: RestoreSavedVersionInput): Prom
     throw new EditorRepositoryError("Rollback commit requires at least one allowed path.", 400);
   }
 
-  await git(worktreePath, ["restore", "--source", input.sourceRef, "--", ...allowedPaths]);
+  // Restore only allowed paths that the source commit actually tracks: `git
+  // restore --source` errors on a pathspec unknown to that ref, and some allowed
+  // roots (e.g. `games/<id>/assets`) may not exist yet in the target version.
+  const knownPaths: string[] = [];
+  for (const allowedPath of allowedPaths) {
+    const tracked = await git(worktreePath, ["ls-tree", "--name-only", input.sourceRef, "--", allowedPath]).catch(() => "");
+    if (tracked.trim() !== "") {
+      knownPaths.push(allowedPath);
+    }
+  }
+  if (knownPaths.length > 0) {
+    await git(worktreePath, ["restore", "--source", input.sourceRef, "--", ...knownPaths]);
+  }
   return saveProjectGitSession(input);
 }
 
@@ -185,7 +211,9 @@ export function allowedSavePathsForGame(input: {
   readonly includePlugins?: boolean;
 }): readonly string[] {
   validateGameId(input.gameId);
-  const base = [`games/${input.gameId}/authoring`];
+  // Assets (`games/<id>/assets`) are author-editable project files (ADR-009):
+  // uploads land in the worktree and must commit on Save alongside authoring.
+  const base = [`games/${input.gameId}/authoring`, `games/${input.gameId}/assets`];
   if (input.includeGeneratedArtifacts === true) {
     base.push(`games/${input.gameId}/game.manifest.json`, `games/${input.gameId}/game.manifest.source-map.json`, `games/${input.gameId}/ui`);
   }
@@ -256,6 +284,14 @@ async function resolveExistingDirectory(directory: string): Promise<string> {
   }
 
   return resolved;
+}
+
+/** True when `absolutePath` exists on disk (any file type), false on ENOENT. */
+async function pathExists(absolutePath: string): Promise<boolean> {
+  return stat(absolutePath).then(
+    () => true,
+    () => false
+  );
 }
 
 async function stagedChangedPaths(worktreePath: string): Promise<readonly string[]> {

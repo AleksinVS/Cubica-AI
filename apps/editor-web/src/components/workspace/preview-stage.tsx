@@ -63,6 +63,8 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     confirmRenameEntityId,
     handlePropertyChange,
     handleFileChange,
+    beginAssetPick,
+    handleUploadAsset,
     aiDiffSummary,
     previewBlockedPlate,
     handleNavigateToFirstError
@@ -194,6 +196,8 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
           onCreateView={canRefactorEntity ? handleCreateEntityView : undefined}
           onRequestRename={canRefactorEntity ? handleRequestRenameEntity : undefined}
           onRequestDelete={canRefactorEntity ? handleRequestDeleteEntity : undefined}
+          onBeginAssetPick={canRefactorEntity ? beginAssetPick : undefined}
+          onUploadAsset={canRefactorEntity ? handleUploadAsset : undefined}
         />
         {entityRefactorDialog?.kind === "delete" ? (
           <DeleteEntityDialog

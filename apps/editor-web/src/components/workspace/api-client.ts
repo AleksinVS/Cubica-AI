@@ -20,10 +20,12 @@ import type {
   EditorSessionListResult,
   EditorWorkflowResponse,
   AiPatchPlanResponse,
+  GameAssetListResult,
   PinStateFixtureResult,
   PrototypeAuditStatusResponse,
   PrototypeExtractionWorkflowResponse,
-  StateFixtureListResult
+  StateFixtureListResult,
+  UploadGameAssetResult
 } from "./types.ts";
 
 export async function fetchAuthoringList(gameId: string | null, sessionId?: string): Promise<AuthoringListResult> {
@@ -253,6 +255,50 @@ export async function applyEditorSiblingDocuments(input: {
   }
 
   return (await response.json()) as ApplyEditorSiblingDocumentsResult;
+}
+
+/** Lists the game's assets with their type, usage counter, and orphan flag (ADR-057 §9.4). */
+export async function fetchGameAssets(gameId: string, sessionId?: string): Promise<GameAssetListResult> {
+  const params = new URLSearchParams({ gameId });
+  if (sessionId !== undefined) {
+    params.set("sessionId", sessionId);
+  }
+  const response = await fetch(`/api/editor/assets?${params.toString()}`, { cache: "no-store" });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { readonly error?: string };
+    throw new Error(body.error ?? `Asset listing failed with HTTP ${response.status}.`);
+  }
+
+  return (await response.json()) as GameAssetListResult;
+}
+
+/** Uploads one asset (base64) into the session worktree; it commits on the next Save. */
+export async function uploadGameAsset(input: {
+  readonly gameId: string;
+  readonly sessionId?: string;
+  readonly filePath: string;
+  readonly contentBase64: string;
+}): Promise<UploadGameAssetResult> {
+  const response = await fetch("/api/editor/assets", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { readonly error?: string };
+    throw new Error(body.error ?? `Asset upload failed with HTTP ${response.status}.`);
+  }
+
+  return (await response.json()) as UploadGameAssetResult;
+}
+
+/** Builds the content-stream URL for an asset thumbnail/preview `<img src>`. */
+export function gameAssetContentUrl(gameId: string, assetPath: string, sessionId?: string): string {
+  const params = new URLSearchParams({ gameId, path: assetPath });
+  if (sessionId !== undefined) {
+    params.set("sessionId", sessionId);
+  }
+  return `/api/editor/assets/content?${params.toString()}`;
 }
 
 export async function postEditorWorkflow(path: string, body: Record<string, unknown>): Promise<EditorWorkflowResponse> {

@@ -122,6 +122,15 @@ export interface EntityInspectorProps {
   readonly onCreateView?: (entity: EditorEntity) => void;
   readonly onRequestRename?: (entity: EditorEntity) => void;
   readonly onRequestDelete?: (entity: EditorEntity) => void;
+  /**
+   * Asset-reference widget (Phase 9.2; design-spec §3.6). When provided, an
+   * editable field whose value points at a media file gets a «выбрать / загрузить
+   * / сгенерировать» widget. «выбрать» opens the asset library in pick mode
+   * (routing the chosen path back through the normal property edit); «загрузить»
+   * uploads a new file. Generation has no backend yet, so its button is inert.
+   */
+  readonly onBeginAssetPick?: (field: InspectorEditableField & { readonly label: string }) => void;
+  readonly onUploadAsset?: (files: FileList) => void;
 }
 
 const panelWidthPx = 340;
@@ -142,7 +151,9 @@ export function EntityInspector({
   onApplyReturnedIntent,
   onCreateView,
   onRequestRename,
-  onRequestDelete
+  onRequestDelete,
+  onBeginAssetPick,
+  onUploadAsset
 }: EntityInspectorProps) {
   const layerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{ readonly w: number; readonly h: number }>({ w: 0, h: 0 });
@@ -376,7 +387,14 @@ export function EntityInspector({
                     {bucket.bucketId === "view" && effectiveChannel !== undefined ? ` · ${effectiveChannel}` : ""}
                   </div>
                   {bucket.rows.map((row) => (
-                    <FieldRow key={`${row.source.filePath}#${row.pointer}`} row={row} onFieldEdit={onFieldEdit} onOpenFile={onOpenFile} />
+                    <FieldRow
+                      key={`${row.source.filePath}#${row.pointer}`}
+                      row={row}
+                      onFieldEdit={onFieldEdit}
+                      onOpenFile={onOpenFile}
+                      onBeginAssetPick={onBeginAssetPick}
+                      onUploadAsset={onUploadAsset}
+                    />
                   ))}
                 </section>
               ))
@@ -402,12 +420,20 @@ export function EntityInspector({
 function FieldRow({
   row,
   onFieldEdit,
-  onOpenFile
+  onOpenFile,
+  onBeginAssetPick,
+  onUploadAsset
 }: {
   readonly row: InspectorFieldRow;
   readonly onFieldEdit: (field: InspectorEditableField, rawValue: string) => void;
   readonly onOpenFile: (filePath: string) => void;
+  readonly onBeginAssetPick?: (field: InspectorEditableField & { readonly label: string }) => void;
+  readonly onUploadAsset?: (files: FileList) => void;
 }) {
+  // An editable field whose value points at a media file is an "asset-reference"
+  // (design-spec §3.6): it gets the pick/upload/generate widget below the input.
+  const isAssetReference = row.editableInDoc && looksLikeAsset(row.value) && onBeginAssetPick !== undefined;
+
   return (
     <div className={`entity-inspector-row${row.changedByAgent ? " hl" : ""}`}>
       <span className="entity-inspector-row-label">{row.label}</span>
@@ -426,6 +452,74 @@ function FieldRow({
           ↗
         </button>
       )}
+      {isAssetReference ? (
+        <AssetReferenceWidget
+          field={{ pointer: row.pointer, value: row.value, valueType: row.valueType, label: row.label }}
+          onBeginAssetPick={onBeginAssetPick}
+          onUploadAsset={onUploadAsset}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Asset-reference widget for an editable media field (design-spec §3.6): «выбрать»
+ * opens the asset library in pick mode, «загрузить» uploads a new file, and
+ * «сгенерировать» is intentionally inert — media generation needs a backend that
+ * is not connected (a documented follow-up); generation is only ever an explicit
+ * user action, never something the agent triggers on its own initiative.
+ */
+function AssetReferenceWidget({
+  field,
+  onBeginAssetPick,
+  onUploadAsset
+}: {
+  readonly field: InspectorEditableField & { readonly label: string };
+  readonly onBeginAssetPick: (field: InspectorEditableField & { readonly label: string }) => void;
+  readonly onUploadAsset?: (files: FileList) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  return (
+    <div className="entity-inspector-asset-widget" data-testid="asset-reference-widget">
+      <button
+        type="button"
+        className="entity-inspector-asset-action"
+        data-testid="asset-widget-select"
+        onClick={() => onBeginAssetPick(field)}
+      >
+        выбрать
+      </button>
+      <button
+        type="button"
+        className="entity-inspector-asset-action"
+        data-testid="asset-widget-upload"
+        disabled={onUploadAsset === undefined}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        загрузить
+      </button>
+      <button
+        type="button"
+        className="entity-inspector-asset-action"
+        data-testid="asset-widget-generate"
+        disabled
+        title="Генерация — явное действие пользователя; backend генерации не подключён."
+      >
+        сгенерировать
+      </button>
+      <input
+        ref={fileInputRef}
+        type="file"
+        hidden
+        aria-hidden="true"
+        onChange={(event) => {
+          if (event.target.files !== null && event.target.files.length > 0) {
+            onUploadAsset?.(event.target.files);
+          }
+          event.target.value = "";
+        }}
+      />
     </div>
   );
 }

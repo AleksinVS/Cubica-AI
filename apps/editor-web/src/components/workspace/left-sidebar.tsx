@@ -13,6 +13,7 @@ import { JsonTreeView } from "@/components/json-tree-view";
 import { EditorCopilotChatPanel } from "@/components/editor-agent-ui";
 
 import { AiChatSidebarPanel } from "./ai-chat-sidebar-panel.tsx";
+import { AssetLibraryPanel } from "./asset-library-panel.tsx";
 import { ChecksSidebarPanel } from "./checks-sidebar-panel.tsx";
 import { IntentQueuePanel } from "./intent-queue-panel.tsx";
 import { EntityTree } from "./entity-tree.tsx";
@@ -71,6 +72,12 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     handleCheckNavigate,
     handleCheckQuickFix,
     handleCheckFixWithAgent,
+    gameAssets,
+    canUploadAsset,
+    handleUploadAsset,
+    assetContentUrl,
+    assetPickField,
+    handlePickAssetForField,
     handleSidebarResizeStart
   } = controller;
 
@@ -84,7 +91,9 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
             ? "AI chat"
             : leftSidebarPanel === "checks"
               ? "Проверки"
-              : "Manifest navigation"
+              : leftSidebarPanel === "assets"
+                ? "Ассеты"
+                : "Manifest navigation"
       }
     >
       {leftSidebarPanel === "tree" ? (
@@ -200,6 +209,20 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
           onQuickFix={handleCheckQuickFix}
           onFixWithAgent={handleCheckFixWithAgent}
           onCollapse={() => setLeftSidebarPanel(undefined)}
+        />
+      ) : leftSidebarPanel === "assets" ? (
+        /* Asset library (Phase 9.2; design-spec §3.6; UX §9.4; ADR-057 §4): the
+           game's asset files with a usage counter, orphan diagnostics, search,
+           type filter, and drag/upload. In pick mode it routes a chosen asset
+           back to the inspector's asset-reference field. */
+        <AssetLibraryPanel
+          assets={gameAssets}
+          canUpload={canUploadAsset}
+          onUpload={handleUploadAsset}
+          assetContentUrl={assetContentUrl}
+          onCollapse={() => setLeftSidebarPanel(undefined)}
+          pickForLabel={assetPickField?.label}
+          onPickAsset={handlePickAssetForField}
         />
       ) : (
         <>

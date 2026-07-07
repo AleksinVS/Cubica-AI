@@ -2994,3 +2994,194 @@ button.diagnostic strong {
     right: 16px;
   }
 }
+
+/* Asset library (Phase 9.2; design-spec §3.6): the «Ассеты» left-sidebar section
+ * — a grid of asset cards with previews, search, a type filter, orphan flags,
+ * and drag-and-drop upload. */
+.asset-library-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px;
+}
+
+.asset-library-panel.is-drag-active {
+  outline: 2px dashed #6a86c9;
+  outline-offset: -6px;
+}
+
+.asset-library-pick-banner {
+  background: #eef3fd;
+  border: 1px solid #c9d6f0;
+  border-radius: 6px;
+  color: #33507f;
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.asset-library-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.asset-library-search {
+  border: 1px solid #d9d7d0;
+  border-radius: 6px;
+  font: inherit;
+  padding: 4px 8px;
+}
+
+.asset-library-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.asset-library-filters button {
+  background: #f3f2ee;
+  border: 1px solid #d9d7d0;
+  border-radius: 12px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.asset-library-filters button.is-active {
+  background: #33507f;
+  border-color: #33507f;
+  color: #fff;
+}
+
+.asset-library-orphan-filter.is-active {
+  background: #b06a1a;
+  border-color: #b06a1a;
+  color: #fff;
+}
+
+.asset-library-upload {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.asset-library-upload button {
+  background: #f3f2ee;
+  border: 1px solid #d9d7d0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 4px 10px;
+}
+
+.asset-library-upload button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.asset-library-hint {
+  color: #8a8880;
+  font-size: 11px;
+}
+
+.asset-library-grid {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+}
+
+.asset-library-empty {
+  color: #8a8880;
+  font-size: 12px;
+  grid-column: 1 / -1;
+}
+
+.asset-library-card {
+  border: 1px solid #e7e5df;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  padding: 4px;
+}
+
+.asset-library-card.is-orphan {
+  border-color: #e2b483;
+}
+
+.asset-library-thumb {
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  background: #f3f2ee;
+  border-radius: 4px;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.asset-library-thumb img {
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
+}
+
+.asset-library-icon {
+  font-size: 28px;
+}
+
+.asset-library-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.asset-library-name {
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.asset-library-usage {
+  color: #8a8880;
+  font-size: 10px;
+}
+
+.asset-library-usage.is-orphan {
+  color: #b06a1a;
+}
+
+.asset-library-pick {
+  background: #33507f;
+  border: 0;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 3px 6px;
+}
+
+/* Asset-reference widget inside the entity inspector (design-spec §3.6). */
+.entity-inspector-asset-widget {
+  display: flex;
+  flex-basis: 100%;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+.entity-inspector-asset-action {
+  background: #f3f2ee;
+  border: 1px solid #d9d7d0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 8px;
+}
+
+.entity-inspector-asset-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
