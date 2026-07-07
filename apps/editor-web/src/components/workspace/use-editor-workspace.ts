@@ -564,6 +564,21 @@ export function useEditorWorkspace() {
   // last one picked THROUGH the tree wins (covers cross-document entities the
   // authoritative selection above cannot resolve), else the current selection.
   const entityTreeActiveEntityId = entityTreeSelectedEntityId ?? selectionDerivedEntityId;
+  // --- Floating entity inspector (Phase 3.c, design-spec §3.2) ----------------
+  //
+  // The inspector opens for whichever entity the tree/preview selection resolves
+  // to (`entityTreeActiveEntityId`). Esc "closes" it by remembering the dismissed
+  // entity id: selecting a DIFFERENT entity re-opens the same window (design-spec
+  // §3.2 "переключение сущности переиспользует окно"); re-selecting the dismissed
+  // one keeps it closed until the selection actually moves.
+  const [dismissedInspectorEntityId, setDismissedInspectorEntityId] = useState<string | undefined>(undefined);
+  const inspectorEntityId =
+    entityTreeActiveEntityId !== undefined && entityTreeActiveEntityId !== dismissedInspectorEntityId
+      ? entityTreeActiveEntityId
+      : undefined;
+  const handleInspectorClose = useCallback(() => {
+    setDismissedInspectorEntityId(entityTreeActiveEntityId);
+  }, [entityTreeActiveEntityId]);
   const activeScreenEntityId = useMemo(
     () => resolveActiveScreenEntityId(viewModel.editorEntityProjection, entityTreeActiveEntityId),
     [viewModel.editorEntityProjection, entityTreeActiveEntityId]
@@ -2762,6 +2777,10 @@ export function useEditorWorkspace() {
     entityGroupingTree,
     entityTreeActiveEntityId,
     handleEntityTreeSelectEntity,
+    // Floating entity inspector wiring (Phase 3.c).
+    activeChannel,
+    inspectorEntityId,
+    handleInspectorClose,
     previewTraceEntries,
     selectedPreviewTraceEvent,
     selectedPreviewTraceSnapshot,

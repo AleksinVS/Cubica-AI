@@ -1259,6 +1259,245 @@ textarea {
   white-space: nowrap;
 }
 
+/* Floating entity inspector (Phase 3.c, mockup ЗОНА 4). ---------------------
+ * The layer fills the preview stage but is click-through (pointer-events:none),
+ * so only the panel itself intercepts events and it is placed to dodge the
+ * selection — the preview overlay underneath keeps working. */
+.entity-inspector-layer {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
+  z-index: 6;
+}
+
+.entity-inspector {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #cfd6e2;
+  border-radius: 10px;
+  box-shadow: 0 16px 32px rgba(20, 33, 53, 0.16);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: calc(100% - 24px);
+  max-width: calc(100% - 24px);
+  padding: 10px 12px;
+  pointer-events: auto;
+  position: absolute;
+  width: 340px;
+}
+
+.entity-inspector-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.entity-inspector-title,
+.entity-inspector-title-input {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.entity-inspector-title-input {
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: inherit;
+  min-width: 0;
+  padding: 2px 4px;
+}
+
+.entity-inspector-title-input:hover,
+.entity-inspector-title-input:focus {
+  border-color: #cfd6e2;
+  outline: none;
+}
+
+.entity-inspector-proto {
+  background: #eeedfe;
+  border-radius: 10px;
+  color: #534ab7;
+  font-size: 11.5px;
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.entity-inspector-icons {
+  align-items: center;
+  color: #8a8880;
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.entity-inspector-icons button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+
+.entity-inspector-icons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.entity-inspector-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.entity-inspector-chip {
+  align-items: center;
+  border: 1px solid #d9d7d0;
+  border-radius: 10px;
+  color: #5f5e5a;
+  display: inline-flex;
+  font-size: 12px;
+  gap: 4px;
+  padding: 1px 9px;
+}
+
+.entity-inspector-chip.is-active {
+  border-color: #85b7eb;
+  color: #185fa5;
+}
+
+.entity-inspector-chip.is-warning {
+  background: #faeeda;
+  border-color: transparent;
+  color: #854f0b;
+  cursor: not-allowed;
+}
+
+.entity-inspector-chip select {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+}
+
+.entity-inspector-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.entity-inspector-group-title {
+  color: #8a8880;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.entity-inspector-row {
+  align-items: center;
+  color: #5f5e5a;
+  display: flex;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.entity-inspector-row.hl {
+  background: #fdf6e3;
+  border-radius: 4px;
+  padding-left: 4px;
+}
+
+.entity-inspector-row-label {
+  flex: 0 0 auto;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-inspector-row-value {
+  border: 1px solid #d9d7d0;
+  border-radius: 4px;
+  flex: 1 1 auto;
+  font: inherit;
+  min-width: 0;
+  padding: 2px 6px;
+}
+
+.entity-inspector-row-value.is-summary {
+  border: 0;
+  color: #8a8880;
+}
+
+.entity-inspector-row-value:disabled {
+  background: #f5f4f0;
+  color: #8a8880;
+}
+
+.entity-inspector-row-src {
+  color: #8a8880;
+  flex: 0 0 auto;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.entity-inspector-open-file {
+  background: transparent;
+  border: 0;
+  color: #185fa5;
+  cursor: pointer;
+  flex: 0 0 auto;
+  font-size: 12px;
+}
+
+.entity-inspector-empty {
+  color: #8a8880;
+  font-size: 12px;
+}
+
+.entity-inspector-prompt {
+  align-items: center;
+  border-top: 1px solid #e7e5df;
+  display: flex;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.entity-inspector-prompt input {
+  border: 1px solid #d9d7d0;
+  border-radius: 6px;
+  flex: 1 1 auto;
+  font: inherit;
+  min-width: 0;
+  padding: 4px 8px;
+}
+
+.entity-inspector-prompt button {
+  background: transparent;
+  border: 0;
+  color: #8a8880;
+  cursor: not-allowed;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+/* Narrow screens: dock the inspector as a bottom panel (ADR-034). The panel
+ * carries an inline left/top from the free-quadrant placement, so the docked
+ * override wins with !important. */
+@media (max-width: 1100px) {
+  .entity-inspector {
+    border-radius: 12px 12px 0 0;
+    bottom: 0;
+    left: 0 !important;
+    max-height: 55%;
+    max-width: none;
+    top: auto !important;
+    width: 100%;
+  }
+}
+
 .selection-summary {
   background: transparent;
   border: 0;

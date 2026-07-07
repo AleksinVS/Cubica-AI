@@ -6,7 +6,10 @@
  * otherwise it shows the empty state with a "Prepare preview" button.
  * Presentational: all state and handlers come from the {@link EditorWorkspaceController}.
  */
+import { useMemo } from "react";
+
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
+import { EntityInspector } from "@/components/workspace/entity-inspector";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
@@ -34,8 +37,32 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     currentDocument,
     isDirty,
     hasLocalSchemaBlockingDiagnostics,
-    workflowState
+    workflowState,
+    viewModel,
+    activeChannel,
+    inspectorEntityId,
+    handleInspectorClose,
+    handlePropertyChange,
+    handleFileChange,
+    aiDiffSummary
   } = controller;
+
+  // The entity the inspector shows (Phase 3.c). `undefined` -> the panel renders
+  // only its (inert) measurement layer, so nothing floats over the preview.
+  const inspectorEntity =
+    inspectorEntityId === undefined ? undefined : viewModel.editorEntityProjection.entityById.get(inspectorEntityId);
+  // Bounds of the selected preview object, so the panel can dodge the selection.
+  const inspectorBounds =
+    selectedPreviewEntityId === undefined
+      ? undefined
+      : previewEntities.find((entity) => entity.entityId === selectedPreviewEntityId)?.bounds;
+  // Pointers the last applied agent ChangeSet touched -> the `.hl` "изменено
+  // агентом" highlight. `aiDiffSummary` is the ready signal (set after dry-run /
+  // apply, cleared by `clearAiSessionState` on the next manual edit).
+  const changedPointerKeys = useMemo(
+    () => new Set(aiDiffSummary.map((item) => `${item.filePath}#${item.pointer}`)),
+    [aiDiffSummary]
+  );
 
   return (
     <section className="preview-stage" aria-label="Game preview">
@@ -88,6 +115,22 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
             </button>
           </div>
         )}
+        <EntityInspector
+          entity={inspectorEntity}
+          documents={viewModel.entityProjectionDocuments}
+          activeChannel={activeChannel}
+          currentFilePath={currentDocument.filePath}
+          selectionBounds={inspectorBounds}
+          changedPointerKeys={changedPointerKeys}
+          onClose={handleInspectorClose}
+          onFieldEdit={(field, rawValue) =>
+            handlePropertyChange(
+              { pointer: field.pointer, label: "", value: field.value, valueType: field.valueType, editable: true, enumValues: undefined },
+              rawValue
+            )
+          }
+          onOpenFile={handleFileChange}
+        />
       </div>
     </section>
   );
