@@ -10,6 +10,7 @@
  */
 import { describe, expect, it } from "vitest";
 import {
+  buildAddViewFacetChangeSet,
   buildCreateEntityChangeSet,
   buildCreatePrototypeChangeSet,
   buildDeleteEntityChangeSet,
@@ -320,6 +321,47 @@ describe("buildRenameEntityIdChangeSet (ADR-057 §4.2/§4.5)", () => {
       projection,
       documents()
     );
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("buildAddViewFacetChangeSet (design-spec §3.2 «создать вид»; editor-preview-first-ux §2.1)", () => {
+  const projection = buildProjection();
+
+  it("adds ONLY a UI node referencing the existing game entity id (game facet untouched)", () => {
+    // `lonely` is an action with no UI button, i.e. an entity missing its view.
+    const result = buildAddViewFacetChangeSet(
+      { entityId: "game-action:lonely", channel: "web", containerPointer: "/root/screens/0/root/children" },
+      projection,
+      documents()
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    // The change touches the UI document ONLY — the game facet is never modified.
+    expect(result.changeSet.jsonPatches).toHaveLength(1);
+    expect(result.changeSet.jsonPatches[0]?.filePath).toBe(UI_FILE);
+
+    const op = result.changeSet.jsonPatches[0]?.operations[0];
+    expect(op?.op).toBe("add");
+    expect(op?.path).toBe("/root/screens/0/root/children/-");
+    if (op?.op === "add") {
+      expect(op.value).toMatchObject({ id: "lonely", _label: "Lonely", gameEntityId: "lonely" });
+    }
+
+    // Adding a view node is a structural authoring act, never dangerous.
+    expect(classifyChangeSet(result.changeSet, projection).risk).toBe("structural");
+  });
+
+  it("refuses an unknown entity", () => {
+    const result = buildAddViewFacetChangeSet({ entityId: "game-action:ghost", channel: "web" }, projection, documents());
+    expect(result.ok).toBe(false);
+  });
+
+  it("refuses when the entity already has a view in that channel", () => {
+    // `accept` already has `accept-btn` as its web view facet.
+    const result = buildAddViewFacetChangeSet({ entityId: "game-action:accept", channel: "web" }, projection, documents());
     expect(result.ok).toBe(false);
   });
 });

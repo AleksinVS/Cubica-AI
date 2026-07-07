@@ -10,6 +10,7 @@ import { useMemo } from "react";
 
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
 import { EntityInspector } from "@/components/workspace/entity-inspector";
+import { DeleteEntityDialog, RenameEntityIdDialog } from "@/components/workspace/entity-refactor-dialog";
 import { PreviewModeBanner } from "@/components/workspace/preview-mode-banner";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
@@ -52,10 +53,22 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     handleInspectorClose,
     captureEntitySource,
     applyEntityReturnedIntent,
+    entityRefactorDialog,
+    closeEntityRefactorDialog,
+    handleRequestDeleteEntity,
+    handleRequestRenameEntity,
+    handleCreateEntityView,
+    confirmDeleteEntity,
+    confirmRenameEntityId,
     handlePropertyChange,
     handleFileChange,
     aiDiffSummary
   } = controller;
+
+  // Refactor affordances only when there is a worktree to persist sibling facets
+  // into (a repository session); the embedded fallback hides them, mirroring the
+  // «+» create menu's `canCreateEntity` gate.
+  const canRefactorEntity = currentDocument.source === "repository";
 
   // The entity the inspector shows (Phase 3.c). `undefined` -> the panel renders
   // only its (inert) measurement layer, so nothing floats over the preview.
@@ -153,7 +166,30 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
           onOpenFile={handleFileChange}
           onCaptureEntitySource={captureEntitySource}
           onApplyReturnedIntent={applyEntityReturnedIntent}
+          onCreateView={canRefactorEntity ? handleCreateEntityView : undefined}
+          onRequestRename={canRefactorEntity ? handleRequestRenameEntity : undefined}
+          onRequestDelete={canRefactorEntity ? handleRequestDeleteEntity : undefined}
         />
+        {entityRefactorDialog?.kind === "delete" ? (
+          <DeleteEntityDialog
+            entityLabel={entityRefactorDialog.entityLabel}
+            facets={entityRefactorDialog.facets}
+            incomingReferences={entityRefactorDialog.incomingReferences}
+            retargetOptions={entityRefactorDialog.retargetOptions}
+            onCancel={closeEntityRefactorDialog}
+            onDeleteAndClean={() => void confirmDeleteEntity("clean")}
+            onRetarget={(retargetTo) => void confirmDeleteEntity("retarget", retargetTo)}
+          />
+        ) : entityRefactorDialog?.kind === "rename" ? (
+          <RenameEntityIdDialog
+            entityLabel={entityRefactorDialog.entityLabel}
+            currentId={entityRefactorDialog.currentId}
+            suggestedId={entityRefactorDialog.suggestedId}
+            error={entityRefactorDialog.error}
+            onCancel={closeEntityRefactorDialog}
+            onConfirm={(newId) => void confirmRenameEntityId(newId)}
+          />
+        ) : null}
       </div>
     </section>
   );

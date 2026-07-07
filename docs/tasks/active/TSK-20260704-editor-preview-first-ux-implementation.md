@@ -658,3 +658,23 @@ game-agnostic CI invariant.
   регресс; смягчение (гейт «нет НОВЫХ ошибок») — платформенная политика, затрагивает все
   операции.** Отложено 6.2b: delete-диалог, rename-UI, «создать вид», drag прототипа;
   мультидок для agent/returned-intent путей; недавние/частые в меню.
+- 2026-07-07 (Phase 6.2b — UI удаления/переименования/«создать вид», готово):
+  ядро аддитивно получило `buildAddViewFacetChangeSet({entityId, channel,
+  containerPointer?})` (UI-узел `{id,_type,_label,gameEntityId:id}` для
+  существующей сущности; game-фасет не трогает; structural). editor-web:
+  `entity-refactor-dialog.tsx` — `DeleteEntityDialog` (фасеты + входящие ссылки
+  из `buildDeleteEntityChangeSet(abort)` + 3 варианта отменить/вычистить/
+  перенацелить с выбором цели) и `RenameEntityIdDialog` (новый id, отказ при
+  занятом). Кнопки «Удалить»/«Переименовать» + активный чип «создать вид» в
+  инспекторе. Общий `applyEntityOperationChangeSet`: classify → для dangerous
+  (rename всегда; удаление со входящими) approval envelope через ТОТ ЖЕ
+  `buildEditorApprovalEnvelope`/`validateEditorAgentApproval` (ADR-047, второй
+  механизм не вводился) → `commitMultiDocumentChangeSet` (6.2a) → журнал.
+  «Создать вид» structural, без approval. Отчёты видимы (status+diff summary).
+  Гейты независимо переподтверждены: verify:editor-engine 167 (+3),
+  editor-web typecheck + unit 185 (+12), сборки в одиночку, e2e 8/8 (30.9с).
+  Отложено (follow-up): перетаскивание прототипа на канвас (hit-test контейнера),
+  прицельный контейнер экрана для «создать вид», мультидок для agent/returned-
+  intent путей. **Итог Phase 6 (core): создание/удаление/переименование/создание
+  вида — атомарные кросс-манифестные операции через единый мультидок-конвейер с
+  approval для опасных; drag остаётся follow-up.**

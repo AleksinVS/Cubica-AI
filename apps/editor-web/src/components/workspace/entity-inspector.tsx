@@ -112,6 +112,16 @@ export interface EntityInspectorProps {
   readonly onCaptureEntitySource?: (entity: EditorEntity) => EntitySourceCapture | undefined;
   /** Runs an edited returned intent through the interpreter → shared pipeline. */
   readonly onApplyReturnedIntent?: (input: ReturnedIntentInput) => ReturnedIntentApplyOutcome;
+  /**
+   * Refactor affordances (Phase 6.2b, design-spec §3.2). When a callback is
+   * omitted its control is hidden (for example the embedded fallback, which has no
+   * worktree to persist sibling facets into, and the unit harness). «создать вид»
+   * adds the missing UI facet; «Переименовать»/«Удалить» open the dangerous
+   * refactor dialogs, which the controller gates behind an approval envelope.
+   */
+  readonly onCreateView?: (entity: EditorEntity) => void;
+  readonly onRequestRename?: (entity: EditorEntity) => void;
+  readonly onRequestDelete?: (entity: EditorEntity) => void;
 }
 
 const panelWidthPx = 340;
@@ -129,7 +139,10 @@ export function EntityInspector({
   onFieldEdit,
   onOpenFile,
   onCaptureEntitySource,
-  onApplyReturnedIntent
+  onApplyReturnedIntent,
+  onCreateView,
+  onRequestRename,
+  onRequestDelete
 }: EntityInspectorProps) {
   const layerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{ readonly w: number; readonly h: number }>({ w: 0, h: 0 });
@@ -255,6 +268,34 @@ export function EntityInspector({
           )}
           {prototypeType !== undefined ? <span className="entity-inspector-proto">Прототип: {prototypeType}</span> : null}
           <span className="entity-inspector-icons">
+            {/* Entity refactor actions (Phase 6.2b): both open a dialog the
+                controller gates behind the ADR-047 approval envelope. Rendered only
+                when the controller supplies the handler (hidden in the embedded
+                fallback / unit harness). */}
+            {onRequestRename !== undefined ? (
+              <button
+                type="button"
+                className="entity-inspector-refactor"
+                data-testid="entity-inspector-rename"
+                title="Переименовать id"
+                aria-label="Rename entity id"
+                onClick={() => onRequestRename(entity)}
+              >
+                Переименовать
+              </button>
+            ) : null}
+            {onRequestDelete !== undefined ? (
+              <button
+                type="button"
+                className="entity-inspector-refactor entity-inspector-refactor-danger"
+                data-testid="entity-inspector-delete"
+                title="Удалить сущность"
+                aria-label="Delete entity"
+                onClick={() => onRequestDelete(entity)}
+              >
+                Удалить
+              </button>
+            ) : null}
             {/* «источник»: toggles the editable prompt-projection text mode (Phase 4.2).
                 Dock is still deferred. Inert only when the controller passes no
                 capture/apply callbacks (e.g. the unit harness). */}
@@ -306,7 +347,17 @@ export function EntityInspector({
               )}
             </span>
           ) : requiresView ? (
-            <button type="button" className="entity-inspector-chip is-warning" disabled title="Создание вида — скоро (Phase 6)">
+            // «создать вид» (Phase 6.2b): adds the missing UI facet for this game
+            // entity in the active channel. Enabled once the controller supplies a
+            // handler; otherwise it stays an inert warning chip.
+            <button
+              type="button"
+              className="entity-inspector-chip is-warning"
+              data-testid="entity-inspector-create-view"
+              disabled={onCreateView === undefined}
+              title={onCreateView !== undefined ? "Создать вид в активном канале" : "Создание вида — недоступно"}
+              onClick={onCreateView !== undefined ? () => onCreateView(entity) : undefined}
+            >
               создать вид
             </button>
           ) : null}

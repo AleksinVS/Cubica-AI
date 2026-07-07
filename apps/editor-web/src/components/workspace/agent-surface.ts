@@ -10,6 +10,7 @@
  * used to render agent output and action buttons in the copilot panel).
  */
 import {
+  buildCubicaAgentApprovalEnvelope,
   validateAgentApprovalEnvelope,
   type CubicaAgentApprovalEnvelope,
   type CubicaSurface,
@@ -17,6 +18,7 @@ import {
 } from "@cubica/contracts-ai";
 import { hashEditorText, type ClassifyChangeSetResult, type EditorDiffSummaryItem } from "@cubica/editor-engine";
 
+import { EDITOR_AUTHORING_ASSISTANT_ID } from "@/lib/agent-assistant-registry";
 import type { EditorAgentToolResult } from "@/components/editor-agent-ui";
 import type { RoutedEditorDiagnostic } from "@/lib/editor-web-adapter";
 
@@ -24,6 +26,37 @@ import type { PlannedAiChangeSet, PlannedPrototypeExtractionProposal } from "./t
 
 /** Names of the editor agent tools that mutate state and require approval. */
 export type MutatingEditorToolName = "editor.applyChangeSet" | "editor.undoLastPatch" | "editor.saveSession";
+
+/** How long a UI-created approval envelope stays valid (matches the copilot TTL). */
+const EDITOR_APPROVAL_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Builds an "approved" Cubica approval envelope (ADR-047) for a mutating editor
+ * tool, recording an EXPLICIT human decision taken in the editor UI (for example
+ * confirming a dangerous rename/delete in the entity refactor dialog). It mirrors
+ * the copilot's own `buildApprovalEnvelope`, so a UI-driven dangerous operation
+ * reuses the SAME envelope + `validateEditorAgentApproval` gate as the agent path
+ * — no second approval mechanism is introduced.
+ */
+export function buildEditorApprovalEnvelope(input: {
+  readonly toolName: MutatingEditorToolName;
+  readonly scopeHash: string;
+  readonly actionId: string;
+}): CubicaAgentApprovalEnvelope {
+  const approvedAt = new Date();
+  const expiresAt = new Date(approvedAt.getTime() + EDITOR_APPROVAL_TTL_MS);
+  return buildCubicaAgentApprovalEnvelope({
+    approvalId: `approval-${approvedAt.getTime()}-${Math.random().toString(36).slice(2, 8)}`,
+    agentId: EDITOR_AUTHORING_ASSISTANT_ID,
+    toolName: input.toolName,
+    approvedBy: "local-editor-user",
+    approvedAt: approvedAt.toISOString(),
+    expiresAt: expiresAt.toISOString(),
+    scopeHash: input.scopeHash,
+    status: "approved",
+    actionId: input.actionId
+  });
+}
 
 /** Maps a routed diagnostic down to the minimal shape sent to the agent. */
 export function toAgentDiagnostic(diagnostic: { readonly severity: string; readonly source: string; readonly pointer: string; readonly message: string }) {

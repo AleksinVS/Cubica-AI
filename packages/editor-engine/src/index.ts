@@ -165,6 +165,7 @@ export { createPrototypeExtractionProposal, discoverPrototypeExtractionCandidate
 // apply and UI are Phase 6.2. `slugifyEntityId` is exported for reuse/testing of
 // the id-slug rule.
 export {
+  buildAddViewFacetChangeSet,
   buildCreateEntityChangeSet,
   buildCreatePrototypeChangeSet,
   buildDeleteEntityChangeSet,
@@ -172,6 +173,8 @@ export {
   slugifyEntityId
 } from "./entity-operations.ts";
 export type {
+  BuildAddViewFacetInput,
+  BuildAddViewFacetResult,
   BuildCreateEntityInput,
   BuildCreateEntityResult,
   BuildCreatePrototypeInput,

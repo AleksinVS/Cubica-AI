@@ -184,4 +184,52 @@ describe("EntityInspector", () => {
 
     await act(async () => harness.unmount());
   });
+
+  it("activates the «создать вид» chip for an entity that requires a view but has none", async () => {
+    // A logic-only entity carrying the `entity-missing-view` diagnostic: the «Вид»
+    // chip becomes an ENABLED "создать вид" warning that calls onCreateView.
+    const missingView: EditorEntity = {
+      ...buildEntity(["logic"]),
+      diagnostics: [
+        {
+          severity: "warning",
+          code: "entity-missing-view",
+          message: "Тип требует отображения, вида в канале нет.",
+          source: source({ filePath: gamePath, pointer: "/entities/card", documentKind: "game" })
+        }
+      ]
+    };
+    const onCreateView = vi.fn<(entity: EditorEntity) => void>();
+    const harness = renderInspector({ entity: missingView, onCreateView });
+    await act(async () => harness.mount());
+
+    const chip = harness.container.querySelector<HTMLButtonElement>('[data-testid="entity-inspector-create-view"]');
+    expect(chip).not.toBeNull();
+    expect(chip?.disabled).toBe(false);
+    expect(chip?.textContent).toContain("создать вид");
+
+    await act(async () => chip?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(onCreateView).toHaveBeenCalledTimes(1);
+
+    await act(async () => harness.unmount());
+  });
+
+  it("renders «Переименовать» / «Удалить» actions that call their handlers", async () => {
+    const onRequestRename = vi.fn<(entity: EditorEntity) => void>();
+    const onRequestDelete = vi.fn<(entity: EditorEntity) => void>();
+    const harness = renderInspector({ onRequestRename, onRequestDelete });
+    await act(async () => harness.mount());
+
+    const rename = harness.container.querySelector<HTMLButtonElement>('[data-testid="entity-inspector-rename"]');
+    const remove = harness.container.querySelector<HTMLButtonElement>('[data-testid="entity-inspector-delete"]');
+    expect(rename?.textContent).toBe("Переименовать");
+    expect(remove?.textContent).toBe("Удалить");
+
+    await act(async () => rename?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    await act(async () => remove?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+    expect(onRequestRename).toHaveBeenCalledTimes(1);
+    expect(onRequestDelete).toHaveBeenCalledTimes(1);
+
+    await act(async () => harness.unmount());
+  });
 });

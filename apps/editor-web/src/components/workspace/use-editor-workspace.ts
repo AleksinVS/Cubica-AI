@@ -20,8 +20,11 @@ import {
   type NodeChange
 } from "@xyflow/react";
 import {
+  buildAddViewFacetChangeSet,
   buildCreateEntityChangeSet,
   buildCreatePrototypeChangeSet,
+  buildDeleteEntityChangeSet,
+  buildRenameEntityIdChangeSet,
   buildEditorEntityYamlProjection,
   buildEntityGroupingTreeViewModel,
   buildPreviewTraceRestorePlan,
@@ -42,6 +45,7 @@ import {
   type EditorEntityProjection,
   type EditorEntityProjectionDocument,
   type EditorEntityProjectionState,
+  type EditorEntitySourcePointer,
   type EditorPatchIntent,
   type IncrementalProjectionReport,
   type JsonValue,
@@ -113,6 +117,7 @@ import {
 
 import {
   buildEditorAgentSurface,
+  buildEditorApprovalEnvelope,
   editorApplyApprovalScope,
   editorSaveApprovalScope,
   editorUndoApprovalScope,
@@ -120,6 +125,11 @@ import {
   toAgentDiagnostic,
   validateEditorAgentApproval
 } from "@/components/workspace/agent-surface";
+import type {
+  EntityFacetSummary,
+  IncomingReferenceSummary,
+  RetargetOption
+} from "@/components/workspace/entity-refactor-dialog";
 import {
   applyEditorSiblingDocuments,
   createEditorSession,
@@ -264,6 +274,30 @@ const emptyReturnedIntentTelemetry: ReturnedIntentTelemetry = {
   recognizedNoChangeFragments: 0,
   unrecognizedFragments: 0
 };
+
+/**
+ * The open entity refactor dialog (Phase 6.2b, design-spec §3.2). `delete` carries
+ * the scope the dialog lists (facets + incoming references + retarget candidates);
+ * `rename` carries the current id + a slug seed and an optional refusal message
+ * from a rejected `buildRenameEntityIdChangeSet`.
+ */
+export type EntityRefactorDialogState =
+  | {
+      readonly kind: "delete";
+      readonly entityId: string;
+      readonly entityLabel: string;
+      readonly facets: readonly EntityFacetSummary[];
+      readonly incomingReferences: readonly IncomingReferenceSummary[];
+      readonly retargetOptions: readonly RetargetOption[];
+    }
+  | {
+      readonly kind: "rename";
+      readonly entityId: string;
+      readonly entityLabel: string;
+      readonly currentId: string;
+      readonly suggestedId: string;
+      readonly error?: string;
+    };
 
 
 /**
@@ -651,6 +685,13 @@ export function useEditorWorkspace() {
   const handleInspectorClose = useCallback(() => {
     setDismissedInspectorEntityId(entityTreeActiveEntityId);
   }, [entityTreeActiveEntityId]);
+  // --- Entity refactor dialogs (Phase 6.2b, design-spec §3.2; §9.1) -----------
+  //
+  // The open delete/rename dialog, or `null`. Opening the delete dialog probes the
+  // incoming references with the `abort` policy; opening the rename dialog seeds
+  // the new-id input. The dangerous confirm flows through the SAME approval-envelope
+  // gate the agent apply path uses (see `applyEntityOperationChangeSet`).
+  const [entityRefactorDialog, setEntityRefactorDialog] = useState<EntityRefactorDialogState | null>(null);
   const activeScreenEntityId = useMemo(
     () => resolveActiveScreenEntityId(viewModel.editorEntityProjection, entityTreeActiveEntityId),
     [viewModel.editorEntityProjection, entityTreeActiveEntityId]
@@ -2876,6 +2917,286 @@ export function useEditorWorkspace() {
     }
   }
 
+  // --- Entity refactor operations (Phase 6.2b, design-spec §3.2; §9.1) ---------
+
+  /** Closes the open delete/rename dialog. */
+  function closeEntityRefactorDialog() {
+    setEntityRefactorDialog(null);
+  }
+
+  /**
+   * Opens the delete "область действия" dialog for an entity: it probes the
+   * incoming references with the `abort` policy (which refuses AND returns the
+   * reference list) and lists the entity's facets and retarget candidates.
+   */
+  function handleRequestDeleteEntity(entity: EditorEntity) {
+    const probe = buildDeleteEntityChangeSet(
+      { entityId: entity.entityId, referencePolicy: "abort" },
+      viewModel.editorEntityProjection,
+      viewModel.entityProjectionDocuments
+    );
+    if (!probe.ok && probe.reason !== "abort") {
+      setStatusMessage(probe.reason);
+      return;
+    }
+    const incoming = probe.ok ? [] : probe.incomingReferences;
+    setEntityRefactorDialog({
+      kind: "delete",
+      entityId: entity.entityId,
+      entityLabel: entity.label,
+      facets: summarizeEntityFacets(entity),
+      incomingReferences: incoming.map((reference) => ({ key: reference.key, source: `${reference.filePath}#${reference.pointer}` })),
+      retargetOptions: collectRetargetOptions(entity.entityId)
+    });
+  }
+
+  /** Opens the rename-id dialog, seeding the input with the entity's current id. */
+  function handleRequestRenameEntity(entity: EditorEntity) {
+    const currentId = publicEntityIdOf(entity);
+    if (currentId === undefined) {
+      setStatusMessage(`Сущность «${entity.label}» не имеет id для переименования.`);
+      return;
+    }
+    setEntityRefactorDialog({ kind: "rename", entityId: entity.entityId, entityLabel: entity.label, currentId, suggestedId: currentId });
+  }
+
+  /**
+   * «Создать вид» (design-spec §3.2): adds ONLY the UI (view) facet for an existing
+   * game entity in the active channel via `buildAddViewFacetChangeSet`, then applies
+   * it through the shared atomic commit. Never dangerous (a structural UI add).
+   */
+  async function handleCreateEntityView(entity: EditorEntity) {
+    const channel = activeChannel ?? entityCreateChannel;
+    if (channel === undefined) {
+      setStatusMessage("Нет активного канала для создания вида.");
+      return;
+    }
+    const build = buildAddViewFacetChangeSet(
+      { entityId: entity.entityId, channel },
+      viewModel.editorEntityProjection,
+      viewModel.entityProjectionDocuments
+    );
+    if (!build.ok) {
+      setAiApplyState("blocked");
+      setStatusMessage(build.reason);
+      setAiDiagnostics([{ severity: "error", source: "change-set", pointer: "", label: "/", message: build.reason, range: undefined }]);
+      return;
+    }
+    const applied = await applyEntityOperationChangeSet(build.changeSet, {
+      successMessage: `Создан вид для «${entity.label}» в канале ${channel}.`
+    });
+    if (applied) {
+      setEntityTreeSelectedEntityId(entity.entityId);
+    }
+  }
+
+  /**
+   * Confirms the delete dialog with a `clean` or `retarget` policy. Builds the
+   * final ChangeSet, then routes it through the shared apply (which enforces the
+   * approval envelope when the operation is dangerous — i.e. it has incoming
+   * references). An invalid retarget target surfaces as a refusal message.
+   */
+  async function confirmDeleteEntity(policy: "clean" | "retarget", retargetTo?: string) {
+    const dialog = entityRefactorDialog;
+    if (dialog === null || dialog.kind !== "delete") {
+      return;
+    }
+    const build = buildDeleteEntityChangeSet(
+      { entityId: dialog.entityId, referencePolicy: policy, ...(retargetTo !== undefined ? { retargetTo } : {}) },
+      viewModel.editorEntityProjection,
+      viewModel.entityProjectionDocuments
+    );
+    if (!build.ok) {
+      setAiApplyState("blocked");
+      setStatusMessage(build.reason);
+      setAiDiagnostics([{ severity: "error", source: "change-set", pointer: "", label: "/", message: build.reason, range: undefined }]);
+      return;
+    }
+    const cleaned = dialog.incomingReferences.length > 0;
+    const applied = await applyEntityOperationChangeSet(build.changeSet, {
+      successMessage: `Удалена сущность «${dialog.entityLabel}»${
+        cleaned ? (policy === "retarget" ? " (ссылки перенацелены)" : " (ссылки вычищены)") : ""
+      }.`
+    });
+    if (applied) {
+      setEntityRefactorDialog(null);
+      setEntityTreeSelectedEntityId(undefined);
+      setDismissedInspectorEntityId(dialog.entityId);
+    }
+  }
+
+  /**
+   * Confirms the rename-id dialog. `buildRenameEntityIdChangeSet` is ALWAYS
+   * dangerous, so the shared apply demands the approval envelope. A taken/invalid
+   * id yields `ok: false`, surfaced as a refusal message inside the dialog.
+   */
+  async function confirmRenameEntityId(newId: string) {
+    const dialog = entityRefactorDialog;
+    if (dialog === null || dialog.kind !== "rename") {
+      return;
+    }
+    const build = buildRenameEntityIdChangeSet(
+      { entityId: dialog.entityId, newId },
+      viewModel.editorEntityProjection,
+      viewModel.entityProjectionDocuments
+    );
+    if (!build.ok) {
+      setEntityRefactorDialog({ ...dialog, error: build.reason });
+      return;
+    }
+    const applied = await applyEntityOperationChangeSet(build.changeSet, {
+      successMessage: `Переименован id: «${dialog.currentId}» → «${newId}».`
+    });
+    if (applied) {
+      setEntityRefactorDialog(null);
+      // Re-select the renamed entity by its NEW projection id (`<kind>:<newId>`).
+      setEntityTreeSelectedEntityId(`${dialog.entityId.slice(0, dialog.entityId.length - dialog.currentId.length)}${newId}`);
+    }
+  }
+
+  /**
+   * Shared apply for a deterministic entity refactor ChangeSet (create-view,
+   * delete, rename). It runs the SAME risk → approval → dry-run → validation →
+   * undo-journal pipeline the agent apply uses, but over the multi-document commit:
+   *
+   *   1. Classify the ChangeSet ONCE (ADR-057 §4.5).
+   *   2. If `dangerous` (a rename, or a delete-with-incoming-references), record the
+   *      human's dialog confirmation as an ADR-047 approval envelope and run it
+   *      through the EXISTING `validateEditorAgentApproval` gate; a rejected/invalid
+   *      envelope records the block and applies nothing.
+   *   3. Commit atomically via `commitMultiDocumentChangeSet` and push an undo step.
+   *
+   * Returns `true` on a durable apply. The operation report is always surfaced
+   * through the status log and the diff summary (no silent apply).
+   */
+  async function applyEntityOperationChangeSet(
+    changeSet: EditorChangeSet,
+    options: { readonly successMessage: string }
+  ): Promise<boolean> {
+    const classification = classifyChangeSet(changeSet, viewModel.editorEntityProjection);
+    if (classification.risk === "dangerous") {
+      const plan = plannedFromEntityChangeSet(changeSet);
+      const scopeHash = editorApplyApprovalScope(plan, classification);
+      // The human already confirmed the dangerous operation in the refactor dialog;
+      // record that decision as an approval envelope and pass it through the SAME
+      // gate the agent apply path uses (no second approval mechanism — ADR-047).
+      const approval = buildEditorApprovalEnvelope({
+        toolName: "editor.applyChangeSet",
+        scopeHash,
+        actionId: `entity-refactor:${changeSet.id}`
+      });
+      const approvalError = validateEditorAgentApproval(approval, "editor.applyChangeSet", scopeHash);
+      if (approvalError !== null) {
+        recordRejectedDangerousChange(plan, classification, approvalError);
+        return false;
+      }
+    }
+
+    setAiApplyState("applying");
+    const committed = await commitMultiDocumentChangeSet(changeSet);
+    if (!committed.ok) {
+      setAiApplyState("blocked");
+      setStatusMessage(committed.diagnostics[0]?.message ?? "Операция не выполнена.");
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const step = createPatchJournalStep({
+      id: `entity-refactor-step-${Date.now()}`,
+      createdAt: now,
+      intent: plannedFromEntityChangeSet(changeSet).intent,
+      forward: changeSet,
+      inverse: committed.inverseChangeSet,
+      beforeText: committed.activeBeforeText,
+      afterText: committed.activeAfterText,
+      diffSummary: committed.diffSummary,
+      diagnostics: []
+    });
+    setAiPatchJournal((current) => [...current, step]);
+    setAiRedoJournal([]);
+    setAiDiffSummary(committed.diffSummary);
+    setAgentPlannedChangeSet(null);
+    clearWorkflowAndPluginDiagnostics();
+    setReverseDiagnostics([]);
+    softenPreviewForEdit();
+    setWorkflowState("idle");
+    setLastEditSource("ai");
+    setSaveState("idle");
+    setAiApplyState("applied");
+    // The report is on view (ADR-057 §5): the risk-aware status line plus the diff
+    // summary in the journal — never a silent apply.
+    setStatusMessage(
+      classification.risk === "dangerous" ? `${options.successMessage} (опасная операция — approval envelope записан)` : options.successMessage
+    );
+    return true;
+  }
+
+  /** Wraps an entity-refactor ChangeSet as a minimal `PlannedAiChangeSet`. */
+  function plannedFromEntityChangeSet(changeSet: EditorChangeSet): PlannedAiChangeSet {
+    const createdAt = new Date().toISOString();
+    const targetPointers = [...new Set(changeSet.jsonPatches.flatMap((patch) => patch.operations.map((operation) => operation.path)))];
+    const intent: EditorPatchIntent = {
+      id: `entity-refactor:${changeSet.id}`,
+      kind: "entity-operation",
+      prompt: changeSet.summary,
+      activeFilePath: currentDocument.filePath,
+      targetPointers,
+      createdAt,
+      selectionKind: "entity"
+    };
+    return { intent, changeSet: { ...changeSet, intentId: intent.id }, diagnostics: [], targetPointers };
+  }
+
+  /** Human-readable facet lines for the delete dialog (one per owned facet source). */
+  function summarizeEntityFacets(entity: EditorEntity): readonly EntityFacetSummary[] {
+    const facetLabels: Record<string, string> = {
+      logic: "Логика",
+      state: "Состояние",
+      content: "Содержание",
+      view: "Вид",
+      design: "Дизайн",
+      plugin: "Плагин"
+    };
+    const seen = new Set<string>();
+    const summaries: EntityFacetSummary[] = [];
+    for (const [kind, sources] of Object.entries(entity.facets)) {
+      for (const source of (sources ?? []) as readonly EditorEntitySourcePointer[]) {
+        const key = `${source.filePath}#${source.pointer}`;
+        if (seen.has(key)) {
+          continue;
+        }
+        seen.add(key);
+        const base = facetLabels[kind] ?? kind;
+        summaries.push({ label: source.channel !== undefined ? `${base} · ${source.channel}` : base, source: key });
+      }
+    }
+    return summaries;
+  }
+
+  /** Existing public entity ids (with labels) a deletion may retarget references to. */
+  function collectRetargetOptions(excludeEntityId: string): readonly RetargetOption[] {
+    const options: RetargetOption[] = [];
+    const seen = new Set<string>();
+    for (const entity of viewModel.editorEntityProjection.entities) {
+      if (entity.entityId === excludeEntityId) {
+        continue;
+      }
+      const publicId = publicEntityIdOf(entity);
+      if (publicId === undefined || seen.has(publicId)) {
+        continue;
+      }
+      seen.add(publicId);
+      options.push({ id: publicId, label: entity.label });
+    }
+    return options;
+  }
+
+  /** The entity's explicit PUBLIC id (`<kind>:<publicId>`), or `undefined` if synthetic. */
+  function publicEntityIdOf(entity: EditorEntity): string | undefined {
+    const publicId = entity.entityId.slice(entity.kind.length + 1);
+    return publicId === "" || publicId.includes("#") ? undefined : publicId;
+  }
+
   /**
    * Records a dangerous ChangeSet that was blocked for lack of a matching
    * ADR-047 approval envelope. The rejection is surfaced through the existing
@@ -3694,6 +4015,14 @@ export function useEditorWorkspace() {
     activeChannel,
     inspectorEntityId,
     handleInspectorClose,
+    // Entity refactor: «создать вид» / «Переименовать» / «Удалить» (Phase 6.2b).
+    entityRefactorDialog,
+    closeEntityRefactorDialog,
+    handleRequestDeleteEntity,
+    handleRequestRenameEntity,
+    handleCreateEntityView,
+    confirmDeleteEntity,
+    confirmRenameEntityId,
     // Text mode «источник» + returned-intent apply (Phase 4.2).
     captureEntitySource,
     applyEntityReturnedIntent,

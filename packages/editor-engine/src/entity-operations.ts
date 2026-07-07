@@ -132,6 +132,25 @@ export type BuildRenameEntityIdResult =
     }
   | { readonly ok: false; readonly reason: string };
 
+/**
+ * `addViewFacet({ entityId, channel, containerPointer? })` — adds ONLY the UI
+ * (view) facet for an ALREADY EXISTING game entity in one channel (design-spec
+ * §3.2 "создать вид", editor-preview-first-ux §2.1). This is the counterpart of
+ * `createEntity` (which creates BOTH facets of a brand-new entity): here the game
+ * facet already exists, so the change touches the UI document only.
+ */
+export interface BuildAddViewFacetInput {
+  readonly entityId: string;
+  /** Preview channel whose UI authoring document receives the new view node. */
+  readonly channel: string;
+  /** Optional UI container pointer (a drop target) for the new UI node. */
+  readonly containerPointer?: string;
+}
+
+export type BuildAddViewFacetResult =
+  | { readonly ok: true; readonly changeSet: EditorChangeSet; readonly report: EntityOperationReport }
+  | { readonly ok: false; readonly reason: string };
+
 // ---------------------------------------------------------------------------
 // 1. createEntity — atomic cross-manifest game facet + optional UI facet.
 // ---------------------------------------------------------------------------
@@ -456,6 +475,74 @@ export function buildRenameEntityIdChangeSet(
     report: {
       summary: changeSet.summary,
       details: [`Rename id at ${entity.primarySource.filePath}.`, `Rewrite ${incoming.length} incoming reference(s).`]
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 5. addViewFacet — add ONLY a UI view node for an existing game entity.
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a ChangeSet that adds a UI (view) facet referencing an EXISTING game
+ * entity by its id, in the active channel's UI authoring document. It reuses the
+ * exact UI-node shape `buildCreateEntityChangeSet` emits (`{ id, _type, _label,
+ * gameEntityId }`) so the identity-discipline convention recognises the link
+ * (UI → game) and the node is not flagged an orphan. The game facet is NEVER
+ * touched: this is the "создать вид" affordance for a `entity-missing-view`
+ * entity, not a full create.
+ */
+export function buildAddViewFacetChangeSet(
+  input: BuildAddViewFacetInput,
+  projection: EditorEntityProjection,
+  documents: readonly EditorEntityProjectionDocument[]
+): BuildAddViewFacetResult {
+  const docs = normalizeDocuments(documents);
+  const entity = projection.entityById.get(input.entityId);
+  if (entity === undefined) {
+    return { ok: false, reason: `Unknown entity: ${input.entityId}` };
+  }
+  const publicId = publicEntityId(entity);
+  if (publicId === undefined) {
+    return { ok: false, reason: `Entity ${input.entityId} has no explicit id to reference from a view.` };
+  }
+
+  // Refuse when the entity already has a view (or design) facet in this channel:
+  // the affordance only fills a MISSING view, never duplicates an existing one.
+  const existingViewSources = [...(entity.facets.view ?? []), ...(entity.facets.design ?? [])];
+  if (existingViewSources.some((source) => source.channel === undefined || source.channel === input.channel)) {
+    return { ok: false, reason: `Entity ${input.entityId} already has a view in channel "${input.channel}".` };
+  }
+
+  const uiDoc = docs.find((doc) => doc.kind === "ui" && (doc.channel === input.channel || doc.channel === undefined));
+  if (uiDoc === undefined || !isPlainJsonObject(uiDoc.json)) {
+    return { ok: false, reason: `No UI authoring document for channel "${input.channel}".` };
+  }
+
+  // Carry the game entity's own `_type`/`_label` onto the UI node so the view is
+  // self-describing (same fields `createEntity` writes). `_type` is optional: an
+  // entity created from scratch may not carry one.
+  const primaryDoc = docs.find((doc) => doc.filePath === entity.primarySource.filePath);
+  const primaryNode = primaryDoc?.json !== undefined ? readJsonPointer(primaryDoc.json, entity.primarySource.pointer) : undefined;
+  const type = isPlainJsonObject(primaryNode) && typeof primaryNode._type === "string" ? primaryNode._type : undefined;
+  const uiNode: JsonObject = {
+    id: publicId,
+    ...(type !== undefined ? { _type: type } : {}),
+    _label: entity.label,
+    gameEntityId: publicId
+  };
+  const containerPointer = input.containerPointer ?? "/root/children";
+  const changeSet: EditorChangeSet = {
+    id: `add-view-facet:${publicId}:${input.channel}`,
+    summary: `Add ${input.channel} view for "${entity.label}" (${publicId}).`,
+    jsonPatches: [{ filePath: uiDoc.filePath, operations: addNodeIntoContainerOps(uiDoc.json, containerPointer, publicId, uiNode) }]
+  };
+  return {
+    ok: true,
+    changeSet,
+    report: {
+      summary: changeSet.summary,
+      details: [`Add UI facet referencing "${publicId}" into ${containerPointer} of ${uiDoc.filePath}.`]
     }
   };
 }
