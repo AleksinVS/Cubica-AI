@@ -10,11 +10,16 @@ import { useMemo } from "react";
 
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
 import { EntityInspector } from "@/components/workspace/entity-inspector";
+import { PreviewModeBanner } from "@/components/workspace/preview-mode-banner";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
 export function PreviewStage({ controller }: { controller: EditorWorkspaceController }) {
   const {
+    editorMode,
+    currentPreviewTraceEvent,
+    canApplyEditsToPreview,
+    handleApplyEditsToPreview,
     previewViewportMode,
     previewUrl,
     previewIframeRef,
@@ -71,6 +76,14 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
       <div className={`preview-frame-shell preview-viewport-${previewViewportMode}`}>
         {previewUrl !== null ? (
           <div className="preview-viewport-canvas">
+            {/* Mode plate + apply state (design-spec §3.3, mockup zone 3). */}
+            <PreviewModeBanner
+              editorMode={editorMode}
+              stepLabel={currentPreviewTraceEvent !== undefined ? `T${currentPreviewTraceEvent.sequence}` : undefined}
+              playthroughRunning={(currentPreviewTraceEvent?.sequence ?? 0) > 0}
+              canApply={canApplyEditsToPreview}
+              onApply={handleApplyEditsToPreview}
+            />
             <iframe ref={previewIframeRef} title="Game preview" src={previewUrl} allow="fullscreen" />
             <PreviewSelectionOverlay
               disabled={!effectivePreviewInspectMode}

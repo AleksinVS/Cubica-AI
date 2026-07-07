@@ -9,6 +9,7 @@
 import { getVisibleGraphBudgetLabel } from "@/lib/editor-web-adapter";
 import { PluginDiagnosticsJournal } from "@/components/plugin-diagnostics-journal";
 import { PrototypeAuditNotice } from "@/components/prototype-audit-notice";
+import { PreviewFreshnessIndicator } from "@/components/workspace/preview-freshness-indicator";
 
 import { humanizeDiffSummaryItem } from "./workspace-helpers.ts";
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
@@ -24,6 +25,7 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
     previewPointerPlayMode,
     previewViewportMode,
     previewUrl,
+    previewFreshnessDescriptor,
     previewEntities,
     previewTrace,
     workflowState,
@@ -52,6 +54,9 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
         <span>Mode: {previewModeLabel}{altPlayActive || previewPointerPlayMode ? " (Alt)" : ""}</span>
         <span>Viewport: {previewViewportMode}</span>
         <span>{previewUrl === null ? "Preview: not prepared" : `Preview: ${previewEntities.length} selectable`}</span>
+        {/* Preview freshness on the playthrough axis (editor-preview-first-ux
+            §9.6; design-spec §4 codes preview-stale / preview-blocked). */}
+        <PreviewFreshnessIndicator descriptor={previewFreshnessDescriptor} />
         <span>{previewTrace.events.length} trace events</span>
         <span>Workflow: {workflowState}</span>
         <span>Rollback: {previewRollbackState}</span>

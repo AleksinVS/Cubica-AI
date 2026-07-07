@@ -191,6 +191,15 @@ export function usePreviewRuntimeState() {
   const [previewPointerPlayMode, setPreviewPointerPlayMode] = useState(false);
   const [previewPointSelectionMode, setPreviewPointSelectionMode] = useState(false);
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
+  // Top-level editor mode (ADR-057 §4.8; design-spec §3.3). "design" auto-applies
+  // valid edits to the preview by debounce; "preview" keeps a running playthrough
+  // and applies edits only on explicit request. Orthogonal to Play/Inspect input
+  // modes above. Default "design" matches the reference mockup's active segment.
+  const [editorMode, setEditorMode] = useState<"design" | "preview">("design");
+  // The document version the currently prepared preview was applied at. Compared
+  // against the live version to tell whether the preview lags behind edits
+  // (playthrough axis, editor-preview-first-ux §9.6). `undefined` when no preview.
+  const [previewAppliedVersionHash, setPreviewAppliedVersionHash] = useState<string | undefined>(undefined);
   const previewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewPointerPlayResetRef = useRef<number | undefined>(undefined);
 
@@ -227,6 +236,10 @@ export function usePreviewRuntimeState() {
     setPreviewPointSelectionMode,
     previewViewportMode,
     setPreviewViewportMode,
+    editorMode,
+    setEditorMode,
+    previewAppliedVersionHash,
+    setPreviewAppliedVersionHash,
     previewIframeRef,
     previewPointerPlayResetRef
   };

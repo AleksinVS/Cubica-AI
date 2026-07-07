@@ -10,6 +10,8 @@ import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
 export function EditorToolbar({ controller }: { controller: EditorWorkspaceController }) {
   const {
+    editorMode,
+    setEditorMode,
     effectivePreviewInspectMode,
     setPreviewInspectMode,
     setAltPlayActive,
@@ -50,6 +52,26 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
         <strong>Cubica Editor</strong>
       </div>
       <div className="toolbar-actions">
+        {/* Design/Preview axis (ADR-057 §4.8; design-spec §3.3). Top-level mode
+            that governs the edit-apply policy; orthogonal to Play/Inspect. */}
+        <div className="segmented-control mode-control" role="group" aria-label="Editor mode">
+          <button
+            type="button"
+            className={editorMode === "design" ? "is-active" : ""}
+            aria-pressed={editorMode === "design"}
+            onClick={() => setEditorMode("design")}
+          >
+            Дизайн
+          </button>
+          <button
+            type="button"
+            className={editorMode === "preview" ? "is-active" : ""}
+            aria-pressed={editorMode === "preview"}
+            onClick={() => setEditorMode("preview")}
+          >
+            Превью
+          </button>
+        </div>
         <div className="segmented-control" role="group" aria-label="Preview mode">
           <button
             type="button"

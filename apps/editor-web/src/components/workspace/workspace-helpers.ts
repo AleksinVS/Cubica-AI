@@ -11,12 +11,14 @@
  */
 import {
   appendPreviewPlaythroughEvent,
+  buildPreviewTraceRestorePlan,
   createPreviewPlaythroughTrace,
   isPlainJsonObject,
   readJsonPointer,
   type EditorDiffSummaryItem,
   type JsonValue,
   type PreviewEntityDescriptor,
+  type PreviewPlaythroughSnapshot,
   type PreviewPlaythroughTrace,
   type TextRange
 } from "@cubica/editor-engine";
@@ -314,6 +316,182 @@ export function readRuntimeEventVersion(
   }
 
   return { stateVersion, lastEventSequence };
+}
+
+/**
+ * Preview freshness on the PLAYTHROUGH axis (ADR-057 §4.8, §4.12;
+ * editor-preview-first-ux §9.6). It answers "does the on-screen preview reflect
+ * the author's current edits?" and is orthogonal to the document undo axis.
+ *
+ *  - `unprepared` — no preview is prepared yet, so freshness is not meaningful.
+ *  - `fresh`      — the preview reflects the current (applied) edits.
+ *  - `stale`      — there are VALID (compilable) edits not yet applied to the
+ *                   preview (diagnostic code `preview-stale`).
+ *  - `blocked`    — compilation is broken; the preview shows the last valid
+ *                   render and cannot update (diagnostic code `preview-blocked`).
+ */
+export type PreviewFreshness = "unprepared" | "fresh" | "stale" | "blocked";
+
+/**
+ * Derives {@link PreviewFreshness} from the signals the editor already tracks:
+ * whether a preview is prepared, whether compilation is blocked by errors, and
+ * whether the buffer/saved content has moved past what the preview was applied
+ * at. "Blocked" wins over "stale" because a broken compile hides any valid edit.
+ */
+export function derivePreviewFreshness(input: {
+  readonly previewPrepared: boolean;
+  readonly compileBlocked: boolean;
+  readonly hasUnappliedEdits: boolean;
+}): PreviewFreshness {
+  if (!input.previewPrepared) {
+    return "unprepared";
+  }
+  if (input.compileBlocked) {
+    return "blocked";
+  }
+  return input.hasUnappliedEdits ? "stale" : "fresh";
+}
+
+/**
+ * Maps a freshness value to its status-bar presentation: the registry diagnostic
+ * code (design-spec §4), a plain-language Russian label (the domain vocabulary
+ * of the mockup), and a colour tone for the marker dot.
+ */
+export function describePreviewFreshness(freshness: PreviewFreshness): {
+  readonly code: "preview-stale" | "preview-blocked" | undefined;
+  readonly label: string;
+  readonly tone: "ok" | "warn" | "err" | "muted";
+} {
+  switch (freshness) {
+    case "fresh":
+      return { code: undefined, label: "предпросмотр актуален", tone: "ok" };
+    case "stale":
+      return { code: "preview-stale", label: "предпросмотр отстаёт", tone: "warn" };
+    case "blocked":
+      return { code: "preview-blocked", label: "предпросмотр заблокирован ошибками", tone: "err" };
+    case "unprepared":
+    default:
+      return { code: undefined, label: "предпросмотр не подготовлен", tone: "muted" };
+  }
+}
+
+/**
+ * Whether "Превью" should offer the manual "Применить" action (design-spec
+ * §3.3). Offered only in "preview" mode, only when the preview lags VALID edits
+ * ("stale"), and only when the apply pipeline is idle. Gates both the stale
+ * plate's visibility and its button. Drives the "плашка отстаёт" acceptance.
+ */
+export function shouldOfferPreviewApply(input: {
+  readonly editorMode: "design" | "preview";
+  readonly freshness: PreviewFreshness;
+  readonly workflowBusy: boolean;
+}): boolean {
+  return input.editorMode === "preview" && input.freshness === "stale" && !input.workflowBusy;
+}
+
+/**
+ * Whether "Дизайн" should auto-apply edits to the preview (design-spec §3.3).
+ * Fires only in "design" mode when the preview lags VALID edits; the debounce
+ * lives in the effect. Drives the "авто-применение в Дизайне" acceptance.
+ */
+export function shouldAutoApplyPreview(input: {
+  readonly editorMode: "design" | "preview";
+  readonly freshness: PreviewFreshness;
+}): boolean {
+  return input.editorMode === "design" && input.freshness === "stale";
+}
+
+/**
+ * One rung of the preview recovery ladder (editor-preview-first-ux §9.2). When
+ * edits are applied to a running playthrough, the editor tries to keep the
+ * author as close as possible to where they were, degrading gracefully:
+ *
+ *  1. `current-step`     — the current step has a snapshot: restore straight to it.
+ *  2. `nearest-snapshot` — no exact snapshot: restore the nearest earlier one and
+ *                          note how many events would need replay.
+ *  3. `step-start`       — only the run's first snapshot is available: go there.
+ *  4. `restart`          — nothing restorable: restart the playthrough.
+ *
+ * Each rung carries a plain-language message so the UI never silently loses the
+ * author's position. `restart` is always the terminal rung.
+ */
+export type PreviewRecoveryRung =
+  | {
+      readonly kind: "current-step" | "nearest-snapshot" | "step-start";
+      readonly sequence: number;
+      readonly snapshotState: JsonValue;
+      readonly version: { readonly stateVersion: number; readonly lastEventSequence: number };
+      readonly replayCount: number;
+      readonly message: string;
+    }
+  | { readonly kind: "restart"; readonly message: string };
+
+/**
+ * Plans the ordered recovery ladder for repositioning a preview after edits are
+ * applied, using only the pre-apply trace (snapshots + event versions). It is a
+ * pure function so the rung selection and messages are directly testable; the
+ * controller walks the rungs, attempting a runtime restore per restorable rung
+ * and stopping at the first that succeeds (or the terminal `restart`).
+ */
+export function planPreviewRecoveryLadder(
+  trace: PreviewPlaythroughTrace,
+  targetSequence: number | undefined
+): readonly PreviewRecoveryRung[] {
+  const rungs: PreviewRecoveryRung[] = [];
+  const target = targetSequence;
+  const versionFor = (sequence: number): { readonly stateVersion: number; readonly lastEventSequence: number } =>
+    readRuntimeEventVersion(trace, sequence) ?? { stateVersion: sequence, lastEventSequence: sequence };
+  const eventsBetween = (fromExclusive: number, toInclusive: number): number =>
+    trace.events.filter((event) => event.sequence > fromExclusive && event.sequence <= toInclusive).length;
+
+  const exact: PreviewPlaythroughSnapshot | undefined =
+    target === undefined ? undefined : trace.snapshots.find((snapshot) => snapshot.eventSequence === target);
+  if (exact !== undefined && target !== undefined) {
+    rungs.push({
+      kind: "current-step",
+      sequence: target,
+      snapshotState: exact.state,
+      version: versionFor(target),
+      replayCount: 0,
+      message: `Состояние совместимо — вернулись на текущий шаг (T${target}).`
+    });
+  }
+
+  const nearest = target === undefined ? undefined : buildPreviewTraceRestorePlan(trace, target).snapshot;
+  if (nearest !== undefined && target !== undefined && nearest.eventSequence !== target) {
+    const replayCount = eventsBetween(nearest.eventSequence, target);
+    rungs.push({
+      kind: "nearest-snapshot",
+      sequence: nearest.eventSequence,
+      snapshotState: nearest.state,
+      version: versionFor(nearest.eventSequence),
+      replayCount,
+      message: `Точного снимка шага нет — вернулись к ближайшему снимку (T${nearest.eventSequence}); ${replayCount} событий после него нужно повторить.`
+    });
+  }
+
+  const first = trace.snapshots[0];
+  if (
+    first !== undefined &&
+    first.eventSequence !== target &&
+    (nearest === undefined || first.eventSequence !== nearest.eventSequence)
+  ) {
+    rungs.push({
+      kind: "step-start",
+      sequence: first.eventSequence,
+      snapshotState: first.state,
+      version: versionFor(first.eventSequence),
+      replayCount: 0,
+      message: `Состояние несовместимо — вернулись к началу шага (T${first.eventSequence}).`
+    });
+  }
+
+  rungs.push({
+    kind: "restart",
+    message: "Состояние несовместимо — перезапустили прохождение с начала."
+  });
+
+  return rungs;
 }
 
 /** Persists a single trace event + snapshot to the editor preview trace store. */

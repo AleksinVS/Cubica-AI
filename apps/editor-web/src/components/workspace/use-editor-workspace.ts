@@ -154,6 +154,8 @@ import {
   clampNumber,
   configureMonacoJson,
   createEmptyEditorLayout,
+  derivePreviewFreshness,
+  describePreviewFreshness,
   diagnosticsFromPluginValidation,
   filterServerOnlyDiagnostics,
   findNodeForPointer,
@@ -163,12 +165,15 @@ import {
   parentPointer,
   persistPreviewTraceSnapshot,
   persistPreviewTraceTruncation,
+  planPreviewRecoveryLadder,
   pluginDiagnosticsFromWorkflowResponse,
   positionsFromLayout,
   prototypeSemanticsFromPrompt,
   readRuntimeEventVersion,
   readSessionIdFromPreviewUrl,
   safeUrlOrigin,
+  shouldAutoApplyPreview,
+  shouldOfferPreviewApply,
   summarizeNonVisualEntities,
   toMonacoMarker,
   toMonacoModelUri,
@@ -367,6 +372,10 @@ export function useEditorWorkspace() {
     setPreviewPointSelectionMode,
     previewViewportMode,
     setPreviewViewportMode,
+    editorMode,
+    setEditorMode,
+    previewAppliedVersionHash,
+    setPreviewAppliedVersionHash,
     previewIframeRef,
     previewPointerPlayResetRef
   } = usePreviewRuntimeState();
@@ -771,6 +780,28 @@ export function useEditorWorkspace() {
   const rightSidebarOpen = rightSidebarPanel !== undefined;
   const effectivePreviewInspectMode = previewInspectMode && !altPlayActive && !previewPointerPlayMode;
   const previewModeLabel = effectivePreviewInspectMode ? "Inspect" : "Play";
+  // Playthrough-axis freshness (editor-preview-first-ux §9.6). A prepared preview
+  // lags behind edits when there are unsaved edits (`isDirty`) or saved content
+  // has moved past what the preview was applied at. "Blocked" reflects a broken
+  // compile that hides any valid edit behind the last valid render.
+  const previewCompileBlocked = hasBlockingDiagnostics || hasLocalSchemaBlockingDiagnostics;
+  const previewHasUnappliedEdits =
+    previewUrl !== null &&
+    currentDocument.source === "repository" &&
+    (isDirty || (currentDocument.versionHash !== undefined && currentDocument.versionHash !== previewAppliedVersionHash));
+  const previewFreshness = derivePreviewFreshness({
+    previewPrepared: previewUrl !== null,
+    compileBlocked: previewCompileBlocked,
+    hasUnappliedEdits: previewHasUnappliedEdits
+  });
+  const previewFreshnessDescriptor = describePreviewFreshness(previewFreshness);
+  // "Применить" is offered only in "Превью" when the preview is genuinely behind
+  // VALID edits and the apply pipeline can run (not mid-workflow).
+  const canApplyEditsToPreview = shouldOfferPreviewApply({
+    editorMode,
+    freshness: previewFreshness,
+    workflowBusy: workflowState === "compiling" || workflowState === "previewing"
+  });
   const workspaceStyle = {
     "--left-sidebar-width": `${leftSidebarOpen ? leftSidebarWidth : 0}px`,
     "--json-sidebar-width": `${rightSidebarOpen ? jsonSidebarWidth : 0}px`
@@ -1105,6 +1136,22 @@ export function useEditorWorkspace() {
     return () => window.removeEventListener("message", handlePreviewMessage);
   }, [currentDocument.filePath, currentDocument.gameId, previewRuntimeSessionId, previewSourceMaps, previewUrl]);
 
+  // Design-mode auto-apply (ADR-057 §4.8; design-spec §3.3). In "Дизайн" a valid
+  // (compilable) edit applies to the preview automatically after a debounce,
+  // reusing the same persist+compile+preview pipeline as the manual path. Keyed
+  // on the freshness axis so it fires only when the preview genuinely lags valid
+  // edits; "Превью" is excluded (edits there wait for explicit "Применить").
+  useEffect(() => {
+    if (!shouldAutoApplyPreview({ editorMode, freshness: previewFreshness })) {
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      void applyEditsToPreview("design");
+    }, 800);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorMode, previewFreshness, jsonText, currentDocument.versionHash]);
+
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Alt") {
@@ -1335,6 +1382,25 @@ export function useEditorWorkspace() {
     setPreviewRollbackState("idle");
   }
 
+  /**
+   * Reaction to a document EDIT while a preview is prepared (ADR-057 §4.8;
+   * editor-preview-first-ux §9.2). Unlike {@link clearPreparedPreview}, this does
+   * NOT yank the running preview/playthrough: the prepared URL, runtime session,
+   * and trace stay, so the last valid render remains on screen and the freshness
+   * axis reports "предпросмотр отстаёт" until the author applies the edits. Only
+   * transient selection/prompt overlay state (which may now point at pre-edit
+   * entities) is dropped. No-op when no preview is prepared.
+   */
+  function softenPreviewForEdit() {
+    if (previewUrl === null) {
+      return;
+    }
+    setSelectedPreviewEntityId(undefined);
+    setPreviewPromptContext(null);
+    setPreviewAiIntent(null);
+    setPreviewPointSelectionMode(false);
+  }
+
   function clearAiSessionState() {
     setAiApplyState("idle");
     setAiPatchJournal([]);
@@ -1357,7 +1423,7 @@ export function useEditorWorkspace() {
     setReverseDiagnostics([]);
     clearWorkflowAndPluginDiagnostics();
     clearAiSessionState();
-    clearPreparedPreview();
+    softenPreviewForEdit();
     setWorkflowState("idle");
     setLastEditSource("json");
     setSaveState("idle");
@@ -1545,11 +1611,21 @@ export function useEditorWorkspace() {
     }
   }
 
-  async function handlePreview() {
-    if (currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics) {
-      return;
-    }
-
+  /**
+   * Compiles the session manifests and (re)prepares a runtime preview session on
+   * the CURRENT worktree content, resetting the on-screen preview + trace to that
+   * fresh session. Returns the prepared session descriptor so callers that need
+   * the new `sessionId`/`playerUrl` (the recovery ladder) can act on it without
+   * waiting for React state to flush. Carries NO dirty/blocking guard — that is
+   * the caller's responsibility (`handlePreview` guards; the apply pipeline saves
+   * first). On success it records the applied document version so the freshness
+   * axis (editor-preview-first-ux §9.6) resets to "актуален".
+   */
+  async function preparePreviewSession(): Promise<{
+    readonly ready: boolean;
+    readonly sessionId?: string;
+    readonly playerUrl?: string;
+  }> {
     setWorkflowState("previewing");
     setStatusMessage("Preparing player preview...");
     setPluginDiagnostics([]);
@@ -1583,16 +1659,162 @@ export function useEditorWorkspace() {
         }));
         setSelectedPreviewTraceSequence(undefined);
         setPreviewRollbackState("idle");
+        setPreviewAppliedVersionHash(currentDocument.versionHash);
         setWorkflowState("ready");
         setStatusMessage("Preview session is ready");
-      } else {
-        clearPreparedPreview();
-        setWorkflowState("blocked");
-        setStatusMessage("Preview is not ready");
+        return { ready: true, sessionId: runtimeSessionId, playerUrl: result.playerUrl };
       }
+
+      clearPreparedPreview();
+      setWorkflowState("blocked");
+      setStatusMessage("Preview is not ready");
+      return { ready: false };
     } catch (error) {
       setWorkflowState("error");
       setStatusMessage(error instanceof Error ? error.message : "Preview failed.");
+      return { ready: false };
+    }
+  }
+
+  async function handlePreview() {
+    if (currentDocument.source !== "repository" || isDirty || hasLocalSchemaBlockingDiagnostics) {
+      return;
+    }
+
+    await preparePreviewSession();
+  }
+
+  /**
+   * Persists the current buffer to the session worktree WITHOUT the full
+   * document-reload reset that the Save button performs (`applyLoadedDocument`),
+   * so the apply pipeline can push edits into the worktree while keeping the
+   * author's selection, tree, and (about-to-be-rebuilt) preview stable. Reuses
+   * the existing `/api/editor/file` route; returns whether the worktree now
+   * holds the current buffer.
+   */
+  async function persistBufferForApply(): Promise<{ readonly ok: boolean; readonly error?: string }> {
+    if (currentDocument.source !== "repository" || currentDocument.versionHash === undefined) {
+      return { ok: false, error: "Правки можно применить только для файла сессии." };
+    }
+    if (!isDirty) {
+      return { ok: true };
+    }
+    if (hasBlockingDiagnostics) {
+      return { ok: false, error: "Компиляция заблокирована ошибками." };
+    }
+
+    try {
+      const response = await fetch("/api/editor/file", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          gameId: currentDocument.gameId,
+          filePath: currentDocument.filePath,
+          text: jsonText,
+          versionHash: currentDocument.versionHash,
+          sessionId: editorSession?.sessionId,
+          commitMessage: `Apply ${currentDocument.gameId}/${currentDocument.filePath}`
+        })
+      });
+      const body = (await response.json().catch(() => ({}))) as Partial<SavedAuthoringFileDocument> & { readonly error?: string };
+      if (!response.ok) {
+        return { ok: false, error: body.error ?? `Save failed with HTTP ${response.status}.` };
+      }
+      adoptSavedDocumentVersion(body);
+      setSaveState("saved");
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : "Save failed." };
+    }
+  }
+
+  /**
+   * Applies the author's edits to the preview along the PLAYTHROUGH axis
+   * (ADR-057 §4.8; editor-preview-first-ux §9.2). Both modes persist the buffer
+   * and rebuild the preview on the new content; "design" stops there (the state
+   * context is re-seeded), while "preview" then walks the recovery ladder to keep
+   * the running playthrough as close as possible to where the author was. This is
+   * never triggered silently by an edit — only by the debounced design-mode path
+   * or the explicit "Применить" action — so a running playthrough is not yanked.
+   */
+  async function applyEditsToPreview(mode: "design" | "preview") {
+    if (previewUrl === null) {
+      return;
+    }
+    // Capture the pre-apply playthrough position + snapshots BEFORE re-preparing
+    // resets the trace; the ladder restores against these.
+    const preApplyTrace = previewTrace;
+    const targetSequence = currentPreviewTraceEvent?.sequence;
+
+    setStatusMessage("Собираем правки и обновляем предпросмотр…");
+    const persisted = await persistBufferForApply();
+    if (!persisted.ok) {
+      setStatusMessage(`Правки не применены: ${persisted.error ?? "не удалось сохранить."}`);
+      return;
+    }
+
+    const prepared = await preparePreviewSession();
+    if (!prepared.ready || prepared.sessionId === undefined || prepared.playerUrl === undefined) {
+      setStatusMessage("Правки не применены — компиляция заблокирована.");
+      return;
+    }
+
+    if (mode === "design") {
+      setStatusMessage("Правки применены к предпросмотру.");
+      return;
+    }
+
+    await walkPreviewRecoveryLadder(preApplyTrace, targetSequence, prepared.sessionId, prepared.playerUrl);
+  }
+
+  /**
+   * Walks the recovery ladder rungs (editor-preview-first-ux §9.2) against a
+   * freshly prepared session, attempting a runtime restore per restorable rung
+   * via the EXISTING preview-restore route. The first rung whose restore succeeds
+   * wins; its plain-language message is surfaced. The terminal `restart` rung
+   * leaves the fresh playthrough at its start. State compatibility is inferred
+   * from the available signals (which snapshots the pre-apply trace holds and
+   * whether the restore route accepts them) — no new runtime contract.
+   */
+  async function walkPreviewRecoveryLadder(
+    preApplyTrace: typeof previewTrace,
+    targetSequence: number | undefined,
+    sessionId: string,
+    playerUrl: string
+  ) {
+    const rungs = planPreviewRecoveryLadder(preApplyTrace, targetSequence);
+    for (const rung of rungs) {
+      if (rung.kind === "restart") {
+        setPreviewRollbackState("restored");
+        setStatusMessage(rung.message);
+        return;
+      }
+
+      setPreviewRollbackState("restoring");
+      try {
+        const response = await fetch("/api/editor/preview/rollback", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            gameId: currentDocument.gameId,
+            sessionId,
+            state: rung.snapshotState,
+            version: rung.version,
+            targetEventSequence: rung.sequence
+          })
+        });
+        const result = (await response.json().catch(() => ({}))) as EditorPreviewRollbackResponse;
+        if (!response.ok || !result.ok) {
+          continue;
+        }
+        setSelectedPreviewTraceSequence(rung.sequence);
+        setPreviewUrl(addPreviewReloadNonce(playerUrl, rung.sequence));
+        setPreviewRollbackState("restored");
+        setStatusMessage(rung.message);
+        return;
+      } catch {
+        // Restore failed for this rung; fall through to the next degradation.
+      }
     }
   }
 
@@ -2245,7 +2467,7 @@ export function useEditorWorkspace() {
     setAgentPlannedChangeSet(null);
     clearWorkflowAndPluginDiagnostics();
     setReverseDiagnostics([]);
-    clearPreparedPreview();
+    softenPreviewForEdit();
     setWorkflowState("idle");
     setLastEditSource("ai");
     setSaveState("idle");
@@ -2574,7 +2796,7 @@ export function useEditorWorkspace() {
     setAiDiffSummary(dryRun.diffSummary);
     clearWorkflowAndPluginDiagnostics();
     setReverseDiagnostics([]);
-    clearPreparedPreview();
+    softenPreviewForEdit();
     setWorkflowState("idle");
     setLastEditSource("ai");
     setSaveState("idle");
@@ -2615,7 +2837,7 @@ export function useEditorWorkspace() {
     setAiDiffSummary(dryRun.diffSummary);
     clearWorkflowAndPluginDiagnostics();
     setReverseDiagnostics([]);
-    clearPreparedPreview();
+    softenPreviewForEdit();
     setWorkflowState("idle");
     setLastEditSource("ai");
     setSaveState("idle");
@@ -2886,7 +3108,7 @@ export function useEditorWorkspace() {
     setReverseDiagnostics(result.diagnostics);
     clearWorkflowAndPluginDiagnostics();
     clearAiSessionState();
-    clearPreparedPreview();
+    softenPreviewForEdit();
     setWorkflowState("idle");
     setLastEditSource(source);
     setSaveState("idle");
@@ -2957,6 +3179,13 @@ export function useEditorWorkspace() {
     editorAgentSurface,
     effectivePreviewInspectMode,
     previewModeLabel,
+    // Design/Preview axis (ADR-057 §4.8; design-spec §3.3): mode + apply policy.
+    editorMode,
+    setEditorMode,
+    previewFreshness,
+    previewFreshnessDescriptor,
+    canApplyEditsToPreview,
+    handleApplyEditsToPreview: () => applyEditsToPreview("preview"),
     previewViewportMode,
     setPreviewViewportMode,
     setPreviewInspectMode,
