@@ -62,6 +62,11 @@ export { classifyChangeSet } from "./change-risk.ts";
 // JSON tree and entity tree view models.
 export { TreeViewModelBuilder, buildEntityTreeViewModel, buildTreeViewModel } from "./tree-view.ts";
 
+// Grouping-aware entity tree ("По экранам" / "По типам") over the project
+// projection (ADR-057 §4.6, editor-preview-first-ux §7). Pure JSON logic with NO
+// node dependency, so it is safe in this browser-reachable barrel.
+export { buildEntityGroupingTreeViewModel } from "./entity-grouping-tree.ts";
+
 // Authoring graph projection.
 export { buildAuthoringGraphProjection, buildVisibleAuthoringGraphProjection } from "./graph-projection.ts";
 

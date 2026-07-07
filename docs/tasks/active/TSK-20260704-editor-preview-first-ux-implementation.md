@@ -453,3 +453,24 @@ game-agnostic CI invariant.
   открытие revive 1.1мс vs build 88.4мс (≈83×). Гейты: engine 114, editor-web
   typecheck+123, build, e2e 8/8. Окружение: `npm install` штатно создаёт symlink
   `@cubica/view-protocol` (после ADR-064) — воспроизводимо, не хак.
+- 2026-07-07 (Phase 3.b.1 — grouping-aware дерево сущностей в ядре, готово):
+  `buildEntityGroupingTreeViewModel({projection, grouping:"byScreen"|"byType",
+  documents, activeChannel, activeScreenEntityId})` в новом `entity-grouping-tree.ts`
+  (существующий `buildEntityTreeViewModel` не тронут). Аддитивные поля узла:
+  entityKind, groupingRole ("prototype"/"screen-logic"), isNonVisual, isDecorative,
+  isActiveContext, locationBreadcrumb, diagnosticSeverityCounts (данные бейджей).
+  «По экранам»: экраны активного канала (doc-order), UI-вложенность с entityId
+  ссылки, подгруппа «Логика экрана» для невизуальных с view-фасетом в поддереве
+  экрана, primary = первое появление в pre-order. «По типам»: прототипы (отличимы,
+  label из `_definitions[type]._label`) → экземпляры с крошкой; primary = экземпляр
+  под своим типом, вложенные чужие = occurrence. documents нужны из-за
+  декларативных `_type`/`_definitions`/`_decorative` (проекция — SSOT identity/
+  links/diagnostics). 19 тестов (нейтральная фикстура + antarctica), детерминизм
+  порядка (numeric-aware pointer comparator + localeCompare). verify:editor-engine
+  133, editor-web typecheck. Числа antarctica byType: 13 типов, 217 primary, 100
+  occurrence. Честные ограничения (не дефекты — follow-ups отдельного среза
+  проекции): реальный web-манифест antarctica не имеет game↔UI ссылок → byScreen
+  на нём без cross-links (фикстура покрывает); проекция ключует ui-компоненты по
+  подстроке "component" → именованные прототипы antarctica не captured; intrinsic-
+  vs-foreign членство прототипа проекция не несёт (ADR-050) → все вложенные =
+  occurrence (литеральное правило §7). Следующий срез 3.b.2 — UI дерева по макету.

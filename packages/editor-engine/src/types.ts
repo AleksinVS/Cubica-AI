@@ -252,6 +252,31 @@ export type TreeViewNodeKind =
  */
 export type TreeViewNodeOccurrenceKind = "primary" | "occurrence";
 
+/**
+ * Marks a SYNTHETIC grouping/header node in the grouped entity tree
+ * (`buildEntityGroupingTreeViewModel`, ADR-057 §4.6, editor-preview-first-ux §7).
+ *
+ * These nodes are containers, not entities, so they carry no `entityId`:
+ * - `"prototype"` — a type/prototype header row in the "По типам" inventory; its
+ *   children are the instances of that type. Prototype rows are deliberately
+ *   distinguishable from instance rows (§7: «прототип против экземпляра»).
+ * - `"screen-logic"` — the collapsed "Логика экрана" subgroup under a screen in
+ *   the "По экранам" outliner; its children are the non-visual entities bound to
+ *   the screen (editor-preview-first-ux §2.1).
+ */
+export type TreeViewNodeGroupingRole = "prototype" | "screen-logic";
+
+/**
+ * Per-entity diagnostic severity counts for a tree node's badge (design-spec
+ * §5 «бейджи диагностик на узлах»). Pure DATA for the UI badge — this module
+ * never renders. Counts come from the entity's projection diagnostics, keyed by
+ * the node's `entityId`.
+ */
+export interface TreeViewNodeDiagnosticSeverityCounts {
+  readonly error: number;
+  readonly warning: number;
+}
+
 export interface TreeViewNodeActionHints {
   /**
    * Whether the value is editable as a scalar replacement.
@@ -325,6 +350,49 @@ export interface TreeViewNode {
   readonly subtreeDiagnosticCount: number;
   /** Optional graph node id for selection sync when available. */
   readonly graphNodeId: string | undefined;
+  /**
+   * Projection kind of the entity this node represents (icons, screen-vs-element
+   * styling). Populated by the grouped entity tree
+   * (`buildEntityGroupingTreeViewModel`); `undefined` on synthetic grouping nodes
+   * and on the pointer-complete/plain entity trees.
+   */
+  readonly entityKind?: EditorEntityKind;
+  /**
+   * Synthetic grouping-node marker (prototype header / "Логика экрана" subgroup).
+   * `undefined` for real entity nodes and the document root. See
+   * `TreeViewNodeGroupingRole`.
+   */
+  readonly groupingRole?: TreeViewNodeGroupingRole;
+  /**
+   * `true` when the node represents a NON-VISUAL entity or a non-visual type
+   * group — an entity without its own display in the active channel (rule,
+   * metric, action, timer, step). ADR-057 §4.2, editor-preview-first-ux §2.1.
+   */
+  readonly isNonVisual?: boolean;
+  /**
+   * `true` when the node is a UI element declared DECORATIVE (`_decorative`) in
+   * the authoring manifest. Decorative elements are marked, never hidden, so they
+   * do not add entity-orphan noise (editor-preview-first-ux §2.1).
+   */
+  readonly isDecorative?: boolean;
+  /**
+   * `true` on the active screen node in the "По экранам" grouping. A UI layer
+   * auto-reveals/expands this node (auto-reveal itself is UI; this is just the
+   * flag). ADR-057 §4.6, editor-preview-first-ux §7.
+   */
+  readonly isActiveContext?: boolean;
+  /**
+   * Location breadcrumb for an instance in the "По типам" grouping — the ordered
+   * labels of the container ancestors (screen, flow, named parent instance),
+   * outermost first, e.g. `["Экран Маршрут"]`. Data only; the UI renders the
+   * «Экран Маршрут ›» crumb. editor-preview-first-ux §7, design-spec §3.1.
+   */
+  readonly locationBreadcrumb?: readonly string[];
+  /**
+   * Diagnostic severity counts for this node's entity, used for the tree badge
+   * (design-spec §5). Present only when the entity has projection diagnostics.
+   */
+  readonly diagnosticSeverityCounts?: TreeViewNodeDiagnosticSeverityCounts;
   readonly actions: TreeViewNodeActionHints;
   readonly children: readonly TreeViewNode[];
 }
@@ -380,6 +448,47 @@ export interface BuildEntityTreeViewModelInput extends BuildTreeViewModelInput {
    * out of scope for this single-document tree.
    */
   readonly projection?: EditorEntityProjection;
+}
+
+/**
+ * Grouping mode for the grouped entity tree (ADR-057 §4.6,
+ * editor-preview-first-ux §7):
+ * - `"byScreen"` — outliner: top level is every screen of the active channel;
+ *   nesting inside a screen mirrors the display; non-visual entities bound to the
+ *   screen live in a collapsed "Логика экрана" subgroup.
+ * - `"byType"` — inventory: top level is prototypes/types; each holds its
+ *   instances (with a location breadcrumb) which expand into their UI structure.
+ */
+export type EntityTreeGrouping = "byScreen" | "byType";
+
+/**
+ * Input for `buildEntityGroupingTreeViewModel`.
+ *
+ * The grouped tree is built OVER an `EditorEntityProjection` (the single source
+ * of entity identity, links and diagnostics; ADR-052/ADR-057 §4.6). The
+ * `documents` that produced the projection are also passed — exactly as
+ * `buildEditorEntityYamlProjection` takes them — because the DECLARATIVE authoring
+ * fields the grouping needs (`_type` for the type/prototype bucket, `_decorative`
+ * for the decorative flag) live in the authoring JSON, not in the projection
+ * records. The node ≠ entity separation (occurrences) is preserved.
+ */
+export interface BuildEntityGroupingTreeViewModelInput {
+  readonly projection: EditorEntityProjection;
+  readonly grouping: EntityTreeGrouping;
+  /** The same authoring documents used to build `projection`. */
+  readonly documents: readonly EditorEntityProjectionDocument[];
+  /**
+   * Active preview channel key. In `"byScreen"` the top level is exactly the
+   * screens of this channel; when omitted every UI screen is shown.
+   */
+  readonly activeChannel?: string;
+  /**
+   * Entity id of the active screen for the `"byScreen"` auto-reveal flag. When
+   * omitted the first screen (document order) is treated as active.
+   */
+  readonly activeScreenEntityId?: string;
+  /** Max length for scalar previews; longer values are truncated. */
+  readonly maxValuePreviewLength?: number;
 }
 
 export type AuthoringGraphNodeRole =
