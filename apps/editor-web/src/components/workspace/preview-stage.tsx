@@ -42,6 +42,8 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     activeChannel,
     inspectorEntityId,
     handleInspectorClose,
+    captureEntitySource,
+    applyEntityReturnedIntent,
     handlePropertyChange,
     handleFileChange,
     aiDiffSummary
@@ -130,6 +132,8 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
             )
           }
           onOpenFile={handleFileChange}
+          onCaptureEntitySource={captureEntitySource}
+          onApplyReturnedIntent={applyEntityReturnedIntent}
         />
       </div>
     </section>

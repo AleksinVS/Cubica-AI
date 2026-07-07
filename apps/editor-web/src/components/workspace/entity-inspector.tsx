@@ -31,9 +31,16 @@ import {
   type EditorEntityProjectionDocument,
   type EditorEntitySourcePointer,
   type JsonValue,
-  type PreviewRect
+  type PreviewRect,
+  type ReturnedIntentInput
 } from "@cubica/editor-engine";
 import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+
+import {
+  EntitySourceTextMode,
+  type EntitySourceCapture,
+  type ReturnedIntentApplyOutcome
+} from "@/components/workspace/entity-source-text-mode";
 
 /**
  * The three canonical facet buckets of the mockup / UX doc §2. The engine models
@@ -97,6 +104,14 @@ export interface EntityInspectorProps {
   readonly onFieldEdit: (field: InspectorEditableField, rawValue: string) => void;
   /** Opens another authoring document (cross-document read-only affordance). */
   readonly onOpenFile: (filePath: string) => void;
+  /**
+   * Captures the entity's prompt-projection text + facet source map + source
+   * hashes for the text mode («источник», Phase 4.2). When omitted the «⌗» icon
+   * stays inert (single-entity mode only; there is no multi-select in this UI).
+   */
+  readonly onCaptureEntitySource?: (entity: EditorEntity) => EntitySourceCapture | undefined;
+  /** Runs an edited returned intent through the interpreter → shared pipeline. */
+  readonly onApplyReturnedIntent?: (input: ReturnedIntentInput) => ReturnedIntentApplyOutcome;
 }
 
 const panelWidthPx = 340;
@@ -112,10 +127,24 @@ export function EntityInspector({
   changedPointerKeys,
   onClose,
   onFieldEdit,
-  onOpenFile
+  onOpenFile,
+  onCaptureEntitySource,
+  onApplyReturnedIntent
 }: EntityInspectorProps) {
   const layerRef = useRef<HTMLDivElement | null>(null);
   const [containerSize, setContainerSize] = useState<{ readonly w: number; readonly h: number }>({ w: 0, h: 0 });
+
+  // Text mode («источник»): the immutable capture is held here while the mode is
+  // open (`null` = form mode). Opening/refreshing re-captures from the live docs.
+  // The mode is single-entity by definition (design-spec §3.2); switching entities
+  // reuses the window, so the capture is reset when the entity id changes.
+  const [sourceCapture, setSourceCapture] = useState<EntitySourceCapture | null>(null);
+  const [sourceModeEntityId, setSourceModeEntityId] = useState<string | undefined>(entity?.entityId);
+  if (sourceModeEntityId !== entity?.entityId) {
+    setSourceModeEntityId(entity?.entityId);
+    setSourceCapture(null);
+  }
+  const sourceModeAvailable = onCaptureEntitySource !== undefined && onApplyReturnedIntent !== undefined;
 
   const documentsByPath = new Map(documents.map((document) => [document.filePath, document]));
   const viewSources = entity === undefined ? [] : [...(entity.facets.view ?? []), ...(entity.facets.design ?? [])];
@@ -192,6 +221,17 @@ export function EntityInspector({
     }
   };
 
+  // Captures the entity's projection (text + facet source map + source hashes) and
+  // enters/refreshes the text mode. A capture that fails (no projectable facets)
+  // leaves the form untouched.
+  const captureSource = () => {
+    const capture = onCaptureEntitySource?.(entity);
+    if (capture !== undefined) {
+      setSourceCapture(capture ?? null);
+    }
+  };
+  const sourceModeOpen = sourceCapture !== null;
+
   return (
     <div ref={layerRef} className="entity-inspector-layer">
       <section className="entity-inspector" aria-label="Entity inspector" style={computePanelStyle(selectionBounds, containerSize)}>
@@ -215,8 +255,18 @@ export function EntityInspector({
           )}
           {prototypeType !== undefined ? <span className="entity-inspector-proto">Прототип: {prototypeType}</span> : null}
           <span className="entity-inspector-icons">
-            {/* Rendered per mockup; text mode / dock are deferred (Phase 4 / dock). */}
-            <button type="button" disabled title="Текстовый режим «источник» — скоро" aria-label="Source text mode (coming soon)">
+            {/* «источник»: toggles the editable prompt-projection text mode (Phase 4.2).
+                Dock is still deferred. Inert only when the controller passes no
+                capture/apply callbacks (e.g. the unit harness). */}
+            <button
+              type="button"
+              className={sourceModeOpen ? "is-active" : undefined}
+              disabled={!sourceModeAvailable}
+              aria-pressed={sourceModeOpen}
+              title={sourceModeAvailable ? "Текстовый режим «источник»" : "Текстовый режим «источник» — недоступен"}
+              aria-label="Source text mode"
+              onClick={() => (sourceModeOpen ? setSourceCapture(null) : captureSource())}
+            >
               ⌗
             </button>
             <button type="button" disabled title="Закрепить в док — скоро" aria-label="Pin to dock (coming soon)">
@@ -228,6 +278,15 @@ export function EntityInspector({
           </span>
         </header>
 
+        {sourceModeOpen && sourceCapture !== null && onApplyReturnedIntent !== undefined ? (
+          <EntitySourceTextMode
+            capture={sourceCapture}
+            onRecapture={captureSource}
+            onApply={onApplyReturnedIntent}
+            onExit={() => setSourceCapture(null)}
+          />
+        ) : (
+          <>
         <div className="entity-inspector-chips">
           {rowsOf("meaning").length > 0 ? <span className="entity-inspector-chip">{bucketLabel.meaning}</span> : null}
           {rowsOf("content").length > 0 ? <span className="entity-inspector-chip">{bucketLabel.content}</span> : null}
@@ -282,6 +341,8 @@ export function EntityInspector({
             → В чат сессии
           </button>
         </div>
+          </>
+        )}
       </section>
     </div>
   );

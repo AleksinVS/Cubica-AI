@@ -20,6 +20,7 @@ import {
   type NodeChange
 } from "@xyflow/react";
 import {
+  buildEditorEntityYamlProjection,
   buildEntityGroupingTreeViewModel,
   buildPreviewTraceRestorePlan,
   classifyChangeSet,
@@ -28,11 +29,14 @@ import {
   createSchemaRegistry,
   dryRunEditorChangeSet,
   hashEditorText,
+  interpretReturnedIntent,
   readJsonPointer,
   reviveEditorEntityProjection,
   type ChangedPointersByFile,
   type ClassifyChangeSetResult,
+  type EditorChangeSet,
   type EditorDiffSummaryItem,
+  type EditorEntity,
   type EditorEntityProjection,
   type EditorEntityProjectionDocument,
   type EditorEntityProjectionState,
@@ -44,8 +48,13 @@ import {
   type PreviewPoint,
   type PreviewPlaythroughTrace,
   type PreviewRect,
-  type PrototypeExtractionProposal
+  type PrototypeExtractionProposal,
+  type ReturnedIntentInput
 } from "@cubica/editor-engine";
+import type {
+  EntitySourceCapture,
+  ReturnedIntentApplyOutcome
+} from "@/components/workspace/entity-source-text-mode";
 import { type CubicaAgentApprovalEnvelope } from "@cubica/contracts-ai";
 import {
   useCallback,
@@ -215,6 +224,32 @@ function safeParseProjectionDocumentJson(text: string): JsonValue | undefined {
     return undefined;
   }
 }
+
+/**
+ * Running telemetry for the text-mode returned-intent interpreter (design-spec
+ * §5): the share of deterministic vs agent paths, the share of stale returns, and
+ * the cumulative size of each report bucket. Pure counters — no UI depends on them
+ * in this slice; the controller exposes them for §5 telemetry / a future badge.
+ */
+export interface ReturnedIntentTelemetry {
+  readonly deterministicCount: number;
+  readonly agentCount: number;
+  readonly staleCount: number;
+  readonly totalCount: number;
+  readonly appliedFragments: number;
+  readonly recognizedNoChangeFragments: number;
+  readonly unrecognizedFragments: number;
+}
+
+const emptyReturnedIntentTelemetry: ReturnedIntentTelemetry = {
+  deterministicCount: 0,
+  agentCount: 0,
+  staleCount: 0,
+  totalCount: 0,
+  appliedFragments: 0,
+  recognizedNoChangeFragments: 0,
+  unrecognizedFragments: 0
+};
 
 
 /**
@@ -410,6 +445,14 @@ export function useEditorWorkspace() {
   // update (design-spec §5). No UI depends on it in this slice; it is exposed on
   // the controller for the status data and future surfacing.
   const [projectionIncrementalReport, setProjectionIncrementalReport] = useState<IncrementalProjectionReport | null>(null);
+
+  // --- Returned-intent telemetry (design-spec §5, Phase 4.2) ------------------
+  //
+  // Running tallies for the text-mode interpreter: how often the deterministic vs
+  // agent path is taken, how often the projection was stale, and the total size of
+  // each report bucket. No UI depends on it in this slice; it is exposed on the
+  // controller (and a compact badge could read it) for the §5 telemetry.
+  const [returnedIntentTelemetry, setReturnedIntentTelemetry] = useState<ReturnedIntentTelemetry>(emptyReturnedIntentTelemetry);
 
   // --- Project-level projection wiring (ADR-057 §4.1, Phase 3.a) --------------
   //
@@ -2257,6 +2300,209 @@ export function useEditorWorkspace() {
     };
   }
 
+  // --- Text-mode returned intent (Phase 4.2, design-spec §2.2, §3.2) ----------
+
+  /**
+   * Live authoring text by file path: the OPEN document (`jsonText`) plus every
+   * sibling projection document. This is the "живой DocumentStore" the source
+   * hashes are computed from, both at capture and at apply time.
+   */
+  function liveAuthoringTextByFilePath(): Map<string, string> {
+    const byPath = new Map<string, string>([[currentDocument.filePath, jsonText]]);
+    for (const sibling of projectionSiblingDocuments) {
+      byPath.set(sibling.filePath, sibling.text);
+    }
+    return byPath;
+  }
+
+  /**
+   * Source hashes for one entity's authoring files (primary source + every facet
+   * source), computed from the live texts. Used both when the text mode opens
+   * (captured hashes) and when it applies (fresh hashes) so the interpreter's
+   * prompt-stale check (ADR-049) compares the same file set on both sides.
+   */
+  function computeEntitySourceHashes(entity: EditorEntity): Record<string, string> {
+    const texts = liveAuthoringTextByFilePath();
+    const filePaths = new Set<string>([entity.primarySource.filePath]);
+    for (const facetSources of Object.values(entity.facets)) {
+      for (const facetSource of facetSources ?? []) {
+        filePaths.add(facetSource.filePath);
+      }
+    }
+    const hashes: Record<string, string> = {};
+    for (const filePath of filePaths) {
+      const text = texts.get(filePath);
+      if (text !== undefined) {
+        hashes[filePath] = hashEditorText(text);
+      }
+    }
+    return hashes;
+  }
+
+  /**
+   * Captures the text-mode context for an entity when the «источник» mode opens:
+   * the prompt-projection text, its hidden facet source map, and the source hashes
+   * of the entity's authoring documents (design-spec §2.2 "Захват контекста").
+   */
+  function captureEntitySource(entity: EditorEntity): EntitySourceCapture | undefined {
+    const projection = buildEditorEntityYamlProjection({ entity, documents: viewModel.entityProjectionDocuments });
+    return {
+      entityId: entity.entityId,
+      projectionYaml: projection.text,
+      facetSourceMap: projection.facetSourceMap,
+      sourceHashes: computeEntitySourceHashes(entity)
+    };
+  }
+
+  /** Folds one interpreter result into the running §5 telemetry tallies. */
+  function recordReturnedIntentTelemetry(path: "deterministic" | "agent", stale: boolean, report: readonly { readonly bucket: string }[]) {
+    setReturnedIntentTelemetry((current) => ({
+      deterministicCount: current.deterministicCount + (!stale && path === "deterministic" ? 1 : 0),
+      agentCount: current.agentCount + (!stale && path === "agent" ? 1 : 0),
+      staleCount: current.staleCount + (stale ? 1 : 0),
+      totalCount: current.totalCount + 1,
+      appliedFragments: current.appliedFragments + report.filter((line) => line.bucket === "applied").length,
+      recognizedNoChangeFragments: current.recognizedNoChangeFragments + report.filter((line) => line.bucket === "recognized-no-change").length,
+      unrecognizedFragments: current.unrecognizedFragments + report.filter((line) => line.bucket === "unrecognized").length
+    }));
+  }
+
+  /**
+   * Applies an edited returned intent (text mode). Order per design-spec §2.2:
+   * recompute FRESH source hashes from the live store → `interpretReturnedIntent`
+   * → prompt-stale stops before apply → the deterministic ChangeSet flows through
+   * the SHARED single point `applyPlannedAiChangeSet` (risk → dry-run → validation
+   * → undo journal → apply) → the agent path forwards to the existing agent
+   * contour. Telemetry (§5) and the three-bucket report are always surfaced.
+   */
+  function applyEntityReturnedIntent(input: ReturnedIntentInput): ReturnedIntentApplyOutcome {
+    const entity = viewModel.editorEntityProjection.entityById.get(input.entityId);
+    const currentSourceHashes = entity === undefined ? undefined : computeEntitySourceHashes(entity);
+    const result = interpretReturnedIntent(input, { currentSourceHashes });
+    recordReturnedIntentTelemetry(result.path, result.stale === true, result.report);
+
+    if (result.stale === true) {
+      setStatusMessage("Источник изменился — обновите проекцию перед применением.");
+      return { path: result.path, stale: true, report: [], applied: false, forwarded: false };
+    }
+
+    if (result.path === "deterministic") {
+      if (result.changeSet === null) {
+        // Only recognized-no-change fragments (deleted scalar defaults to "keep"):
+        // nothing to apply, but the report still shows every fragment.
+        setStatusMessage("Намерение распознано, изменений значений нет.");
+        return { path: "deterministic", stale: false, report: result.report, applied: false, forwarded: false };
+      }
+      const applied = applyPlannedAiChangeSet(plannedChangeSetFromReturnedIntent(result.changeSet, input.entityId));
+      return {
+        path: "deterministic",
+        stale: false,
+        report: result.report,
+        applied: applied.ok,
+        forwarded: false,
+        message: applied.summary
+      };
+    }
+
+    // Agent path: forward the captured context to the EXISTING agent contour (the
+    // server AI-patch planner used by the preview prompt); it returns a ChangeSet
+    // that flows through the same single point. No new LLM tool/prompt is added.
+    const forwarded = forwardReturnedIntentToAgent(input, entity);
+    return {
+      path: "agent",
+      stale: false,
+      report: result.report,
+      applied: false,
+      forwarded,
+      message: forwarded
+        ? "Правку нельзя свести к простой замене значений — передано агенту (существующий контур)."
+        : "Правку нельзя свести к простой замене значений. Откройте файл-источник сущности и передайте правку агенту через «Чат»."
+    };
+  }
+
+  /** Wraps an interpreter ChangeSet as a `PlannedAiChangeSet` for the shared point. */
+  function plannedChangeSetFromReturnedIntent(changeSet: EditorChangeSet, entityId: string): PlannedAiChangeSet {
+    const createdAt = new Date().toISOString();
+    const targetPointers = [...new Set(changeSet.jsonPatches.flatMap((patch) => patch.operations.map((operation) => operation.path)))];
+    const intent: EditorPatchIntent = {
+      id: `returned-intent:${entityId}:${Date.now()}`,
+      kind: "returned-intent",
+      prompt: `Применено текстовое намерение для ${entityId}.`,
+      activeFilePath: currentDocument.filePath,
+      targetPointers,
+      createdAt,
+      selectionKind: "entity"
+    };
+    return { intent, changeSet: { ...changeSet, intentId: intent.id }, diagnostics: [], targetPointers };
+  }
+
+  /**
+   * Forwards a returned intent that the deterministic path could not handle to the
+   * existing server AI-patch planner (the same contour `handlePreviewPromptSubmit`
+   * uses): the returned text becomes the prompt and the entity's ACTIVE-document
+   * source object is the target. A returned ChangeSet is applied through the shared
+   * single point. Requires the entity to have a facet in the open document (the
+   * planner can only edit the active file); otherwise nothing is forwarded and the
+   * author escalates the visible returned text manually. Fire-and-forget: the UI
+   * shows the report immediately and status/diagnostics update on completion.
+   */
+  function forwardReturnedIntentToAgent(input: ReturnedIntentInput, entity: EditorEntity | undefined): boolean {
+    if (entity === undefined || viewModel.snapshot.json === undefined) {
+      return false;
+    }
+    const activePointers = [entity.primarySource, ...Object.values(entity.facets).flat()]
+      .filter((source): source is NonNullable<typeof source> => source !== undefined && source.filePath === currentDocument.filePath)
+      .map((source) => source.pointer);
+    const targetPointer = activePointers[0];
+    if (targetPointer === undefined) {
+      return false;
+    }
+
+    const now = new Date().toISOString();
+    const intent: EditorPatchIntent = {
+      id: `returned-intent-agent:${entity.entityId}:${Date.now()}`,
+      kind: "property-prompt",
+      prompt: input.returnedText,
+      activeFilePath: currentDocument.filePath,
+      targetPointers: [targetPointer],
+      createdAt: now,
+      selectionKind: "entity"
+    };
+    const targets = [
+      {
+        filePath: currentDocument.filePath,
+        pointer: targetPointer,
+        label: entity.label,
+        value: readJsonPointer(viewModel.snapshot.json, targetPointer) ?? null
+      }
+    ];
+
+    setAiApplyState("planning");
+    setStatusMessage("Передача намерения агенту (существующий контур)...");
+    void (async () => {
+      try {
+        const response = await requestAiChangeSet(intent, targets);
+        if (!response.ok || response.changeSet === undefined) {
+          const diagnostics = (response.diagnostics ?? []).map(toRoutedDiagnostic);
+          setAiDiagnostics(diagnostics);
+          setAiApplyState("blocked");
+          setStatusMessage(diagnostics[0]?.message ?? "Агент не вернул применимое изменение.");
+          return;
+        }
+        applyPlannedAiChangeSet({
+          intent,
+          changeSet: response.changeSet,
+          diagnostics: response.diagnostics ?? [],
+          targetPointers: intent.targetPointers
+        });
+      } catch (error) {
+        setAiApplyState("error");
+        setStatusMessage(error instanceof Error ? error.message : "Передача намерения агенту не удалась.");
+      }
+    })();
+    return true;
+  }
+
   function rejectedPlan(summary: string): PlanCurrentAiChangeSetResult {
     const diagnostics = [
       {
@@ -2781,6 +3027,10 @@ export function useEditorWorkspace() {
     activeChannel,
     inspectorEntityId,
     handleInspectorClose,
+    // Text mode «источник» + returned-intent apply (Phase 4.2).
+    captureEntitySource,
+    applyEntityReturnedIntent,
+    returnedIntentTelemetry,
     previewTraceEntries,
     selectedPreviewTraceEvent,
     selectedPreviewTraceSnapshot,

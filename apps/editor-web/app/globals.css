@@ -1483,6 +1483,157 @@ textarea {
   white-space: nowrap;
 }
 
+/* Text mode «источник» (Phase 4.2): editable prompt-projection + interpreter
+ * report inside the floating inspector body. */
+.entity-source-text-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+}
+
+.entity-source-toolbar {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.entity-source-hash-badge {
+  background: #e8f3ea;
+  border-radius: 10px;
+  color: #256a3a;
+  font-size: 11px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+
+.entity-source-exit {
+  background: transparent;
+  border: 0;
+  color: #185fa5;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: auto;
+}
+
+.entity-source-textarea {
+  border: 1px solid #d9d7d0;
+  border-radius: 6px;
+  font-family: Consolas, "SFMono-Regular", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  min-height: 128px;
+  padding: 8px;
+  resize: vertical;
+  white-space: pre;
+  width: 100%;
+}
+
+.entity-source-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.entity-source-apply {
+  background: #2f6ad9;
+  border: 0;
+  border-radius: 6px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 12px;
+}
+
+.entity-source-stale {
+  align-items: center;
+  background: #faeeda;
+  border-radius: 6px;
+  color: #854f0b;
+  display: flex;
+  font-size: 12px;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+.entity-source-refresh {
+  background: #fff;
+  border: 1px solid #d8b980;
+  border-radius: 5px;
+  color: #854f0b;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: auto;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+
+.entity-source-report {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.entity-source-bucket {
+  border-left: 3px solid #cfd6e2;
+  padding-left: 8px;
+}
+
+.entity-source-bucket.is-applied {
+  border-left-color: #3f9e5a;
+}
+
+.entity-source-bucket.is-noop {
+  border-left-color: #a9a7a0;
+}
+
+.entity-source-bucket.is-unrecognized {
+  border-left-color: #d1533b;
+}
+
+.entity-source-bucket-title {
+  color: #5f5e5a;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+}
+
+.entity-source-bucket ul {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.entity-source-bucket li {
+  align-items: baseline;
+  display: flex;
+  gap: 6px;
+}
+
+.entity-source-bucket code {
+  font-family: Consolas, "SFMono-Regular", ui-monospace, monospace;
+  font-size: 11.5px;
+}
+
+.entity-source-pointer {
+  color: #8a8880;
+  font-size: 10.5px;
+}
+
+.entity-source-notice {
+  color: #5f5e5a;
+  font-size: 12px;
+}
+
+.entity-inspector-icons button.is-active {
+  background: #eef2fb;
+  border-radius: 4px;
+  color: #185fa5;
+}
+
 /* Narrow screens: dock the inspector as a bottom panel (ADR-034). The panel
  * carries an inline left/top from the free-quadrant placement, so the docked
  * override wins with !important. */
