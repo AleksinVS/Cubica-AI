@@ -15,6 +15,8 @@ import {
   buildCreatePrototypeChangeSet,
   buildDeleteEntityChangeSet,
   buildEditorEntityProjection,
+  buildFillEntityLabelChangeSet,
+  buildFillMissingLabelsChangeSet,
   buildRenameEntityIdChangeSet,
   classifyChangeSet,
   slugifyEntityId
@@ -362,6 +364,72 @@ describe("buildAddViewFacetChangeSet (design-spec §3.2 «создать вид�
   it("refuses when the entity already has a view in that channel", () => {
     // `accept` already has `accept-btn` as its web view facet.
     const result = buildAddViewFacetChangeSet({ entityId: "game-action:accept", channel: "web" }, projection, documents());
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("buildFillEntityLabelChangeSet / buildFillMissingLabelsChangeSet (Вариант А, TSK-20260708)", () => {
+  // Two actions miss `_label` (`polar-bear`, `ice_floe`); `accept` has one. Note
+  // the projection's display label falls back to the id, so the fix must key on
+  // the `_label` FIELD, not the display label.
+  const gameMissingLabels = {
+    _manifestType: "game",
+    _definitions: { "game.Rule": { _semantics: "A rule." } },
+    root: {
+      id: "demo",
+      content: {},
+      logic: {
+        flows: [{ id: "main", steps: [{ id: "start", actionId: "accept" }] }],
+        actions: [{ id: "accept", _label: "Accept" }, { id: "polar-bear" }, { id: "ice_floe" }]
+      }
+    }
+  } as const;
+  const missingDocs: readonly EditorEntityProjectionDocument[] = [
+    { filePath: GAME_FILE, json: gameMissingLabels as unknown as JsonValue, documentKind: "game" }
+  ];
+  const projection = buildEditorEntityProjection({ gameId: "demo", documents: missingDocs, activeChannel: "web" });
+
+  it("fills one entity's _label with a title-cased default derived from its id", () => {
+    const result = buildFillEntityLabelChangeSet({ entityId: "game-action:polar-bear" }, projection, missingDocs);
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    const operations = result.changeSet.jsonPatches.flatMap((patch) => patch.operations);
+    expect(operations).toHaveLength(1);
+    const op = operations[0];
+    expect(op.op).toBe("add");
+    expect(op.path.endsWith("/_label")).toBe(true);
+    expect("value" in op ? op.value : undefined).toBe("Polar Bear");
+    // Safe operation — no id rename / delete → not dangerous.
+    expect(classifyChangeSet(result.changeSet, projection).risk).not.toBe("dangerous");
+  });
+
+  it("refuses an entity that already has a _label", () => {
+    const result = buildFillEntityLabelChangeSet({ entityId: "game-action:accept" }, projection, missingDocs);
+    expect(result.ok).toBe(false);
+  });
+
+  it("bulk-fills every missing label in one atomic ChangeSet and counts them", () => {
+    const result = buildFillMissingLabelsChangeSet(
+      { entityIds: ["game-action:polar-bear", "game-action:ice_floe", "game-action:accept"] },
+      projection,
+      missingDocs
+    );
+    expect(result.ok).toBe(true);
+    if (!result.ok) {
+      return;
+    }
+    // `accept` (already labelled) is skipped; the two unnamed actions are filled.
+    expect(result.filledCount).toBe(2);
+    const operations = result.changeSet.jsonPatches.flatMap((patch) => patch.operations);
+    expect(operations).toHaveLength(2);
+    expect(operations.every((op) => op.path.endsWith("/_label"))).toBe(true);
+    expect(operations.map((op) => ("value" in op ? op.value : undefined))).toEqual(["Polar Bear", "Ice Floe"]);
+  });
+
+  it("refuses the bulk fix when no given entity is missing a label", () => {
+    const result = buildFillMissingLabelsChangeSet({ entityIds: ["game-action:accept"] }, projection, missingDocs);
     expect(result.ok).toBe(false);
   });
 });

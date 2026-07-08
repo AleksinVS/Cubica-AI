@@ -30,12 +30,15 @@ export function ChecksSidebarPanel({
   groups,
   onNavigate,
   onQuickFix,
+  onQuickFixAll,
   onFixWithAgent,
   onCollapse
 }: {
   readonly groups: readonly WorkspaceCheckGroup[];
   readonly onNavigate: (item: WorkspaceCheckItem) => void;
   readonly onQuickFix: (item: WorkspaceCheckItem) => void;
+  /** Bulk fix for every «fill-label» row in a group (Вариант А). */
+  readonly onQuickFixAll: (items: readonly WorkspaceCheckItem[]) => void;
   readonly onFixWithAgent: (item: WorkspaceCheckItem) => void;
   readonly onCollapse: () => void;
 }) {
@@ -55,7 +58,12 @@ export function ChecksSidebarPanel({
             Нет проблем
           </p>
         ) : (
-          groups.map((group) => (
+          groups.map((group) => {
+            // «Исправить все» shows only when the group has ≥2 deterministic
+            // fill-label rows — the bulk unblock for a manifest with many unnamed
+            // entities (Вариант А). One click → one atomic ChangeSet + one undo.
+            const bulkFillItems = group.items.filter((item) => item.quickFix === "fill-label");
+            return (
             <section
               key={group.severity}
               className={`checks-group checks-group-${group.severity}`}
@@ -64,6 +72,16 @@ export function ChecksSidebarPanel({
             >
               <div className="checks-group-heading">
                 {checkSeverityLabel(group.severity)} <span>{group.items.length}</span>
+                {bulkFillItems.length >= 2 ? (
+                  <button
+                    type="button"
+                    className="checks-group-fix-all"
+                    data-testid="checks-fix-all"
+                    onClick={() => onQuickFixAll(bulkFillItems)}
+                  >
+                    {t.checks.fixAll(bulkFillItems.length)}
+                  </button>
+                ) : null}
               </div>
               <ul className="checks-list">
                 {group.items.map((item) => (
@@ -91,14 +109,14 @@ export function ChecksSidebarPanel({
                       <span className="checks-item-badge">{item.badge}</span>
                     </button>
                     <div className="checks-item-actions">
-                      {item.quickFix === "create-view" ? (
+                      {item.quickFix !== undefined ? (
                         <button
                           type="button"
                           className="checks-item-fix"
                           data-testid="checks-item-quickfix"
                           onClick={() => onQuickFix(item)}
                         >
-                          Создать вид
+                          {item.quickFix === "create-view" ? t.checks.createView : t.checks.fillLabel}
                         </button>
                       ) : null}
                       <button
@@ -107,14 +125,15 @@ export function ChecksSidebarPanel({
                         data-testid="checks-item-agent"
                         onClick={() => onFixWithAgent(item)}
                       >
-                        Исправить агентом
+                        {t.checks.fixWithAgent}
                       </button>
                     </div>
                   </li>
                 ))}
               </ul>
             </section>
-          ))
+            );
+          })
         )}
       </div>
     </>

@@ -448,10 +448,18 @@ export const editorRu = {
     disconnect: "Отвязать"
   },
 
-  /** «Проверки» sidebar panel. Visible text is already Russian. */
+  /** «Проверки» sidebar panel. */
   checks: {
     /** Collapse button label (screen readers). */
-    collapseAria: "Свернуть панель проверок"
+    collapseAria: "Свернуть панель проверок",
+    /** Row quick fix: add the missing UI view for a game entity. */
+    createView: "Создать вид",
+    /** Row quick fix: fill a missing `_label` with a derived default (Вариант А). */
+    fillLabel: "Заполнить подпись",
+    /** Row action: hand the diagnostic to the agent as an intent. */
+    fixWithAgent: "Исправить агентом",
+    /** Group-level bulk fix button. */
+    fixAll: (count: number) => `Исправить все (${count})`
   },
 
   /** «Ассеты» sidebar panel. Visible text is already Russian. */

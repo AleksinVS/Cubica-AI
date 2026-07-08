@@ -170,12 +170,18 @@ export {
   buildCreateEntityChangeSet,
   buildCreatePrototypeChangeSet,
   buildDeleteEntityChangeSet,
+  buildFillEntityLabelChangeSet,
+  buildFillMissingLabelsChangeSet,
   buildRenameEntityIdChangeSet,
   slugifyEntityId
 } from "./entity-operations.ts";
 export type {
   BuildAddViewFacetInput,
   BuildAddViewFacetResult,
+  BuildFillEntityLabelInput,
+  BuildFillEntityLabelResult,
+  BuildFillMissingLabelsInput,
+  BuildFillMissingLabelsResult,
   BuildCreateEntityInput,
   BuildCreateEntityResult,
   BuildCreatePrototypeInput,

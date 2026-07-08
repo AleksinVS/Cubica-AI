@@ -34,8 +34,16 @@ import type { RoutedEditorDiagnostic } from "@/lib/editor-web-adapter";
  */
 export type WorkspaceCheckSeverity = "error" | "warning" | "info";
 
-/** Deterministic quick-fix kinds the Checks tab can prepare as a ChangeSet. */
-export type WorkspaceCheckQuickFix = "create-view";
+/**
+ * Deterministic quick-fix kinds the Checks tab can prepare as a ChangeSet:
+ * - `create-view`: a game entity that requires a view has none in the active
+ *   channel → add the missing UI facet (`buildAddViewFacetChangeSet`).
+ * - `fill-label`: a tree-visible entity is missing a non-empty `_label` → fill a
+ *   derived default so the manifest stops being blocked (Вариант А,
+ *   `buildFillEntityLabelChangeSet`). Repeated `fill-label` rows also power the
+ *   group-level «Исправить все» bulk fix.
+ */
+export type WorkspaceCheckQuickFix = "create-view" | "fill-label";
 
 /**
  * One row in the Checks tab: a single diagnostic, enriched with the entity it
@@ -191,6 +199,12 @@ export function aggregateWorkspaceChecks(input: AggregateWorkspaceChecksInput): 
     }
     seen.add(key);
     const entity = resolveEntityForPointer(input.projection, filePath, diagnostic.pointer);
+    // Missing/empty `_label` (schema.ts semantic check) → the deterministic
+    // «fill-label» quick fix (Вариант А). Detected declaratively by the
+    // diagnostic's own target — a `/_label` pointer on a resolved entity — so no
+    // brittle message-string match and no per-game logic.
+    const isMissingLabel =
+      diagnostic.pointer.endsWith("/_label") && (diagnostic.source === "semantic" || diagnostic.source === "schema");
     items.push({
       id: `check-${items.length}`,
       severity: toCheckSeverity(diagnostic.severity),
@@ -200,7 +214,8 @@ export function aggregateWorkspaceChecks(input: AggregateWorkspaceChecksInput): 
       filePath,
       pointer: diagnostic.pointer,
       entityId: entity?.entityId,
-      entityLabel: entity?.label
+      entityLabel: entity?.label,
+      quickFix: isMissingLabel && entity !== undefined ? "fill-label" : undefined
     });
   };
 

@@ -72,6 +72,7 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     checkGroups,
     handleCheckNavigate,
     handleCheckQuickFix,
+    handleCheckQuickFixAll,
     handleCheckFixWithAgent,
     gameAssets,
     canUploadAsset,
@@ -208,6 +209,7 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
           groups={checkGroups}
           onNavigate={handleCheckNavigate}
           onQuickFix={handleCheckQuickFix}
+          onQuickFixAll={handleCheckQuickFixAll}
           onFixWithAgent={handleCheckFixWithAgent}
           onCollapse={() => setLeftSidebarPanel(undefined)}
         />

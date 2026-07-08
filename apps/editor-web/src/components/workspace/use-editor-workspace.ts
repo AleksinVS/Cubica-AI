@@ -24,6 +24,8 @@ import {
   buildCreateEntityChangeSet,
   buildCreatePrototypeChangeSet,
   buildDeleteEntityChangeSet,
+  buildFillEntityLabelChangeSet,
+  buildFillMissingLabelsChangeSet,
   buildRenameEntityIdChangeSet,
   buildEditorEntityYamlProjection,
   buildEntityGroupingTreeViewModel,
@@ -4281,7 +4283,57 @@ export function useEditorWorkspace() {
       if (entity !== undefined) {
         void handleCreateEntityView(entity);
       }
+      return;
     }
+    if (item.quickFix === "fill-label" && item.entityId !== undefined) {
+      void handleFillEntityLabel(item.entityId);
+    }
+  }
+
+  /**
+   * «Заполнить подпись» quick fix (Вариант А; TSK-20260708): fill ONE entity's
+   * missing `_label` with a derived default via `buildFillEntityLabelChangeSet`,
+   * applied through the shared single apply point (safe operation — no approval).
+   */
+  async function handleFillEntityLabel(entityId: string) {
+    const build = buildFillEntityLabelChangeSet(
+      { entityId },
+      viewModel.editorEntityProjection,
+      viewModel.entityProjectionDocuments
+    );
+    if (!build.ok) {
+      setStatusMessage(build.reason);
+      return;
+    }
+    await applyEntityOperationChangeSet(build.changeSet, { successMessage: build.report.summary });
+  }
+
+  /**
+   * Group-level «Исправить все» bulk quick fix (Вариант А): fills every missing
+   * `_label` among the given rows in ONE atomic ChangeSet + one undo step
+   * (`buildFillMissingLabelsChangeSet`). Non-fill-label rows are ignored. This is
+   * the cheap unblock for a "dirty" manifest (e.g. many unnamed cards) without
+   * relaxing the whole-document-valid apply gate.
+   */
+  async function handleCheckQuickFixAll(items: readonly WorkspaceCheckItem[]) {
+    const entityIds = items
+      .filter((item) => item.quickFix === "fill-label" && item.entityId !== undefined)
+      .map((item) => item.entityId as string);
+    if (entityIds.length === 0) {
+      return;
+    }
+    const build = buildFillMissingLabelsChangeSet(
+      { entityIds },
+      viewModel.editorEntityProjection,
+      viewModel.entityProjectionDocuments
+    );
+    if (!build.ok) {
+      setStatusMessage(build.reason);
+      return;
+    }
+    await applyEntityOperationChangeSet(build.changeSet, {
+      successMessage: `Заполнены недостающие подписи: ${build.filledCount}.`
+    });
   }
 
   /**
@@ -4671,6 +4723,7 @@ export function useEditorWorkspace() {
     checkCounts,
     handleCheckNavigate,
     handleCheckQuickFix,
+    handleCheckQuickFixAll,
     handleCheckFixWithAgent,
     // Broken compile does not blank the preview (Phase 8.2; ADR-057 §4.12; §9.6):
     // the plate model (N/M + snapshot presence) and the «К первой ошибке» jump.

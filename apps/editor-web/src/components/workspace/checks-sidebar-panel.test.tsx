@@ -51,7 +51,7 @@ function check(overrides: Partial<WorkspaceCheckItem> & { readonly id: string; r
 describe("ChecksSidebarPanel", () => {
   it("renders the empty state when there are no checks", () => {
     render(
-      <ChecksSidebarPanel groups={[]} onNavigate={vi.fn()} onQuickFix={vi.fn()} onFixWithAgent={vi.fn()} onCollapse={vi.fn()} />
+      <ChecksSidebarPanel groups={[]} onNavigate={vi.fn()} onQuickFix={vi.fn()} onQuickFixAll={vi.fn()} onFixWithAgent={vi.fn()} onCollapse={vi.fn()} />
     );
     expect(container?.querySelector("[data-testid='checks-empty']")?.textContent).toContain("Нет проблем");
   });
@@ -62,7 +62,7 @@ describe("ChecksSidebarPanel", () => {
       check({ id: "e", severity: "error", message: "Invalid title", source: "schema", badge: "схема" })
     ]);
     render(
-      <ChecksSidebarPanel groups={groups} onNavigate={vi.fn()} onQuickFix={vi.fn()} onFixWithAgent={vi.fn()} onCollapse={vi.fn()} />
+      <ChecksSidebarPanel groups={groups} onNavigate={vi.fn()} onQuickFix={vi.fn()} onQuickFixAll={vi.fn()} onFixWithAgent={vi.fn()} onCollapse={vi.fn()} />
     );
     const rendered = container?.querySelectorAll("[data-testid^='checks-group-']");
     expect(rendered?.length).toBe(2);
@@ -81,6 +81,7 @@ describe("ChecksSidebarPanel", () => {
         groups={groupChecksBySeverity([item])}
         onNavigate={onNavigate}
         onQuickFix={vi.fn()}
+        onQuickFixAll={vi.fn()}
         onFixWithAgent={vi.fn()}
         onCollapse={vi.fn()}
       />
@@ -101,6 +102,7 @@ describe("ChecksSidebarPanel", () => {
         groups={groupChecksBySeverity([missingView, plain])}
         onNavigate={vi.fn()}
         onQuickFix={onQuickFix}
+        onQuickFixAll={vi.fn()}
         onFixWithAgent={vi.fn()}
         onCollapse={vi.fn()}
       />
@@ -113,6 +115,46 @@ describe("ChecksSidebarPanel", () => {
     expect(onQuickFix).toHaveBeenCalledWith(missingView);
   });
 
+  it("shows the group-level «Исправить все» only with ≥2 fill-label rows and fires the bulk fix", () => {
+    const onQuickFixAll = vi.fn();
+    const missA = check({ id: "la", severity: "error", source: "semantic", badge: "смысл", quickFix: "fill-label", entityId: "game:a", message: "Нет _label" });
+    const missB = check({ id: "lb", severity: "error", source: "semantic", badge: "смысл", quickFix: "fill-label", entityId: "game:b", message: "Нет _label" });
+    render(
+      <ChecksSidebarPanel
+        groups={groupChecksBySeverity([missA, missB])}
+        onNavigate={vi.fn()}
+        onQuickFix={vi.fn()}
+        onQuickFixAll={onQuickFixAll}
+        onFixWithAgent={vi.fn()}
+        onCollapse={vi.fn()}
+      />
+    );
+    const fixAll = container?.querySelector("[data-testid='checks-fix-all']") as HTMLButtonElement | null;
+    expect(fixAll?.textContent).toContain("Исправить все (2)");
+    // Each row also carries the single «Заполнить подпись» quick fix.
+    expect(container?.querySelectorAll("[data-testid='checks-item-quickfix']").length).toBe(2);
+    act(() => {
+      fixAll?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(onQuickFixAll).toHaveBeenCalledWith([missA, missB]);
+  });
+
+  it("hides «Исправить все» when only one fill-label row is present", () => {
+    const only = check({ id: "l1", severity: "error", source: "semantic", quickFix: "fill-label", entityId: "game:a", message: "Нет _label" });
+    render(
+      <ChecksSidebarPanel
+        groups={groupChecksBySeverity([only])}
+        onNavigate={vi.fn()}
+        onQuickFix={vi.fn()}
+        onQuickFixAll={vi.fn()}
+        onFixWithAgent={vi.fn()}
+        onCollapse={vi.fn()}
+      />
+    );
+    expect(container?.querySelector("[data-testid='checks-fix-all']")).toBeNull();
+    expect(container?.querySelector("[data-testid='checks-item-quickfix']")?.textContent).toContain("Заполнить подпись");
+  });
+
   it("offers «Исправить агентом» on every row and fires it", () => {
     const onFixWithAgent = vi.fn();
     const item = check({ id: "a", message: "Этап недостижим", badge: "сценарий" });
@@ -121,6 +163,7 @@ describe("ChecksSidebarPanel", () => {
         groups={groupChecksBySeverity([item])}
         onNavigate={vi.fn()}
         onQuickFix={vi.fn()}
+        onQuickFixAll={vi.fn()}
         onFixWithAgent={onFixWithAgent}
         onCollapse={vi.fn()}
       />

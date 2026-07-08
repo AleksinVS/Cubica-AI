@@ -548,6 +548,154 @@ export function buildAddViewFacetChangeSet(
 }
 
 // ---------------------------------------------------------------------------
+// 6. fillEntityLabel — add a derived default `_label` to a tree-visible entity
+//    that is missing one (Вариант А "fix first" quick fix, TSK-20260708). The
+//    `_label` schema check (schema.ts: "must define a non-empty _label") blocks
+//    apply/save/preview; this deterministic fix unblocks a manifest by naming
+//    the unnamed entities, which the author can then refine. Game-agnostic: the
+//    default label is humanised from the entity's OWN authoring `id`, never a
+//    hardcoded per-game string.
+// ---------------------------------------------------------------------------
+
+/** Input for {@link buildFillEntityLabelChangeSet}. */
+export interface BuildFillEntityLabelInput {
+  readonly entityId: string;
+}
+
+/** Input for {@link buildFillMissingLabelsChangeSet} (the bulk "fix all"). */
+export interface BuildFillMissingLabelsInput {
+  readonly entityIds: readonly string[];
+}
+
+export type BuildFillEntityLabelResult =
+  | { readonly ok: true; readonly changeSet: EditorChangeSet; readonly report: EntityOperationReport }
+  | { readonly ok: false; readonly reason: string };
+
+export type BuildFillMissingLabelsResult =
+  | { readonly ok: true; readonly changeSet: EditorChangeSet; readonly filledCount: number; readonly report: EntityOperationReport }
+  | { readonly ok: false; readonly reason: string };
+
+/**
+ * Humanised default `_label` for an entity: title-cased from its authoring `id`
+ * (read off the primary node when present), else the public entity id, else the
+ * last pointer segment. Deterministic and locale-neutral (`titleFromToken`).
+ */
+function deriveDefaultEntityLabel(entity: EditorEntity, primaryNode: JsonValue | undefined): string {
+  const idFromNode = isPlainJsonObject(primaryNode) && typeof primaryNode.id === "string" ? primaryNode.id.trim() : "";
+  const publicId = publicEntityId(entity);
+  const lastSegment = entity.primarySource.pointer.split("/").filter((segment) => segment !== "").at(-1);
+  const seed = idFromNode !== "" ? idFromNode : (publicId ?? lastSegment ?? entity.kind);
+  return titleFromToken(seed);
+}
+
+/**
+ * Computes the add/replace `_label` operation (and its value) for one entity, or
+ * `undefined` when the entity already carries a non-empty `_label` FIELD.
+ *
+ * The check reads the primary node's own `_label` — NOT `entity.label`, which
+ * falls back to `title`/`name`/`id` for display (semantics.ts) and so is set
+ * even when `_label` is absent. This mirrors the schema check exactly, so the
+ * fix targets precisely the entities the `_label` diagnostic flags.
+ */
+function fillLabelOperation(
+  entity: EditorEntity,
+  docs: readonly NormalizedOperationDocument[]
+): { readonly value: string; readonly operation: JsonPatchOperation } | undefined {
+  const primaryDoc = docs.find((doc) => doc.filePath === entity.primarySource.filePath);
+  const primaryNode = primaryDoc?.json !== undefined ? readJsonPointer(primaryDoc.json, entity.primarySource.pointer) : undefined;
+  const currentLabel = isPlainJsonObject(primaryNode) && typeof primaryNode._label === "string" ? primaryNode._label.trim() : "";
+  if (currentLabel !== "") {
+    return undefined;
+  }
+  const value = deriveDefaultEntityLabel(entity, primaryNode);
+  const labelPointer = appendPointerSegment(entity.primarySource.pointer, "_label");
+  // "add" creates the member; when `_label` exists but is empty it must be
+  // "replace" (RFC 6902 "add" also replaces, but be explicit for clarity).
+  const exists = primaryDoc?.json !== undefined && jsonPointerExists(primaryDoc.json, labelPointer);
+  return { value, operation: { op: exists ? "replace" : "add", path: labelPointer, value } };
+}
+
+/**
+ * Builds a ChangeSet that fills the missing `_label` of ONE entity with a
+ * derived default. Refuses when the entity is unknown or already has a `_label`.
+ */
+export function buildFillEntityLabelChangeSet(
+  input: BuildFillEntityLabelInput,
+  projection: EditorEntityProjection,
+  documents: readonly EditorEntityProjectionDocument[]
+): BuildFillEntityLabelResult {
+  const docs = normalizeDocuments(documents);
+  const entity = projection.entityById.get(input.entityId);
+  if (entity === undefined) {
+    return { ok: false, reason: `Unknown entity: ${input.entityId}` };
+  }
+  const fill = fillLabelOperation(entity, docs);
+  if (fill === undefined) {
+    return { ok: false, reason: `Entity ${input.entityId} already has a _label.` };
+  }
+  const changeSet: EditorChangeSet = {
+    id: `fill-label:${input.entityId}`,
+    summary: `Fill missing _label with "${fill.value}".`,
+    jsonPatches: [{ filePath: entity.primarySource.filePath, operations: [fill.operation] }]
+  };
+  return {
+    ok: true,
+    changeSet,
+    report: { summary: changeSet.summary, details: [`Set _label = "${fill.value}" at ${entity.primarySource.filePath}.`] }
+  };
+}
+
+/**
+ * Builds ONE atomic ChangeSet that fills the missing `_label` of every given
+ * entity (the Checks tab "Исправить все"): unresolved or already-labelled
+ * entities are skipped; add operations are grouped by file so one durable
+ * commit + one undo step names them all. Refuses only when none needs a label.
+ */
+export function buildFillMissingLabelsChangeSet(
+  input: BuildFillMissingLabelsInput,
+  projection: EditorEntityProjection,
+  documents: readonly EditorEntityProjectionDocument[]
+): BuildFillMissingLabelsResult {
+  const docs = normalizeDocuments(documents);
+  const opsByFile = new Map<string, JsonPatchOperation[]>();
+  const seen = new Set<string>();
+  let filledCount = 0;
+  for (const entityId of input.entityIds) {
+    if (seen.has(entityId)) {
+      continue;
+    }
+    seen.add(entityId);
+    const entity = projection.entityById.get(entityId);
+    if (entity === undefined) {
+      continue;
+    }
+    const fill = fillLabelOperation(entity, docs);
+    if (fill === undefined) {
+      continue;
+    }
+    const list = opsByFile.get(entity.primarySource.filePath) ?? [];
+    list.push(fill.operation);
+    opsByFile.set(entity.primarySource.filePath, list);
+    filledCount += 1;
+  }
+  if (filledCount === 0) {
+    return { ok: false, reason: "No given entity is missing a label." };
+  }
+  const jsonPatches: EditorChangeSetJsonPatch[] = [...opsByFile.entries()].map(([filePath, operations]) => ({ filePath, operations }));
+  const changeSet: EditorChangeSet = {
+    id: `fill-labels:${[...seen].sort().join(",")}`,
+    summary: `Fill ${filledCount} missing _label${filledCount === 1 ? "" : "s"}.`,
+    jsonPatches
+  };
+  return {
+    ok: true,
+    changeSet,
+    filledCount,
+    report: { summary: changeSet.summary, details: [`Set ${filledCount} _label field(s) across ${jsonPatches.length} file(s).`] }
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Internal helpers.
 // ---------------------------------------------------------------------------
 
