@@ -130,6 +130,8 @@ scripts: # Скрипты разработки и индексирования
     compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
     compile-cache.cjs: file # Level-3 compile cache (ADR-057) and hit/miss telemetry: content-hash-keyed, atomic, one-shot .tmp storage that is never a source of truth.
     compile-worker.cjs: file # Worker-thread entry point that compiles one authoring job as a pure function so the compile pool stays byte-identical to a sequential run.
+  ops: # Operational (ops) scripts for running the platform on a single host until the orchestrator model (LEGACY-0026) is built.
+    service-supervisor.mjs: file # Minimal single-host service supervisor (ADR-067): starts, health-checks and restarts the delivery services (runtime-api + player-web) with backoff and graceful group shutdown, as the interim recovery loop. Runbook: docs/processes/service-recovery-runbook.md.
 services: # Сервисы и инфраструктура 
   game-editor: # Service boundary for the future Cubica game editor. It contains authoring workspace documentation and will host editor-specific implementation when this boundary is activated.
     docs: # Project documentation for Game Editor features, authoring workflows and editor-engine design.

@@ -70,6 +70,41 @@
       "owner": "Architecture Team",
       "reason": "The document describes generated scaffold examples rather than an active runtime stub.",
       "expires_at": "2026-06-30"
+    },
+    {
+      "path": "services/runtime-api/src/modules/ai/*.ts",
+      "markers": ["mock"],
+      "owner": "Backend Team",
+      "reason": "Deterministic mock AI agent runtime adapter (source \"mock\", MOCK_AGENT_RUNTIME_ID) is an intentional local/test adapter; the real LLM provider adapter is tracked by LEGACY-0029, not by these markers.",
+      "expires_at": "2026-12-31"
+    },
+    {
+      "path": "services/runtime-api/tests/runtime-api.integration.ts",
+      "markers": ["mock"],
+      "owner": "Backend Team",
+      "reason": "Integration tests exercise the mock AI agent runtime adapter by design; not runtime stub debt.",
+      "expires_at": "2026-12-31"
+    },
+    {
+      "path": "packages/contracts/ai/src/index.ts",
+      "markers": ["mock"],
+      "owner": "Backend Team",
+      "reason": "\"mock\" is a declared value of the agent-source enum (mock | local | provider) in the AI contract, not a stub.",
+      "expires_at": "2026-12-31"
+    },
+    {
+      "path": "apps/editor-web/src/lib/agent-assistant-registry.test.ts",
+      "markers": ["not implemented"],
+      "owner": "Frontend Team",
+      "reason": "Test asserts the not-implemented fallback branch of the assistant registry; not implementation debt.",
+      "expires_at": "2026-12-31"
+    },
+    {
+      "path": "apps/editor-web/src/lib/preview-dom-adapter.test.ts",
+      "markers": ["stub"],
+      "owner": "Frontend Team",
+      "reason": "Test stubs the browser canvas path (drawImage/toDataURL) for deterministic assertions; test-only.",
+      "expires_at": "2026-12-31"
     }
   ]
 }

@@ -1,0 +1,4 @@
+{
+  ".": "Operational (ops) scripts for running the platform on a single host until the orchestrator model (LEGACY-0026) is built.",
+  "service-supervisor.mjs": "Minimal single-host service supervisor (ADR-067): starts, health-checks and restarts the delivery services (runtime-api + player-web) with backoff and graceful group shutdown, as the interim recovery loop. Runbook: docs/processes/service-recovery-runbook.md."
+}

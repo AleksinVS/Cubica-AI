@@ -1,10 +1,11 @@
 /**
  * Entity create / delete / refactor operations as EditorChangeSet builders
  * (ADR-057 §4.2, §4.5, §4.10; editor-preview-first-ux §9.1; design-spec §2.8;
- * ADR-050). This is Phase 6.1: the CORE, framework-agnostic, deterministic half.
- * These builders only PRODUCE an `EditorChangeSet` (ADR-034 reverse projection);
- * applying it (the multi-document apply path) and the UI are Phase 6.2 and are
- * intentionally NOT implemented here.
+ * ADR-050). This is the CORE, framework-agnostic, deterministic half: these
+ * builders only PRODUCE an `EditorChangeSet` (ADR-034 reverse projection). The
+ * multi-document apply path and the UI live in `apps/editor-web` (the workspace
+ * controller and panels) and deliberately stay out of this framework-agnostic
+ * package.
  *
  * Design invariants honoured here (ADR-057 §5, CLAUDE.md §10):
  *   - Builders are PURE and DETERMINISTIC: same inputs → byte-identical ChangeSet.
