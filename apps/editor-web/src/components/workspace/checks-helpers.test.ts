@@ -63,6 +63,7 @@ function routed(overrides: Partial<RoutedEditorDiagnostic> & { readonly message:
     pointer: overrides.pointer ?? "",
     label: overrides.label ?? "/",
     message: overrides.message,
+    code: overrides.code,
     range: undefined,
     filePath: overrides.filePath
   };
@@ -106,6 +107,36 @@ describe("aggregateWorkspaceChecks", () => {
     // The only deterministic quick fix in this slice.
     expect(projectionRow?.quickFix).toBe("create-view");
     expect(schemaRow?.quickFix).toBeUndefined();
+  });
+
+  it("offers «fill-label» for the `entity-missing-label` code, by code — not by pointer suffix", () => {
+    const card = entity({ entityId: "ui:card", pointer: "/root/screens/0/children/0", label: "Карточка «Маршрут»" });
+    const projection = projectionOf([card], []);
+    const checks = aggregateWorkspaceChecks({
+      routedDiagnostics: [
+        // Carries the stable registry code → fill-label.
+        routed({
+          severity: "error",
+          source: "semantic",
+          code: "entity-missing-label",
+          pointer: "/root/screens/0/children/0/_label",
+          message: "Tree-visible semantic entity must define a non-empty _label."
+        }),
+        // A `/_label` pointer WITHOUT the code must NOT be treated as fillable
+        // (detection is declarative, not a suffix heuristic).
+        routed({ severity: "error", source: "semantic", pointer: "/root/screens/0/children/0/_label", message: "unrelated" })
+      ],
+      pluginDiagnostics: [],
+      projectionDiagnostics: [],
+      projection,
+      activeFilePath: FILE
+    });
+    const coded = checks.find((item) => item.code === "entity-missing-label");
+    expect(coded?.quickFix).toBe("fill-label");
+    expect(coded?.entityId).toBe("ui:card");
+    expect(coded?.badge).toBe("смысл");
+    const uncoded = checks.find((item) => item.code === undefined && item.message === "unrelated");
+    expect(uncoded?.quickFix).toBeUndefined();
   });
 
   it("deduplicates a finding surfaced on both the workflow and plugin streams", () => {

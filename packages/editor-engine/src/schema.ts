@@ -222,6 +222,10 @@ function collectSemanticDiagnostics(
         diagnostics.push(
           makeDiagnostic({
             source: "semantic",
+            // Stable registry code so UI layers detect this declaratively (the
+            // Checks tab's «fill-label» quick fix) instead of matching the
+            // message text or the `/_label` pointer suffix (TSK-20260708 follow-up).
+            code: "entity-missing-label",
             pointer: diagnosticPointer,
             message: `Tree-visible semantic entity must define a non-empty _label.`,
             range: locationMap?.get(diagnosticPointer)

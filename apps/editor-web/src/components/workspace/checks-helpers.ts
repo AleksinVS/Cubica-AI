@@ -96,6 +96,7 @@ const SEVERITY_ORDER: readonly WorkspaceCheckSeverity[] = ["error", "warning", "
  */
 const BADGE_BY_CODE: Readonly<Record<string, string>> = {
   "entity-missing-view": "смысл",
+  "entity-missing-label": "смысл",
   "entity-view-orphan": "смысл",
   "unresolved-view-link": "смысл",
   "unresolved-action-link": "смысл",
@@ -200,17 +201,17 @@ export function aggregateWorkspaceChecks(input: AggregateWorkspaceChecksInput): 
     seen.add(key);
     const entity = resolveEntityForPointer(input.projection, filePath, diagnostic.pointer);
     // Missing/empty `_label` (schema.ts semantic check) → the deterministic
-    // «fill-label» quick fix (Вариант А). Detected declaratively by the
-    // diagnostic's own target — a `/_label` pointer on a resolved entity — so no
-    // brittle message-string match and no per-game logic.
-    const isMissingLabel =
-      diagnostic.pointer.endsWith("/_label") && (diagnostic.source === "semantic" || diagnostic.source === "schema");
+    // «fill-label» quick fix (Вариант А). Detected declaratively by the stable
+    // registry code `entity-missing-label` (schema.ts) — no message-string match
+    // and no per-game logic (TSK-20260708 follow-up).
+    const isMissingLabel = diagnostic.code === "entity-missing-label";
     items.push({
       id: `check-${items.length}`,
       severity: toCheckSeverity(diagnostic.severity),
       message: diagnostic.message,
       source: diagnostic.source,
-      badge: badgeFor(diagnostic.source, undefined),
+      code: diagnostic.code,
+      badge: badgeFor(diagnostic.source, diagnostic.code),
       filePath,
       pointer: diagnostic.pointer,
       entityId: entity?.entityId,

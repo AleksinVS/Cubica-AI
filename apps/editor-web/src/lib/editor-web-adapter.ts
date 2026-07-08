@@ -113,6 +113,13 @@ export interface RoutedEditorDiagnostic {
   readonly pointer: string;
   readonly label: string;
   readonly message: string;
+  /**
+   * Optional stable diagnostic code from the editor diagnostic registry
+   * (design-spec §4), e.g. `entity-missing-label`. Preserved from the source
+   * `DocumentDiagnostic` so UI layers (the Checks tab) can group / offer quick
+   * fixes by code rather than by matching message text (TSK-20260708 follow-up).
+   */
+  readonly code?: string;
   readonly range: TextRange | undefined;
   readonly filePath?: string;
   readonly generatedFile?: string;
@@ -404,6 +411,7 @@ export function toRoutedDiagnostic(diagnostic: {
   readonly source: string;
   readonly pointer: string;
   readonly message: string;
+  readonly code?: string;
   readonly range?: RoutedEditorDiagnostic["range"];
   readonly filePath?: string;
   readonly generatedFile?: string;
@@ -415,6 +423,9 @@ export function toRoutedDiagnostic(diagnostic: {
     pointer: diagnostic.pointer,
     label: diagnostic.pointer === "" ? "/" : diagnostic.pointer,
     message: diagnostic.message,
+    // Preserve the registry code (when present) end-to-end so the Checks tab can
+    // detect e.g. `entity-missing-label` declaratively (TSK-20260708 follow-up).
+    code: diagnostic.code,
     range: diagnostic.range,
     filePath: diagnostic.filePath,
     generatedFile: diagnostic.generatedFile,
