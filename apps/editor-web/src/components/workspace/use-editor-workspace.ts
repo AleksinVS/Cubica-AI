@@ -86,6 +86,7 @@ import {
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { editorRu as t } from "@/lib/locale";
 import { embeddedAuthoringSample } from "@/lib/authoring-sample";
 import {
   registerLocalAuthoringSchemas,
@@ -1052,7 +1053,7 @@ export function useEditorWorkspace() {
   const rightSidebarPanel: RightSidebarPanel | undefined = propertyPanelOpen ? "properties" : jsonPanelOpen ? "json" : undefined;
   const rightSidebarOpen = rightSidebarPanel !== undefined;
   const effectivePreviewInspectMode = previewInspectMode && !altPlayActive && !previewPointerPlayMode;
-  const previewModeLabel = effectivePreviewInspectMode ? "Inspect" : "Play";
+  const previewModeLabel = effectivePreviewInspectMode ? t.toolbar.inspect : t.toolbar.play;
   // Playthrough-axis freshness (editor-preview-first-ux §9.6). A prepared preview
   // lags behind edits when there are unsaved edits (`isDirty`) or saved content
   // has moved past what the preview was applied at. "Blocked" reflects a broken

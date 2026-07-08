@@ -10,6 +10,7 @@
  * controller into the toolbar, activity bar, sidebars, preview stage, and status
  * strip — the presentational panels each live in `./workspace/*`.
  */
+import { editorRu as t } from "@/lib/locale";
 import { EditorAgentRuntimeHooks } from "@/components/editor-agent-ui";
 
 import { EditorToolbar } from "@/components/workspace/editor-toolbar";
@@ -43,7 +44,7 @@ export function EditorWorkspace() {
       <section
         className={`workspace-grid ${rightSidebarOpen ? "" : "json-collapsed"} ${leftSidebarOpen ? "" : "left-sidebar-collapsed"} ${previewUrl !== null && !effectivePreviewInspectMode ? "preview-play-mode" : ""} ${sidebarResizeState !== null ? "is-resizing" : ""}`}
         style={workspaceStyle}
-        aria-label="Authoring editor workspace"
+        aria-label={t.workspace.workspaceAria}
       >
         <LeftActivityBar controller={controller} />
         {leftSidebarOpen ? <LeftSidebar controller={controller} /> : null}

@@ -19,10 +19,13 @@
  * Both are PURELY presentational: they own no authoring data, build no ChangeSet
  * and run no risk/approval logic — every decision is reported through callbacks,
  * and the controller (`useEditorWorkspace`) owns the builders, the risk
- * classification and the approval-envelope gate. Domain labels are Russian (from
- * the mockup); chrome/aria stays English.
+ * classification and the approval-envelope gate. All user-facing text — domain
+ * labels AND screen-reader labels — is Russian, from the chrome locale
+ * (@/lib/locale, TSK-20260708).
  */
 import React, { useState } from "react";
+
+import { editorRu as t } from "@/lib/locale";
 
 /** One facet source line shown in the delete scope dialog. */
 export interface EntityFacetSummary {
@@ -72,12 +75,12 @@ export function DeleteEntityDialog({
   const [retargetTo, setRetargetTo] = useState<string>(retargetOptions[0]?.id ?? "");
 
   return (
-    <RefactorDialogShell ariaLabel="Delete entity" title="Удалить сущность" onCancel={onCancel}>
+    <RefactorDialogShell ariaLabel={t.refactorDialog.deleteAria} title="Удалить сущность" onCancel={onCancel}>
       <p className="entity-refactor-lead">
         Удалить <strong>{entityLabel}</strong>?
       </p>
 
-      <section className="entity-refactor-section" aria-label="Facets">
+      <section className="entity-refactor-section" aria-label={t.refactorDialog.facetsAria}>
         <h4>Фасеты сущности</h4>
         {facets.length === 0 ? (
           <p className="entity-refactor-empty">Нет фасетов.</p>
@@ -92,7 +95,7 @@ export function DeleteEntityDialog({
         )}
       </section>
 
-      <section className="entity-refactor-section" aria-label="Incoming references">
+      <section className="entity-refactor-section" aria-label={t.refactorDialog.incomingAria}>
         <h4>Входящие ссылки{hasIncoming ? ` (${incomingReferences.length})` : ""}</h4>
         {hasIncoming ? (
           <ul>
@@ -117,11 +120,11 @@ export function DeleteEntityDialog({
       </div>
 
       {hasIncoming ? (
-        <div className="entity-refactor-retarget" aria-label="Retarget references">
+        <div className="entity-refactor-retarget" aria-label={t.refactorDialog.retargetAria}>
           <label>
             Перенацелить ссылки на…
             <select
-              aria-label="Retarget target"
+              aria-label={t.refactorDialog.retargetTargetAria}
               data-testid="entity-retarget-target"
               value={retargetTo}
               onChange={(event) => setRetargetTo(event.target.value)}
@@ -165,7 +168,7 @@ export function RenameEntityIdDialog({ entityLabel, currentId, suggestedId, erro
   const unchanged = trimmed === currentId;
 
   return (
-    <RefactorDialogShell ariaLabel="Rename entity id" title="Переименовать id" onCancel={onCancel}>
+    <RefactorDialogShell ariaLabel={t.refactorDialog.renameAria} title="Переименовать id" onCancel={onCancel}>
       <p className="entity-refactor-lead">
         Переименовать id сущности <strong>{entityLabel}</strong> (сейчас <code>{currentId}</code>). Все входящие ссылки будут
         обновлены.
@@ -173,7 +176,7 @@ export function RenameEntityIdDialog({ entityLabel, currentId, suggestedId, erro
       <label className="entity-refactor-field">
         Новый id
         <input
-          aria-label="New entity id"
+          aria-label={t.refactorDialog.newIdAria}
           data-testid="entity-rename-input"
           value={newId}
           autoFocus
@@ -238,7 +241,7 @@ function RefactorDialogShell({
       <section className="entity-refactor-dialog" role="dialog" aria-modal="true" aria-label={ariaLabel}>
         <header className="entity-refactor-head">
           <strong>{title}</strong>
-          <button type="button" className="entity-refactor-close" aria-label="Close dialog" onClick={onCancel}>
+          <button type="button" className="entity-refactor-close" aria-label={t.refactorDialog.closeAria} onClick={onCancel}>
             ✕
           </button>
         </header>

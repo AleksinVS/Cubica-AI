@@ -24,6 +24,8 @@ import React, { useMemo, useState, type KeyboardEvent } from "react";
 
 import type { EntityTreeGrouping, TreeViewModel, TreeViewNode } from "@cubica/editor-engine";
 
+import { editorRu as t } from "@/lib/locale";
+
 import type { EntityTypeOption } from "./entity-create-options.ts";
 
 export interface EntityTreeCreateRequest {
@@ -127,11 +129,11 @@ function CreateEntityMenu({
   const noun = grouping === "byType" ? "прототипа" : "сущности";
 
   return (
-    <div className="entity-tree-create-menu" data-testid="entity-tree-create-menu" role="dialog" aria-label="Create entity">
+    <div className="entity-tree-create-menu" data-testid="entity-tree-create-menu" role="dialog" aria-label={t.entityTree.createEntityAria}>
       <input
         className="entity-tree-create-label"
         data-testid="entity-tree-create-label"
-        aria-label="New entity label"
+        aria-label={t.entityTree.newLabelAria}
         placeholder={`Название ${noun}…`}
         value={label}
         onChange={(event) => setLabel(event.target.value)}
@@ -139,7 +141,7 @@ function CreateEntityMenu({
       <input
         className="entity-tree-create-search"
         data-testid="entity-tree-create-search"
-        aria-label="Search types"
+        aria-label={t.entityTree.searchTypesAria}
         placeholder="Поиск типа или прототипа…"
         autoFocus
         value={typeQuery}
@@ -150,7 +152,7 @@ function CreateEntityMenu({
           }
         }}
       />
-      <div className="entity-tree-create-options" role="listbox" aria-label="Types">
+      <div className="entity-tree-create-options" role="listbox" aria-label={t.entityTree.typesAria}>
         {filtered.length === 0 ? (
           <p className="entity-tree-empty">Нет подходящих типов.</p>
         ) : (
@@ -258,7 +260,7 @@ export function EntityTree({ grouping, onGroupingChange, tree, selectedEntityId,
           {!isSearching && hasChildren ? (
             <span
               className="tree-toggle"
-              aria-label={collapsed ? "Expand" : "Collapse"}
+              aria-label={collapsed ? t.common.expand : t.common.collapse}
               onClick={(event) => {
                 event.stopPropagation();
                 toggleCollapsed(node, depth);
@@ -294,19 +296,19 @@ export function EntityTree({ grouping, onGroupingChange, tree, selectedEntityId,
   }
 
   return (
-    <section className="tree-panel entity-tree-panel" aria-label="Entity tree">
+    <section className="tree-panel entity-tree-panel" aria-label={t.entityTree.treeAria}>
       <div className="tree-heading">
-        <strong>Entities</strong>
+        <strong>{t.entityTree.entities}</strong>
         <input
-          aria-label="Search entities"
-          placeholder="Search name, type, diagnostic…"
+          aria-label={t.entityTree.searchAria}
+          placeholder={t.entityTree.searchPlaceholder}
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           onKeyDown={handleSearchKeyDown}
         />
-        {isSearching ? <span className="tree-match-count">{visibleRows.length} matches</span> : null}
+        {isSearching ? <span className="tree-match-count">{t.common.matches(visibleRows.length)}</span> : null}
       </div>
-      <div className="surface-tabs entity-tree-grouping-tabs" role="tablist" aria-label="Entity tree grouping">
+      <div className="surface-tabs entity-tree-grouping-tabs" role="tablist" aria-label={t.entityTree.groupingAria}>
         <button
           type="button"
           role="tab"
@@ -350,10 +352,10 @@ export function EntityTree({ grouping, onGroupingChange, tree, selectedEntityId,
           }}
         />
       ) : null}
-      <div className="tree-list" role="tree" aria-label="Entity tree rows">
+      <div className="tree-list" role="tree" aria-label={t.entityTree.rowsAria}>
         {visibleRows.length === 0 ? (
           isSearching ? (
-            <p className="entity-tree-empty">No matches.</p>
+            <p className="entity-tree-empty">{t.entityTree.noMatches}</p>
           ) : (
             // Empty-section invitation (design-spec §3.1, editor-preview-first-ux §9.1).
             <p className="entity-tree-empty">

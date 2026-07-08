@@ -98,7 +98,7 @@ describe("PreviewSelectionOverlay", () => {
     expect(container.querySelector(".preview-highlight-frame")?.textContent).toContain("Button");
     expect(container.querySelector(".preview-overlay-warning")?.textContent).toContain("2 unmapped");
     expect((container.querySelector("textarea") as HTMLTextAreaElement | null)?.value).toBe("Сделай кнопку крупнее");
-    expect(container.querySelector(".preview-ai-intent")?.textContent).toContain("1 target");
+    expect(container.querySelector(".preview-ai-intent")?.textContent).toContain("целевых указателей: 1");
 
     const layerButtons = [...container.querySelectorAll<HTMLButtonElement>(".preview-object-picker-menu button")];
     await act(async () => {

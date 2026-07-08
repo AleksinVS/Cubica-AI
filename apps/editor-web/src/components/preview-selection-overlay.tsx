@@ -18,6 +18,8 @@ import {
 } from "@cubica/editor-engine";
 import React, { useEffect, useRef, useState, type CSSProperties, type MouseEvent as ReactMouseEvent, type PointerEvent } from "react";
 
+import { editorRu as t } from "@/lib/locale";
+
 export interface PreviewAiIntent {
   readonly id: string;
   readonly kind: "entity" | "region";
@@ -255,14 +257,14 @@ export function PreviewSelectionOverlay({
 
   if (disabled) {
     return (
-      <div className="preview-overlay-root" aria-label="Preview selection layer">
+      <div className="preview-overlay-root" aria-label={t.selectionOverlay.layerAria}>
         <div className="preview-selection-hit-layer is-disabled" data-testid="preview-selection-overlay" />
       </div>
     );
   }
 
   return (
-    <div className={`preview-overlay-root ${contextMenu !== null ? "has-context-menu" : ""}`} aria-label="Preview selection layer">
+    <div className={`preview-overlay-root ${contextMenu !== null ? "has-context-menu" : ""}`} aria-label={t.selectionOverlay.layerAria}>
       <div
         className="preview-selection-hit-layer"
         data-testid="preview-selection-overlay"
@@ -307,7 +309,7 @@ function PreviewHighlightFrame({ entity }: { readonly entity: PreviewEntityDescr
     <div
       className="preview-highlight-frame"
       style={rectStyle(entity.bounds)}
-      aria-label={`Selected preview object: ${entity.label}`}
+      aria-label={t.selectionOverlay.selectedObjectAria(entity.label)}
     >
       <span>{entity.label}</span>
     </div>
@@ -340,9 +342,9 @@ function PreviewObjectContextMenu({
       onPointerDown={(event) => event.stopPropagation()}
     >
       <div className="preview-object-context-menu-head">
-        <strong>Objects</strong>
-        <button type="button" onClick={onClose} aria-label="Close object menu">
-          Close
+        <strong>{t.selectionOverlay.objects}</strong>
+        <button type="button" onClick={onClose} aria-label={t.selectionOverlay.closeMenuAria}>
+          {t.selectionOverlay.close}
         </button>
       </div>
       {entities.map((entity) => (
@@ -388,14 +390,14 @@ function PreviewPromptBox({
       onPointerDown={(event) => event.stopPropagation()}
     >
       <div className="preview-ai-prompt-head">
-        <strong>{context.kind === "region" ? "Region prompt" : "Object prompt"}</strong>
-        <button type="button" onClick={onClose} aria-label="Close preview prompt">
-          Close
+        <strong>{context.kind === "region" ? t.selectionOverlay.regionPrompt : t.selectionOverlay.objectPrompt}</strong>
+        <button type="button" onClick={onClose} aria-label={t.selectionOverlay.closePromptAria}>
+          {t.selectionOverlay.close}
         </button>
       </div>
       {targetCount > 1 ? (
         <div className="preview-object-picker">
-          <button type="button">Layers</button>
+          <button type="button">{t.selectionOverlay.layers}</button>
           <div className="preview-object-picker-menu" role="menu">
             {context.entities.map((entity) => (
               <button key={entity.entityId} type="button" role="menuitem" onClick={() => onSelectEntity(entity)}>
@@ -408,10 +410,10 @@ function PreviewPromptBox({
       ) : null}
       <textarea
         ref={textAreaRef}
-        aria-label="AI prompt"
+        aria-label={t.selectionOverlay.promptAria}
         rows={rows}
         value={context.draft}
-        placeholder={targetCount > 1 ? `Describe a change for ${targetCount} objects` : "Describe a change"}
+        placeholder={targetCount > 1 ? t.selectionOverlay.promptPlaceholderMany(targetCount) : t.selectionOverlay.promptPlaceholderOne}
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
           if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
@@ -421,12 +423,12 @@ function PreviewPromptBox({
         }}
       />
       <button type="button" className="preview-ai-submit" disabled={context.draft.trim() === ""} onClick={onSubmit}>
-        Apply change
+        {t.selectionOverlay.applyChange}
       </button>
       {proposedIntent !== null ? (
         <div className="preview-ai-intent">
-          <span>Last editor intent</span>
-          <strong>{proposedIntent.targetPointers.length} target pointers</strong>
+          <span>{t.selectionOverlay.lastIntent}</span>
+          <strong>{t.selectionOverlay.targetPointers(proposedIntent.targetPointers.length)}</strong>
         </div>
       ) : null}
     </div>

@@ -1,11 +1,15 @@
 /**
  * Top toolbar for the editor workspace.
  *
- * Renders the preview mode (Play/Inspect) and viewport segmented controls, the
- * game/file selectors, and the workflow action buttons (Reset, Save, Undo/Redo,
- * Validate, Compile, Preview). It is purely presentational: every value and
- * handler is read from the {@link EditorWorkspaceController}.
+ * Renders the preview mode (Игра/Осмотр) and viewport segmented controls, the
+ * game/file selectors, and the workflow action buttons (Сброс, Сохранить,
+ * Отменить/Повторить, Проверить, Собрать, Предпросмотр). It is purely
+ * presentational: every value and handler is read from the
+ * {@link EditorWorkspaceController}; every user-facing string comes from the
+ * Russian chrome locale (@/lib/locale, TSK-20260708).
  */
+import { editorRu as t } from "@/lib/locale";
+
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
 export function EditorToolbar({ controller }: { controller: EditorWorkspaceController }) {
@@ -43,25 +47,32 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
     workflowState,
     handleCompile,
     hasLocalSchemaBlockingDiagnostics,
-    handlePreview
+    handlePreview,
+    checkCounts
   } = controller;
 
+  // Вариант А (TSK-20260708): when an action is blocked purely by blocking
+  // diagnostics, explain why (error count) instead of leaving a silently
+  // disabled button. Clicking the status/checks counter jumps to the first
+  // error. The gate invariant itself is unchanged.
+  const blockedTitle = hasBlockingDiagnostics ? t.toolbar.blockedByErrors(checkCounts.error) : undefined;
+
   return (
-    <header className="top-toolbar" aria-label="Editor toolbar">
+    <header className="top-toolbar" aria-label={t.toolbar.toolbarAria}>
       <div className="toolbar-title">
-        <strong>Cubica Editor</strong>
+        <strong>{t.toolbar.brand}</strong>
       </div>
       <div className="toolbar-actions">
         {/* Design/Preview axis (ADR-057 §4.8; design-spec §3.3). Top-level mode
-            that governs the edit-apply policy; orthogonal to Play/Inspect. */}
-        <div className="segmented-control mode-control" role="group" aria-label="Editor mode">
+            that governs the edit-apply policy; orthogonal to Игра/Осмотр. */}
+        <div className="segmented-control mode-control" role="group" aria-label={t.toolbar.editorModeAria}>
           <button
             type="button"
             className={editorMode === "design" ? "is-active" : ""}
             aria-pressed={editorMode === "design"}
             onClick={() => setEditorMode("design")}
           >
-            Дизайн
+            {t.toolbar.modeDesign}
           </button>
           <button
             type="button"
@@ -69,10 +80,10 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             aria-pressed={editorMode === "preview"}
             onClick={() => setEditorMode("preview")}
           >
-            Превью
+            {t.toolbar.modePreview}
           </button>
         </div>
-        <div className="segmented-control" role="group" aria-label="Preview mode">
+        <div className="segmented-control" role="group" aria-label={t.toolbar.previewModeAria}>
           <button
             type="button"
             className={!effectivePreviewInspectMode ? "is-active" : ""}
@@ -88,7 +99,7 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
               setPropertyPanelOpen(false);
             }}
           >
-            Play
+            {t.toolbar.play}
           </button>
           <button
             type="button"
@@ -100,10 +111,10 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
               setPreviewInspectMode(true);
             }}
           >
-            Inspect
+            {t.toolbar.inspect}
           </button>
         </div>
-        <div className="segmented-control viewport-control" role="group" aria-label="Preview viewport">
+        <div className="segmented-control viewport-control" role="group" aria-label={t.toolbar.viewportAria}>
           {(["desktop", "tablet", "mobile"] as const).map((mode) => (
             <button
               key={mode}
@@ -112,17 +123,21 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
               aria-pressed={previewViewportMode === mode}
               onClick={() => setPreviewViewportMode(mode)}
             >
-              {mode === "desktop" ? "Desktop" : mode === "tablet" ? "Tablet" : "Mobile"}
+              {mode === "desktop"
+                ? t.toolbar.viewportDesktop
+                : mode === "tablet"
+                  ? t.toolbar.viewportTablet
+                  : t.toolbar.viewportMobile}
             </button>
           ))}
         </div>
         <select
-          aria-label="Game"
+          aria-label={t.toolbar.gameAria}
           disabled={availableGames.length === 0}
           value={currentDocument.source === "repository" ? currentDocument.gameId : ""}
           onChange={(event) => handleGameChange(event.target.value)}
         >
-          {availableGames.length === 0 ? <option value="">embedded</option> : null}
+          {availableGames.length === 0 ? <option value="">{t.toolbar.embedded}</option> : null}
           {availableGames.map((gameId) => (
             <option value={gameId} key={gameId}>
               {gameId}
@@ -130,12 +145,12 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
           ))}
         </select>
         <select
-          aria-label="Authoring file"
+          aria-label={t.toolbar.fileAria}
           disabled={availableFiles.length === 0}
           value={currentDocument.source === "repository" ? currentDocument.filePath : ""}
           onChange={(event) => handleFileChange(event.target.value)}
         >
-          {availableFiles.length === 0 ? <option value="">embedded sample</option> : null}
+          {availableFiles.length === 0 ? <option value="">{t.toolbar.embeddedSample}</option> : null}
           {availableFiles.map((file) => (
             <option value={file.filePath} key={`${file.gameId}:${file.filePath}`}>
               {file.filePath}
@@ -143,11 +158,12 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
           ))}
         </select>
         <button type="button" onClick={resetCurrentFile} disabled={loadState === "loading"}>
-          Reset
+          {t.toolbar.reset}
         </button>
         <button
           type="button"
           onClick={handleSave}
+          title={blockedTitle}
           disabled={
             currentDocument.source !== "repository" ||
             !isDirty ||
@@ -156,20 +172,21 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             loadState === "loading"
           }
         >
-          Save
+          {t.toolbar.save}
         </button>
         <button type="button" onClick={handleUndoAiChange} disabled={aiPatchJournal.length === 0 || aiApplyState === "planning" || aiApplyState === "applying"}>
-          Undo
+          {t.toolbar.undo}
         </button>
         <button type="button" onClick={handleRedoAiChange} disabled={aiRedoJournal.length === 0 || aiApplyState === "planning" || aiApplyState === "applying"}>
-          Redo
+          {t.toolbar.redo}
         </button>
         <button type="button" onClick={handleValidate} disabled={currentDocument.source !== "repository" || workflowState === "validating"}>
-          Validate
+          {t.toolbar.validate}
         </button>
         <button
           type="button"
           onClick={handleCompile}
+          title={blockedTitle}
           disabled={
             currentDocument.source !== "repository" ||
             isDirty ||
@@ -178,11 +195,12 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             workflowState === "previewing"
           }
         >
-          Compile
+          {t.toolbar.compile}
         </button>
         <button
           type="button"
           onClick={handlePreview}
+          title={blockedTitle}
           disabled={
             currentDocument.source !== "repository" ||
             isDirty ||
@@ -191,7 +209,7 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             workflowState === "previewing"
           }
         >
-          Preview
+          {t.toolbar.preview}
         </button>
       </div>
     </header>

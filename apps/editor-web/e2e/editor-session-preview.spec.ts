@@ -63,7 +63,7 @@ test.describe("editor-web session preview", () => {
       );
 
       await page.goto(`${editorUrl}/?gameId=simple-choice&file=game.authoring.json`);
-      await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
+      await expect(page.getByLabel("Панель инструментов редактора")).toContainText("Редактор Cubica");
 
       const sessionResponse = await sessionResponsePromise;
       expect(sessionResponse.status()).toBe(200);
@@ -71,25 +71,25 @@ test.describe("editor-web session preview", () => {
       editorSessionId = sessionBody.session.sessionId;
       expect(sessionBody.session.branchName).toContain(`editor/session/${editorSessionId}`);
 
-      await expect(page.getByLabel("Editor status")).toContainText(sessionBody.session.branchName);
-      const previewStage = page.locator('section[aria-label="Game preview"]');
+      await expect(page.getByLabel("Статус редактора")).toContainText(sessionBody.session.branchName);
+      const previewStage = page.locator('section[aria-label="Предпросмотр игры"]');
       const previewStageBeforeRightSidebar = await previewStage.boundingBox();
       expect(previewStageBeforeRightSidebar).not.toBeNull();
 
-      await page.locator('aside[aria-label="Manifest navigation"] .tree-row-main').first().click();
-      const propertiesSidebar = page.locator('aside[aria-label="Selected node properties"]');
+      await page.locator('aside[aria-label="Навигация по манифесту"] .tree-row-main').first().click();
+      const propertiesSidebar = page.locator('aside[aria-label="Свойства выбранного узла"]');
       await expect(propertiesSidebar).toBeVisible();
       await expect(propertiesSidebar.locator(".property-panel-sidebar")).toBeVisible();
       await expectLocatorWidthStable(previewStage, previewStageBeforeRightSidebar?.width ?? 0);
-      await expect(page.locator('aside[aria-label="Authoring JSON editor"]')).toHaveCount(0);
+      await expect(page.locator('aside[aria-label="JSON-редактор авторинга"]')).toHaveCount(0);
       await page.getByRole("button", { name: "JSON", exact: true }).click();
-      const jsonSidebar = page.locator('aside[aria-label="Authoring JSON editor"]');
+      const jsonSidebar = page.locator('aside[aria-label="JSON-редактор авторинга"]');
       await expect(jsonSidebar).toBeVisible();
       await expectLocatorWidthStable(previewStage, previewStageBeforeRightSidebar?.width ?? 0);
-      await jsonSidebar.getByRole("button", { name: "Collapse" }).click();
+      await jsonSidebar.getByRole("button", { name: "Свернуть" }).click();
       await expect(jsonSidebar).toHaveCount(0);
 
-      const leftSidebar = page.locator('aside[aria-label="Manifest navigation"]');
+      const leftSidebar = page.locator('aside[aria-label="Навигация по манифесту"]');
       const leftSidebarBeforeResize = await leftSidebar.boundingBox();
       expect(leftSidebarBeforeResize).not.toBeNull();
       const leftResizeHandle = page.getByTestId("left-sidebar-resize-handle");
@@ -108,7 +108,7 @@ test.describe("editor-web session preview", () => {
       const leftSidebarAfterResize = await leftSidebar.boundingBox();
       expect(leftSidebarAfterResize?.width ?? 0).toBeGreaterThan((leftSidebarBeforeResize?.width ?? 0) + 50);
 
-      const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+      const previewButton = page.getByRole("button", { name: "Предпросмотр", exact: true });
       await expect(previewButton).toBeEnabled();
 
       const previewResponsePromise = page.waitForResponse((response) =>
@@ -133,20 +133,20 @@ test.describe("editor-web session preview", () => {
       );
       expect(contentResponse.status()).toBe(200);
 
-      const editorStatus = page.getByLabel("Editor status");
-      await expect(editorStatus).toContainText("Preview:");
-      const frame = page.frameLocator('iframe[title="Game preview"]');
+      const editorStatus = page.getByLabel("Статус редактора");
+      await expect(editorStatus).toContainText("Превью:");
+      const frame = page.frameLocator('iframe[title="Предпросмотр игры"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(frame.locator("[data-preview-runtime-pointer]").first()).toBeVisible();
-      await expect(editorStatus).toContainText(/[1-9][0-9]* selectable/);
+      await expect(editorStatus).toContainText(/выбираемых [1-9][0-9]*/);
 
-      await page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" }).click();
+      await page.getByLabel("Режим предпросмотра").getByRole("button", { name: "Осмотр" }).click();
       const overlay = page.getByTestId("preview-selection-overlay");
       const selectableMetric = frame.locator('[data-preview-semantic-role="gameVariableComponent"]').first();
       await expect(selectableMetric).toBeVisible();
       const targetPoint = await centerOfFrameElement(selectableMetric);
       await overlay.click({ modifiers: ["Control"], position: targetPoint });
-      await expect(page.locator('aside[aria-label="Selected node properties"]')).toBeVisible();
+      await expect(page.locator('aside[aria-label="Свойства выбранного узла"]')).toBeVisible();
       await expect(page.locator(".preview-highlight-frame")).toBeVisible();
       await overlay.click({ button: "right", position: targetPoint });
       await expect(page.locator(".preview-object-context-menu")).toBeVisible();
@@ -172,14 +172,14 @@ test.describe("editor-web session preview", () => {
       // screens, so preview selection maps to pointers of the UI authoring
       // file; open that file so the mapping lands in the active document.
       await page.goto(`${editorUrl}/?gameId=antarctica&file=ui/web.authoring.json`);
-      await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
+      await expect(page.getByLabel("Панель инструментов редактора")).toContainText("Редактор Cubica");
 
       const sessionResponse = await sessionResponsePromise;
       expect(sessionResponse.status()).toBe(200);
       const sessionBody = (await sessionResponse.json()) as EditorSessionListResponse;
       editorSessionId = sessionBody.session.sessionId;
 
-      const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+      const previewButton = page.getByRole("button", { name: "Предпросмотр", exact: true });
       await expect(previewButton).toBeEnabled();
       const previewResponsePromise = page.waitForResponse((response) =>
         response.url().endsWith("/api/editor/preview") && response.request().method() === "POST"
@@ -190,21 +190,21 @@ test.describe("editor-web session preview", () => {
       const previewBody = (await previewResponse.json()) as EditorPreviewResponse;
       expect(previewBody.ready, JSON.stringify(previewBody.diagnostics ?? [])).toBe(true);
 
-      const editorStatus = page.getByLabel("Editor status");
-      const frame = page.frameLocator('iframe[title="Game preview"]');
+      const editorStatus = page.getByLabel("Статус редактора");
+      const frame = page.frameLocator('iframe[title="Предпросмотр игры"]');
       // The Antarctica opening renders through the normalized ui.manifest screen
       // (`info-topbar`), so runtime pointers are screen-based; select the info
       // title by its stable semantic preview label instead of a pointer literal.
       const titleEntity = frame.locator('[data-preview-label="info-title"]');
       await expect(titleEntity).toBeVisible();
-      await expect(editorStatus).toContainText(/[1-9][0-9]* selectable/);
+      await expect(editorStatus).toContainText(/выбираемых [1-9][0-9]*/);
 
-      await page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" }).click();
+      await page.getByLabel("Режим предпросмотра").getByRole("button", { name: "Осмотр" }).click();
       const overlay = page.getByTestId("preview-selection-overlay");
       const targetPoint = await centerOfFrameElement(titleEntity);
       await overlay.click({ modifiers: ["Control"], position: targetPoint });
 
-      const propertiesSidebar = page.locator('aside[aria-label="Selected node properties"]');
+      const propertiesSidebar = page.locator('aside[aria-label="Свойства выбранного узла"]');
       await expect(propertiesSidebar).toBeVisible();
       // Screen-based runtime pointers map into the UI authoring document; the
       // exact child indexes depend on manifest layout, so assert the stable
@@ -236,13 +236,13 @@ test.describe("editor-web session preview", () => {
       );
 
       await page.goto(`${editorUrl}/?gameId=simple-choice&file=game.authoring.json`);
-      await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
+      await expect(page.getByLabel("Панель инструментов редактора")).toContainText("Редактор Cubica");
 
       const sessionResponse = await sessionResponsePromise;
       const sessionBody = (await sessionResponse.json()) as EditorSessionListResponse;
       editorSessionId = sessionBody.session.sessionId;
 
-      const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+      const previewButton = page.getByRole("button", { name: "Предпросмотр", exact: true });
       const previewResponsePromise = page.waitForResponse((response) =>
         response.url().endsWith("/api/editor/preview") && response.request().method() === "POST"
       );
@@ -251,57 +251,57 @@ test.describe("editor-web session preview", () => {
       const previewBody = (await previewResponse.json()) as EditorPreviewResponse;
       expect(previewBody.ready, JSON.stringify(previewBody.diagnostics ?? [])).toBe(true);
 
-      const frame = page.frameLocator('iframe[title="Game preview"]');
+      const frame = page.frameLocator('iframe[title="Предпросмотр игры"]');
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
 
       // Editor side panels float above the preview stage, so an open JSON
       // sidebar (for example restored from persisted layout) intercepts
       // pointer events aimed at the game iframe. Collapse it before clicking
       // inside the preview.
-      const jsonSidebar = page.locator('aside[aria-label="Authoring JSON editor"]');
+      const jsonSidebar = page.locator('aside[aria-label="JSON-редактор авторинга"]');
       if (await jsonSidebar.isVisible()) {
-        await jsonSidebar.getByRole("button", { name: "Collapse" }).click();
+        await jsonSidebar.getByRole("button", { name: "Свернуть" }).click();
         await expect(jsonSidebar).toHaveCount(0);
       }
 
-      await page.getByRole("button", { name: "Timeline" }).click();
-      const timelinePanel = page.locator('aside[aria-label="Timeline"]');
+      await page.getByRole("button", { name: "Таймлайн" }).click();
+      const timelinePanel = page.locator('aside[aria-label="Таймлайн"]');
       await expect(timelinePanel).not.toContainText("Chronology");
       await expect(timelinePanel).toContainText("T0");
       await expect(timelinePanel).toContainText("Initial runtime state");
-      const traceDetails = page.getByLabel("Preview trace details");
-      await expect(traceDetails).toContainText("Current T0");
-      await expect(traceDetails.getByRole("button", { name: "Reset to start" })).toBeVisible();
-      await expect(traceDetails.getByRole("button", { name: "Replay current" })).toBeVisible();
+      const traceDetails = page.getByLabel("Детали трассы предпросмотра");
+      await expect(traceDetails).toContainText("Текущее T0");
+      await expect(traceDetails.getByRole("button", { name: "В начало" })).toBeVisible();
+      await expect(traceDetails.getByRole("button", { name: "Повторить текущее" })).toBeVisible();
 
-      await expect(page.getByLabel("Preview mode").getByRole("button", { name: "Inspect" })).toBeVisible();
+      await expect(page.getByLabel("Режим предпросмотра").getByRole("button", { name: "Осмотр" })).toBeVisible();
       const floatingProperties = page.locator(".property-panel");
       await expect(floatingProperties).toBeHidden();
       await frame.getByRole("button", { name: "Choose the option with the visible tradeoff." }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
       await expect(timelinePanel).toContainText("T1");
       await expect(timelinePanel).toContainText("choice.accept");
-      await expect(traceDetails).toContainText("Current T1");
-      await expect(traceDetails.getByLabel("Selected trace event payload")).toContainText("choice.accept");
+      await expect(traceDetails).toContainText("Текущее T1");
+      await expect(traceDetails.getByLabel("Данные выбранного события трассы")).toContainText("choice.accept");
 
       await timelinePanel.getByRole("button", { name: /T0.*Initial runtime state/ }).click();
       await expect(traceDetails).toContainText("T0: Initial runtime state");
       const rollbackResponsePromise = page.waitForResponse((response) =>
         response.url().endsWith("/api/editor/preview/rollback") && response.request().method() === "POST"
       );
-      await traceDetails.getByRole("button", { name: "Restore selected" }).click();
+      await traceDetails.getByRole("button", { name: "Восстановить выбранное" }).click();
       const rollbackResponse = await rollbackResponsePromise;
       expect(rollbackResponse.status()).toBe(200);
 
       await expect(frame.getByRole("heading", { name: "Simple Choice" })).toBeVisible();
       await expect(timelinePanel).not.toContainText("T1");
-      await expect(traceDetails).toContainText("Current T0");
-      await expect(page.getByLabel("Editor status")).toContainText("Clean");
+      await expect(traceDetails).toContainText("Текущее T0");
+      await expect(page.getByLabel("Статус редактора")).toContainText("Без изменений");
 
       await frame.getByRole("button", { name: "Choose the option with the visible tradeoff." }).click();
       await expect(frame.getByRole("heading", { name: "Result" })).toBeVisible();
       await expect(timelinePanel.getByRole("button", { name: /T1.*choice.accept/ })).toHaveCount(1);
-      await expect(traceDetails).toContainText("Current T1");
+      await expect(traceDetails).toContainText("Текущее T1");
     } finally {
       await page.close().catch(() => undefined);
       if (editorSessionId !== undefined) {
@@ -321,7 +321,7 @@ test.describe("editor-web session preview", () => {
       );
 
       await page.goto(`${editorUrl}/?gameId=antarctica&file=game.authoring.json`);
-      await expect(page.getByLabel("Editor toolbar")).toContainText("Cubica Editor");
+      await expect(page.getByLabel("Панель инструментов редактора")).toContainText("Редактор Cubica");
 
       const sessionResponse = await sessionResponsePromise;
       expect(sessionResponse.status()).toBe(200);
@@ -348,7 +348,7 @@ test.describe("editor-web session preview", () => {
         "utf8"
       );
 
-      const previewButton = page.getByRole("button", { name: "Preview", exact: true });
+      const previewButton = page.getByRole("button", { name: "Предпросмотр", exact: true });
       await expect(previewButton).toBeEnabled();
       const previewResponsePromise = page.waitForResponse((response) =>
         response.url().endsWith("/api/editor/preview") && response.request().method() === "POST"

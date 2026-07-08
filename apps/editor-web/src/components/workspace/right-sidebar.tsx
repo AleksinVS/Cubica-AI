@@ -8,6 +8,7 @@
  */
 import Editor from "@monaco-editor/react";
 
+import { editorRu as t } from "@/lib/locale";
 import { PropertyPanel } from "./property-panel.tsx";
 import { configureMonacoJson } from "./workspace-helpers.ts";
 import type { MonacoApi, MonacoEditorInstance } from "./types.ts";
@@ -40,23 +41,23 @@ export function RightSidebar({ controller }: { controller: EditorWorkspaceContro
   return (
     <aside
       className={`right-sidebar-panel right-sidebar-panel-${rightSidebarPanel}`}
-      aria-label={rightSidebarPanel === "json" ? "Authoring JSON editor" : "Selected node properties"}
+      aria-label={rightSidebarPanel === "json" ? t.rightSidebar.jsonEditorAria : t.rightSidebar.propertiesAria}
     >
       <div
         className="sidebar-resize-handle sidebar-resize-handle-json"
         data-testid="json-sidebar-resize-handle"
         role="separator"
-        aria-label="Resize right sidebar"
+        aria-label={t.rightSidebar.resizeAria}
         aria-orientation="vertical"
         onPointerDown={(event) => handleSidebarResizeStart("json", event)}
       />
       {rightSidebarPanel === "json" ? (
         <>
           <div className="panel-heading">
-            <strong>Authoring JSON</strong>
-            <span>{hasBlockingDiagnostics ? `${viewModel.diagnostics.length} diagnostics` : "No blocking diagnostics"}</span>
+            <strong>{t.rightSidebar.authoringJson}</strong>
+            <span>{hasBlockingDiagnostics ? t.rightSidebar.diagnosticsCount(viewModel.diagnostics.length) : t.rightSidebar.noBlockingDiagnostics}</span>
             <button type="button" onClick={() => setJsonPanelOpen(false)}>
-              Collapse
+              {t.rightSidebar.collapse}
             </button>
           </div>
           <Editor

@@ -32,6 +32,8 @@
 import type { InterpretationLineReport, ReturnedIntentInput } from "@cubica/editor-engine";
 import React, { useState } from "react";
 
+import { editorRu as t } from "@/lib/locale";
+
 /**
  * The immutable context captured WHEN the text mode opens (design-spec §2.2,
  * "Захват контекста при открытии режима"): the projection text the author starts
@@ -131,7 +133,7 @@ export function EntitySourceTextMode({ capture, onRecapture, onApply, onExit }: 
 
       <textarea
         className="entity-source-textarea"
-        aria-label="Source projection text"
+        aria-label={t.sourceText.projectionAria}
         spellCheck={false}
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
@@ -161,7 +163,7 @@ export function EntitySourceTextMode({ capture, onRecapture, onApply, onExit }: 
       ) : null}
 
       {report !== null ? (
-        <div className="entity-source-report" aria-label="Interpretation report">
+        <div className="entity-source-report" aria-label={t.sourceText.reportAria}>
           <ReportBucket title={`${bucketLabel.applied} (${applied.length})`} bucket="applied" lines={applied} showPointer />
           <ReportBucket title={`${bucketLabel["recognized-no-change"]} (${noChange.length})`} bucket="recognized-no-change" lines={noChange} />
           <ReportBucket title={`${bucketLabel.unrecognized} (${unrecognized.length})`} bucket="unrecognized" lines={unrecognized} />

@@ -166,7 +166,7 @@ function setTextareaValue(textarea: HTMLTextAreaElement, value: string) {
 }
 
 function clickSourceIcon(container: HTMLElement) {
-  const icon = container.querySelector<HTMLButtonElement>('button[aria-label="Source text mode"]');
+  const icon = container.querySelector<HTMLButtonElement>('button[aria-label="Текстовый режим источника"]');
   icon?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }
 
@@ -249,7 +249,7 @@ describe("EntitySourceTextMode (via inspector «источник»)", () => {
     const harness = mountInspector({ onCaptureEntitySource: undefined, onApplyReturnedIntent: undefined });
     await act(async () => harness.mount());
 
-    const icon = harness.container.querySelector<HTMLButtonElement>('button[aria-label="Source text mode"]');
+    const icon = harness.container.querySelector<HTMLButtonElement>('button[aria-label="Текстовый режим источника"]');
     expect(icon?.disabled).toBe(true);
 
     await act(async () => harness.unmount());

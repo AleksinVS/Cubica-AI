@@ -12,6 +12,7 @@
  */
 import React from "react";
 
+import { editorRu as t } from "@/lib/locale";
 import type { StateFixtureSummary } from "@/components/workspace/types";
 import { formatPreviewBlockedMessage } from "@/components/workspace/workspace-helpers";
 
@@ -60,7 +61,7 @@ export function PreviewModeBanner({
   // drives the «устарела» badge next to the selector (design-spec §4).
   const selectedFixture = fixtures.find((fixture) => fixture.id === selectedFixtureId);
   return (
-    <div className="preview-modebar" aria-label="Preview mode banner">
+    <div className="preview-modebar" aria-label={t.previewBanner.bannerAria}>
       {editorMode === "design" ? (
         <span className="preview-mode-plate preview-mode-plate-design">
           Дизайн{stepLabel !== undefined ? ` · шаг ${stepLabel}` : ""}

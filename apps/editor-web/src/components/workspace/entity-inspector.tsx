@@ -36,6 +36,7 @@ import {
 } from "@cubica/editor-engine";
 import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
+import { editorRu as t } from "@/lib/locale";
 import {
   EntitySourceTextMode,
   type EntitySourceCapture,
@@ -258,12 +259,12 @@ export function EntityInspector({
 
   return (
     <div ref={layerRef} className="entity-inspector-layer">
-      <section className="entity-inspector" aria-label="Entity inspector" style={computePanelStyle(selectionBounds, containerSize)}>
+      <section className="entity-inspector" aria-label={t.inspector.inspectorAria} style={computePanelStyle(selectionBounds, containerSize)}>
         <header className="entity-inspector-head">
           {labelEditable ? (
             <input
               className="entity-inspector-title-input"
-              aria-label="Entity label"
+              aria-label={t.inspector.labelAria}
               defaultValue={entity.label}
               key={entity.entityId}
               onBlur={(event) => commitLabel(event.currentTarget.value)}
@@ -289,7 +290,7 @@ export function EntityInspector({
                 className="entity-inspector-refactor"
                 data-testid="entity-inspector-rename"
                 title="Переименовать id"
-                aria-label="Rename entity id"
+                aria-label={t.inspector.renameAria}
                 onClick={() => onRequestRename(entity)}
               >
                 Переименовать
@@ -301,7 +302,7 @@ export function EntityInspector({
                 className="entity-inspector-refactor entity-inspector-refactor-danger"
                 data-testid="entity-inspector-delete"
                 title="Удалить сущность"
-                aria-label="Delete entity"
+                aria-label={t.inspector.deleteAria}
                 onClick={() => onRequestDelete(entity)}
               >
                 Удалить
@@ -316,15 +317,15 @@ export function EntityInspector({
               disabled={!sourceModeAvailable}
               aria-pressed={sourceModeOpen}
               title={sourceModeAvailable ? "Текстовый режим «источник»" : "Текстовый режим «источник» — недоступен"}
-              aria-label="Source text mode"
+              aria-label={t.inspector.sourceModeAria}
               onClick={() => (sourceModeOpen ? setSourceCapture(null) : captureSource())}
             >
               ⌗
             </button>
-            <button type="button" disabled title="Закрепить в док — скоро" aria-label="Pin to dock (coming soon)">
+            <button type="button" disabled title="Закрепить в док — скоро" aria-label={t.inspector.pinAria}>
               📌
             </button>
-            <button type="button" className="entity-inspector-close" onClick={onClose} aria-label="Close entity inspector">
+            <button type="button" className="entity-inspector-close" onClick={onClose} aria-label={t.inspector.closeAria}>
               ✕
             </button>
           </span>
@@ -346,7 +347,7 @@ export function EntityInspector({
             <span className="entity-inspector-chip is-active">
               {bucketLabel.view} ·{" "}
               {viewChannels.length > 1 ? (
-                <select aria-label="View channel" value={effectiveChannel ?? ""} onChange={(event) => setDisplayChannel(event.target.value)}>
+                <select aria-label={t.inspector.viewChannelAria} value={effectiveChannel ?? ""} onChange={(event) => setDisplayChannel(event.target.value)}>
                   {viewChannels.map((channel) => (
                     <option key={channel} value={channel}>
                       {channel}
@@ -405,7 +406,7 @@ export function EntityInspector({
             intent is Phase 4, and there is no trivial focus-session-chat API, so the
             escalation button is inert with a "скоро" hint. */}
         <div className="entity-inspector-prompt">
-          <input aria-label="Element prompt" placeholder="✦ Промт для этого элемента…" />
+          <input aria-label={t.inspector.promptAria} placeholder="✦ Промт для этого элемента…" />
           <button type="button" disabled title="Эскалация в чат сессии — скоро">
             → В чат сессии
           </button>

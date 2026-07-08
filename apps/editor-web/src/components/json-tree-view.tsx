@@ -13,6 +13,8 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 import type { TreeViewModel, TreeViewNode } from "@cubica/editor-engine";
 
+import { editorRu as t } from "@/lib/locale";
+
 type ToggleMode = "toggle" | "collapse" | "expand";
 
 export interface JsonTreeViewProps {
@@ -133,20 +135,20 @@ export function JsonTreeView({
   }
 
   return (
-    <section className="tree-panel" aria-label="Authoring JSON tree">
+    <section className="tree-panel" aria-label={t.jsonTree.treeAria}>
       <div className="tree-heading">
-        <strong>Tree</strong>
+        <strong>{t.jsonTree.tree}</strong>
         <input
-          aria-label="Search tree"
-          placeholder="Search key/value/type/id/title"
+          aria-label={t.jsonTree.searchAria}
+          placeholder={t.jsonTree.searchPlaceholder}
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
         />
-        {searchQuery.trim() !== "" ? <span className="tree-match-count">{matchCount} matches</span> : null}
-        <span className="tree-meta">{tree.flatNodes.length} nodes</span>
+        {searchQuery.trim() !== "" ? <span className="tree-match-count">{t.common.matches(matchCount)}</span> : null}
+        <span className="tree-meta">{t.jsonTree.nodes(tree.flatNodes.length)}</span>
       </div>
 
-      <div className="tree-list" ref={listRef} role="tree" aria-label="JSON tree rows">
+      <div className="tree-list" ref={listRef} role="tree" aria-label={t.jsonTree.rowsAria}>
         {flattenedNodes.map(({ node, depth }) => {
           const isSelected = node.pointer === selectedPointer;
           const isExpandable = node.children.length > 0;
@@ -173,7 +175,7 @@ export function JsonTreeView({
                 {isExpandable ? (
                   <span
                     className="tree-toggle"
-                    aria-label={isCollapsed ? "Expand" : "Collapse"}
+                    aria-label={isCollapsed ? t.common.expand : t.common.collapse}
                     onClick={(event) => {
                       event.stopPropagation();
                       toggleCollapsed(node.pointer);

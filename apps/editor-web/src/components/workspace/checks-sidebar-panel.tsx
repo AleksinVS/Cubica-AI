@@ -15,6 +15,8 @@
  */
 import React from "react";
 
+import { editorRu as t } from "@/lib/locale";
+
 import { checkSeverityLabel, type WorkspaceCheckGroup, type WorkspaceCheckItem } from "./checks-helpers.ts";
 
 /** Leading glyph per severity, mirroring the status strip's diagnostic styling. */
@@ -43,8 +45,8 @@ export function ChecksSidebarPanel({
     <>
       <div className="panel-heading">
         <strong>Проверки</strong>
-        <button type="button" onClick={onCollapse} aria-label="Collapse checks panel">
-          Collapse
+        <button type="button" onClick={onCollapse} aria-label={t.checks.collapseAria}>
+          {t.common.collapse}
         </button>
       </div>
       <div className="checks-body" data-testid="checks-panel">

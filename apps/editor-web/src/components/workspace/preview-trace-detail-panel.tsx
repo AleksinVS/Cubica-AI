@@ -12,6 +12,8 @@ import type {
   PreviewPlaythroughSnapshot
 } from "@cubica/editor-engine";
 
+import { editorRu as t } from "@/lib/locale";
+
 /** Pretty-prints a trace event payload, truncating very large values. */
 function formatTraceJsonPreview(value: JsonValue): string {
   const formatted = JSON.stringify(value, null, 2);
@@ -45,38 +47,38 @@ export function PreviewTraceDetailPanel({
   const isRestoring = rollbackState === "restoring";
 
   return (
-    <aside className={`preview-trace-detail preview-trace-detail-${variant}`} aria-label="Preview trace details">
+    <aside className={`preview-trace-detail preview-trace-detail-${variant}`} aria-label={t.traceDetail.detailsAria}>
       <div className="preview-trace-detail-head">
-        <strong>Preview trace</strong>
-        <span>Current {currentSequence === undefined ? "none" : `T${currentSequence}`}</span>
+        <strong>{t.traceDetail.title}</strong>
+        <span>{t.traceDetail.current} {currentSequence === undefined ? t.common.none : `T${currentSequence}`}</span>
       </div>
       <dl>
         <div>
-          <dt>Selected</dt>
+          <dt>{t.traceDetail.selected}</dt>
           <dd>T{event.sequence}: {event.label}</dd>
         </div>
         <div>
-          <dt>Kind</dt>
+          <dt>{t.traceDetail.kind}</dt>
           <dd>{event.kind}</dd>
         </div>
         <div>
-          <dt>Snapshot</dt>
-          <dd>{hasSnapshot ? "available" : "missing"}</dd>
+          <dt>{t.traceDetail.snapshot}</dt>
+          <dd>{hasSnapshot ? t.traceDetail.available : t.traceDetail.missing}</dd>
         </div>
       </dl>
       <div className="preview-trace-actions">
         <button type="button" disabled={!hasSnapshot || isRestoring} onClick={onRestore}>
-          Restore selected
+          {t.traceDetail.restoreSelected}
         </button>
         <button type="button" disabled={currentSequence === undefined || isRestoring} onClick={onReset}>
-          Reset to start
+          {t.traceDetail.resetToStart}
         </button>
         <button type="button" disabled={currentSequence === undefined || isRestoring} onClick={onReplayCurrent}>
-          Replay current
+          {t.traceDetail.replayCurrent}
         </button>
       </div>
       {event.payload !== undefined ? (
-        <pre aria-label="Selected trace event payload">{formatTraceJsonPreview(event.payload)}</pre>
+        <pre aria-label={t.traceDetail.payloadAria}>{formatTraceJsonPreview(event.payload)}</pre>
       ) : null}
     </aside>
   );

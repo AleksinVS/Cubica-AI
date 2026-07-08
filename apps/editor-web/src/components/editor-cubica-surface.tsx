@@ -16,6 +16,8 @@ import {
 } from "@cubica/contracts-ai";
 import React from "react";
 
+import { editorRu as t } from "@/lib/locale";
+
 export interface EditorCubicaSurfaceRendererProps {
   readonly surface: CubicaSurface;
   readonly onAction: (action: CubicaSurfaceAction) => void;
@@ -62,7 +64,7 @@ function renderComponent(component: CubicaSurfaceComponent, onAction: (action: C
     case "cubica.diagnosticList":
       return (
         <section className="editor-surface-block editor-surface-block-warning" key={component.id}>
-          <strong>{stringProp(component.props, "title") ?? "Diagnostics"}</strong>
+          <strong>{stringProp(component.props, "title") ?? t.agentSurface.diagnostics}</strong>
           <ul>
             {stringListProp(component.props, "items").map((item, index) => (
               <li key={`${component.id}-diagnostic-${index}`}>{item}</li>
@@ -74,7 +76,7 @@ function renderComponent(component: CubicaSurfaceComponent, onAction: (action: C
     case "cubica.diffSummary":
       return (
         <section className="editor-surface-block" key={component.id}>
-          <strong>{stringProp(component.props, "title") ?? "Diff summary"}</strong>
+          <strong>{stringProp(component.props, "title") ?? t.agentSurface.diffSummary}</strong>
           <ul>
             {stringListProp(component.props, "entries").map((entry, index) => (
               <li key={`${component.id}-diff-${index}`}>{entry}</li>
@@ -86,7 +88,7 @@ function renderComponent(component: CubicaSurfaceComponent, onAction: (action: C
     case "cubica.approvalCard":
       return (
         <section className="editor-surface-approval" key={component.id}>
-          <strong>{stringProp(component.props, "title") ?? "Approval"}</strong>
+          <strong>{stringProp(component.props, "title") ?? t.agentSurface.approval}</strong>
           <p>{stringProp(component.props, "summary")}</p>
           {children}
           {renderActions(component, onAction)}
@@ -95,7 +97,7 @@ function renderComponent(component: CubicaSurfaceComponent, onAction: (action: C
     default:
       return (
         <section className="editor-surface-block editor-surface-block-warning" key={component.id}>
-          <strong>Unsupported Surface component</strong>
+          <strong>{t.agentSurface.unsupported}</strong>
           <p>{component.kind}</p>
         </section>
       );

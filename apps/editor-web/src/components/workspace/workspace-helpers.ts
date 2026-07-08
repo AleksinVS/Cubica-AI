@@ -23,6 +23,7 @@ import {
   type TextRange
 } from "@cubica/editor-engine";
 
+import { editorRu as t } from "@/lib/locale";
 import { localAuthoringSchemas } from "@/lib/editor-json-schema";
 import type { EditorViewNode, RoutedEditorDiagnostic } from "@/lib/editor-web-adapter";
 import type { PlayerPreviewSessionSnapshotMessage } from "@/lib/preview-message-adapter";
@@ -758,36 +759,36 @@ export function getSyncLabel(input: {
   readonly statusMessage: string;
 }): string {
   if (input.loadState === "loading") {
-    return "Loading";
+    return t.sync.loading;
   }
 
   if (input.loadState === "fallback") {
-    return "Sample fallback";
+    return t.sync.fallback;
   }
 
   if (input.saveState === "saving") {
-    return "Saving";
+    return t.sync.saving;
   }
 
   if (input.saveState === "conflict") {
-    return "Conflict";
+    return t.sync.conflict;
   }
 
   if (input.saveState === "error" || input.loadState === "error") {
-    return "Error";
+    return t.sync.error;
   }
 
   if (input.hasBlockingDiagnostics) {
-    return "Blocked";
+    return t.sync.blocked;
   }
 
   if (input.isDirty) {
-    return "Dirty";
+    return t.sync.dirty;
   }
 
   if (input.saveState === "saved") {
-    return "Saved";
+    return t.sync.saved;
   }
 
-  return input.currentDocument.source === "repository" ? "Clean" : input.statusMessage;
+  return input.currentDocument.source === "repository" ? t.sync.clean : input.statusMessage;
 }

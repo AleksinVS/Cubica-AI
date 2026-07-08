@@ -157,7 +157,7 @@ describe("EntityTree", () => {
 
     expect(harness.container.textContent).toContain("Screen B");
 
-    const searchInput = harness.container.querySelector<HTMLInputElement>('input[aria-label="Search entities"]');
+    const searchInput = harness.container.querySelector<HTMLInputElement>('input[aria-label="Поиск сущностей"]');
     expect(searchInput).not.toBeNull();
 
     await act(async () => {
@@ -174,7 +174,7 @@ describe("EntityTree", () => {
     expect(harness.container.textContent).toContain("Shared Button");
     expect(harness.container.textContent).not.toContain("Screen B");
     expect(harness.container.textContent).not.toContain("Card B");
-    expect(harness.container.querySelector(".tree-match-count")?.textContent).toContain("2 matches");
+    expect(harness.container.querySelector(".tree-match-count")?.textContent).toContain("совпадений: 2");
 
     await act(async () => harness.unmount());
   });

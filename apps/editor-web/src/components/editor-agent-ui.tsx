@@ -20,6 +20,7 @@ import { CopilotChat, CopilotKit, useAgentContext, useFrontendTool, useHumanInTh
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 
+import { editorRu as t } from "@/lib/locale";
 import { EditorCubicaSurfaceRenderer } from "@/components/editor-cubica-surface";
 import { EDITOR_AUTHORING_ASSISTANT_ID } from "@/lib/agent-assistant-registry";
 import type { EditorAgentContextProjection } from "@/lib/agent-context-projection";
@@ -79,7 +80,7 @@ const disabledConnectionState: EditorAgentConnectionState = {
   agUiBackendConfigured: false,
   copilotReady: false,
   status: "disabled",
-  message: "Agent UI is disabled."
+  message: t.agentChat.msgDisabled
 };
 
 const checkingConnectionState: EditorAgentConnectionState = {
@@ -88,7 +89,7 @@ const checkingConnectionState: EditorAgentConnectionState = {
   agUiBackendConfigured: false,
   copilotReady: false,
   status: "checking",
-  message: "Checking agent runtime."
+  message: t.agentChat.msgChecking
 };
 
 const EditorAgentConnectionContext = createContext<EditorAgentConnectionState>(disabledConnectionState);
@@ -131,7 +132,7 @@ function EditorAgentEnabledProvider({ children }: { readonly children: ReactNode
             agUiBackendConfigured: false,
             copilotReady: false,
             status: "runtime-disabled",
-            message: `Agent runtime returned HTTP ${response.status}.`
+            message: t.agentChat.msgHttp(response.status)
           });
           return;
         }
@@ -150,9 +151,9 @@ function EditorAgentEnabledProvider({ children }: { readonly children: ReactNode
           status: runtimeEnabled ? (agUiBackendConfigured ? "ready" : "backend-missing") : "runtime-disabled",
           message: runtimeEnabled
             ? agUiBackendConfigured
-              ? "Agent runtime is ready."
-              : "AG-UI backend is not configured."
-            : "Agent runtime is disabled."
+              ? t.agentChat.msgReady
+              : t.agentChat.msgBackendMissing
+            : t.agentChat.msgRuntimeDisabled
         });
       } catch (error) {
         if (controller.signal.aborted) {
@@ -164,7 +165,7 @@ function EditorAgentEnabledProvider({ children }: { readonly children: ReactNode
           agUiBackendConfigured: false,
           copilotReady: false,
           status: "error",
-          message: error instanceof Error ? error.message : "Agent runtime status check failed."
+          message: error instanceof Error ? error.message : t.agentChat.msgStatusFailed
         });
       }
     }
@@ -245,9 +246,9 @@ export function EditorCopilotChatPanel({
   return (
     <>
       <div className="panel-heading">
-        <strong>AI Chat</strong>
+        <strong>{t.agentChat.title}</strong>
         <button type="button" onClick={onCollapse}>
-          Collapse
+          {t.common.collapse}
         </button>
       </div>
       <div className="agent-copilot-panel">
@@ -257,9 +258,9 @@ export function EditorCopilotChatPanel({
         <CopilotChat
           agentId={EDITOR_AUTHORING_ASSISTANT_ID}
           labels={{
-            modalHeaderTitle: "Editor assistant",
-            welcomeMessageText: "Ask for a bounded authoring change. I will plan an EditorChangeSet and Cubica will validate it before apply.",
-            chatInputPlaceholder: "Describe a change for the selected object"
+            modalHeaderTitle: t.agentChat.modalHeaderTitle,
+            welcomeMessageText: t.agentChat.welcome,
+            chatInputPlaceholder: t.agentChat.inputPlaceholder
           }}
           throttleMs={150}
         />
@@ -278,18 +279,18 @@ function EditorAgentUnavailablePanel({
   return (
     <>
       <div className="panel-heading">
-        <strong>AI Chat</strong>
+        <strong>{t.agentChat.title}</strong>
         <button type="button" onClick={onCollapse}>
-          Collapse
+          {t.common.collapse}
         </button>
       </div>
       <div className="agent-copilot-panel agent-copilot-panel-unavailable">
         <section>
-          <span>Agent connection</span>
+          <span>{t.agentChat.connection}</span>
           <strong>{connectionStatusLabel(connection.status)}</strong>
           <p>{connection.message}</p>
           {connection.status === "backend-missing" ? (
-            <p>Set CUBICA_EDITOR_AGENT_AG_UI_URL and restart editor-web to attach the AG-UI backend.</p>
+            <p>{t.agentChat.backendHint}</p>
           ) : null}
         </section>
       </div>
@@ -300,17 +301,17 @@ function EditorAgentUnavailablePanel({
 function connectionStatusLabel(status: EditorAgentConnectionStatus): string {
   switch (status) {
     case "checking":
-      return "Checking";
+      return t.agentChat.statusChecking;
     case "ready":
-      return "Ready";
+      return t.agentChat.statusReady;
     case "runtime-disabled":
-      return "Runtime disabled";
+      return t.agentChat.statusRuntimeDisabled;
     case "backend-missing":
-      return "Backend missing";
+      return t.agentChat.statusBackendMissing;
     case "error":
-      return "Error";
+      return t.agentChat.statusError;
     case "disabled":
-      return "Disabled";
+      return t.agentChat.statusDisabled;
   }
 }
 
@@ -526,21 +527,21 @@ function EditorAgentRuntimeHooksInner({
             ok: false,
             toolName: args.toolName,
             scopeHash: args.scopeHash,
-            reason: "Rejected by editor user."
+            reason: t.agentChat.rejectedReason
           });
         };
 
         return (
           <section className="editor-surface-approval">
-            <span>Approval required</span>
+            <span>{t.agentChat.approvalRequired}</span>
             <strong>{args.toolName}</strong>
             <p>{summary}</p>
             <div className="editor-surface-actions">
               <button type="button" onClick={() => void approve()}>
-                Approve
+                {t.agentChat.approve}
               </button>
               <button type="button" onClick={() => void reject()}>
-                Reject
+                {t.agentChat.reject}
               </button>
             </div>
           </section>

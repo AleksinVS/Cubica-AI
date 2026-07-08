@@ -17,6 +17,8 @@
  */
 import { useMemo, useRef, useState } from "react";
 
+import { editorRu as t } from "@/lib/locale";
+
 import type { GameAssetSummary, GameAssetType } from "./types.ts";
 
 /** Type filter chips: «Все» plus one per coarse kind. */
@@ -107,8 +109,8 @@ export function AssetLibraryPanel({
     >
       <div className="panel-heading">
         <strong>Ассеты</strong>
-        <button type="button" onClick={onCollapse} aria-label="Collapse assets panel">
-          Collapse
+        <button type="button" onClick={onCollapse} aria-label={t.assets.collapseAria}>
+          {t.common.collapse}
         </button>
       </div>
 

@@ -7,6 +7,8 @@
  */
 import React from "react";
 
+import { editorRu as t } from "@/lib/locale";
+
 export type PrototypeAuditNoticeKind = "missing" | "stale" | "failed" | "partial" | "outdated-report";
 
 export interface PrototypeAuditNoticeRecord {
@@ -43,20 +45,20 @@ export function PrototypeAuditNotice({
         <p>{notice.message}</p>
         <dl>
           <div>
-            <dt>Last completed</dt>
-            <dd>{notice.lastCompletedAt ?? "unknown"}</dd>
+            <dt>{t.prototypeAudit.lastCompleted}</dt>
+            <dd>{notice.lastCompletedAt ?? t.common.unknown}</dd>
           </div>
           <div>
-            <dt>LLM status</dt>
-            <dd>{notice.llmStatus ?? "unknown"}</dd>
+            <dt>{t.prototypeAudit.llmStatus}</dt>
+            <dd>{notice.llmStatus ?? t.common.unknown}</dd>
           </div>
           <div>
-            <dt>Candidates</dt>
+            <dt>{t.prototypeAudit.candidates}</dt>
             <dd>{formatCandidateSummary(notice)}</dd>
           </div>
           {notice.reportUrl === undefined && notice.reportPath !== undefined ? (
             <div>
-              <dt>Report</dt>
+              <dt>{t.prototypeAudit.report}</dt>
               <dd>{notice.reportPath}</dd>
             </div>
           ) : null}
@@ -64,11 +66,11 @@ export function PrototypeAuditNotice({
         <div className="prototype-audit-notice-actions">
           {actionUrl !== undefined ? (
             <a href={actionUrl} target="_blank" rel="noreferrer">
-              Open audit workflow
+              {t.prototypeAudit.openWorkflow}
             </a>
           ) : null}
           <button type="button" onClick={onSnooze}>
-            Snooze for session
+            {t.prototypeAudit.snooze}
           </button>
         </div>
       </div>
@@ -78,24 +80,28 @@ export function PrototypeAuditNotice({
 
 function summaryForNotice(notice: PrototypeAuditNoticeRecord): string {
   if (notice.notification === "missing") {
-    return "Prototype audit: missing";
+    return t.prototypeAudit.summaryMissing;
   }
   if (notice.notification === "stale") {
-    return "Prototype audit: stale";
+    return t.prototypeAudit.summaryStale;
   }
   if (notice.notification === "failed") {
-    return "Prototype audit: failed";
+    return t.prototypeAudit.summaryFailed;
   }
   if (notice.notification === "partial") {
-    return "Prototype audit: partial";
+    return t.prototypeAudit.summaryPartial;
   }
-  return "Prototype audit: outdated";
+  return t.prototypeAudit.summaryOutdated;
 }
 
 function formatCandidateSummary(notice: PrototypeAuditNoticeRecord): string {
   const summary = notice.summary;
   if (summary === undefined) {
-    return "unknown";
+    return t.common.unknown;
   }
-  return `${summary.deterministicCandidates ?? 0} deterministic, ${summary.semanticCandidates ?? 0} semantic, ${summary.promotionCandidates ?? 0} promotion`;
+  return t.prototypeAudit.candidateSummary(
+    summary.deterministicCandidates ?? 0,
+    summary.semanticCandidates ?? 0,
+    summary.promotionCandidates ?? 0
+  );
 }

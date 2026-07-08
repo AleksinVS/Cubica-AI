@@ -35,9 +35,9 @@ describe("PrototypeAuditNotice", () => {
       );
     });
 
-    expect(container.querySelector("summary")?.textContent).toBe("Prototype audit: partial");
+    expect(container.querySelector("summary")?.textContent).toBe("Аудит прототипов: частичный");
     expect(container.textContent).toContain("Weekly prototype audit was partial");
-    expect(container.textContent).toContain("12 deterministic, 0 semantic, 2 promotion");
+    expect(container.textContent).toContain("12 детерминированных, 0 смысловых, 2 к продвижению");
     expect(container.textContent).toContain(".tmp/prototype-audit/weekly-report.md");
     expect(container.querySelector<HTMLAnchorElement>("a")?.href).toBe("https://example.test/audit");
 

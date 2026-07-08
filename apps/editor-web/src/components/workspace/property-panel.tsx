@@ -11,6 +11,7 @@
 import { isPlainJsonObject, type JsonValue } from "@cubica/editor-engine";
 import { useEffect, useState } from "react";
 
+import { editorRu as t } from "@/lib/locale";
 import {
   formatPropertyJson,
   isLocalReferenceValue,
@@ -65,10 +66,10 @@ export function PropertyPanel({
     }
 
     return (
-      <aside className="property-rail" aria-label="Selected node properties">
+      <aside className="property-rail" aria-label={t.propertyPanel.propertiesAria}>
         <button type="button" onClick={onOpen}>
-          <strong>Properties</strong>
-          <span>{node?.semanticTitle ?? "No selection"}</span>
+          <strong>{t.propertyPanel.properties}</strong>
+          <span>{node?.semanticTitle ?? t.propertyPanel.noSelection}</span>
         </button>
       </aside>
     );
@@ -77,10 +78,10 @@ export function PropertyPanel({
   return (
     <div className={`property-panel ${variant === "sidebar" ? "property-panel-sidebar" : ""}`}>
       <div className="panel-heading">
-        <strong>Properties</strong>
-        <span>{node?.semanticRole ?? "No selection"}</span>
+        <strong>{t.propertyPanel.properties}</strong>
+        <span>{node?.semanticRole ?? t.propertyPanel.noSelection}</span>
         <button type="button" onClick={onCollapse}>
-          Collapse
+          {t.common.collapse}
         </button>
       </div>
       {node ? (
@@ -92,7 +93,7 @@ export function PropertyPanel({
       ) : null}
       <div className="property-list">
         {properties.length === 0 ? (
-          <p className="empty-state">Select a JSON node with editable fields.</p>
+          <p className="empty-state">{t.propertyPanel.selectNode}</p>
         ) : (
           properties.map((property) => {
             const propertyDiagnostics = diagnostics.filter((diagnostic) => diagnostic.pointer === property.pointer);
@@ -184,7 +185,7 @@ export function PropertyField({
             onChange={(event) => setDraftJson(event.target.value)}
           />
           <button type="button" disabled={!property.editable} onClick={() => onJsonChange(property, draftJson)}>
-            Apply JSON
+            {t.propertyPanel.applyJson}
           </button>
         </div>
       ) : (
@@ -195,7 +196,7 @@ export function PropertyField({
         />
       )}
       <button className="open-json-button" type="button" onClick={() => onReveal(property.pointer)}>
-        Open in JSON
+        {t.propertyPanel.openInJson}
       </button>
       {diagnostics.map((diagnostic) => (
         <small className={`property-diagnostic property-diagnostic-${diagnostic.severity}`} key={diagnostic.message}>
@@ -238,19 +239,19 @@ export function GraphOperations({
   }, [targetNodes]);
 
   return (
-    <section className="graph-operations" aria-label="Graph operations">
+    <section className="graph-operations" aria-label={t.propertyPanel.graphAria}>
       <div className="panel-heading">
-        <strong>Graph</strong>
+        <strong>{t.propertyPanel.graph}</strong>
         <button type="button" onClick={() => onReveal(node.pointer)}>
-          Open in JSON
+          {t.propertyPanel.openInJson}
         </button>
       </div>
 
       {isCollection ? (
         <div className="graph-operation-block">
-          <span>Add collection item</span>
+          <span>{t.propertyPanel.addCollectionItem}</span>
           {isPlainJsonObject(selectedValue) ? (
-            <input value={itemKey} placeholder="item key" onChange={(event) => setItemKey(event.target.value)} />
+            <input value={itemKey} placeholder={t.propertyPanel.itemKeyPlaceholder} onChange={(event) => setItemKey(event.target.value)} />
           ) : null}
           <textarea rows={4} value={itemJson} onChange={(event) => setItemJson(event.target.value)} />
           <button
@@ -264,7 +265,7 @@ export function GraphOperations({
               })
             }
           >
-            Add
+            {t.propertyPanel.add}
           </button>
         </div>
       ) : null}
@@ -275,13 +276,13 @@ export function GraphOperations({
           type="button"
           onClick={() => onGraphOperation({ type: "removeCollectionItem", itemPointer: node.pointer })}
         >
-          Remove selected
+          {t.propertyPanel.removeSelected}
         </button>
       ) : null}
 
       {isReferenceField ? (
         <div className="graph-operation-block">
-          <span>Reference</span>
+          <span>{t.propertyPanel.reference}</span>
           <select value={targetPointer} onChange={(event) => setTargetPointer(event.target.value)}>
             {targetNodes.map((target) => (
               <option value={target.pointer} key={target.id}>
@@ -300,7 +301,7 @@ export function GraphOperations({
               })
             }
           >
-            Connect
+            {t.propertyPanel.connect}
           </button>
           {typeof selectedValue === "string" && isLocalReferenceValue(selectedValue) ? (
             <button
@@ -312,7 +313,7 @@ export function GraphOperations({
                 })
               }
             >
-              Disconnect
+              {t.propertyPanel.disconnect}
             </button>
           ) : null}
         </div>

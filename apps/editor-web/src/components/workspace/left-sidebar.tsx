@@ -9,6 +9,7 @@
  */
 import { Background, BackgroundVariant, Controls, MiniMap, ReactFlow } from "@xyflow/react";
 
+import { editorRu as t } from "@/lib/locale";
 import { JsonTreeView } from "@/components/json-tree-view";
 import { EditorCopilotChatPanel } from "@/components/editor-agent-ui";
 
@@ -86,21 +87,21 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
       className="left-sidebar-panel"
       aria-label={
         leftSidebarPanel === "timeline"
-          ? "Timeline"
+          ? t.activityBar.timeline
           : leftSidebarPanel === "chat"
-            ? "AI chat"
+            ? t.activityBar.aiChat
             : leftSidebarPanel === "checks"
-              ? "Проверки"
+              ? t.activityBar.checks
               : leftSidebarPanel === "assets"
-                ? "Ассеты"
-                : "Manifest navigation"
+                ? t.activityBar.assets
+                : t.leftSidebar.manifestNavAria
       }
     >
       {leftSidebarPanel === "tree" ? (
         <>
           <div className="panel-heading manifest-heading">
-            <strong>Manifest</strong>
-            <div className="surface-tabs" role="tablist" aria-label="Manifest views">
+            <strong>{t.leftSidebar.manifest}</strong>
+            <div className="surface-tabs" role="tablist" aria-label={t.leftSidebar.viewsAria}>
               <button
                 type="button"
                 className={surfaceMode === "tree" ? "is-active" : ""}
@@ -108,7 +109,7 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
                 aria-selected={surfaceMode === "tree"}
                 onClick={() => setSurfaceMode("tree")}
               >
-                Tree
+                {t.leftSidebar.surfaceTree}
               </button>
               <button
                 type="button"
@@ -117,7 +118,7 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
                 aria-selected={surfaceMode === "graph"}
                 onClick={() => setSurfaceMode("graph")}
               >
-                Graph
+                {t.leftSidebar.surfaceGraph}
               </button>
               <button
                 type="button"
@@ -126,11 +127,11 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
                 aria-selected={surfaceMode === "entities"}
                 onClick={() => setSurfaceMode("entities")}
               >
-                Entities
+                {t.leftSidebar.surfaceEntities}
               </button>
             </div>
-            <button type="button" onClick={() => setLeftSidebarPanel(undefined)} aria-label="Collapse manifest panel">
-              Collapse
+            <button type="button" onClick={() => setLeftSidebarPanel(undefined)} aria-label={t.leftSidebar.collapseManifestAria}>
+              {t.common.collapse}
             </button>
           </div>
           <div className="flow-surface">
@@ -259,7 +260,7 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
         className="sidebar-resize-handle sidebar-resize-handle-left"
         data-testid="left-sidebar-resize-handle"
         role="separator"
-        aria-label="Resize left sidebar"
+        aria-label={t.leftSidebar.resizeAria}
         aria-orientation="vertical"
         onPointerDown={(event) => handleSidebarResizeStart("left", event)}
       />

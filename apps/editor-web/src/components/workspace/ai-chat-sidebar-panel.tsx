@@ -8,6 +8,7 @@
  */
 import type { EditorDiffSummaryItem } from "@cubica/editor-engine";
 
+import { editorRu as t } from "@/lib/locale";
 import type { PreviewAiIntent } from "@/components/preview-selection-overlay";
 
 import { prototypeProposalGatesPassed } from "./agent-surface.ts";
@@ -35,29 +36,29 @@ export function AiChatSidebarPanel({
   return (
     <>
       <div className="panel-heading">
-        <strong>AI Chat</strong>
+        <strong>{t.aiChat.title}</strong>
         <button type="button" onClick={onCollapse}>
-          Collapse
+          {t.common.collapse}
         </button>
       </div>
       <div className="ai-sidebar-body">
         <section>
-          <span>State</span>
-          <strong>{aiApplyState}</strong>
+          <span>{t.aiChat.state}</span>
+          <strong>{t.statusBar.aiStateLabel[aiApplyState] ?? aiApplyState}</strong>
         </section>
         <section>
-          <span>Selection</span>
-          <strong>{selectedNodeTitle ?? "none"}</strong>
+          <span>{t.aiChat.selection}</span>
+          <strong>{selectedNodeTitle ?? t.common.none}</strong>
         </section>
         {proposedIntent !== null ? (
           <section>
-            <span>Last prompt</span>
+            <span>{t.aiChat.lastPrompt}</span>
             <p>{proposedIntent.prompt}</p>
           </section>
         ) : null}
         {aiDiffSummary.length > 0 ? (
           <section>
-            <span>Last diff</span>
+            <span>{t.aiChat.lastDiff}</span>
             {aiDiffSummary.slice(0, 5).map((item, index) => (
               <p key={`${item.description}-${index}`}>{item.description}</p>
             ))}
@@ -65,11 +66,11 @@ export function AiChatSidebarPanel({
         ) : null}
         {prototypeExtractionProposal !== null ? (
           <section>
-            <span>Prototype proposal</span>
+            <span>{t.aiChat.prototypeProposal}</span>
             <strong>{prototypeExtractionProposal.proposal.definitionType}</strong>
             <p>{prototypeExtractionProposal.proposal.definitionPointer}</p>
             {prototypeExtractionProposal.gates.slice(0, 6).map((gate) => (
-              <p key={gate.id}>{gate.label}: {gate.ok ? "OK" : "blocked"}</p>
+              <p key={gate.id}>{gate.label}: {gate.ok ? t.aiChat.ok : t.aiChat.blocked}</p>
             ))}
             <div className="ai-sidebar-actions">
               <button
@@ -77,7 +78,7 @@ export function AiChatSidebarPanel({
                 disabled={!prototypeProposalReady || aiApplyState === "planning" || aiApplyState === "applying"}
                 onClick={onUsePrototypeProposal}
               >
-                Use as planned ChangeSet
+                {t.aiChat.useAsPlanned}
               </button>
             </div>
           </section>

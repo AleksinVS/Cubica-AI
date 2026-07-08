@@ -16,6 +16,8 @@ import type {
   PreviewPlaythroughSnapshot
 } from "@cubica/editor-engine";
 
+import { editorRu as t } from "@/lib/locale";
+
 import { PreviewTraceDetailPanel } from "./preview-trace-detail-panel.tsx";
 
 export function TimelineSidebarPanel({
@@ -64,9 +66,9 @@ export function TimelineSidebarPanel({
   return (
     <>
       <div className="panel-heading">
-        <strong>Timeline</strong>
+        <strong>{t.timeline.title}</strong>
         <button type="button" onClick={onCollapse}>
-          Collapse
+          {t.common.collapse}
         </button>
       </div>
       <section className="timeline-pin-fixture" aria-label="Закрепить как фикстуру">
@@ -109,13 +111,13 @@ export function TimelineSidebarPanel({
         )}
       </section>
       <div className="timeline-sidebar-body">
-        <section className="timeline-sidebar-section" aria-label="Runtime trace">
+        <section className="timeline-sidebar-section" aria-label={t.timeline.runtimeTraceAria}>
           <div className="timeline-sidebar-section-heading">
-            <strong>Runtime</strong>
+            <strong>{t.timeline.runtime}</strong>
             <span>{traceEntries.length}</span>
           </div>
           {traceEntries.length === 0 ? (
-            <p className="empty-state">No runtime events</p>
+            <p className="empty-state">{t.timeline.noRuntimeEvents}</p>
           ) : (
             traceEntries.map((event) => (
               <button
@@ -128,12 +130,12 @@ export function TimelineSidebarPanel({
                   selectedTraceSequence === event.sequence ? "is-selected" : ""
                 ].filter(Boolean).join(" ")}
                 disabled={rollbackState === "restoring"}
-                title={`Inspect runtime preview event ${event.sequence}`}
+                title={t.timeline.inspectEvent(event.sequence)}
                 onClick={() => onSelectTraceSequence(event.sequence)}
               >
                 <span>T{event.sequence}</span>
                 <strong>{event.label}</strong>
-                {currentTraceSequence === event.sequence ? <b>Current</b> : null}
+                {currentTraceSequence === event.sequence ? <b>{t.timeline.current}</b> : null}
               </button>
             ))
           )}

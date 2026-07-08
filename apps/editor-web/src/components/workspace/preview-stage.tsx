@@ -8,6 +8,7 @@
  */
 import { useMemo } from "react";
 
+import { editorRu as t } from "@/lib/locale";
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
 import { EntityInspector } from "@/components/workspace/entity-inspector";
 import { DeleteEntityDialog, RenameEntityIdDialog } from "@/components/workspace/entity-refactor-dialog";
@@ -93,7 +94,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
   );
 
   return (
-    <section className="preview-stage" aria-label="Game preview">
+    <section className="preview-stage" aria-label={t.previewStage.stageAria}>
       <div className={`preview-frame-shell preview-viewport-${previewViewportMode}`}>
         {previewUrl !== null ? (
           <div className="preview-viewport-canvas">
@@ -118,7 +119,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
                   : undefined
               }
             />
-            <iframe ref={previewIframeRef} title="Game preview" src={previewUrl} allow="fullscreen" />
+            <iframe ref={previewIframeRef} title={t.previewStage.iframeTitle} src={previewUrl} allow="fullscreen" />
             <PreviewSelectionOverlay
               disabled={!effectivePreviewInspectMode}
               entities={previewEntities}
@@ -159,7 +160,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
           </div>
         ) : (
           <div className="preview-empty-state">
-            <strong>{selectedNode?.semanticTitle ?? "No selection"}</strong>
+            <strong>{selectedNode?.semanticTitle ?? t.previewStage.noSelection}</strong>
             <span>{selectedNode?.pointer ?? "/"}</span>
             <button
               type="button"
@@ -172,7 +173,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
                 workflowState === "previewing"
               }
             >
-              Prepare preview
+              {t.previewStage.preparePreview}
             </button>
           </div>
         )}
