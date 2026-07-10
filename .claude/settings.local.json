@@ -23,7 +23,10 @@
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
       "mcp__claude_ai_Context7__resolve-library-id",
-      "mcp__claude_ai_Context7__query-docs"
+      "mcp__claude_ai_Context7__query-docs",
+      "Bash(node scripts/dev/generate-structure.js)",
+      "WebFetch(domain:ru.wikipedia.org)",
+      "PowerShell(node scripts/dev/generate-structure.js)"
     ]
   }
 }
