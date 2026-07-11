@@ -6,6 +6,7 @@
 - [Required Checks](#required-checks)
 - [Triggers](#triggers)
 - [Repository Setting](#repository-setting)
+- [Temporary Legacy Exception](#temporary-legacy-exception)
 
 ## Purpose
 
@@ -30,3 +31,11 @@ The workflow in `.github/workflows/ci.yml` runs on:
 ## Repository Setting
 
 Branch protection or a repository ruleset must require `legacy/stub gate` and `manifest authoring gate` before merge. The other checks should also remain required for `main` while their corresponding code paths are active.
+
+## Temporary Legacy Exception
+
+С 2026-07-11 защита `main` временно отключена по прямому решению PM для
+объединения ветки `draft-trains`. Отклонение зарегистрировано как
+`LEGACY-0043`. Все пять CI-проверок продолжают запускаться, но до восстановления
+защиты не блокируют прямой push или merge технически. После завершения
+временного периода защита должна быть восстановлена, а запись легаси закрыта.
