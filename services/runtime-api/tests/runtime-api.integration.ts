@@ -3205,6 +3205,18 @@ test("POST /actions rejects opening.card.3 before intro reaches step 9 with HTTP
   assert.match(errorBody.error, /public\.timeline\.stepIndex expected 9/);
 });
 
+test("POST /actions rejects the UI-only showHint command with HTTP 400", async () => {
+  const created = await createSession({ playerId: "ui-only-action" });
+  const { response, body } = await dispatchAction(created.sessionId, "ui-only-action", "showHint");
+
+  assert.equal(response.status, 400);
+  const errorBody = body as { error: string };
+  // The exact wording is deliberately not part of the API contract. The stable
+  // requirement is that a presentation-only command cannot mutate game state.
+  assert.equal(typeof errorBody.error, "string");
+  assert.ok(errorBody.error.length > 0);
+});
+
 test("POST /actions rejects invalid request bodies", async () => {
   const created = await createSession({ playerId: "validator" });
   const { response, body } = await requestJson<{ error: string }>("/actions", {
@@ -3882,18 +3894,18 @@ test("GET /games/antarctica/player-content preserves asset references in antarct
   );
 });
 
-test("GET /games/:gameId/player-content does not return antarcticaUi for non-antarctica games", async () => {
-  // This test verifies the additive nature of antarcticaUi:
-  // when ui.manifest.json is absent or the game is not Antarctica, antarcticaUi is undefined.
-  // We cannot test with a real non-antarctica game here since only antarctica exists in the test fixture.
-  // The contract is that antarcticaUi is optional, so absence is the expected behavior.
-  const { response, body } = await requestJson<Record<string, unknown>>("/games/antarctica/player-content");
+test("GET /games/:gameId/player-content keeps non-Antarctica games on the generic UI contract", async () => {
+  const { response, body } = await requestJson<
+    PlayerFacingContent & { antarcticaUi?: unknown }
+  >("/games/simple-choice/player-content");
 
   assert.equal(response.status, 200);
-  assert.equal(body.gameId, "antarctica");
-  // content.data (gameplay content) must be present; ui is optional but must be present for antarctica
-  assert.ok((body.content as Record<string, unknown>)?.data, "data gameplay content must be present");
-  assert.ok(body.ui, "ui S1 UI data must be present for antarctica");
+  assert.equal(body.gameId, "simple-choice");
+  // Every game exposes presentation through the same `ui` field; a legacy
+  // game-named field would leak Antarctica-specific knowledge into the platform DTO.
+  assert.equal(body.ui?.entryPoint, "intro");
+  assert.ok(body.ui?.screens.intro, "simple-choice intro screen must be present in generic UI data");
+  assert.equal(Object.hasOwn(body, "antarcticaUi"), false);
 });
 
 test("GET /games/:gameId/player-content returns 404 for non-existent game", async () => {

@@ -536,6 +536,9 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(screen.getByRole("button", { name: "Continue" })).toBeDefined();
     });
     expect(document.querySelector(".cubica-surface")).toBeDefined();
+    expect(
+      (document.querySelector(".game-player-root") as HTMLElement).style.getPropertyValue("--game-background-image")
+    ).toBe("");
   });
 
   it("renders the S1 manifest-driven UI when at screen S1 and hides top metrics", async () => {
@@ -552,6 +555,10 @@ describe("GamePlayer S1 DOM Rendering", () => {
     await waitFor(() => {
       expect(screen.getByText("Осталось дней")).toBeDefined();
     });
+
+    expect(
+      (document.querySelector(".game-player-root") as HTMLElement).style.getPropertyValue("--game-background-image")
+    ).toBe('url("/images/arctic-background.png")');
 
     // Check that top metrics are HIDDEN in S1 mode
     const topMetrics = document.querySelector(".metrics");

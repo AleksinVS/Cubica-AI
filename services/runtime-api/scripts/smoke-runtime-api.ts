@@ -2,9 +2,14 @@ import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts"
 
 type RuntimeState = {
   runtime?: Record<string, unknown>;
+  public?: Record<string, unknown>;
 };
 
 type ActionResponse = {
+  state?: RuntimeState;
+};
+
+type SessionResponse = {
   state?: RuntimeState;
 };
 
@@ -64,7 +69,7 @@ const main = async () => {
       },
       body: JSON.stringify({
         sessionId: sessionBody.sessionId,
-        actionId: "showHint",
+        actionId: "opening.info.i0.advance",
         payload: { source: "smoke" }
       })
     });
@@ -74,7 +79,26 @@ const main = async () => {
     assert(actionBody.state && typeof actionBody.state === "object", "POST /actions did not return state");
 
     const runtime = actionBody.state?.runtime;
-    assert(runtime?.lastActionId === "showHint", "Deterministic runtime state was not updated");
+    assert(
+      runtime?.lastActionId === "opening.info.i0.advance",
+      "Deterministic runtime state did not record the manifest action"
+    );
+
+    const timeline = actionBody.state?.public?.timeline as { stepIndex?: number } | undefined;
+    assert(timeline?.stepIndex === 1, "Manifest action did not advance the public timeline to step 1");
+
+    // Read the session back so the smoke proves the transition was persisted,
+    // not merely returned optimistically by the action endpoint.
+    const persistedResponse = await fetch(`${baseUrl}/sessions/${sessionBody.sessionId}`);
+    assert(persistedResponse.status === 200, `Expected 200 from GET /sessions/:id, got ${persistedResponse.status}`);
+    const persistedBody = (await persistedResponse.json()) as SessionResponse;
+    const persistedRuntime = persistedBody.state?.runtime;
+    const persistedTimeline = persistedBody.state?.public?.timeline as { stepIndex?: number } | undefined;
+    assert(
+      persistedRuntime?.lastActionId === "opening.info.i0.advance",
+      "Persisted session did not retain the manifest action"
+    );
+    assert(persistedTimeline?.stepIndex === 1, "Persisted session did not retain the timeline transition");
 
     // eslint-disable-next-line no-console
     console.log(`runtime-api smoke passed on ${baseUrl}`);

@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Cubica Player Web",
-  description: "Canonical Antarctica player scaffold for Cubica"
+  description: "Universal web player for Cubica games"
 };
 
 export default function RootLayout({

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type {
   PlayerFacingContent,
   PlayerWebPluginBundleReference,
@@ -313,10 +314,17 @@ export function GamePlayer({
   };
 
   const state = playerState;
+  const rootStyle = fullConfig.themeBackgroundImage
+    ? ({
+        // WHY: shared layouts consume a neutral CSS variable. Only an active
+        // game plugin can provide the game-owned asset assigned to it.
+        "--game-background-image": `url(${JSON.stringify(fullConfig.themeBackgroundImage)})`
+      } as CSSProperties)
+    : undefined;
 
   if (playerPluginState.status === "error") {
     return (
-      <main ref={rootRef} className="shell game-player-root">
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
         <div className="error inline-error">{playerPluginState.message}</div>
       </main>
     );
@@ -324,7 +332,7 @@ export function GamePlayer({
 
   if (!state || playerPluginState.status === "loading") {
     return (
-      <main ref={rootRef} className="shell game-player-root">
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
         <div className="loading-state">
           <div className="loading-spinner" />
           <span>{t.loading}</span>
@@ -335,7 +343,7 @@ export function GamePlayer({
 
   if (state.runtimeStatus !== "ready") {
     return (
-      <main ref={rootRef} className="shell game-player-root">
+      <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
         <RuntimeStatusPanel
           status={state.runtimeStatus}
           reason={state.runtimeStatusReason ?? state.error}
@@ -351,7 +359,7 @@ export function GamePlayer({
   const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
 
   return (
-    <main ref={rootRef} className="shell game-player-root">
+    <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
       {activeManifestPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}

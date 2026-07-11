@@ -6,6 +6,12 @@
 # Note: 'draft', 'sandbox', '.tmp' and 'node_modules' are excluded.
 # Note: ONLY documented files and directories (via .desc.json or package.json) are shown.
 
+.codex:
+  skills:
+    cubica: directory... # Явно включаемый пользователем проектный навык автономной разработки Cubica по ADR-068: утверждаемый общий TSK-план, оркестрация субагентов и приемка результата.
+    debugging-and-error-recovery: directory... # Адаптированный для Cubica навык системной диагностики и исправления ошибок из agent-skills.
+    external-skill-adapter: directory... # Проектный навык управляемой адаптации внешних навыков по ADR-069 с детерминированными проверками и семантическим решением агента.
+    verification-before-completion: directory... # Адаптированный для Cubica навык доказательной проверки перед заявлениями о завершении из superpowers.
 .github: # GitHub repository automation configuration, including required CI workflows.
   workflows: # GitHub Actions workflows for canonical validation and legacy/stub governance gates.
     ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
@@ -17,9 +23,13 @@ apps: # Приложения и импортированные frontend-заго
     e2e: # Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.
       player-web.spec.ts: file # E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding.
   portal-nextjs: directory... # Next.js портал для каталога, покупок, ссылок запуска и первого test VPS launch с Antarctica.
-archive: directory... # Архив старых документов и черновиков 
+archive: # Архив старых документов и черновиков
+  agent-workflows: # Исторические снимки методологий агентной разработки и их проектных точек подключения. Эти файлы не являются активными инструкциями для агентов.
+    wf-cubica-2026-07-10: directory... # Полный снимок выведенной из эксплуатации связки общих навыков $cubica и wf-* на 2026-07-10 вместе с конфигурацией Cubica-AI.
 data: directory... # Фикстуры и моки данных 
 docs: # Архитектура, задачи, планирование 
+  agents: # Проектные политики и данные, предназначенные для работы ИИ-агентов без загрузки всей документации Cubica.
+    external-skills: directory... # Декларативный профиль совместимости, накопленная память адаптации и реестр зафиксированных внешних навыков по ADR-069.
   architecture: # Архитектурные документы, ADR, схемы
     adrs: # Architecture Decision Records: принятые, отклоненные и замененные архитектурные решения платформы.
       043-copilotkit-ag-ui-agent-ui-foundation.md: file # ADR-043: принятие CopilotKit и AG-UI как общей основы UI ИИ-агентов для редактора и будущих помощников платформы.
@@ -36,7 +46,12 @@ docs: # Архитектура, задачи, планирование
       054-game-ui-manifest-boundary-and-metric-projection.md: file # ADR-054: граница game/UI манифестов и player-facing проекция метрик; game-манифест владеет смыслом, ui-манифест - presentation, Presenter - projection.
       055-player-renderer-purity-and-declarative-ui-action-binding.md: file # ADR-055: чистота generic-рендерера player-web и декларативная привязка действий/навигации в UI-манифесте вместо хардкода id кнопок, CSS-классов и подписей игры.
       056-manifest-contract-schema-parity-and-testing.md: file # ADR-056: парность manifest-контрактов и JSON Schema через генерацию TS из схемы, CI drift check и контрактные тесты вместо ручной синхронизации.
+      068-human-approved-autonomous-agent-workflow.md: file # ADR-068: утверждаемый человеком общий TSK-план и автономное исполнение единым оркестратором с необязательными дочерними TSK.
+      069-managed-external-skill-adaptation.md: file # ADR-069: управляемая адаптация внешних навыков через компактный профиль совместимости, детерминированные проверки, кэш и ограниченный модельный анализ.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
+      external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
+      external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.
+      external-skill-registry.schema.json: file # JSON Schema реестра происхождения, версий, способностей и расписания обновлений внешних навыков по ADR-069.
       game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
       manifest-authoring-common.schema.json: file # Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.
@@ -59,14 +74,28 @@ docs: # Архитектура, задачи, планирование
     editor-prompts.md: file # Правила работы с промтами Game Editor, включая элементные промты ADR-048 и целевую dynamic prompt projection ADR-049.
   tasks: # Легковесная система задач и планов: текущие рабочие задачи, архив старой иерархии и постоянные артефакты задач.
     active: # Активные рабочие задачи проекта. Каждый TSK-файл объединяет план, критерии приемки, проверки, артефакты и журнал передачи.
-      TSK-20260518-architecture-repair-and-task-system-migration.md: file # Активный план восстановления архитектурных проверок и завершения миграции системы задач на ADR-031.
       TSK-20260518-contracts-neutrality-cleanup.md: file # План очистки общего contracts layer от game-specific drift без потери Antarctica coverage.
-      TSK-20260518-json-schema-strict-validation.md: file # План перевода manifest validation на строгий Ajv-режим без императивного дрейфа.
       TSK-20260518-portal-test-vps-and-antarctica-launch.md: file # План подготовки portal launch surface, test VPS и запуска Antarctica через ссылки и runtime sessions.
       TSK-20260518-runtime-repository-boundary-and-readiness.md: file # План укрепления runtime repository boundary и честной readiness-проверки game content.
       TSK-20260518-session-persistence-hardening.md: file # План production-ready session persistence вместо runtime-only in-memory store.
-      TSK-20260518-workspace-project-references-cleanup.md: file # План классификации workspace, scaffold и TypeScript project reference gaps.
       TSK-20260520-project-review-remediation.md: file # Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.
+      TSK-20260615-antarctica-ui-manifest-screen-normalization.md: file # План отделения сценарных ключей Antarctica от переиспользуемых вариантов UI-манифеста.
+      TSK-20260705-agent-controlled-players.md: file # План ИИ-игроков как агентских мест с валидируемыми действиями и безопасным резервным поведением.
+      TSK-20260705-board-game-platform-capabilities.md: file # План общих возможностей пошаговых настольных игр с нейтральной фикстурой dice-track.
+      TSK-20260705-monopoly-classic-game.md: file # План экономической настольной игры после готовности общих механик, мультиплеера и ИИ-мест.
+      TSK-20260705-multiplayer-runtime-realization.md: file # План сетевого мультиплеера: постоянные сессии, участники, очередь событий и WebSocket-доставка.
+      TSK-20260706-conveyor-mini-game.md: file # План фикстурной игры «Мини-конвейер» для доказательства общего канала клиентской симуляции.
+      TSK-20260706-flow-simulation-platform-capabilities.md: file # План общих возможностей для игр-симуляций реального времени, включая параметры действий и Phaser-сцены.
+      TSK-20260706-game-asset-channel.md: file # План декларативного реестра, безопасной проверки и доставки игровых ресурсов.
+      TSK-20260706-rail-tycoon-mini-game.md: file # План мини-игры о железнодорожном бизнесе как потребителя общих механик, Phaser-хоста и канала ассетов.
+      TSK-20260707-editor-concept-surfaces.md: file # План концептуальных поверхностей редактора: история версий, Telegram-preview и наборы размеров окна.
+      TSK-20260707-player-web-bundle-budget.md: file # План CI-проверки бюджета JavaScript-бандла player-web как измеримого триггера декомпозиции рендерера.
+      TSK-20260710-editor-author-version-history.md: file # План пользовательской истории версий в редакторе: понятные точки сохранения, восстановление незавершенной сессии и безопасный возврат к прежней версии без переписывания истории.
+    archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
+      README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
+      TSK-20260518-architecture-repair-and-task-system-migration.md: file # Замененный план восстановления архитектурных проверок и миграции системы задач на ADR-031, сохраненный для истории.
+      TSK-20260518-json-schema-strict-validation.md: file # План перевода manifest validation на строгий Ajv-режим без императивного дрейфа.
+      TSK-20260518-workspace-project-references-cleanup.md: file # План классификации workspace, scaffold и TypeScript project reference gaps.
       TSK-20260521-antarctica-authoring-manifest-migration.md: file # План миграции манифестов Antarctica на обязательный authoring-слой ADR-030 с сохранением runtime-поведения.
       TSK-20260521-antarctica-authoring-review-remediation.md: file # План исправлений по результатам ревью миграции Antarctica на ADR-030: missing action, source maps и доказательная документация.
       TSK-20260521-game-agnostic-architecture-simplification.md: file # План упрощения создания новых игр и снятия Antarctica-specific архитектурных утечек из платформенного слоя.
@@ -75,6 +104,10 @@ docs: # Архитектура, задачи, планирование
       TSK-20260522-editor-engine-json-tree-view.md: file # План добавления JSON tree view как третьего целевого режима редактирования editor-engine рядом с flow-chart и Monaco.
       TSK-20260522-editor-engine-progressive-graph-ux.md: file # План следующего UX-среза editor-engine: прогрессивно раскрываемая семантическая диаграмма, разные типы узлов и сворачиваемые панели JSON/property.
       TSK-20260527-editor-engine-preview-timeline-editor.md: file # План архитектурного перехода editor-engine к preview-first редактору с timeline, semantic entity tree, renderer adapter и AI prompt surface.
+      TSK-20260531-player-web-published-plugin-bundle-handoff.md: file # Завершенная задача TSK-20260531-player-web-published-plugin-bundle-handoff, сохраненная с исходной историей исполнения.
+      TSK-20260603-antarctica-object-state-migration.md: file # Завершенная задача TSK-20260603-antarctica-object-state-migration, сохраненная с исходной историей исполнения.
+      TSK-20260603-gameplay-object-state-model.md: file # Завершенная задача TSK-20260603-gameplay-object-state-model, сохраненная с исходной историей исполнения.
+      TSK-20260605-editor-session-versioning-and-gc.md: file # Завершенная задача TSK-20260605-editor-session-versioning-and-gc, сохраненная с исходной историей исполнения.
       TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md: file # План внедрения CopilotKit/AG-UI как общей основы UI ИИ-агентов для редактора и будущих помощников платформы.
       TSK-20260610-agent-ui-portability-and-risk-controls.md: file # План закрепления переносимости Agent UI через Cubica-контракты, import-boundary проверки, protocol transcript тесты и production backend handoff gates.
       TSK-20260610-cubica-generative-ui-surface-protocol.md: file # План внедрения Cubica-owned Generative UI Surface Protocol: контракты, JSON Schema, каталог компонентов, A2UI-like adapter mapping, renderer slice и checklist замены CopilotKit.
@@ -84,6 +117,9 @@ docs: # Архитектура, задачи, планирование
       TSK-20260612-element-authoring-prompt-contract.md: file # План первого среза реализации ADR-048: authoring-схемы, прототипы, правила удаления authoring-only полей в компиляторе и готовность редактора для _prompt/_promptTemplate без reverse-sync.
       TSK-20260613-authoring-prototype-extraction-and-promotion.md: file # Исполнительный план реализации ADR-050: локальное извлечение authoring-прототипов, ручное повышение game-level прототипов до platform-level и AI-assisted proposal flow.
       TSK-20260613-runtime-api-openapi-contract.md: file # Исполнительный план применения API First к текущему runtime-api: current OpenAPI-контракт, drift checks и классификация будущих service specs.
+      TSK-20260615-antarctica-ui-only-actions-cleanup.md: file # Завершенная задача TSK-20260615-antarctica-ui-only-actions-cleanup, сохраненная с исходной историей исполнения.
+      TSK-20260615-game-defined-ui-panels-journal.md: file # Завершенная задача TSK-20260615-game-defined-ui-panels-journal, сохраненная с исходной историей исполнения.
+      TSK-20260616-antarctica-game-authoring-prototype-migration.md: file # Завершенная задача TSK-20260616-antarctica-game-authoring-prototype-migration, сохраненная с исходной историей исполнения.
       TSK-20260616-antarctica-metric-projection-boundary-migration.md: file # Исполнительный план миграции Antarctica по ADR-054: game-owned словарь метрик, computed remainingDays и очистка score alias.
       TSK-20260616-antarctica-ui-authoring-prototype-migration.md: file # Исполнительный план миграции web UI authoring-манифеста Antarctica на локальные game-level UI-прототипы по ADR-050 без runtime UI diff.
       TSK-20260616-editor-entity-projection-in-memory.md: file # Исполнительный план первого среза ADR-052: in-memory EditorEntityProjection без persisted editor.entities.json, с projection builder, lenses, field labels and read-only editor-web integration.
@@ -93,8 +129,12 @@ docs: # Архитектура, задачи, планирование
       TSK-20260630-player-web-renderer-purity.md: file # Исполнительный план ADR-055: декларативная привязка действий/навигации в UI-манифесте и снятие game-specific логики из generic-рендерера player-web.
       TSK-20260630-review-remediation-correctness.md: file # Исполнительный план P0-исправлений корректности из полного ревью 2026-06-27: undo вставки в массив, залипающий screenKey, 400 на сессии без gameId, честная readiness, тесты контрактов.
       TSK-20260630-runtime-guard-reconciliation.md: file # Исполнительный план согласования legacy semantic guards с дженерик-guard-ами ADR-041 и очистки платформенной схемы от game-specific guard-форм.
-    archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
-      README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
+      TSK-20260704-editor-preview-first-ux-implementation.md: file # Завершенная задача TSK-20260704-editor-preview-first-ux-implementation, сохраненная с исходной историей исполнения.
+      TSK-20260708-editor-apply-ux-and-localization.md: file # Завершенная задача TSK-20260708-editor-apply-ux-and-localization, сохраненная с исходной историей исполнения.
+      TSK-20260710-autonomous-agent-workflow.md: file # Утвержденный план перехода от старых wf-ролей к автономному процессу ADR-068 с корневыми и дочерними TSK.
+      TSK-20260710-external-skill-adapter.md: file # Завершенная задача по управляемой адаптации внешних навыков с проверкой совместимости, происхождения и обновлений.
+      TSK-20260710-pre-game-development-readiness.md: file # Завершенная подготовка репозитория к разработке первой игры: зеленая база, правдивая очередь, машинные проверки и защита main.
+      TSK-20260710-review-findings-remediation.md: file # Завершенное исправление трех находок ревью: изоляция оформления Antarctica, честный межигровой тест и единый минимум Node.js.
     artifacts: directory... # Постоянные артефакты рабочих задач. Для каждой задачи используется подкаталог с идентификатором задачи.
     README.md: file # Правила текущей системы задач, планов и передачи артефактов.
     ROADMAP.md: file # Историческая дорожная карта старой системы планирования; не используется как текущая доска.
@@ -151,5 +191,4 @@ package.json: file # Корневой npm-workspace
 playwright.config.ts: file # Конфигурация Playwright e2e-тестов для browser-level проверки player-web и runtime-api.
 PROJECT_OVERVIEW.md: file # Общий обзор проекта
 PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
-PROJECT_WORKFLOW_CONFIG.json: file # Конфигурация workflow-инструментов, поддерживаемая как корневой tool entry point
 README.md: file # Основное описание репозитория

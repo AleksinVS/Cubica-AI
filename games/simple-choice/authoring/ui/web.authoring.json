@@ -55,8 +55,7 @@
           "_semantics": "UI-компонент типа screenComponent.",
           "type": "screenComponent",
           "props": {
-            "cssClass": "topbar-screen-shell",
-            "backgroundImage": "/images/arctic-background.png"
+            "cssClass": "topbar-screen-shell"
           },
           "children": [
             {
@@ -157,8 +156,7 @@
           "_semantics": "UI-компонент типа screenComponent.",
           "type": "screenComponent",
           "props": {
-            "cssClass": "topbar-screen-shell",
-            "backgroundImage": "/images/arctic-background.png"
+            "cssClass": "topbar-screen-shell"
           },
           "children": [
             {

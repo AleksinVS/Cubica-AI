@@ -118,7 +118,7 @@
 - `docs/architecture/schemas/manifest-authoring-common.schema.json`
 - `docs/architecture/schemas/game-authoring-v2.schema.json`
 - `docs/architecture/schemas/ui-authoring-v2.schema.json`
-- `docs/tasks/active/TSK-20260612-element-authoring-prompt-contract.md`
+- `docs/tasks/archive/TSK-20260612-element-authoring-prompt-contract.md`
 
 ## 9. Открытый вопрос синхронизации
 

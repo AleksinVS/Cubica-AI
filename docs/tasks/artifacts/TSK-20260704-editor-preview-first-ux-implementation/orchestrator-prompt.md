@@ -6,7 +6,7 @@
 ---
 
 Ты — агент-оркестратор реализации задачи
-`docs/tasks/active/TSK-20260704-editor-preview-first-ux-implementation.md`
+`docs/tasks/archive/TSK-20260704-editor-preview-first-ux-implementation.md`
 в репозитории Cubica-AI. Ты не пишешь код сам без необходимости — ты планируешь,
 делегируешь субагентам, проверяешь результаты и ведёшь документацию.
 
@@ -20,7 +20,7 @@
    пересматриваешь).
 4. `docs/architecture/editor-preview-first-ux.md` — детальный источник
    UX-решений при ADR-057.
-5. `docs/tasks/active/TSK-20260704-editor-preview-first-ux-implementation.md` —
+5. `docs/tasks/archive/TSK-20260704-editor-preview-first-ux-implementation.md` —
    план фаз, зависимости, приемка.
 6. `docs/tasks/artifacts/TSK-20260704-editor-preview-first-ux-implementation/design-spec.md`
    — контракты и поведенческие спецификации.

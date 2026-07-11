@@ -25,4 +25,4 @@
 
 - Канонические входы: `AGENTS.md`, `README.md`, `PROJECT_OVERVIEW.md`, `PROJECT_STRUCTURE.yaml`, `NEXT_STEPS.md`.
 - Package metadata: `package.json`, `package-lock.json`.
-- Tool configs: `.claude/`, `.codex/`, `.cursor/`, `.gemini/`, `.geminiignore`, `.gitmodules`, `CLAUDE.md`, `PROJECT_WORKFLOW_CONFIG.json`.
+- Tool configs: `.claude/`, `.codex/`, `.cursor/`, `.gemini/`, `.geminiignore`, `.gitmodules`, `CLAUDE.md`. `PROJECT_WORKFLOW_CONFIG.json` позднее архивирован и удален по ADR-068.

@@ -377,8 +377,8 @@ Trade-offs:
 ## 16. Связанные артефакты
 
 - `services/game-editor/docs/editor-engine-authoring-manifest-editor.md`
-- `docs/tasks/active/TSK-20260522-editor-engine-authoring-manifest-editor.md`
+- `docs/tasks/archive/TSK-20260522-editor-engine-authoring-manifest-editor.md`
 - `docs/tasks/artifacts/TSK-20260522-editor-engine-authoring-manifest-editor/execution-matrix.md`
-- `docs/tasks/active/TSK-20260522-editor-engine-json-tree-view.md`
+- `docs/tasks/archive/TSK-20260522-editor-engine-json-tree-view.md`
 - `docs/tasks/artifacts/TSK-20260522-editor-engine-json-tree-view/execution-matrix.md`
 - `docs/architecture/adrs/035-editor-engine-progressive-semantic-graph-ux.md`

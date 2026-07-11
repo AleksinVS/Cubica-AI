@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workflow Security Review"
+  short_description: "Runs bounded security review checks"
+  default_prompt: "Use $wf-security-review to inspect a bounded change set and return a fixed SECURITY_REVIEW_REPORT.md."
+
+policy:
+  allow_implicit_invocation: true

@@ -201,12 +201,6 @@
         "pointer": "/root/screens/0/root/props/cssClass"
       }
     ],
-    "/screens/intro/root/props/backgroundImage": [
-      {
-        "file": "games/simple-choice/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/props/backgroundImage"
-      }
-    ],
     "/screens/intro/root/children/0": [
       {
         "file": "games/simple-choice/authoring/ui/web.authoring.json",
@@ -529,12 +523,6 @@
       {
         "file": "games/simple-choice/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/1/root/props/cssClass"
-      }
-    ],
-    "/screens/result/root/props/backgroundImage": [
-      {
-        "file": "games/simple-choice/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/1/root/props/backgroundImage"
       }
     ],
     "/screens/result/root/children/0": [

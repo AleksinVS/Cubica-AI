@@ -192,7 +192,7 @@ Production LLM backend не должен владеть:
 
 - `docs/architecture/agent-ui-foundation.md`
 - `docs/architecture/agent-ui-portability-and-risk-controls.md`
-- `docs/tasks/active/TSK-20260610-agent-ui-portability-and-risk-controls.md`
+- `docs/tasks/archive/TSK-20260610-agent-ui-portability-and-risk-controls.md`
 - `docs/architecture/adrs/043-copilotkit-ag-ui-agent-ui-foundation.md`
 - `docs/architecture/adrs/038-testing-architecture-and-policy.md`
 - `docs/architecture/adrs/040-runtime-api-plugin-architecture.md`

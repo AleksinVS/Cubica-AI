@@ -18,10 +18,13 @@
     "bootstrap": "npm install --workspaces",
     "profile:editor-load": "node --expose-gc --experimental-transform-types scripts/dev/profile-editor-load.mjs",
     "ops:supervise": "node scripts/ops/service-supervisor.mjs",
+    "build:web:sequential": "npm run build --workspace @cubica/player-web && npm run build --workspace @cubica/editor-web",
     "typecheck": "npm run typecheck --workspace services/runtime-api",
     "verify:runtime-api": "npm run typecheck --workspace services/runtime-api && npm test --workspace services/runtime-api && npm run smoke --workspace services/runtime-api",
     "verify:player-web": "npm run typecheck --workspace @cubica/player-web && npm test --workspace @cubica/player-web && npm run build --workspace @cubica/player-web",
     "verify:legacy": "node scripts/ci/validate-legacy.js",
+    "verify:external-skills": "node .codex/skills/external-skill-adapter/scripts/validate-external-skills.mjs && node --test .codex/skills/external-skill-adapter/scripts/external-skill-adapter.test.mjs",
+    "verify:node-runtime": "node scripts/ci/validate-node-runtime.js",
     "verify:api-contracts": "node scripts/ci/validate-runtime-api-openapi.js",
     "verify:agent-ui-boundaries": "node scripts/ci/validate-agent-ui-boundaries.js",
     "verify:prototype-audit-status": "node scripts/ci/validate-prototype-audit-status.js",
@@ -41,7 +44,7 @@
     "verify:contracts-ai": "npm run typecheck --workspace @cubica/contracts-ai && npm test --workspace @cubica/contracts-ai",
     "verify:editor-engine": "npm run typecheck --workspace @cubica/editor-engine && npm test --workspace @cubica/editor-engine",
     "verify:editor-web": "npm run typecheck --workspace @cubica/editor-web && npm run build --workspace @cubica/editor-web",
-    "verify:canonical": "npm run verify:legacy && npm run verify:manifest-authoring && npm run verify:contracts-schema-parity && npm run verify:contracts-manifest && npm run verify:contracts-runtime && npm run verify:contracts-session && npm run verify:game-agnostic && npm run verify:player-core-seam && npm run verify:metric-jsonlogic-subset && npm run verify:api-contracts && npm run verify:contracts-ai && npm run verify:agent-ui-boundaries && npm run verify:runtime-api && npm run verify:player-web",
+    "verify:canonical": "npm run verify:node-runtime && npm run verify:legacy && npm run verify:external-skills && npm run verify:manifest-authoring && npm run verify:contracts-schema-parity && npm run verify:contracts-manifest && npm run verify:contracts-runtime && npm run verify:contracts-session && npm run verify:game-agnostic && npm run verify:player-core-seam && npm run verify:metric-jsonlogic-subset && npm run verify:api-contracts && npm run verify:contracts-ai && npm run verify:agent-ui-boundaries && npm run verify:runtime-api && npm run verify:player-web",
     "test:e2e": "playwright test",
     "test:e2e:prod": "node scripts/dev/run-e2e-prod.mjs",
     "antarctica:extract-opening": "node scripts/antarctica/extract-opening.js",
@@ -53,13 +56,16 @@
     "@next/swc-linux-x64-gnu": "16.2.6",
     "@playwright/test": "^1.60.0",
     "@types/node": "^24.6.0",
+    "ajv": "^8.20.0",
+    "js-yaml": "^4.3.0",
     "json-schema-to-typescript": "^15.0.4",
+    "marked": "^14.1.4",
     "pixelmatch": "^7.2.0",
     "playwright": "^1.60.0",
     "pngjs": "^7.0.0",
     "typescript": "^5.9.3"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.7.0"
   }
 }

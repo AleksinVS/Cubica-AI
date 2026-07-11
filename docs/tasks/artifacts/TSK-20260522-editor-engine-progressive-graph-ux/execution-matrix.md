@@ -15,7 +15,7 @@
 
 ## 1. Purpose
 
-This matrix turns `docs/tasks/active/TSK-20260522-editor-engine-progressive-graph-ux.md` into implementation slices.
+This matrix turns `docs/tasks/archive/TSK-20260522-editor-engine-progressive-graph-ux.md` into implementation slices.
 
 Goal: replace the current raw JSON-tree graph with a usable progressive semantic graph and collapsible editing panels, while keeping authoring JSON as the only editable source of truth.
 

@@ -39,8 +39,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "cssClass": "topbar-screen-shell"
         },
         "children": [
           {
@@ -116,8 +115,7 @@
       "root": {
         "type": "screenComponent",
         "props": {
-          "cssClass": "topbar-screen-shell",
-          "backgroundImage": "/images/arctic-background.png"
+          "cssClass": "topbar-screen-shell"
         },
         "children": [
           {

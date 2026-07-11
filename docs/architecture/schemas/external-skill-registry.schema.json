@@ -1,0 +1,54 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.local/schemas/external-skill-registry.schema.json",
+  "title": "Cubica External Skill Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "cadenceDays", "sources", "skills"],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "cadenceDays": { "type": "integer", "minimum": 7 },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "repository", "defaultRef", "pinnedCommit", "license", "lastCheckedAt", "nextCheckAfter"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+          "repository": { "type": "string", "format": "uri" },
+          "defaultRef": { "type": "string" },
+          "pinnedCommit": { "type": "string", "pattern": "^[a-f0-9]{40}$" },
+          "license": { "type": "string" },
+          "lastCheckedAt": { "type": "string", "format": "date-time" },
+          "nextCheckAfter": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["localName", "capability", "sourceId", "upstreamPath", "upstreamSnapshotPath", "upstreamSha256", "activeSkillPath", "activeSha256", "status", "activationMode", "policyVersion", "memoryRevision", "adapterVersion", "tags", "experienceIds"],
+        "properties": {
+          "localName": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "capability": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]+$" },
+          "sourceId": { "type": "string" },
+          "upstreamPath": { "type": "string" },
+          "upstreamSnapshotPath": { "type": "string" },
+          "upstreamSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "activeSkillPath": { "type": "string" },
+          "activeSha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+          "status": { "enum": ["approved", "adapted", "blocked", "evaluation"] },
+          "activationMode": { "enum": ["automatic", "explicit"] },
+          "policyVersion": { "type": "string" },
+          "memoryRevision": { "type": "integer", "minimum": 1 },
+          "adapterVersion": { "type": "string" },
+          "tags": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true },
+          "experienceIds": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        }
+      }
+    }
+  }
+}

@@ -52,6 +52,7 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
     fallbackMetrics: data.fallbackMetrics,
     topbarScreenKeys,
     metricBackgroundImages: data.metricBackgroundImages,
+    themeBackgroundImage: data.themeBackgroundImage,
 
     resolveBoardScreenKey(stepIndex) {
       return stepIndex !== null && ANTARCTICA_BOARD_STEP_INDEXES.has(stepIndex) ? BOARD_TOPBAR_SCREEN_KEY : null;

@@ -13,7 +13,7 @@
 
 ## 1. Purpose
 
-This matrix turns `docs/tasks/active/TSK-20260522-editor-engine-json-tree-view.md` into bounded execution slices.
+This matrix turns `docs/tasks/archive/TSK-20260522-editor-engine-json-tree-view.md` into bounded execution slices.
 
 The goal is to add the missing JSON tree editing mode to the ADR-034 editor architecture without creating a second document state beside authoring JSON.
 

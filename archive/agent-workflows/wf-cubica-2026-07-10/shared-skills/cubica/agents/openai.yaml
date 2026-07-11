@@ -1,0 +1,7 @@
+interface:
+  display_name: "Cubica"
+  short_description: "Cubica architecture and delivery rules"
+  default_prompt: "Use $cubica to orchestrate Cubica work with AI-first + Code-first rules, delegate coding to subagents, and keep contracts/tests canonical."
+
+policy:
+  allow_implicit_invocation: true

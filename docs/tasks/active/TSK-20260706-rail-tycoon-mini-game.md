@@ -18,7 +18,9 @@
 
 ## Status
 
-- Состояние: planned (заблокирована зависимостями, см. Dependencies)
+blocked
+
+Status note: задача заблокирована зависимостями, перечисленными в разделе Dependencies.
 - Владелец: оркестратор (промт — `docs/tasks/artifacts/TSK-20260706-rail-tycoon-mini-game/orchestrator-prompt.md`)
 - Создана: 2026-07-06
 

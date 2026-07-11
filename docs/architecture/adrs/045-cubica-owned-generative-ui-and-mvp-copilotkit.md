@@ -183,7 +183,7 @@ Forbidden:
 - `docs/architecture/adrs/043-copilotkit-ag-ui-agent-ui-foundation.md`
 - `docs/architecture/adrs/044-agent-ui-portability-and-protocol-boundaries.md`
 - `docs/architecture/adrs/046-ai-driven-game-runtime-mode.md`
-- `docs/tasks/active/TSK-20260610-cubica-generative-ui-surface-protocol.md`
+- `docs/tasks/archive/TSK-20260610-cubica-generative-ui-surface-protocol.md`
 - External references:
   - `https://www.copilotkit.ai/generative-ui`
   - `https://www.copilotkit.ai/ag-ui`

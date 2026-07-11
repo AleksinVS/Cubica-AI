@@ -32,7 +32,7 @@ This document turns `docs/reviews/2026-05-20-project-review.md` into executable 
 | Broken documentation links | `PROJECT_OVERVIEW.md`, `docs/architecture/gameplay-slices/*.md`, `apps/player-web/README.md` | Done: active references were removed or replaced. | Scoped broken-reference query returns no active docs hits. |
 | `verify:canonical` omits player-web tests | `package.json`, README/TSK validation sections | Done: `verify:player-web` now runs `npm test --workspace @cubica/player-web`; `verify:canonical` runs `verify:legacy` first. | Full gate includes player-web tests. |
 | Current deterministic path mixed with LLM-first target | `PROJECT_OVERVIEW.md` | Done: current deterministic runtime and target LLM-first capability layer are separated. | New developer can identify current runtime path without reading ADR history. |
-| Manual `templateId` cross-validation lives outside schema | `services/runtime-api/src/modules/content/manifestValidation.ts`, `docs/tasks/active/TSK-20260518-json-schema-strict-validation.md` | Done for planning: strict-validation TSK now explicitly owns moving or documenting the exception. | The drift is no longer unregistered; implementation remains in the strict-validation task. |
+| Manual `templateId` cross-validation lives outside schema | `services/runtime-api/src/modules/content/manifestValidation.ts`, `docs/tasks/archive/TSK-20260518-json-schema-strict-validation.md` | Done for planning: strict-validation TSK now explicitly owns moving or documenting the exception. | The drift is no longer unregistered; implementation remains in the strict-validation task. |
 
 ## CI Stub Gate Specification
 

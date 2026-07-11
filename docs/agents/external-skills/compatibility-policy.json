@@ -1,0 +1,319 @@
+{
+  "schemaVersion": "1.0",
+  "policyVersion": "1.0.1",
+  "adapterVersion": "1.0.0",
+  "sources": [
+    {
+      "id": "agents-general",
+      "path": "AGENTS.md",
+      "heading": "2. General rules for agents",
+      "normalizedSha256": "bfae246e72bb813d958b494c9b38d3ef5ccee3f70bb79f73181b92cc689e473f"
+    },
+    {
+      "id": "agents-autonomous",
+      "path": "AGENTS.md",
+      "heading": "2.1 Опциональный процесс `$cubica`",
+      "normalizedSha256": "b70aeefd1a9fec667ba21f851d22bb608ab2c6813f6e4b4e03a9c0110e8566ac"
+    },
+    {
+      "id": "agents-adr-sync",
+      "path": "AGENTS.md",
+      "heading": "2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization",
+      "normalizedSha256": "fc2d38704fbfa64ced73b4e47e7fb73aee1fe5d3777ff9031144ae9691e06bae"
+    },
+    {
+      "id": "agents-temp",
+      "path": "AGENTS.md",
+      "heading": "4. Work with temporary files",
+      "normalizedSha256": "5473d81c4605d4ad42d77408711c5595703c9f7a8780b0f5467f8f455998de1b"
+    },
+    {
+      "id": "adr-031-decision",
+      "path": "docs/architecture/adrs/031-lightweight-task-plan-and-handoff-system.md",
+      "heading": "Решение",
+      "normalizedSha256": "c9abd0cea845d8ac8f4d3113432edfe7461e91c3f84a948dd26de18cfb8665aa"
+    },
+    {
+      "id": "adr-068-decision",
+      "path": "docs/architecture/adrs/068-human-approved-autonomous-agent-workflow.md",
+      "heading": "Решение",
+      "normalizedSha256": "c830fa38c6b474b60ab6bae44d995e65ca166b3239372e2fd5ea4e39322fd717"
+    },
+    {
+      "id": "adr-069-decision",
+      "path": "docs/architecture/adrs/069-managed-external-skill-adaptation.md",
+      "heading": "Решение",
+      "normalizedSha256": "a2dc78a8d655997e8bc787f008ed9a93f08027b0983153df73273d86875e6c2a"
+    },
+    {
+      "id": "task-format",
+      "path": "docs/tasks/README.md",
+      "heading": "5. Формат рабочей задачи",
+      "normalizedSha256": "819d557f35cb86df977bdb6f191abf1e16bc401e854b52beeb43e5ffff13bc70"
+    },
+    {
+      "id": "task-hierarchy",
+      "path": "docs/tasks/README.md",
+      "heading": "6. Родительские и дочерние задачи",
+      "normalizedSha256": "e00752b874662204e044c97fb576f7cb55948076ca5a67a690cf3b6f1b91117a"
+    },
+    {
+      "id": "task-approval",
+      "path": "docs/tasks/README.md",
+      "heading": "7. Согласование и автономное исполнение",
+      "normalizedSha256": "eec967eb7a9a5558bf75118e2c24a689a645f0847a99d0318a6303c588a93b4c"
+    }
+  ],
+  "rules": [
+    {
+      "id": "precedence.project-rules",
+      "severity": "block",
+      "tags": [
+        "global"
+      ],
+      "statement": "Прямые указания пользователя, ближайший AGENTS.md и действующие ADR имеют приоритет над внешним навыком.",
+      "remediation": "Удалить или заменить внешнее требование, которое меняет проектный порядок приоритетов.",
+      "sourceIds": [
+        "agents-general",
+        "adr-069-decision"
+      ]
+    },
+    {
+      "id": "authority.architecture-human",
+      "severity": "block",
+      "tags": [
+        "architecture",
+        "planning",
+        "global"
+      ],
+      "statement": "Архитектурные решения согласуются с человеком и фиксируются в ADR с синхронным обновлением PROJECT_ARCHITECTURE.md.",
+      "remediation": "Заменить автономное архитектурное решение остановкой затронутой части и подготовкой ADR.",
+      "sourceIds": [
+        "agents-general",
+        "agents-adr-sync",
+        "adr-068-decision"
+      ]
+    },
+    {
+      "id": "planning.tsk-only",
+      "severity": "block",
+      "tags": [
+        "planning",
+        "artifacts"
+      ],
+      "statement": "Постоянный общий план хранится в корневом TSK; отдельные PLN, ExecPlan и параллельные плановые иерархии не создаются.",
+      "remediation": "Проецировать полезную декомпозицию в Plan или Execution существующего TSK и временные пакеты в .tmp.",
+      "sourceIds": [
+        "adr-031-decision",
+        "adr-068-decision",
+        "task-format",
+        "task-hierarchy"
+      ]
+    },
+    {
+      "id": "activation.cubica-explicit",
+      "severity": "block",
+      "tags": [
+        "activation",
+        "orchestration",
+        "global"
+      ],
+      "statement": "$cubica включается только по явному указанию пользователя.",
+      "remediation": "Удалить автоматический вызов $cubica; специализированный навык должен выполнять только свою способность.",
+      "sourceIds": [
+        "agents-autonomous",
+        "adr-068-decision"
+      ]
+    },
+    {
+      "id": "activation.specialists-automatic",
+      "severity": "guidance",
+      "tags": [
+        "activation",
+        "global"
+      ],
+      "statement": "Допущенные специализированные навыки могут включаться автоматически через точное описание.",
+      "remediation": "Сузить description до конкретных симптомов и задач, исключив мета-оркестрацию.",
+      "sourceIds": [
+        "agents-autonomous",
+        "adr-069-decision"
+      ]
+    },
+    {
+      "id": "orchestration.no-meta-bootstrap",
+      "severity": "block",
+      "tags": [
+        "orchestration",
+        "subagents",
+        "planning",
+        "activation"
+      ],
+      "statement": "Специализированный навык не вводит обязательный сквозной процесс, не проверяет навыки перед каждым ответом и не запускает собственную иерархию субагентов.",
+      "remediation": "Заблокировать мета-навык либо извлечь из него узкую способность без bootstrap-инструкций.",
+      "sourceIds": [
+        "adr-068-decision",
+        "adr-069-decision"
+      ]
+    },
+    {
+      "id": "subagents.lifecycle",
+      "severity": "review",
+      "tags": [
+        "subagents",
+        "orchestration"
+      ],
+      "statement": "Запущенные субагенты получают ограниченное задание, проверяются главным агентом и явно закрываются.",
+      "remediation": "Добавить границы задания, проверку различия и явное завершение либо удалить делегирование из навыка.",
+      "sourceIds": [
+        "agents-general",
+        "agents-autonomous"
+      ]
+    },
+    {
+      "id": "operations.git-state",
+      "severity": "review",
+      "tags": [
+        "git",
+        "delivery",
+        "debugging"
+      ],
+      "statement": "Внешний навык не должен автоматически менять ветку, рабочее дерево, историю, создавать commit, push, PR или worktree.",
+      "remediation": "Заменить действие рекомендацией проверить состояние и выполнить операцию только по прямому запросу и с учетом локальных правил.",
+      "sourceIds": [
+        "adr-069-decision"
+      ]
+    },
+    {
+      "id": "operations.destructive-approval",
+      "severity": "block",
+      "tags": [
+        "security",
+        "git",
+        "delivery",
+        "global"
+      ],
+      "statement": "Разрушительные, необратимые внешние операции, права и секреты требуют отдельного подтверждения.",
+      "remediation": "Остановить затронутую операцию и запросить разрешение, продолжая независимую безопасную работу.",
+      "sourceIds": [
+        "agents-autonomous",
+        "adr-068-decision"
+      ]
+    },
+    {
+      "id": "verification.risk-based",
+      "severity": "review",
+      "tags": [
+        "testing",
+        "verification",
+        "debugging",
+        "global"
+      ],
+      "statement": "Доказательство выбирается по риску и области изменения; нельзя безусловно требовать полный набор тестов после каждой локальной правки.",
+      "remediation": "Требовать свежую достаточную проверку конкретного утверждения и честно указывать непроверенные границы.",
+      "sourceIds": [
+        "adr-068-decision"
+      ]
+    },
+    {
+      "id": "data.schema-ssot",
+      "severity": "block",
+      "tags": [
+        "contracts",
+        "schema",
+        "architecture"
+      ],
+      "statement": "Декларативные контракты и JSON Schema нельзя заменять изолированной императивной проверкой.",
+      "remediation": "Расширить каноническую схему и валидировать стандартным JSON Schema validator.",
+      "sourceIds": [
+        "agents-general"
+      ]
+    },
+    {
+      "id": "artifacts.temporary-root",
+      "severity": "review",
+      "tags": [
+        "artifacts",
+        "debugging",
+        "testing",
+        "global"
+      ],
+      "statement": "Временные файлы создаются только в .tmp и очищаются после использования.",
+      "remediation": "Перенести временный артефакт в .tmp либо оформить значимый результат как постоянный артефакт задачи.",
+      "sourceIds": [
+        "agents-temp"
+      ]
+    },
+    {
+      "id": "adaptation.materialize",
+      "severity": "block",
+      "tags": [
+        "adaptation",
+        "global"
+      ],
+      "statement": "Активный навык не должен содержать в одном контексте конфликтующее upstream-требование и противоположную проектную обертку.",
+      "remediation": "Материализовать очищенную проектную версию и сохранить upstream отдельно как доказательство происхождения.",
+      "sourceIds": [
+        "adr-069-decision"
+      ]
+    }
+  ],
+  "checks": {
+    "forbiddenActivePatterns": [
+      "ARCHITECT_PLAN",
+      "\\bPLN-[A-Za-z0-9_-]*",
+      "using-superpowers",
+      "using-agent-skills",
+      "invoke.*before ANY response",
+      "MUST invoke.*skill"
+    ],
+    "signalPatterns": [
+      {
+        "id": "git-state",
+        "pattern": "\\b(git (commit|push|checkout|switch|bisect|worktree)|create (a )?PR)\\b",
+        "tags": [
+          "git",
+          "delivery"
+        ]
+      },
+      {
+        "id": "planning-artifact",
+        "pattern": "\\b(PLN-|ExecPlan|ARCHITECT_PLAN|implementation plan|design document)\\b",
+        "tags": [
+          "planning",
+          "artifacts"
+        ]
+      },
+      {
+        "id": "subagent",
+        "pattern": "\\b(subagent|parallel agent|dispatching agent)\\b",
+        "tags": [
+          "subagents",
+          "orchestration"
+        ]
+      },
+      {
+        "id": "approval",
+        "pattern": "\\b(approval|approve|sign[- ]?off|checkpoint)\\b",
+        "tags": [
+          "planning",
+          "approval"
+        ]
+      },
+      {
+        "id": "strong-imperative",
+        "pattern": "\\b(MUST|ALWAYS|NEVER|non-negotiable|no exceptions)\\b",
+        "tags": [
+          "semantics"
+        ]
+      },
+      {
+        "id": "full-verification",
+        "pattern": "\\b(full test|full suite|every test|fresh verification|complete verification)\\b",
+        "tags": [
+          "testing",
+          "verification"
+        ]
+      }
+    ]
+  }
+}

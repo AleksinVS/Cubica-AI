@@ -5,5 +5,8 @@
   "manifest-authoring-common.schema.json": "Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.",
   "manifest-source-map.schema.json": "JSON Schema for tooling-only source map companion files generated next to runtime manifests.",
   "state-fixture.schema.json": "JSON Schema for pinned editor state fixtures under games/<id>/authoring/fixtures/*.json (ADR-057); runtime/player never read these files.",
-  "ui-authoring.schema.json": "JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files."
+  "ui-authoring.schema.json": "JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.",
+  "external-skill-policy.schema.json": "JSON Schema профиля совместимости внешних навыков по ADR-069.",
+  "external-skill-memory.schema.json": "JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.",
+  "external-skill-registry.schema.json": "JSON Schema реестра происхождения, версий, способностей и расписания обновлений внешних навыков по ADR-069."
 }

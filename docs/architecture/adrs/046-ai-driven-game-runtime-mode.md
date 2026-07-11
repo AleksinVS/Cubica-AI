@@ -205,4 +205,4 @@ Costs and risks:
 - `docs/architecture/adrs/045-cubica-owned-generative-ui-and-mvp-copilotkit.md`
 - `docs/architecture/adrs/040-runtime-api-plugin-architecture.md`
 - `docs/architecture/adrs/025-json-schema-as-ssot-for-manifest-validation.md`
-- `docs/tasks/active/TSK-20260611-ai-driven-game-runtime-mode.md`
+- `docs/tasks/archive/TSK-20260611-ai-driven-game-runtime-mode.md`

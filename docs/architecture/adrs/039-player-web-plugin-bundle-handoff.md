@@ -186,6 +186,6 @@ References:
 
 - `docs/architecture/adrs/037-project-local-plugins-and-marketplace-safe-evolution.md`
 - `docs/architecture/adrs/036-semantic-authoring-and-preview-timeline-editor.md`
-- `docs/tasks/active/TSK-20260531-player-web-published-plugin-bundle-handoff.md`
-- `docs/tasks/active/TSK-20260527-editor-engine-preview-timeline-editor.md`
+- `docs/tasks/archive/TSK-20260531-player-web-published-plugin-bundle-handoff.md`
+- `docs/tasks/archive/TSK-20260527-editor-engine-preview-timeline-editor.md`
 - `docs/tasks/artifacts/TSK-20260527-editor-engine-preview-timeline-editor/execution-matrix.md`

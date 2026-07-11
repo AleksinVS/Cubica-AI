@@ -18,7 +18,9 @@
 
 ## Status
 
-planned (2026-07-06) — ADR-060 принят 2026-07-06; ожидает завершения turn-flow фаз
+blocked
+
+Status note: ADR-060 принят 2026-07-06; задача ожидает завершения turn-flow фаз.
 `TSK-20260705-board-game-platform-capabilities` (ADR-058). НЕ требует сетевого
 мультиплеера: агентское место работает уже в хотсит-сессии; от
 `TSK-20260705-multiplayer-runtime-realization` берётся только модель

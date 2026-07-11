@@ -140,7 +140,7 @@
 - `verify:player-web` = typecheck + build;
 - `verify:canonical` = runtime-api verification + player-web verification.
 
-При этом `docs/tasks/active/TSK-20260518-architecture-repair-and-task-system-migration.md` требует запускать `npm test --workspace @cubica/player-web`, а в handoff фиксирует прохождение player-web тестов. Фактически главный canonical gate не включает эти тесты. Сейчас они проходят отдельно, но будущий регресс в DOM/rendering тестах может не попасть в `verify:canonical`.
+При этом `docs/tasks/archive/TSK-20260518-architecture-repair-and-task-system-migration.md` требует запускать `npm test --workspace @cubica/player-web`, а в handoff фиксирует прохождение player-web тестов. Фактически главный canonical gate не включает эти тесты. Сейчас они проходят отдельно, но будущий регресс в DOM/rendering тестах может не попасть в `verify:canonical`.
 
 ### 7. `PROJECT_OVERVIEW.md` смешивает текущую deterministic reality и исторический LLM-first target
 

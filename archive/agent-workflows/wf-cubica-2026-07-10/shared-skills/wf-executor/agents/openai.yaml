@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workflow Executor"
+  short_description: "Implements one bounded task"
+  default_prompt: "Use $wf-executor to implement one task packet and return a fixed EXECUTOR_REPORT.md."
+
+policy:
+  allow_implicit_invocation: true

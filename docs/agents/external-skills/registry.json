@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "1.0",
+  "cadenceDays": 30,
+  "sources": [
+    {
+      "id": "agent-skills",
+      "repository": "https://github.com/addyosmani/agent-skills.git",
+      "defaultRef": "main",
+      "pinnedCommit": "7ce442de03ddc1b72480c3b48d55c62880ea2a90",
+      "license": "MIT",
+      "lastCheckedAt": "2026-07-10T20:30:00Z",
+      "nextCheckAfter": "2026-08-09T20:30:00Z"
+    },
+    {
+      "id": "superpowers",
+      "repository": "https://github.com/obra/superpowers.git",
+      "defaultRef": "main",
+      "pinnedCommit": "d884ae04edebef577e82ff7c4e143debd0bbec99",
+      "license": "MIT",
+      "lastCheckedAt": "2026-07-10T20:30:00Z",
+      "nextCheckAfter": "2026-08-09T20:30:00Z"
+    }
+  ],
+  "skills": [
+    {
+      "localName": "debugging-and-error-recovery",
+      "capability": "debugging.root-cause",
+      "sourceId": "agent-skills",
+      "upstreamPath": "skills/debugging-and-error-recovery/SKILL.md",
+      "upstreamSnapshotPath": "docs/agents/external-skills/upstream/agent-skills/debugging-and-error-recovery/SKILL.md",
+      "upstreamSha256": "927ad6917fa2891827351cfa3470cd715423faaa5c5f27fe74534d9324c35eea",
+      "activeSkillPath": ".codex/skills/debugging-and-error-recovery/SKILL.md",
+      "activeSha256": "eb18f3a72db1e9d51a39e930624f47d9bb376723dd86e9ecd63e45ccbfc68bb0",
+      "status": "adapted",
+      "activationMode": "automatic",
+      "policyVersion": "1.0.1",
+      "memoryRevision": 2,
+      "adapterVersion": "1.0.0",
+      "tags": [
+        "debugging",
+        "testing",
+        "verification",
+        "git",
+        "artifacts"
+      ],
+      "experienceIds": [
+        "EXP-0002",
+        "EXP-0004"
+      ]
+    },
+    {
+      "localName": "verification-before-completion",
+      "capability": "verification.completion",
+      "sourceId": "superpowers",
+      "upstreamPath": "skills/verification-before-completion/SKILL.md",
+      "upstreamSnapshotPath": "docs/agents/external-skills/upstream/superpowers/verification-before-completion/SKILL.md",
+      "upstreamSha256": "ea52d15aabaf72bc6b558efe2c126f161b53961090ddcd712000273bfe8c7b6c",
+      "activeSkillPath": ".codex/skills/verification-before-completion/SKILL.md",
+      "activeSha256": "425c8332a57d27e007307df30d3d24406ed290ac2c3b52229ddcd42da59de530",
+      "status": "adapted",
+      "activationMode": "automatic",
+      "policyVersion": "1.0.1",
+      "memoryRevision": 2,
+      "adapterVersion": "1.0.0",
+      "tags": [
+        "verification",
+        "testing",
+        "delivery",
+        "subagents"
+      ],
+      "experienceIds": [
+        "EXP-0002",
+        "EXP-0004"
+      ]
+    }
+  ]
+}

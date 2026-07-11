@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "1.0",
+  "revision": 2,
+  "entries": [
+    {
+      "id": "EXP-0001",
+      "recordedOn": "2026-07-10",
+      "status": "active",
+      "title": "Мета-навык возвращает чужую методологию",
+      "tags": ["activation", "orchestration", "planning"],
+      "symptom": "После установки пакет требует проверять и вызывать свои навыки перед каждым ответом и создает собственный сквозной процесс.",
+      "cause": "В активный набор попал bootstrap- или discovery-мета-навык, а не узкая инженерная способность.",
+      "guidance": "Блокировать мета-навык; переносить только самостоятельные способности с точным description.",
+      "ruleIds": ["orchestration.no-meta-bootstrap", "activation.cubica-explicit"],
+      "evidence": ["docs/architecture/adrs/069-managed-external-skill-adaptation.md"]
+    },
+    {
+      "id": "EXP-0002",
+      "recordedOn": "2026-07-10",
+      "status": "active",
+      "title": "Обертка не нейтрализует сильный конфликт",
+      "tags": ["adaptation", "semantics"],
+      "symptom": "Модель в одном контексте получает проектный запрет и upstream-инструкцию с MUST, ALWAYS или no exceptions.",
+      "cause": "Исходный навык оставлен активным под короткой противоположной оберткой.",
+      "guidance": "Создавать очищенную материализованную версию, а исходник хранить только вне активного контекста.",
+      "ruleIds": ["adaptation.materialize", "precedence.project-rules"],
+      "evidence": ["docs/architecture/adrs/069-managed-external-skill-adaptation.md"]
+    },
+    {
+      "id": "EXP-0003",
+      "recordedOn": "2026-07-10",
+      "status": "active",
+      "title": "Ручное включение было ошибочно распространено на все навыки",
+      "tags": ["activation"],
+      "symptom": "Специализированные навыки перестали включаться автоматически вместе с $cubica.",
+      "cause": "Правило ручного включения было сформулировано для всех новых навыков вместо одного $cubica.",
+      "guidance": "Ограничивать explicit activation только $cubica; специализированные навыки сохраняют точные автоматические триггеры.",
+      "ruleIds": ["activation.cubica-explicit", "activation.specialists-automatic"],
+      "evidence": ["docs/tasks/active/TSK-20260710-autonomous-agent-workflow.md"]
+    },
+    {
+      "id": "EXP-0004",
+      "recordedOn": "2026-07-10",
+      "status": "active",
+      "title": "Скрипт не принимает семантическое решение",
+      "tags": ["adaptation", "semantics", "project-context"],
+      "symptom": "Механическое совпадение ключевых слов ошибочно воспринимается как доказательство совместимости или конфликта.",
+      "cause": "Детерминированному сканеру приписана способность понимать смысл инструкции.",
+      "guidance": "Использовать скрипт только для сбора сигналов; решение принимает агент и при необходимости точечно читает проект, фиксируя повторно полезный вывод в памяти.",
+      "ruleIds": ["precedence.project-rules"],
+      "evidence": ["docs/architecture/adrs/069-managed-external-skill-adaptation.md"]
+    }
+  ]
+}

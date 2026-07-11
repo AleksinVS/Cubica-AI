@@ -676,7 +676,7 @@ select {
   min-height: 320px;
   background:
     linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
-    url("/images/arctic-background.png");
+    var(--game-background-image, none);
   background-size: cover;
   background-position: center;
 }
@@ -779,7 +779,7 @@ select {
   border-bottom: 1px solid rgba(184, 225, 250, 0.18);
   background:
     linear-gradient(180deg, rgba(24, 99, 148, 0.12) 0%, rgba(7, 28, 47, 0.22) 100%),
-    url("/images/arctic-background.png");
+    var(--game-background-image, none);
   background-size: cover;
   background-position: center;
   overflow: hidden;
@@ -848,7 +848,7 @@ select {
 .info-event-illustration {
   background:
     linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
-    url("/images/arctic-background.png");
+    var(--game-background-image, none);
   background-size: cover;
   background-position: center;
 }
@@ -1454,7 +1454,7 @@ select {
 }
 
 /* ===========================================================================
-   Antarctica draft-parity overrides
+   Full-viewport player modes
    Preserve the DOM contract, but switch the presentation to the four draft
    modes: left-sidebar cards, topbar cards, journal, and info.
    =========================================================================== */
@@ -1496,7 +1496,7 @@ select {
   border: 3px solid rgba(170, 227, 255, 0.2);
   border-top-color: rgba(170, 227, 255, 0.8);
   border-radius: 50%;
-  animation: antarctica-spin 1s linear infinite;
+  animation: loading-spin 1s linear infinite;
 }
 
 @keyframes loading-spin {
@@ -1687,7 +1687,7 @@ select {
   width: 100%;
   min-height: 100vh;
   margin: 0;
-  background-image: url("/images/arctic-background.png");
+  background-image: var(--game-background-image, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -2336,10 +2336,10 @@ select {
 }
 
 .journal-screen {
-  /* Full viewport journal layout - no sidebar, central two-column content over Antarctica background */
+  /* Full viewport journal layout with central two-column content over the game-owned background. */
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
-  background-image: url("/images/arctic-background.png");
+  background-image: var(--game-background-image, none);
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -2594,7 +2594,7 @@ select {
   min-height: 320px;
   background:
     linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
-    url("/images/arctic-background.png");
+    var(--game-background-image, none);
   background-size: cover;
   background-position: center;
 }

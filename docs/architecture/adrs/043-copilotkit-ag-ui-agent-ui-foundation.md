@@ -222,8 +222,8 @@ Costs and risks:
 - `docs/architecture/agent-ui-foundation.md` - project architecture for the Agent UI foundation.
 - `docs/architecture/adrs/044-agent-ui-portability-and-protocol-boundaries.md` - уточнение переносимости и протокольных границ для этого решения.
 - `docs/architecture/agent-ui-portability-and-risk-controls.md` - контроль рисков, контроль узких мест и планы миграции.
-- `docs/tasks/active/TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md` - execution plan.
-- `docs/tasks/active/TSK-20260610-agent-ui-portability-and-risk-controls.md` - план закрепления границ адаптеров и production handoff gates.
+- `docs/tasks/archive/TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md` - execution plan.
+- `docs/tasks/archive/TSK-20260610-agent-ui-portability-and-risk-controls.md` - план закрепления границ адаптеров и production handoff gates.
 - `docs/architecture/adrs/036-semantic-authoring-and-preview-timeline-editor.md` - editor baseline that provides AI prompt and `EditorChangeSet`.
 - `docs/architecture/adrs/038-testing-architecture-and-policy.md` - testing policy for agent and LLM behavior.
 - `docs/architecture/adrs/040-runtime-api-plugin-architecture.md` - manifest/platform capability policy for runtime mechanics.

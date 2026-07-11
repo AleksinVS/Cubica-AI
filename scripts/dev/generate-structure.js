@@ -136,5 +136,17 @@ function toYaml(obj, indent = 0) {
   return yaml;
 }
 
-fs.writeFileSync('PROJECT_STRUCTURE.yaml', header + toYaml(treeInfo.node.children));
-console.log('PROJECT_STRUCTURE.yaml generated strictly with documented nodes.');
+const outputPath = 'PROJECT_STRUCTURE.yaml';
+const generated = header + toYaml(treeInfo.node.children);
+
+if (process.argv.includes('--check')) {
+  const current = fs.existsSync(outputPath) ? fs.readFileSync(outputPath, 'utf8') : '';
+  if (current !== generated) {
+    console.error('PROJECT_STRUCTURE.yaml is stale; run node scripts/dev/generate-structure.js.');
+    process.exit(1);
+  }
+  console.log('PROJECT_STRUCTURE.yaml matches documented nodes.');
+} else {
+  fs.writeFileSync(outputPath, generated);
+  console.log('PROJECT_STRUCTURE.yaml generated strictly with documented nodes.');
+}

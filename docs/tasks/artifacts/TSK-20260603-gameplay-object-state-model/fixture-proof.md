@@ -67,4 +67,4 @@ npm test --workspace @cubica/player-web
 
 `Antarctica` migration is intentionally not included in this implementation package.
 
-The migration is tracked in `docs/tasks/active/TSK-20260603-antarctica-object-state-migration.md`.
+The migration is tracked in `docs/tasks/archive/TSK-20260603-antarctica-object-state-migration.md`.

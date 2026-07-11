@@ -138,7 +138,7 @@ Costs and risks:
 ## 8. Связанные артефакты
 
 - `docs/architecture/ai-agent-safety-remediation.md`
-- `docs/tasks/active/TSK-20260611-ai-agent-safety-remediation.md`
+- `docs/tasks/archive/TSK-20260611-ai-agent-safety-remediation.md`
 - `docs/architecture/adrs/043-copilotkit-ag-ui-agent-ui-foundation.md`
 - `docs/architecture/adrs/044-agent-ui-portability-and-protocol-boundaries.md`
 - `docs/architecture/adrs/045-cubica-owned-generative-ui-and-mvp-copilotkit.md`

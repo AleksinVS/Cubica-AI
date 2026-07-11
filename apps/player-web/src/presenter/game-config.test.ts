@@ -67,6 +67,7 @@ describe("default game config", () => {
       },
     ]);
     expect(data.topbarScreenKeys).toEqual(["intro"]);
+    expect(data.themeBackgroundImage).toBeUndefined();
   });
 
   it("uses default resolvers when no plugin is registered", () => {

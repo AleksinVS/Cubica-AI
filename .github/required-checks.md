@@ -14,7 +14,7 @@ This file documents the checks that must be configured as required status checks
 
 ## Required Checks
 
-- `legacy/stub gate` - blocks malformed legacy registries, invalid `.desc.json`, missing `stub_reference` paths and unregistered stub markers.
+- `legacy/stub gate` - blocks malformed legacy registries, invalid or incomplete task `.desc.json` metadata, task status/queue drift in `NEXT_STEPS.md`, missing task or `stub_reference` paths, stale `PROJECT_STRUCTURE.yaml`, and unregistered stub markers.
 - `manifest authoring gate` - blocks stale generated manifests, invalid authoring manifests and authoring-only keys in runtime manifests.
 - `canonical verification` - runs the canonical runtime and player verification path.
 - `portal rule tests` - keeps portal launch rule tests green while the portal launch task remains active.
@@ -30,7 +30,12 @@ The workflow in `.github/workflows/ci.yml` runs on:
 
 ## Repository Setting
 
-Branch protection or a repository ruleset must require `legacy/stub gate` and `manifest authoring gate` before merge. The other checks should also remain required for `main` while their corresponding code paths are active.
+Целевая настройка branch protection для `main` требует все пять проверок на
+ветке, обновленной относительно `main`. Изменения должны поступать через pull
+request, все обсуждения должны быть закрыты, а правило должно действовать и для
+администраторов. Force-push и удаление ветки запрещены. Обязательное число
+одобрений человеком не задается: текущими шлюзами служат автоматические
+проверки и закрытие обсуждений.
 
 ## Temporary Legacy Exception
 

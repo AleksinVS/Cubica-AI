@@ -12,6 +12,7 @@ export const ANTARCTICA_GAME_CONFIG_DATA: GameConfigData = {
   gameId: "antarctica",
   playerId: "player-web",
   storageKey: "cubica-antarctica-session-id",
+  themeBackgroundImage: "/images/arctic-background.png",
 
   fallbackMetrics: [
     { id: "remainingDays", caption: "Осталось дней", aliases: ["remainingDays", "days"], sidebarImage: "/images/left-sidebar/days.png", topbarImage: "/images/top-sidebar/days-top.png" },

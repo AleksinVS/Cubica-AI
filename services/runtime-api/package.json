@@ -25,6 +25,6 @@
     "lint": "echo \"TODO: add runtime-api lint\" && exit 1"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.7.0"
   }
 }

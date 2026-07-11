@@ -56,6 +56,15 @@ export interface GameConfigData {
 
   /** Фоновые изображения метрик в topbar-режиме */
   metricBackgroundImages: Record<string, string>;
+
+  /**
+   * Optional game-owned background used by shared player layouts.
+   *
+   * The generic player deliberately has no product-specific fallback image.
+   * A game plugin may opt in to its own visual identity without making that
+   * identity an unconditional part of every game rendered by player-web.
+   */
+  themeBackgroundImage?: string;
 }
 
 /**
@@ -177,6 +186,9 @@ export interface GameConfig<TGameState = GameState, TUiContent = GamePlayerUiCon
 
   /** Фоновые изображения метрик в topbar-режиме */
   metricBackgroundImages: Record<string, string>;
+
+  /** Optional game-owned background exposed to shared layout styles. */
+  themeBackgroundImage?: string;
 }
 
 /**
@@ -485,6 +497,7 @@ export function createDefaultGameConfig(data: GameConfigData): GameConfig {
     fallbackMetrics: data.fallbackMetrics,
     topbarScreenKeys: new Set(data.topbarScreenKeys),
     metricBackgroundImages: data.metricBackgroundImages,
+    themeBackgroundImage: data.themeBackgroundImage,
 
     resolveGameState(content, session) {
       const state = session?.state as Record<string, unknown> | undefined;

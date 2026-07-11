@@ -12,6 +12,6 @@
     "lint": "echo \"[contracts-runtime] no lint yet (see TSK-20260630-manifest-contract-parity)\""
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.7.0"
   }
 }

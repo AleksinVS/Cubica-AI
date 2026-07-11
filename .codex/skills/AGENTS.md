@@ -1,31 +1,39 @@
 # AGENTS for `.codex/skills`
 
+## Contents
+
+- [Scope](#scope)
+- [Canonical Workflow](#canonical-workflow)
+- [Explicit Activation](#explicit-activation)
+- [Skill Rules](#skill-rules)
+- [Archived Workflow](#archived-workflow)
+
 ## Scope
 
 These rules apply to everything under `.codex/skills/`.
 
-## Local Priority Rules
+## Canonical Workflow
 
-- `new-workflow_V2.md` is the workflow source of truth for this subtree.
-- If workflow files conflict, `new-workflow_V2.md` overrides `new-workflow.md`, archived skill packs, and older role hierarchies.
-- Generic workflow behavior belongs in the `wf-*` skills.
-- Cubica-specific repository rules belong in `cubica-project-context`.
+- The project-local `cubica/SKILL.md` is the workflow entry point for Cubica development.
+- ADR-068 and `docs/tasks/README.md` define the durable plan, authority, and task hierarchy.
+- Repo-local skills must not reintroduce `ARCHITECT_PLAN`, separate PM/Executor acceptance, or another durable planning hierarchy.
 
-## Role Hierarchy
+## Explicit Activation
 
-- Architect is `L1`: owns planning, architecture, block selection, and post-acceptance progression.
-- Orchestrator is a long-lived execution router: it follows the architect plan mechanically and does not rewrite it.
-- PM is `L2`: owns test validation, block acceptance, and the decision packet back to Architect.
-- Executor is `L3`: implements bounded tasks inside explicit file and test limits.
-- Data Analyst and Web Analyst are specialist support roles used only through explicit contracts.
+- Use `cubica/SKILL.md` only when the user explicitly invokes `$cubica` or explicitly asks to apply the Cubica autonomous workflow.
+- Request similarity, task complexity, or agent preference must not activate `$cubica` automatically.
+- Other skills, including project-local skills imported or adapted from `agent-skills` or `superpowers`, retain their normal automatic trigger behavior unless their own contract says otherwise.
 
-## Editing Rules
+## Skill Rules
 
-- Keep one skill per role directory.
-- Keep `SKILL.md` concise and procedural.
-- Keep reusable artifact schemas in `_shared/references/`.
-- When `SKILL.md` changes, also check whether any local examples or templates in the same skill subtree need updates.
+- Keep each `SKILL.md` concise, procedural, and project-specific.
+- Use repository documents as canonical context instead of copying architecture into the skill.
+- Adapt external skills through `external-skill-adapter`: keep exact upstream snapshots outside the active skill tree, materialize a clean project-owned version, and record reusable lessons in the adaptation memory.
+- Deterministic adapter scripts collect signals and validate structure; the adapting agent owns semantic compatibility and may read targeted project context when needed.
+- Store temporary subagent briefs and review packages under `.tmp/agent-workflow/`.
+- Keep reusable external-agent runners in the shared `cli-subagents` skill; do not copy them into this subtree.
+- When a workflow rule changes, update the skill, root agent instructions, task-system documentation, ADR, and `PROJECT_ARCHITECTURE.md` together.
 
-## Documentation Sync
+## Archived Workflow
 
-- If the workflow hierarchy changes, update this file and the affected skill files together.
+The former shared `$cubica` and `wf-*` role hierarchy is historical. Its snapshot lives under `archive/agent-workflows/wf-cubica-2026-07-10/` and must not govern files in this subtree.

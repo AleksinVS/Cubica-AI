@@ -13,7 +13,7 @@
 
 ## 1. Purpose
 
-This matrix turns `docs/tasks/active/TSK-20260521-antarctica-authoring-manifest-migration.md` into bounded implementation slices.
+This matrix turns `docs/tasks/archive/TSK-20260521-antarctica-authoring-manifest-migration.md` into bounded implementation slices.
 
 The goal is to migrate `Antarctica` game and UI manifests to the ADR-030 authoring layer without changing runtime behavior unless a slice explicitly documents and validates the change.
 
@@ -117,7 +117,7 @@ Current inventory:
 
 ### Review Follow-Up
 
-Post-migration review found acceptance blockers that are tracked separately in `docs/tasks/active/TSK-20260521-antarctica-authoring-review-remediation.md`.
+Post-migration review found acceptance blockers that are tracked separately in `docs/tasks/archive/TSK-20260521-antarctica-authoring-review-remediation.md`.
 
 The remediation is complete as of 2026-05-21. The original migration can be treated as accepted after the following completed outcomes:
 

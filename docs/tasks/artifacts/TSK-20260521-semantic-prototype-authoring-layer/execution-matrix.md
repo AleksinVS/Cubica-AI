@@ -13,7 +13,7 @@
 
 ## 1. Purpose
 
-This matrix turns ADR-030 into an executable implementation sequence. It keeps architecture decisions in ADR-030 and keeps implementation tracking in `docs/tasks/active/TSK-20260521-semantic-prototype-authoring-layer.md`.
+This matrix turns ADR-030 into an executable implementation sequence. It keeps architecture decisions in ADR-030 and keeps implementation tracking in `docs/tasks/archive/TSK-20260521-semantic-prototype-authoring-layer.md`.
 
 A sidecar is a companion file stored next to the main artifact; here it means a source map that tooling reads, while runtime ignores it.
 
@@ -81,7 +81,7 @@ A sidecar is a companion file stored next to the main artifact; here it means a 
 | S6 | Done | Source maps generated as companion files. |
 | S7 | Done | `simple-choice` has game/UI authoring inputs and generated outputs. |
 | S8 | Done | `verify:manifest-authoring`, `verify:canonical`, and GitHub CI job added. |
-| S9 | Documented | `Antarctica` migration is tracked by `docs/tasks/active/TSK-20260521-antarctica-authoring-manifest-migration.md`. |
+| S9 | Documented | `Antarctica` migration is tracked by `docs/tasks/archive/TSK-20260521-antarctica-authoring-manifest-migration.md`. |
 
 ## 7. Risks And Controls
 

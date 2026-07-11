@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workflow Data Analyst"
+  short_description: "Handles bounded data analysis work"
+  default_prompt: "Use $wf-data-analyst to process a bounded data task and return a fixed DATA_ANALYSIS_REPORT.md."
+
+policy:
+  allow_implicit_invocation: true

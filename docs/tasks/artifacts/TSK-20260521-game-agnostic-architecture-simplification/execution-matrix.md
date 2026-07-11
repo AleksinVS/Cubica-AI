@@ -13,7 +13,7 @@
 
 ## Purpose
 
-This document turns the 2026-05-21 architecture analysis into executable work. It complements `docs/tasks/active/TSK-20260521-game-agnostic-architecture-simplification.md` and should be updated after every implementation slice.
+This document turns the 2026-05-21 architecture analysis into executable work. It complements `docs/tasks/archive/TSK-20260521-game-agnostic-architecture-simplification.md` and should be updated after every implementation slice.
 
 ## Terms
 

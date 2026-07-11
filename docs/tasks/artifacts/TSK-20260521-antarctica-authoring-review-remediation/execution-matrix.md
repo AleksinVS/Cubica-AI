@@ -12,7 +12,7 @@
 
 ## 1. Purpose
 
-This matrix turns the post-migration review findings into bounded implementation slices. It complements `docs/tasks/active/TSK-20260521-antarctica-authoring-review-remediation.md`.
+This matrix turns the post-migration review findings into bounded implementation slices. It complements `docs/tasks/archive/TSK-20260521-antarctica-authoring-review-remediation.md`.
 
 The target is not another broad migration pass. The target is to make the accepted `Antarctica` authoring migration truthful, diagnosable and CI-enforced.
 

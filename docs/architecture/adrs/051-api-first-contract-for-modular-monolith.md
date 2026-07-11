@@ -222,7 +222,7 @@ Costs and risks:
 
 ## 12. Связанные артефакты
 
-- `docs/tasks/active/TSK-20260613-runtime-api-openapi-contract.md` - execution
+- `docs/tasks/archive/TSK-20260613-runtime-api-openapi-contract.md` - execution
   package for this ADR.
 - `docs/architecture/PROJECT_ARCHITECTURE.md` - canonical architecture summary.
 - `PROJECT_OVERVIEW.md` - high-level project architecture overview.

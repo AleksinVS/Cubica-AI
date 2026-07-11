@@ -15,7 +15,7 @@
 
 ## 1. Purpose
 
-This matrix turns `docs/tasks/active/TSK-20260522-editor-engine-authoring-manifest-editor.md` into bounded execution slices.
+This matrix turns `docs/tasks/archive/TSK-20260522-editor-engine-authoring-manifest-editor.md` into bounded execution slices.
 
 The goal is to build the first `editor-engine` for authoring manifests without making flow-chart a second source of truth.
 
@@ -419,6 +419,6 @@ Completed:
 Deferred outside this first full slice:
 
 - Schema-pointer based UI metadata for exact property panel widget selection.
-- JSON tree view as the third target JSON editing mode; tracked by `docs/tasks/active/TSK-20260522-editor-engine-json-tree-view.md`.
+- JSON tree view as the third target JSON editing mode; tracked by `docs/tasks/archive/TSK-20260522-editor-engine-json-tree-view.md`.
 - Collaborative editing and AI patch review workflow.
 - Broader cleanup of pre-existing `teamSelection` drift in runtime/player layers, tracked separately from editor-engine purity.

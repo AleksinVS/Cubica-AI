@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workflow Orchestrator"
+  short_description: "Unified architect-orchestrator for block planning, executor routing, and final review"
+  default_prompt: "Use $wf-orchestrator to investigate the repository, define the next bounded block, write a detailed ARCHITECT_PLAN.md with warm context and executor checklists, bootstrap PROJECT_WORKFLOW_CONFIG.json when needed, resolve runtime bindings, compile prompt packets for Gemini or Droid workers when needed, monitor execution, and perform the final review."
+
+policy:
+  allow_implicit_invocation: true

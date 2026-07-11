@@ -341,10 +341,10 @@ Recommended adoption order:
 - `docs/architecture/adrs/046-ai-driven-game-runtime-mode.md`
 - `docs/architecture/agent-ui-portability-and-risk-controls.md`
 - `docs/architecture/generative-ui-surface-protocol.md`
-- `docs/tasks/active/TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md`
-- `docs/tasks/active/TSK-20260610-agent-ui-portability-and-risk-controls.md`
-- `docs/tasks/active/TSK-20260610-cubica-generative-ui-surface-protocol.md`
-- `docs/tasks/active/TSK-20260611-ai-driven-game-runtime-mode.md`
+- `docs/tasks/archive/TSK-20260609-copilotkit-ag-ui-agent-ui-foundation.md`
+- `docs/tasks/archive/TSK-20260610-agent-ui-portability-and-risk-controls.md`
+- `docs/tasks/archive/TSK-20260610-cubica-generative-ui-surface-protocol.md`
+- `docs/tasks/archive/TSK-20260611-ai-driven-game-runtime-mode.md`
 - `docs/architecture/PROJECT_ARCHITECTURE.md`
 - `PROJECT_OVERVIEW.md`
 - `packages/editor-engine/src/index.ts`

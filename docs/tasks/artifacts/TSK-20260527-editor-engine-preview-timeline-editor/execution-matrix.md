@@ -15,7 +15,7 @@
 
 ## 1. Purpose
 
-This matrix turns `docs/tasks/active/TSK-20260527-editor-engine-preview-timeline-editor.md` into bounded execution slices.
+This matrix turns `docs/tasks/archive/TSK-20260527-editor-engine-preview-timeline-editor.md` into bounded execution slices.
 
 The goal is to move editor-engine from graph-primary authoring to preview-first authoring while preserving authoring JSON as the source of truth and keeping runtime/player layers clean.
 

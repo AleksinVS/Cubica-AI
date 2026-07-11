@@ -4,6 +4,16 @@ This file defines global rules for AI agents working in this repository.
 
 ---
 
+## Оглавление
+
+- [1. Scope and precedence of `CLAUDE.md`](#1-scope-and-precedence-of-claudemd)
+- [2. General rules for agents](#2-general-rules-for-agents)
+- [2.1 Опциональный процесс `$cubica`](#21-опциональный-процесс-cubica)
+- [3. Key project documents to read first](#3-key-project-documents-to-read-first)
+- [4. Work with temporary files](#4-work-with-temporary-files)
+
+---
+
 ## 1. Scope and precedence of `CLAUDE.md`
 
 A **global**, short and stable `CLAUDE.md` lives in the **repository root** (this file).
@@ -16,7 +26,7 @@ Agents must always:
 1. **When planning, configuring, and developing, use Context7 MCP to get up-to-date documentation and best practices.**
 2. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
-   - Re-read the active workflow wrapper/role skill that governs the current work (for example: `$cubica`, `wf-architect`, `wf-orchestrator`).
+   - Re-read the project-local `.codex/skills/cubica/SKILL.md` when the current work uses the Cubica development workflow.
    - Treat this reload as mandatory before continuing implementation, review, or planning after a compaction boundary.
 3. **Maintain documentation**
    - Create and update documentation wherever it is needed;
@@ -56,6 +66,12 @@ Agents must always:
    - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
    - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
 
+8. **Развивать платформу через конкретные игры**
+   - Новая продуктовая разработка по умолчанию начинается с вводных PM по конкретной игре и одного законченного вертикального среза.
+   - Агент готовит и реализует единый план, параллельно закрывая только необходимые срезу архитектурные пробелы. Каждая механика классифицируется как общая или относящаяся только к игре.
+   - PM согласует только существенные архитектурные решения. Внутренние технические решения и распределение работы между субагентами не требуют согласования.
+   - Этот режим не включает `$cubica`; навык применяется только по прямому указанию пользователя. Полное описание режима хранится в `docs/tasks/STRATEGY.md`.
+
 9. **Manage architectural drift and legacy gaps**
     - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
     - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
@@ -80,13 +96,19 @@ Agents must always:
 
 ---
 
-## 2.1 Workflow role compatibility (`wf-*`)
+## 2.1 Опциональный процесс `$cubica`
 
-When using the `wf-*` workflow skills, follow their role boundaries in addition to these global rules:
+При использовании проектного навыка `.codex/skills/cubica/SKILL.md` действуют правила ADR-068:
 
-- Architect (`wf-architect`) owns block selection, methodology choice, and architecture decisions (and records durable decisions in ADRs).
-- Orchestrator (`wf-orchestrator`) routes work mechanically and must not rewrite the architect plan.
-- Executor owns `task_acceptance`; PM owns `block_acceptance` (per the `wf-*` contracts).
+- только навык `$cubica` применяется по явному указанию пользователя; остальные навыки, включая перенесенные или адаптированные из `agent-skills` и `superpowers`, могут включаться автоматически по своим обычным правилам сопоставления запроса;
+- человек утверждает общий план корневой `TSK-*` и архитектурные решения;
+- явная команда реализовать ранее рассмотренный план считается его утверждением;
+- оркестратор самостоятельно принимает неархитектурные решения, декомпозирует работу, назначает субагентов, организует проверки и выполняет итоговую приемку;
+- самостоятельный результат может получить дочерний `TSK-*` с полем `Parent`, но нормативная глубина ограничена одним уровнем;
+- повторное согласование требуется при изменении архитектуры, цели, границ, основных результатов, общей приемки или существенного необратимого риска;
+- подтверждение прав, секретов и разрушительных внешних операций остается обязательной границей безопасности;
+- при частичном блокере оркестратор продолжает независимые части утвержденного плана;
+- временные задания и отчеты субагентов хранятся в `.tmp/agent-workflow/`, а не образуют параллельную систему планов.
 
 ## 3. Key project documents to read first
 
@@ -98,6 +120,7 @@ Before planning anything, use these entry points:
 - [PROJECT_STRUCTURE.yaml](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.yaml) - current repository layout and workspace map.
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
+- [docs/tasks/STRATEGY.md](/home/abc/projects/Cubica-AI/docs/tasks/STRATEGY.md) - product-led development mode, strategic priorities, and rules for selecting platform work.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
 
 ---

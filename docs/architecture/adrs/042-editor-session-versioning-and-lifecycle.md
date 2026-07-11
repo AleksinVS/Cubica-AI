@@ -205,7 +205,7 @@ Costs and risks:
 
 ## 11. Связанные артефакты
 
-- `docs/tasks/active/TSK-20260605-editor-session-versioning-and-gc.md` - execution plan for this ADR.
+- `docs/tasks/archive/TSK-20260605-editor-session-versioning-and-gc.md` - execution plan for this ADR.
 - `docs/architecture/adrs/036-semantic-authoring-and-preview-timeline-editor.md` - preview-first editor baseline.
 - `docs/architecture/adrs/037-project-local-plugins-and-marketplace-safe-evolution.md` - project-local plugin boundary.
 - `docs/architecture/adrs/039-player-web-plugin-bundle-handoff.md` - preview and published plugin bundle handoff.

@@ -230,5 +230,5 @@ Costs:
 ## 12. Связанные артефакты
 
 - `services/game-editor/docs/editor-engine-authoring-manifest-editor.md`
-- `docs/tasks/active/TSK-20260522-editor-engine-progressive-graph-ux.md`
+- `docs/tasks/archive/TSK-20260522-editor-engine-progressive-graph-ux.md`
 - `docs/tasks/artifacts/TSK-20260522-editor-engine-progressive-graph-ux/execution-matrix.md`

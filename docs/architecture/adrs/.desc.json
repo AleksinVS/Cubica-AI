@@ -13,5 +13,7 @@
   "053-game-defined-ui-panels.md": "ADR-053: game-defined UI panels, где UI-only поведение и панели (журнал, подсказка) описываются в UI-манифесте, а не в логическом game-манифесте.",
   "054-game-ui-manifest-boundary-and-metric-projection.md": "ADR-054: граница game/UI манифестов и player-facing проекция метрик; game-манифест владеет смыслом, ui-манифест - presentation, Presenter - projection.",
   "055-player-renderer-purity-and-declarative-ui-action-binding.md": "ADR-055: чистота generic-рендерера player-web и декларативная привязка действий/навигации в UI-манифесте вместо хардкода id кнопок, CSS-классов и подписей игры.",
-  "056-manifest-contract-schema-parity-and-testing.md": "ADR-056: парность manifest-контрактов и JSON Schema через генерацию TS из схемы, CI drift check и контрактные тесты вместо ручной синхронизации."
+  "056-manifest-contract-schema-parity-and-testing.md": "ADR-056: парность manifest-контрактов и JSON Schema через генерацию TS из схемы, CI drift check и контрактные тесты вместо ручной синхронизации.",
+  "068-human-approved-autonomous-agent-workflow.md": "ADR-068: утверждаемый человеком общий TSK-план и автономное исполнение единым оркестратором с необязательными дочерними TSK.",
+  "069-managed-external-skill-adaptation.md": "ADR-069: управляемая адаптация внешних навыков через компактный профиль совместимости, детерминированные проверки, кэш и ограниченный модельный анализ."
 }

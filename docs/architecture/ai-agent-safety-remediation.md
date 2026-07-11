@@ -210,7 +210,7 @@ This remediation does not require:
 ## 11. Связанные Документы
 
 - `docs/architecture/adrs/047-ai-agent-safety-remediation-gates.md`
-- `docs/tasks/active/TSK-20260611-ai-agent-safety-remediation.md`
+- `docs/tasks/archive/TSK-20260611-ai-agent-safety-remediation.md`
 - `docs/architecture/generative-ui-surface-protocol.md`
 - `docs/architecture/agent-ui-portability-and-risk-controls.md`
 - `docs/architecture/adrs/044-agent-ui-portability-and-protocol-boundaries.md`

@@ -641,7 +641,7 @@ Minimum checks before implementation is considered safe:
 - `docs/architecture/adrs/044-agent-ui-portability-and-protocol-boundaries.md`
 - `docs/architecture/agent-ui-foundation.md`
 - `docs/architecture/agent-ui-portability-and-risk-controls.md`
-- `docs/tasks/active/TSK-20260610-cubica-generative-ui-surface-protocol.md`
+- `docs/tasks/archive/TSK-20260610-cubica-generative-ui-surface-protocol.md`
 - `packages/contracts/ai/src/index.ts`
 - `apps/editor-web/src/lib/editor-agent-tool-catalog.ts`
 - `https://www.copilotkit.ai/generative-ui`

@@ -1,0 +1,7 @@
+interface:
+  display_name: "Workflow Web Analyst"
+  short_description: "Performs cited web research briefs"
+  default_prompt: "Use $wf-web-analyst to answer a bounded research request with a fixed WEB_RESEARCH_BRIEF.md."
+
+policy:
+  allow_implicit_invocation: true

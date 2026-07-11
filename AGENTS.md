@@ -8,7 +8,7 @@ This file defines global rules for AI agents working in this repository.
 
 - [1. Scope and precedence of `AGENTS.md`](#1-scope-and-precedence-of-agentsmd)
 - [2. General rules for agents](#2-general-rules-for-agents)
-- [2.1 Workflow role compatibility (`wf-*`)](#21-workflow-role-compatibility-wf-)
+- [2.1 Опциональный процесс `$cubica`](#21-опциональный-процесс-cubica)
 - [2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization](#22-adr-and-project_architecturemd-synchronization)
 - [3. Key project documents to read first](#3-key-project-documents-to-read-first)
 - [4. Work with temporary files](#4-work-with-temporary-files)
@@ -33,7 +33,7 @@ Agents must always:
 1. **When planning, configuring, and developing, use Context7 MCP to get up-to-date documentation and best practices.**
 2. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
-   - Re-read the active workflow wrapper/role skill that governs the current work (for example: `$cubica`, `wf-architect`, `wf-orchestrator`).
+   - Re-read the project-local `.codex/skills/cubica/SKILL.md` when the current work uses the Cubica development workflow.
    - Treat this reload as mandatory before continuing implementation, review, or planning after a compaction boundary.
 3. **Maintain documentation**
    - Create and update documentation wherever it is needed;
@@ -49,6 +49,27 @@ Agents must always:
    - Comments should explain **why** something is done, not only **what** is done.
 
 5. **Rules for user interaction**
+   - Unless the user explicitly says otherwise, treat the user as a **product manager (PM)** who:
+     - manages the agents and owns product and architecture approvals;
+     - understands the product goals and the project architecture at a high level;
+     - is not expected to know the implementation stack, repository layout, code, or the numbers and contents of individual ADRs.
+   - Make every response self-contained for that PM context:
+     - never use an ADR number, file path, library name, code symbol, or internal project term as the sole explanation;
+     - on first mention, briefly explain what the referenced decision or component does, why it exists, and why it matters to the current product decision;
+     - use links and technical evidence as optional supporting detail, not as required reading for understanding the answer.
+   - Lead with the product outcome, risk, or decision that matters to the user. Then provide the necessary architecture explanation, and only then the implementation details or evidence.
+   - Clearly distinguish between:
+     - an already accepted project decision;
+     - a new architecture proposal that requires user approval;
+     - an implementation detail that the agent may decide autonomously;
+     - known technical debt or a temporary limitation.
+   - When requesting an architecture decision, explain in plain language:
+     - what must be decided;
+     - why the decision is needed now;
+     - the agent's recommended option and the reason for it;
+     - realistic alternatives and their trade-offs;
+     - what the approval enables, constrains, or postpones.
+   - For large reviews and plans, start with a short conclusion and priorities, then provide enough structured detail that the user does not need to open the referenced code or architecture documents to understand the recommendation.
    - Prefer clear, standard terminology over slang or project-specific jargon.
    - If a term might not be obvious to a new developer, treat it as non-standard and explain it (see the next point).
    - When using a term that is not widely understood or is domain-specific (for example: “daemon”, “middleware”, “RPC gateway”, “filter graph”, or Russian terms like «демон», «промежуточное ПО», «шлюз RPC», «граф фильтров»):
@@ -72,6 +93,14 @@ Agents must always:
    - After a subagent finishes its work and its result has been collected, the parent agent MUST explicitly close or terminate that subagent if it is no longer needed.
    - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
    - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
+
+8. **Развивать платформу через конкретные игры**
+   - По умолчанию новая продуктовая разработка начинается с вводных PM по конкретной игре и одного **вертикального среза** (законченного сценария от правил и состояния до интерфейса и проверок).
+   - Агент готовит и реализует единый план игрового среза. В плане он обязан отделить готовые возможности платформы, недостающие общие возможности и содержимое, которое остается только в этой игре.
+   - Архитектурные пробелы закрываются параллельно с игрой, но только в минимальном объеме, необходимом выбранному срезу. Не нужные ему платформенные блоки не реализуются «на будущее».
+   - До реализации агент выносит PM только существенные архитектурные вопросы: изменение публичных контрактов, источника истины, границ доверия и безопасности, хранения, совместимости игр или существенной стоимости эксплуатации. Выбор библиотек, внутренняя декомпозиция и распределение работы между субагентами не требуют согласования.
+   - Новая общая возможность доказывается сценарием выбранной игры и нейтральной тестовой фикстурой (минимальным набором тестовых данных без имен и правил этой игры).
+   - Этот режим не включает `$cubica`. Навык `$cubica` применяется только по прямому указанию пользователя. Полное описание режима хранится в `docs/tasks/STRATEGY.md`.
 
 9. **Manage architectural drift and legacy gaps**
     - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
@@ -97,13 +126,19 @@ Agents must always:
 
 ---
 
-## 2.1 Workflow role compatibility (`wf-*`)
+## 2.1 Опциональный процесс `$cubica`
 
-When using the `wf-*` workflow skills, follow their role boundaries in addition to these global rules:
+При использовании проектного навыка `.codex/skills/cubica/SKILL.md` действуют правила ADR-068:
 
-- Architect (`wf-architect`) owns block selection, methodology choice, and architecture decisions (and records durable decisions in ADRs).
-- Orchestrator (`wf-orchestrator`) routes work mechanically and must not rewrite the architect plan.
-- Executor owns `task_acceptance`; PM owns `block_acceptance` (per the `wf-*` contracts).
+- только навык `$cubica` применяется по явному указанию пользователя; остальные навыки, включая перенесенные или адаптированные из `agent-skills` и `superpowers`, могут включаться автоматически по своим обычным правилам сопоставления запроса;
+- человек утверждает общий план корневой `TSK-*` и архитектурные решения;
+- явная команда реализовать ранее рассмотренный план считается его утверждением;
+- оркестратор самостоятельно принимает неархитектурные решения, декомпозирует работу, назначает субагентов, организует проверки и выполняет итоговую приемку;
+- самостоятельный результат может получить дочерний `TSK-*` с полем `Parent`, но нормативная глубина ограничена одним уровнем;
+- повторное согласование требуется при изменении архитектуры, цели, границ, основных результатов, общей приемки или существенного необратимого риска;
+- подтверждение прав, секретов и разрушительных внешних операций остается обязательной границей безопасности;
+- при частичном блокере оркестратор продолжает независимые части утвержденного плана;
+- временные задания и отчеты субагентов хранятся в `.tmp/agent-workflow/`, а не образуют параллельную систему планов.
 
 ## 2.2 ADR and `PROJECT_ARCHITECTURE.md` synchronization
 
@@ -124,6 +159,7 @@ Before planning anything, use these entry points:
 - [PROJECT_STRUCTURE.yaml](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.yaml) - current repository layout and workspace map.
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
+- [docs/tasks/STRATEGY.md](/home/abc/projects/Cubica-AI/docs/tasks/STRATEGY.md) - product-led development mode, strategic priorities, and rules for selecting platform work.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
 
 ---

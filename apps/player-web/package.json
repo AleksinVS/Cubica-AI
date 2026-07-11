@@ -2,6 +2,9 @@
   "name": "@cubica/player-web",
   "version": "0.0.0",
   "private": true,
+  "engines": {
+    "node": ">=22.7.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "NEXT_IGNORE_INCORRECT_LOCKFILE=1 next build",
