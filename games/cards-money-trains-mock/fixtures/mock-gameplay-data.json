@@ -1,10 +1,54 @@
 {
   "fixtureKind": "development-mock",
   "gameId": "cards-money-trains-mock",
-  "warning": "MOCK: вымышленные команды, выплаты и маршруты. Не являются авторскими правилами.",
+  "warning": "MOCK: вымышленные команды, выплаты, колоды и маршруты. Не являются авторскими правилами.",
+  "phaseOrder": [
+    "setup",
+    "news",
+    "maintenance",
+    "market",
+    "cargo",
+    "operations",
+    "construction",
+    "debrief",
+    "finished"
+  ],
+  "decks": {
+    "controlSeed": "39d334ef7701ec6e16d2cc2dab7b1a41",
+    "shuffleMode": "server-seeded-hidden-order",
+    "newsCardsPerTurn": 1,
+    "cargoOfferSize": 2,
+    "futureCardsVisibility": "secret"
+  },
   "maintenance": {
     "coinsPerVehicle": 1,
+    "coinsPerHeldCargo": 1,
     "warning": "MOCK: тариф нужен только для проверки атомарного обслуживания."
+  },
+  "market": {
+    "prices": {
+      "locomotive": { "purchase": 10, "sale": 4 },
+      "wagon": { "purchase": 5, "sale": 2 }
+    },
+    "salePhase": "market",
+    "creditAllowed": false,
+    "negativeBalanceAllowed": false
+  },
+  "operations": {
+    "actionPointsPerLocomotive": 5,
+    "attachCost": 1,
+    "manualDetachCost": 1,
+    "moveCostPerEdge": 1,
+    "tariffPerShortestRouteEdge": 2,
+    "terminalLocomotiveCapacity": 1,
+    "capacityRationale": "MOCK: значение 1 позволяет доказать переполнение без добавления третьего локомотива; нормативное значение не выводится из этой фикстуры.",
+    "locomotiveOrder": ["mock-locomotive-purple-1", "mock-locomotive-green-1"]
+  },
+  "ranking": {
+    "cashWeight": 1,
+    "vehicleNominal": { "locomotive": 10, "wagon": 5 },
+    "groups": ["logistics_company", "locomotive_guild"],
+    "tiePolicy": "shared-place"
   },
   "teams": [
     {
@@ -29,7 +73,12 @@
       "type": "logistics_company",
       "coins": 10,
       "vehicles": [
-        { "id": "mock-wagon-red-1", "kind": "wagon", "nodeId": "mock-terminal-e" },
+        {
+          "id": "mock-wagon-red-1",
+          "kind": "wagon",
+          "objectType": "transport.incompatible-wagon",
+          "nodeId": "mock-terminal-b"
+        },
         { "id": "mock-wagon-red-2", "kind": "wagon", "nodeId": "mock-terminal-f" }
       ]
     },
@@ -48,28 +97,88 @@
       "type": "locomotive_guild",
       "coins": 10,
       "vehicles": [
-        { "id": "mock-locomotive-green-1", "kind": "locomotive", "nodeId": "mock-terminal-f", "actionPoints": 5 }
+        { "id": "mock-locomotive-green-1", "kind": "locomotive", "nodeId": "mock-terminal-c", "actionPoints": 5 }
       ]
     }
   ],
-  "cargoCards": [
+  "reservedMarketVehicles": [
     {
-      "id": "mock-cargo-b-c",
-      "fromNodeId": "mock-terminal-b",
-      "toNodeId": "mock-terminal-c",
-      "payout": 9,
-      "transportFee": 2,
-      "copies": 1
+      "id": "mock-market-wagon-white-3",
+      "kind": "wagon",
+      "ownerTeamId": "white-logistics",
+      "nodeId": "mock-terminal-b",
+      "availability": "reserve"
     },
-    { "id": "mock-cargo-a-d", "fromNodeId": "mock-terminal-a", "toNodeId": "mock-terminal-d", "payout": 9, "copies": 2 },
-    { "id": "mock-cargo-e-c", "fromNodeId": "mock-terminal-e", "toNodeId": "mock-terminal-c", "payout": 6, "copies": 2 },
-    { "id": "mock-cargo-b-f", "fromNodeId": "mock-terminal-b", "toNodeId": "mock-terminal-f", "payout": 7, "copies": 1 }
+    {
+      "id": "mock-market-locomotive-green-2",
+      "kind": "locomotive",
+      "ownerTeamId": "green-guild",
+      "nodeId": "mock-terminal-f",
+      "actionPoints": 5,
+      "availability": "reserve"
+    }
+  ],
+  "cargoCards": [
+    { "id": "mock-cargo-b-c", "fromNodeId": "mock-terminal-b", "toNodeId": "mock-terminal-c", "payout": 9, "copies": 1 },
+    { "id": "mock-cargo-a-d", "fromNodeId": "mock-terminal-a", "toNodeId": "mock-terminal-d", "payout": 9, "copies": 1 },
+    { "id": "mock-cargo-e-c", "fromNodeId": "mock-terminal-e", "toNodeId": "mock-terminal-c", "payout": 6, "copies": 1 },
+    { "id": "mock-cargo-b-f", "fromNodeId": "mock-terminal-b", "toNodeId": "mock-terminal-f", "payout": 30, "copies": 1 },
+    { "id": "mock-cargo-a-e", "fromNodeId": "mock-terminal-a", "toNodeId": "mock-terminal-e", "payout": 8, "copies": 1 },
+    { "id": "mock-cargo-d-b", "fromNodeId": "mock-terminal-d", "toNodeId": "mock-terminal-b", "payout": 8, "copies": 1 },
+    { "id": "mock-cargo-f-a", "fromNodeId": "mock-terminal-f", "toNodeId": "mock-terminal-a", "payout": 10, "copies": 1 },
+    { "id": "mock-cargo-c-e", "fromNodeId": "mock-terminal-c", "toNodeId": "mock-terminal-e", "payout": 7, "copies": 1 },
+    { "id": "mock-cargo-e-d", "fromNodeId": "mock-terminal-e", "toNodeId": "mock-terminal-d", "payout": 9, "copies": 1 },
+    { "id": "mock-cargo-b-a", "fromNodeId": "mock-terminal-b", "toNodeId": "mock-terminal-a", "payout": 5, "copies": 1 },
+    { "id": "mock-cargo-c-f", "fromNodeId": "mock-terminal-c", "toNodeId": "mock-terminal-f", "payout": 6, "copies": 1 },
+    { "id": "mock-cargo-f-d", "fromNodeId": "mock-terminal-f", "toNodeId": "mock-terminal-d", "payout": 8, "copies": 1 }
   ],
   "newsCards": [
     {
       "id": "mock-news-block-c-d",
       "summary": "MOCK: дорога C–D временно закрыта",
       "effect": { "kind": "edge-state", "edgeId": "mock-edge-c-d", "state": "blocked" }
+    },
+    {
+      "id": "mock-news-open-c-d",
+      "summary": "MOCK: дорога C–D снова открыта",
+      "effect": { "kind": "edge-state", "edgeId": "mock-edge-c-d", "state": "open" }
+    },
+    {
+      "id": "mock-news-costly-service",
+      "summary": "MOCK: команды обсуждают стоимость удержания груза",
+      "effect": { "kind": "methodical-prompt", "promptId": "mock-prompt-held-cargo" }
+    },
+    {
+      "id": "mock-news-cheap-wagons",
+      "summary": "MOCK: тестовая цена покупки вагона снижена",
+      "effect": { "kind": "market-price", "vehicleKind": "wagon", "purchase": 4 }
+    },
+    {
+      "id": "mock-news-construction-window",
+      "summary": "MOCK: обсуждение совместного строительства обязательно перед ходом",
+      "effect": { "kind": "methodical-prompt", "promptId": "mock-prompt-investment" }
+    },
+    {
+      "id": "mock-news-stable-day",
+      "summary": "MOCK: сеть работает без дополнительных изменений",
+      "effect": { "kind": "none" }
+    }
+  ],
+  "methodicalPauses": [
+    {
+      "id": "mock-pause-after-turn-3",
+      "afterTurn": 3,
+      "prompt": "Какие наблюдаемые изменения произошли, чего команды ожидали и что сообщили партнерам?"
+    },
+    {
+      "id": "mock-pause-after-turn-5",
+      "afterTurn": 5,
+      "prompt": "Как собственная стратегия соотносится со стратегиями партнеров и будущим результатом?"
+    },
+    {
+      "id": "mock-final-reflection",
+      "afterPhase": "finished",
+      "prompt": "Какие игровые решения похожи на реальные рабочие ситуации и что участники перенесут в практику?"
     }
   ]
 }

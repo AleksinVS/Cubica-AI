@@ -44,7 +44,17 @@ test("projects only provided topology, geometry, actions, and team balances", ()
           wagons: {
             wagon1: { attributes: { nodeId: "a", ownerTeamId: "alpha" } },
             wagon2: { attributes: { nodeId: "b", ownerTeamId: "another-team" } }
+          },
+          newsCards: {
+            news1: { attributes: { summary: "Дорога временно закрыта" } }
+          },
+          cargoCards: {
+            cargo1: { attributes: { fromNodeId: "a", toNodeId: "b" } }
           }
+        },
+        decks: {
+          news: { currentCardId: "news1" },
+          cargo: { offer: { firstCardId: "cargo1", secondCardId: null } }
         },
         board: {
           canonicalBounds: { minX: 0, minY: 0, maxX: 100, maxY: 100 },
@@ -86,6 +96,8 @@ test("projects only provided topology, geometry, actions, and team balances", ()
   assert.deepEqual(projection.actionSections.map((section) => section.id), ["actions", "network"]);
   assert.equal(projection.actionSections[1]?.actions[0]?.id, "closed-road");
   assert.equal(projection.log[0]?.summary, "Локомотив прибыл на станцию B");
+  assert.equal(projection.currentNewsSummary, "Дорога временно закрыта");
+  assert.deepEqual(projection.cargoOfferLabels, ["A → B"]);
 });
 
 test("does not invent topology or actions when content is absent", () => {
@@ -100,6 +112,8 @@ test("does not invent topology or actions when content is absent", () => {
   assert.equal(projection.bounds, null);
   assert.equal(projection.status, "unknown");
   assert.equal(projection.contentMode, "unknown");
+  assert.equal(projection.currentNewsSummary, null);
+  assert.deepEqual(projection.cargoOfferLabels, []);
 });
 
 test("ignores malformed optional facilitator fields without inventing values", () => {

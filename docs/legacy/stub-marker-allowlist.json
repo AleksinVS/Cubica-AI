@@ -105,6 +105,27 @@
       "owner": "Frontend Team",
       "reason": "Test stubs the browser canvas path (drawImage/toDataURL) for deterministic assertions; test-only.",
       "expires_at": "2026-12-31"
+    },
+    {
+      "path": "apps/player-web/e2e/.desc.json",
+      "markers": ["mock"],
+      "owner": "Game Delivery Team",
+      "reason": "Descriptor names the intentional test-only Cards Money Trains game package; it is product test content, not an implementation stub.",
+      "expires_at": "2026-12-31"
+    },
+    {
+      "path": "apps/player-web/e2e/cards-money-trains-mock.spec.ts",
+      "markers": ["mock"],
+      "owner": "Game Delivery Team",
+      "reason": "Browser acceptance deliberately exercises the separately addressed test-only game package while author content is pending.",
+      "expires_at": "2026-12-31"
+    },
+    {
+      "path": "services/runtime-api/tests/cards-money-trains-complete-session.integration.ts",
+      "markers": ["mock"],
+      "owner": "Game Delivery Team",
+      "reason": "Runtime acceptance deliberately loads the separately addressed test-only game as data; duplicate-action debt is tracked by LEGACY-0052.",
+      "expires_at": "2026-12-31"
     }
   ]
 }

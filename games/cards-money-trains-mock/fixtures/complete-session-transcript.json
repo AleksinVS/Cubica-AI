@@ -1,0 +1,907 @@
+{
+  "fixtureKind": "complete-mock-session",
+  "gameId": "cards-money-trains-mock",
+  "warning": "MOCK: вымышленный семиходовой контроль проверяет платформу и не подтверждает правила автора.",
+  "purpose": "Статический приемочный replay проходит все девять фаз, два восстановления и ручной финал после хода 6 без автоматического лимита.",
+  "checkpoints": [
+    {
+      "id": "after-construction-turn-3",
+      "afterStepOrder": 41,
+      "assert": [
+        "phase=debrief",
+        "turnNumber=3",
+        "network project and balances persist"
+      ]
+    },
+    {
+      "id": "after-news-draw-turn-5",
+      "afterStepOrder": 55,
+      "assert": [
+        "phase=news",
+        "turnNumber=5",
+        "public current card persists",
+        "future deck order remains secret"
+      ]
+    }
+  ],
+  "steps": [
+    {
+      "order": 1,
+      "actionId": "mock.setup.start",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 2,
+      "actionId": "mock.news.draw",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 3,
+      "actionId": "mock.news.apply.block-road",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 4,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 5,
+      "actionId": "mock.market.buy.white-wagon",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 6,
+      "actionId": "mock.market.sell.red-wagon",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 7,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 8,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 9,
+      "actionId": "mock.cargo.load.white",
+      "params": {
+        "wagonId": "mock-wagon-white-2",
+        "cargoId": "mock-cargo-b-f"
+      },
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 10,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 11,
+      "actionId": "mock.locomotive.move",
+      "params": {
+        "vehicleId": "mock-locomotive-green-1",
+        "edgeId": "mock-edge-c-f"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 12,
+      "actionId": "mock.operations.attach.white",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "wagonId": "mock-wagon-white-2"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 13,
+      "actionId": "mock.operations.detach.white",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "wagonId": "mock-wagon-white-2"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 14,
+      "actionId": "mock.operations.attach.white",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "wagonId": "mock-wagon-white-2"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 15,
+      "actionId": "mock.locomotive.move",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "edgeId": "mock-edge-b-c"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 16,
+      "actionId": "mock.cargo.deliver",
+      "params": {
+        "wagonId": "mock-wagon-white-1",
+        "cargoId": "mock-cargo-b-c"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 17,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 18,
+      "actionId": "construction.phase.finish",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 1
+      }
+    },
+    {
+      "order": 19,
+      "actionId": "mock.debrief.next-turn",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 20,
+      "actionId": "mock.news.draw",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 21,
+      "actionId": "mock.news.apply.cheap-wagons",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 22,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 23,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 24,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 25,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 26,
+      "actionId": "mock.locomotive.move",
+      "params": {
+        "vehicleId": "mock-locomotive-green-1",
+        "edgeId": "mock-edge-e-f"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 27,
+      "actionId": "mock.locomotive.move",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "edgeId": "mock-edge-c-f"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 28,
+      "actionId": "mock.cargo.deliver.b-f",
+      "params": {
+        "wagonId": "mock-wagon-white-2",
+        "cargoId": "mock-cargo-b-f"
+      },
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 29,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 30,
+      "actionId": "construction.phase.finish",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 2
+      }
+    },
+    {
+      "order": 31,
+      "actionId": "mock.debrief.next-turn",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 32,
+      "actionId": "mock.news.draw",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 33,
+      "actionId": "mock.news.apply.construction-prompt",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 34,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 35,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 36,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 37,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 38,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 39,
+      "actionId": "construction.road.build",
+      "params": {
+        "fromNodeId": "mock-terminal-b",
+        "toNodeId": "mock-terminal-d",
+        "whiteContribution": 2,
+        "redContribution": 2,
+        "purpleContribution": 1,
+        "greenContribution": 1
+      },
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 40,
+      "actionId": "construction.waypoint.build",
+      "params": {
+        "edgeId": "mock-edge-a-b",
+        "positionT": 0.5,
+        "whiteContribution": 3,
+        "redContribution": 2,
+        "purpleContribution": 0,
+        "greenContribution": 0
+      },
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 41,
+      "actionId": "construction.phase.finish",
+      "restartAfter": true,
+      "checkpointId": "after-construction-turn-3",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 42,
+      "actionId": "mock.debrief.pause.start",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 43,
+      "actionId": "mock.debrief.pause.postpone",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 3
+      }
+    },
+    {
+      "order": 44,
+      "actionId": "mock.debrief.next-turn",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 45,
+      "actionId": "mock.construction.open-control-projects",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 46,
+      "actionId": "mock.news.draw",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 47,
+      "actionId": "mock.news.apply.open-road",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 48,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 49,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 50,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 51,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 52,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 53,
+      "actionId": "construction.phase.finish",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 4
+      }
+    },
+    {
+      "order": 54,
+      "actionId": "mock.debrief.next-turn",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 55,
+      "actionId": "mock.news.draw",
+      "restartAfter": true,
+      "checkpointId": "after-news-draw-turn-5",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 56,
+      "actionId": "mock.news.apply.held-cargo-prompt",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 57,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 58,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 59,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 60,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 61,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 62,
+      "actionId": "construction.phase.finish",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 63,
+      "actionId": "mock.debrief.pause.start",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 64,
+      "actionId": "mock.debrief.pause.skip",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 5
+      }
+    },
+    {
+      "order": 65,
+      "actionId": "mock.debrief.next-turn",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 66,
+      "actionId": "mock.news.draw",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 67,
+      "actionId": "mock.news.apply.stable-day",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 68,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 69,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 70,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 71,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 72,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 73,
+      "actionId": "construction.phase.finish",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 6
+      }
+    },
+    {
+      "order": 74,
+      "actionId": "mock.debrief.next-turn",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 75,
+      "actionId": "mock.news.draw",
+      "expected": {
+        "phase": "news",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 76,
+      "actionId": "mock.news.apply.cheap-wagons",
+      "expected": {
+        "phase": "maintenance",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 77,
+      "actionId": "mock.maintenance.pay",
+      "expected": {
+        "phase": "market",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 78,
+      "actionId": "mock.market.finish",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 79,
+      "actionId": "mock.cargo.draw-offer",
+      "expected": {
+        "phase": "cargo",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 80,
+      "actionId": "mock.cargo.finish",
+      "expected": {
+        "phase": "operations",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 81,
+      "actionId": "mock.operations.finish",
+      "expected": {
+        "phase": "construction",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 82,
+      "actionId": "construction.phase.finish",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 83,
+      "actionId": "mock.debrief.final-reflection",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 84,
+      "actionId": "mock.ranking.compute",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 7
+      }
+    },
+    {
+      "order": 85,
+      "actionId": "session.finish.request",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 7,
+        "finishConfirmationPending": true
+      }
+    },
+    {
+      "order": 86,
+      "actionId": "session.finish.cancel",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 7,
+        "finishConfirmationPending": false
+      }
+    },
+    {
+      "order": 87,
+      "actionId": "session.finish.request",
+      "expected": {
+        "phase": "debrief",
+        "turnNumber": 7,
+        "finishConfirmationPending": true
+      }
+    },
+    {
+      "order": 88,
+      "actionId": "session.finish.confirm",
+      "expected": {
+        "phase": "finished",
+        "turnNumber": 7,
+        "status": "finished",
+        "finishConfirmationPending": false
+      }
+    }
+  ],
+  "rejectionProbes": [
+    {
+      "id": "wrong-phase",
+      "afterStepOrder": 1,
+      "actionId": "mock.market.finish",
+      "expectedError": "guard|phase",
+      "expectedStateVersionDelta": 0
+    },
+    {
+      "id": "insufficient-money",
+      "afterStepOrder": 4,
+      "actionId": "mock.market.buy.green-locomotive",
+      "expectedError": "negative|insufficient",
+      "expectedStateVersionDelta": 0,
+      "assert": [
+        "reserve locomotive remains reserve",
+        "green balance unchanged"
+      ]
+    },
+    {
+      "id": "full-terminal",
+      "afterStepOrder": 10,
+      "actionId": "mock.locomotive.move",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "edgeId": "mock-edge-b-c"
+      },
+      "expectedError": "capacity",
+      "expectedStateVersionDelta": 0,
+      "assert": [
+        "green locomotive occupies C",
+        "purple locomotive remains at B"
+      ]
+    },
+    {
+      "id": "incompatible-wagon",
+      "afterStepOrder": 10,
+      "actionId": "mock.operations.attach.incompatible",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "wagonId": "mock-wagon-red-1"
+      },
+      "expectedError": "incompatible",
+      "expectedStateVersionDelta": 0
+    },
+    {
+      "id": "premature-delivery",
+      "afterStepOrder": 10,
+      "actionId": "mock.cargo.deliver",
+      "params": {
+        "wagonId": "mock-wagon-white-1",
+        "cargoId": "mock-cargo-b-c"
+      },
+      "expectedError": "not reached",
+      "expectedStateVersionDelta": 0
+    },
+    {
+      "id": "closed-road",
+      "afterStepOrder": 15,
+      "actionId": "mock.locomotive.move",
+      "params": {
+        "vehicleId": "mock-locomotive-purple-1",
+        "edgeId": "mock-edge-c-d"
+      },
+      "expectedError": "allowed state|unavailable",
+      "expectedStateVersionDelta": 0
+    },
+    {
+      "id": "incomplete-financing",
+      "afterStepOrder": 38,
+      "actionId": "construction.road.build",
+      "params": {
+        "fromNodeId": "mock-terminal-b",
+        "toNodeId": "mock-terminal-d",
+        "whiteContribution": 1,
+        "redContribution": 1,
+        "purpleContribution": 1,
+        "greenContribution": 1
+      },
+      "expectedError": "equal|required|cost|payment",
+      "expectedStateVersionDelta": 0
+    }
+  ],
+  "idempotencyProbe": {
+    "afterStepOrder": 30,
+    "actionId": "mock.debrief.next-turn",
+    "sameRequestKeyTwice": true,
+    "expectedSingleStateTransition": true
+  },
+  "final": {
+    "phase": "finished",
+    "status": "finished",
+    "turnNumber": 7,
+    "minTurnNumber": 7,
+    "balances": {
+      "white-logistics": 11,
+      "red-logistics": 0,
+      "purple-guild": 8,
+      "green-guild": 2
+    },
+    "winners": {
+      "logistics": [
+        "white-logistics"
+      ],
+      "guilds": [
+        "purple-guild"
+      ]
+    }
+  }
+}

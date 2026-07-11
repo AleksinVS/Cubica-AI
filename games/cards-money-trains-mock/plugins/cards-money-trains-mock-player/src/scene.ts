@@ -316,9 +316,13 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       });
       const phaseHint = projection.phase === "construction"
         ? `Режим: ${constructionModeLabel(projection.constructionMode)}`
-        : projection.status === "finished"
-          ? "Сессия завершена ведущим"
-          : "Действия подтверждает сервер";
+        : projection.phase === "news" && projection.currentNewsSummary
+          ? projection.currentNewsSummary
+          : projection.phase === "cargo" && projection.cargoOfferLabels.length > 0
+            ? `Предложение: ${projection.cargoOfferLabels.join(" · ")}`
+            : projection.status === "finished"
+              ? "Сессия завершена ведущим"
+              : "Действия подтверждает сервер";
       this.add.text(left, 185, phaseHint, {
         color: "#54656c", fontFamily: "sans-serif", fontSize: "16px", wordWrap: { width: textWidth }
       });

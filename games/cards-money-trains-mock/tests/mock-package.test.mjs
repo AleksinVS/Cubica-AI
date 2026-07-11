@@ -88,20 +88,22 @@ test("compiled mock executes the documented operating and construction transcrip
 
   const current = await store.getSession(session.sessionId);
   const publicState = current.state.public;
-  assert.equal(current.version.stateVersion, 7);
-  assert.equal(publicState.session.phase, "reporting");
+  assert.equal(current.version.stateVersion, transcript.steps.length);
+  assert.equal(publicState.session.phase, "debrief");
   assert.equal(publicState.construction.available, false);
   assert.deepEqual(
     Object.fromEntries(Object.entries(publicState.teams).map(([id, team]) => [id, team.coins])),
-    { "white-logistics": 10, "red-logistics": 4, "purple-guild": 10, "green-guild": 8 }
+    transcript.final.balances
   );
   assert.equal(publicState.objects.networkEdges["mock-edge-c-d"].facets.state, "blocked");
   assert.equal(publicState.objects.locomotives["mock-locomotive-purple-1"].attributes.nodeId, "mock-terminal-c");
-  assert.equal(publicState.objects.locomotives["mock-locomotive-purple-1"].attributes.actionPoints, 4);
+  assert.equal(publicState.objects.locomotives["mock-locomotive-purple-1"].attributes.actionPoints, 1);
   assert.equal(publicState.objects.wagons["mock-wagon-white-1"].attributes.attachedVehicleId, null);
   assert.equal(publicState.objects.wagons["mock-wagon-white-1"].attributes.cargoId, null);
   assert.equal(publicState.objects.cargoOrders["mock-cargo-b-c"].facets.status, "delivered");
-  assert.equal(publicState.log.length, 5);
+  assert.equal(publicState.objects.cargoOrders["mock-cargo-b-c"].attributes.settledRouteLength, 1);
+  assert.equal(publicState.objects.wagons["mock-wagon-white-2"].attributes.cargoId, "mock-cargo-b-f");
+  assert.equal(publicState.log.length, 18);
   assert.equal(publicState.objects.networkEdges["mock-edge-a-b"], undefined);
   assert.equal(publicState.objects.networkEdges["main:edge:1001"].attributes.constructionCost, 6);
   assert.equal(publicState.objects.networkNodes["main:node:1002"].objectType, "transport.waypoint");
@@ -142,7 +144,7 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   );
 
   const closed = await createSession((state) => {
-    state.public.session.phase = "movement";
+    state.public.session.phase = "operations";
     state.public.objects.networkEdges["mock-edge-b-c"].facets.state = "blocked";
   });
   await assert.rejects(
@@ -163,17 +165,7 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   assert.equal(current.state.public.objects.locomotives["mock-locomotive-purple-1"].attributes.actionPoints, 5);
 
   const full = await createSession((state) => {
-    state.public.session.phase = "movement";
-    state.public.objects.locomotives["capacity-one"] = {
-      objectType: "transport.locomotive",
-      facets: { availability: "active" },
-      attributes: { networkId: "main", nodeId: "mock-terminal-c", actionPoints: 5 }
-    };
-    state.public.objects.locomotives["capacity-two"] = {
-      objectType: "transport.locomotive",
-      facets: { availability: "active" },
-      attributes: { networkId: "main", nodeId: "mock-terminal-c", actionPoints: 5 }
-    };
+    state.public.session.phase = "operations";
   });
   await assert.rejects(
     dispatchRuntimeAction({
@@ -192,7 +184,7 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   assert.equal(current.state.public.objects.locomotives["mock-locomotive-purple-1"].attributes.nodeId, "mock-terminal-b");
 
   const premature = await createSession((state) => {
-    state.public.session.phase = "movement";
+    state.public.session.phase = "operations";
   });
   await assert.rejects(
     dispatchRuntimeAction({
@@ -211,6 +203,136 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   assert.equal(current.state.public.teams["white-logistics"].coins, 10);
   assert.equal(current.state.public.teams["purple-guild"].coins, 10);
   assert.equal(current.state.public.objects.cargoOrders["mock-cargo-b-c"].facets.status, "in_transit");
+
+  const incompatible = await createSession((state) => {
+    state.public.session.phase = "operations";
+  });
+  await assert.rejects(
+    dispatchRuntimeAction({
+      sessionStore: incompatible.store,
+      bundle,
+      input: {
+        sessionId: incompatible.session.sessionId,
+        actionId: "mock.operations.attach.incompatible",
+        params: { vehicleId: "mock-locomotive-purple-1", wagonId: "mock-wagon-red-1" }
+      }
+    }),
+    /incompatible/i
+  );
+  current = await incompatible.store.getSession(incompatible.session.sessionId);
+  assert.equal(current.version.stateVersion, 0);
+  assert.equal(current.state.public.objects.locomotives["mock-locomotive-purple-1"].attributes.actionPoints, 5);
+
+  const marketCredit = await createSession((state) => {
+    state.public.session.phase = "market";
+    state.public.teams["green-guild"].coins = 9;
+  });
+  await assert.rejects(
+    dispatchRuntimeAction({
+      sessionStore: marketCredit.store,
+      bundle,
+      input: { sessionId: marketCredit.session.sessionId, actionId: "mock.market.buy.green-locomotive" }
+    }),
+    /negative|insufficient/i
+  );
+  current = await marketCredit.store.getSession(marketCredit.session.sessionId);
+  assert.equal(current.version.stateVersion, 0);
+  assert.equal(current.state.public.teams["green-guild"].coins, 9);
+  assert.equal(
+    current.state.public.objects.locomotives["mock-market-locomotive-green-2"].facets.availability,
+    "reserve"
+  );
+});
+
+test("full mock data declares hidden reproducible decks and accepted reusable effects", async () => {
+  const manifest = validateGameManifest(await readJson("game.manifest.json"));
+  const gameplay = await readJson("fixtures/mock-gameplay-data.json");
+  assert.deepEqual(gameplay.phaseOrder, [
+    "setup", "news", "maintenance", "market", "cargo",
+    "operations", "construction", "debrief", "finished"
+  ]);
+  assert.equal(gameplay.newsCards.length >= 6, true);
+  assert.equal(gameplay.cargoCards.length >= 12, true);
+  assert.deepEqual(Object.keys(manifest.state.secret).sort(), ["decks", "random"]);
+  assert.equal(Object.keys(manifest.state.public.objects.newsCards).length, gameplay.newsCards.length);
+  assert.equal(Object.keys(manifest.state.public.objects.cargoCards).length, gameplay.cargoCards.length);
+
+  const effects = Object.values(manifest.actions).flatMap((action) => action.deterministic?.effects ?? []);
+  for (const expected of [
+    "deck.shuffle", "deck.draw", "transport.cargo.load", "transport.vehicle.attach",
+    "transport.vehicle.detach", "transport.cargo.deliver", "ranking.compute"
+  ]) {
+    assert.equal(effects.some((effect) => effect.op === expected), true, `${expected} must be composed by the mock`);
+  }
+  for (const transfer of effects.filter((effect) => effect.op === "metric.transfer")) {
+    assert.equal(typeof transfer.from.scope, "string");
+    assert.equal(typeof transfer.to.scope, "string");
+    assert.equal(transfer.onInsufficient, "fail");
+    assert.equal("kind" in transfer.from || "kind" in transfer.to, false);
+    assert.equal("insufficientFunds" in transfer, false);
+  }
+
+  for (const collection of ["locomotives", "wagons"]) {
+    for (const vehicle of Object.values(manifest.state.public.objects[collection])) {
+      assert.equal(Number.isSafeInteger(vehicle.attributes.nominalValue), true);
+      assert.equal(vehicle.attributes.nominalValue >= 0, true);
+    }
+  }
+
+  const ui = await readJson("authoring/ui/web.authoring.json");
+  const serializedUi = JSON.stringify(ui);
+  for (const id of ["facilitator.board", "facilitator.team-status", "facilitator.log"]) {
+    assert.match(serializedUi, new RegExp(`\\"${id}\\"`));
+  }
+});
+
+test("complete seven-turn gameplay is replay-stable and finishes only after facilitator confirmation", async () => {
+  const manifest = validateGameManifest(await readJson("game.manifest.json"));
+  const transcript = await readJson("fixtures/complete-session-transcript.json");
+  assert.equal(transcript.steps.filter((step) => step.restartAfter === true).length, 2);
+  assert.equal(transcript.rejectionProbes.length, 7);
+
+  const replay = async () => {
+    const store = new InMemorySessionStore();
+    const session = await store.createSession({
+      gameId: manifest.meta.id,
+      sessionRole: "facilitator",
+      initialState: structuredClone(manifest.state)
+    });
+    const bundle = { gameId: manifest.meta.id, manifest };
+    for (const step of transcript.steps) {
+      await dispatchRuntimeAction({
+        sessionStore: store,
+        bundle,
+        input: {
+          sessionId: session.sessionId,
+          actionId: step.actionId,
+          ...(step.params ? { params: step.params } : {})
+        }
+      });
+      const current = await store.getSession(session.sessionId);
+      assert.equal(current.state.public.session.phase, step.expected.phase, `phase after step ${step.order}`);
+      assert.equal(current.state.public.session.turnNumber, step.expected.turnNumber, `turn after step ${step.order}`);
+    }
+    return store.getSession(session.sessionId);
+  };
+
+  const first = await replay();
+  const second = await replay();
+  const withoutWallClockAuditFields = (state) => JSON.parse(JSON.stringify(state, (key, value) =>
+    key === "at" || key === "lastUpdatedAt" ? undefined : value));
+  assert.deepEqual(
+    withoutWallClockAuditFields(first.state),
+    withoutWallClockAuditFields(second.state)
+  );
+  assert.equal(first.state.public.session.phase, "finished");
+  assert.equal(first.state.public.session.turnNumber, 7);
+  assert.deepEqual(
+    Object.fromEntries(Object.entries(first.state.public.teams).map(([id, team]) => [id, team.coins])),
+    transcript.final.balances
+  );
+  assert.deepEqual(first.state.public.ranking.groups.logistics.winners, transcript.final.winners.logistics);
+  assert.deepEqual(first.state.public.ranking.groups.guilds.winners, transcript.final.winners.guilds);
 });
 
 test("published repository loads mock UI, immutable plugin and SVG asset by ordinary gameId", async () => {

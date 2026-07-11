@@ -89,7 +89,7 @@
         },
         "movement": {
           "locomotiveActionPoints": 5,
-          "terminalLocomotiveCapacity": 2
+          "terminalLocomotiveCapacity": 1
         },
         "construction": {
           "waypointCost": 5,
@@ -164,10 +164,69 @@
       "mockGameplay": {
         "fixtureKind": "development-mock",
         "gameId": "cards-money-trains-mock",
-        "warning": "MOCK: вымышленные команды, выплаты и маршруты. Не являются авторскими правилами.",
+        "warning": "MOCK: вымышленные команды, выплаты, колоды и маршруты. Не являются авторскими правилами.",
+        "phaseOrder": [
+          "setup",
+          "news",
+          "maintenance",
+          "market",
+          "cargo",
+          "operations",
+          "construction",
+          "debrief",
+          "finished"
+        ],
+        "decks": {
+          "controlSeed": "39d334ef7701ec6e16d2cc2dab7b1a41",
+          "shuffleMode": "server-seeded-hidden-order",
+          "newsCardsPerTurn": 1,
+          "cargoOfferSize": 2,
+          "futureCardsVisibility": "secret"
+        },
         "maintenance": {
           "coinsPerVehicle": 1,
+          "coinsPerHeldCargo": 1,
           "warning": "MOCK: тариф нужен только для проверки атомарного обслуживания."
+        },
+        "market": {
+          "prices": {
+            "locomotive": {
+              "purchase": 10,
+              "sale": 4
+            },
+            "wagon": {
+              "purchase": 5,
+              "sale": 2
+            }
+          },
+          "salePhase": "market",
+          "creditAllowed": false,
+          "negativeBalanceAllowed": false
+        },
+        "operations": {
+          "actionPointsPerLocomotive": 5,
+          "attachCost": 1,
+          "manualDetachCost": 1,
+          "moveCostPerEdge": 1,
+          "tariffPerShortestRouteEdge": 2,
+          "terminalLocomotiveCapacity": 1,
+          "capacityRationale": "MOCK: значение 1 позволяет доказать переполнение без добавления третьего локомотива; нормативное значение не выводится из этой фикстуры.",
+          "locomotiveOrder": [
+            "mock-locomotive-purple-1",
+            "mock-locomotive-green-1"
+          ]
+        },
+        "ranking": {
+          "cashWeight": 1,
+          "vehicleNominal": {
+            "locomotive": 10,
+            "wagon": 5
+          },
+          "groups": [
+            "logistics_company",
+            "locomotive_guild"
+          ],
+          "tiePolicy": "shared-place"
         },
         "teams": [
           {
@@ -199,7 +258,8 @@
               {
                 "id": "mock-wagon-red-1",
                 "kind": "wagon",
-                "nodeId": "mock-terminal-e"
+                "objectType": "transport.incompatible-wagon",
+                "nodeId": "mock-terminal-b"
               },
               {
                 "id": "mock-wagon-red-2",
@@ -231,10 +291,27 @@
               {
                 "id": "mock-locomotive-green-1",
                 "kind": "locomotive",
-                "nodeId": "mock-terminal-f",
+                "nodeId": "mock-terminal-c",
                 "actionPoints": 5
               }
             ]
+          }
+        ],
+        "reservedMarketVehicles": [
+          {
+            "id": "mock-market-wagon-white-3",
+            "kind": "wagon",
+            "ownerTeamId": "white-logistics",
+            "nodeId": "mock-terminal-b",
+            "availability": "reserve"
+          },
+          {
+            "id": "mock-market-locomotive-green-2",
+            "kind": "locomotive",
+            "ownerTeamId": "green-guild",
+            "nodeId": "mock-terminal-f",
+            "actionPoints": 5,
+            "availability": "reserve"
           }
         ],
         "cargoCards": [
@@ -243,7 +320,6 @@
             "fromNodeId": "mock-terminal-b",
             "toNodeId": "mock-terminal-c",
             "payout": 9,
-            "transportFee": 2,
             "copies": 1
           },
           {
@@ -251,20 +327,76 @@
             "fromNodeId": "mock-terminal-a",
             "toNodeId": "mock-terminal-d",
             "payout": 9,
-            "copies": 2
+            "copies": 1
           },
           {
             "id": "mock-cargo-e-c",
             "fromNodeId": "mock-terminal-e",
             "toNodeId": "mock-terminal-c",
             "payout": 6,
-            "copies": 2
+            "copies": 1
           },
           {
             "id": "mock-cargo-b-f",
             "fromNodeId": "mock-terminal-b",
             "toNodeId": "mock-terminal-f",
+            "payout": 30,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-a-e",
+            "fromNodeId": "mock-terminal-a",
+            "toNodeId": "mock-terminal-e",
+            "payout": 8,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-d-b",
+            "fromNodeId": "mock-terminal-d",
+            "toNodeId": "mock-terminal-b",
+            "payout": 8,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-f-a",
+            "fromNodeId": "mock-terminal-f",
+            "toNodeId": "mock-terminal-a",
+            "payout": 10,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-c-e",
+            "fromNodeId": "mock-terminal-c",
+            "toNodeId": "mock-terminal-e",
             "payout": 7,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-e-d",
+            "fromNodeId": "mock-terminal-e",
+            "toNodeId": "mock-terminal-d",
+            "payout": 9,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-b-a",
+            "fromNodeId": "mock-terminal-b",
+            "toNodeId": "mock-terminal-a",
+            "payout": 5,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-c-f",
+            "fromNodeId": "mock-terminal-c",
+            "toNodeId": "mock-terminal-f",
+            "payout": 6,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-f-d",
+            "fromNodeId": "mock-terminal-f",
+            "toNodeId": "mock-terminal-d",
+            "payout": 8,
             "copies": 1
           }
         ],
@@ -277,8 +409,79 @@
               "edgeId": "mock-edge-c-d",
               "state": "blocked"
             }
+          },
+          {
+            "id": "mock-news-open-c-d",
+            "summary": "MOCK: дорога C–D снова открыта",
+            "effect": {
+              "kind": "edge-state",
+              "edgeId": "mock-edge-c-d",
+              "state": "open"
+            }
+          },
+          {
+            "id": "mock-news-costly-service",
+            "summary": "MOCK: команды обсуждают стоимость удержания груза",
+            "effect": {
+              "kind": "methodical-prompt",
+              "promptId": "mock-prompt-held-cargo"
+            }
+          },
+          {
+            "id": "mock-news-cheap-wagons",
+            "summary": "MOCK: тестовая цена покупки вагона снижена",
+            "effect": {
+              "kind": "market-price",
+              "vehicleKind": "wagon",
+              "purchase": 4
+            }
+          },
+          {
+            "id": "mock-news-construction-window",
+            "summary": "MOCK: обсуждение совместного строительства обязательно перед ходом",
+            "effect": {
+              "kind": "methodical-prompt",
+              "promptId": "mock-prompt-investment"
+            }
+          },
+          {
+            "id": "mock-news-stable-day",
+            "summary": "MOCK: сеть работает без дополнительных изменений",
+            "effect": {
+              "kind": "none"
+            }
+          }
+        ],
+        "methodicalPauses": [
+          {
+            "id": "mock-pause-after-turn-3",
+            "afterTurn": 3,
+            "prompt": "Какие наблюдаемые изменения произошли, чего команды ожидали и что сообщили партнерам?"
+          },
+          {
+            "id": "mock-pause-after-turn-5",
+            "afterTurn": 5,
+            "prompt": "Как собственная стратегия соотносится со стратегиями партнеров и будущим результатом?"
+          },
+          {
+            "id": "mock-final-reflection",
+            "afterPhase": "finished",
+            "prompt": "Какие игровые решения похожи на реальные рабочие ситуации и что участники перенесут в практику?"
           }
         ]
+      },
+      "integrationReadiness": {
+        "status": "integrated-shared-runtime-contracts",
+        "requiredEffects": [
+          "deck.shuffle",
+          "deck.draw",
+          "transport.cargo.load",
+          "transport.vehicle.attach",
+          "transport.vehicle.detach",
+          "transport.cargo.deliver (shortest-route settlement)",
+          "ranking.compute"
+        ],
+        "invariant": "Only schema-validated reusable effects are emitted into the compiled manifest."
       }
     }
   },
@@ -377,7 +580,9 @@
         "availability": {
           "initial": "active",
           "values": [
-            "active"
+            "active",
+            "reserve",
+            "sold"
           ]
         }
       },
@@ -387,6 +592,14 @@
           "availability.active": {
             "visible": true,
             "interactive": true
+          },
+          "availability.reserve": {
+            "visible": false,
+            "interactive": false
+          },
+          "availability.sold": {
+            "visible": false,
+            "interactive": false
           }
         }
       }
@@ -398,7 +611,9 @@
         "availability": {
           "initial": "active",
           "values": [
-            "active"
+            "active",
+            "reserve",
+            "sold"
           ]
         }
       },
@@ -408,6 +623,40 @@
           "availability.active": {
             "visible": true,
             "interactive": true
+          },
+          "availability.reserve": {
+            "visible": false,
+            "interactive": false
+          },
+          "availability.sold": {
+            "visible": false,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "transport.incompatible-wagon": {
+      "collection": "wagons",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "active",
+          "values": [
+            "active",
+            "sold"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.active": {
+            "visible": true,
+            "interactive": true
+          },
+          "availability.sold": {
+            "visible": false,
+            "interactive": false
           }
         }
       }
@@ -442,10 +691,1523 @@
           }
         }
       }
+    },
+    "mock.news-card": {
+      "collection": "newsCards",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "hidden",
+          "values": [
+            "hidden"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.hidden": {
+            "visible": false,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "mock.cargo-card": {
+      "collection": "cargoCards",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "hidden",
+          "values": [
+            "hidden"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.hidden": {
+            "visible": false,
+            "interactive": false
+          }
+        }
+      }
     }
   },
   "actions": {
-    "mock.news.block-road": {
+    "mock.setup.start": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.phase.start",
+      "displayName": "MOCK: начать игру",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "setup"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "deck.shuffle",
+            "deckId": "news",
+            "source": "collection:newsCards"
+          },
+          {
+            "op": "deck.shuffle",
+            "deckId": "cargo",
+            "source": "collection:cargoCards"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "news"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "setup",
+            "summary": "MOCK: ведущий подтвердил четыре команды и начал игру"
+          }
+        ]
+      }
+    },
+    "mock.market.buy.white-wagon": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "economy.market.buy",
+      "displayName": "MOCK: Белая покупает вагон по текущей цене",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "market"
+            },
+            {
+              "path": "/public/objects/wagons/mock-market-wagon-white-3/facets/availability",
+              "operator": "==",
+              "value": "reserve"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/white-logistics/coins"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": {
+              "var": "public.market.wagonPurchasePrice"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "wagons",
+            "objectId": "mock-market-wagon-white-3",
+            "facet": "availability",
+            "value": "active"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "wagons",
+            "objectId": "mock-market-wagon-white-3",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/nominalValue",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "op": "counter.add",
+            "path": "/public/teams/white-logistics/maintenanceDue",
+            "delta": 1
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "market",
+            "summary": "MOCK: Белая команда купила вагон по текущей тестовой цене"
+          }
+        ]
+      }
+    },
+    "mock.market.buy.green-locomotive": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "economy.market.buy",
+      "displayName": "MOCK: Зеленая покупает локомотив за 10 монет",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "market"
+            },
+            {
+              "path": "/public/objects/locomotives/mock-market-locomotive-green-2/facets/availability",
+              "operator": "==",
+              "value": "reserve"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/green-guild/coins"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": 10,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "locomotives",
+            "objectId": "mock-market-locomotive-green-2",
+            "facet": "availability",
+            "value": "active"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "locomotives",
+            "objectId": "mock-market-locomotive-green-2",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/nominalValue",
+                "value": 10
+              }
+            ]
+          },
+          {
+            "op": "counter.add",
+            "path": "/public/teams/green-guild/maintenanceDue",
+            "delta": 1
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "market",
+            "summary": "MOCK: Зеленая команда купила локомотив"
+          }
+        ]
+      }
+    },
+    "mock.market.sell.red-wagon": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "economy.market.sell",
+      "displayName": "MOCK: Красная продает вагон за 2 монеты",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "market"
+            },
+            {
+              "path": "/public/objects/wagons/mock-wagon-red-2/facets/availability",
+              "operator": "==",
+              "value": "active"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "bank"
+            },
+            "to": {
+              "scope": "state",
+              "path": "/public/teams/red-logistics/coins"
+            },
+            "amount": 2,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "wagons",
+            "objectId": "mock-wagon-red-2",
+            "facet": "availability",
+            "value": "sold"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "wagons",
+            "objectId": "mock-wagon-red-2",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/nominalValue",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "op": "counter.add",
+            "path": "/public/teams/red-logistics/maintenanceDue",
+            "delta": -1
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "market",
+            "summary": "MOCK: Красная команда продала вагон за 2 монеты"
+          }
+        ]
+      }
+    },
+    "mock.market.finish": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.phase.finish.market",
+      "displayName": "MOCK: завершить рынок",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "market"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "cargo"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "phase",
+            "summary": "MOCK: ведущий завершил рынок"
+          }
+        ]
+      }
+    },
+    "mock.cargo.finish": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.phase.finish.cargo",
+      "displayName": "MOCK: завершить выбор грузов",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "cargo"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "operations"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "phase",
+            "summary": "MOCK: выбор грузов завершен"
+          }
+        ]
+      }
+    },
+    "mock.operations.finish": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.phase.finish.operations",
+      "displayName": "MOCK: завершить операции",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "operations"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "construction"
+              },
+              {
+                "op": "replace",
+                "path": "/public/construction/available",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "phase",
+            "summary": "MOCK: ведущий завершил операции"
+          }
+        ]
+      }
+    },
+    "mock.construction.open-control-projects": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.construction.open",
+      "displayName": "MOCK: открыть проект предыдущего хода",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/session/turnNumber",
+              "operator": ">=",
+              "value": 4
+            },
+            {
+              "path": "/public/objects/networkEdges/main:edge:1001/facets/state",
+              "operator": "==",
+              "value": "building"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "networkEdges",
+            "objectId": "main:edge:1001",
+            "facet": "state",
+            "value": "open"
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "construction",
+            "summary": "MOCK: дорога прошлого хода открыта для движения"
+          }
+        ]
+      }
+    },
+    "mock.debrief.pause.start": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "facilitation.pause.start",
+      "displayName": "MOCK: начать методическую паузу",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "debrief"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/methodology/status",
+                "value": "active"
+              },
+              {
+                "op": "replace",
+                "path": "/public/methodology/activePauseId",
+                "value": "mock-pause-after-turn-3"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "methodology",
+            "summary": "MOCK: ведущий начал методическую паузу"
+          }
+        ]
+      }
+    },
+    "mock.debrief.pause.postpone": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "facilitation.pause.postpone",
+      "displayName": "MOCK: перенести паузу",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "debrief"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/methodology/status",
+                "value": "postpone"
+              },
+              {
+                "op": "replace",
+                "path": "/public/methodology/activePauseId",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "methodology",
+            "summary": "MOCK: методическая пауза — postpone"
+          }
+        ]
+      }
+    },
+    "mock.debrief.pause.skip": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "facilitation.pause.skip",
+      "displayName": "MOCK: пропустить паузу",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "debrief"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/methodology/status",
+                "value": "skip"
+              },
+              {
+                "op": "replace",
+                "path": "/public/methodology/activePauseId",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "methodology",
+            "summary": "MOCK: методическая пауза — skip"
+          }
+        ]
+      }
+    },
+    "mock.debrief.final-reflection": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "facilitation.reflection.final",
+      "displayName": "MOCK: финальная рефлексия",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "debrief"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/methodology/status",
+                "value": "final-reflection"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "methodology",
+            "summary": "MOCK: проведена финальная рефлексия и деролинг"
+          }
+        ]
+      }
+    },
+    "mock.debrief.next-turn": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.next",
+      "displayName": "MOCK: следующий ход",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "debrief"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "counter.add",
+            "path": "/public/session/turnNumber",
+            "delta": 1
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "news"
+              },
+              {
+                "op": "replace",
+                "path": "/public/construction/available",
+                "value": false
+              },
+              {
+                "op": "replace",
+                "path": "/public/methodology/status",
+                "value": "idle"
+              },
+              {
+                "op": "replace",
+                "path": "/public/methodology/activePauseId",
+                "value": null
+              },
+              {
+                "op": "replace",
+                "path": "/public/decks/news/currentCardId",
+                "value": null
+              },
+              {
+                "op": "replace",
+                "path": "/public/decks/cargo/offer",
+                "value": {
+                  "firstCardId": null,
+                  "secondCardId": null
+                }
+              }
+            ]
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "locomotives",
+            "objectId": "mock-locomotive-purple-1",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/actionPoints",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "locomotives",
+            "objectId": "mock-locomotive-green-1",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/actionPoints",
+                "value": 5
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "turn",
+            "summary": "MOCK: ведущий начал следующий ход"
+          }
+        ]
+      }
+    },
+    "mock.news.draw": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.news.draw",
+      "displayName": "MOCK: открыть новость",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": null
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "deck.draw",
+            "deckId": "news",
+            "storePath": "/public/decks/news/currentCardId",
+            "onEmpty": "reshuffle-discard"
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: ведущий открыл следующую новость"
+          }
+        ]
+      }
+    },
+    "mock.news.apply.open-road": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.news.apply",
+      "displayName": "MOCK: новость снова открыла дорогу C–D",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": "mock-news-open-c-d"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "networkEdges",
+            "objectId": "mock-edge-c-d",
+            "facet": "state",
+            "value": "open"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "maintenance"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: новость снова открыла дорогу C–D"
+          }
+        ]
+      }
+    },
+    "mock.news.apply.held-cargo-prompt": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.news.apply",
+      "displayName": "MOCK: открыта подсказка об удержании груза",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": "mock-news-costly-service"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "maintenance"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: открыта подсказка об удержании груза"
+          }
+        ]
+      }
+    },
+    "mock.news.apply.cheap-wagons": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.news.apply",
+      "displayName": "MOCK: текущая цена покупки вагона снижена до 4 монет",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": "mock-news-cheap-wagons"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/market/wagonPurchasePrice",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "maintenance"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: текущая цена покупки вагона снижена до 4 монет"
+          }
+        ]
+      }
+    },
+    "mock.news.apply.construction-prompt": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.news.apply",
+      "displayName": "MOCK: открыта подсказка о совместном строительстве",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": "mock-news-construction-window"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "maintenance"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: открыта подсказка о совместном строительстве"
+          }
+        ]
+      }
+    },
+    "mock.news.apply.stable-day": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.news.apply",
+      "displayName": "MOCK: сеть работает без дополнительных изменений",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": "mock-news-stable-day"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "maintenance"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: сеть работает без дополнительных изменений"
+          }
+        ]
+      }
+    },
+    "mock.cargo.draw-offer": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "deck.cargo.offer.draw",
+      "displayName": "MOCK: открыть два груза",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "cargo"
+            },
+            {
+              "path": "/public/decks/cargo/offer/firstCardId",
+              "operator": "==",
+              "value": null
+            },
+            {
+              "path": "/public/decks/cargo/offer/secondCardId",
+              "operator": "==",
+              "value": null
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "deck.draw",
+            "deckId": "cargo",
+            "storePath": "/public/decks/cargo/offer/firstCardId",
+            "onEmpty": "reshuffle-discard"
+          },
+          {
+            "op": "deck.draw",
+            "deckId": "cargo",
+            "storePath": "/public/decks/cargo/offer/secondCardId",
+            "onEmpty": "reshuffle-discard"
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "cargo",
+            "summary": "MOCK: ведущий открыл две карты груза"
+          }
+        ]
+      }
+    },
+    "mock.cargo.load.white": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.cargo.load",
+      "displayName": "MOCK: загрузить груз B–F в белый вагон",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "wagonId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "wagons",
+              "network": "main",
+              "allowedTypes": [
+                "transport.wagon"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-wagon-white-2"
+            ]
+          },
+          "cargoId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "cargoOrders",
+              "network": "main",
+              "allowedTypes": [
+                "transport.cargo"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-cargo-b-f"
+            ]
+          }
+        },
+        "required": [
+          "wagonId",
+          "cargoId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "cargo"
+            },
+            {
+              "path": "/public/decks/cargo/offer/firstCardId",
+              "operator": "==",
+              "value": "mock-cargo-b-f"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.cargo.load",
+            "networkId": "main",
+            "wagonParam": "wagonId",
+            "cargoParam": "cargoId"
+          },
+          {
+            "op": "counter.add",
+            "path": "/public/teams/white-logistics/maintenanceDue",
+            "delta": 1
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "cargo",
+            "summary": "MOCK: груз B–F загружен в белый вагон"
+          }
+        ]
+      }
+    },
+    "mock.cargo.deliver.b-f": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.cargo.deliver",
+      "displayName": "MOCK: доставить груз B–F",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "wagonId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "wagons",
+              "network": "main",
+              "allowedTypes": [
+                "transport.wagon"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-wagon-white-2"
+            ]
+          },
+          "cargoId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "cargoOrders",
+              "network": "main",
+              "allowedTypes": [
+                "transport.cargo"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-cargo-b-f"
+            ]
+          }
+        },
+        "required": [
+          "wagonId",
+          "cargoId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "operations"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.cargo.deliver",
+            "networkId": "main",
+            "wagonParam": "wagonId",
+            "cargoParam": "cargoId"
+          },
+          {
+            "op": "counter.add",
+            "path": "/public/teams/white-logistics/maintenanceDue",
+            "delta": -1
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "delivery",
+            "summary": "MOCK: груз B–F доставлен по кратчайшему открытому маршруту"
+          }
+        ]
+      }
+    },
+    "mock.operations.attach.white": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.vehicle.attach",
+      "displayName": "MOCK: прицепить белый вагон",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "locomotives",
+              "network": "main",
+              "allowedTypes": [
+                "transport.locomotive"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-locomotive-purple-1"
+            ]
+          },
+          "wagonId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "wagons",
+              "network": "main",
+              "allowedTypes": [
+                "transport.wagon"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-wagon-white-2"
+            ]
+          }
+        },
+        "required": [
+          "vehicleId",
+          "wagonId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "operations"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.vehicle.attach",
+            "networkId": "main",
+            "vehicleParam": "vehicleId",
+            "coupledVehicleParams": [
+              "wagonId"
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "operations",
+            "summary": "MOCK: вагон прицеплен"
+          }
+        ]
+      }
+    },
+    "mock.operations.detach.white": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.vehicle.detach",
+      "displayName": "MOCK: отцепить белый вагон",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "locomotives",
+              "network": "main",
+              "allowedTypes": [
+                "transport.locomotive"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-locomotive-purple-1"
+            ]
+          },
+          "wagonId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "wagons",
+              "network": "main",
+              "allowedTypes": [
+                "transport.wagon"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-wagon-white-2"
+            ]
+          }
+        },
+        "required": [
+          "vehicleId",
+          "wagonId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "operations"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.vehicle.detach",
+            "networkId": "main",
+            "vehicleParam": "vehicleId",
+            "coupledVehicleParams": [
+              "wagonId"
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "operations",
+            "summary": "MOCK: вагон отцеплен"
+          }
+        ]
+      }
+    },
+    "mock.operations.attach.incompatible": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.vehicle.attach",
+      "displayName": "MOCK: проверить несовместимое сцепление",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "locomotives",
+              "network": "main",
+              "allowedTypes": [
+                "transport.locomotive"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-locomotive-purple-1"
+            ]
+          },
+          "wagonId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "wagons",
+              "network": "main",
+              "allowedTypes": [
+                "transport.incompatible-wagon"
+              ],
+              "visibility": "public"
+            },
+            "enum": [
+              "mock-wagon-red-1"
+            ]
+          }
+        },
+        "required": [
+          "vehicleId",
+          "wagonId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "operations"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.vehicle.attach",
+            "networkId": "main",
+            "vehicleParam": "vehicleId",
+            "coupledVehicleParams": [
+              "wagonId"
+            ]
+          }
+        ]
+      }
+    },
+    "mock.ranking.compute": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "ranking.compute",
+      "displayName": "MOCK: рассчитать два рейтинга",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "debrief"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "ranking.compute",
+            "participantCollectionPath": "/public/teams",
+            "balanceAttribute": "coins",
+            "groups": [
+              {
+                "id": "logistics",
+                "participantIds": [
+                  "white-logistics",
+                  "red-logistics"
+                ]
+              },
+              {
+                "id": "guilds",
+                "participantIds": [
+                  "purple-guild",
+                  "green-guild"
+                ]
+              }
+            ],
+            "assetSources": [
+              {
+                "collectionPath": "/public/objects/locomotives",
+                "ownerAttribute": "ownerTeamId",
+                "valueAttribute": "nominalValue"
+              },
+              {
+                "collectionPath": "/public/objects/wagons",
+                "ownerAttribute": "ownerTeamId",
+                "valueAttribute": "nominalValue"
+              }
+            ],
+            "storePath": "/public/ranking"
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "ranking",
+            "summary": "MOCK: итоги рассчитаны отдельно для перевозчиков и гильдий"
+          }
+        ]
+      }
+    },
+    "mock.news.apply.block-road": {
       "handlerType": "manifest-data",
       "capabilityFamily": "runtime.server",
       "capability": "transport.edge.state.set",
@@ -460,6 +2222,11 @@
               "path": "/public/session/phase",
               "operator": "==",
               "value": "news"
+            },
+            {
+              "path": "/public/decks/news/currentCardId",
+              "operator": "==",
+              "value": "mock-news-block-c-d"
             }
           ]
         },
@@ -572,7 +2339,7 @@
               {
                 "op": "replace",
                 "path": "/public/session/phase",
-                "value": "movement"
+                "value": "market"
               }
             ]
           },
@@ -635,7 +2402,7 @@
             {
               "path": "/public/session/phase",
               "operator": "==",
-              "value": "movement"
+              "value": "operations"
             }
           ]
         },
@@ -678,7 +2445,10 @@
                 "transport.wagon"
               ],
               "visibility": "public"
-            }
+            },
+            "enum": [
+              "mock-wagon-white-1"
+            ]
           },
           "cargoId": {
             "type": "string",
@@ -691,7 +2461,10 @@
                 "transport.cargo"
               ],
               "visibility": "public"
-            }
+            },
+            "enum": [
+              "mock-cargo-b-c"
+            ]
           }
         },
         "required": [
@@ -705,40 +2478,11 @@
             {
               "path": "/public/session/phase",
               "operator": "==",
-              "value": "movement"
+              "value": "operations"
             }
           ]
         },
         "effects": [
-          {
-            "op": "metric.transfer",
-            "from": {
-              "scope": "bank"
-            },
-            "to": {
-              "scope": "state",
-              "path": "/public/teams/white-logistics/coins"
-            },
-            "amount": {
-              "var": "public.objects.cargoOrders.mock-cargo-b-c.attributes.payout"
-            },
-            "onInsufficient": "fail"
-          },
-          {
-            "op": "metric.transfer",
-            "from": {
-              "scope": "state",
-              "path": "/public/teams/white-logistics/coins"
-            },
-            "to": {
-              "scope": "state",
-              "path": "/public/teams/purple-guild/coins"
-            },
-            "amount": {
-              "var": "public.objects.cargoOrders.mock-cargo-b-c.attributes.transportFee"
-            },
-            "onInsufficient": "fail"
-          },
           {
             "op": "transport.cargo.deliver",
             "networkId": "main",
@@ -746,25 +2490,15 @@
             "cargoParam": "cargoId"
           },
           {
-            "op": "state.patch",
-            "patches": [
-              {
-                "op": "replace",
-                "path": "/public/session/phase",
-                "value": "construction"
-              },
-              {
-                "op": "replace",
-                "path": "/public/construction/available",
-                "value": true
-              }
-            ]
+            "op": "counter.add",
+            "path": "/public/teams/white-logistics/maintenanceDue",
+            "delta": -1
           },
           {
             "op": "log.append",
             "target": "public.log",
             "kind": "delivery",
-            "summary": "MOCK: груз B–C доставлен и расчёты завершены"
+            "summary": "MOCK: груз B–C доставлен; выплата и тариф рассчитаны по открытому кратчайшему пути"
           }
         ]
       }
@@ -1082,7 +2816,7 @@
               {
                 "op": "replace",
                 "path": "/public/session/phase",
-                "value": "reporting"
+                "value": "debrief"
               }
             ]
           },
@@ -1248,7 +2982,7 @@
       "session": {
         "status": "active",
         "turnNumber": 1,
-        "phase": "news",
+        "phase": "setup",
         "finishConfirmationPending": false,
         "canRequestFinish": true,
         "fixtureId": "development-mock",
@@ -1275,7 +3009,7 @@
           "label": "Белая (MOCK)",
           "type": "logistics_company",
           "coins": 10,
-          "maintenanceDue": 2
+          "maintenanceDue": 3
         },
         "red-logistics": {
           "label": "Красная (MOCK)",
@@ -1533,6 +3267,7 @@
               "networkId": "main",
               "nodeId": "mock-terminal-b",
               "ownerTeamId": "purple-guild",
+              "nominalValue": 10,
               "actionPoints": 5
             }
           },
@@ -1543,8 +3278,22 @@
             },
             "attributes": {
               "networkId": "main",
+              "nodeId": "mock-terminal-c",
+              "ownerTeamId": "green-guild",
+              "nominalValue": 10,
+              "actionPoints": 5
+            }
+          },
+          "mock-market-locomotive-green-2": {
+            "objectType": "transport.locomotive",
+            "facets": {
+              "availability": "reserve"
+            },
+            "attributes": {
+              "networkId": "main",
               "nodeId": "mock-terminal-f",
               "ownerTeamId": "green-guild",
+              "nominalValue": 0,
               "actionPoints": 5
             }
           }
@@ -1559,6 +3308,7 @@
               "networkId": "main",
               "nodeId": "mock-terminal-b",
               "ownerTeamId": "white-logistics",
+              "nominalValue": 5,
               "attachedVehicleId": "mock-locomotive-purple-1",
               "cargoId": "mock-cargo-b-c"
             }
@@ -1571,18 +3321,20 @@
             "attributes": {
               "networkId": "main",
               "nodeId": "mock-terminal-b",
-              "ownerTeamId": "white-logistics"
+              "ownerTeamId": "white-logistics",
+              "nominalValue": 5
             }
           },
           "mock-wagon-red-1": {
-            "objectType": "transport.wagon",
+            "objectType": "transport.incompatible-wagon",
             "facets": {
               "availability": "active"
             },
             "attributes": {
               "networkId": "main",
-              "nodeId": "mock-terminal-e",
-              "ownerTeamId": "red-logistics"
+              "nodeId": "mock-terminal-b",
+              "ownerTeamId": "red-logistics",
+              "nominalValue": 5
             }
           },
           "mock-wagon-red-2": {
@@ -1593,7 +3345,20 @@
             "attributes": {
               "networkId": "main",
               "nodeId": "mock-terminal-f",
-              "ownerTeamId": "red-logistics"
+              "ownerTeamId": "red-logistics",
+              "nominalValue": 5
+            }
+          },
+          "mock-market-wagon-white-3": {
+            "objectType": "transport.wagon",
+            "facets": {
+              "availability": "reserve"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-b",
+              "ownerTeamId": "white-logistics",
+              "nominalValue": 0
             }
           }
         },
@@ -1608,7 +3373,7 @@
               "fromNodeId": "mock-terminal-b",
               "toNodeId": "mock-terminal-c",
               "payout": 9,
-              "transportFee": 2
+              "settledRouteLength": null
             }
           },
           "mock-cargo-a-d": {
@@ -1621,7 +3386,7 @@
               "fromNodeId": "mock-terminal-a",
               "toNodeId": "mock-terminal-d",
               "payout": 9,
-              "transportFee": 0
+              "settledRouteLength": null
             }
           },
           "mock-cargo-e-c": {
@@ -1634,7 +3399,7 @@
               "fromNodeId": "mock-terminal-e",
               "toNodeId": "mock-terminal-c",
               "payout": 6,
-              "transportFee": 0
+              "settledRouteLength": null
             }
           },
           "mock-cargo-b-f": {
@@ -1646,8 +3411,358 @@
               "networkId": "main",
               "fromNodeId": "mock-terminal-b",
               "toNodeId": "mock-terminal-f",
+              "payout": 30,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-a-e": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-a",
+              "toNodeId": "mock-terminal-e",
+              "payout": 8,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-d-b": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-d",
+              "toNodeId": "mock-terminal-b",
+              "payout": 8,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-f-a": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-f",
+              "toNodeId": "mock-terminal-a",
+              "payout": 10,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-c-e": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-e",
               "payout": 7,
-              "transportFee": 0
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-e-d": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-e",
+              "toNodeId": "mock-terminal-d",
+              "payout": 9,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-b-a": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-a",
+              "payout": 5,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-c-f": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-f",
+              "payout": 6,
+              "settledRouteLength": null
+            }
+          },
+          "mock-cargo-f-d": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-f",
+              "toNodeId": "mock-terminal-d",
+              "payout": 8,
+              "settledRouteLength": null
+            }
+          }
+        },
+        "newsCards": {
+          "mock-news-block-c-d": {
+            "objectType": "mock.news-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-news-block-c-d",
+              "summary": "MOCK: дорога C–D временно закрыта",
+              "effect": {
+                "kind": "edge-state",
+                "edgeId": "mock-edge-c-d",
+                "state": "blocked"
+              }
+            }
+          },
+          "mock-news-open-c-d": {
+            "objectType": "mock.news-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-news-open-c-d",
+              "summary": "MOCK: дорога C–D снова открыта",
+              "effect": {
+                "kind": "edge-state",
+                "edgeId": "mock-edge-c-d",
+                "state": "open"
+              }
+            }
+          },
+          "mock-news-costly-service": {
+            "objectType": "mock.news-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-news-costly-service",
+              "summary": "MOCK: команды обсуждают стоимость удержания груза",
+              "effect": {
+                "kind": "methodical-prompt",
+                "promptId": "mock-prompt-held-cargo"
+              }
+            }
+          },
+          "mock-news-cheap-wagons": {
+            "objectType": "mock.news-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-news-cheap-wagons",
+              "summary": "MOCK: тестовая цена покупки вагона снижена",
+              "effect": {
+                "kind": "market-price",
+                "vehicleKind": "wagon",
+                "purchase": 4
+              }
+            }
+          },
+          "mock-news-construction-window": {
+            "objectType": "mock.news-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-news-construction-window",
+              "summary": "MOCK: обсуждение совместного строительства обязательно перед ходом",
+              "effect": {
+                "kind": "methodical-prompt",
+                "promptId": "mock-prompt-investment"
+              }
+            }
+          },
+          "mock-news-stable-day": {
+            "objectType": "mock.news-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-news-stable-day",
+              "summary": "MOCK: сеть работает без дополнительных изменений",
+              "effect": {
+                "kind": "none"
+              }
+            }
+          }
+        },
+        "cargoCards": {
+          "mock-cargo-b-c": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-b-c",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-c",
+              "payout": 9,
+              "copies": 1
+            }
+          },
+          "mock-cargo-a-d": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-a-d",
+              "fromNodeId": "mock-terminal-a",
+              "toNodeId": "mock-terminal-d",
+              "payout": 9,
+              "copies": 1
+            }
+          },
+          "mock-cargo-e-c": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-e-c",
+              "fromNodeId": "mock-terminal-e",
+              "toNodeId": "mock-terminal-c",
+              "payout": 6,
+              "copies": 1
+            }
+          },
+          "mock-cargo-b-f": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-b-f",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-f",
+              "payout": 30,
+              "copies": 1
+            }
+          },
+          "mock-cargo-a-e": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-a-e",
+              "fromNodeId": "mock-terminal-a",
+              "toNodeId": "mock-terminal-e",
+              "payout": 8,
+              "copies": 1
+            }
+          },
+          "mock-cargo-d-b": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-d-b",
+              "fromNodeId": "mock-terminal-d",
+              "toNodeId": "mock-terminal-b",
+              "payout": 8,
+              "copies": 1
+            }
+          },
+          "mock-cargo-f-a": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-f-a",
+              "fromNodeId": "mock-terminal-f",
+              "toNodeId": "mock-terminal-a",
+              "payout": 10,
+              "copies": 1
+            }
+          },
+          "mock-cargo-c-e": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-c-e",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-e",
+              "payout": 7,
+              "copies": 1
+            }
+          },
+          "mock-cargo-e-d": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-e-d",
+              "fromNodeId": "mock-terminal-e",
+              "toNodeId": "mock-terminal-d",
+              "payout": 9,
+              "copies": 1
+            }
+          },
+          "mock-cargo-b-a": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-b-a",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-a",
+              "payout": 5,
+              "copies": 1
+            }
+          },
+          "mock-cargo-c-f": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-c-f",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-f",
+              "payout": 6,
+              "copies": 1
+            }
+          },
+          "mock-cargo-f-d": {
+            "objectType": "mock.cargo-card",
+            "facets": {
+              "availability": "hidden"
+            },
+            "attributes": {
+              "id": "mock-cargo-f-d",
+              "fromNodeId": "mock-terminal-f",
+              "toNodeId": "mock-terminal-d",
+              "payout": 8,
+              "copies": 1
             }
           }
         }
@@ -1662,19 +3777,142 @@
         "highlights": [],
         "availableActions": [
           {
-            "id": "mock-apply-news",
-            "label": "MOCK: применить новость о дороге C–D",
-            "actionId": "mock.news.block-road"
+            "id": "mock-start-session",
+            "label": "MOCK: подтвердить команды и начать игру",
+            "actionId": "mock.setup.start",
+            "phase": "setup",
+            "section": "session"
+          },
+          {
+            "id": "mock-draw-news",
+            "label": "MOCK: открыть следующую новость",
+            "actionId": "mock.news.draw",
+            "phase": "news",
+            "section": "news"
+          },
+          {
+            "id": "mock-apply-news-block-road",
+            "label": "Применить открытую карту: закрыть C–D",
+            "actionId": "mock.news.apply.block-road",
+            "phase": "news",
+            "section": "news"
+          },
+          {
+            "id": "mock-apply-news-open-road",
+            "label": "Применить открытую карту: открыть C–D",
+            "actionId": "mock.news.apply.open-road",
+            "phase": "news",
+            "section": "news"
+          },
+          {
+            "id": "mock-apply-news-held-cargo-prompt",
+            "label": "Применить открытую карту: обсуждение груза",
+            "actionId": "mock.news.apply.held-cargo-prompt",
+            "phase": "news",
+            "section": "news"
+          },
+          {
+            "id": "mock-apply-news-cheap-wagons",
+            "label": "Применить открытую карту: дешёвые вагоны",
+            "actionId": "mock.news.apply.cheap-wagons",
+            "phase": "news",
+            "section": "news"
+          },
+          {
+            "id": "mock-apply-news-construction-prompt",
+            "label": "Применить открытую карту: обсудить строительство",
+            "actionId": "mock.news.apply.construction-prompt",
+            "phase": "news",
+            "section": "news"
+          },
+          {
+            "id": "mock-apply-news-stable-day",
+            "label": "Применить открытую карту: стабильная работа",
+            "actionId": "mock.news.apply.stable-day",
+            "phase": "news",
+            "section": "news"
           },
           {
             "id": "mock-pay-maintenance",
             "label": "MOCK: оплатить обслуживание техники",
-            "actionId": "mock.maintenance.pay"
+            "actionId": "mock.maintenance.pay",
+            "phase": "maintenance",
+            "section": "economy"
+          },
+          {
+            "id": "mock-buy-white-wagon",
+            "label": "MOCK: Белая покупает вагон за 5 монет",
+            "actionId": "mock.market.buy.white-wagon",
+            "phase": "market",
+            "section": "market"
+          },
+          {
+            "id": "mock-sell-red-wagon",
+            "label": "MOCK: Красная продает вагон за 2 монеты",
+            "actionId": "mock.market.sell.red-wagon",
+            "phase": "market",
+            "section": "market"
+          },
+          {
+            "id": "mock-finish-market",
+            "label": "MOCK: завершить рынок",
+            "actionId": "mock.market.finish",
+            "phase": "market",
+            "section": "phase"
+          },
+          {
+            "id": "mock-draw-cargo-offer",
+            "label": "MOCK: открыть две карты груза",
+            "actionId": "mock.cargo.draw-offer",
+            "phase": "cargo",
+            "section": "cargo"
+          },
+          {
+            "id": "mock-load-white-cargo",
+            "label": "MOCK: загрузить груз B–F в белый вагон",
+            "actionId": "mock.cargo.load.white",
+            "phase": "cargo",
+            "section": "cargo",
+            "params": {
+              "wagonId": "mock-wagon-white-2",
+              "cargoId": "mock-cargo-b-f"
+            }
+          },
+          {
+            "id": "mock-finish-cargo",
+            "label": "MOCK: завершить выбор грузов",
+            "actionId": "mock.cargo.finish",
+            "phase": "cargo",
+            "section": "phase"
+          },
+          {
+            "id": "mock-attach-white-wagon",
+            "label": "MOCK: прицепить второй белый вагон",
+            "actionId": "mock.operations.attach.white",
+            "phase": "operations",
+            "section": "operations",
+            "params": {
+              "vehicleId": "mock-locomotive-purple-1",
+              "wagonId": "mock-wagon-white-2"
+            }
+          },
+          {
+            "id": "mock-detach-white-wagon",
+            "label": "MOCK: отцепить второй белый вагон",
+            "actionId": "mock.operations.detach.white",
+            "phase": "operations",
+            "section": "operations",
+            "params": {
+              "vehicleId": "mock-locomotive-purple-1",
+              "wagonId": "mock-wagon-white-2"
+            }
           },
           {
             "id": "mock-move-purple-b-c",
             "label": "MOCK: перевести фиолетовый локомотив B–C",
             "actionId": "mock.locomotive.move",
+            "phase": "operations",
+            "section": "operations",
             "params": {
               "vehicleId": "mock-locomotive-purple-1",
               "edgeId": "mock-edge-b-c"
@@ -1684,16 +3922,38 @@
             "id": "mock-deliver-b-c",
             "label": "MOCK: доставить груз B–C",
             "actionId": "mock.cargo.deliver",
+            "phase": "operations",
+            "section": "operations",
             "params": {
               "wagonId": "mock-wagon-white-1",
               "cargoId": "mock-cargo-b-c"
             }
           },
           {
+            "id": "mock-deliver-b-f",
+            "label": "MOCK: доставить груз B–F",
+            "actionId": "mock.cargo.deliver.b-f",
+            "phase": "operations",
+            "section": "operations",
+            "params": {
+              "wagonId": "mock-wagon-white-2",
+              "cargoId": "mock-cargo-b-f"
+            }
+          },
+          {
+            "id": "mock-finish-operations",
+            "label": "MOCK: завершить операции",
+            "actionId": "mock.operations.finish",
+            "phase": "operations",
+            "section": "phase"
+          },
+          {
             "id": "mock-build-road-b-d",
             "label": "MOCK: построить дорогу B–D (6 монет)",
             "description": "Вымышленный контроль: три области, по 2 монеты за сегмент.",
             "actionId": "construction.road.build",
+            "phase": "construction",
+            "section": "construction",
             "params": {
               "fromNodeId": "mock-terminal-b",
               "toNodeId": "mock-terminal-d",
@@ -1708,6 +3968,8 @@
             "label": "MOCK: поставить полустанок на A–B (5 монет)",
             "description": "Вымышленный контроль: точка посередине существующей дороги.",
             "actionId": "construction.waypoint.build",
+            "phase": "construction",
+            "section": "construction",
             "params": {
               "edgeId": "mock-edge-a-b",
               "positionT": 0.5,
@@ -1716,17 +3978,99 @@
               "purpleContribution": 0,
               "greenContribution": 0
             }
+          },
+          {
+            "id": "mock-finish-construction",
+            "label": "Завершить строительство",
+            "actionId": "construction.phase.finish",
+            "phase": "construction",
+            "section": "phase"
+          },
+          {
+            "id": "mock-start-methodical-pause",
+            "label": "MOCK: начать методическую паузу",
+            "actionId": "mock.debrief.pause.start",
+            "phase": "debrief",
+            "section": "methodology"
+          },
+          {
+            "id": "mock-postpone-methodical-pause",
+            "label": "MOCK: перенести методическую паузу",
+            "actionId": "mock.debrief.pause.postpone",
+            "phase": "debrief",
+            "section": "methodology"
+          },
+          {
+            "id": "mock-skip-methodical-pause",
+            "label": "MOCK: пропустить методическую паузу",
+            "actionId": "mock.debrief.pause.skip",
+            "phase": "debrief",
+            "section": "methodology"
+          },
+          {
+            "id": "mock-next-turn",
+            "label": "Начать следующий ход",
+            "actionId": "mock.debrief.next-turn",
+            "phase": "debrief",
+            "section": "session"
+          },
+          {
+            "id": "mock-compute-ranking",
+            "label": "MOCK: рассчитать итоги по двум группам",
+            "actionId": "mock.ranking.compute",
+            "phase": "debrief",
+            "section": "session"
+          },
+          {
+            "id": "mock-final-reflection",
+            "label": "MOCK: провести финальную рефлексию",
+            "actionId": "mock.debrief.final-reflection",
+            "phase": "debrief",
+            "section": "methodology"
+          },
+          {
+            "id": "mock-request-finish",
+            "label": "Завершить игру…",
+            "actionId": "session.finish.request",
+            "phase": "debrief",
+            "section": "session"
           }
         ]
       },
       "log": [],
+      "methodology": {
+        "status": "idle",
+        "activePauseId": null
+      },
+      "market": {
+        "wagonPurchasePrice": 5
+      },
+      "ranking": null,
+      "decks": {
+        "news": {
+          "currentCardId": null
+        },
+        "cargo": {
+          "offer": {
+            "firstCardId": null,
+            "secondCardId": null
+          }
+        }
+      },
       "transportNetworks": {
         "main": {
           "sequence": 1000
         }
       }
     },
-    "secret": {}
+    "secret": {
+      "random": {
+        "alg": "xoshiro128ss-v1",
+        "seed": "39d334ef7701ec6e16d2cc2dab7b1a41",
+        "counter": 0
+      },
+      "decks": {}
+    }
   },
   "networkModels": {
     "main": {
@@ -1818,6 +4162,10 @@
         "vehicleObjectTypes": [
           "transport.locomotive"
         ],
+        "vehicleStateFacet": "availability",
+        "movableVehicleStates": [
+          "active"
+        ],
         "locationAttribute": "nodeId",
         "actionPointsAttribute": "actionPoints",
         "traversableNodeStates": [
@@ -1831,13 +4179,27 @@
           "transport.locomotive"
         ],
         "capacityLocationAttribute": "nodeId",
-        "maxVehiclesPerNode": 2,
+        "maxVehiclesPerNode": 1,
         "coupledCollection": "wagons",
         "coupledObjectTypes": [
-          "transport.wagon"
+          "transport.wagon",
+          "transport.incompatible-wagon"
+        ],
+        "coupledStateFacet": "availability",
+        "couplableVehicleStates": [
+          "active"
         ],
         "coupledVehicleAttribute": "attachedVehicleId",
-        "coupledLocationAttribute": "nodeId"
+        "coupledLocationAttribute": "nodeId",
+        "compatibleCouplings": [
+          {
+            "vehicleObjectType": "transport.locomotive",
+            "coupledObjectTypes": [
+              "transport.wagon"
+            ]
+          }
+        ],
+        "maxCoupledVehicles": 8
       },
       "cargoDelivery": {
         "wagonCollection": "wagons",
@@ -1852,11 +4214,22 @@
         "cargoReferenceAttribute": "cargoId",
         "attachedVehicleAttribute": "attachedVehicleId",
         "cargoDestinationAttribute": "toNodeId",
+        "cargoOriginAttribute": "fromNodeId",
         "cargoStateFacet": "status",
+        "loadableCargoStates": [
+          "available"
+        ],
+        "loadedCargoState": "in_transit",
         "deliverableCargoStates": [
           "in_transit"
         ],
-        "deliveredCargoState": "delivered"
+        "deliveredCargoState": "delivered",
+        "payoutAttribute": "payout",
+        "ownerParticipantIdAttribute": "ownerTeamId",
+        "participantCollectionPath": "/public/teams",
+        "participantBalanceAttribute": "coins",
+        "tariffPerEdge": 2,
+        "settledRouteLengthAttribute": "settledRouteLength"
       }
     }
   }

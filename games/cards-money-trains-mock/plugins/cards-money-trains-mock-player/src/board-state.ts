@@ -86,6 +86,8 @@ export interface BoardProjection {
   readonly status: string;
   readonly constructionMode: string | null;
   readonly contentMode: string;
+  readonly currentNewsSummary: string | null;
+  readonly cargoOfferLabels: readonly string[];
   readonly turnNumber: number;
 }
 
@@ -157,6 +159,9 @@ const readVehicles = (publicState: JsonRecord): BoardVehicleView[] => {
     Object.entries(objectCollection(publicState, collectionId)).flatMap(([id, raw]) => {
       if (!isRecord(raw)) return [];
       const attributes = isRecord(raw.attributes) ? raw.attributes : {};
+      const facets = isRecord(raw.facets) ? raw.facets : {};
+      const availability = text(facets.availability);
+      if (availability === "reserve" || availability === "sold") return [];
       return [{
         id,
         kind,
@@ -295,6 +300,38 @@ const readBounds = (board: JsonRecord, nodes: readonly BoardNodeView[]): BoardPr
   };
 };
 
+const readDeckPresentation = (
+  publicState: JsonRecord,
+  nodes: readonly BoardNodeView[]
+): Pick<BoardProjection, "currentNewsSummary" | "cargoOfferLabels"> => {
+  const decks = isRecord(publicState.decks) ? publicState.decks : {};
+  const news = isRecord(decks.news) ? decks.news : {};
+  const cargo = isRecord(decks.cargo) ? decks.cargo : {};
+  const offer = isRecord(cargo.offer) ? cargo.offer : {};
+  const newsCards = objectCollection(publicState, "newsCards");
+  const cargoCards = objectCollection(publicState, "cargoCards");
+  const nodeLabels = new Map(nodes.map((node) => [node.id, node.label]));
+
+  const newsId = text(news.currentCardId);
+  const newsCard = newsId && isRecord(newsCards[newsId]) ? newsCards[newsId] : {};
+  const newsAttributes = isRecord(newsCard.attributes) ? newsCard.attributes : {};
+
+  const cargoOfferLabels = [offer.firstCardId, offer.secondCardId].flatMap((rawId) => {
+    const id = text(rawId);
+    if (!id || !isRecord(cargoCards[id])) return [];
+    const attributes = isRecord(cargoCards[id].attributes) ? cargoCards[id].attributes : {};
+    const fromId = text(attributes.fromNodeId);
+    const toId = text(attributes.toNodeId);
+    if (!fromId || !toId) return [id];
+    return [`${nodeLabels.get(fromId) ?? fromId} → ${nodeLabels.get(toId) ?? toId}`];
+  });
+
+  return {
+    currentNewsSummary: text(newsAttributes.summary),
+    cargoOfferLabels
+  };
+};
+
 /** Convert a player-facing session snapshot into a deterministic board view. */
 export function projectBoardSession(session: { state?: unknown }): BoardProjection {
   const state = isRecord(session.state) ? session.state : {};
@@ -306,6 +343,7 @@ export function projectBoardSession(session: { state?: unknown }): BoardProjecti
   const nodes = readNodes(publicState);
   const vehicles = readVehicles(publicState);
   const availableActions = readActions(board, phase);
+  const deckPresentation = readDeckPresentation(publicState, nodes);
   return {
     nodes,
     edges: readEdges(publicState, nodes),
@@ -320,6 +358,7 @@ export function projectBoardSession(session: { state?: unknown }): BoardProjecti
     status: text(sessionState.status) ?? "unknown",
     constructionMode: text(constructionState.mode),
     contentMode: text(sessionState.contentMode) ?? "unknown",
+    ...deckPresentation,
     turnNumber: finiteNumber(sessionState.turnNumber) ?? 0
   };
 }

@@ -21,6 +21,7 @@ apps: # Приложения и импортированные frontend-заго
   editor-web: directory... # Next.js App Router prototype for ADR-034 authoring manifest editing with a synchronized graph canvas, JSON editor, property panel and diagnostics strip.
   player-web: # Канонический web player scaffold для Antarctica 
     e2e: # Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.
+      cards-money-trains-mock.spec.ts: file # Browser acceptance for the complete test-only facilitator session, including keyboard board access and manual finish confirmation.
       player-web.spec.ts: file # E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding.
   portal-nextjs: directory... # Next.js портал для каталога, покупок, ссылок запуска и первого test VPS launch с Antarctica.
 archive: # Архив старых документов и черновиков
@@ -157,7 +158,10 @@ games: # Пакеты игр и связанные ресурсы
     annotations: directory... # Контракт, шаблоны и проверяемые аннотации для переноса транспортной сети с изображения в декларативные данные манифеста.
     assets: directory... # Реестр исключительно тестовых ресурсов mock-пакета.
     authoring: directory... # Собираемые исходники исполнимых game/UI-манифестов тестовой копии; все содержимое явно помечено MOCK.
-    fixtures: directory... # Вымышленные команды, грузы, выплаты и контрольный сценарий, используемые только для продолжения разработки до ответа автора.
+    fixtures: # Вымышленные команды, грузы, выплаты и контрольный сценарий, используемые только для продолжения разработки до ответа автора.
+      complete-session-transcript.json: file # Статичный 88-шаговый mock-транскрипт полного фасилитируемого сеанса с двумя контрольными перезапусками и семью атомарными отказами.
+      control-transcript.json: file # Короткий контрольный сценарий базового игрового цикла, сохранённый отдельно от полной партии.
+      mock-gameplay-data.json: file # Вымышленные команды, колоды, техника, цены и методические точки test-only игры.
     generated: directory... # Проверенные производные данные карты; пересобираются из JSON-аннотации и не редактируются вручную.
     plugins: directory... # Локальные доверенные плагины отдельного mock-пакета игры «Карты, деньги, поезда».
     tests: directory... # Узкие проверки целостности mock-пакета, преобразования карты и отделения тестовых данных от нормативной игры.

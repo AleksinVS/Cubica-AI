@@ -87,6 +87,42 @@
                 }
               },
               {
+                "id": "facilitator.log",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-game-log"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.log-title",
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
+                    }
+                  },
+                  {
+                    "id": "facilitator.log-entries",
+                    "type": "areaComponent",
+                    "props": {
+                      "cssClass": "board-game-log-entries"
+                    },
+                    "itemTemplate": {
+                      "collection": "{{game.state.public.log}}",
+                      "itemKey": "logEntry"
+                    },
+                    "children": [
+                      {
+                        "id": "facilitator.log-entry",
+                        "type": "richTextComponent",
+                        "props": {
+                          "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
                 "id": "facilitator.construction-controls",
                 "type": "areaComponent",
                 "if": "{{game.state.public.construction.available}}",
@@ -141,42 +177,6 @@
                         }
                       }
                     }
-                  }
-                ]
-              },
-              {
-                "id": "facilitator.log",
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "board-game-log"
-                },
-                "children": [
-                  {
-                    "id": "facilitator.log-title",
-                    "type": "richTextComponent",
-                    "props": {
-                      "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
-                    }
-                  },
-                  {
-                    "id": "facilitator.log-entries",
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "board-game-log-entries"
-                    },
-                    "itemTemplate": {
-                      "collection": "{{game.state.public.log}}",
-                      "itemKey": "logEntry"
-                    },
-                    "children": [
-                      {
-                        "id": "facilitator.log-entry",
-                        "type": "richTextComponent",
-                        "props": {
-                          "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
-                        }
-                      }
-                    ]
                   }
                 ]
               },

@@ -49,7 +49,7 @@
               "id": "facilitator.statusbar",
               "_type": "ui.Component",
               "_label": "Верхняя строка ведущего",
-              "_semantics": "Короткая строка ориентации: статус, номер хода и текущая серверная фаза.",
+              "_semantics": "Занимает штатную верхнюю область topbar-компоновки и содержит подтвержденный статус сессии.",
               "type": "areaComponent",
               "props": {
                 "cssClass": "game-variables-container"
@@ -59,7 +59,7 @@
                   "id": "facilitator.status",
                   "_type": "ui.Component",
                   "_label": "Статус сессии",
-                  "_semantics": "Показывает подтвержденную фазу, ход и состояние завершения.",
+                  "_semantics": "Короткая строка ориентации: статус, номер хода и текущая серверная фаза.",
                   "type": "richTextComponent",
                   "props": {
                     "html": "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
@@ -105,7 +105,7 @@
                       "id": "facilitator.team-status-copy",
                       "_type": "ui.Component",
                       "_label": "Текущее состояние четырех тестовых команд",
-                      "_semantics": "Фиксированные идентификаторы допустимы здесь, потому что компонент принадлежит только тестовой игре; значения приходят из публичного snapshot.",
+                      "_semantics": "Фиксированные идентификаторы принадлежат только тестовой игре; значения приходят из публичного snapshot.",
                       "type": "richTextComponent",
                       "props": {
                         "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
@@ -122,6 +122,54 @@
                   "props": {
                     "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
                   }
+                },
+                {
+                  "id": "facilitator.log",
+                  "_type": "ui.Component",
+                  "_label": "Журнал подтвержденных действий",
+                  "_semantics": "Доступный текстовый журнал повторяет только записи, уже подтвержденные Runtime API.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "board-game-log"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.log-title",
+                      "_type": "ui.Component",
+                      "_label": "Заголовок журнала",
+                      "_semantics": "Отделяет подтвержденную историю от текущих намерений ведущего.",
+                      "type": "richTextComponent",
+                      "props": {
+                        "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
+                      }
+                    },
+                    {
+                      "id": "facilitator.log-entries",
+                      "_type": "ui.Component",
+                      "_label": "Записи журнала",
+                      "_semantics": "Повторяет публичный журнал по порядку, не интерпретируя правила игры.",
+                      "type": "areaComponent",
+                      "props": {
+                        "cssClass": "board-game-log-entries"
+                      },
+                      "itemTemplate": {
+                        "collection": "{{game.state.public.log}}",
+                        "itemKey": "logEntry"
+                      },
+                      "children": [
+                        {
+                          "id": "facilitator.log-entry",
+                          "_type": "ui.Component",
+                          "_label": "Подтвержденное действие",
+                          "_semantics": "Показывает переданные сервером вид события и краткое описание.",
+                          "type": "richTextComponent",
+                          "props": {
+                            "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                          }
+                        }
+                      ]
+                    }
+                  ]
                 },
                 {
                   "id": "facilitator.construction-controls",
@@ -190,54 +238,6 @@
                           }
                         }
                       }
-                    }
-                  ]
-                },
-                {
-                  "id": "facilitator.log",
-                  "_type": "ui.Component",
-                  "_label": "Журнал подтвержденных действий",
-                  "_semantics": "Доступный текстовый журнал повторяет только записи, уже подтвержденные Runtime API.",
-                  "type": "areaComponent",
-                  "props": {
-                    "cssClass": "board-game-log"
-                  },
-                  "children": [
-                    {
-                      "id": "facilitator.log-title",
-                      "_type": "ui.Component",
-                      "_label": "Заголовок журнала",
-                      "_semantics": "Отделяет подтвержденную историю от текущих намерений ведущего.",
-                      "type": "richTextComponent",
-                      "props": {
-                        "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
-                      }
-                    },
-                    {
-                      "id": "facilitator.log-entries",
-                      "_type": "ui.Component",
-                      "_label": "Записи журнала",
-                      "_semantics": "Повторяет публичный журнал по порядку, не интерпретируя правила игры.",
-                      "type": "areaComponent",
-                      "props": {
-                        "cssClass": "board-game-log-entries"
-                      },
-                      "itemTemplate": {
-                        "collection": "{{game.state.public.log}}",
-                        "itemKey": "logEntry"
-                      },
-                      "children": [
-                        {
-                          "id": "facilitator.log-entry",
-                          "_type": "ui.Component",
-                          "_label": "Подтвержденное действие",
-                          "_semantics": "Показывает переданные сервером вид события и краткое описание.",
-                          "type": "richTextComponent",
-                          "props": {
-                            "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
-                          }
-                        }
-                      ]
                     }
                   ]
                 },
