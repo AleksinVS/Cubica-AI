@@ -122,6 +122,7 @@ export interface GameManifestStringActionParamSchema {
   maxLength: number;
   minLength?: number;
   enum?: Array<string>;
+  const?: string;
   pattern?: string;
   "x-cubica-ref"?: GameManifestCubicaReference;
 }
@@ -342,6 +343,8 @@ export interface GameManifestTransportRegion {
 export interface GameManifestTransportMovementModel {
   vehicleCollection: string;
   vehicleObjectTypes: Array<string>;
+  vehicleStateFacet?: string;
+  movableVehicleStates?: Array<GameManifestObjectFacetValue>;
   locationAttribute: string;
   actionPointsAttribute: string;
   traversableNodeStates: Array<GameManifestObjectFacetValue>;
@@ -352,8 +355,16 @@ export interface GameManifestTransportMovementModel {
   maxVehiclesPerNode: number;
   coupledCollection: string;
   coupledObjectTypes: Array<string>;
+  coupledStateFacet?: string;
+  couplableVehicleStates?: Array<GameManifestObjectFacetValue>;
   coupledVehicleAttribute: string;
   coupledLocationAttribute: string;
+  /** Optional coupling contract; both fields are present together when attach/detach is enabled. */
+  compatibleCouplings?: Array<{
+    vehicleObjectType: string;
+    coupledObjectTypes: Array<string>;
+  }>;
+  maxCoupledVehicles?: number;
 }
 
 /** Declarative collection and attribute bindings for completing carried cargo. */
@@ -366,9 +377,31 @@ export interface GameManifestTransportCargoDeliveryModel {
   cargoReferenceAttribute: string;
   attachedVehicleAttribute: string;
   cargoDestinationAttribute: string;
+  /** Optional loading contract; all three fields are present together. */
+  cargoOriginAttribute?: string;
   cargoStateFacet: string;
+  loadableCargoStates?: Array<GameManifestObjectFacetValue>;
+  loadedCargoState?: GameManifestObjectFacetValue;
   deliverableCargoStates: Array<GameManifestObjectFacetValue>;
   deliveredCargoState: GameManifestObjectFacetValue;
+  /** Optional shortest-route settlement contract; all six fields are present together. */
+  payoutAttribute?: string;
+  ownerParticipantIdAttribute?: string;
+  participantCollectionPath?: string;
+  participantBalanceAttribute?: string;
+  tariffPerEdge?: number;
+  settledRouteLengthAttribute?: string;
+}
+
+export interface GameManifestRankingGroup {
+  id: string;
+  participantIds: Array<string>;
+}
+
+export interface GameManifestRankingAssetSource {
+  collectionPath: string;
+  ownerAttribute: string;
+  valueAttribute: string;
 }
 
 /** Declarative binding between generic object collections and one transport graph. */
@@ -552,6 +585,17 @@ export type GameManifestDeterministicEffect =
       storePath: string;
     })
   | (GameManifestDeterministicEffectBase & {
+      op: "deck.shuffle";
+      deckId: string;
+      source: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "deck.draw";
+      deckId: string;
+      storePath: string;
+      onEmpty: "reshuffle-discard" | "fail";
+    })
+  | (GameManifestDeterministicEffectBase & {
       op: "metric.add";
       metricId: string;
       delta: number | string | JsonLogicExpression;
@@ -600,10 +644,36 @@ export type GameManifestDeterministicEffect =
       edgeParam: string;
     })
   | (GameManifestDeterministicEffectBase & {
+      op: "transport.vehicle.attach";
+      networkId: string;
+      vehicleParam: string;
+      coupledVehicleParams: Array<string>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.vehicle.detach";
+      networkId: string;
+      vehicleParam: string;
+      coupledVehicleParams: Array<string>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.cargo.load";
+      networkId: string;
+      wagonParam: string;
+      cargoParam: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
       op: "transport.cargo.deliver";
       networkId: string;
       wagonParam: string;
       cargoParam: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "ranking.compute";
+      participantCollectionPath: string;
+      balanceAttribute: string;
+      groups: Array<GameManifestRankingGroup>;
+      assetSources: Array<GameManifestRankingAssetSource>;
+      storePath: string;
     })
   | (GameManifestDeterministicEffectBase & {
       op: "state.patch";

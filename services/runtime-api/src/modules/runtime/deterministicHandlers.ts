@@ -28,6 +28,8 @@ import {
   rollSessionDice,
   type SessionRandomState
 } from "./sessionRandom.ts";
+import { applyDeckEffect } from "./deckEffects.ts";
+import { applyRankingEffect } from "./rankingEffects.ts";
 import { applyTransportEffect } from "./transportNetwork.ts";
 
 type RuntimeState = Record<string, unknown>;
@@ -1360,6 +1362,17 @@ const applyManifestEffects = (
         runtimeEffects.push({ kind: "log", target: "public.log", data: logEntry });
         break;
       }
+      case "deck.shuffle":
+      case "deck.draw": {
+        const result = applyDeckEffect(state, effect);
+        runtimeEffects.push({
+          kind: "state",
+          target: effect.op === "deck.draw" ? effect.storePath : `secret.decks.${effect.deckId}`,
+          value: effect.op,
+          data: { op: effect.op, ...result }
+        });
+        break;
+      }
       case "metric.add": {
         const target = applyMetricChange(state, {
           metricId: effect.metricId,
@@ -1423,6 +1436,9 @@ const applyManifestEffects = (
       case "transport.road.build":
       case "transport.waypoint.build":
       case "transport.vehicle.move":
+      case "transport.vehicle.attach":
+      case "transport.vehicle.detach":
+      case "transport.cargo.load":
       case "transport.cargo.deliver": {
         const result = applyTransportEffect({
           state,
@@ -1435,6 +1451,16 @@ const applyManifestEffects = (
         runtimeEffects.push({
           kind: "state",
           target: `transport.${effect.networkId}`,
+          value: effect.op,
+          data: { op: effect.op, ...result }
+        });
+        break;
+      }
+      case "ranking.compute": {
+        const result = applyRankingEffect(state, effect);
+        runtimeEffects.push({
+          kind: "state",
+          target: effect.storePath,
           value: effect.op,
           data: { op: effect.op, ...result }
         });

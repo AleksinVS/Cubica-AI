@@ -59,6 +59,19 @@ export type GameManifestDeterministicEffect =
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
+      op: "deck.shuffle";
+      deckId: GameManifestSafeIdentifier;
+      source: string;
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "deck.draw";
+      deckId: GameManifestSafeIdentifier;
+      storePath: string;
+      onEmpty: "reshuffle-discard" | "fail";
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
       op: "turn.next";
       when?: GameManifestDeterministicEffectCondition;
     }
@@ -99,10 +112,68 @@ export type GameManifestDeterministicEffect =
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
+      op: "transport.vehicle.attach";
+      networkId: string;
+      vehicleParam: string;
+      /**
+       * @minItems 1
+       */
+      coupledVehicleParams: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "transport.vehicle.detach";
+      networkId: string;
+      vehicleParam: string;
+      /**
+       * @minItems 1
+       */
+      coupledVehicleParams: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "transport.cargo.load";
+      networkId: string;
+      wagonParam: string;
+      cargoParam: string;
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
       op: "transport.cargo.deliver";
       networkId: string;
       wagonParam: string;
       cargoParam: string;
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "ranking.compute";
+      participantCollectionPath: string;
+      balanceAttribute: string;
+      /**
+       * @minItems 1
+       */
+      groups: [
+        {
+          id: GameManifestSafeIdentifier;
+          /**
+           * @minItems 1
+           */
+          participantIds: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
+        },
+        ...{
+          id: GameManifestSafeIdentifier;
+          /**
+           * @minItems 1
+           */
+          participantIds: [GameManifestSafeIdentifier, ...GameManifestSafeIdentifier[]];
+        }[]
+      ];
+      assetSources: {
+        collectionPath: string;
+        ownerAttribute: string;
+        valueAttribute: string;
+      }[];
+      storePath: string;
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
@@ -265,6 +336,13 @@ export type JsonLogicExpression =
       [k: string]: JsonLogicExpression | JsonLogicExpression[];
     };
 /**
+ * Bounded identifier safe for use as an own object key or JSON Pointer segment.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestSafeIdentifier".
+ */
+export type GameManifestSafeIdentifier = string;
+/**
  * Explicitly scoped endpoint for transfers between the bank, shared state, and participant balances.
  *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -340,6 +418,7 @@ export type GameManifestStringActionParamSchema = {
    * @minItems 1
    */
   enum?: [string, ...string[]];
+  const?: string;
   pattern?: string;
   "x-cubica-ref"?: GameManifestCubicaReference;
 };
@@ -993,6 +1072,11 @@ export interface GameManifestTransportMovementModel {
    * @minItems 1
    */
   vehicleObjectTypes: [string, ...string[]];
+  vehicleStateFacet?: string;
+  /**
+   * @minItems 1
+   */
+  movableVehicleStates?: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
   locationAttribute: string;
   actionPointsAttribute: string;
   /**
@@ -1015,8 +1099,33 @@ export interface GameManifestTransportMovementModel {
    * @minItems 1
    */
   coupledObjectTypes: [string, ...string[]];
+  coupledStateFacet?: string;
+  /**
+   * @minItems 1
+   */
+  couplableVehicleStates?: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
   coupledVehicleAttribute: string;
   coupledLocationAttribute: string;
+  /**
+   * @minItems 1
+   */
+  compatibleCouplings?: [
+    {
+      vehicleObjectType: string;
+      /**
+       * @minItems 1
+       */
+      coupledObjectTypes: [string, ...string[]];
+    },
+    ...{
+      vehicleObjectType: string;
+      /**
+       * @minItems 1
+       */
+      coupledObjectTypes: [string, ...string[]];
+    }[]
+  ];
+  maxCoupledVehicles?: number;
 }
 /**
  * Declarative object bindings for completing cargo carried by a coupled vehicle.
@@ -1039,12 +1148,24 @@ export interface GameManifestTransportCargoDeliveryModel {
   cargoReferenceAttribute: string;
   attachedVehicleAttribute: string;
   cargoDestinationAttribute: string;
+  cargoOriginAttribute?: string;
   cargoStateFacet: string;
+  /**
+   * @minItems 1
+   */
+  loadableCargoStates?: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
+  loadedCargoState?: GameManifestObjectFacetValue;
   /**
    * @minItems 1
    */
   deliverableCargoStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
   deliveredCargoState: GameManifestObjectFacetValue;
+  payoutAttribute?: string;
+  ownerParticipantIdAttribute?: string;
+  participantCollectionPath?: string;
+  participantBalanceAttribute?: string;
+  tariffPerEdge?: number;
+  settledRouteLengthAttribute?: string;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema

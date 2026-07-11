@@ -265,10 +265,116 @@ const assertAllowedFacetState = (
   }
 };
 
+const assertPrimaryVehicleState = (
+  object: JsonRecord,
+  movement: NonNullable<GameManifestTransportNetworkModel["movement"]>
+) => {
+  if (movement.vehicleStateFacet && movement.movableVehicleStates) {
+    assertAllowedFacetState(object, movement.vehicleStateFacet, movement.movableVehicleStates, "primary vehicle");
+  }
+};
+
+const assertCoupledVehicleState = (
+  object: JsonRecord,
+  movement: NonNullable<GameManifestTransportNetworkModel["movement"]>
+) => {
+  if (movement.coupledStateFacet && movement.couplableVehicleStates) {
+    assertAllowedFacetState(object, movement.coupledStateFacet, movement.couplableVehicleStates, "coupled vehicle");
+  }
+};
+
+const SAFE_IDENTIFIER_PATTERN = /^(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/u;
+
+const requireSafeIdentifier = (value: unknown, label: string): string => {
+  if (typeof value !== "string" || !SAFE_IDENTIFIER_PATTERN.test(value)) {
+    throw new Error(`${label} must be a safe identifier`);
+  }
+  return value;
+};
+
+const finiteNonnegativeInteger = (value: unknown, label: string): number => {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) {
+    throw new Error(`${label} must be a finite non-negative integer`);
+  }
+  return value as number;
+};
+
+/** Find one deterministic shortest open route in an unweighted graph. */
+const shortestOpenRoute = (options: {
+  nodes: JsonRecord;
+  edges: JsonRecord;
+  model: GameManifestTransportNetworkModel;
+  originNodeId: string;
+  destinationNodeId: string;
+}): { edgeIds: Array<string>; nodeIds: Array<string> } => {
+  const { nodes, edges, model, originNodeId, destinationNodeId } = options;
+  const movement = model.movement;
+  if (!movement) throw new Error("Shortest-route settlement requires declared movement rules");
+  const origin = isRecord(nodes[originNodeId]) ? nodes[originNodeId] as JsonRecord : undefined;
+  const destination = isRecord(nodes[destinationNodeId]) ? nodes[destinationNodeId] as JsonRecord : undefined;
+  assertAllowedFacetState(origin, model.nodeStateFacet, movement.traversableNodeStates, "route origin node");
+  assertAllowedFacetState(destination, model.nodeStateFacet, movement.traversableNodeStates, "route destination node");
+  if (originNodeId === destinationNodeId) return { edgeIds: [], nodeIds: [originNodeId] };
+
+  const adjacency = new Map<string, Array<{ nodeId: string; edgeId: string }>>();
+  for (const [edgeId, candidate] of Object.entries(edges).sort(([left], [right]) => left.localeCompare(right))) {
+    if (!isRecord(candidate)) continue;
+    const facets = isRecord(candidate.facets) ? candidate.facets : {};
+    if (!movement.traversableEdgeStates.includes(facets[model.edgeStateFacet] as GameManifestObjectFacetValue)) continue;
+    const endpoints = edgeEndpoints(candidate);
+    const from = isRecord(nodes[endpoints.fromNodeId]) ? nodes[endpoints.fromNodeId] as JsonRecord : undefined;
+    const to = isRecord(nodes[endpoints.toNodeId]) ? nodes[endpoints.toNodeId] as JsonRecord : undefined;
+    const fromFacets = isRecord(from?.facets) ? from.facets : {};
+    const toFacets = isRecord(to?.facets) ? to.facets : {};
+    if (!movement.traversableNodeStates.includes(fromFacets[model.nodeStateFacet] as GameManifestObjectFacetValue) ||
+        !movement.traversableNodeStates.includes(toFacets[model.nodeStateFacet] as GameManifestObjectFacetValue)) continue;
+    adjacency.set(endpoints.fromNodeId, [
+      ...(adjacency.get(endpoints.fromNodeId) ?? []),
+      { nodeId: endpoints.toNodeId, edgeId }
+    ]);
+    adjacency.set(endpoints.toNodeId, [
+      ...(adjacency.get(endpoints.toNodeId) ?? []),
+      { nodeId: endpoints.fromNodeId, edgeId }
+    ]);
+  }
+
+  const queue = [originNodeId];
+  const previous = new Map<string, { nodeId: string; edgeId: string }>();
+  const visited = new Set([originNodeId]);
+  while (queue.length > 0 && !visited.has(destinationNodeId)) {
+    const current = queue.shift() as string;
+    for (const next of adjacency.get(current) ?? []) {
+      if (visited.has(next.nodeId)) continue;
+      visited.add(next.nodeId);
+      previous.set(next.nodeId, { nodeId: current, edgeId: next.edgeId });
+      queue.push(next.nodeId);
+    }
+  }
+  if (!visited.has(destinationNodeId)) {
+    throw new Error("Cargo origin and destination are not connected by an open route");
+  }
+
+  const edgeIds: Array<string> = [];
+  const nodeIds = [destinationNodeId];
+  let cursor = destinationNodeId;
+  while (cursor !== originNodeId) {
+    const step = previous.get(cursor);
+    if (!step) throw new Error("Shortest-route reconstruction failed");
+    edgeIds.push(step.edgeId);
+    cursor = step.nodeId;
+    nodeIds.push(cursor);
+  }
+  edgeIds.reverse();
+  nodeIds.reverse();
+  return { edgeIds, nodeIds };
+};
+
 export interface ApplyTransportEffectOptions {
   state: RuntimeState;
   effect: Extract<GameManifestDeterministicEffect, {
-    op: "transport.road.build" | "transport.waypoint.build" | "transport.vehicle.move" | "transport.cargo.deliver"
+    op: "transport.road.build" | "transport.waypoint.build" | "transport.vehicle.move" |
+      "transport.vehicle.attach" | "transport.vehicle.detach" | "transport.cargo.load" |
+      "transport.cargo.deliver"
   }>;
   params: Record<string, unknown>;
   resolvedRefs: Record<string, RuntimeResolvedReference>;
@@ -390,6 +496,7 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
     if (!vehicle || !movement.vehicleObjectTypes.includes(String(vehicle.objectType))) {
       throw new Error("Selected transport vehicle is unavailable for movement");
     }
+    assertPrimaryVehicleState(vehicle, movement);
     if (!edge) throw new Error("Selected transport edge is unavailable for movement");
     assertAllowedFacetState(edge, model.edgeStateFacet, movement.traversableEdgeStates, "edge");
     const attributes = isRecord(vehicle.attributes) ? vehicle.attributes : {};
@@ -429,6 +536,7 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
       if (!isRecord(candidate) || !movement.coupledObjectTypes.includes(String(candidate.objectType))) continue;
       const candidateAttributes = isRecord(candidate.attributes) ? candidate.attributes : {};
       if (candidateAttributes[movement.coupledVehicleAttribute] !== vehicleRef.id) continue;
+      assertCoupledVehicleState(candidate, movement);
       candidateAttributes[movement.coupledLocationAttribute] = destinationNodeId;
       candidate.attributes = candidateAttributes;
       coupledVehicleIds.push(id);
@@ -440,6 +548,91 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
       toNodeId: destinationNodeId,
       actionPointsRemaining: (actionPoints as number) - 1,
       coupledVehicleIds
+    };
+  }
+
+  if (effect.op === "transport.vehicle.attach" || effect.op === "transport.vehicle.detach") {
+    const movement = model.movement;
+    if (!movement || !movement.compatibleCouplings || movement.maxCoupledVehicles === undefined ||
+        !movement.vehicleStateFacet || !movement.movableVehicleStates ||
+        !movement.coupledStateFacet || !movement.couplableVehicleStates) {
+      throw new Error(`Transport network "${effect.networkId}" does not declare coupling rules`);
+    }
+    const vehicleRef = requireReference(
+      resolvedRefs,
+      effect.vehicleParam,
+      movement.vehicleCollection,
+      effect.networkId
+    );
+    const coupledRefs = effect.coupledVehicleParams.map((paramName) =>
+      requireReference(resolvedRefs, paramName, movement.coupledCollection, effect.networkId));
+    if (new Set(coupledRefs.map((ref) => ref.id)).size !== coupledRefs.length) {
+      throw new Error("A coupled vehicle may appear only once in one operation");
+    }
+    const vehicles = stateCollection(state, model, movement.vehicleCollection);
+    const coupledVehicles = stateCollection(state, model, movement.coupledCollection);
+    const vehicle = isRecord(vehicles[vehicleRef.id]) ? vehicles[vehicleRef.id] as JsonRecord : undefined;
+    if (!vehicle || !movement.vehicleObjectTypes.includes(String(vehicle.objectType))) {
+      throw new Error("Selected transport vehicle is unavailable for coupling");
+    }
+    assertPrimaryVehicleState(vehicle, movement);
+    const compatibility = movement.compatibleCouplings.find(
+      (rule) => rule.vehicleObjectType === vehicle.objectType
+    );
+    if (!compatibility) throw new Error("Selected transport vehicle does not accept coupled vehicles");
+    const vehicleAttributes = isRecord(vehicle.attributes) ? vehicle.attributes : {};
+    const vehicleNodeId = vehicleAttributes[movement.locationAttribute];
+    const actionPoints = vehicleAttributes[movement.actionPointsAttribute];
+    if (typeof vehicleNodeId !== "string") throw new Error("Transport vehicle has no current node");
+    if (!Number.isSafeInteger(actionPoints) || (actionPoints as number) <= 0) {
+      throw new Error("Transport vehicle has no action points remaining");
+    }
+
+    const selected = coupledRefs.map((ref) => {
+      const object = isRecord(coupledVehicles[ref.id]) ? coupledVehicles[ref.id] as JsonRecord : undefined;
+      if (!object || !movement.coupledObjectTypes.includes(String(object.objectType)) ||
+          !compatibility.coupledObjectTypes.includes(String(object.objectType))) {
+        throw new Error("Selected coupled vehicle is incompatible or unavailable");
+      }
+      assertCoupledVehicleState(object, movement);
+      const attributes = isRecord(object.attributes) ? object.attributes : {};
+      if (attributes[movement.coupledLocationAttribute] !== vehicleNodeId) {
+        throw new Error("All coupled vehicles must be at the primary vehicle node");
+      }
+      if (effect.op === "transport.vehicle.attach" &&
+          attributes[movement.coupledVehicleAttribute] !== null &&
+          attributes[movement.coupledVehicleAttribute] !== undefined) {
+        throw new Error("Selected coupled vehicle is already attached");
+      }
+      if (effect.op === "transport.vehicle.detach" &&
+          attributes[movement.coupledVehicleAttribute] !== vehicleRef.id) {
+        throw new Error("Selected coupled vehicle is not attached to the primary vehicle");
+      }
+      return { id: ref.id, object, attributes };
+    });
+
+    if (effect.op === "transport.vehicle.attach") {
+      const alreadyAttached = Object.values(coupledVehicles).filter((candidate) => {
+        if (!isRecord(candidate)) return false;
+        const attributes = isRecord(candidate.attributes) ? candidate.attributes : {};
+        return attributes[movement.coupledVehicleAttribute] === vehicleRef.id;
+      }).length;
+      if (alreadyAttached + selected.length > movement.maxCoupledVehicles) {
+        throw new Error("Primary vehicle would exceed its coupled-vehicle capacity");
+      }
+    }
+
+    for (const entry of selected) {
+      entry.attributes[movement.coupledVehicleAttribute] =
+        effect.op === "transport.vehicle.attach" ? vehicleRef.id : null;
+      entry.object.attributes = entry.attributes;
+    }
+    vehicleAttributes[movement.actionPointsAttribute] = (actionPoints as number) - 1;
+    vehicle.attributes = vehicleAttributes;
+    return {
+      vehicleId: vehicleRef.id,
+      coupledVehicleIds: selected.map((entry) => entry.id),
+      actionPointsRemaining: (actionPoints as number) - 1
     };
   }
 
@@ -455,17 +648,154 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
     throw new Error("Selected wagon is unavailable for cargo delivery");
   }
   if (!cargo || !delivery.cargoObjectTypes.includes(String(cargo.objectType))) {
-    throw new Error("Selected cargo is unavailable for delivery");
+    throw new Error("Selected cargo is unavailable for transport");
   }
-  assertAllowedFacetState(cargo, delivery.cargoStateFacet, delivery.deliverableCargoStates, "cargo");
   const wagonAttributes = isRecord(wagon.attributes) ? wagon.attributes : {};
   const cargoAttributes = isRecord(cargo.attributes) ? cargo.attributes : {};
+  const movementForWagon = model.movement && model.movement.coupledCollection === delivery.wagonCollection
+    ? model.movement
+    : undefined;
+
+  if (effect.op === "transport.cargo.load") {
+    const { cargoOriginAttribute, loadableCargoStates, loadedCargoState } = delivery;
+    if (!cargoOriginAttribute || !loadableCargoStates || loadedCargoState === undefined) {
+      throw new Error(`Transport network "${effect.networkId}" does not declare cargo-loading rules`);
+    }
+    if (!movementForWagon?.coupledStateFacet || !movementForWagon.couplableVehicleStates) {
+      throw new Error("Cargo loading requires declared wagon state constraints");
+    }
+    assertCoupledVehicleState(wagon, movementForWagon);
+    assertAllowedFacetState(cargo, delivery.cargoStateFacet, loadableCargoStates, "cargo");
+    if (wagonAttributes[delivery.cargoReferenceAttribute] !== null &&
+        wagonAttributes[delivery.cargoReferenceAttribute] !== undefined) {
+      throw new Error("Selected wagon already carries cargo");
+    }
+    const wagonNodeId = wagonAttributes[delivery.locationAttribute];
+    const originNodeId = cargoAttributes[cargoOriginAttribute];
+    if (typeof wagonNodeId !== "string" || wagonNodeId !== originNodeId) {
+      throw new Error("Cargo can only be loaded into a wagon at its declared origin");
+    }
+    wagonAttributes[delivery.cargoReferenceAttribute] = cargoRef.id;
+    wagon.attributes = wagonAttributes;
+    const cargoFacets = isRecord(cargo.facets) ? cargo.facets : {};
+    cargoFacets[delivery.cargoStateFacet] = loadedCargoState;
+    cargo.facets = cargoFacets;
+    return { wagonId: wagonRef.id, cargoId: cargoRef.id, originNodeId };
+  }
+
+  if (movementForWagon) assertCoupledVehicleState(wagon, movementForWagon);
+  assertAllowedFacetState(cargo, delivery.cargoStateFacet, delivery.deliverableCargoStates, "cargo");
   if (wagonAttributes[delivery.cargoReferenceAttribute] !== cargoRef.id) {
     throw new Error("Selected wagon does not carry the selected cargo");
   }
   if (wagonAttributes[delivery.locationAttribute] !== cargoAttributes[delivery.cargoDestinationAttribute]) {
     throw new Error("Selected cargo has not reached its destination");
   }
+
+  let settlementResult: Record<string, unknown> = {};
+  const settlementValues = [
+    delivery.payoutAttribute,
+    delivery.ownerParticipantIdAttribute,
+    delivery.participantCollectionPath,
+    delivery.participantBalanceAttribute,
+    delivery.tariffPerEdge,
+    delivery.settledRouteLengthAttribute
+  ];
+  if (settlementValues.some((value) => value !== undefined)) {
+    const payoutAttribute = delivery.payoutAttribute;
+    const ownerParticipantIdAttribute = delivery.ownerParticipantIdAttribute;
+    const participantCollectionPath = delivery.participantCollectionPath;
+    const participantBalanceAttribute = delivery.participantBalanceAttribute;
+    const tariffPerEdge = delivery.tariffPerEdge;
+    const settledRouteLengthAttribute = delivery.settledRouteLengthAttribute;
+    if (!payoutAttribute || !ownerParticipantIdAttribute || !participantCollectionPath ||
+        !participantBalanceAttribute || tariffPerEdge === undefined || !settledRouteLengthAttribute) {
+      throw new Error("Cargo settlement rules must be declared as one complete contract");
+    }
+    requireSafeIdentifier(payoutAttribute, "Cargo payout attribute");
+    requireSafeIdentifier(ownerParticipantIdAttribute, "Transport owner attribute");
+    requireSafeIdentifier(participantBalanceAttribute, "Participant balance attribute");
+    requireSafeIdentifier(settledRouteLengthAttribute, "Settled route-length attribute");
+    const movement = model.movement;
+    if (!movement) throw new Error("Cargo settlement requires declared movement rules");
+    const attachedVehicleId = wagonAttributes[delivery.attachedVehicleAttribute];
+    if (typeof attachedVehicleId !== "string") {
+      throw new Error("Cargo settlement requires the wagon to be attached to a primary vehicle");
+    }
+    const vehicles = stateCollection(state, model, movement.vehicleCollection);
+    const vehicle = isRecord(vehicles[attachedVehicleId]) ? vehicles[attachedVehicleId] as JsonRecord : undefined;
+    if (!vehicle || !movement.vehicleObjectTypes.includes(String(vehicle.objectType))) {
+      throw new Error("Cargo settlement primary vehicle is unavailable");
+    }
+    assertPrimaryVehicleState(vehicle, movement);
+    const vehicleAttributes = isRecord(vehicle.attributes) ? vehicle.attributes : {};
+    const wagonNodeId = wagonAttributes[delivery.locationAttribute];
+    const vehicleNodeId = vehicleAttributes[movement.locationAttribute];
+    if (typeof wagonNodeId !== "string" || wagonNodeId !== vehicleNodeId) {
+      throw new Error("Cargo settlement wagon and primary vehicle must share the destination node");
+    }
+    const wagonOwnerId = requireSafeIdentifier(
+      wagonAttributes[ownerParticipantIdAttribute],
+      "Wagon owner participant id"
+    );
+    const vehicleOwnerId = requireSafeIdentifier(
+      vehicleAttributes[ownerParticipantIdAttribute],
+      "Primary vehicle owner participant id"
+    );
+    const participants = readPointer(state, participantCollectionPath);
+    if (!isRecord(participants)) throw new Error("Cargo settlement participant collection is unavailable");
+    const wagonOwner = isRecord(participants[wagonOwnerId]) ? participants[wagonOwnerId] as JsonRecord : undefined;
+    const vehicleOwner = isRecord(participants[vehicleOwnerId]) ? participants[vehicleOwnerId] as JsonRecord : undefined;
+    if (!wagonOwner || !vehicleOwner) throw new Error("Cargo settlement owner is not a declared participant");
+
+    const cargoOriginAttribute = delivery.cargoOriginAttribute;
+    if (!cargoOriginAttribute) throw new Error("Shortest-route settlement requires a cargo origin attribute");
+    const originNodeId = requireSafeIdentifier(cargoAttributes[cargoOriginAttribute], "Cargo origin node id");
+    const destinationNodeId = requireSafeIdentifier(
+      cargoAttributes[delivery.cargoDestinationAttribute],
+      "Cargo destination node id"
+    );
+    const route = shortestOpenRoute({ nodes, edges, model, originNodeId, destinationNodeId });
+    const payout = finiteNonnegativeInteger(cargoAttributes[payoutAttribute], "Cargo payout");
+    const tariff = route.edgeIds.length * finiteNonnegativeInteger(tariffPerEdge, "Tariff per edge");
+    const wagonOwnerBalance = finiteNonnegativeInteger(
+      wagonOwner[participantBalanceAttribute],
+      "Wagon owner balance"
+    );
+    const vehicleOwnerBalance = finiteNonnegativeInteger(
+      vehicleOwner[participantBalanceAttribute],
+      "Primary vehicle owner balance"
+    );
+    const deltas = new Map<string, number>();
+    deltas.set(wagonOwnerId, (deltas.get(wagonOwnerId) ?? 0) + payout - tariff);
+    deltas.set(vehicleOwnerId, (deltas.get(vehicleOwnerId) ?? 0) + tariff);
+    const startingBalances = new Map([
+      [wagonOwnerId, wagonOwnerBalance],
+      [vehicleOwnerId, vehicleOwnerBalance]
+    ]);
+    for (const [participantId, delta] of deltas) {
+      const next = (startingBalances.get(participantId) as number) + delta;
+      if (!Number.isSafeInteger(next) || next < 0) {
+        throw new Error("Cargo settlement cannot make a participant balance negative");
+      }
+    }
+    for (const [participantId, delta] of deltas) {
+      const participant = participants[participantId] as JsonRecord;
+      participant[participantBalanceAttribute] = (startingBalances.get(participantId) as number) + delta;
+    }
+    cargoAttributes[settledRouteLengthAttribute] = route.edgeIds.length;
+    settlementResult = {
+      originNodeId,
+      routeEdgeIds: route.edgeIds,
+      routeNodeIds: route.nodeIds,
+      routeLength: route.edgeIds.length,
+      payout,
+      tariff,
+      wagonOwnerId,
+      vehicleOwnerId
+    };
+  }
+
   wagonAttributes[delivery.cargoReferenceAttribute] = null;
   wagonAttributes[delivery.attachedVehicleAttribute] = null;
   wagon.attributes = wagonAttributes;
@@ -475,6 +805,7 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
   return {
     wagonId: wagonRef.id,
     cargoId: cargoRef.id,
-    destinationNodeId: cargoAttributes[delivery.cargoDestinationAttribute]
+    destinationNodeId: cargoAttributes[delivery.cargoDestinationAttribute],
+    ...settlementResult
   };
 };

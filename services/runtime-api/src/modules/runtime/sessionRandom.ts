@@ -86,6 +86,37 @@ const assertRandomState = (state: SessionRandomState) => {
   }
 };
 
+/**
+ * Rebuild the deterministic generator at the persisted counter and expose one
+ * unbiased integer sampler. Keeping this logic shared prevents dice and deck
+ * operations from advancing the replay counter differently.
+ */
+const createRangeSampler = (state: SessionRandomState) => {
+  assertRandomState(state);
+  const words = parseSeed(state.seed);
+  for (let index = 0; index < state.counter; index += 1) {
+    nextUint32(words);
+  }
+
+  let counter = state.counter;
+  const sample = (range: number): number => {
+    if (!Number.isSafeInteger(range) || range < 1 || range > UINT32_RANGE) {
+      throw new Error("Random range must be a positive safe integer no larger than 2^32");
+    }
+    const limit = Math.floor(UINT32_RANGE / range) * range;
+    while (true) {
+      const value = nextUint32(words);
+      counter += 1;
+      if (value < limit) return value % range;
+    }
+  };
+
+  return {
+    sample,
+    snapshot: (): SessionRandomState => ({ alg: state.alg, seed: state.seed, counter })
+  };
+};
+
 /** Create a fresh session state; tests may pass a seed to obtain a fixed replay. */
 export const createSessionRandomState = (seed = randomBytes(16).toString("hex")): SessionRandomState => {
   parseSeed(seed);
@@ -104,37 +135,36 @@ export const rollSessionDice = (
   state: SessionRandomState,
   dice: string
 ): { random: SessionRandomState; result: DiceRollResult } => {
-  assertRandomState(state);
   const parsed = parseDice(dice);
-  const words = parseSeed(state.seed);
-
-  for (let index = 0; index < state.counter; index += 1) {
-    nextUint32(words);
-  }
-
-  let counter = state.counter;
+  const sampler = createRangeSampler(state);
   const sampleSide = (): number => {
-    const limit = Math.floor(UINT32_RANGE / parsed.sides) * parsed.sides;
-    while (true) {
-      const sample = nextUint32(words);
-      counter += 1;
-      if (sample < limit) {
-        return (sample % parsed.sides) + 1;
-      }
-    }
+    return sampler.sample(parsed.sides) + 1;
   };
 
   const values = Array.from({ length: parsed.count }, sampleSide);
   return {
-    random: {
-      alg: state.alg,
-      seed: state.seed,
-      counter
-    },
+    random: sampler.snapshot(),
     result: {
       values,
       total: values.reduce((sum, value) => sum + value, 0),
       isDouble: values.length === 2 && values[0] === values[1]
     }
   };
+};
+
+/**
+ * Fisher–Yates shuffle backed by the persisted session PRNG. The input is not
+ * mutated, and every chosen index advances the same replay counter as dice.
+ */
+export const shuffleSessionValues = <T>(
+  state: SessionRandomState,
+  input: ReadonlyArray<T>
+): { random: SessionRandomState; values: Array<T> } => {
+  const sampler = createRangeSampler(state);
+  const values = [...input];
+  for (let index = values.length - 1; index > 0; index -= 1) {
+    const swapIndex = sampler.sample(index + 1);
+    [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
+  }
+  return { random: sampler.snapshot(), values };
 };

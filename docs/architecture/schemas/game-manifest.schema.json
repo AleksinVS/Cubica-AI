@@ -261,6 +261,9 @@
           "uniqueItems": true,
           "type": "array"
         },
+        "const": {
+          "type": "string"
+        },
         "pattern": {
           "type": "string"
         },
@@ -407,6 +410,11 @@
         }
       ]
     },
+    "GameManifestSafeIdentifier": {
+      "description": "Bounded identifier safe for use as an own object key or JSON Pointer segment.",
+      "pattern": "^(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+      "type": "string"
+    },
     "GameManifestMetricEndpoint": {
       "description": "Explicitly scoped endpoint for transfers between the bank, shared state, and participant balances.",
       "oneOf": [
@@ -520,10 +528,24 @@
     "GameManifestTransportMovementModel": {
       "additionalProperties": false,
       "description": "Declarative rules for moving authoritative vehicles through one network edge.",
+      "dependencies": {
+        "vehicleStateFacet": ["movableVehicleStates"],
+        "movableVehicleStates": ["vehicleStateFacet"],
+        "coupledStateFacet": ["couplableVehicleStates"],
+        "couplableVehicleStates": ["coupledStateFacet"],
+        "compatibleCouplings": ["maxCoupledVehicles", "vehicleStateFacet", "movableVehicleStates", "coupledStateFacet", "couplableVehicleStates"],
+        "maxCoupledVehicles": ["compatibleCouplings", "vehicleStateFacet", "movableVehicleStates", "coupledStateFacet", "couplableVehicleStates"]
+      },
       "properties": {
         "vehicleCollection": { "minLength": 1, "type": "string" },
         "vehicleObjectTypes": {
           "items": { "minLength": 1, "type": "string" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "vehicleStateFacet": { "minLength": 1, "type": "string" },
+        "movableVehicleStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
           "minItems": 1,
           "type": "array"
         },
@@ -553,8 +575,33 @@
           "minItems": 1,
           "type": "array"
         },
+        "coupledStateFacet": { "minLength": 1, "type": "string" },
+        "couplableVehicleStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+          "minItems": 1,
+          "type": "array"
+        },
         "coupledVehicleAttribute": { "minLength": 1, "type": "string" },
-        "coupledLocationAttribute": { "minLength": 1, "type": "string" }
+        "coupledLocationAttribute": { "minLength": 1, "type": "string" },
+        "compatibleCouplings": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "vehicleObjectType": { "minLength": 1, "type": "string" },
+              "coupledObjectTypes": {
+                "items": { "minLength": 1, "type": "string" },
+                "minItems": 1,
+                "uniqueItems": true,
+                "type": "array"
+              }
+            },
+            "required": ["vehicleObjectType", "coupledObjectTypes"],
+            "type": "object"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "maxCoupledVehicles": { "minimum": 1, "type": "integer" }
       },
       "required": [
         "vehicleCollection",
@@ -577,6 +624,17 @@
     "GameManifestTransportCargoDeliveryModel": {
       "additionalProperties": false,
       "description": "Declarative object bindings for completing cargo carried by a coupled vehicle.",
+      "dependencies": {
+        "cargoOriginAttribute": ["loadableCargoStates", "loadedCargoState"],
+        "loadableCargoStates": ["cargoOriginAttribute", "loadedCargoState"],
+        "loadedCargoState": ["cargoOriginAttribute", "loadableCargoStates"],
+        "payoutAttribute": ["ownerParticipantIdAttribute", "participantCollectionPath", "participantBalanceAttribute", "tariffPerEdge", "settledRouteLengthAttribute"],
+        "ownerParticipantIdAttribute": ["payoutAttribute", "participantCollectionPath", "participantBalanceAttribute", "tariffPerEdge", "settledRouteLengthAttribute"],
+        "participantCollectionPath": ["payoutAttribute", "ownerParticipantIdAttribute", "participantBalanceAttribute", "tariffPerEdge", "settledRouteLengthAttribute"],
+        "participantBalanceAttribute": ["payoutAttribute", "ownerParticipantIdAttribute", "participantCollectionPath", "tariffPerEdge", "settledRouteLengthAttribute"],
+        "tariffPerEdge": ["payoutAttribute", "ownerParticipantIdAttribute", "participantCollectionPath", "participantBalanceAttribute", "settledRouteLengthAttribute"],
+        "settledRouteLengthAttribute": ["payoutAttribute", "ownerParticipantIdAttribute", "participantCollectionPath", "participantBalanceAttribute", "tariffPerEdge"]
+      },
       "properties": {
         "wagonCollection": { "minLength": 1, "type": "string" },
         "wagonObjectTypes": {
@@ -594,13 +652,32 @@
         "cargoReferenceAttribute": { "minLength": 1, "type": "string" },
         "attachedVehicleAttribute": { "minLength": 1, "type": "string" },
         "cargoDestinationAttribute": { "minLength": 1, "type": "string" },
+        "cargoOriginAttribute": { "minLength": 1, "type": "string" },
         "cargoStateFacet": { "minLength": 1, "type": "string" },
+        "loadableCargoStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "loadedCargoState": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
         "deliverableCargoStates": {
           "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
           "minItems": 1,
           "type": "array"
         },
-        "deliveredCargoState": { "$ref": "#/definitions/GameManifestObjectFacetValue" }
+        "deliveredCargoState": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+        "payoutAttribute": { "minLength": 1, "type": "string" },
+        "ownerParticipantIdAttribute": { "minLength": 1, "type": "string" },
+        "participantCollectionPath": {
+          "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+          "type": "string"
+        },
+        "participantBalanceAttribute": {
+          "pattern": "^(?!(?:__proto__|constructor|prototype)$).+",
+          "type": "string"
+        },
+        "tariffPerEdge": { "minimum": 0, "type": "integer" },
+        "settledRouteLengthAttribute": { "minLength": 1, "type": "string" }
       },
       "required": [
         "wagonCollection",
@@ -1487,6 +1564,37 @@
         },
         {
           "additionalProperties": false,
+          "description": "Create or reproducibly reshuffle one hidden deck from a declared object collection.",
+          "properties": {
+            "op": { "const": "deck.shuffle" },
+            "deckId": { "$ref": "#/definitions/GameManifestSafeIdentifier" },
+            "source": {
+              "pattern": "^collection:(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._-]{0,127}$",
+              "type": "string"
+            },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "deckId", "source"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Draw one card id while keeping the deck's future order in secret session state.",
+          "properties": {
+            "op": { "const": "deck.draw" },
+            "deckId": { "$ref": "#/definitions/GameManifestSafeIdentifier" },
+            "storePath": {
+              "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "type": "string"
+            },
+            "onEmpty": { "enum": ["reshuffle-discard", "fail"], "type": "string" },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "deckId", "storePath", "onEmpty"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "allOf": [
             {
               "if": {
@@ -1740,6 +1848,55 @@
         },
         {
           "additionalProperties": false,
+          "description": "Attach one or more schema-selected coupled vehicles to a primary vehicle for one action point.",
+          "properties": {
+            "op": { "const": "transport.vehicle.attach" },
+            "networkId": { "minLength": 1, "type": "string" },
+            "vehicleParam": { "minLength": 1, "type": "string" },
+            "coupledVehicleParams": {
+              "items": { "$ref": "#/definitions/GameManifestSafeIdentifier" },
+              "minItems": 1,
+              "uniqueItems": true,
+              "type": "array"
+            },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "networkId", "vehicleParam", "coupledVehicleParams"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Detach one or more schema-selected coupled vehicles for one action point.",
+          "properties": {
+            "op": { "const": "transport.vehicle.detach" },
+            "networkId": { "minLength": 1, "type": "string" },
+            "vehicleParam": { "minLength": 1, "type": "string" },
+            "coupledVehicleParams": {
+              "items": { "$ref": "#/definitions/GameManifestSafeIdentifier" },
+              "minItems": 1,
+              "uniqueItems": true,
+              "type": "array"
+            },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "networkId", "vehicleParam", "coupledVehicleParams"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Load one schema-selected cargo into one empty wagon at its declared origin.",
+          "properties": {
+            "op": { "const": "transport.cargo.load" },
+            "networkId": { "minLength": 1, "type": "string" },
+            "wagonParam": { "minLength": 1, "type": "string" },
+            "cargoParam": { "minLength": 1, "type": "string" },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "networkId", "wagonParam", "cargoParam"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
           "description": "Complete a schema-selected cargo on its coupled wagon at the declared destination.",
           "properties": {
             "op": { "const": "transport.cargo.deliver" },
@@ -1749,6 +1906,68 @@
             "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
           },
           "required": ["op", "networkId", "wagonParam", "cargoParam"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Compute explainable economic rankings independently inside declared participant groups.",
+          "properties": {
+            "op": { "const": "ranking.compute" },
+            "participantCollectionPath": {
+              "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "type": "string"
+            },
+            "balanceAttribute": {
+              "pattern": "^(?!(?:__proto__|constructor|prototype)$).+",
+              "type": "string"
+            },
+            "groups": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": { "$ref": "#/definitions/GameManifestSafeIdentifier" },
+                  "participantIds": {
+                    "items": { "$ref": "#/definitions/GameManifestSafeIdentifier" },
+                    "minItems": 1,
+                    "uniqueItems": true,
+                    "type": "array"
+                  }
+                },
+                "required": ["id", "participantIds"],
+                "type": "object"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "assetSources": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "collectionPath": {
+                    "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+                    "type": "string"
+                  },
+                  "ownerAttribute": {
+                    "pattern": "^(?!(?:__proto__|constructor|prototype)$).+",
+                    "type": "string"
+                  },
+                  "valueAttribute": {
+                    "pattern": "^(?!(?:__proto__|constructor|prototype)$).+",
+                    "type": "string"
+                  }
+                },
+                "required": ["collectionPath", "ownerAttribute", "valueAttribute"],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "storePath": {
+              "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "type": "string"
+            },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "participantCollectionPath", "balanceAttribute", "groups", "assetSources", "storePath"],
           "type": "object"
         },
         {
