@@ -101,7 +101,7 @@ const neutralManifest = {
         capacityCollection: "vehicles",
         capacityObjectTypes: ["network.vehicle"],
         capacityLocationAttribute: "nodeId",
-        maxVehiclesPerNode: 2,
+        maxVehiclesPerNode: 1,
         coupledCollection: "carriers",
         coupledObjectTypes: ["network.carrier"],
         coupledStateFacet: "status",
@@ -213,6 +213,11 @@ const neutralManifest = {
             objectType: "network.vehicle",
             facets: { status: "active" },
             attributes: { networkId: "grid", nodeId: "a", actionPoints: 2, ownerId: "beta", nominalValue: 10 }
+          },
+          reserveAtDestination: {
+            objectType: "network.vehicle",
+            facets: { status: "reserve" },
+            attributes: { networkId: "grid", nodeId: "b", actionPoints: 0 }
           }
         },
         carriers: {
@@ -751,6 +756,41 @@ test("server rejects reserve transport objects even when a caller supplies a val
     /not in an allowed state/
   );
   assert.equal((await store.getSession(session.sessionId))?.version.stateVersion, 0);
+});
+
+test("reserve vehicles do not occupy destination capacity while active vehicles do", async () => {
+  const reserve = await createStore();
+  await dispatchRuntimeAction({
+    sessionStore: reserve.store,
+    bundle,
+    input: {
+      sessionId: reserve.session.sessionId,
+      actionId: "moveVehicle",
+      params: { vehicleId: "mover", edgeId: "edge-a-b" }
+    }
+  });
+  assert.equal(
+    ((await reserve.store.getSession(reserve.session.sessionId))?.state as any)
+      .public.objects.vehicles.mover.attributes.nodeId,
+    "b"
+  );
+
+  const active = await createStore("facilitator", (state) => {
+    (state as any).public.objects.vehicles.reserveAtDestination.facets.status = "active";
+  });
+  await assert.rejects(
+    dispatchRuntimeAction({
+      sessionStore: active.store,
+      bundle,
+      input: {
+        sessionId: active.session.sessionId,
+        actionId: "moveVehicle",
+        params: { vehicleId: "mover", edgeId: "edge-a-b" }
+      }
+    }),
+    /reached its vehicle capacity/
+  );
+  assert.equal((await active.store.getSession(active.session.sessionId))?.version.stateVersion, 0);
 });
 
 test("closed routes, insufficient settlement funds and wrong loading nodes fail atomically", async () => {

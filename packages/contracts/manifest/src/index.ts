@@ -352,6 +352,9 @@ export interface GameManifestTransportMovementModel {
   capacityCollection: string;
   capacityObjectTypes: Array<string>;
   capacityLocationAttribute: string;
+  /** Optional explicit occupancy state contract for a separate capacity collection. */
+  capacityStateFacet?: string;
+  capacityOccupyingStates?: Array<GameManifestObjectFacetValue>;
   maxVehiclesPerNode: number;
   coupledCollection: string;
   coupledObjectTypes: Array<string>;

@@ -1093,6 +1093,11 @@ export interface GameManifestTransportMovementModel {
    */
   capacityObjectTypes: [string, ...string[]];
   capacityLocationAttribute: string;
+  capacityStateFacet?: string;
+  /**
+   * @minItems 1
+   */
+  capacityOccupyingStates?: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
   maxVehiclesPerNode: number;
   coupledCollection: string;
   /**

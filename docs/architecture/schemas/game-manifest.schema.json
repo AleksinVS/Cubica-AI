@@ -533,6 +533,8 @@
         "movableVehicleStates": ["vehicleStateFacet"],
         "coupledStateFacet": ["couplableVehicleStates"],
         "couplableVehicleStates": ["coupledStateFacet"],
+        "capacityStateFacet": ["capacityOccupyingStates"],
+        "capacityOccupyingStates": ["capacityStateFacet"],
         "compatibleCouplings": ["maxCoupledVehicles", "vehicleStateFacet", "movableVehicleStates", "coupledStateFacet", "couplableVehicleStates"],
         "maxCoupledVehicles": ["compatibleCouplings", "vehicleStateFacet", "movableVehicleStates", "coupledStateFacet", "couplableVehicleStates"]
       },
@@ -568,6 +570,12 @@
           "type": "array"
         },
         "capacityLocationAttribute": { "minLength": 1, "type": "string" },
+        "capacityStateFacet": { "minLength": 1, "type": "string" },
+        "capacityOccupyingStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+          "minItems": 1,
+          "type": "array"
+        },
         "maxVehiclesPerNode": { "minimum": 1, "type": "integer" },
         "coupledCollection": { "minLength": 1, "type": "string" },
         "coupledObjectTypes": {

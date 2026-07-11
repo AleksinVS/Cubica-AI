@@ -265,6 +265,15 @@ const assertAllowedFacetState = (
   }
 };
 
+const hasAllowedFacetState = (
+  object: JsonRecord,
+  facet: string,
+  allowed: Array<GameManifestObjectFacetValue>
+): boolean => {
+  const facets = isRecord(object.facets) ? object.facets : {};
+  return allowed.includes(facets[facet] as GameManifestObjectFacetValue);
+};
+
 const assertPrimaryVehicleState = (
   object: JsonRecord,
   movement: NonNullable<GameManifestTransportNetworkModel["movement"]>
@@ -517,8 +526,22 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
     if (!destinationNode) throw new Error("Transport destination node is unavailable");
     assertAllowedFacetState(destinationNode, model.nodeStateFacet, movement.traversableNodeStates, "node");
 
+    const capacityStateFacet = movement.capacityStateFacet ??
+      (movement.capacityCollection === movement.vehicleCollection ? movement.vehicleStateFacet : undefined);
+    const capacityOccupyingStates = movement.capacityOccupyingStates ??
+      (movement.capacityCollection === movement.vehicleCollection ? movement.movableVehicleStates : undefined);
+    if (movement.capacityCollection !== movement.vehicleCollection &&
+        (!capacityStateFacet || !capacityOccupyingStates)) {
+      throw new Error("A separate transport capacity collection requires declared occupancy states");
+    }
     const occupancy = Object.entries(capacityVehicles).filter(([id, candidate]) => {
-      if (id === vehicleRef.id || !isRecord(candidate) || !movement.capacityObjectTypes.includes(String(candidate.objectType))) {
+      const isPrimaryVehicle = movement.capacityCollection === movement.vehicleCollection && id === vehicleRef.id;
+      if (isPrimaryVehicle || !isRecord(candidate) ||
+          !movement.capacityObjectTypes.includes(String(candidate.objectType))) {
+        return false;
+      }
+      if (capacityStateFacet && capacityOccupyingStates &&
+          !hasAllowedFacetState(candidate, capacityStateFacet, capacityOccupyingStates)) {
         return false;
       }
       const candidateAttributes = isRecord(candidate.attributes) ? candidate.attributes : {};
