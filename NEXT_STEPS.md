@@ -37,6 +37,7 @@
 
 ## Next
 
+- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `awaiting_approval`: первый игровой трек в режиме развития через конкретную игру; общий экран и Phaser-граница приняты, ожидаются решения по роли ведущего, транспортному полю и недостающий авторский контент.
 - [TSK-20260705-board-game-platform-capabilities](docs/tasks/active/TSK-20260705-board-game-platform-capabilities.md) — `planned`: кандидат на общий пакет пошаговых настольных механик, если он понадобится выбранной игре.
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `planned`: кандидат на постоянные сессии, участников, события и WebSocket-доставку по потребности игрового среза.
 - [TSK-20260706-flow-simulation-platform-capabilities](docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md) — `planned`: кандидат на общие возможности симуляций реального времени, если их потребует выбранная игра.

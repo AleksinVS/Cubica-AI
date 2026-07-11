@@ -48,6 +48,9 @@ docs: # Архитектура, задачи, планирование
       056-manifest-contract-schema-parity-and-testing.md: file # ADR-056: парность manifest-контрактов и JSON Schema через генерацию TS из схемы, CI drift check и контрактные тесты вместо ручной синхронизации.
       068-human-approved-autonomous-agent-workflow.md: file # ADR-068: утверждаемый человеком общий TSK-план и автономное исполнение единым оркестратором с необязательными дочерними TSK.
       069-managed-external-skill-adaptation.md: file # ADR-069: управляемая адаптация внешних навыков через компактный профиль совместимости, детерминированные проверки, кэш и ограниченный модельный анализ.
+      071-facilitated-training-sessions.md: file # ADR-071: черновая общая модель ведущего, ассистента, методических пауз и журналируемых интервенций в учебных сессиях.
+      072-declarative-transport-network-board.md: file # ADR-072: черновая декларативная модель транспортного поля-графа, проверяемого движения, строительства и кратчайших маршрутов.
+      073-phaser-interactive-board-surface.md: file # ADR-073: принятая гибридная Phaser-поверхность для интерактивного пошагового поля при сохранении панелей и методики в обычном web-интерфейсе.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
       external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.
@@ -91,6 +94,7 @@ docs: # Архитектура, задачи, планирование
       TSK-20260707-editor-concept-surfaces.md: file # План концептуальных поверхностей редактора: история версий, Telegram-preview и наборы размеров окна.
       TSK-20260707-player-web-bundle-budget.md: file # План CI-проверки бюджета JavaScript-бандла player-web как измеримого триггера декомпозиции рендерера.
       TSK-20260710-editor-author-version-history.md: file # План пользовательской истории версий в редакторе: понятные точки сохранения, восстановление незавершенной сессии и безопасный возврат к прежней версии без переписывания истории.
+      TSK-20260711-cards-money-trains-game.md: file # План реализации фасилитируемой бизнес-игры «Карты, деньги, поезда» через последовательные вертикальные срезы и необходимые общие возможности платформы.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
       TSK-20260518-architecture-repair-and-task-system-migration.md: file # Замененный план восстановления архитектурных проверок и миграции системы задач на ADR-031, сохраненный для истории.
