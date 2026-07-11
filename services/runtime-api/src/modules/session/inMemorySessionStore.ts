@@ -16,6 +16,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       sessionId,
       gameId: command.gameId,
       state: command.initialState,
+      sessionRole: command.sessionRole,
       version: {
         sessionId,
         stateVersion: 0,

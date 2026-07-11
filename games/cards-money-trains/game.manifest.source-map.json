@@ -1,0 +1,2371 @@
+{
+  "version": 1,
+  "generatedFile": "games/cards-money-trains/game.manifest.json",
+  "sourceFile": "games/cards-money-trains/authoring/game.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/id"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/version"
+      }
+    ],
+    "/meta/name": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/name"
+      }
+    ],
+    "/meta/description": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/description"
+      }
+    ],
+    "/meta/author": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/author"
+      }
+    ],
+    "/meta/schemaVersion": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/schemaVersion"
+      }
+    ],
+    "/meta/minEngineVersion": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/minEngineVersion"
+      }
+    ],
+    "/meta/tags/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/tags/0"
+      }
+    ],
+    "/meta/tags/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/tags/1"
+      }
+    ],
+    "/meta/tags/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/tags/2"
+      }
+    ],
+    "/meta/tags": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/tags"
+      }
+    ],
+    "/meta/training": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training"
+      }
+    ],
+    "/meta/training/format": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/format"
+      }
+    ],
+    "/meta/training/duration": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/duration"
+      }
+    ],
+    "/meta/training/duration/minMinutes": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/duration/minMinutes"
+      }
+    ],
+    "/meta/training/duration/maxMinutes": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/duration/maxMinutes"
+      }
+    ],
+    "/meta/training/competencies/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/0"
+      }
+    ],
+    "/meta/training/competencies/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/0/id"
+      }
+    ],
+    "/meta/training/competencies/0/name": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/0/name"
+      }
+    ],
+    "/meta/training/competencies/0/description": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/0/description"
+      }
+    ],
+    "/meta/training/competencies/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/1"
+      }
+    ],
+    "/meta/training/competencies/1/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/1/id"
+      }
+    ],
+    "/meta/training/competencies/1/name": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/1/name"
+      }
+    ],
+    "/meta/training/competencies/1/description": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/1/description"
+      }
+    ],
+    "/meta/training/competencies/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/2"
+      }
+    ],
+    "/meta/training/competencies/2/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/2/id"
+      }
+    ],
+    "/meta/training/competencies/2/name": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/2/name"
+      }
+    ],
+    "/meta/training/competencies/2/description": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies/2/description"
+      }
+    ],
+    "/meta/training/competencies": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/meta/training/competencies"
+      }
+    ],
+    "/config": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config"
+      }
+    ],
+    "/config/players": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/players"
+      }
+    ],
+    "/config/players/min": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/players/min"
+      }
+    ],
+    "/config/players/max": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/players/max"
+      }
+    ],
+    "/config/settings": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/settings"
+      }
+    ],
+    "/config/settings/mode": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/settings/mode"
+      }
+    ],
+    "/config/settings/locale": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/settings/locale"
+      }
+    ],
+    "/config/sessionMode": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/sessionMode"
+      }
+    ],
+    "/content": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content"
+      }
+    ],
+    "/content/data": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data"
+      }
+    ],
+    "/content/data/rules": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules"
+      }
+    ],
+    "/content/data/rules/session": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/session"
+      }
+    ],
+    "/content/data/rules/session/singleFacilitatorScreen": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/session/singleFacilitatorScreen"
+      }
+    ],
+    "/content/data/rules/session/assistantHasSeparateIdentity": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/session/assistantHasSeparateIdentity"
+      }
+    ],
+    "/content/data/rules/session/manualFinish": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/session/manualFinish"
+      }
+    ],
+    "/content/data/rules/session/personalNotesPersisted": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/session/personalNotesPersisted"
+      }
+    ],
+    "/content/data/rules/economy": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy"
+      }
+    ],
+    "/content/data/rules/economy/startingCoins": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/startingCoins"
+      }
+    ],
+    "/content/data/rules/economy/creditAllowed": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/creditAllowed"
+      }
+    ],
+    "/content/data/rules/economy/negativeBalanceAllowed": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/negativeBalanceAllowed"
+      }
+    ],
+    "/content/data/rules/economy/partialPaymentsAllowed": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/partialPaymentsAllowed"
+      }
+    ],
+    "/content/data/rules/economy/vehicleSalePhase": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/vehicleSalePhase"
+      }
+    ],
+    "/content/data/rules/economy/prices": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices"
+      }
+    ],
+    "/content/data/rules/economy/prices/locomotive": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices/locomotive"
+      }
+    ],
+    "/content/data/rules/economy/prices/locomotive/purchase": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices/locomotive/purchase"
+      }
+    ],
+    "/content/data/rules/economy/prices/locomotive/sale": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices/locomotive/sale"
+      }
+    ],
+    "/content/data/rules/economy/prices/wagon": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices/wagon"
+      }
+    ],
+    "/content/data/rules/economy/prices/wagon/purchase": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices/wagon/purchase"
+      }
+    ],
+    "/content/data/rules/economy/prices/wagon/sale": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/economy/prices/wagon/sale"
+      }
+    ],
+    "/content/data/rules/teams": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams"
+      }
+    ],
+    "/content/data/rules/teams/logistics_company": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams/logistics_company"
+      }
+    ],
+    "/content/data/rules/teams/logistics_company/startingWagons": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams/logistics_company/startingWagons"
+      }
+    ],
+    "/content/data/rules/teams/logistics_company/startingLocomotives": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams/logistics_company/startingLocomotives"
+      }
+    ],
+    "/content/data/rules/teams/locomotive_guild": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams/locomotive_guild"
+      }
+    ],
+    "/content/data/rules/teams/locomotive_guild/startingWagons": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams/locomotive_guild/startingWagons"
+      }
+    ],
+    "/content/data/rules/teams/locomotive_guild/startingLocomotives": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/teams/locomotive_guild/startingLocomotives"
+      }
+    ],
+    "/content/data/rules/movement": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/movement"
+      }
+    ],
+    "/content/data/rules/movement/locomotiveActionPoints": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/movement/locomotiveActionPoints"
+      }
+    ],
+    "/content/data/rules/movement/terminalLocomotiveCapacity": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/movement/terminalLocomotiveCapacity"
+      }
+    ],
+    "/content/data/rules/construction": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/construction"
+      }
+    ],
+    "/content/data/rules/construction/waypointCost": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/construction/waypointCost"
+      }
+    ],
+    "/content/data/rules/construction/repeatUntilExplicitFinish": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/construction/repeatUntilExplicitFinish"
+      }
+    ],
+    "/content/data/rules/construction/roadGeometry": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/construction/roadGeometry"
+      }
+    ],
+    "/content/data/rules/construction/roadCostPerRegionSegment": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/rules/construction/roadCostPerRegionSegment"
+      }
+    ],
+    "/content/data/board": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/board"
+      }
+    ],
+    "/content/data/board/sceneId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/board/sceneId"
+      }
+    ],
+    "/content/data/board/designWidth": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/board/designWidth"
+      }
+    ],
+    "/content/data/board/designHeight": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/board/designHeight"
+      }
+    ],
+    "/content/data/board/deliveryAssetId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/board/deliveryAssetId"
+      }
+    ],
+    "/content/data/assets/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/assets/0"
+      }
+    ],
+    "/content/data/assets/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/assets/0/id"
+      }
+    ],
+    "/content/data/assets/0/kind": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/assets/0/kind"
+      }
+    ],
+    "/content/data/assets/0/registry": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/assets/0/registry"
+      }
+    ],
+    "/content/data/assets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/assets"
+      }
+    ],
+    "/content/data/contentGates": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates"
+      }
+    ],
+    "/content/data/contentGates/runtimeReady": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/runtimeReady"
+      }
+    ],
+    "/content/data/contentGates/missing/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/0"
+      }
+    ],
+    "/content/data/contentGates/missing/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/1"
+      }
+    ],
+    "/content/data/contentGates/missing/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/2"
+      }
+    ],
+    "/content/data/contentGates/missing/3": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/3"
+      }
+    ],
+    "/content/data/contentGates/missing/4": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/4"
+      }
+    ],
+    "/content/data/contentGates/missing/5": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/5"
+      }
+    ],
+    "/content/data/contentGates/missing/6": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing/6"
+      }
+    ],
+    "/content/data/contentGates/missing": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/contentGates/missing"
+      }
+    ],
+    "/content/data/constructionActionIntent": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent"
+      }
+    ],
+    "/content/data/constructionActionIntent/status": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/status"
+      }
+    ],
+    "/content/data/constructionActionIntent/road": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/road"
+      }
+    ],
+    "/content/data/constructionActionIntent/road/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/road/actionId"
+      }
+    ],
+    "/content/data/constructionActionIntent/road/endpointReferenceSemantics": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/road/endpointReferenceSemantics"
+      }
+    ],
+    "/content/data/constructionActionIntent/road/payments": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/road/payments"
+      }
+    ],
+    "/content/data/constructionActionIntent/waypoint": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/waypoint"
+      }
+    ],
+    "/content/data/constructionActionIntent/waypoint/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/waypoint/actionId"
+      }
+    ],
+    "/content/data/constructionActionIntent/waypoint/edgeReferenceSemantics": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/waypoint/edgeReferenceSemantics"
+      }
+    ],
+    "/content/data/constructionActionIntent/waypoint/position": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/waypoint/position"
+      }
+    ],
+    "/content/data/constructionActionIntent/waypoint/payments": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/content/data/constructionActionIntent/waypoint/payments"
+      }
+    ],
+    "/objectModels/transport.terminal": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal"
+      }
+    ],
+    "/objectModels/transport.terminal/collection": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/collection"
+      }
+    ],
+    "/objectModels/transport.terminal/scope": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/scope"
+      }
+    ],
+    "/objectModels/transport.terminal/idField": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/idField"
+      }
+    ],
+    "/objectModels/transport.terminal/facets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets"
+      }
+    ],
+    "/objectModels/transport.terminal/facets/availability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability"
+      }
+    ],
+    "/objectModels/transport.terminal/facets/availability/initial": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability/initial"
+      }
+    ],
+    "/objectModels/transport.terminal/facets/availability/values": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability/values"
+      }
+    ],
+    "/objectModels/transport.terminal/facets/availability/values/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability/values/open"
+      }
+    ],
+    "/objectModels/transport.terminal/facets/availability/values/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability/values/closed"
+      }
+    ],
+    "/objectModels/transport.terminal/view": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal"
+      }
+    ],
+    "/objectModels/transport.terminal/view/facets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets"
+      }
+    ],
+    "/objectModels/transport.terminal/view/facets/availability.open": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability/values/open"
+      }
+    ],
+    "/objectModels/transport.terminal/view/facets/availability.closed": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.terminal/facets/availability/values/closed"
+      }
+    ],
+    "/objectModels/transport.waypoint": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint"
+      }
+    ],
+    "/objectModels/transport.waypoint/collection": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/collection"
+      }
+    ],
+    "/objectModels/transport.waypoint/scope": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/scope"
+      }
+    ],
+    "/objectModels/transport.waypoint/idField": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/idField"
+      }
+    ],
+    "/objectModels/transport.waypoint/facets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets"
+      }
+    ],
+    "/objectModels/transport.waypoint/facets/availability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability"
+      }
+    ],
+    "/objectModels/transport.waypoint/facets/availability/initial": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/initial"
+      }
+    ],
+    "/objectModels/transport.waypoint/facets/availability/values": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values"
+      }
+    ],
+    "/objectModels/transport.waypoint/facets/availability/values/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/open"
+      }
+    ],
+    "/objectModels/transport.waypoint/facets/availability/values/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/closed"
+      }
+    ],
+    "/objectModels/transport.waypoint/view": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint"
+      }
+    ],
+    "/objectModels/transport.waypoint/view/facets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets"
+      }
+    ],
+    "/objectModels/transport.waypoint/view/facets/availability.open": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/open"
+      }
+    ],
+    "/objectModels/transport.waypoint/view/facets/availability.closed": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/closed"
+      }
+    ],
+    "/objectModels/transport.edge": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge"
+      }
+    ],
+    "/objectModels/transport.edge/collection": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/collection"
+      }
+    ],
+    "/objectModels/transport.edge/scope": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/scope"
+      }
+    ],
+    "/objectModels/transport.edge/idField": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/idField"
+      }
+    ],
+    "/objectModels/transport.edge/facets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets"
+      }
+    ],
+    "/objectModels/transport.edge/facets/state": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state"
+      }
+    ],
+    "/objectModels/transport.edge/facets/state/initial": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/initial"
+      }
+    ],
+    "/objectModels/transport.edge/facets/state/values": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values"
+      }
+    ],
+    "/objectModels/transport.edge/facets/state/values/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values/building"
+      }
+    ],
+    "/objectModels/transport.edge/facets/state/values/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values/open"
+      }
+    ],
+    "/objectModels/transport.edge/facets/state/values/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values/blocked"
+      }
+    ],
+    "/objectModels/transport.edge/view": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge"
+      }
+    ],
+    "/objectModels/transport.edge/view/facets": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets"
+      }
+    ],
+    "/objectModels/transport.edge/view/facets/state.building": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values/building"
+      }
+    ],
+    "/objectModels/transport.edge/view/facets/state.open": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values/open"
+      }
+    ],
+    "/objectModels/transport.edge/view/facets/state.blocked": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.edge/facets/state/values/blocked"
+      }
+    ],
+    "/objectModels": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes"
+      }
+    ],
+    "/actions/construction.mode.road": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/construction.mode.road/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/id"
+      }
+    ],
+    "/actions/construction.mode.road/handlerType": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/handlerType"
+      }
+    ],
+    "/actions/construction.mode.road/capabilityFamily": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/capabilityFamily"
+      }
+    ],
+    "/actions/construction.mode.road/capability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/capability"
+      }
+    ],
+    "/actions/construction.mode.road/displayName": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/displayName"
+      }
+    ],
+    "/actions/construction.mode.road/allowedSessionRoles/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/allowedSessionRoles/0"
+      }
+    ],
+    "/actions/construction.mode.road/allowedSessionRoles": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/allowedSessionRoles"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/guard": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/guard"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/guard/stateConditions/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/guard/stateConditions/0"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/guard/stateConditions/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/guard/stateConditions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/guard/stateConditions"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0/op"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0/patches/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0/patches/0"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0/patches/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0/patches/0/op"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0/patches/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0/patches/0/path"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0/patches/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0/patches/0/value"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects/0/patches": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects/0/patches"
+      }
+    ],
+    "/actions/construction.mode.road/deterministic/effects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/deterministic/effects"
+      }
+    ],
+    "/actions/construction.mode.waypoint": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1"
+      }
+    ],
+    "/actions/construction.mode.waypoint/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/id"
+      }
+    ],
+    "/actions/construction.mode.waypoint/handlerType": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/handlerType"
+      }
+    ],
+    "/actions/construction.mode.waypoint/capabilityFamily": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/capabilityFamily"
+      }
+    ],
+    "/actions/construction.mode.waypoint/capability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/capability"
+      }
+    ],
+    "/actions/construction.mode.waypoint/displayName": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/displayName"
+      }
+    ],
+    "/actions/construction.mode.waypoint/allowedSessionRoles/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/allowedSessionRoles/0"
+      }
+    ],
+    "/actions/construction.mode.waypoint/allowedSessionRoles": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/allowedSessionRoles"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/guard": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/guard"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/guard/stateConditions/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/guard/stateConditions/0"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/guard/stateConditions/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/guard/stateConditions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/guard/stateConditions"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0/op"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0/patches/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0/patches/0"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0/patches/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0/patches/0/op"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0/patches/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0/patches/0/path"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0/patches/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0/patches/0/value"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects/0/patches": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects/0/patches"
+      }
+    ],
+    "/actions/construction.mode.waypoint/deterministic/effects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/deterministic/effects"
+      }
+    ],
+    "/actions/construction.phase.finish": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2"
+      }
+    ],
+    "/actions/construction.phase.finish/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/id"
+      }
+    ],
+    "/actions/construction.phase.finish/handlerType": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/handlerType"
+      }
+    ],
+    "/actions/construction.phase.finish/capabilityFamily": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/capabilityFamily"
+      }
+    ],
+    "/actions/construction.phase.finish/capability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/capability"
+      }
+    ],
+    "/actions/construction.phase.finish/displayName": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/displayName"
+      }
+    ],
+    "/actions/construction.phase.finish/allowedSessionRoles/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/allowedSessionRoles/0"
+      }
+    ],
+    "/actions/construction.phase.finish/allowedSessionRoles": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/allowedSessionRoles"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/guard": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/guard"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/guard/stateConditions/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/guard/stateConditions/0"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/guard/stateConditions/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/guard/stateConditions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/guard/stateConditions"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/op"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/0"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/0/op"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/0/path"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/0/value"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/1"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/1/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/1/op"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/1/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/1/path"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/1/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/1/value"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/2"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/2/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/2/op"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/2/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/2/path"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches/2/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches/2/value"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/0/patches": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/0/patches"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/1"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/1/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/1/op"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/1/target": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/1/target"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/1/kind": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/1/kind"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects/1/summary": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects/1/summary"
+      }
+    ],
+    "/actions/construction.phase.finish/deterministic/effects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/2/deterministic/effects"
+      }
+    ],
+    "/actions/session.finish.request": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3"
+      }
+    ],
+    "/actions/session.finish.request/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/id"
+      }
+    ],
+    "/actions/session.finish.request/handlerType": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/handlerType"
+      }
+    ],
+    "/actions/session.finish.request/capabilityFamily": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/capabilityFamily"
+      }
+    ],
+    "/actions/session.finish.request/capability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/capability"
+      }
+    ],
+    "/actions/session.finish.request/displayName": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/displayName"
+      }
+    ],
+    "/actions/session.finish.request/allowedSessionRoles/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/allowedSessionRoles/0"
+      }
+    ],
+    "/actions/session.finish.request/allowedSessionRoles": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/allowedSessionRoles"
+      }
+    ],
+    "/actions/session.finish.request/deterministic": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/guard": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/guard"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/guard/stateConditions/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/guard/stateConditions/0"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/guard/stateConditions/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/guard/stateConditions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/guard/stateConditions"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/op"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/0"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/0/op"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/0/path"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/0/value"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/1"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/1/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/1/op"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/1/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/1/path"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches/1/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches/1/value"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects/0/patches": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects/0/patches"
+      }
+    ],
+    "/actions/session.finish.request/deterministic/effects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/3/deterministic/effects"
+      }
+    ],
+    "/actions/session.finish.cancel": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4"
+      }
+    ],
+    "/actions/session.finish.cancel/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/id"
+      }
+    ],
+    "/actions/session.finish.cancel/handlerType": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/handlerType"
+      }
+    ],
+    "/actions/session.finish.cancel/capabilityFamily": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/capabilityFamily"
+      }
+    ],
+    "/actions/session.finish.cancel/capability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/capability"
+      }
+    ],
+    "/actions/session.finish.cancel/displayName": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/displayName"
+      }
+    ],
+    "/actions/session.finish.cancel/allowedSessionRoles/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/allowedSessionRoles/0"
+      }
+    ],
+    "/actions/session.finish.cancel/allowedSessionRoles": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/allowedSessionRoles"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/guard": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/guard"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/guard/stateConditions/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/guard/stateConditions/0"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/guard/stateConditions/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/guard/stateConditions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/guard/stateConditions"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/op"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/0"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/0/op"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/0/path"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/0/value"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/1"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/1/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/1/op"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/1/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/1/path"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches/1/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches/1/value"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects/0/patches": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects/0/patches"
+      }
+    ],
+    "/actions/session.finish.cancel/deterministic/effects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/4/deterministic/effects"
+      }
+    ],
+    "/actions/session.finish.confirm": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5"
+      }
+    ],
+    "/actions/session.finish.confirm/id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/id"
+      }
+    ],
+    "/actions/session.finish.confirm/handlerType": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/handlerType"
+      }
+    ],
+    "/actions/session.finish.confirm/capabilityFamily": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/capabilityFamily"
+      }
+    ],
+    "/actions/session.finish.confirm/capability": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/capability"
+      }
+    ],
+    "/actions/session.finish.confirm/displayName": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/displayName"
+      }
+    ],
+    "/actions/session.finish.confirm/allowedSessionRoles/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/allowedSessionRoles/0"
+      }
+    ],
+    "/actions/session.finish.confirm/allowedSessionRoles": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/allowedSessionRoles"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/0"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/0/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/0/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/0/operator"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/0/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/1"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/1/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/1/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/1/operator": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/1/operator"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions/1/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions/1/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/guard/stateConditions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/guard/stateConditions"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/0": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/0"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/0/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/0/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/0/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/0/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/0/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/0/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/1"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/1/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/1/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/1/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/1/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/1/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/1/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/2"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/2/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/2/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/2/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/2/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/2/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/2/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/3": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/3"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/3/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/3/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/3/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/3/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/3/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/3/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/4": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/4"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/4/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/4/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/4/path": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/4/path"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches/4/value": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches/4/value"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/0/patches": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/0/patches"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/1": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/1"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/1/op": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/1/op"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/1/target": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/1/target"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/1/kind": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/1/kind"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects/1/summary": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects/1/summary"
+      }
+    ],
+    "/actions/session.finish.confirm/deterministic/effects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/5/deterministic/effects"
+      }
+    ],
+    "/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions"
+      }
+    ],
+    "/state": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state"
+      }
+    ],
+    "/state/public": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public"
+      }
+    ],
+    "/state/public/timeline": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline"
+      }
+    ],
+    "/state/public/timeline/line": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/line"
+      }
+    ],
+    "/state/public/timeline/stepIndex": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/stepIndex"
+      }
+    ],
+    "/state/public/timeline/step_index": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/step_index"
+      }
+    ],
+    "/state/public/timeline/stageId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/stageId"
+      }
+    ],
+    "/state/public/timeline/stage_id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/stage_id"
+      }
+    ],
+    "/state/public/timeline/screenId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/screenId"
+      }
+    ],
+    "/state/public/timeline/screen_id": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/screen_id"
+      }
+    ],
+    "/state/public/timeline/canAdvance": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/timeline/canAdvance"
+      }
+    ],
+    "/state/public/session": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session"
+      }
+    ],
+    "/state/public/session/status": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session/status"
+      }
+    ],
+    "/state/public/session/turnNumber": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session/turnNumber"
+      }
+    ],
+    "/state/public/session/phase": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session/phase"
+      }
+    ],
+    "/state/public/session/finishConfirmationPending": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session/finishConfirmationPending"
+      }
+    ],
+    "/state/public/session/canRequestFinish": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session/canRequestFinish"
+      }
+    ],
+    "/state/public/session/fixtureId": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/session/fixtureId"
+      }
+    ],
+    "/state/public/construction": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/construction"
+      }
+    ],
+    "/state/public/construction/mode": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/construction/mode"
+      }
+    ],
+    "/state/public/construction/available": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/construction/available"
+      }
+    ],
+    "/state/public/construction/sequence": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/construction/sequence"
+      }
+    ],
+    "/state/public/teamSetupPolicy": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy"
+      }
+    ],
+    "/state/public/teamSetupPolicy/startingCoins": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/startingCoins"
+      }
+    ],
+    "/state/public/teamSetupPolicy/logistics_company": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/logistics_company"
+      }
+    ],
+    "/state/public/teamSetupPolicy/logistics_company/wagons": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/logistics_company/wagons"
+      }
+    ],
+    "/state/public/teamSetupPolicy/logistics_company/locomotives": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/logistics_company/locomotives"
+      }
+    ],
+    "/state/public/teamSetupPolicy/locomotive_guild": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/locomotive_guild"
+      }
+    ],
+    "/state/public/teamSetupPolicy/locomotive_guild/wagons": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/locomotive_guild/wagons"
+      }
+    ],
+    "/state/public/teamSetupPolicy/locomotive_guild/locomotives": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teamSetupPolicy/locomotive_guild/locomotives"
+      }
+    ],
+    "/state/public/teams": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams"
+      }
+    ],
+    "/state/public/teams/white-logistics": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/white-logistics"
+      }
+    ],
+    "/state/public/teams/white-logistics/label": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/white-logistics/label"
+      }
+    ],
+    "/state/public/teams/white-logistics/type": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/white-logistics/type"
+      }
+    ],
+    "/state/public/teams/white-logistics/coins": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/white-logistics/coins"
+      }
+    ],
+    "/state/public/teams/red-logistics": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/red-logistics"
+      }
+    ],
+    "/state/public/teams/red-logistics/label": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/red-logistics/label"
+      }
+    ],
+    "/state/public/teams/red-logistics/type": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/red-logistics/type"
+      }
+    ],
+    "/state/public/teams/red-logistics/coins": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/red-logistics/coins"
+      }
+    ],
+    "/state/public/teams/purple-guild": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/purple-guild"
+      }
+    ],
+    "/state/public/teams/purple-guild/label": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/purple-guild/label"
+      }
+    ],
+    "/state/public/teams/purple-guild/type": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/purple-guild/type"
+      }
+    ],
+    "/state/public/teams/purple-guild/coins": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/purple-guild/coins"
+      }
+    ],
+    "/state/public/teams/green-guild": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/green-guild"
+      }
+    ],
+    "/state/public/teams/green-guild/label": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/green-guild/label"
+      }
+    ],
+    "/state/public/teams/green-guild/type": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/green-guild/type"
+      }
+    ],
+    "/state/public/teams/green-guild/coins": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/teams/green-guild/coins"
+      }
+    ],
+    "/state/public/objects": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects"
+      }
+    ],
+    "/state/public/objects/networkNodes": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/networkNodes"
+      }
+    ],
+    "/state/public/objects/networkEdges": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/networkEdges"
+      }
+    ],
+    "/state/public/objects/locomotives": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/locomotives"
+      }
+    ],
+    "/state/public/objects/wagons": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/wagons"
+      }
+    ],
+    "/state/public/board": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board"
+      }
+    ],
+    "/state/public/board/canonicalBounds": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/canonicalBounds"
+      }
+    ],
+    "/state/public/board/highlights": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/highlights"
+      }
+    ],
+    "/state/public/board/availableActions": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions"
+      }
+    ],
+    "/state/public/log": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/log"
+      }
+    ],
+    "/state/secret": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/secret"
+      }
+    ]
+  }
+}

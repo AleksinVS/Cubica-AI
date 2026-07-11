@@ -16,6 +16,7 @@ export type {
   SessionLockStatus,
   SessionRecord,
   SessionRecoveryResult,
+  SessionRole,
   SessionResponse,
   SessionSnapshot,
   SessionStateVersion,

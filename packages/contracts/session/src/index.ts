@@ -1,6 +1,7 @@
 export type SessionId = string;
 export type PlayerId = string;
 export type EventId = string;
+export type SessionRole = "player" | "facilitator" | "assistant" | "observer";
 
 export type SessionEventStatus = "pending" | "processing" | "completed" | "failed";
 
@@ -46,6 +47,8 @@ export interface SessionRecord<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
   state: TState;
+  /** Trusted role chosen by runtime from the loaded manifest, never per action request. */
+  sessionRole?: SessionRole;
   version: SessionStateVersion;
   createdAt: Date;
   updatedAt: Date;
@@ -65,6 +68,7 @@ export interface CreateSessionInput<TState = unknown> {
   gameId: string;
   playerId?: PlayerId;
   initialState: TState;
+  sessionRole?: SessionRole;
 }
 
 export interface CreateSessionResponse<TState = unknown> {
@@ -78,6 +82,8 @@ export interface DispatchActionInput {
   sessionId: SessionId;
   playerId?: PlayerId;
   actionId: string;
+  params?: Record<string, unknown>;
+  /** Legacy untrusted UI payload; deterministic action params use `params`. */
   payload?: unknown;
 }
 

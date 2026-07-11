@@ -43,6 +43,98 @@ ajvErrors(ajv);
 
 const validate = ajv.compile(gameManifestSchema);
 
+type JsonRecord = Record<string, unknown>;
+const isRecord = (value: unknown): value is JsonRecord =>
+  value !== null && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * Cross-key checks complement JSON Schema only where draft-07 cannot express
+ * that a declared id must name a sibling map entry. Shape validation remains
+ * exclusively owned by the canonical schema above.
+ */
+const validateSemanticReferences = (manifest: JsonRecord) => {
+  const objectModels = isRecord(manifest.objectModels) ? manifest.objectModels : {};
+  const networkModels = isRecord(manifest.networkModels) ? manifest.networkModels : {};
+  for (const [networkId, rawNetwork] of Object.entries(networkModels)) {
+    const network = rawNetwork as JsonRecord;
+    for (const [field, collectionField] of [
+      ["waypointObjectType", "nodeCollection"],
+      ["edgeObjectType", "edgeCollection"]
+    ] as const) {
+      const objectType = network[field];
+      const model = typeof objectType === "string" && isRecord(objectModels[objectType])
+        ? objectModels[objectType]
+        : undefined;
+      if (!model || model.collection !== network[collectionField]) {
+        throw new ManifestValidationError(
+          `Network "${networkId}" ${field} must reference an object model in ${String(network[collectionField])}`
+        );
+      }
+    }
+  }
+
+  const actions = isRecord(manifest.actions) ? manifest.actions : {};
+  for (const [actionId, rawAction] of Object.entries(actions)) {
+    if (!isRecord(rawAction)) continue;
+    const paramsSchema = isRecord(rawAction.paramsSchema) ? rawAction.paramsSchema : {};
+    const properties = isRecord(paramsSchema.properties) ? paramsSchema.properties : {};
+    for (const [paramName, rawProperty] of Object.entries(properties)) {
+      if (!isRecord(rawProperty) || !isRecord(rawProperty["x-cubica-ref"])) continue;
+      const ref = rawProperty["x-cubica-ref"] as JsonRecord;
+      if (typeof ref.network === "string") {
+        const network = isRecord(networkModels[ref.network]) ? networkModels[ref.network] as JsonRecord : undefined;
+        if (!network || ref.visibility !== network.visibility ||
+            (ref.collection !== network.nodeCollection && ref.collection !== network.edgeCollection)) {
+          throw new ManifestValidationError(
+            `Action "${actionId}" param "${paramName}" references an unknown network collection`
+          );
+        }
+      }
+      if (ref.kind === "object" && Array.isArray(ref.allowedTypes)) {
+        for (const objectType of ref.allowedTypes) {
+          const model = typeof objectType === "string" && isRecord(objectModels[objectType])
+            ? objectModels[objectType] as JsonRecord
+            : undefined;
+          if (!model || model.collection !== ref.collection) {
+            throw new ManifestValidationError(
+              `Action "${actionId}" param "${paramName}" allows an object type outside its collection`
+            );
+          }
+        }
+      }
+    }
+
+    const deterministic = isRecord(rawAction.deterministic) ? rawAction.deterministic : {};
+    const effects = Array.isArray(deterministic.effects) ? deterministic.effects : [];
+    for (const rawEffect of effects) {
+      if (!isRecord(rawEffect) ||
+          (rawEffect.op !== "transport.road.build" && rawEffect.op !== "transport.waypoint.build")) continue;
+      const network = typeof rawEffect.networkId === "string" && isRecord(networkModels[rawEffect.networkId])
+        ? networkModels[rawEffect.networkId] as JsonRecord
+        : undefined;
+      if (!network) {
+        throw new ManifestValidationError(`Action "${actionId}" references an unknown transport network`);
+      }
+      const referenceParams = rawEffect.op === "transport.road.build"
+        ? [[rawEffect.fromNodeParam, network.nodeCollection], [rawEffect.toNodeParam, network.nodeCollection]]
+        : [[rawEffect.edgeParam, network.edgeCollection]];
+      for (const [rawParamName, expectedCollection] of referenceParams) {
+        const property = typeof rawParamName === "string" && isRecord(properties[rawParamName])
+          ? properties[rawParamName] as JsonRecord
+          : undefined;
+        const ref = property && isRecord(property["x-cubica-ref"])
+          ? property["x-cubica-ref"] as JsonRecord
+          : undefined;
+        if (!ref || ref.network !== rawEffect.networkId || ref.collection !== expectedCollection) {
+          throw new ManifestValidationError(
+            `Action "${actionId}" transport effect must use a matching x-cubica-ref parameter`
+          );
+        }
+      }
+    }
+  }
+};
+
 export function validateGameManifest(manifest: unknown): GameManifest {
   const isValid = validate(manifest);
   if (!isValid) {
@@ -76,6 +168,8 @@ export function validateGameManifest(manifest: unknown): GameManifest {
       }
     }
   }
+
+  validateSemanticReferences(m);
 
   return manifest as GameManifest;
 }

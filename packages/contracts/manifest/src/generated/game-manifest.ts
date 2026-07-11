@@ -29,6 +29,7 @@ export type GameManifest = {
   agentRuntime?: GameManifestAgentRuntimeConfig;
   meta: GameManifestMeta;
   objectModels?: GameManifestObjectModelMap;
+  networkModels?: GameManifestTransportNetworkModelMap;
   state: GameManifestState3Calias942026824741387426494202682402184393Cstring2Cunknown3E2Calias942026824741387426494202682402184393Cstring2Cunknown3E3E;
   /**
    * Reusable deterministic logic templates. Actions reference these via templateId.
@@ -55,6 +56,30 @@ export type GameManifestDeterministicEffect =
       delta: number | string | JsonLogicExpression;
       metricId: string;
       op: "metric.add";
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "metric.transfer";
+      from: GameManifestMetricEndpoint;
+      to: GameManifestMetricEndpoint;
+      amount: GameManifestNumericExpression;
+      insufficientFunds: "fail";
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "transport.road.build";
+      networkId: string;
+      fromNodeParam: string;
+      toNodeParam: string;
+      payments: GameManifestConstructionPayment[];
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "transport.waypoint.build";
+      networkId: string;
+      edgeParam: string;
+      positionParam: string;
+      payments: GameManifestConstructionPayment[];
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
@@ -214,6 +239,23 @@ export type JsonLogicExpression =
     };
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestMetricEndpoint".
+ */
+export type GameManifestMetricEndpoint =
+  | {
+      kind: "bank";
+    }
+  | {
+      kind: "state";
+      path: string;
+    };
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestNumericExpression".
+ */
+export type GameManifestNumericExpression = number | JsonLogicExpression;
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestObjectFacetValue".
  */
 export type GameManifestObjectFacetValue = string | number | boolean;
@@ -227,6 +269,34 @@ export type GameManifestObjectVisibility = "public" | "secret";
  * via the `definition` "GameManifestPath".
  */
 export type GameManifestPath = string;
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestSessionRole".
+ */
+export type GameManifestSessionRole = "player" | "facilitator" | "assistant" | "observer";
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestActionParamPropertySchema".
+ */
+export type GameManifestActionParamPropertySchema =
+  GameManifestStringActionParamSchema | GameManifestNumericActionParamSchema | GameManifestBooleanActionParamSchema;
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestStringActionParamSchema".
+ */
+export type GameManifestStringActionParamSchema = {
+  [k: string]: unknown;
+} & {
+  type: "string";
+  minLength?: number;
+  maxLength: number;
+  /**
+   * @minItems 1
+   */
+  enum?: [string, ...string[]];
+  pattern?: string;
+  "x-cubica-ref"?: GameManifestCubicaReference;
+};
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestLocale".
@@ -302,6 +372,10 @@ export interface GameManifestActionDefinition {
   function?: string;
   handlerType: string;
   /**
+   * @minItems 1
+   */
+  allowedSessionRoles?: [GameManifestSessionRole, ...GameManifestSessionRole[]];
+  /**
    * Action-specific deterministic overrides merged on top of the resolved template. Used when a template-based action needs extra effects.
    */
   overrides?: {
@@ -310,6 +384,7 @@ export interface GameManifestActionDefinition {
   params?: {
     [k: string]: unknown;
   };
+  paramsSchema?: GameManifestActionParamsSchema;
   payloadSchema?: {
     [k: string]: unknown;
   };
@@ -352,6 +427,14 @@ export interface GameManifestDeterministicStateCondition {
   operator: "==" | "!=" | ">" | ">=" | "<" | "<=" | "exists" | "not_exists";
   path: string;
   value?: unknown;
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestConstructionPayment".
+ */
+export interface GameManifestConstructionPayment {
+  balancePath: string;
+  amount: GameManifestNumericExpression;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -436,11 +519,113 @@ export interface GameManifestDeterministicSourceRef {
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestActionParamsSchema".
+ */
+export interface GameManifestActionParamsSchema {
+  type: "object";
+  additionalProperties: false;
+  properties: {
+    [k: string]: GameManifestActionParamPropertySchema;
+  };
+  /**
+   * @maxItems 16
+   */
+  required?:
+    | []
+    | [string]
+    | [string, string]
+    | [string, string, string]
+    | [string, string, string, string]
+    | [string, string, string, string, string]
+    | [string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [string, string, string, string, string, string, string, string, string, string, string, string, string, string]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ]
+    | [
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string,
+        string
+      ];
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestCubicaReference".
+ */
+export interface GameManifestCubicaReference {
+  kind: "object" | "action-resource";
+  collection: string;
+  network?: string;
+  /**
+   * @minItems 1
+   */
+  allowedTypes?: [string, ...string[]];
+  visibility: GameManifestObjectVisibility;
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestNumericActionParamSchema".
+ */
+export interface GameManifestNumericActionParamSchema {
+  type: "integer" | "number";
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
+  /**
+   * @minItems 1
+   */
+  enum?: [number, ...number[]];
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestBooleanActionParamSchema".
+ */
+export interface GameManifestBooleanActionParamSchema {
+  type: "boolean";
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestConfig".
  */
 export interface GameManifestConfig {
   players: GameManifestPlayerConfig;
   settings: GameManifestSettings;
+  sessionMode?: "standard" | "facilitated";
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -670,6 +855,66 @@ export interface GameManifestObjectViewRule {
   titleFrom?: string;
   visible?: boolean;
   visualState?: string;
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportNetworkModelMap".
+ */
+export interface GameManifestTransportNetworkModelMap {
+  [k: string]: GameManifestTransportNetworkModel;
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportNetworkModel".
+ */
+export interface GameManifestTransportNetworkModel {
+  visibility: GameManifestObjectVisibility;
+  nodeCollection: string;
+  edgeCollection: string;
+  waypointObjectType: string;
+  edgeObjectType: string;
+  edgeStateFacet: string;
+  nodeStateFacet: string;
+  /**
+   * @minItems 1
+   */
+  buildableNodeStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
+  /**
+   * @minItems 1
+   */
+  splittableEdgeStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
+  builtEdgeState: GameManifestObjectFacetValue;
+  sequencePath: string;
+  roadCostPerRegionSegment: number;
+  waypointCost: number;
+  /**
+   * @minItems 1
+   */
+  regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportRegion".
+ */
+export interface GameManifestTransportRegion {
+  id: string;
+  /**
+   * @minItems 3
+   */
+  polygon: [
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    GameManifestCanonicalPoint,
+    ...GameManifestCanonicalPoint[]
+  ];
+}
+/**
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestCanonicalPoint".
+ */
+export interface GameManifestCanonicalPoint {
+  x: number;
+  y: number;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema

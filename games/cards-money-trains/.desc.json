@@ -1,0 +1,3 @@
+{
+  "description": "Game-owned package for the facilitated business game «Карты, деньги, поезда». It contains authoring/runtime manifests, bounded fixtures, delivery assets, the player-web board plugin, and root-level asset-provenance.json governance metadata with source hashes, conversion details, and publication-rights status."
+}

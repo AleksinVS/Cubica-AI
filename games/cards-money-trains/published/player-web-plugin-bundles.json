@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../docs/architecture/schemas/player-web-plugin-bundles.schema.json",
+  "schemaVersion": "1.0",
+  "bundles": [
+    {
+      "pluginId": "cards-money-trains-player",
+      "gameId": "cards-money-trains",
+      "apiVersion": "2.0",
+      "target": "player-web",
+      "scope": "published",
+      "contentHash": "2013d2f1f1a9d1891cef99b606f001752963896b745954ee63f72ac71db89bb0",
+      "integrity": "sha256-IBPS8fGp0Ykc75m2BvABdSljiWt0WVTuY/cqxx24m7A=",
+      "filePath": "published/cards-money-trains-player.2013d2f1f1a9d1891cef99b606f001752963896b745954ee63f72ac71db89bb0.mjs",
+      "url": "/published-plugin-bundles/cards-money-trains/cards-money-trains-player/2013d2f1f1a9d1891cef99b606f001752963896b745954ee63f72ac71db89bb0.mjs"
+    }
+  ]
+}

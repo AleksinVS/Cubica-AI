@@ -357,6 +357,52 @@ export class GamePresenter {
   }
 
   /**
+   * Dispatches intent from an interactive board and preserves rejection.
+   *
+   * Ordinary DOM controls use `handleEvent`, which captures errors for the
+   * shared error panel. A dragged canvas object additionally needs a rejected
+   * Promise so its game-owned scene can animate the preview back to the last
+   * authoritative snapshot. This method updates the same presenter state and
+   * error UI, then rethrows without letting the canvas become a second state
+   * owner.
+   */
+  async handleBoardAction(
+    actionId: string,
+    payload: Record<string, unknown> = {}
+  ): Promise<void> {
+    if (this.booting || !this.session) {
+      throw new Error("Игровая сессия еще не готова к действию на поле.");
+    }
+
+    this.isPending = true;
+    this.clearError();
+    await this.syncView();
+
+    try {
+      const next = await dispatchRuntimeAction(
+        this.session.sessionId,
+        this.config.playerId,
+        actionId,
+        payload
+      );
+      this.session = applyJsonMergePatch(
+        this.session as unknown as import("@cubica/view-protocol").JsonValue,
+        next as unknown as import("@cubica/view-protocol").JsonValue
+      ) as unknown as GameSession;
+      this.agentSurface = null;
+      this.clearError();
+    } catch (error) {
+      this.captureError(error, "Board action dispatch failed");
+      throw error instanceof Error
+        ? error
+        : new Error("Действие на поле отклонено игровой системой.");
+    } finally {
+      this.isPending = false;
+      await this.syncView();
+    }
+  }
+
+  /**
    * Handles a command emitted by a validated `CubicaSurface`.
    *
    * A surface action is only player intent. The Presenter routes it through

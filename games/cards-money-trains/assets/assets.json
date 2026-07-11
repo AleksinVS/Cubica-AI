@@ -1,0 +1,13 @@
+{
+  "gameId": "cards-money-trains",
+  "assets": [
+    {
+      "id": "board-guinea-optimized",
+      "file": "images/guinea-map.webp",
+      "kind": "image",
+      "origin": {
+        "type": "authored-in-repo"
+      }
+    }
+  ]
+}

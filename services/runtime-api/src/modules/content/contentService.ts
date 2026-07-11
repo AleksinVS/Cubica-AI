@@ -8,7 +8,8 @@ import type {
   GameUiPanelDefinition,
   GameUiScreenDefinition,
   ScreenRoutingEntry,
-  MetricConfigSpec
+  MetricConfigSpec,
+  RootGameAssets
 } from "@cubica/contracts-manifest";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -28,6 +29,10 @@ const publishedBundleSchema = JSON.parse(readFileSync(
   path.join(repoRoot, "docs", "architecture", "schemas", "player-web-plugin-bundles.schema.json"),
   "utf8"
 )) as object;
+const gameAssetsSchema = JSON.parse(readFileSync(
+  path.join(repoRoot, "docs", "architecture", "schemas", "game-assets.schema.json"),
+  "utf8"
+)) as object;
 const publishedBundleSchemaId = "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json";
 // Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025):
 // unknown keywords/formats and malformed schemas fail fast. allowUnionTypes and
@@ -38,6 +43,16 @@ const publishedBundleAjv = new Ajv({ allErrors: true, strict: true, allowUnionTy
 addFormats(publishedBundleAjv);
 publishedBundleAjv.addSchema(publishedBundleSchema, publishedBundleSchemaId);
 const validatePublishedBundleMetadata = publishedBundleAjv.getSchema(publishedBundleSchemaId);
+const gameAssetsAjv = new Ajv({ allErrors: true, strict: true });
+addFormats(gameAssetsAjv);
+const validateGameAssetsRegistry = gameAssetsAjv.compile(gameAssetsSchema);
+
+const GAME_ASSET_CONTENT_TYPES: Readonly<Record<string, string>> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  webp: "image/webp",
+  svg: "image/svg+xml"
+};
 
 interface RawMockupDesign {
   id?: string;
@@ -222,7 +237,11 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
     actionId,
     displayName: definition.displayName ?? actionId,
     capabilityFamily: definition.capabilityFamily ?? null,
-    capability: definition.capability ?? null
+    capability: definition.capability ?? null,
+    paramsSchema: definition.paramsSchema === undefined ? undefined : structuredClone(definition.paramsSchema),
+    allowedSessionRoles: definition.allowedSessionRoles === undefined
+      ? undefined
+      : [...definition.allowedSessionRoles]
   }));
 
   // Platform purity: prefer agnostic 'data' or 'collections' over legacy game-specific key.
@@ -270,6 +289,17 @@ export interface ContentServiceResult {
   content: PlayerFacingContent;
 }
 
+export interface GameAssetIndex {
+  readonly gameId: string;
+  readonly assets: Readonly<Record<string, { readonly url: string; readonly kind: "image" }>>;
+}
+
+export interface GameAssetFileDelivery {
+  readonly bytes: Buffer;
+  readonly contentType: string;
+  readonly extension: string;
+}
+
 export interface LocalPlayerWebPluginBundle {
   readonly pluginId: string;
   readonly gameId: string;
@@ -302,6 +332,7 @@ export class ContentService {
   private readonly repository: IGameRepository;
   private readonly repositoriesBySourceId = new Map<string, IGameRepository>();
   private readonly playerWebPluginBundlesBySourceId = new Map<string, readonly LocalPlayerWebPluginBundle[]>();
+  private readonly gameAssetHashCache = new Map<string, { readonly mtimeMs: number; readonly sha256: string }>();
   
   constructor(repository: IGameRepository) {
     this.repository = repository;
@@ -475,6 +506,65 @@ export class ContentService {
     return source;
   }
 
+  /** Builds the public id-to-content-addressed-URL index for one game. */
+  async getGameAssetIndex(gameId: string): Promise<GameAssetIndex> {
+    const registry = await this.loadGameAssetsRegistry(gameId);
+    const entries = await Promise.all(registry.assets.map(async (asset) => {
+      const sha256 = await this.getGameAssetHash(gameId, asset.file);
+      const extension = path.extname(asset.file).slice(1).toLowerCase();
+      return [asset.id, {
+        url: `/game-assets/${encodeURIComponent(gameId)}/${encodeURIComponent(asset.id)}/${sha256}.${extension}`,
+        kind: asset.kind
+      }] as const;
+    }));
+
+    return { gameId, assets: Object.fromEntries(entries) };
+  }
+
+  /** Resolves and verifies one immutable asset request against the registry. */
+  async getGameAssetFile(input: {
+    readonly gameId: string;
+    readonly assetId: string;
+    readonly contentHash: string;
+    readonly extension: string;
+  }): Promise<GameAssetFileDelivery> {
+    const registry = await this.loadGameAssetsRegistry(input.gameId);
+    const asset = registry.assets.find((candidate) => candidate.id === input.assetId);
+    if (asset === undefined) {
+      throw new NotFoundError("Game asset was not found");
+    }
+
+    const registeredExtension = path.extname(asset.file).slice(1).toLowerCase();
+    if (registeredExtension !== input.extension || GAME_ASSET_CONTENT_TYPES[registeredExtension] === undefined) {
+      throw new NotFoundError("Game asset was not found");
+    }
+
+    const metadataBefore = await this.getGameAssetMetadataOrNotFound(input.gameId, asset.file);
+    const expectedHash = await this.getGameAssetHash(input.gameId, asset.file, metadataBefore.mtimeMs);
+    if (expectedHash !== input.contentHash) {
+      throw new NotFoundError("Game asset was not found");
+    }
+
+    const bytes = await this.getGameAssetBytesOrNotFound(input.gameId, asset.file);
+    const metadataAfter = await this.getGameAssetMetadataOrNotFound(input.gameId, asset.file);
+    if (metadataAfter.mtimeMs !== metadataBefore.mtimeMs) {
+      const actualHash = createHash("sha256").update(bytes).digest("hex");
+      this.gameAssetHashCache.set(`${input.gameId}:${asset.file}`, {
+        mtimeMs: metadataAfter.mtimeMs,
+        sha256: actualHash
+      });
+      if (actualHash !== input.contentHash) {
+        throw new NotFoundError("Game asset was not found");
+      }
+    }
+
+    return {
+      bytes,
+      contentType: GAME_ASSET_CONTENT_TYPES[registeredExtension],
+      extension: registeredExtension
+    };
+  }
+
   private repositoryForSource(contentSourceId: string | undefined): IGameRepository {
     if (contentSourceId === undefined) {
       return this.repository;
@@ -485,6 +575,69 @@ export class ContentService {
       throw new NotFoundError(`Content source "${contentSourceId}" was not found`);
     }
     return repository;
+  }
+
+  private async loadGameAssetsRegistry(gameId: string): Promise<RootGameAssets> {
+    const raw = await this.repository.getGameAssetsRegistryRaw(gameId);
+    if (raw === undefined) {
+      throw new NotFoundError(`Game assets for "${gameId}" were not found`);
+    }
+
+    let registry: unknown;
+    try {
+      registry = JSON.parse(raw);
+    } catch {
+      throw new Error(`Game asset registry for "${gameId}" must be valid JSON.`);
+    }
+    if (!validateGameAssetsRegistry(registry)) {
+      const errors = (validateGameAssetsRegistry.errors ?? [])
+        .map((error: any) => `${error.instancePath || "/"} ${error.message}`)
+        .join("; ");
+      throw new Error(`Game asset registry for "${gameId}" is invalid: ${errors}`);
+    }
+    const typedRegistry = registry as RootGameAssets;
+    if (typedRegistry.gameId !== gameId) {
+      throw new Error(`Game asset registry gameId must equal "${gameId}".`);
+    }
+    return typedRegistry;
+  }
+
+  private async getGameAssetHash(gameId: string, file: string, knownMtimeMs?: number): Promise<string> {
+    const metadata = knownMtimeMs === undefined
+      ? await this.getGameAssetMetadataOrNotFound(gameId, file)
+      : { mtimeMs: knownMtimeMs };
+    const cacheKey = `${gameId}:${file}`;
+    const cached = this.gameAssetHashCache.get(cacheKey);
+    if (cached?.mtimeMs === metadata.mtimeMs) {
+      return cached.sha256;
+    }
+
+    const bytes = await this.getGameAssetBytesOrNotFound(gameId, file);
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    this.gameAssetHashCache.set(cacheKey, { mtimeMs: metadata.mtimeMs, sha256 });
+    return sha256;
+  }
+
+  private async getGameAssetMetadataOrNotFound(gameId: string, file: string) {
+    try {
+      return await this.repository.getGameAssetFileMetadata(gameId, file);
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        throw new NotFoundError("Game asset was not found");
+      }
+      throw error;
+    }
+  }
+
+  private async getGameAssetBytesOrNotFound(gameId: string, file: string): Promise<Buffer> {
+    try {
+      return await this.repository.getGameAssetFileBytes(gameId, file);
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        throw new NotFoundError("Game asset was not found");
+      }
+      throw error;
+    }
   }
 
   private bundleCacheKey(gameId: string, contentSourceId: string | undefined): string {
@@ -626,4 +779,21 @@ export async function getPublishedPlayerWebPluginBundleSource(input: {
   readonly contentHash: string;
 }): Promise<string> {
   return contentService.getPublishedPlayerWebPluginBundleSource(input);
+}
+
+export async function getGameAssetIndex(gameId: string): Promise<GameAssetIndex> {
+  return contentService.getGameAssetIndex(gameId);
+}
+
+export async function getGameAssetFile(input: {
+  readonly gameId: string;
+  readonly assetId: string;
+  readonly contentHash: string;
+  readonly extension: string;
+}): Promise<GameAssetFileDelivery> {
+  return contentService.getGameAssetFile(input);
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "ENOENT";
 }

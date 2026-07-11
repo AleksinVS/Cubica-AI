@@ -225,7 +225,48 @@
         "richTextComponent",
         "inputComponent",
         "imageComponent",
-        "helperComponent"
+        "helperComponent",
+        "interactiveBoardSurface"
+      ]
+    },
+    "interactiveBoardSurfaceProps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sceneId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "designWidth": {
+          "type": "integer",
+          "minimum": 320,
+          "maximum": 1920,
+          "default": 1400
+        },
+        "designHeight": {
+          "type": "integer",
+          "minimum": 320,
+          "maximum": 1920,
+          "default": 1000
+        },
+        "accessibleLabel": {
+          "type": "string"
+        },
+        "interactions": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "modeActionId": {
+              "type": "string"
+            },
+            "selectActionId": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": [
+        "sceneId"
       ]
     },
     "uiComponent": {
@@ -293,7 +334,31 @@
           "type": "string"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "interactiveBoardSurface"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "$ref": "#/definitions/interactiveBoardSurfaceProps"
+              }
+            }
+          }
+        }
+      ]
     },
     "uiItemTemplate": {
       "type": "object",

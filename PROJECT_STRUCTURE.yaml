@@ -56,6 +56,7 @@ docs: # Архитектура, задачи, планирование
       external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
       external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.
       external-skill-registry.schema.json: file # JSON Schema реестра происхождения, версий, способностей и расписания обновлений внешних навыков по ADR-069.
+      game-assets.schema.json: file # JSON Schema декларативного реестра игровых ресурсов по ADR-063: безопасные пути, типы, контроль целостности и лицензионные метаданные.
       game-authoring.schema.json: file # JSON Schema for editable game authoring manifests compiled into runtime game.manifest.json files.
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
       manifest-authoring-common.schema.json: file # Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.

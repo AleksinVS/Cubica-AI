@@ -8,5 +8,6 @@
   "ui-authoring.schema.json": "JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.",
   "external-skill-policy.schema.json": "JSON Schema профиля совместимости внешних навыков по ADR-069.",
   "external-skill-memory.schema.json": "JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.",
-  "external-skill-registry.schema.json": "JSON Schema реестра происхождения, версий, способностей и расписания обновлений внешних навыков по ADR-069."
+  "external-skill-registry.schema.json": "JSON Schema реестра происхождения, версий, способностей и расписания обновлений внешних навыков по ADR-069.",
+  "game-assets.schema.json": "JSON Schema декларативного реестра игровых ресурсов по ADR-063: безопасные пути, типы, контроль целостности и лицензионные метаданные."
 }

@@ -60,6 +60,11 @@
             "objectTypes": {
               "$ref": "#/definitions/gameObjectTypeMap"
             },
+            "networkModels": {
+              "type": "object",
+              "description": "Runtime transport-network models compiled without transformation.",
+              "additionalProperties": true
+            },
             "state": {
               "type": "object",
               "required": [
@@ -270,6 +275,22 @@
             },
             "params": {
               "type": "object"
+            },
+            "paramsSchema": {
+              "type": "object"
+            },
+            "allowedSessionRoles": {
+              "type": "array",
+              "items": {
+                "enum": [
+                  "player",
+                  "facilitator",
+                  "assistant",
+                  "observer"
+                ]
+              },
+              "minItems": 1,
+              "uniqueItems": true
             },
             "tags": {
               "type": "array",

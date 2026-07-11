@@ -1,0 +1,85 @@
+{
+  "fixtureKind": "confirmed-demonstration-start",
+  "gameId": "cards-money-trains",
+  "specialFixture": true,
+  "note": "Демонстрационные балансы намеренно отличаются от обычного старта и не должны использоваться как setup policy.",
+  "teams": [
+    {
+      "id": "white-logistics",
+      "label": "Белая",
+      "type": "logistics_company",
+      "coins": 10,
+      "vehicles": [
+        {
+          "kind": "wagon",
+          "locationNodeLabel": "9",
+          "cargoRoute": "9 → 7"
+        },
+        {
+          "kind": "wagon",
+          "locationNodeLabel": "6",
+          "cargoRoute": null
+        }
+      ]
+    },
+    {
+      "id": "red-logistics",
+      "label": "Красная",
+      "type": "logistics_company",
+      "coins": 2,
+      "vehicles": [
+        {
+          "kind": "wagon",
+          "locationNodeLabel": "9",
+          "cargoRoute": "9 → 2"
+        },
+        {
+          "kind": "wagon",
+          "locationNodeLabel": "6",
+          "cargoRoute": "5 → 9",
+          "attachedToTeamId": "purple-guild"
+        }
+      ]
+    },
+    {
+      "id": "purple-guild",
+      "label": "Фиолетовая",
+      "type": "locomotive_guild",
+      "coins": 1,
+      "vehicles": [
+        {
+          "kind": "locomotive",
+          "locationNodeLabel": "6",
+          "attachedWagonOwnerTeamId": "red-logistics"
+        }
+      ]
+    },
+    {
+      "id": "green-guild",
+      "label": "Зеленая",
+      "type": "locomotive_guild",
+      "coins": 5,
+      "vehicles": [
+        {
+          "kind": "locomotive",
+          "locationNodeLabel": "1"
+        }
+      ]
+    }
+  ],
+  "news": {
+    "kind": "road-closure",
+    "summary": "Сель перекрывает дорогу 3 ↔ π",
+    "edgeEndpoints": [
+      "3",
+      "π"
+    ]
+  },
+  "contentStatus": {
+    "cargoPayouts": "not-provided",
+    "initialTopology": "not-provided",
+    "canonicalCoordinates": "not-provided",
+    "canonicalRegions": "not-provided",
+    "expectedMoves": "not-provided"
+  }
+}

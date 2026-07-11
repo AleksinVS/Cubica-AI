@@ -2,7 +2,11 @@ import { describe, expect, it } from "vitest";
 import type { PlayerFacingContent, PlayerWebPluginBundleReference } from "@cubica/contracts-manifest";
 
 import { resolveRegisteredGameConfigData } from "@/presenter/game-config-registry";
-import { loadPreviewPlayerWebPlugins } from "./preview-plugin-loader";
+import {
+  activatePlayerWebPluginBundles,
+  loadPreviewPlayerWebPlugins
+} from "./preview-plugin-loader";
+import { resolvePhaserSceneFactory } from "./phaser-scene-registry";
 
 describe("preview plugin loader", () => {
   it("loads a session plugin module and lets it replace config data without a player-web restart", async () => {
@@ -106,5 +110,34 @@ describe("preview plugin loader", () => {
     });
 
     expect(key).toBe(`${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`);
+  });
+
+  it("releases a Phaser scene contribution with its scoped bundle handle", async () => {
+    const gameId = "scoped-board-plugin";
+    const source = `
+      export function activate(api) {
+        api.registerPhaserSceneFactory("${gameId}", () => ({
+          scene: {}, updateSession() {}, destroy() {}
+        }));
+      }
+    `;
+    const bundle: PlayerWebPluginBundleReference = {
+      pluginId: "scoped-board-player",
+      gameId,
+      apiVersion: "2.0",
+      target: "player-web",
+      scope: "preview",
+      contentHash: "d".repeat(64),
+      url: `data:text/javascript;base64,${Buffer.from(source, "utf8").toString("base64")}`
+    };
+
+    const handle = await activatePlayerWebPluginBundles({
+      runtimeApiUrl: "http://runtime-api.local",
+      bundles: [bundle]
+    });
+
+    expect(resolvePhaserSceneFactory(gameId)).toBeTypeOf("function");
+    handle.dispose();
+    expect(resolvePhaserSceneFactory(gameId)).toBeUndefined();
   });
 });

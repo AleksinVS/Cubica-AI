@@ -8,12 +8,18 @@
  */
 import type { PlayerWebPluginBundleReference } from "@cubica/contracts-manifest";
 
-import { playerPluginApi } from "./player-plugin-api";
+import { createScopedPlayerPluginApi } from "./player-plugin-api";
 import * as playerPluginApiModule from "./player-plugin-api";
 
 type PreviewPluginModule = {
-  readonly activate?: (api: typeof playerPluginApi) => void;
+  readonly activate?: (api: ReturnType<typeof createScopedPlayerPluginApi>) => void | (() => void);
 };
+
+/** Active bundle set whose scoped contributions can be released together. */
+export interface PlayerWebPluginLoadHandle {
+  readonly key: string;
+  dispose(): void;
+}
 
 const supportedPlayerPluginApiVersion = "2.0";
 
@@ -29,36 +35,76 @@ export async function loadPlayerWebPluginBundles(input: {
   readonly bundles: readonly PlayerWebPluginBundleReference[];
   readonly allowedScopes?: ReadonlySet<PlayerWebPluginBundleReference["scope"]>;
 }): Promise<string> {
+  return (await activatePlayerWebPluginBundles(input)).key;
+}
+
+/**
+ * Loads bundles and retains ownership of registrations made during activation.
+ *
+ * The older `loadPlayerWebPluginBundles` wrapper still returns only a key for
+ * compatibility. GamePlayer uses this scoped form so switching preview bundle
+ * or game removes the previous Phaser factory instead of leaving global state.
+ */
+export async function activatePlayerWebPluginBundles(input: {
+  readonly runtimeApiUrl: string;
+  readonly bundles: readonly PlayerWebPluginBundleReference[];
+  readonly allowedScopes?: ReadonlySet<PlayerWebPluginBundleReference["scope"]>;
+}): Promise<PlayerWebPluginLoadHandle> {
   if (input.bundles.length === 0) {
-    return "no-player-web-plugins";
+    return { key: "no-player-web-plugins", dispose() {} };
   }
 
   globalThis.__cubicaPlayerPluginApiModule = playerPluginApiModule;
   const loadedKeys: string[] = [];
+  const disposers: Array<() => void> = [];
+  const scopedApi = createScopedPlayerPluginApi((dispose) => disposers.push(dispose));
 
-  for (const bundle of input.bundles) {
-    if (bundle.target !== "player-web") {
-      continue;
+  try {
+    for (const bundle of input.bundles) {
+      if (bundle.target !== "player-web") {
+        continue;
+      }
+      if (bundle.apiVersion !== supportedPlayerPluginApiVersion) {
+        throw new Error(`Player plugin "${bundle.pluginId}" uses unsupported apiVersion "${bundle.apiVersion}".`);
+      }
+      if (input.allowedScopes !== undefined && !input.allowedScopes.has(bundle.scope)) {
+        throw new Error(`Player plugin "${bundle.pluginId}" has unexpected bundle scope "${bundle.scope}".`);
+      }
+      const url = new URL(bundle.url, input.runtimeApiUrl);
+      if (url.protocol !== "data:") {
+        url.searchParams.set("v", bundle.contentHash);
+      }
+      const loaded = await import(/* webpackIgnore: true */ url.toString()) as PreviewPluginModule;
+      if (typeof loaded.activate !== "function") {
+        throw new Error(`Player plugin "${bundle.pluginId}" does not export activate(api).`);
+      }
+      const deactivate = loaded.activate(scopedApi);
+      if (typeof deactivate === "function") {
+        disposers.push(deactivate);
+      }
+      loadedKeys.push(`${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`);
     }
-    if (bundle.apiVersion !== supportedPlayerPluginApiVersion) {
-      throw new Error(`Player plugin "${bundle.pluginId}" uses unsupported apiVersion "${bundle.apiVersion}".`);
-    }
-    if (input.allowedScopes !== undefined && !input.allowedScopes.has(bundle.scope)) {
-      throw new Error(`Player plugin "${bundle.pluginId}" has unexpected bundle scope "${bundle.scope}".`);
-    }
-    const url = new URL(bundle.url, input.runtimeApiUrl);
-    if (url.protocol !== "data:") {
-      url.searchParams.set("v", bundle.contentHash);
-    }
-    const loaded = await import(/* webpackIgnore: true */ url.toString()) as PreviewPluginModule;
-    if (typeof loaded.activate !== "function") {
-      throw new Error(`Player plugin "${bundle.pluginId}" does not export activate(api).`);
-    }
-    loaded.activate(playerPluginApi);
-    loadedKeys.push(`${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`);
+  } catch (error) {
+    disposeAll(disposers);
+    throw error;
   }
 
-  return loadedKeys.join("|");
+  let disposed = false;
+  return {
+    key: loadedKeys.join("|"),
+    dispose() {
+      if (!disposed) {
+        disposed = true;
+        disposeAll(disposers);
+      }
+    }
+  };
 }
 
 export const loadPreviewPlayerWebPlugins = loadPlayerWebPluginBundles;
+
+function disposeAll(disposers: Array<() => void>): void {
+  for (const dispose of disposers.splice(0).reverse()) {
+    dispose();
+  }
+}

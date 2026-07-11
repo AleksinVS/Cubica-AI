@@ -1,0 +1,13 @@
+{
+  "gameId": "test-game",
+  "assets": [
+    {
+      "id": "Board Background",
+      "file": "board.svg",
+      "kind": "image",
+      "origin": {
+        "type": "authored-in-repo"
+      }
+    }
+  ]
+}

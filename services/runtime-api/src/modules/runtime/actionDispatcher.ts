@@ -7,10 +7,12 @@ import type { RuntimeActionResult } from "@cubica/contracts-runtime";
 import type { GameBundle } from "../content/manifestLoader.ts";
 import { NotFoundError, RequestValidationError } from "../errors.ts";
 import { createRuntimeActionRegistry, getRegisteredActionDefinition } from "./actionRegistry.ts";
+import { resolveActionReferences, validateActionParameters } from "./actionParameters.ts";
 
 type RuntimeState = Record<string, unknown>;
 const RUNTIME_VALIDATION_ERROR_CODES = new Set([
   "RUNTIME_ACTION_GUARD_FAILED",
+  "RUNTIME_ACTION_EFFECT_FAILED",
   "RUNTIME_ACTION_METADATA_MISSING",
   "RUNTIME_ACTION_MANIFEST_UNSUPPORTED"
 ]);
@@ -50,6 +52,15 @@ export async function dispatchRuntimeAction(
     );
   }
 
+  const params = validateActionParameters(definition, options.input.params);
+  const resolvedRefs = resolveActionReferences(definition, params, current.state);
+  const sessionRole = current.sessionRole ?? "player";
+  if (definition.allowedSessionRoles && !definition.allowedSessionRoles.includes(sessionRole)) {
+    throw new RequestValidationError(
+      `Action "${options.input.actionId}" is not available to the current session role`
+    );
+  }
+
   const registry = createRuntimeActionRegistry(bundle);
   const handler = registry.get(options.input.actionId);
 
@@ -63,6 +74,9 @@ export async function dispatchRuntimeAction(
     sessionId: current.sessionId,
     gameId: current.gameId,
     actionId: options.input.actionId,
+    params,
+    sessionRole,
+    resolvedRefs,
     payload: options.input.payload,
     state: current.state,
     now: new Date(),

@@ -97,6 +97,7 @@ function formatErrors(validate: ValidateFunction): string {
 
 const gameManifestFiles = collectFiles(gamesRoot, (filePath) => filePath.endsWith("/game.manifest.json"));
 const uiManifestFiles = collectFiles(gamesRoot, (filePath) => filePath.endsWith("/ui.manifest.json"));
+const gameAssetRegistryFiles = collectFiles(gamesRoot, (filePath) => filePath.endsWith("/assets/assets.json"));
 
 describe("shipped game manifests validate against game-manifest.schema.json", () => {
   const validateGameManifest = buildValidator("game-manifest.schema.json");
@@ -130,6 +131,67 @@ describe("shipped UI manifests validate against ui-manifest.schema.json", () => 
       const valid = validateUiManifest(data);
       if (!valid) {
         throw new Error(`${relative(repoRoot, filePath)} failed schema validation: ${formatErrors(validateUiManifest)}`);
+      }
+      expect(valid).toBe(true);
+    });
+  }
+});
+
+describe("interactive board surface UI contract", () => {
+  const validateUiManifest = buildValidator("ui-manifest.schema.json");
+  const fixture = {
+    meta: { id: "neutral.board.web", version: "1.0.0", game_id: "neutral-board" },
+    entry_point: "board",
+    screens: {
+      board: {
+        type: "screen",
+        root: {
+          type: "interactiveBoardSurface",
+          props: { sceneId: "main", designWidth: 1400, designHeight: 1000, accessibleLabel: "Board" }
+        }
+      }
+    }
+  };
+
+  it("accepts bounded board dimensions and required scene id", () => {
+    expect(validateUiManifest(fixture)).toBe(true);
+  });
+
+  it("rejects a board surface without scene id", () => {
+    const invalid = structuredClone(fixture) as any;
+    delete invalid.screens.board.root.props.sceneId;
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+});
+
+describe("game asset registry contract", () => {
+  const validateGameAssets = buildValidator("game-assets.schema.json");
+  const examplesRoot = join(schemasRoot, "examples");
+
+  it("accepts the neutral positive example", () => {
+    const valid = validateGameAssets(readJson(join(examplesRoot, "game-assets.valid.json")));
+    if (!valid) {
+      throw new Error(`valid asset example failed schema validation: ${formatErrors(validateGameAssets)}`);
+    }
+    expect(valid).toBe(true);
+  });
+
+  for (const filename of [
+    "game-assets.invalid-extra-field.json",
+    "game-assets.invalid-id.json",
+    "game-assets.invalid-extension.json",
+    "game-assets.invalid-third-party-license.json"
+  ]) {
+    it(`rejects ${filename}`, () => {
+      expect(validateGameAssets(readJson(join(examplesRoot, filename)))).toBe(false);
+    });
+  }
+
+  for (const filePath of gameAssetRegistryFiles) {
+    it(`validates ${relative(repoRoot, filePath)}`, () => {
+      const valid = validateGameAssets(readJson(filePath));
+      if (!valid) {
+        throw new Error(`${relative(repoRoot, filePath)} failed schema validation: ${formatErrors(validateGameAssets)}`);
       }
       expect(valid).toBe(true);
     });

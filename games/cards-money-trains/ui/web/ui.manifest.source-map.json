@@ -1,0 +1,841 @@
+{
+  "version": 1,
+  "generatedFile": "games/cards-money-trains/ui/web/ui.manifest.json",
+  "sourceFile": "games/cards-money-trains/authoring/ui/web.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/id"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/version"
+      }
+    ],
+    "/meta/schema_version": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/schema_version"
+      }
+    ],
+    "/meta/game_id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/game_id"
+      }
+    ],
+    "/meta/game_manifest_version": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/game_manifest_version"
+      }
+    ],
+    "/meta/channel": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/channel"
+      }
+    ],
+    "/meta/author": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/author"
+      }
+    ],
+    "/entry_point": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/entry_point"
+      }
+    ],
+    "/screen_routing/0": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0"
+      }
+    ],
+    "/screen_routing/0/screenKey": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/screenKey"
+      }
+    ],
+    "/screen_routing/0/conditions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions"
+      }
+    ],
+    "/screen_routing/0/conditions/screenId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions/screenId"
+      }
+    ],
+    "/screen_routing/0/conditions/layoutMode": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions/layoutMode"
+      }
+    ],
+    "/screen_routing": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing"
+      }
+    ],
+    "/screens/facilitator": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0"
+      }
+    ],
+    "/screens/facilitator/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/id"
+      }
+    ],
+    "/screens/facilitator/title": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/title"
+      }
+    ],
+    "/screens/facilitator/layout_mode": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/layout_mode"
+      }
+    ],
+    "/screens/facilitator/root": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root"
+      }
+    ],
+    "/screens/facilitator/root/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/id"
+      }
+    ],
+    "/screens/facilitator/root/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/type"
+      }
+    ],
+    "/screens/facilitator/root/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props"
+      }
+    ],
+    "/screens/facilitator/root/props/cssClass": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/0": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/0/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/0/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/0/props/cssClass": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/0/children/0": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/0/children/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/0/children/0/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/0/children/0/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/0/children/0/props/html": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/0/children": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children"
+      }
+    ],
+    "/screens/facilitator/root/children/1": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/1/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/props/cssClass": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/props/sceneId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/sceneId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/props/designWidth": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/designWidth"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/props/designHeight": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/designHeight"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/0/props/accessibleLabel": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/accessibleLabel"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/if": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/if"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/props/cssClass": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/props/caption": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/props/variant": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/actions/onClick": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/0/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/0/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/props/caption": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/props/variant": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/actions/onClick": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/1/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/1/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/props/caption": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/props/variant": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/actions/onClick": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children/2/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children/2/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/1/children": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/children"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/props/cssClass": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/if": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/if"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/props/caption": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/props/variant": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/actions/onClick": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/0/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/0/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/if": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/if"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/props/caption": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/props/variant": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/actions/onClick": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/1/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/1/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/if": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/if"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/props/caption": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/props/variant": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/actions": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/actions/onClick": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children/2/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children/2/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/2/children": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/2/children"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/3": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/3"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/3/id": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/3/id"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/3/type": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/3/type"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/3/props": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/3/props"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children/3/props/html": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/3/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/1/children": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children"
+      }
+    ],
+    "/screens/facilitator/root/children": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children"
+      }
+    ],
+    "/screens": [
+      {
+        "file": "games/cards-money-trains/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens"
+      }
+    ]
+  }
+}

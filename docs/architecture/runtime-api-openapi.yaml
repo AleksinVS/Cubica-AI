@@ -209,6 +209,76 @@
         }
       }
     },
+    "/game-assets/{gameId}/index.json": {
+      "get": {
+        "tags": ["Content"],
+        "operationId": "getGameAssetIndex",
+        "summary": "Read the current content-addressed image index for one game.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/GameId"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Map of stable asset ids to immutable URLs.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GameAssetIndex"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/game-assets/{gameId}/{assetId}/{contentHash}.{extension}": {
+      "get": {
+        "tags": ["Content"],
+        "operationId": "getGameAssetFile",
+        "summary": "Read one immutable game-owned image by verified content hash.",
+        "x-cubica-scope": "public",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/GameId"
+          },
+          {
+            "$ref": "#/components/parameters/AssetId"
+          },
+          {
+            "$ref": "#/components/parameters/ContentHash"
+          },
+          {
+            "$ref": "#/components/parameters/AssetExtension"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Verified image bytes with immutable cache headers.",
+            "content": {
+              "image/png": { "schema": { "type": "string", "format": "binary" } },
+              "image/jpeg": { "schema": { "type": "string", "format": "binary" } },
+              "image/webp": { "schema": { "type": "string", "format": "binary" } },
+              "image/svg+xml": { "schema": { "type": "string", "format": "binary" } }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
     "/games/{gameId}/player-content": {
       "get": {
         "tags": ["PlayerContent"],
@@ -448,6 +518,24 @@
   },
   "components": {
     "parameters": {
+      "AssetExtension": {
+        "name": "extension",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": ["png", "jpg", "webp", "svg"]
+        }
+      },
+      "AssetId": {
+        "name": "assetId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        }
+      },
       "ContentHash": {
         "name": "contentHash",
         "in": "path",
@@ -704,6 +792,7 @@
           "sessionId": { "type": "string", "minLength": 1 },
           "playerId": { "type": "string", "minLength": 1 },
           "actionId": { "type": "string", "minLength": 1 },
+          "params": { "$ref": "#/components/schemas/JsonObject" },
           "payload": true
         },
         "additionalProperties": true
@@ -719,6 +808,35 @@
       "GameId": {
         "type": "string",
         "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "GameAssetIndex": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["gameId", "assets"],
+        "properties": {
+          "gameId": {
+            "$ref": "#/components/schemas/GameId"
+          },
+          "assets": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/GameAssetIndexEntry"
+            }
+          }
+        }
+      },
+      "GameAssetIndexEntry": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["url", "kind"],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "kind": {
+            "const": "image"
+          }
+        }
       },
       "GameReadinessResponse": {
         "type": "object",

@@ -29,6 +29,9 @@
         "objectModels": {
           "$ref": "#/definitions/GameManifestObjectModelMap"
         },
+        "networkModels": {
+          "$ref": "#/definitions/GameManifestTransportNetworkModelMap"
+        },
         "state": {
           "$ref": "#/definitions/GameManifestState%3Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%2Calias-942026824-74138-74264-942026824-0-218439%3Cstring%2Cunknown%3E%3E"
         },
@@ -140,6 +143,14 @@
         "handlerType": {
           "type": "string"
         },
+        "allowedSessionRoles": {
+          "items": {
+            "$ref": "#/definitions/GameManifestSessionRole"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array"
+        },
         "overrides": {
           "description": "Action-specific deterministic overrides merged on top of the resolved template. Used when a template-based action needs extra effects.",
           "type": "object",
@@ -153,6 +164,9 @@
         "params": {
           "additionalProperties": {},
           "type": "object"
+        },
+        "paramsSchema": {
+          "$ref": "#/definitions/GameManifestActionParamsSchema"
         },
         "payloadSchema": {
           "additionalProperties": {},
@@ -175,6 +189,401 @@
       "required": [
         "handlerType"
       ],
+      "type": "object"
+    },
+    "GameManifestSessionRole": {
+      "enum": [
+        "player",
+        "facilitator",
+        "assistant",
+        "observer"
+      ],
+      "type": "string"
+    },
+    "GameManifestCubicaReference": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "enum": [
+            "object",
+            "action-resource"
+          ],
+          "type": "string"
+        },
+        "collection": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "network": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "allowedTypes": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "visibility": {
+          "$ref": "#/definitions/GameManifestObjectVisibility"
+        }
+      },
+      "required": [
+        "kind",
+        "collection",
+        "visibility"
+      ],
+      "type": "object"
+    },
+    "GameManifestStringActionParamSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "string"
+        },
+        "minLength": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "maxLength": {
+          "maximum": 256,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "enum": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array"
+        },
+        "pattern": {
+          "type": "string"
+        },
+        "x-cubica-ref": {
+          "$ref": "#/definitions/GameManifestCubicaReference"
+        }
+      },
+      "required": [
+        "type",
+        "maxLength"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "x-cubica-ref"
+            ]
+          },
+          "then": {
+            "properties": {
+              "maxLength": {
+                "maximum": 128,
+                "type": "integer"
+              }
+            }
+          }
+        }
+      ],
+      "type": "object"
+    },
+    "GameManifestNumericActionParamSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "integer",
+            "number"
+          ]
+        },
+        "minimum": {
+          "type": "number"
+        },
+        "maximum": {
+          "type": "number"
+        },
+        "exclusiveMinimum": {
+          "type": "number"
+        },
+        "exclusiveMaximum": {
+          "type": "number"
+        },
+        "enum": {
+          "items": {
+            "type": "number"
+          },
+          "minItems": 1,
+          "uniqueItems": true,
+          "type": "array"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "GameManifestBooleanActionParamSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "boolean"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "type": "object"
+    },
+    "GameManifestActionParamPropertySchema": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/GameManifestStringActionParamSchema"
+        },
+        {
+          "$ref": "#/definitions/GameManifestNumericActionParamSchema"
+        },
+        {
+          "$ref": "#/definitions/GameManifestBooleanActionParamSchema"
+        }
+      ]
+    },
+    "GameManifestActionParamsSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "object"
+        },
+        "additionalProperties": {
+          "const": false
+        },
+        "properties": {
+          "additionalProperties": {
+            "$ref": "#/definitions/GameManifestActionParamPropertySchema"
+          },
+          "maxProperties": 16,
+          "propertyNames": {
+            "not": {
+              "enum": [
+                "__proto__",
+                "constructor",
+                "prototype"
+              ]
+            }
+          },
+          "type": "object"
+        },
+        "required": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 16,
+          "uniqueItems": true,
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "additionalProperties",
+        "properties"
+      ],
+      "type": "object"
+    },
+    "GameManifestNumericExpression": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "allOf": [
+            {
+              "$ref": "#/definitions/JsonLogicExpression"
+            }
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "GameManifestMetricEndpoint": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "bank"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "state"
+            },
+            "path": {
+              "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "path"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "GameManifestConstructionPayment": {
+      "additionalProperties": false,
+      "properties": {
+        "balancePath": {
+          "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+          "type": "string"
+        },
+        "amount": {
+          "$ref": "#/definitions/GameManifestNumericExpression"
+        }
+      },
+      "required": [
+        "balancePath",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "GameManifestCanonicalPoint": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "polygon": {
+          "items": {
+            "$ref": "#/definitions/GameManifestCanonicalPoint"
+          },
+          "minItems": 3,
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "polygon"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportNetworkModel": {
+      "additionalProperties": false,
+      "properties": {
+        "visibility": {
+          "$ref": "#/definitions/GameManifestObjectVisibility"
+        },
+        "nodeCollection": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "edgeCollection": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "waypointObjectType": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "edgeObjectType": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "edgeStateFacet": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "nodeStateFacet": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "buildableNodeStates": {
+          "items": {
+            "$ref": "#/definitions/GameManifestObjectFacetValue"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "splittableEdgeStates": {
+          "items": {
+            "$ref": "#/definitions/GameManifestObjectFacetValue"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "builtEdgeState": {
+          "$ref": "#/definitions/GameManifestObjectFacetValue"
+        },
+        "sequencePath": {
+          "pattern": "^/(public|secret)/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+          "type": "string"
+        },
+        "roadCostPerRegionSegment": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "waypointCost": {
+          "minimum": 0,
+          "type": "integer"
+        },
+        "regions": {
+          "items": {
+            "$ref": "#/definitions/GameManifestTransportRegion"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "visibility",
+        "nodeCollection",
+        "edgeCollection",
+        "waypointObjectType",
+        "edgeObjectType",
+        "nodeStateFacet",
+        "buildableNodeStates",
+        "edgeStateFacet",
+        "splittableEdgeStates",
+        "builtEdgeState",
+        "sequencePath",
+        "roadCostPerRegionSegment",
+        "waypointCost",
+        "regions"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportNetworkModelMap": {
+      "additionalProperties": {
+        "$ref": "#/definitions/GameManifestTransportNetworkModel"
+      },
+      "minProperties": 1,
       "type": "object"
     },
     "GameManifestTemplateDefinition": {
@@ -226,6 +635,13 @@
         },
         "settings": {
           "$ref": "#/definitions/GameManifestSettings"
+        },
+        "sessionMode": {
+          "enum": [
+            "standard",
+            "facilitated"
+          ],
+          "type": "string"
         }
       },
       "required": [
@@ -910,6 +1326,111 @@
             "op",
             "metricId",
             "delta"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "metric.transfer"
+            },
+            "from": {
+              "$ref": "#/definitions/GameManifestMetricEndpoint"
+            },
+            "to": {
+              "$ref": "#/definitions/GameManifestMetricEndpoint"
+            },
+            "amount": {
+              "$ref": "#/definitions/GameManifestNumericExpression"
+            },
+            "insufficientFunds": {
+              "const": "fail"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "from",
+            "to",
+            "amount",
+            "insufficientFunds"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "transport.road.build"
+            },
+            "networkId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "fromNodeParam": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "toNodeParam": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "payments": {
+              "items": {
+                "$ref": "#/definitions/GameManifestConstructionPayment"
+              },
+              "type": "array"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "networkId",
+            "fromNodeParam",
+            "toNodeParam",
+            "payments"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "transport.waypoint.build"
+            },
+            "networkId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "edgeParam": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "positionParam": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "payments": {
+              "items": {
+                "$ref": "#/definitions/GameManifestConstructionPayment"
+              },
+              "type": "array"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "networkId",
+            "edgeParam",
+            "positionParam",
+            "payments"
           ],
           "type": "object"
         },

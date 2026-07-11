@@ -1,7 +1,7 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { IGameRepository } from "./repository.ts";
+import type { GameAssetFileMetadata, IGameRepository } from "./repository.ts";
 
 const defaultRepoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
 const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
@@ -120,4 +120,63 @@ export class LocalFileGameRepository implements IGameRepository {
     }
     return readFile(resolved, "utf-8");
   }
+
+  async getGameAssetsRegistryRaw(gameId: string): Promise<string | undefined> {
+    assertSafeGameId(gameId);
+    const registryPath = path.resolve(this.repoRoot, "games", gameId, "assets", "assets.json");
+    try {
+      return await readFile(registryPath, "utf8");
+    } catch (error) {
+      if (isMissingFileError(error)) {
+        return undefined;
+      }
+      throw error;
+    }
+  }
+
+  async getGameAssetFileMetadata(gameId: string, relativeFilePath: string): Promise<GameAssetFileMetadata> {
+    const resolved = await this.resolveGameAssetFile(gameId, relativeFilePath);
+    const fileStat = await stat(resolved);
+    if (!fileStat.isFile()) {
+      throw new Error("Game asset registry entry must resolve to a regular file.");
+    }
+    return {
+      mtimeMs: fileStat.mtimeMs,
+      size: fileStat.size,
+      extension: path.extname(resolved).slice(1).toLowerCase()
+    };
+  }
+
+  async getGameAssetFileBytes(gameId: string, relativeFilePath: string): Promise<Buffer> {
+    return readFile(await this.resolveGameAssetFile(gameId, relativeFilePath));
+  }
+
+  private async resolveGameAssetFile(gameId: string, relativeFilePath: string): Promise<string> {
+    assertSafeGameId(gameId);
+    if (
+      path.isAbsolute(relativeFilePath) ||
+      relativeFilePath.includes("\0") ||
+      relativeFilePath.includes("..")
+    ) {
+      throw new Error("Game asset file path must be a safe relative path.");
+    }
+
+    const assetsRoot = path.resolve(this.repoRoot, "games", gameId, "assets");
+    const resolved = path.resolve(assetsRoot, relativeFilePath);
+    if (resolved === assetsRoot || !resolved.startsWith(`${assetsRoot}${path.sep}`)) {
+      throw new Error("Game asset file path must stay inside the game's assets directory.");
+    }
+
+    // Lexical containment blocks `..`; realpath containment also blocks a
+    // registered symlink inside assets/ from targeting an arbitrary host file.
+    const [realAssetsRoot, realResolved] = await Promise.all([realpath(assetsRoot), realpath(resolved)]);
+    if (realResolved === realAssetsRoot || !realResolved.startsWith(`${realAssetsRoot}${path.sep}`)) {
+      throw new Error("Game asset file path must not escape through a symbolic link.");
+    }
+    return realResolved;
+  }
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && "code" in error && (error as { code: string }).code === "ENOENT";
 }

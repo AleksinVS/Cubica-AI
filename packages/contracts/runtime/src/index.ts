@@ -31,7 +31,19 @@ export interface RuntimeManifestActionDefinition {
   functionName?: string;
   templateId?: string;
   params?: Record<string, unknown>;
+  paramsSchema?: Record<string, unknown>;
+  allowedSessionRoles?: Array<"player" | "facilitator" | "assistant" | "observer">;
   raw: Record<string, unknown>;
+}
+
+export interface RuntimeResolvedReference {
+  paramName: string;
+  id: string;
+  kind: "object" | "action-resource";
+  collection: string;
+  visibility: "public" | "secret";
+  network?: string;
+  objectType?: string;
 }
 
 export interface RuntimeActionContext<TState = unknown> {
@@ -39,6 +51,9 @@ export interface RuntimeActionContext<TState = unknown> {
   gameId: string;
   actionId: string;
   payload?: unknown;
+  params?: Record<string, unknown>;
+  sessionRole?: "player" | "facilitator" | "assistant" | "observer";
+  resolvedRefs?: Record<string, RuntimeResolvedReference>;
   state: TState;
   now: Date;
   manifestAction: RuntimeManifestActionDefinition;

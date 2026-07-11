@@ -1,0 +1,851 @@
+{
+  "$schema": "../../../docs/architecture/schemas/game-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "game",
+  "_definitions": {},
+  "root": {
+    "_type": "game.Game",
+    "_label": "Карты, деньги, поезда",
+    "_semantics": "Фасилитируемая бизнес-игра о взаимозависимости логистических компаний и паровозных гильдий.",
+    "meta": {
+      "id": "cards-money-trains",
+      "version": "0.1.0",
+      "name": "Карты, деньги, поезда",
+      "description": "Очная командная бизнес-игра о переговорах, текущей прибыли и совместных инвестициях в транспортную сеть.",
+      "author": "Cubica",
+      "schemaVersion": "1.3",
+      "minEngineVersion": "0.1.0",
+      "tags": [
+        "facilitated",
+        "business-game",
+        "transport"
+      ],
+      "training": {
+        "format": "team",
+        "duration": {
+          "minMinutes": 360,
+          "maxMinutes": 480
+        },
+        "competencies": [
+          {
+            "id": "change-management",
+            "name": "Управление изменениями",
+            "description": "Команды анализируют новости и последствия собственных решений."
+          },
+          {
+            "id": "negotiation",
+            "name": "Коммуникации и переговоры",
+            "description": "Разные типы команд договариваются о перевозках и инвестициях."
+          },
+          {
+            "id": "strategic-thinking",
+            "name": "Стратегическое мышление",
+            "description": "Команды сопоставляют краткосрочный доход с развитием общей сети."
+          }
+        ]
+      }
+    },
+    "config": {
+      "players": {
+        "min": 1,
+        "max": 1
+      },
+      "settings": {
+        "mode": "local-facilitator",
+        "locale": "ru-RU"
+      },
+      "sessionMode": "facilitated"
+    },
+    "content": {
+      "data": {
+        "rules": {
+          "session": {
+            "singleFacilitatorScreen": true,
+            "assistantHasSeparateIdentity": false,
+            "manualFinish": true,
+            "personalNotesPersisted": false
+          },
+          "economy": {
+            "startingCoins": 10,
+            "creditAllowed": false,
+            "negativeBalanceAllowed": false,
+            "partialPaymentsAllowed": false,
+            "vehicleSalePhase": "market",
+            "prices": {
+              "locomotive": {
+                "purchase": 10,
+                "sale": 4
+              },
+              "wagon": {
+                "purchase": 5,
+                "sale": 2
+              }
+            }
+          },
+          "teams": {
+            "logistics_company": {
+              "startingWagons": 2,
+              "startingLocomotives": 0
+            },
+            "locomotive_guild": {
+              "startingWagons": 0,
+              "startingLocomotives": 1
+            }
+          },
+          "movement": {
+            "locomotiveActionPoints": 5,
+            "terminalLocomotiveCapacity": 2
+          },
+          "construction": {
+            "waypointCost": 5,
+            "repeatUntilExplicitFinish": true,
+            "roadGeometry": "straight-between-canonical-node-coordinates",
+            "roadCostPerRegionSegment": 2
+          }
+        },
+        "board": {
+          "sceneId": "main",
+          "designWidth": 1400,
+          "designHeight": 1000,
+          "deliveryAssetId": "board-guinea-optimized"
+        },
+        "assets": [
+          {
+            "id": "board-guinea-optimized",
+            "kind": "image",
+            "registry": "assets/assets.json"
+          }
+        ],
+        "contentGates": {
+          "runtimeReady": false,
+          "missing": [
+            "news deck",
+            "cargo deck and payouts",
+            "initial transport topology",
+            "canonical node coordinates",
+            "canonical region polygons",
+            "demonstration moves",
+            "asset publication rights"
+          ]
+        },
+        "constructionActionIntent": {
+          "status": "declared-for-fixed-demo-blocked-until-network-content",
+          "road": {
+            "actionId": "construction.road.build",
+            "endpointReferenceSemantics": "schema-declared x-cubica-ref to public network node objects",
+            "payments": "four fixed nonnegative demonstration-team contributions"
+          },
+          "waypoint": {
+            "actionId": "construction.waypoint.build",
+            "edgeReferenceSemantics": "schema-declared x-cubica-ref to a public network edge object",
+            "position": "number strictly between 0 and 1",
+            "payments": "four fixed nonnegative demonstration-team contributions"
+          }
+        }
+      }
+    },
+    "objectTypes": {
+      "transport.terminal": {
+        "_type": "game.ObjectType",
+        "_label": "Терминал транспортной сети",
+        "_semantics": "Авторитетный узел с канонической позицией; конкретные узлы ожидают авторскую топологию.",
+        "collection": "networkNodes",
+        "idField": "id",
+        "scope": "session",
+        "facets": {
+          "availability": {
+            "initial": "open",
+            "values": {
+              "open": {
+                "visible": true,
+                "interactive": true
+              },
+              "closed": {
+                "visible": true,
+                "interactive": false,
+                "view": {
+                  "visualState": "locked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "transport.waypoint": {
+        "_type": "game.ObjectType",
+        "_label": "Полустанок транспортной сети",
+        "_semantics": "Динамический узел, который создается только на существующей дороге.",
+        "collection": "networkNodes",
+        "idField": "id",
+        "scope": "session",
+        "facets": {
+          "availability": {
+            "initial": "open",
+            "values": {
+              "open": {
+                "visible": true,
+                "interactive": true
+              },
+              "closed": {
+                "visible": true,
+                "interactive": false,
+                "view": {
+                  "visualState": "locked"
+                }
+              }
+            }
+          }
+        }
+      },
+      "transport.edge": {
+        "_type": "game.ObjectType",
+        "_label": "Дорога транспортной сети",
+        "_semantics": "Двусторонняя связь с отдельным состоянием строительства и блокировки.",
+        "collection": "networkEdges",
+        "idField": "id",
+        "scope": "session",
+        "facets": {
+          "state": {
+            "initial": "building",
+            "values": {
+              "building": {
+                "visible": true,
+                "interactive": false,
+                "view": {
+                  "visualState": "pending"
+                }
+              },
+              "open": {
+                "visible": true,
+                "interactive": true
+              },
+              "blocked": {
+                "visible": true,
+                "interactive": false,
+                "view": {
+                  "visualState": "locked"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "logic": {
+      "entry": "facilitator",
+      "flows": [
+        {
+          "id": "facilitator",
+          "_type": "game.Flow",
+          "_label": "Общий экран ведущего",
+          "_semantics": "Единственный локальный экран управляет фазами и подтвержденными действиями команд.",
+          "pattern": "systemic",
+          "steps": [
+            {
+              "id": "facilitator.setup",
+              "_type": "game.Step",
+              "_label": "Подготовка",
+              "_semantics": "Ведущий проверяет состав команд и ожидаемый авторский контент.",
+              "screenId": "facilitator",
+              "actionIds": [
+                "session.finish.request",
+                "session.finish.confirm",
+                "session.finish.cancel"
+              ]
+            },
+            {
+              "id": "facilitator.construction",
+              "_type": "game.Step",
+              "_label": "Строительство",
+              "_semantics": "Выбор режима не завершает фазу; ведущий завершает ее отдельным действием.",
+              "screenId": "facilitator",
+              "actionIds": [
+                "construction.mode.road",
+                "construction.mode.waypoint",
+                "construction.phase.finish",
+                "session.finish.request",
+                "session.finish.confirm",
+                "session.finish.cancel"
+              ]
+            }
+          ]
+        }
+      ],
+      "systems": [],
+      "rules": [],
+      "pendingActionReason": "Road and waypoint actions are excluded from runtime output until the author supplies the network model, canonical nodes, coordinates, and regions.",
+      "pendingActions": [
+        {
+          "id": "construction.road.build",
+          "_type": "game.Action",
+          "_label": "Построить дорогу",
+          "_semantics": "Строит прямую дорогу между двумя выбранными существующими узлами и списывает только полную сумму четырех демонстрационных вкладов.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "transport.road.build",
+          "displayName": "Подтвердить дорогу",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "paramsSchema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "fromNodeId": {
+                "type": "string",
+                "maxLength": 128,
+                "x-cubica-ref": {
+                  "kind": "object",
+                  "collection": "networkNodes",
+                  "network": "main",
+                  "allowedTypes": [
+                    "transport.terminal",
+                    "transport.waypoint"
+                  ],
+                  "visibility": "public"
+                }
+              },
+              "toNodeId": {
+                "type": "string",
+                "maxLength": 128,
+                "x-cubica-ref": {
+                  "kind": "object",
+                  "collection": "networkNodes",
+                  "network": "main",
+                  "allowedTypes": [
+                    "transport.terminal",
+                    "transport.waypoint"
+                  ],
+                  "visibility": "public"
+                }
+              },
+              "whiteContribution": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "redContribution": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "purpleContribution": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "greenContribution": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "fromNodeId",
+              "toNodeId",
+              "whiteContribution",
+              "redContribution",
+              "purpleContribution",
+              "greenContribution"
+            ]
+          },
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/phase",
+                  "operator": "==",
+                  "value": "construction"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "transport.road.build",
+                "networkId": "main",
+                "fromNodeParam": "fromNodeId",
+                "toNodeParam": "toNodeId",
+                "payments": [
+                  {
+                    "balancePath": "/public/teams/white-logistics/coins",
+                    "amount": {
+                      "var": "params.whiteContribution"
+                    }
+                  },
+                  {
+                    "balancePath": "/public/teams/red-logistics/coins",
+                    "amount": {
+                      "var": "params.redContribution"
+                    }
+                  },
+                  {
+                    "balancePath": "/public/teams/purple-guild/coins",
+                    "amount": {
+                      "var": "params.purpleContribution"
+                    }
+                  },
+                  {
+                    "balancePath": "/public/teams/green-guild/coins",
+                    "amount": {
+                      "var": "params.greenContribution"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "construction.waypoint.build",
+          "_type": "game.Action",
+          "_label": "Построить полустанок",
+          "_semantics": "Делит выбранную существующую дорогу в указанной внутренней позиции и списывает полную стоимость с четырех демонстрационных команд.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "transport.waypoint.build",
+          "displayName": "Подтвердить полустанок",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "paramsSchema": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "edgeId": {
+                "type": "string",
+                "maxLength": 128,
+                "x-cubica-ref": {
+                  "kind": "object",
+                  "collection": "networkEdges",
+                  "network": "main",
+                  "allowedTypes": [
+                    "transport.edge"
+                  ],
+                  "visibility": "public"
+                }
+              },
+              "positionT": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "exclusiveMaximum": 1
+              },
+              "whiteContribution": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "redContribution": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "purpleContribution": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "greenContribution": {
+                "type": "integer",
+                "minimum": 0
+              }
+            },
+            "required": [
+              "edgeId",
+              "positionT",
+              "whiteContribution",
+              "redContribution",
+              "purpleContribution",
+              "greenContribution"
+            ]
+          },
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/phase",
+                  "operator": "==",
+                  "value": "construction"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "transport.waypoint.build",
+                "networkId": "main",
+                "edgeParam": "edgeId",
+                "positionParam": "positionT",
+                "payments": [
+                  {
+                    "balancePath": "/public/teams/white-logistics/coins",
+                    "amount": {
+                      "var": "params.whiteContribution"
+                    }
+                  },
+                  {
+                    "balancePath": "/public/teams/red-logistics/coins",
+                    "amount": {
+                      "var": "params.redContribution"
+                    }
+                  },
+                  {
+                    "balancePath": "/public/teams/purple-guild/coins",
+                    "amount": {
+                      "var": "params.purpleContribution"
+                    }
+                  },
+                  {
+                    "balancePath": "/public/teams/green-guild/coins",
+                    "amount": {
+                      "var": "params.greenContribution"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "actions": [
+        {
+          "id": "construction.mode.road",
+          "_type": "game.Action",
+          "_label": "Выбрать строительство дороги",
+          "_semantics": "Переводит панель в режим выбора двух существующих станций или полустанков, не меняя фазу.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "transport.construction.mode.road",
+          "displayName": "Строить дорогу",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/phase",
+                  "operator": "==",
+                  "value": "construction"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/construction/mode",
+                    "value": "road"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "construction.mode.waypoint",
+          "_type": "game.Action",
+          "_label": "Выбрать строительство полустанка",
+          "_semantics": "Переводит панель в режим выбора внутренней точки существующей дороги, не меняя фазу.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "transport.construction.mode.waypoint",
+          "displayName": "Строить полустанок",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/phase",
+                  "operator": "==",
+                  "value": "construction"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/construction/mode",
+                    "value": "waypoint"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "construction.phase.finish",
+          "_type": "game.Action",
+          "_label": "Завершить этап строительства",
+          "_semantics": "Явно закрывает повторяемый этап строительства; успешный отдельный объект этого не делает.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "turn.phase.finish.construction",
+          "displayName": "Завершить строительство",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/phase",
+                  "operator": "==",
+                  "value": "construction"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/construction/mode",
+                    "value": null
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/construction/available",
+                    "value": false
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/session/phase",
+                    "value": "reporting"
+                  }
+                ]
+              },
+              {
+                "op": "log.append",
+                "target": "public.log",
+                "kind": "phase",
+                "summary": "Ведущий завершил этап строительства"
+              }
+            ]
+          }
+        },
+        {
+          "id": "session.finish.request",
+          "_type": "game.Action",
+          "_label": "Запросить завершение игры",
+          "_semantics": "Открывает подтверждение, но еще не завершает игру.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "session.finish.request",
+          "displayName": "Завершить игру",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/status",
+                  "operator": "!=",
+                  "value": "finished"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/session/finishConfirmationPending",
+                    "value": true
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/session/canRequestFinish",
+                    "value": false
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "session.finish.cancel",
+          "_type": "game.Action",
+          "_label": "Отменить завершение игры",
+          "_semantics": "Закрывает подтверждение и оставляет игру в текущей фазе.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "session.finish.cancel",
+          "displayName": "Продолжить игру",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/finishConfirmationPending",
+                  "operator": "==",
+                  "value": true
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/session/finishConfirmationPending",
+                    "value": false
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/session/canRequestFinish",
+                    "value": true
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "session.finish.confirm",
+          "_type": "game.Action",
+          "_label": "Подтвердить завершение игры",
+          "_semantics": "Только явное второе действие ведущего переводит сессию в завершенное состояние.",
+          "handlerType": "manifest-data",
+          "capabilityFamily": "runtime.server",
+          "capability": "session.finish.manual",
+          "displayName": "Подтвердить завершение",
+          "allowedSessionRoles": [
+            "facilitator"
+          ],
+          "deterministic": {
+            "guard": {
+              "stateConditions": [
+                {
+                  "path": "/public/session/finishConfirmationPending",
+                  "operator": "==",
+                  "value": true
+                },
+                {
+                  "path": "/public/session/status",
+                  "operator": "!=",
+                  "value": "finished"
+                }
+              ]
+            },
+            "effects": [
+              {
+                "op": "state.patch",
+                "patches": [
+                  {
+                    "op": "replace",
+                    "path": "/public/session/status",
+                    "value": "finished"
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/session/phase",
+                    "value": "finished"
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/session/finishConfirmationPending",
+                    "value": false
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/session/canRequestFinish",
+                    "value": false
+                  },
+                  {
+                    "op": "replace",
+                    "path": "/public/construction/mode",
+                    "value": null
+                  }
+                ]
+              },
+              {
+                "op": "log.append",
+                "target": "public.log",
+                "kind": "session",
+                "summary": "Ведущий завершил игру"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "state": {
+      "public": {
+        "timeline": {
+          "line": "facilitator",
+          "stepIndex": 0,
+          "step_index": 0,
+          "stageId": "setup",
+          "stage_id": "setup",
+          "screenId": "facilitator",
+          "screen_id": "facilitator",
+          "canAdvance": false
+        },
+        "session": {
+          "status": "active",
+          "turnNumber": 1,
+          "phase": "construction",
+          "finishConfirmationPending": false,
+          "canRequestFinish": true,
+          "fixtureId": "demonstration-start"
+        },
+        "construction": {
+          "mode": null,
+          "available": true,
+          "sequence": 0
+        },
+        "teamSetupPolicy": {
+          "startingCoins": 10,
+          "logistics_company": {
+            "wagons": 2,
+            "locomotives": 0
+          },
+          "locomotive_guild": {
+            "wagons": 0,
+            "locomotives": 1
+          }
+        },
+        "teams": {
+          "white-logistics": {
+            "label": "Белая",
+            "type": "logistics_company",
+            "coins": 10
+          },
+          "red-logistics": {
+            "label": "Красная",
+            "type": "logistics_company",
+            "coins": 2
+          },
+          "purple-guild": {
+            "label": "Фиолетовая",
+            "type": "locomotive_guild",
+            "coins": 1
+          },
+          "green-guild": {
+            "label": "Зеленая",
+            "type": "locomotive_guild",
+            "coins": 5
+          }
+        },
+        "objects": {
+          "networkNodes": {},
+          "networkEdges": {},
+          "locomotives": {},
+          "wagons": {}
+        },
+        "board": {
+          "canonicalBounds": null,
+          "highlights": [],
+          "availableActions": []
+        },
+        "log": []
+      },
+      "secret": {}
+    }
+  }
+}

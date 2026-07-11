@@ -1,0 +1,196 @@
+{
+  "meta": {
+    "id": "cards-money-trains.ui.web",
+    "version": "0.1.0",
+    "schema_version": "1.0",
+    "game_id": "cards-money-trains",
+    "game_manifest_version": "0.1.0",
+    "channel": "web",
+    "author": "Cubica"
+  },
+  "entry_point": "facilitator",
+  "screen_routing": [
+    {
+      "screenKey": "facilitator",
+      "conditions": {
+        "screenId": "facilitator",
+        "layoutMode": "topbar"
+      }
+    }
+  ],
+  "screens": {
+    "facilitator": {
+      "title": "Карты, деньги, поезда",
+      "layout_mode": "topbar",
+      "root": {
+        "id": "facilitator.root",
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "topbar-screen-shell"
+        },
+        "children": [
+          {
+            "id": "facilitator.statusbar",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "id": "facilitator.status",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h1>Карты, деньги, поезда</h1><p><strong>Статус:</strong> {{game.state.public.session.status}} · <strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}}</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "facilitator.main",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "id": "facilitator.board",
+                "type": "interactiveBoardSurface",
+                "props": {
+                  "sceneId": "main",
+                  "designWidth": 1400,
+                  "designHeight": 1000,
+                  "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
+                }
+              },
+              {
+                "id": "facilitator.construction-controls",
+                "type": "areaComponent",
+                "if": "{{game.state.public.construction.available}}",
+                "props": {
+                  "cssClass": "button-container"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.build-road-mode",
+                    "type": "buttonComponent",
+                    "props": {
+                      "caption": "Дорога",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "construction.mode.road"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.build-waypoint-mode",
+                    "type": "buttonComponent",
+                    "props": {
+                      "caption": "Полустанок",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "construction.mode.waypoint"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.finish-construction",
+                    "type": "buttonComponent",
+                    "props": {
+                      "caption": "Завершить этап строительства",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "construction.phase.finish"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.finish-controls",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "button-container"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.finish-request",
+                    "type": "buttonComponent",
+                    "if": "{{game.state.public.session.canRequestFinish}}",
+                    "props": {
+                      "caption": "Завершить игру…",
+                      "variant": "helper"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "session.finish.request"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.finish-confirm",
+                    "type": "buttonComponent",
+                    "if": "{{game.state.public.session.finishConfirmationPending}}",
+                    "props": {
+                      "caption": "Подтвердить завершение",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "session.finish.confirm"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.finish-cancel",
+                    "type": "buttonComponent",
+                    "if": "{{game.state.public.session.finishConfirmationPending}}",
+                    "props": {
+                      "caption": "Продолжить игру",
+                      "variant": "helper"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "session.finish.cancel"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.content-gate",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<p><strong>До загрузки авторского содержимого:</strong> поле показывает только данные публичного snapshot. Колоды, выплаты, начальная сеть, координаты, области и демонстрационные перемещения не подменяются временными значениями.</p>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

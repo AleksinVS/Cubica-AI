@@ -1,0 +1,13 @@
+{
+  "gameId": "test-game",
+  "assets": [
+    {
+      "id": "board-background",
+      "file": "board.gif",
+      "kind": "image",
+      "origin": {
+        "type": "authored-in-repo"
+      }
+    }
+  ]
+}

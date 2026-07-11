@@ -18,10 +18,12 @@ import type {
   GameManifestObjectModelMap,
   GameManifestObjectState,
   GameManifestObjectStateGuard,
+  GameManifestTransportNetworkModelMap,
   GameManifestTemplateMap,
   JsonLogicExpression
 } from "@cubica/contracts-manifest";
 import jsonLogic from "json-logic-js";
+import { applyTransportEffect } from "./transportNetwork.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -31,6 +33,7 @@ type DeterministicHandlerMode = "capability" | "manifest-action";
 interface DeterministicHandlerOptions {
   mode?: DeterministicHandlerMode;
   objectModels?: GameManifestObjectModelMap;
+  networkModels?: GameManifestTransportNetworkModelMap;
   templates?: GameManifestTemplateMap;
 }
 
@@ -200,6 +203,13 @@ const splitJsonPointer = (path: string): Array<string> => {
   return path.split("/").slice(1).map(decodeJsonPointerSegment);
 };
 
+const forbiddenPointerSegments = new Set(["__proto__", "constructor", "prototype"]);
+const assertSafeJsonPointer = (path: string) => {
+  if (splitJsonPointer(path).some((segment) => forbiddenPointerSegments.has(segment))) {
+    throw new Error(`Manifest effect path contains a forbidden segment`);
+  }
+};
+
 const readJsonPointer = (state: RuntimeState, path: string): unknown => {
   const parts = splitJsonPointer(path);
   if (parts.length === 0) {
@@ -237,6 +247,7 @@ const canWriteManifestEffectPath = (path: string) =>
   path.startsWith("/public/") || path.startsWith("/secret/");
 
 const assertWritableManifestEffectPath = (path: string) => {
+  assertSafeJsonPointer(path);
   if (!canWriteManifestEffectPath(path)) {
     throw new Error(`Manifest effect cannot write to path "${path}"`);
   }
@@ -256,9 +267,15 @@ const buildManifestParameterScope = (context: RuntimeActionContext<RuntimeState>
   return {
     ...(isObjectRecord(raw.params) ? raw.params : {}),
     ...(isObjectRecord(context.manifestAction.params) ? context.manifestAction.params : {}),
-    ...(isObjectRecord(context.payload) ? context.payload : {})
+    ...(isObjectRecord(context.params) ? context.params : {})
   };
 };
+
+/** JsonLogic receives params in one explicit branch; params are never spread into state. */
+const buildJsonLogicContext = (state: RuntimeState, params: Record<string, unknown>) => ({
+  ...state,
+  params
+});
 
 const objectVisibilityRoot = (
   state: RuntimeState,
@@ -623,6 +640,8 @@ const buildTransition = (
     capability: context.manifestAction.capability,
     capabilityFamily,
     functionName: context.manifestAction.functionName ?? context.actionId,
+    sessionRole: context.sessionRole ?? "player",
+    params: context.params ?? {},
     at: context.now.toISOString(),
     payload: context.payload ?? null
   };
@@ -810,7 +829,10 @@ const evaluateManifestGuard = (
 
   // Tier 2 guard: JsonLogic expression evaluation
   if (guard.jsonLogic) {
-    const result = jsonLogic.apply(guard.jsonLogic as Parameters<typeof jsonLogic.apply>[0], state);
+    const result = jsonLogic.apply(
+      guard.jsonLogic as Parameters<typeof jsonLogic.apply>[0],
+      buildJsonLogicContext(state, params)
+    );
     if (!result) {
       failures.push(`JsonLogic guard evaluated to false`);
     }
@@ -826,7 +848,8 @@ const readMetricSnapshot = (state: RuntimeState): Record<string, unknown> => {
 
 const applyMetricChange = (
   state: RuntimeState,
-  change: { metricId: string; delta: number | string | JsonLogicExpression }
+  change: { metricId: string; delta: number | string | JsonLogicExpression },
+  params: Record<string, unknown>
 ) => {
   const publicState = ensureObject(state.public);
   const metrics = ensureObject(publicState.metrics);
@@ -840,7 +863,7 @@ const applyMetricChange = (
     changeValue = Number(change.delta);
   } else if (typeof change.delta === "object" && change.delta !== null) {
     // JsonLogic expression — evaluate against the current state.
-    changeValue = Number(jsonLogic.apply(change.delta as any, state)) || 0;
+    changeValue = Number(jsonLogic.apply(change.delta as any, buildJsonLogicContext(state, params))) || 0;
   } else {
     changeValue = 0;
   }
@@ -849,6 +872,48 @@ const applyMetricChange = (
 
   publicState.metrics = metrics;
   state.public = publicState;
+};
+
+const resolveNumericExpression = (
+  value: number | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> },
+  state: RuntimeState,
+  params: Record<string, unknown>
+): number => {
+  const resolved = typeof value === "object" && value !== null
+    ? jsonLogic.apply(value as Parameters<typeof jsonLogic.apply>[0], buildJsonLogicContext(state, params))
+    : value;
+  const amount = typeof resolved === "number" ? resolved : Number.NaN;
+  if (!Number.isSafeInteger(amount) || amount < 0) {
+    throw new Error("Metric transfer amount must be a finite non-negative integer");
+  }
+  return amount;
+};
+
+/** Apply one nonnegative transfer. The caller works on a cloned action state. */
+const applyMetricTransfer = (
+  state: RuntimeState,
+  effect: Extract<GameManifestDeterministicEffect, { op: "metric.transfer" }>,
+  params: Record<string, unknown>
+) => {
+  const amount = resolveNumericExpression(effect.amount, state, params);
+  if (effect.from.kind === "state") assertWritableManifestEffectPath(effect.from.path);
+  if (effect.to.kind === "state") assertWritableManifestEffectPath(effect.to.path);
+  const sourceValue = effect.from.kind === "bank" ? undefined : readJsonPointer(state, effect.from.path);
+  const destinationValue = effect.to.kind === "bank" ? undefined : readJsonPointer(state, effect.to.path);
+  if (effect.from.kind === "state" &&
+      (typeof sourceValue !== "number" || !Number.isFinite(sourceValue) || sourceValue < amount)) {
+    throw new Error("Metric transfer cannot make a source balance negative");
+  }
+  if (effect.to.kind === "state" &&
+      (typeof destinationValue !== "number" || !Number.isFinite(destinationValue) || destinationValue < 0)) {
+    throw new Error("Metric transfer destination must be a finite non-negative balance");
+  }
+  if (effect.from.kind === "state") {
+    setJsonPointerValue(state, effect.from.path, (sourceValue as number) - amount);
+  }
+  if (effect.to.kind === "state") {
+    setJsonPointerValue(state, effect.to.path, (destinationValue as number) + amount);
+  }
 };
 
 const appendStructuredLogEntry = (
@@ -919,7 +984,8 @@ const applyManifestEffects = (
   capabilityFamily: CapabilityFamily,
   preActionState: RuntimeState,
   metricsBefore: Record<string, unknown>,
-  objectModels?: GameManifestObjectModelMap
+  objectModels?: GameManifestObjectModelMap,
+  networkModels?: GameManifestTransportNetworkModelMap
 ): Array<RuntimeActionEffect> => {
   const declaredEffects = Array.isArray(metadata.effects) ? metadata.effects : [];
   const runtimeEffects: Array<RuntimeActionEffect> = [];
@@ -1002,7 +1068,7 @@ const applyManifestEffects = (
         break;
       }
       case "metric.add": {
-        applyMetricChange(state, { metricId: effect.metricId, delta: effect.delta });
+        applyMetricChange(state, { metricId: effect.metricId, delta: effect.delta }, params);
         runtimeEffects.push({
           kind: "state",
           target: `public.metrics.${effect.metricId}`,
@@ -1013,6 +1079,34 @@ const applyManifestEffects = (
             op: effect.op,
             delta: effect.delta
           }
+        });
+        break;
+      }
+      case "metric.transfer": {
+        applyMetricTransfer(state, effect, params);
+        runtimeEffects.push({
+          kind: "state",
+          target: effect.to.kind === "state" ? effect.to.path : "bank",
+          value: "metric.transfer",
+          data: { op: effect.op, from: effect.from, to: effect.to, amount: effect.amount }
+        });
+        break;
+      }
+      case "transport.road.build":
+      case "transport.waypoint.build": {
+        const result = applyTransportEffect({
+          state,
+          effect,
+          params,
+          resolvedRefs: context.resolvedRefs ?? {},
+          networkModels,
+          objectModels
+        });
+        runtimeEffects.push({
+          kind: "state",
+          target: `transport.${effect.networkId}`,
+          value: effect.op,
+          data: { op: effect.op, ...result }
         });
         break;
       }
@@ -1245,7 +1339,8 @@ const buildManifestActionTransition = (
   context: RuntimeActionContext<RuntimeState>,
   capabilityFamily: CapabilityFamily,
   templates?: GameManifestTemplateMap,
-  objectModels?: GameManifestObjectModelMap
+  objectModels?: GameManifestObjectModelMap,
+  networkModels?: GameManifestTransportNetworkModelMap
 ): RuntimeActionResult<RuntimeState> => {
   if (
     context.manifestAction.handlerType !== "manifest-data" &&
@@ -1295,7 +1390,8 @@ const buildManifestActionTransition = (
       capabilityFamily,
       context.state,
       metricsBefore,
-      objectModels
+      objectModels,
+      networkModels
     );
   } catch (error) {
     return {
@@ -1337,7 +1433,13 @@ export function createDeterministicHandler(
 ): RuntimeActionHandler<RuntimeState> {
   const mode = options.mode ?? "capability";
   if (mode === "manifest-action") {
-    return (context) => buildManifestActionTransition(context, capabilityFamily, options.templates, options.objectModels);
+    return (context) => buildManifestActionTransition(
+      context,
+      capabilityFamily,
+      options.templates,
+      options.objectModels,
+      options.networkModels
+    );
   }
 
   return (context) => buildTransition(context, capabilityFamily);

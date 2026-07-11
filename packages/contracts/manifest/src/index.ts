@@ -16,6 +16,13 @@
  * - `player-web` renderer: uses `GamePlayerUiContent`, `GamePlayerS1UiContent` (deprecated), `GameUiComponent` types
  */
 
+export type {
+  AuthoredInRepoOrigin,
+  GameAssetEntry,
+  RootGameAssets,
+  ThirdPartyOrigin
+} from "./generated/game-assets.ts";
+
 /**
  * Generic game state type. Game plugins extend this with their own
  * game-specific state shape (e.g. AntarcticaGameState).
@@ -89,6 +96,53 @@ export interface GameManifestSettings {
 export interface GameManifestConfig {
   players: GameManifestPlayerConfig;
   settings: GameManifestSettings;
+  /** Facilitated sessions derive a trusted local facilitator role at creation. */
+  sessionMode?: "standard" | "facilitated";
+}
+
+export type GameManifestSessionRole = "player" | "facilitator" | "assistant" | "observer";
+
+/** Schema-owned semantic restriction for an otherwise inert string parameter. */
+export interface GameManifestCubicaReference {
+  kind: "object" | "action-resource";
+  collection: string;
+  network?: string;
+  allowedTypes?: Array<string>;
+  visibility: GameManifestObjectVisibility;
+}
+
+export interface GameManifestStringActionParamSchema {
+  type: "string";
+  maxLength: number;
+  minLength?: number;
+  enum?: Array<string>;
+  pattern?: string;
+  "x-cubica-ref"?: GameManifestCubicaReference;
+}
+
+export interface GameManifestNumericActionParamSchema {
+  type: "integer" | "number";
+  minimum?: number;
+  maximum?: number;
+  exclusiveMinimum?: number;
+  exclusiveMaximum?: number;
+  enum?: Array<number>;
+}
+
+export interface GameManifestBooleanActionParamSchema {
+  type: "boolean";
+}
+
+export type GameManifestActionParamPropertySchema =
+  | GameManifestStringActionParamSchema
+  | GameManifestNumericActionParamSchema
+  | GameManifestBooleanActionParamSchema;
+
+export interface GameManifestActionParamsSchema {
+  type: "object";
+  additionalProperties: false;
+  properties: Record<string, GameManifestActionParamPropertySchema>;
+  required?: Array<string>;
 }
 
 export interface GameManifestMetricBase {
@@ -252,6 +306,49 @@ export interface GameManifestObjectModel {
 
 export type GameManifestObjectModelMap = Record<string, GameManifestObjectModel>;
 
+export interface GameManifestCanonicalPoint {
+  x: number;
+  y: number;
+}
+
+export interface GameManifestTransportRegion {
+  id: string;
+  polygon: Array<GameManifestCanonicalPoint>;
+}
+
+/** Declarative binding between generic object collections and one transport graph. */
+export interface GameManifestTransportNetworkModel {
+  visibility: GameManifestObjectVisibility;
+  nodeCollection: string;
+  edgeCollection: string;
+  waypointObjectType: string;
+  edgeObjectType: string;
+  nodeStateFacet: string;
+  buildableNodeStates: Array<GameManifestObjectFacetValue>;
+  edgeStateFacet: string;
+  splittableEdgeStates: Array<GameManifestObjectFacetValue>;
+  builtEdgeState: GameManifestObjectFacetValue;
+  sequencePath: string;
+  roadCostPerRegionSegment: number;
+  waypointCost: number;
+  regions: Array<GameManifestTransportRegion>;
+}
+
+export type GameManifestTransportNetworkModelMap = Record<string, GameManifestTransportNetworkModel>;
+
+export type GameManifestNumericExpression =
+  | number
+  | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> };
+
+export type GameManifestMetricEndpoint =
+  | { kind: "bank" }
+  | { kind: "state"; path: string };
+
+export interface GameManifestConstructionPayment {
+  balancePath: string;
+  amount: GameManifestNumericExpression;
+}
+
 export interface GameManifestObjectStateGuard {
   visibility?: GameManifestObjectVisibility;
   collection: string;
@@ -387,6 +484,27 @@ export type GameManifestDeterministicEffect =
       delta: number | string | JsonLogicExpression;
     })
   | (GameManifestDeterministicEffectBase & {
+      op: "metric.transfer";
+      from: GameManifestMetricEndpoint;
+      to: GameManifestMetricEndpoint;
+      amount: GameManifestNumericExpression;
+      insufficientFunds: "fail";
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.road.build";
+      networkId: string;
+      fromNodeParam: string;
+      toNodeParam: string;
+      payments: Array<GameManifestConstructionPayment>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.waypoint.build";
+      networkId: string;
+      edgeParam: string;
+      positionParam: string;
+      payments: Array<GameManifestConstructionPayment>;
+    })
+  | (GameManifestDeterministicEffectBase & {
       op: "state.patch";
       patches: Array<GameManifestDeterministicStatePatch>;
     })
@@ -476,6 +594,8 @@ export interface GameManifestActionDefinition {
   handlerType: "script" | "ui" | "ai" | "system" | "unknown" | string;
   templateId?: string;
   params?: Record<string, unknown>;
+  paramsSchema?: GameManifestActionParamsSchema;
+  allowedSessionRoles?: Array<GameManifestSessionRole>;
   capabilityFamily?: string;
   capability?: string;
   function?: string;
@@ -518,6 +638,7 @@ export interface GameManifest<
   state: GameManifestState<TPublicState, TSecretState>;
   actions: TActions;
   objectModels?: GameManifestObjectModelMap;
+  networkModels?: GameManifestTransportNetworkModelMap;
   templates?: GameManifestTemplateMap;
 }
 
@@ -535,6 +656,8 @@ export interface PlayerFacingAction {
   displayName: string;
   capabilityFamily: string | null;
   capability: string | null;
+  paramsSchema?: GameManifestActionParamsSchema;
+  allowedSessionRoles?: Array<GameManifestSessionRole>;
 }
 
 export interface PlayerFacingMockup {
@@ -560,7 +683,8 @@ export type GameUiComponentType =
   | "cardComponent"
   | "buttonComponent"
   | "richTextComponent"
-  | "imageComponent";
+  | "imageComponent"
+  | "interactiveBoardSurface";
 
 /**
  * Props for screenComponent in S1 layout.
@@ -697,6 +821,18 @@ export interface GameUiImageComponentProps {
   cssClass?: string;
 }
 
+/** Props for a Phaser-backed board whose authoritative state still lives in runtime-api. */
+export interface GameUiInteractiveBoardSurfaceProps {
+  sceneId: string;
+  designWidth?: number;
+  designHeight?: number;
+  accessibleLabel?: string;
+  interactions?: {
+    modeActionId?: string;
+    selectActionId?: string;
+  };
+}
+
 /**
  * Union of all supported S1 component props shapes.
  */
@@ -707,7 +843,8 @@ export type GameUiComponentProps =
   | GameUiCardComponentProps
   | GameUiButtonComponentProps
   | GameUiRichTextComponentProps
-  | GameUiImageComponentProps;
+  | GameUiImageComponentProps
+  | GameUiInteractiveBoardSurfaceProps;
 
 /**
  * Action descriptor for interactive S1 UI components.

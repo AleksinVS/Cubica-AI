@@ -16,7 +16,10 @@ import type { GameConfigData } from "@/presenter/game-config";
 import { GamePresenter } from "@/presenter/game-presenter";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import { buildGameConfig, resolveRegisteredGameConfigData } from "@/presenter/game-config-registry";
-import { loadPlayerWebPluginBundles } from "@/plugins/preview-plugin-loader";
+import {
+  activatePlayerWebPluginBundles,
+  type PlayerWebPluginLoadHandle
+} from "@/plugins/preview-plugin-loader";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { SafeModeRenderer } from "@/components/safe-mode-renderer";
 import { CubicaSurfaceRenderer } from "@/components/surface/cubica-surface-renderer";
@@ -26,6 +29,12 @@ import {
   type EditorPreviewCompletedAction,
   type EditorPreviewSessionSnapshot
 } from "@/components/editor-preview-bridge";
+import {
+  createEmptyGameAssetResolver,
+  loadGameAssetResolver,
+  uiUsesGameAssets,
+  type GameAssetResolver
+} from "@/lib/game-asset-resolver";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -77,6 +86,10 @@ export function GamePlayer({
     () => playerPluginBundles.map((bundle) => `${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`).join("|"),
     [playerPluginBundles]
   );
+  const needsGameAssets = useMemo(() => uiUsesGameAssets(gameUi), [gameUi]);
+  const [gameAssets, setGameAssets] = useState<GameAssetResolver | null>(
+    () => needsGameAssets ? null : createEmptyGameAssetResolver()
+  );
   const [playerPluginState, setPlayerPluginState] = useState<{
     readonly status: "loading" | "ready" | "error";
     readonly key: string;
@@ -103,6 +116,24 @@ export function GamePlayer({
   const [lastCompletedPreviewAction, setLastCompletedPreviewAction] = useState<EditorPreviewCompletedAction | undefined>(
     undefined
   );
+
+  useEffect(() => {
+    if (!needsGameAssets) {
+      setGameAssets(createEmptyGameAssetResolver());
+      return;
+    }
+
+    let cancelled = false;
+    setGameAssets(null);
+    void loadGameAssetResolver({ runtimeApiUrl, gameId: content.gameId }).then((resolver) => {
+      if (!cancelled) {
+        setGameAssets(resolver);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [content.gameId, needsGameAssets, runtimeApiUrl]);
 
   const presenterRef = useRef<GamePresenter | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
@@ -138,12 +169,16 @@ export function GamePlayer({
     }
 
     let cancelled = false;
+    let loadHandle: PlayerWebPluginLoadHandle | null = null;
     const allowedScopes = new Set<PlayerWebPluginBundleReference["scope"]>(editorPreviewMode ? ["preview"] : ["published"]);
     setPlayerPluginState({ status: "loading", key: playerPluginSignature });
-    void loadPlayerWebPluginBundles({ runtimeApiUrl, bundles: playerPluginBundles, allowedScopes })
-      .then((key) => {
-        if (!cancelled) {
-          setPlayerPluginState({ status: "ready", key });
+    void activatePlayerWebPluginBundles({ runtimeApiUrl, bundles: playerPluginBundles, allowedScopes })
+      .then((handle) => {
+        if (cancelled) {
+          handle.dispose();
+        } else {
+          loadHandle = handle;
+          setPlayerPluginState({ status: "ready", key: handle.key });
         }
       })
       .catch((error: unknown) => {
@@ -158,6 +193,7 @@ export function GamePlayer({
 
     return () => {
       cancelled = true;
+      loadHandle?.dispose();
     };
   }, [editorPreviewMode, playerPluginBundles, playerPluginSignature, runtimeApiUrl]);
 
@@ -313,6 +349,17 @@ export function GamePlayer({
     void presenter.handleSurfaceAction(action);
   };
 
+  const handleBoardAction = async (
+    actionId: string,
+    payload?: Record<string, unknown>
+  ): Promise<void> => {
+    const presenter = presenterRef.current;
+    if (!presenter) {
+      throw new Error("Игровая сессия еще не готова к действию на поле.");
+    }
+    await presenter.handleBoardAction(actionId, payload ?? {});
+  };
+
   const state = playerState;
   const rootStyle = fullConfig.themeBackgroundImage
     ? ({
@@ -357,6 +404,7 @@ export function GamePlayer({
 
   const metrics = state.metrics;
   const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
+  const sessionSnapshot = presenterRef.current?.sessionSnapshot ?? undefined;
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
@@ -372,6 +420,10 @@ export function GamePlayer({
           gameState={state as Record<string, unknown>}
           designArtifacts={gameUi?.designArtifacts}
           editorPreviewMode={editorPreviewMode}
+          content={content}
+          session={sessionSnapshot}
+          onBoardAction={handleBoardAction}
+          assetResolver={gameAssets}
         />
       ) : state.agentSurface ? (
         <CubicaSurfaceRenderer
@@ -390,6 +442,10 @@ export function GamePlayer({
           gameState={state as Record<string, unknown>}
           designArtifacts={gameUi?.designArtifacts}
           editorPreviewMode={editorPreviewMode}
+          content={content}
+          session={sessionSnapshot}
+          onBoardAction={handleBoardAction}
+          assetResolver={gameAssets}
         />
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
@@ -411,6 +467,7 @@ export function GamePlayer({
           isPending={state.isPending}
           sessionId={state.sessionId}
           editorPreviewMode={editorPreviewMode}
+          assetResolver={gameAssets}
         />
       )}
       {state.error ? <div className="error inline-error">{state.error}</div> : null}

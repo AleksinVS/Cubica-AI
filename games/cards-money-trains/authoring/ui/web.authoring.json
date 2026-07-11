@@ -1,0 +1,252 @@
+{
+  "$schema": "../../../../docs/architecture/schemas/ui-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "ui",
+  "_channel": "web",
+  "_definitions": {},
+  "root": {
+    "_type": "ui.Manifest",
+    "_label": "Общий экран ведущего",
+    "_semantics": "Единственная web-поверхность первой версии: поле Phaser и обычные доступные панели управления.",
+    "meta": {
+      "id": "cards-money-trains.ui.web",
+      "version": "0.1.0",
+      "schema_version": "1.0",
+      "game_id": "cards-money-trains",
+      "game_manifest_version": "0.1.0",
+      "channel": "web",
+      "author": "Cubica"
+    },
+    "entry_point": "facilitator",
+    "screen_routing": [
+      {
+        "screenKey": "facilitator",
+        "conditions": {
+          "screenId": "facilitator",
+          "layoutMode": "topbar"
+        }
+      }
+    ],
+    "screens": [
+      {
+        "id": "facilitator",
+        "_type": "ui.Screen",
+        "_label": "Панель ведущего",
+        "_semantics": "Общий экран показывает публичное состояние; Phaser не рассчитывает правила и не меняет state напрямую.",
+        "title": "Карты, деньги, поезда",
+        "layout_mode": "topbar",
+        "root": {
+          "id": "facilitator.root",
+          "_type": "ui.Component",
+          "_label": "Оболочка общего экрана",
+          "_semantics": "Контейнер поля, статуса, действий и явных контентных ограничений.",
+          "type": "screenComponent",
+          "props": {
+            "cssClass": "topbar-screen-shell"
+          },
+      "children": [
+        {
+          "id": "facilitator.statusbar",
+          "_type": "ui.Component",
+          "_label": "Верхняя строка ведущего",
+          "_semantics": "Занимает штатную верхнюю область topbar-компоновки и содержит подтвержденный статус сессии.",
+          "type": "areaComponent",
+          "props": {
+            "cssClass": "game-variables-container"
+          },
+          "children": [
+            {
+              "id": "facilitator.status",
+              "_type": "ui.Component",
+              "_label": "Статус сессии",
+              "_semantics": "Показывает подтвержденную фазу, ход и состояние завершения.",
+              "type": "richTextComponent",
+              "props": {
+                "html": "<h1>Карты, деньги, поезда</h1><p><strong>Статус:</strong> {{game.state.public.session.status}} · <strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}}</p>"
+              }
+            }
+          ]
+        },
+        {
+          "id": "facilitator.main",
+          "_type": "ui.Component",
+          "_label": "Основная область ведущего",
+          "_semantics": "Занимает штатную центральную область topbar-компоновки и группирует поле, действия и честные контентные ограничения.",
+          "type": "areaComponent",
+          "props": {
+            "cssClass": "main-content-area"
+          },
+          "children": [
+            {
+              "id": "facilitator.board",
+              "_type": "ui.Component",
+              "_label": "Транспортное поле",
+              "_semantics": "Phaser-сцена отображает только публичный snapshot и отправляет намерения через runtime.",
+              "type": "interactiveBoardSurface",
+              "props": {
+                "sceneId": "main",
+                "designWidth": 1400,
+                "designHeight": 1000,
+                "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
+              }
+            },
+            {
+              "id": "facilitator.construction-controls",
+              "_type": "ui.Component",
+              "_label": "Управление строительством",
+              "_semantics": "Выбор типа объекта не завершает этап; завершение является отдельным действием ведущего.",
+              "type": "areaComponent",
+              "if": "{{game.state.public.construction.available}}",
+              "props": {
+                "cssClass": "button-container"
+              },
+              "children": [
+                {
+                  "id": "facilitator.build-road-mode",
+                  "_type": "ui.Component",
+                  "_label": "Режим дороги",
+                  "_semantics": "Выбирает режим дороги без локальной мутации графа.",
+                  "type": "buttonComponent",
+                  "props": {
+                    "caption": "Дорога",
+                    "variant": "action"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "construction.mode.road"
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "facilitator.build-waypoint-mode",
+                  "_type": "ui.Component",
+                  "_label": "Режим полустанка",
+                  "_semantics": "Выбирает режим полустанка без локальной мутации графа.",
+                  "type": "buttonComponent",
+                  "props": {
+                    "caption": "Полустанок",
+                    "variant": "action"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "construction.mode.waypoint"
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "facilitator.finish-construction",
+                  "_type": "ui.Component",
+                  "_label": "Завершить этап строительства",
+                  "_semantics": "Отдельно переводит игру из повторяемого этапа строительства к отчетности.",
+                  "type": "buttonComponent",
+                  "props": {
+                    "caption": "Завершить этап строительства",
+                    "variant": "action"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "construction.phase.finish"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "facilitator.finish-controls",
+              "_type": "ui.Component",
+              "_label": "Ручное завершение",
+              "_semantics": "Два отдельных runtime-действия не позволяют одному случайному нажатию завершить сессию.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "button-container"
+              },
+              "children": [
+                {
+                  "id": "facilitator.finish-request",
+                  "_type": "ui.Component",
+                  "_label": "Запрос завершения",
+                  "_semantics": "Открывает подтверждение без завершения игры.",
+                  "type": "buttonComponent",
+                  "if": "{{game.state.public.session.canRequestFinish}}",
+                  "props": {
+                    "caption": "Завершить игру…",
+                    "variant": "helper"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "session.finish.request"
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "facilitator.finish-confirm",
+                  "_type": "ui.Component",
+                  "_label": "Подтверждение завершения",
+                  "_semantics": "Явно подтверждает необратимое завершение первой версии.",
+                  "type": "buttonComponent",
+                  "if": "{{game.state.public.session.finishConfirmationPending}}",
+                  "props": {
+                    "caption": "Подтвердить завершение",
+                    "variant": "action"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "session.finish.confirm"
+                      }
+                    }
+                  }
+                },
+                {
+                  "id": "facilitator.finish-cancel",
+                  "_type": "ui.Component",
+                  "_label": "Отмена завершения",
+                  "_semantics": "Закрывает подтверждение и продолжает игру.",
+                  "type": "buttonComponent",
+                  "if": "{{game.state.public.session.finishConfirmationPending}}",
+                  "props": {
+                    "caption": "Продолжить игру",
+                    "variant": "helper"
+                  },
+                  "actions": {
+                    "onClick": {
+                      "command": "requestServer",
+                      "payload": {
+                        "actionId": "session.finish.cancel"
+                      }
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "id": "facilitator.content-gate",
+              "_type": "ui.Component",
+              "_label": "Контентные входы",
+              "_semantics": "Не позволяет принять пустую карту за готовую игровую топологию.",
+              "type": "richTextComponent",
+              "props": {
+                "html": "<p><strong>До загрузки авторского содержимого:</strong> поле показывает только данные публичного snapshot. Колоды, выплаты, начальная сеть, координаты, области и демонстрационные перемещения не подменяются временными значениями.</p>"
+              }
+            }
+          ]
+        }
+      ]
+        }
+      }
+    ]
+  }
+}

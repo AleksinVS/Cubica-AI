@@ -36,6 +36,20 @@ const expectedOperations = [
   },
   {
     method: "get",
+    path: "/game-assets/{gameId}/index.json",
+    operationId: "getGameAssetIndex",
+    tag: "Content",
+    marker: "gameAssetIndexMatch"
+  },
+  {
+    method: "get",
+    path: "/game-assets/{gameId}/{assetId}/{contentHash}.{extension}",
+    operationId: "getGameAssetFile",
+    tag: "Content",
+    marker: "gameAssetFileMatch"
+  },
+  {
+    method: "get",
     path: "/games/{gameId}/player-content",
     operationId: "getPlayerContent",
     tag: "PlayerContent",

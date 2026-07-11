@@ -1,5 +1,11 @@
-import type { GameUiPanelDefinition, GameUiScreenDefinition, GameUiDesignArtifactRef } from "@cubica/contracts-manifest";
-import type { MetricsSnapshot } from "@/types/game-state";
+import type {
+  GameUiPanelDefinition,
+  GameUiScreenDefinition,
+  GameUiDesignArtifactRef,
+  PlayerFacingContent
+} from "@cubica/contracts-manifest";
+import type { GameSession, MetricsSnapshot } from "@/types/game-state";
+import type { GameAssetResolver } from "@/lib/game-asset-resolver";
 import { UiComponentNode } from "./ui-component-node";
 import { screenRootRuntimePointer } from "./preview-metadata";
 
@@ -20,6 +26,10 @@ export function ManifestRenderer({
   gameState,
   designArtifacts,
   editorPreviewMode = false,
+  content,
+  session,
+  onBoardAction,
+  assetResolver,
 }: {
   screenDefinition: GameUiScreenDefinition | GameUiPanelDefinition;
   metrics: MetricsSnapshot;
@@ -42,6 +52,13 @@ export function ManifestRenderer({
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
   /** Enables generic runtime pointer metadata for the editor preview bridge. */
   editorPreviewMode?: boolean;
+  /** Content and session are required only by interactive plugin surfaces. */
+  content?: PlayerFacingContent;
+  session?: GameSession;
+  /** Async runtime action path used by canvas and its DOM alternative. */
+  onBoardAction?: (actionId: string, params?: Record<string, unknown>) => Promise<void>;
+  /** Optional game asset index; `asset:` references fail closed while absent. */
+  assetResolver?: GameAssetResolver | null;
 }) {
   // Layout from screen definition takes priority over prop
   const layoutMode =
@@ -63,6 +80,10 @@ export function ManifestRenderer({
         designArtifacts={designArtifacts}
         editorPreviewMode={editorPreviewMode}
         runtimePointer={rootRuntimePointer ?? screenRootRuntimePointer(screenKey)}
+        content={content}
+        session={session}
+        onBoardAction={onBoardAction}
+        assetResolver={assetResolver}
       />
     </div>
   );

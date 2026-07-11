@@ -58,6 +58,10 @@
                 "gameConfigFactory": {
                   "type": "boolean",
                   "description": "Registers a player-web game configuration factory."
+                },
+                "phaserSceneFactory": {
+                  "type": "boolean",
+                  "description": "Registers a Phaser scene factory for interactiveBoardSurface components."
                 }
               },
               "minProperties": 1,

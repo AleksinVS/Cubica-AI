@@ -40,12 +40,18 @@ export class SessionService {
 
     await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
 
+    const manifest = await contentService.getGameManifest(gameId, request.contentSourceId);
     const initialState = (await contentService.getInitialState(gameId, request.contentSourceId)) as RuntimeState;
+    // The local facilitator role is derived from trusted game configuration.
+    // Accepting it from POST /sessions or POST /actions would let a client grant
+    // itself privileges, so facilitated mode is the only source for this role.
+    const sessionRole = manifest.config.sessionMode === "facilitated" ? "facilitator" : "player";
 
     const snapshot = await this.sessionStore.createSession({
       gameId,
       playerId,
-      initialState
+      initialState,
+      sessionRole
     });
 
     if (request.contentSourceId !== undefined) {

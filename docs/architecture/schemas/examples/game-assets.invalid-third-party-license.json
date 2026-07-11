@@ -1,0 +1,14 @@
+{
+  "gameId": "test-game",
+  "assets": [
+    {
+      "id": "board-background",
+      "file": "board.svg",
+      "kind": "image",
+      "origin": {
+        "type": "third-party",
+        "source": "https://example.com/assets/board"
+      }
+    }
+  ]
+}

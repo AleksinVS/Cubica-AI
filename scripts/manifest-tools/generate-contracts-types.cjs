@@ -36,6 +36,11 @@ const JOBS = [
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-manifest.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-manifest.ts"),
     rootName: "GameManifestSchemaDefs"
+  },
+  {
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-assets.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-assets.ts"),
+    rootName: "GameAssetsSchemaDefs"
   }
 ];
 

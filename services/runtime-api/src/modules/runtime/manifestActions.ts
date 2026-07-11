@@ -43,6 +43,11 @@ export function listManifestActionDefinitions(bundle: GameBundle): Array<Runtime
 
     const templateId = typeof action.templateId === "string" ? action.templateId : undefined;
     const params = isObjectRecord(action.params) ? action.params : undefined;
+    const paramsSchema = isObjectRecord(action.paramsSchema) ? action.paramsSchema : undefined;
+    const allowedSessionRoles = Array.isArray(action.allowedSessionRoles)
+      ? action.allowedSessionRoles.filter((role): role is "player" | "facilitator" | "assistant" | "observer" =>
+          role === "player" || role === "facilitator" || role === "assistant" || role === "observer")
+      : undefined;
 
     return {
       actionId,
@@ -52,6 +57,8 @@ export function listManifestActionDefinitions(bundle: GameBundle): Array<Runtime
       functionName,
       templateId,
       params,
+      paramsSchema,
+      allowedSessionRoles,
       raw: action
     };
   });

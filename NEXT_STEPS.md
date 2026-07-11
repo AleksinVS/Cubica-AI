@@ -32,7 +32,8 @@
 
 ## Now
 
-- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: роль ведущего, динамическое строительство, Phaser-граница и безопасные ссылки на создаваемые объекты приняты. Платформенный фундамент реализуется параллельно с получением колод, начальной сети, канонических координат и контуров областей.
+- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: платформенный фундамент и запускаемая оболочка игры реализованы; полный GSR-030 ожидает авторские колоды, выплаты, начальную сеть, канонические координаты, контуры областей и контрольные движения.
+- [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `review`: реестр, проверки, контент-адресуемая раздача и player/Phaser resolver реализованы первым игровым срезом; миграция LEGACY-0023 остается отдельной.
 - [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — `in_progress`: отдельный трек portal launch surface и тестового VPS; не является автоматическим следующим шагом перед первой игрой.
 - [TSK-20260520-project-review-remediation](docs/tasks/active/TSK-20260520-project-review-remediation.md) — `review`: исправления майского ревью реализованы и ожидают приемки.
 
@@ -41,7 +42,6 @@
 - [TSK-20260705-board-game-platform-capabilities](docs/tasks/active/TSK-20260705-board-game-platform-capabilities.md) — `planned`: кандидат на общий пакет пошаговых настольных механик, если он понадобится выбранной игре.
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `planned`: кандидат на постоянные сессии, участников, события и WebSocket-доставку по потребности игрового среза.
 - [TSK-20260706-flow-simulation-platform-capabilities](docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md) — `planned`: кандидат на общие возможности симуляций реального времени, если их потребует выбранная игра.
-- [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `planned`: кандидат на декларативный реестр и безопасную доставку игровых ассетов по требованиям игрового среза.
 - [TSK-20260707-player-web-bundle-budget](docs/tasks/active/TSK-20260707-player-web-bundle-budget.md) — `planned`: кандидат на CI-бюджет first-load JavaScript по триггеру игрового среза или приоритету PM.
 - [TSK-20260518-contracts-neutrality-cleanup](docs/tasks/active/TSK-20260518-contracts-neutrality-cleanup.md) — `planned`: убрать игровые детали из общих контрактов.
 - [TSK-20260518-runtime-repository-boundary-and-readiness](docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md) — `planned`: укрепить границу репозитория контента и readiness.

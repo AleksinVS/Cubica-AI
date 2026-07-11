@@ -21,6 +21,7 @@ import { render } from "@testing-library/react";
 import React from "react";
 import { ManifestRenderer } from "./manifest-renderer";
 import type { GamePlayerS1UiContent } from "@cubica/contracts-manifest";
+import { createGameAssetResolver } from "@/lib/game-asset-resolver";
 
 /**
  * Builds a screen whose forward-nav button directly declares the advance action
@@ -137,5 +138,45 @@ describe("UiComponentNode declarative action binding (ADR-055)", () => {
     );
 
     expect(container.querySelector(".additional-background")).toBeNull();
+  });
+
+  it("recognizes interactiveBoardSurface and fails visibly without a session bridge", () => {
+    const screen = {
+      type: "screen",
+      title: "Neutral interactive board",
+      root: {
+        type: "interactiveBoardSurface",
+        props: { sceneId: "main", designWidth: 1400, designHeight: 1000 }
+      }
+    } as unknown as GamePlayerS1UiContent["screen"];
+
+    const { getByRole } = render(
+      <ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} />
+    );
+
+    expect(getByRole("alert").textContent).toContain("не подключено к игровой сессии");
+  });
+
+  it("resolves asset ids in the documented screen background property", () => {
+    const screen = buildScreen();
+    screen.root.props = { ...screen.root.props, backgroundImage: "asset:board" };
+    const resolver = createGameAssetResolver({
+      gameId: "test-game",
+      assets: {
+        board: { url: "/game-assets/test-game/board/hash.svg", kind: "image" }
+      }
+    }, "https://runtime.example");
+
+    const { container } = render(
+      <ManifestRenderer
+        screenDefinition={screen}
+        metrics={{}}
+        onAction={vi.fn()}
+        assetResolver={resolver}
+      />
+    );
+
+    expect((container.querySelector(".game-screen") as HTMLElement).style.backgroundImage)
+      .toContain("https://runtime.example/game-assets/test-game/board/hash.svg");
   });
 });

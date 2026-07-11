@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/game-assets.v1.json",
+  "$ref": "#/definitions/RootGameAssets",
+  "title": "Cubica Game Asset Registry",
+  "description": "Registry of game-owned static image assets delivered by stable ids.",
+  "definitions": {
+    "RootGameAssets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gameId",
+        "assets"
+      ],
+      "properties": {
+        "gameId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "assets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/definitions/GameAssetEntry"
+          }
+        }
+      }
+    },
+    "GameAssetEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "file",
+        "kind",
+        "origin"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "file": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9/_.-]{0,127}\\.(png|jpg|webp|svg)$"
+        },
+        "kind": {
+          "const": "image"
+        },
+        "origin": {
+          "oneOf": [
+            {
+              "$ref": "#/definitions/AuthoredInRepoOrigin"
+            },
+            {
+              "$ref": "#/definitions/ThirdPartyOrigin"
+            }
+          ]
+        }
+      }
+    },
+    "AuthoredInRepoOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "authored-in-repo"
+        }
+      }
+    },
+    "ThirdPartyOrigin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "license",
+        "source"
+      ],
+      "properties": {
+        "type": {
+          "const": "third-party"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    }
+  }
+}

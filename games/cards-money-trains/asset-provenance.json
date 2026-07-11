@@ -1,0 +1,36 @@
+{
+  "gameId": "cards-money-trains",
+  "assetId": "board-guinea-optimized",
+  "deliveryFile": "assets/images/guinea-map.webp",
+  "delivery": {
+    "mimeType": "image/webp",
+    "width": 2560,
+    "height": 1828,
+    "byteSize": 306808,
+    "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be"
+  },
+  "source": {
+    "path": "draft/trains/Игровая Карта.png",
+    "mimeType": "image/png",
+    "width": 5079,
+    "height": 3627,
+    "sha256": "2059ed6f429667da7d51f96a9f447c5f5a286980abc70ebb0ea979f451376e1b"
+  },
+  "transform": {
+    "tool": "sharp",
+    "format": "webp",
+    "maxWidth": 2560,
+    "maxHeight": 1829,
+    "fit": "inside",
+    "quality": 84,
+    "effort": 6,
+    "smartSubsample": true
+  },
+  "rights": {
+    "status": "unconfirmed",
+    "license": "not-provided",
+    "owner": "not-provided",
+    "publicationAllowed": false,
+    "note": "The authored-in-repo derivative is available for local implementation and review; publication remains prohibited until the owner confirms rights."
+  }
+}

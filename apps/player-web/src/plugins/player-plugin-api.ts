@@ -10,6 +10,10 @@
 import type { GameConfigData, ResolverFactory } from "@/presenter/game-config";
 import { ManifestAction } from "@cubica/contracts-manifest";
 import { registerGameConfigData, registerGameResolvers } from "@/presenter/game-config-registry";
+import {
+  registerPhaserSceneFactory,
+  type PhaserSceneFactory
+} from "@/plugins/phaser-scene-registry";
 
 export type {
   FallbackMetricSpec,
@@ -23,6 +27,14 @@ export type {
   ActionEntry,
   SessionSnapshot
 } from "@/lib/game-content-resolvers";
+export type {
+  AccessibleBoardAction,
+  InteractiveBoardSceneHandle,
+  InteractiveBoardSessionSnapshot,
+  PhaserSceneContext,
+  PhaserSceneFactory
+} from "@/plugins/phaser-scene-registry";
+export type { GameAssetResolver } from "@/lib/game-asset-resolver";
 
 // Generic session-state accessors only. Game-specific readers (team flags,
 // card objects, team selection, selected card id) intentionally do NOT live
@@ -55,6 +67,14 @@ export interface PlayerPluginApi {
     gameId: string,
     factory: ResolverFactory<TGameState, TUiContent>
   ): void;
+  /**
+   * Registers a game-owned scene while player-web retains Phaser ownership.
+   * The returned function removes only this exact registration.
+   */
+  registerPhaserSceneFactory(
+    gameId: string,
+    factory: PhaserSceneFactory
+  ): () => void;
 }
 
 /**
@@ -64,11 +84,23 @@ export interface PlayerPluginApi {
  * session-scoped plugin bundles, but the contribution shape should remain the
  * same for migrated project-local plugins.
  */
-export const playerPluginApi: PlayerPluginApi = {
-  registerGameConfigData(data) {
-    registerGameConfigData(data);
-  },
-  registerGameConfigFactory(gameId, factory) {
-    registerGameResolvers(gameId, factory as ResolverFactory);
-  }
-};
+export function createScopedPlayerPluginApi(
+  collectDisposer?: (dispose: () => void) => void
+): PlayerPluginApi {
+  return {
+    registerGameConfigData(data) {
+      registerGameConfigData(data);
+    },
+    registerGameConfigFactory(gameId, factory) {
+      registerGameResolvers(gameId, factory as ResolverFactory);
+    },
+    registerPhaserSceneFactory(gameId, factory) {
+      const dispose = registerPhaserSceneFactory(gameId, factory);
+      collectDisposer?.(dispose);
+      return dispose;
+    }
+  };
+}
+
+/** Default unscoped facade retained for direct/static plugin activation. */
+export const playerPluginApi: PlayerPluginApi = createScopedPlayerPluginApi();

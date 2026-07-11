@@ -1,0 +1,23 @@
+{
+  "gameId": "test-game",
+  "assets": [
+    {
+      "id": "board-background",
+      "file": "images/board.svg",
+      "kind": "image",
+      "origin": {
+        "type": "authored-in-repo"
+      }
+    },
+    {
+      "id": "vehicle-token",
+      "file": "tokens/vehicle.png",
+      "kind": "image",
+      "origin": {
+        "type": "third-party",
+        "license": "CC0-1.0",
+        "source": "https://example.com/assets/vehicle"
+      }
+    }
+  ]
+}

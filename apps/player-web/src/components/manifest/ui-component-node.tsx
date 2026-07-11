@@ -8,17 +8,26 @@ import type {
   GameUiScreenComponentProps,
   GameUiRichTextComponentProps,
   GameUiImageComponentProps,
+  GameUiInteractiveBoardSurfaceProps,
   GameUiDesignArtifactRef,
+  PlayerFacingContent,
 } from "@cubica/contracts-manifest";
-import type { MetricsSnapshot } from "@/types/game-state";
+import type { GameSession, MetricsSnapshot } from "@/types/game-state";
 import { appendClassName } from "@/lib/classname-utils";
 import { resolveAreaCssClass } from "@/lib/layout-helpers";
 import { resolveExpressions } from "@/lib/expression-resolver";
+import {
+  resolveGameAssetReference,
+  type GameAssetResolver
+} from "@/lib/game-asset-resolver";
 import { GameVariableComponent } from "./game-variable-component";
 import { CardComponent } from "./card-component";
 import { ButtonComponent } from "./button-component";
 import { RichTextComponent } from "./rich-text-component";
 import { ImageComponent } from "./image-component";
+import {
+  InteractiveBoardSurface
+} from "@/components/interactive-board-surface";
 import {
   childRuntimePointer,
   createPreviewElementAttributes
@@ -76,6 +85,10 @@ export function UiComponentNode({
   designArtifacts,
   editorPreviewMode = false,
   runtimePointer,
+  content,
+  session,
+  onBoardAction,
+  assetResolver,
 }: {
   component: GameUiComponent;
   metrics: MetricsSnapshot;
@@ -95,6 +108,14 @@ export function UiComponentNode({
   editorPreviewMode?: boolean;
   /** Runtime JSON Pointer for the current component in the generated UI manifest. */
   runtimePointer?: string;
+  /** Player-facing content passed only to plugin-owned interactive surfaces. */
+  content?: PlayerFacingContent;
+  /** Authoritative snapshot passed only to plugin-owned interactive surfaces. */
+  session?: GameSession;
+  /** Async runtime path whose rejection lets a scene roll back its preview. */
+  onBoardAction?: (actionId: string, params?: Record<string, unknown>) => Promise<void>;
+  /** Resolves documented `asset:<id>` image properties without exposing paths. */
+  assetResolver?: GameAssetResolver | null;
 }) {
   if (component.if) {
     const condition = resolveExpressions(component.if, gameState ?? {}, localContext);
@@ -166,6 +187,10 @@ export function UiComponentNode({
                   designArtifacts={designArtifacts}
                   editorPreviewMode={editorPreviewMode}
                   runtimePointer={childRuntimePointer(componentRuntimePointer, childIndex)}
+                  content={content}
+                  session={session}
+                  onBoardAction={onBoardAction}
+                  assetResolver={assetResolver}
                 />
               ))}
             </React.Fragment>
@@ -207,9 +232,10 @@ export function UiComponentNode({
             ? appendClassName(props.cssClass, "leftsidebar-screen")
             : props.cssClass ?? "";
       // visualMode="image": use design mockup as background
-      const bgImage = isImageMode && resolvedDesignImage
+      const declaredBackgroundImage = isImageMode && resolvedDesignImage
         ? resolvedDesignImage
         : props.backgroundImage;
+      const bgImage = resolveGameAssetReference(declaredBackgroundImage, assetResolver);
       return (
         <div
           {...previewAttributes}
@@ -241,6 +267,10 @@ export function UiComponentNode({
               designArtifacts={designArtifacts}
               editorPreviewMode={editorPreviewMode}
               runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
+              content={content}
+              session={session}
+              onBoardAction={onBoardAction}
+              assetResolver={assetResolver}
             />
           ))}
         </div>
@@ -272,6 +302,10 @@ export function UiComponentNode({
               designArtifacts={designArtifacts}
               editorPreviewMode={editorPreviewMode}
               runtimePointer={childRuntimePointer(componentRuntimePointer, index)}
+              content={content}
+              session={session}
+              onBoardAction={onBoardAction}
+              assetResolver={assetResolver}
             />
           ))}
         </div>
@@ -336,6 +370,23 @@ export function UiComponentNode({
           localContext={localContext}
           gameState={gameState}
           previewAttributes={previewAttributes}
+        />
+      );
+    }
+
+    case "interactiveBoardSurface": {
+      if (!content || !session || !onBoardAction || !assetResolver) {
+        return <p role="alert">Интерактивное поле не подключено к игровой сессии.</p>;
+      }
+
+      return (
+        <InteractiveBoardSurface
+          gameId={content.gameId}
+          content={content}
+          session={session}
+          assets={assetResolver}
+          manifestProps={component.props as GameUiInteractiveBoardSurfaceProps}
+          dispatchAction={onBoardAction}
         />
       );
     }

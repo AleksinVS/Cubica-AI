@@ -13,6 +13,7 @@ const isRecord = (value: unknown): value is JsonRecord =>
 
 const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SAFE_CONTENT_SOURCE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$/u;
+const FORBIDDEN_PARAM_KEYS = new Set(["__proto__", "constructor", "prototype"]);
 
 const assertRecord: (value: unknown, path: string) => asserts value is JsonRecord = (value, path) => {
   if (!isRecord(value)) {
@@ -80,6 +81,17 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
   assertRequiredString(body.sessionId, "sessionId");
   assertRequiredString(body.actionId, "actionId");
   assertOptionalString(body.playerId, "playerId");
+  if (body.params !== undefined) {
+    assertRecord(body.params, "params");
+    for (const key of Object.keys(body.params)) {
+      if (FORBIDDEN_PARAM_KEYS.has(key)) {
+        throw new RequestValidationError(`params contains forbidden property name "${key}"`);
+      }
+    }
+  }
+  if (body.sessionRole !== undefined || body.role !== undefined) {
+    throw new RequestValidationError("Session role is derived by runtime and cannot be supplied by the client");
+  }
 
   return body as unknown as DispatchActionInput;
 };

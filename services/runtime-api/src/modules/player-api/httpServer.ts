@@ -9,10 +9,12 @@ import { SessionService } from "../session/session.service.ts";
 import { RuntimeService } from "../runtime/runtime.service.ts";
 import {
   clearPlayerFacingContentCache,
+  contentService,
   getPublishedPlayerWebPluginBundleSource,
   getPlayerWebPluginBundleFile,
   loadPlayerFacingContent,
   registerLocalPlayerFacingContentSourceWithPlugins,
+  type ContentService,
   type LocalPlayerWebPluginBundle
 } from "../content/contentService.ts";
 import { buildGameReadinessResponse, buildReadinessResponse } from "../admin/health.ts";
@@ -27,6 +29,8 @@ import {
 
 interface RuntimeApiServerOptions {
   port?: number;
+  /** Test seam for an isolated filesystem repository; production uses the singleton. */
+  assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile">;
 }
 
 const sessionService = new SessionService();
@@ -67,6 +71,7 @@ const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
 
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
+  const assetContentService = options.assetContentService ?? contentService;
   let activePort = port;
 
   const server = http.createServer(async (request, response) => {
@@ -112,6 +117,42 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         }
         const clearedGameIds = clearPlayerFacingContentCache(gameId, contentSourceId);
         sendJson(response, 200, { ok: true, contentSourceId, clearedGameIds });
+        return;
+      }
+
+      const gameAssetIndexMatch = request.method === "GET" &&
+        requestUrl.pathname.match(/^\/game-assets\/([a-z0-9][a-z0-9-]{0,63})\/index\.json$/u);
+      if (gameAssetIndexMatch) {
+        const gameId = gameAssetIndexMatch[1];
+        assertGameId(gameId, "gameId");
+        const index = await assetContentService.getGameAssetIndex(gameId);
+        response.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "no-cache",
+          "Content-Type": "application/json; charset=utf-8"
+        });
+        response.end(JSON.stringify(index));
+        return;
+      }
+
+      const gameAssetFileMatch = request.method === "GET" &&
+        requestUrl.pathname.match(
+          /^\/game-assets\/([a-z0-9][a-z0-9-]{0,63})\/([a-z0-9][a-z0-9-]{0,63})\/([a-f0-9]{64})\.(png|jpg|webp|svg)$/u
+        );
+      if (gameAssetFileMatch) {
+        const [, gameId, assetId, contentHash, extension] = gameAssetFileMatch;
+        assertGameId(gameId, "gameId");
+        const delivery = await assetContentService.getGameAssetFile({ gameId, assetId, contentHash, extension });
+        response.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": delivery.contentType,
+          "X-Content-Type-Options": "nosniff",
+          ...(delivery.extension === "svg"
+            ? { "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'" }
+            : {})
+        });
+        response.end(delivery.bytes);
         return;
       }
 
@@ -232,6 +273,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
             sessionId: requestBody.sessionId,
             playerId: requestBody.playerId,
             actionId: requestBody.actionId,
+            params: requestBody.params,
             payload: requestBody.payload
           }
         });

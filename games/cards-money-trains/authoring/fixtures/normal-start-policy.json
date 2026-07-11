@@ -1,0 +1,25 @@
+{
+  "fixtureKind": "confirmed-normal-start-policy",
+  "gameId": "cards-money-trains",
+  "startingCoinsPerTeam": 10,
+  "teamTypes": {
+    "logistics_company": {
+      "startingWagons": 2,
+      "startingLocomotives": 0
+    },
+    "locomotive_guild": {
+      "startingWagons": 0,
+      "startingLocomotives": 1
+    }
+  },
+  "financialConstraints": {
+    "creditAllowed": false,
+    "negativeBalanceAllowed": false,
+    "vehicleSalePhase": "market"
+  },
+  "contentStatus": {
+    "teamCount": "not-provided",
+    "initialTopology": "not-provided",
+    "decks": "not-provided"
+  }
+}

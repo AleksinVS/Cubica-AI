@@ -6,6 +6,7 @@ import { getFallbackActionEntries } from "@/lib/game-content-resolvers";
 import { ManifestRenderer } from "@/components/manifest/manifest-renderer";
 import { useLocale } from "@/components/locale-context";
 import type { LocaleStrings } from "@/lib/locale";
+import type { GameAssetResolver } from "@/lib/game-asset-resolver";
 
 /**
  * Безопасный рендерер для экранов без манифестного описания.
@@ -35,6 +36,7 @@ export function SafeModeRenderer({
   isPending,
   sessionId,
   editorPreviewMode = false,
+  assetResolver,
 }: {
   content: PlayerFacingContent;
   gameState: Record<string, unknown>;
@@ -62,6 +64,8 @@ export function SafeModeRenderer({
   sessionId?: string | null;
   /** Enables editor preview metadata for fallback-rendered screens. */
   editorPreviewMode?: boolean;
+  /** Asset ids for manifest screens produced by a generic fallback builder. */
+  assetResolver?: GameAssetResolver | null;
 }) {
   const t = useLocale();
   const state = gameState;
@@ -84,6 +88,7 @@ export function SafeModeRenderer({
           gameState={gameState}
           designArtifacts={gameUi?.designArtifacts}
           editorPreviewMode={editorPreviewMode}
+          assetResolver={assetResolver}
         />
       );
     }
@@ -103,6 +108,7 @@ export function SafeModeRenderer({
         metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
         gameState={gameState}
         editorPreviewMode={editorPreviewMode}
+        assetResolver={assetResolver}
       />
     );
   }
@@ -120,6 +126,7 @@ export function SafeModeRenderer({
         metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
         gameState={gameState}
         editorPreviewMode={editorPreviewMode}
+        assetResolver={assetResolver}
       />
     );
   }
@@ -138,6 +145,7 @@ export function SafeModeRenderer({
           metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
           gameState={gameState}
           editorPreviewMode={editorPreviewMode}
+          assetResolver={assetResolver}
         />
       );
     }
@@ -156,6 +164,7 @@ export function SafeModeRenderer({
       metricBackgroundImages={buildMetricBackgroundMap(fallbackMetrics)}
       gameState={gameState}
       editorPreviewMode={editorPreviewMode}
+      assetResolver={assetResolver}
     />
   );
 }
