@@ -1,0 +1,1863 @@
+{
+  "meta": {
+    "id": "cards-money-trains-mock",
+    "version": "0.1.0-mock.1",
+    "name": "[MOCK] Карты, деньги, поезда",
+    "description": "Тестовый контур для непрерывной разработки до получения авторской сети и контента.",
+    "author": "Cubica",
+    "schemaVersion": "1.3",
+    "minEngineVersion": "0.1.0",
+    "tags": [
+      "facilitated",
+      "business-game",
+      "transport",
+      "mock",
+      "test-only",
+      "not-for-publication"
+    ],
+    "training": {
+      "format": "team",
+      "duration": {
+        "minMinutes": 360,
+        "maxMinutes": 480
+      },
+      "competencies": [
+        {
+          "id": "change-management",
+          "name": "Управление изменениями",
+          "description": "Команды анализируют новости и последствия собственных решений."
+        },
+        {
+          "id": "negotiation",
+          "name": "Коммуникации и переговоры",
+          "description": "Разные типы команд договариваются о перевозках и инвестициях."
+        },
+        {
+          "id": "strategic-thinking",
+          "name": "Стратегическое мышление",
+          "description": "Команды сопоставляют краткосрочный доход с развитием общей сети."
+        }
+      ]
+    }
+  },
+  "config": {
+    "players": {
+      "min": 1,
+      "max": 1
+    },
+    "settings": {
+      "mode": "local-facilitator",
+      "locale": "ru-RU"
+    },
+    "sessionMode": "facilitated"
+  },
+  "content": {
+    "data": {
+      "rules": {
+        "session": {
+          "singleFacilitatorScreen": true,
+          "assistantHasSeparateIdentity": false,
+          "manualFinish": true,
+          "personalNotesPersisted": false
+        },
+        "economy": {
+          "startingCoins": 10,
+          "creditAllowed": false,
+          "negativeBalanceAllowed": false,
+          "partialPaymentsAllowed": false,
+          "vehicleSalePhase": "market",
+          "prices": {
+            "locomotive": {
+              "purchase": 10,
+              "sale": 4
+            },
+            "wagon": {
+              "purchase": 5,
+              "sale": 2
+            }
+          }
+        },
+        "teams": {
+          "logistics_company": {
+            "startingWagons": 2,
+            "startingLocomotives": 0
+          },
+          "locomotive_guild": {
+            "startingWagons": 0,
+            "startingLocomotives": 1
+          }
+        },
+        "movement": {
+          "locomotiveActionPoints": 5,
+          "terminalLocomotiveCapacity": 2
+        },
+        "construction": {
+          "waypointCost": 5,
+          "repeatUntilExplicitFinish": true,
+          "roadGeometry": "straight-between-canonical-node-coordinates",
+          "roadCostPerRegionSegment": 2
+        }
+      },
+      "board": {
+        "sceneId": "main",
+        "designWidth": 1400,
+        "designHeight": 1000,
+        "deliveryAssetId": "board-guinea-optimized"
+      },
+      "assets": [
+        {
+          "id": "board-guinea-optimized",
+          "kind": "image",
+          "registry": "assets/assets.json"
+        }
+      ],
+      "contentGates": {
+        "runtimeReady": true,
+        "mockOnly": true,
+        "missing": [],
+        "replaceWithAuthorContent": [
+          "transport topology",
+          "coordinates",
+          "regions",
+          "cargo payouts",
+          "news",
+          "control transcript"
+        ]
+      },
+      "constructionActionIntent": {
+        "status": "declared-for-fixed-demo-blocked-until-network-content",
+        "road": {
+          "actionId": "construction.road.build",
+          "endpointReferenceSemantics": "schema-declared x-cubica-ref to public network node objects",
+          "payments": "four fixed nonnegative demonstration-team contributions"
+        },
+        "waypoint": {
+          "actionId": "construction.waypoint.build",
+          "edgeReferenceSemantics": "schema-declared x-cubica-ref to a public network edge object",
+          "position": "number strictly between 0 and 1",
+          "payments": "four fixed nonnegative demonstration-team contributions"
+        }
+      },
+      "mockNotice": {
+        "testOnly": true,
+        "normativeGameId": "cards-money-trains",
+        "replaceBeforePublication": true,
+        "warning": "MOCK: вымышленная сеть для разработки. Не публиковать и не переносить в нормативную игру без подтверждения автора."
+      },
+      "mapAnnotation": {
+        "annotationSchemaVersion": "1.0",
+        "annotationStatus": "mock",
+        "warning": "MOCK: вымышленная сеть для разработки. Не публиковать и не переносить в нормативную игру без подтверждения автора.",
+        "sourceImage": {
+          "file": "../assets/images/mock-board.svg",
+          "pixelWidth": 1400,
+          "pixelHeight": 1000,
+          "rightsConfirmed": true
+        },
+        "coordinateSystem": {
+          "origin": "top-left",
+          "units": "design-pixel",
+          "width": 1400,
+          "height": 1000
+        }
+      },
+      "mockGameplay": {
+        "fixtureKind": "development-mock",
+        "gameId": "cards-money-trains-mock",
+        "warning": "MOCK: вымышленные команды, выплаты и маршруты. Не являются авторскими правилами.",
+        "maintenance": {
+          "coinsPerVehicle": 1,
+          "warning": "MOCK: тариф нужен только для проверки атомарного обслуживания."
+        },
+        "teams": [
+          {
+            "id": "white-logistics",
+            "label": "Белая (MOCK)",
+            "type": "logistics_company",
+            "coins": 10,
+            "vehicles": [
+              {
+                "id": "mock-wagon-white-1",
+                "kind": "wagon",
+                "nodeId": "mock-terminal-b",
+                "attachedVehicleId": "mock-locomotive-purple-1",
+                "cargoId": "mock-cargo-b-c"
+              },
+              {
+                "id": "mock-wagon-white-2",
+                "kind": "wagon",
+                "nodeId": "mock-terminal-b"
+              }
+            ]
+          },
+          {
+            "id": "red-logistics",
+            "label": "Красная (MOCK)",
+            "type": "logistics_company",
+            "coins": 10,
+            "vehicles": [
+              {
+                "id": "mock-wagon-red-1",
+                "kind": "wagon",
+                "nodeId": "mock-terminal-e"
+              },
+              {
+                "id": "mock-wagon-red-2",
+                "kind": "wagon",
+                "nodeId": "mock-terminal-f"
+              }
+            ]
+          },
+          {
+            "id": "purple-guild",
+            "label": "Фиолетовая (MOCK)",
+            "type": "locomotive_guild",
+            "coins": 10,
+            "vehicles": [
+              {
+                "id": "mock-locomotive-purple-1",
+                "kind": "locomotive",
+                "nodeId": "mock-terminal-b",
+                "actionPoints": 5
+              }
+            ]
+          },
+          {
+            "id": "green-guild",
+            "label": "Зеленая (MOCK)",
+            "type": "locomotive_guild",
+            "coins": 10,
+            "vehicles": [
+              {
+                "id": "mock-locomotive-green-1",
+                "kind": "locomotive",
+                "nodeId": "mock-terminal-f",
+                "actionPoints": 5
+              }
+            ]
+          }
+        ],
+        "cargoCards": [
+          {
+            "id": "mock-cargo-b-c",
+            "fromNodeId": "mock-terminal-b",
+            "toNodeId": "mock-terminal-c",
+            "payout": 9,
+            "transportFee": 2,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-a-d",
+            "fromNodeId": "mock-terminal-a",
+            "toNodeId": "mock-terminal-d",
+            "payout": 9,
+            "copies": 2
+          },
+          {
+            "id": "mock-cargo-e-c",
+            "fromNodeId": "mock-terminal-e",
+            "toNodeId": "mock-terminal-c",
+            "payout": 6,
+            "copies": 2
+          },
+          {
+            "id": "mock-cargo-b-f",
+            "fromNodeId": "mock-terminal-b",
+            "toNodeId": "mock-terminal-f",
+            "payout": 7,
+            "copies": 1
+          }
+        ],
+        "newsCards": [
+          {
+            "id": "mock-news-block-c-d",
+            "summary": "MOCK: дорога C–D временно закрыта",
+            "effect": {
+              "kind": "edge-state",
+              "edgeId": "mock-edge-c-d",
+              "state": "blocked"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "objectModels": {
+    "transport.terminal": {
+      "collection": "networkNodes",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "open",
+          "values": [
+            "open",
+            "closed"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.open": {
+            "visible": true,
+            "interactive": true
+          },
+          "availability.closed": {
+            "visualState": "locked",
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "transport.waypoint": {
+      "collection": "networkNodes",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "open",
+          "values": [
+            "open",
+            "closed"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.open": {
+            "visible": true,
+            "interactive": true
+          },
+          "availability.closed": {
+            "visualState": "locked",
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "transport.edge": {
+      "collection": "networkEdges",
+      "scope": "session",
+      "facets": {
+        "state": {
+          "initial": "building",
+          "values": [
+            "building",
+            "open",
+            "blocked"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "state.building": {
+            "visualState": "pending",
+            "visible": true,
+            "interactive": false
+          },
+          "state.open": {
+            "visible": true,
+            "interactive": true
+          },
+          "state.blocked": {
+            "visualState": "locked",
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    },
+    "transport.locomotive": {
+      "collection": "locomotives",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "active",
+          "values": [
+            "active"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.active": {
+            "visible": true,
+            "interactive": true
+          }
+        }
+      }
+    },
+    "transport.wagon": {
+      "collection": "wagons",
+      "scope": "session",
+      "facets": {
+        "availability": {
+          "initial": "active",
+          "values": [
+            "active"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "availability.active": {
+            "visible": true,
+            "interactive": true
+          }
+        }
+      }
+    },
+    "transport.cargo": {
+      "collection": "cargoOrders",
+      "scope": "session",
+      "facets": {
+        "status": {
+          "initial": "in_transit",
+          "values": [
+            "available",
+            "in_transit",
+            "delivered"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "status.available": {
+            "visible": true,
+            "interactive": false
+          },
+          "status.in_transit": {
+            "visible": true,
+            "interactive": true
+          },
+          "status.delivered": {
+            "visible": true,
+            "interactive": false
+          }
+        }
+      }
+    }
+  },
+  "actions": {
+    "mock.news.block-road": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.edge.state.set",
+      "displayName": "MOCK: закрыть дорогу C–D",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "news"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "object.state.set",
+            "visibility": "public",
+            "collection": "networkEdges",
+            "objectId": "mock-edge-c-d",
+            "facet": "state",
+            "value": "blocked"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "maintenance"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "news",
+            "summary": "MOCK: новость закрыла дорогу C–D"
+          }
+        ]
+      }
+    },
+    "mock.maintenance.pay": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "economy.maintenance.pay",
+      "displayName": "MOCK: оплатить обслуживание",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "maintenance"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/white-logistics/coins"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": {
+              "var": "public.teams.white-logistics.maintenanceDue"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/red-logistics/coins"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": {
+              "var": "public.teams.red-logistics.maintenanceDue"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/purple-guild/coins"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": {
+              "var": "public.teams.purple-guild.maintenanceDue"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/green-guild/coins"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": {
+              "var": "public.teams.green-guild.maintenanceDue"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "movement"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "maintenance",
+            "summary": "MOCK: обслуживание всей техники оплачено"
+          }
+        ]
+      }
+    },
+    "mock.locomotive.move": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.vehicle.move",
+      "displayName": "MOCK: перейти по дороге",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "locomotives",
+              "network": "main",
+              "allowedTypes": [
+                "transport.locomotive"
+              ],
+              "visibility": "public"
+            }
+          },
+          "edgeId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "networkEdges",
+              "network": "main",
+              "allowedTypes": [
+                "transport.edge"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "vehicleId",
+          "edgeId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "movement"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.vehicle.move",
+            "networkId": "main",
+            "vehicleParam": "vehicleId",
+            "edgeParam": "edgeId"
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "movement",
+            "summary": "MOCK: локомотив перешёл по открытому ребру"
+          }
+        ]
+      }
+    },
+    "mock.cargo.deliver": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.cargo.deliver",
+      "displayName": "MOCK: доставить груз B–C",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "wagonId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "wagons",
+              "network": "main",
+              "allowedTypes": [
+                "transport.wagon"
+              ],
+              "visibility": "public"
+            }
+          },
+          "cargoId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "cargoOrders",
+              "network": "main",
+              "allowedTypes": [
+                "transport.cargo"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "wagonId",
+          "cargoId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "movement"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "bank"
+            },
+            "to": {
+              "scope": "state",
+              "path": "/public/teams/white-logistics/coins"
+            },
+            "amount": {
+              "var": "public.objects.cargoOrders.mock-cargo-b-c.attributes.payout"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "state",
+              "path": "/public/teams/white-logistics/coins"
+            },
+            "to": {
+              "scope": "state",
+              "path": "/public/teams/purple-guild/coins"
+            },
+            "amount": {
+              "var": "public.objects.cargoOrders.mock-cargo-b-c.attributes.transportFee"
+            },
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "transport.cargo.deliver",
+            "networkId": "main",
+            "wagonParam": "wagonId",
+            "cargoParam": "cargoId"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "construction"
+              },
+              {
+                "op": "replace",
+                "path": "/public/construction/available",
+                "value": true
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "delivery",
+            "summary": "MOCK: груз B–C доставлен и расчёты завершены"
+          }
+        ]
+      }
+    },
+    "construction.road.build": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.road.build",
+      "displayName": "Подтвердить дорогу",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "fromNodeId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "networkNodes",
+              "network": "main",
+              "allowedTypes": [
+                "transport.terminal",
+                "transport.waypoint"
+              ],
+              "visibility": "public"
+            }
+          },
+          "toNodeId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "networkNodes",
+              "network": "main",
+              "allowedTypes": [
+                "transport.terminal",
+                "transport.waypoint"
+              ],
+              "visibility": "public"
+            }
+          },
+          "whiteContribution": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "redContribution": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "purpleContribution": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "greenContribution": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "fromNodeId",
+          "toNodeId",
+          "whiteContribution",
+          "redContribution",
+          "purpleContribution",
+          "greenContribution"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "construction"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.road.build",
+            "networkId": "main",
+            "fromNodeParam": "fromNodeId",
+            "toNodeParam": "toNodeId",
+            "payments": [
+              {
+                "balancePath": "/public/teams/white-logistics/coins",
+                "amount": {
+                  "var": "params.whiteContribution"
+                }
+              },
+              {
+                "balancePath": "/public/teams/red-logistics/coins",
+                "amount": {
+                  "var": "params.redContribution"
+                }
+              },
+              {
+                "balancePath": "/public/teams/purple-guild/coins",
+                "amount": {
+                  "var": "params.purpleContribution"
+                }
+              },
+              {
+                "balancePath": "/public/teams/green-guild/coins",
+                "amount": {
+                  "var": "params.greenContribution"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "construction.waypoint.build": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.waypoint.build",
+      "displayName": "Подтвердить полустанок",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "edgeId": {
+            "type": "string",
+            "maxLength": 128,
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "networkEdges",
+              "network": "main",
+              "allowedTypes": [
+                "transport.edge"
+              ],
+              "visibility": "public"
+            }
+          },
+          "positionT": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "exclusiveMaximum": 1
+          },
+          "whiteContribution": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "redContribution": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "purpleContribution": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "greenContribution": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "edgeId",
+          "positionT",
+          "whiteContribution",
+          "redContribution",
+          "purpleContribution",
+          "greenContribution"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "construction"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "transport.waypoint.build",
+            "networkId": "main",
+            "edgeParam": "edgeId",
+            "positionParam": "positionT",
+            "payments": [
+              {
+                "balancePath": "/public/teams/white-logistics/coins",
+                "amount": {
+                  "var": "params.whiteContribution"
+                }
+              },
+              {
+                "balancePath": "/public/teams/red-logistics/coins",
+                "amount": {
+                  "var": "params.redContribution"
+                }
+              },
+              {
+                "balancePath": "/public/teams/purple-guild/coins",
+                "amount": {
+                  "var": "params.purpleContribution"
+                }
+              },
+              {
+                "balancePath": "/public/teams/green-guild/coins",
+                "amount": {
+                  "var": "params.greenContribution"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "construction.mode.road": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.construction.mode.road",
+      "displayName": "Строить дорогу",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "construction"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/construction/mode",
+                "value": "road"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "construction.mode.waypoint": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "transport.construction.mode.waypoint",
+      "displayName": "Строить полустанок",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "construction"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/construction/mode",
+                "value": "waypoint"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "construction.phase.finish": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.phase.finish.construction",
+      "displayName": "Завершить строительство",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/phase",
+              "operator": "==",
+              "value": "construction"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/construction/mode",
+                "value": null
+              },
+              {
+                "op": "replace",
+                "path": "/public/construction/available",
+                "value": false
+              },
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "reporting"
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "phase",
+            "summary": "Ведущий завершил этап строительства"
+          }
+        ]
+      }
+    },
+    "session.finish.request": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "session.finish.request",
+      "displayName": "Завершить игру",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/status",
+              "operator": "!=",
+              "value": "finished"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/finishConfirmationPending",
+                "value": true
+              },
+              {
+                "op": "replace",
+                "path": "/public/session/canRequestFinish",
+                "value": false
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "session.finish.cancel": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "session.finish.cancel",
+      "displayName": "Продолжить игру",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/finishConfirmationPending",
+              "operator": "==",
+              "value": true
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/finishConfirmationPending",
+                "value": false
+              },
+              {
+                "op": "replace",
+                "path": "/public/session/canRequestFinish",
+                "value": true
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "session.finish.confirm": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "session.finish.manual",
+      "displayName": "Подтвердить завершение",
+      "allowedSessionRoles": [
+        "facilitator"
+      ],
+      "deterministic": {
+        "guard": {
+          "stateConditions": [
+            {
+              "path": "/public/session/finishConfirmationPending",
+              "operator": "==",
+              "value": true
+            },
+            {
+              "path": "/public/session/status",
+              "operator": "!=",
+              "value": "finished"
+            }
+          ]
+        },
+        "effects": [
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/session/status",
+                "value": "finished"
+              },
+              {
+                "op": "replace",
+                "path": "/public/session/phase",
+                "value": "finished"
+              },
+              {
+                "op": "replace",
+                "path": "/public/session/finishConfirmationPending",
+                "value": false
+              },
+              {
+                "op": "replace",
+                "path": "/public/session/canRequestFinish",
+                "value": false
+              },
+              {
+                "op": "replace",
+                "path": "/public/construction/mode",
+                "value": null
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "target": "public.log",
+            "kind": "session",
+            "summary": "Ведущий завершил игру"
+          }
+        ]
+      }
+    }
+  },
+  "state": {
+    "public": {
+      "timeline": {
+        "line": "facilitator",
+        "stepIndex": 0,
+        "step_index": 0,
+        "stageId": "setup",
+        "stage_id": "setup",
+        "screenId": "facilitator",
+        "screen_id": "facilitator",
+        "canAdvance": false
+      },
+      "session": {
+        "status": "active",
+        "turnNumber": 1,
+        "phase": "news",
+        "finishConfirmationPending": false,
+        "canRequestFinish": true,
+        "fixtureId": "development-mock",
+        "contentMode": "mock"
+      },
+      "construction": {
+        "mode": null,
+        "available": false,
+        "sequence": 0
+      },
+      "teamSetupPolicy": {
+        "startingCoins": 10,
+        "logistics_company": {
+          "wagons": 2,
+          "locomotives": 0
+        },
+        "locomotive_guild": {
+          "wagons": 0,
+          "locomotives": 1
+        }
+      },
+      "teams": {
+        "white-logistics": {
+          "label": "Белая (MOCK)",
+          "type": "logistics_company",
+          "coins": 10,
+          "maintenanceDue": 2
+        },
+        "red-logistics": {
+          "label": "Красная (MOCK)",
+          "type": "logistics_company",
+          "coins": 10,
+          "maintenanceDue": 2
+        },
+        "purple-guild": {
+          "label": "Фиолетовая (MOCK)",
+          "type": "locomotive_guild",
+          "coins": 10,
+          "maintenanceDue": 1
+        },
+        "green-guild": {
+          "label": "Зеленая (MOCK)",
+          "type": "locomotive_guild",
+          "coins": 10,
+          "maintenanceDue": 1
+        }
+      },
+      "objects": {
+        "networkNodes": {
+          "mock-terminal-a": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "A",
+              "position": {
+                "x": 150,
+                "y": 200
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-b": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "B",
+              "position": {
+                "x": 450,
+                "y": 180
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-c": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "C",
+              "position": {
+                "x": 760,
+                "y": 250
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-d": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "D",
+              "position": {
+                "x": 1100,
+                "y": 180
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-e": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "E",
+              "position": {
+                "x": 360,
+                "y": 650
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-f": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "F",
+              "position": {
+                "x": 850,
+                "y": 700
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          }
+        },
+        "networkEdges": {
+          "mock-edge-a-b": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-a",
+              "toNodeId": "mock-terminal-b",
+              "geometry": {
+                "from": {
+                  "x": 150,
+                  "y": 200
+                },
+                "to": {
+                  "x": 450,
+                  "y": 180
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-b-c": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-c",
+              "geometry": {
+                "from": {
+                  "x": 450,
+                  "y": 180
+                },
+                "to": {
+                  "x": 760,
+                  "y": 250
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-c-d": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-d",
+              "geometry": {
+                "from": {
+                  "x": 760,
+                  "y": 250
+                },
+                "to": {
+                  "x": 1100,
+                  "y": 180
+                }
+              },
+              "annotationEvidence": "MOCK road that the control news closes at runtime"
+            }
+          },
+          "mock-edge-b-e": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-e",
+              "geometry": {
+                "from": {
+                  "x": 450,
+                  "y": 180
+                },
+                "to": {
+                  "x": 360,
+                  "y": 650
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-e-f": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-e",
+              "toNodeId": "mock-terminal-f",
+              "geometry": {
+                "from": {
+                  "x": 360,
+                  "y": 650
+                },
+                "to": {
+                  "x": 850,
+                  "y": 700
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-c-f": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-f",
+              "geometry": {
+                "from": {
+                  "x": 760,
+                  "y": 250
+                },
+                "to": {
+                  "x": 850,
+                  "y": 700
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          }
+        },
+        "locomotives": {
+          "mock-locomotive-purple-1": {
+            "objectType": "transport.locomotive",
+            "facets": {
+              "availability": "active"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-b",
+              "ownerTeamId": "purple-guild",
+              "actionPoints": 5
+            }
+          },
+          "mock-locomotive-green-1": {
+            "objectType": "transport.locomotive",
+            "facets": {
+              "availability": "active"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-f",
+              "ownerTeamId": "green-guild",
+              "actionPoints": 5
+            }
+          }
+        },
+        "wagons": {
+          "mock-wagon-white-1": {
+            "objectType": "transport.wagon",
+            "facets": {
+              "availability": "active"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-b",
+              "ownerTeamId": "white-logistics",
+              "attachedVehicleId": "mock-locomotive-purple-1",
+              "cargoId": "mock-cargo-b-c"
+            }
+          },
+          "mock-wagon-white-2": {
+            "objectType": "transport.wagon",
+            "facets": {
+              "availability": "active"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-b",
+              "ownerTeamId": "white-logistics"
+            }
+          },
+          "mock-wagon-red-1": {
+            "objectType": "transport.wagon",
+            "facets": {
+              "availability": "active"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-e",
+              "ownerTeamId": "red-logistics"
+            }
+          },
+          "mock-wagon-red-2": {
+            "objectType": "transport.wagon",
+            "facets": {
+              "availability": "active"
+            },
+            "attributes": {
+              "networkId": "main",
+              "nodeId": "mock-terminal-f",
+              "ownerTeamId": "red-logistics"
+            }
+          }
+        },
+        "cargoOrders": {
+          "mock-cargo-b-c": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "in_transit"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-c",
+              "payout": 9,
+              "transportFee": 2
+            }
+          },
+          "mock-cargo-a-d": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-a",
+              "toNodeId": "mock-terminal-d",
+              "payout": 9,
+              "transportFee": 0
+            }
+          },
+          "mock-cargo-e-c": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-e",
+              "toNodeId": "mock-terminal-c",
+              "payout": 6,
+              "transportFee": 0
+            }
+          },
+          "mock-cargo-b-f": {
+            "objectType": "transport.cargo",
+            "facets": {
+              "status": "available"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-f",
+              "payout": 7,
+              "transportFee": 0
+            }
+          }
+        }
+      },
+      "board": {
+        "canonicalBounds": {
+          "minX": 0,
+          "minY": 0,
+          "maxX": 1400,
+          "maxY": 1000
+        },
+        "highlights": [],
+        "availableActions": [
+          {
+            "id": "mock-apply-news",
+            "label": "MOCK: применить новость о дороге C–D",
+            "actionId": "mock.news.block-road"
+          },
+          {
+            "id": "mock-pay-maintenance",
+            "label": "MOCK: оплатить обслуживание техники",
+            "actionId": "mock.maintenance.pay"
+          },
+          {
+            "id": "mock-move-purple-b-c",
+            "label": "MOCK: перевести фиолетовый локомотив B–C",
+            "actionId": "mock.locomotive.move",
+            "params": {
+              "vehicleId": "mock-locomotive-purple-1",
+              "edgeId": "mock-edge-b-c"
+            }
+          },
+          {
+            "id": "mock-deliver-b-c",
+            "label": "MOCK: доставить груз B–C",
+            "actionId": "mock.cargo.deliver",
+            "params": {
+              "wagonId": "mock-wagon-white-1",
+              "cargoId": "mock-cargo-b-c"
+            }
+          },
+          {
+            "id": "mock-build-road-b-d",
+            "label": "MOCK: построить дорогу B–D (6 монет)",
+            "description": "Вымышленный контроль: три области, по 2 монеты за сегмент.",
+            "actionId": "construction.road.build",
+            "params": {
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-d",
+              "whiteContribution": 2,
+              "redContribution": 2,
+              "purpleContribution": 1,
+              "greenContribution": 1
+            }
+          },
+          {
+            "id": "mock-build-waypoint-a-b",
+            "label": "MOCK: поставить полустанок на A–B (5 монет)",
+            "description": "Вымышленный контроль: точка посередине существующей дороги.",
+            "actionId": "construction.waypoint.build",
+            "params": {
+              "edgeId": "mock-edge-a-b",
+              "positionT": 0.5,
+              "whiteContribution": 3,
+              "redContribution": 2,
+              "purpleContribution": 0,
+              "greenContribution": 0
+            }
+          }
+        ]
+      },
+      "log": [],
+      "transportNetworks": {
+        "main": {
+          "sequence": 1000
+        }
+      }
+    },
+    "secret": {}
+  },
+  "networkModels": {
+    "main": {
+      "visibility": "public",
+      "nodeCollection": "networkNodes",
+      "edgeCollection": "networkEdges",
+      "waypointObjectType": "transport.waypoint",
+      "edgeObjectType": "transport.edge",
+      "nodeStateFacet": "availability",
+      "buildableNodeStates": [
+        "open"
+      ],
+      "edgeStateFacet": "state",
+      "splittableEdgeStates": [
+        "open",
+        "building"
+      ],
+      "builtEdgeState": "building",
+      "sequencePath": "/public/transportNetworks/main/sequence",
+      "roadCostPerRegionSegment": 2,
+      "waypointCost": 5,
+      "regions": [
+        {
+          "id": "mock-region-west",
+          "polygon": [
+            {
+              "x": 50,
+              "y": 50
+            },
+            {
+              "x": 480,
+              "y": 50
+            },
+            {
+              "x": 480,
+              "y": 900
+            },
+            {
+              "x": 50,
+              "y": 900
+            }
+          ]
+        },
+        {
+          "id": "mock-region-central",
+          "polygon": [
+            {
+              "x": 480,
+              "y": 50
+            },
+            {
+              "x": 820,
+              "y": 50
+            },
+            {
+              "x": 820,
+              "y": 900
+            },
+            {
+              "x": 480,
+              "y": 900
+            }
+          ]
+        },
+        {
+          "id": "mock-region-east",
+          "polygon": [
+            {
+              "x": 820,
+              "y": 50
+            },
+            {
+              "x": 1350,
+              "y": 50
+            },
+            {
+              "x": 1350,
+              "y": 900
+            },
+            {
+              "x": 820,
+              "y": 900
+            }
+          ]
+        }
+      ],
+      "movement": {
+        "vehicleCollection": "locomotives",
+        "vehicleObjectTypes": [
+          "transport.locomotive"
+        ],
+        "locationAttribute": "nodeId",
+        "actionPointsAttribute": "actionPoints",
+        "traversableNodeStates": [
+          "open"
+        ],
+        "traversableEdgeStates": [
+          "open"
+        ],
+        "capacityCollection": "locomotives",
+        "capacityObjectTypes": [
+          "transport.locomotive"
+        ],
+        "capacityLocationAttribute": "nodeId",
+        "maxVehiclesPerNode": 2,
+        "coupledCollection": "wagons",
+        "coupledObjectTypes": [
+          "transport.wagon"
+        ],
+        "coupledVehicleAttribute": "attachedVehicleId",
+        "coupledLocationAttribute": "nodeId"
+      },
+      "cargoDelivery": {
+        "wagonCollection": "wagons",
+        "wagonObjectTypes": [
+          "transport.wagon"
+        ],
+        "cargoCollection": "cargoOrders",
+        "cargoObjectTypes": [
+          "transport.cargo"
+        ],
+        "locationAttribute": "nodeId",
+        "cargoReferenceAttribute": "cargoId",
+        "attachedVehicleAttribute": "attachedVehicleId",
+        "cargoDestinationAttribute": "toNodeId",
+        "cargoStateFacet": "status",
+        "deliverableCargoStates": [
+          "in_transit"
+        ],
+        "deliveredCargoState": "delivered"
+      }
+    }
+  }
+}

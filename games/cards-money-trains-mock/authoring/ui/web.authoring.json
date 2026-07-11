@@ -1,0 +1,333 @@
+{
+  "$schema": "../../../../docs/architecture/schemas/ui-authoring-v2.schema.json",
+  "_schemaVersion": "2.0",
+  "_manifestType": "ui",
+  "_channel": "web",
+  "_definitions": {},
+  "root": {
+    "_type": "ui.Manifest",
+    "_label": "[MOCK] Общий экран ведущего",
+    "_semantics": "Единственная web-поверхность первой версии: поле Phaser и обычные доступные панели управления.",
+    "meta": {
+      "id": "cards-money-trains-mock.ui.web",
+      "version": "0.1.0",
+      "schema_version": "1.0",
+      "game_id": "cards-money-trains-mock",
+      "game_manifest_version": "0.1.0-mock.1",
+      "channel": "web",
+      "author": "Cubica"
+    },
+    "entry_point": "facilitator",
+    "screen_routing": [
+      {
+        "screenKey": "facilitator",
+        "conditions": {
+          "screenId": "facilitator",
+          "layoutMode": "topbar"
+        }
+      }
+    ],
+    "screens": [
+      {
+        "id": "facilitator",
+        "_type": "ui.Screen",
+        "_label": "Панель ведущего",
+        "_semantics": "Общий экран показывает публичное состояние; Phaser не рассчитывает правила и не меняет state напрямую.",
+        "title": "[MOCK] Карты, деньги, поезда",
+        "layout_mode": "topbar",
+        "root": {
+          "id": "facilitator.root",
+          "_type": "ui.Component",
+          "_label": "Оболочка общего экрана",
+          "_semantics": "Контейнер поля, статуса, действий и явных контентных ограничений.",
+          "type": "screenComponent",
+          "props": {
+            "cssClass": "topbar-screen-shell"
+          },
+          "children": [
+            {
+              "id": "facilitator.statusbar",
+              "_type": "ui.Component",
+              "_label": "Верхняя строка ведущего",
+              "_semantics": "Короткая строка ориентации: статус, номер хода и текущая серверная фаза.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "game-variables-container"
+              },
+              "children": [
+                {
+                  "id": "facilitator.status",
+                  "_type": "ui.Component",
+                  "_label": "Статус сессии",
+                  "_semantics": "Показывает подтвержденную фазу, ход и состояние завершения.",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "facilitator.main",
+              "_type": "ui.Component",
+              "_label": "Основная область ведущего",
+              "_semantics": "Занимает штатную центральную область topbar-компоновки и группирует поле, действия и честные контентные ограничения.",
+              "type": "areaComponent",
+              "props": {
+                "cssClass": "main-content-area"
+              },
+              "children": [
+                {
+                  "id": "facilitator.board",
+                  "_type": "ui.Component",
+                  "_label": "Транспортное поле",
+                  "_semantics": "Phaser-сцена отображает только публичный snapshot и отправляет намерения через runtime.",
+                  "type": "interactiveBoardSurface",
+                  "props": {
+                    "sceneId": "main",
+                    "designWidth": 1400,
+                    "designHeight": 1000,
+                    "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
+                  }
+                },
+                {
+                  "id": "facilitator.team-status",
+                  "_type": "ui.Component",
+                  "_label": "Команды, деньги и техника",
+                  "_semantics": "Доступный текстовый дубль компактной панели Phaser; показывает только публичные деньги и фактические позиции тестовой техники.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "cards-container topbar-cards-container",
+                    "topbarCssClass": "topbar-cards-container"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.team-status-copy",
+                      "_type": "ui.Component",
+                      "_label": "Текущее состояние четырех тестовых команд",
+                      "_semantics": "Фиксированные идентификаторы допустимы здесь, потому что компонент принадлежит только тестовой игре; значения приходят из публичного snapshot.",
+                      "type": "richTextComponent",
+                      "props": {
+                        "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "facilitator.action-guidance",
+                  "_type": "ui.Component",
+                  "_label": "Подсказка по доступным действиям",
+                  "_semantics": "Объясняет источник доступности без дублирования или вычисления правил на клиенте.",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
+                  }
+                },
+                {
+                  "id": "facilitator.construction-controls",
+                  "_type": "ui.Component",
+                  "_label": "Управление строительством",
+                  "_semantics": "Выбор типа объекта не завершает этап; завершение является отдельным действием ведущего.",
+                  "type": "areaComponent",
+                  "if": "{{game.state.public.construction.available}}",
+                  "props": {
+                    "cssClass": "button-container"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.build-road-mode",
+                      "_type": "ui.Component",
+                      "_label": "Режим дороги",
+                      "_semantics": "Выбирает режим дороги без локальной мутации графа.",
+                      "type": "buttonComponent",
+                      "props": {
+                        "caption": "Дорога",
+                        "variant": "action"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "construction.mode.road"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "facilitator.build-waypoint-mode",
+                      "_type": "ui.Component",
+                      "_label": "Режим полустанка",
+                      "_semantics": "Выбирает режим полустанка без локальной мутации графа.",
+                      "type": "buttonComponent",
+                      "props": {
+                        "caption": "Полустанок",
+                        "variant": "action"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "construction.mode.waypoint"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "facilitator.finish-construction",
+                      "_type": "ui.Component",
+                      "_label": "Завершить этап строительства",
+                      "_semantics": "Отдельно переводит игру из повторяемого этапа строительства к отчетности.",
+                      "type": "buttonComponent",
+                      "props": {
+                        "caption": "Завершить этап строительства",
+                        "variant": "action"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "construction.phase.finish"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "facilitator.log",
+                  "_type": "ui.Component",
+                  "_label": "Журнал подтвержденных действий",
+                  "_semantics": "Доступный текстовый журнал повторяет только записи, уже подтвержденные Runtime API.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "board-game-log"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.log-title",
+                      "_type": "ui.Component",
+                      "_label": "Заголовок журнала",
+                      "_semantics": "Отделяет подтвержденную историю от текущих намерений ведущего.",
+                      "type": "richTextComponent",
+                      "props": {
+                        "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
+                      }
+                    },
+                    {
+                      "id": "facilitator.log-entries",
+                      "_type": "ui.Component",
+                      "_label": "Записи журнала",
+                      "_semantics": "Повторяет публичный журнал по порядку, не интерпретируя правила игры.",
+                      "type": "areaComponent",
+                      "props": {
+                        "cssClass": "board-game-log-entries"
+                      },
+                      "itemTemplate": {
+                        "collection": "{{game.state.public.log}}",
+                        "itemKey": "logEntry"
+                      },
+                      "children": [
+                        {
+                          "id": "facilitator.log-entry",
+                          "_type": "ui.Component",
+                          "_label": "Подтвержденное действие",
+                          "_semantics": "Показывает переданные сервером вид события и краткое описание.",
+                          "type": "richTextComponent",
+                          "props": {
+                            "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "id": "facilitator.finish-controls",
+                  "_type": "ui.Component",
+                  "_label": "Ручное завершение",
+                  "_semantics": "Два отдельных runtime-действия не позволяют одному случайному нажатию завершить сессию.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "button-container"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.finish-request",
+                      "_type": "ui.Component",
+                      "_label": "Запрос завершения",
+                      "_semantics": "Открывает подтверждение без завершения игры.",
+                      "type": "buttonComponent",
+                      "if": "{{game.state.public.session.canRequestFinish}}",
+                      "props": {
+                        "caption": "Завершить игру…",
+                        "variant": "helper"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "session.finish.request"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "facilitator.finish-confirm",
+                      "_type": "ui.Component",
+                      "_label": "Подтверждение завершения",
+                      "_semantics": "Явно подтверждает необратимое завершение первой версии.",
+                      "type": "buttonComponent",
+                      "if": "{{game.state.public.session.finishConfirmationPending}}",
+                      "props": {
+                        "caption": "Подтвердить завершение",
+                        "variant": "action"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "session.finish.confirm"
+                          }
+                        }
+                      }
+                    },
+                    {
+                      "id": "facilitator.finish-cancel",
+                      "_type": "ui.Component",
+                      "_label": "Отмена завершения",
+                      "_semantics": "Закрывает подтверждение и продолжает игру.",
+                      "type": "buttonComponent",
+                      "if": "{{game.state.public.session.finishConfirmationPending}}",
+                      "props": {
+                        "caption": "Продолжить игру",
+                        "variant": "helper"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "command": "requestServer",
+                          "payload": {
+                            "actionId": "session.finish.cancel"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "facilitator.content-gate",
+                  "_type": "ui.Component",
+                  "_label": "Предупреждение о тестовых данных",
+                  "_semantics": "Не дает ведущему принять вымышленный контент за сведения автора игры.",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

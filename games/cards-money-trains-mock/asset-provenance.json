@@ -1,0 +1,14 @@
+{
+  "gameId": "cards-money-trains-mock",
+  "assetId": "board-guinea-optimized",
+  "source": {
+    "kind": "generated-test-diagram",
+    "file": "assets/images/mock-board.svg"
+  },
+  "rights": {
+    "status": "confirmed",
+    "owner": "Cubica",
+    "publicationAllowed": false,
+    "note": "Ресурс создан только как тестовая подложка; запрет публикации относится к mock-пакету, а не к согласованной авторской карте нормативной игры."
+  }
+}

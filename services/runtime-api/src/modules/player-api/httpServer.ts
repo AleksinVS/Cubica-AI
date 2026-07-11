@@ -3,9 +3,11 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { SessionStorePort } from "@cubica/contracts-session";
 import { HttpError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
 import { SessionService } from "../session/session.service.ts";
+import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
 import { RuntimeService } from "../runtime/runtime.service.ts";
 import {
   clearPlayerFacingContentCache,
@@ -27,15 +29,16 @@ import {
   parseRestorePreviewSessionRequest
 } from "./requestValidation.ts";
 
-interface RuntimeApiServerOptions {
+type RuntimeState = Record<string, unknown>;
+
+export interface RuntimeApiServerOptions {
   port?: number;
+  /** Explicit dev/test seam; production resolves and validates environment config. */
+  sessionStore?: SessionStorePort<RuntimeState>;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile">;
 }
 
-const sessionService = new SessionService();
-const runtimeService = new RuntimeService();
-const agentTurnService = new AgentTurnService();
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
 const defaultEditorWorktreesRoot = path.join(repositoryRoot, ".tmp", "editor-worktrees");
 // Keep editor preview content local-only while allowing e2e or desktop editor
@@ -72,7 +75,12 @@ const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
   const assetContentService = options.assetContentService ?? contentService;
+  const sessionStore = options.sessionStore ?? createSessionStoreFromEnvironment();
+  const sessionService = new SessionService({ sessionStore });
+  const runtimeService = new RuntimeService();
+  const agentTurnService = new AgentTurnService();
   let activePort = port;
+  let closed = false;
 
   const server = http.createServer(async (request, response) => {
     try {
@@ -268,7 +276,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const { response: dispatchResponse } = await runtimeService.dispatch({
           sessionStore: sessionService.getSessionStore(),
           gameId: sessionSnapshot.gameId,
-          contentSourceId: sessionService.getContentSourceId(requestBody.sessionId),
+          contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
           input: {
             sessionId: requestBody.sessionId,
             playerId: requestBody.playerId,
@@ -287,7 +295,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const requestBody = parseAgentTurnRequest(body);
         const agentTurnResponse = await agentTurnService.runTurn({
           sessionStore: sessionService.getSessionStore(),
-          contentSourceId: sessionService.getContentSourceId(requestBody.sessionId),
+          contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
           request: requestBody
         });
 
@@ -324,6 +332,18 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           resolve();
         });
       });
+    },
+    async close() {
+      if (closed) {
+        return;
+      }
+      closed = true;
+      if (server.listening) {
+        await new Promise<void>((resolve, reject) => {
+          server.close((error) => error ? reject(error) : resolve());
+        });
+      }
+      await sessionStore.close();
     }
   };
 }

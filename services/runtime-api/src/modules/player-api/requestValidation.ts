@@ -122,6 +122,11 @@ export const parseRestorePreviewSessionRequest = (
   assertNonNegativeInteger(version.lastEventSequence, "version.lastEventSequence");
   if (body.targetEventSequence !== undefined) {
     assertNonNegativeInteger(body.targetEventSequence, "targetEventSequence");
+    if (body.targetEventSequence !== version.lastEventSequence) {
+      throw new RequestValidationError(
+        "targetEventSequence must match version.lastEventSequence for preview restore"
+      );
+    }
   }
   assertOptionalString(body.reason, "reason");
 

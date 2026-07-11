@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 import { ContentService, type GameAssetIndex } from "../src/modules/content/contentService.ts";
 import { LocalFileGameRepository } from "../src/modules/content/localFileRepository.ts";
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
+import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const fixtureRoot = path.join(repoRoot, ".tmp", "game-assets-runtime-test");
@@ -17,7 +18,11 @@ const assetsRoot = path.join(fixtureRoot, "games", gameId, "assets");
 const svgPath = path.join(assetsRoot, "board.svg");
 const repository = new LocalFileGameRepository(fixtureRoot);
 const assetContentService = new ContentService(repository);
-const runtimeApi = createRuntimeApiServer({ port: 0, assetContentService });
+const runtimeApi = createRuntimeApiServer({
+  port: 0,
+  assetContentService,
+  sessionStore: new InMemorySessionStore<Record<string, unknown>>()
+});
 let baseUrl = "";
 
 before(async () => {
@@ -37,9 +42,7 @@ before(async () => {
 });
 
 after(async () => {
-  await new Promise<void>((resolve, reject) => {
-    runtimeApi.server.close((error) => error ? reject(error) : resolve());
-  });
+  await runtimeApi.close();
   await rm(fixtureRoot, { recursive: true, force: true });
 });
 

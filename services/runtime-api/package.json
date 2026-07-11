@@ -12,12 +12,18 @@
     "ajv": "^8.20.0",
     "ajv-errors": "^3.0.0",
     "ajv-formats": "^3.0.1",
-    "json-logic-js": "^2.0.5"
+    "json-logic-js": "^2.0.5",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
   },
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "dev": "node --experimental-strip-types --enable-source-maps src/bootstrap.ts",
+    "dev": "SESSION_STORE=${SESSION_STORE:-in-memory} node --experimental-strip-types --enable-source-maps src/bootstrap.ts",
+    "migrate:sessions": "node --experimental-strip-types --enable-source-maps scripts/migrate-session-store.ts up",
+    "migrate:sessions:down": "node --experimental-strip-types --enable-source-maps scripts/migrate-session-store.ts down",
     "smoke": "node --experimental-strip-types --enable-source-maps scripts/smoke-runtime-api.ts",
     "test": "node --test --experimental-strip-types tests/*.test.ts tests/*.integration.ts",
     "typecheck": "tsc -p tsconfig.json",

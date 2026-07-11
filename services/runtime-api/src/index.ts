@@ -6,6 +6,8 @@ export interface RuntimeApiModuleDescriptor {
 export * from "@cubica/contracts-session";
 export * from "@cubica/contracts-runtime";
 export * from "./modules/session/inMemorySessionStore.ts";
+export * from "./modules/session/postgresSessionStore.ts";
+export * from "./modules/session/sessionStoreFactory.ts";
 export * from "./modules/content/manifestLoader.ts";
 export * from "./modules/runtime/index.ts";
 export * from "./modules/player-api/httpServer.ts";

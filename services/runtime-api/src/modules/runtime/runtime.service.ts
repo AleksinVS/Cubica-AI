@@ -6,6 +6,7 @@ import type {
 import type { RuntimeActionResult } from "@cubica/contracts-runtime";
 import type { SessionStorePort } from "@cubica/contracts-session";
 import { contentService } from "../content/contentService.ts";
+import { projectPlayerSessionState } from "../session/playerSessionProjection.ts";
 import { dispatchRuntimeAction } from "./actionDispatcher.ts";
 
 type RuntimeState = Record<string, unknown>;
@@ -36,7 +37,7 @@ export class RuntimeService {
       response: {
         sessionId: snapshot.sessionId,
         version: snapshot.version,
-        state: snapshot.state
+        state: projectPlayerSessionState(snapshot.state)
       },
       result
     };

@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../docs/architecture/schemas/player-web-plugin-bundles.schema.json",
+  "schemaVersion": "1.0",
+  "bundles": [
+    {
+      "pluginId": "cards-money-trains-mock-player",
+      "gameId": "cards-money-trains-mock",
+      "apiVersion": "2.0",
+      "target": "player-web",
+      "scope": "published",
+      "contentHash": "59760a86961c7c0a5676f07ca3b622727b25acd8cb09cf326ab3059bd37e61f3",
+      "integrity": "sha256-WXYKhpYcfApWdvB8o7YicnslrNjLCc8yarMFm9N+YfM=",
+      "filePath": "published/cards-money-trains-mock-player.59760a86961c7c0a5676f07ca3b622727b25acd8cb09cf326ab3059bd37e61f3.mjs",
+      "url": "/published-plugin-bundles/cards-money-trains-mock/cards-money-trains-mock-player/59760a86961c7c0a5676f07ca3b622727b25acd8cb09cf326ab3059bd37e61f3.mjs"
+    }
+  ]
+}

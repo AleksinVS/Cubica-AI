@@ -9,21 +9,21 @@ import type {
 import { assertGameLaunchReady } from "../admin/health.ts";
 import { contentService } from "../content/contentService.ts";
 import { HttpError, NotFoundError, RequestValidationError } from "../errors.ts";
-import { InMemorySessionStore } from "./inMemorySessionStore.ts";
+import { initializeTurnBasedSessionState } from "./turnBasedSessionState.ts";
+import { projectPlayerSessionState } from "./playerSessionProjection.ts";
 import type { SessionStorePort } from "@cubica/contracts-session";
 
 type RuntimeState = Record<string, unknown>;
 
 interface SessionServiceOptions {
-  sessionStore?: SessionStorePort<RuntimeState>;
+  sessionStore: SessionStorePort<RuntimeState>;
 }
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
-  private readonly contentSourceBySessionId = new Map<string, string>();
 
-  constructor(options: SessionServiceOptions = {}) {
-    this.sessionStore = options.sessionStore ?? new InMemorySessionStore<RuntimeState>();
+  constructor(options: SessionServiceOptions) {
+    this.sessionStore = options.sessionStore;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -41,7 +41,10 @@ export class SessionService {
     await assertGameLaunchReady({ gameId, contentSourceId: request.contentSourceId });
 
     const manifest = await contentService.getGameManifest(gameId, request.contentSourceId);
-    const initialState = (await contentService.getInitialState(gameId, request.contentSourceId)) as RuntimeState;
+    const declaredState = (await contentService.getInitialState(gameId, request.contentSourceId)) as RuntimeState;
+    // The manifest declares templates; runtime creates concrete participants,
+    // turn ownership and replay state for this particular session.
+    const initialState = initializeTurnBasedSessionState(manifest, declaredState);
     // The local facilitator role is derived from trusted game configuration.
     // Accepting it from POST /sessions or POST /actions would let a client grant
     // itself privileges, so facilitated mode is the only source for this role.
@@ -50,19 +53,16 @@ export class SessionService {
     const snapshot = await this.sessionStore.createSession({
       gameId,
       playerId,
+      contentSourceId: request.contentSourceId,
       initialState,
       sessionRole
     });
-
-    if (request.contentSourceId !== undefined) {
-      this.contentSourceBySessionId.set(snapshot.sessionId, request.contentSourceId);
-    }
 
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
       version: snapshot.version,
-      state: snapshot.state
+      state: projectPlayerSessionState(snapshot.state)
     };
   }
 
@@ -76,7 +76,7 @@ export class SessionService {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
       version: snapshot.version,
-      state: snapshot.state
+      state: projectPlayerSessionState(snapshot.state)
     };
   }
 
@@ -84,40 +84,47 @@ export class SessionService {
     sessionId: SessionId,
     request: RestorePreviewSessionRequest<RuntimeState>
   ): Promise<RestorePreviewSessionResponse<RuntimeState>> {
-    const current = await this.sessionStore.getSession(sessionId);
+    return this.sessionStore.withLockedSession(sessionId, async (current) => {
     if (!current) {
       throw new NotFoundError(`Session "${sessionId}" was not found`);
     }
 
-    if (!this.contentSourceBySessionId.has(sessionId)) {
+    if (current.contentSourceId === undefined) {
       throw new HttpError(403, "Preview session restore is available only for editor preview sessions.");
     }
 
-    const restored = await this.sessionStore.updateSession({
+    const restored = {
       ...current,
       state: request.state,
       version: {
         sessionId,
-        stateVersion: request.version.stateVersion,
+        // A rewind creates a NEW durable snapshot. Only the gameplay/event
+        // cursor moves backwards; stateVersion remains a monotonic concurrency
+        // token and therefore advances exactly once.
+        stateVersion: current.version.stateVersion + 1,
         lastEventSequence: request.version.lastEventSequence
       },
       updatedAt: new Date()
-    });
+    };
 
     return {
-      sessionId: restored.sessionId,
-      gameId: restored.gameId,
-      version: restored.version,
-      state: restored.state,
-      restored: true
+      updatedSession: restored,
+      result: {
+        sessionId: restored.sessionId,
+        gameId: restored.gameId,
+        version: restored.version,
+        state: restored.state,
+        restored: true
+      }
     };
+    });
   }
 
   getSessionStore(): SessionStorePort<RuntimeState> {
     return this.sessionStore;
   }
 
-  getContentSourceId(sessionId: SessionId): string | undefined {
-    return this.contentSourceBySessionId.get(sessionId);
+  async getContentSourceId(sessionId: SessionId): Promise<string | undefined> {
+    return (await this.sessionStore.getSession(sessionId))?.contentSourceId;
   }
 }

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1000" viewBox="0 0 1400 1000">
+  <rect width="1400" height="1000" fill="#f3ead8"/>
+  <rect x="50" y="50" width="430" height="850" fill="#94b8a4" fill-opacity=".3" stroke="#456957" stroke-width="4"/>
+  <rect x="480" y="50" width="340" height="850" fill="#d5b76f" fill-opacity=".28" stroke="#7f6733" stroke-width="4"/>
+  <rect x="820" y="50" width="530" height="850" fill="#86a8c4" fill-opacity=".3" stroke="#415f78" stroke-width="4"/>
+  <text x="700" y="45" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#9a2525">MOCK · ВЫМЫШЛЕННАЯ КАРТА · НЕ ПУБЛИКОВАТЬ</text>
+  <text x="265" y="875" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#456957">Западная область</text>
+  <text x="650" y="875" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#7f6733">Центральная область</text>
+  <text x="1085" y="875" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#415f78">Восточная область</text>
+</svg>

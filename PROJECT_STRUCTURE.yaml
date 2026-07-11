@@ -52,6 +52,7 @@ docs: # Архитектура, задачи, планирование
       072-declarative-transport-network-board.md: file # ADR-072: принятая декларативная модель динамического транспортного графа, канонической геометрии, проверяемого движения, строительства и кратчайших маршрутов.
       073-phaser-interactive-board-surface.md: file # ADR-073: принятая гибридная Phaser-поверхность для интерактивного пошагового поля при сохранении панелей и методики в обычном web-интерфейсе.
       074-schema-declared-resource-references.md: file # ADR-074: принятая безопасная модель объявленных JSON Schema ссылок на динамические игровые ресурсы без интерпретации клиентских строк как путей состояния.
+      076-player-aware-economic-transfers.md: file # ADR-076: единый безопасный денежный перевод между банком, участником и общим состоянием без отрицательного баланса и без клиентских путей к деньгам.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
       external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.
@@ -152,6 +153,16 @@ games: # Пакеты игр и связанные ресурсы
       game.authoring.json: file # Authoring source for the generated ai-driven-choice game manifest.
   antarctica: # Пакет игры «Antarctica» (канонический content layer)
     plugins: directory... # Project-local plugins for the Antarctica game. These plugins belong to the game project, not to the shared platform apps.
+  cards-money-trains-mock: # Отдельный запускаемый тестовый пакет игры «Карты, деньги, поезда». Он содержит только вымышленные данные и не заменяет нормативный пакет cards-money-trains.
+    annotations: directory... # Контракт, шаблоны и проверяемые аннотации для переноса транспортной сети с изображения в декларативные данные манифеста.
+    assets: directory... # Реестр исключительно тестовых ресурсов mock-пакета.
+    authoring: directory... # Собираемые исходники исполнимых game/UI-манифестов тестовой копии; все содержимое явно помечено MOCK.
+    fixtures: directory... # Вымышленные команды, грузы, выплаты и контрольный сценарий, используемые только для продолжения разработки до ответа автора.
+    generated: directory... # Проверенные производные данные карты; пересобираются из JSON-аннотации и не редактируются вручную.
+    plugins: directory... # Локальные доверенные плагины отдельного mock-пакета игры «Карты, деньги, поезда».
+    tests: directory... # Узкие проверки целостности mock-пакета, преобразования карты и отделения тестовых данных от нормативной игры.
+    tools: directory... # Локальные инструменты тестового пакета: проверка аннотаций карты, преобразование в фрагмент манифеста и сборка запускаемой mock-копии.
+    ui: directory... # Собранные UI-манифесты тестового игрового пакета.
   simple-choice: # Minimal game-agnostic fixture used to prove that runtime-api and player-web can run a second game without a custom web plugin.
     authoring: # Editable ADR-030 authoring manifests for the simple-choice pilot. Runtime manifests are generated from these files and should not be edited directly.
       game.authoring.json: file # Authoring source for the generated simple-choice game manifest.

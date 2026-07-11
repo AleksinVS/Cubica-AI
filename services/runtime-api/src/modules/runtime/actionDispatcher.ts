@@ -37,7 +37,7 @@ export interface DispatchRuntimeActionOutcome {
 export async function dispatchRuntimeAction(
   options: DispatchRuntimeActionOptions
 ): Promise<DispatchRuntimeActionOutcome> {
-  const current = await options.sessionStore.getSession(options.input.sessionId);
+  return options.sessionStore.withLockedSession(options.input.sessionId, async (current) => {
 
   if (!current) {
     throw new NotFoundError(`Session "${options.input.sessionId}" was not found`);
@@ -75,6 +75,7 @@ export async function dispatchRuntimeAction(
     gameId: current.gameId,
     actionId: options.input.actionId,
     params,
+    actorPlayerId: options.input.playerId,
     sessionRole,
     resolvedRefs,
     payload: options.input.payload,
@@ -103,10 +104,12 @@ export async function dispatchRuntimeAction(
     updatedAt: new Date()
   };
 
-  await options.sessionStore.updateSession(snapshot);
-
   return {
-    snapshot,
-    result
+    updatedSession: snapshot,
+    result: {
+      snapshot,
+      result
+    }
   };
+  });
 }

@@ -93,11 +93,17 @@ export interface GameManifestSettings {
   locale: GameManifestLocale;
 }
 
+/** Ordered phases for a lightweight turn model; the first phase starts each turn. */
+export interface GameManifestTurnModel {
+  phases: Array<string>;
+}
+
 export interface GameManifestConfig {
   players: GameManifestPlayerConfig;
   settings: GameManifestSettings;
   /** Facilitated sessions derive a trusted local facilitator role at creation. */
   sessionMode?: "standard" | "facilitated";
+  turnModel?: GameManifestTurnModel;
 }
 
 export type GameManifestSessionRole = "player" | "facilitator" | "assistant" | "observer";
@@ -246,9 +252,25 @@ export interface GameManifestAgentRuntimeConfig {
   };
 }
 
+/** A participant reference resolved by runtime, never converted into a client-controlled state path. */
+export type GameManifestPlayerRef = string | { fromPath: string };
+
+/** Initial per-participant state expanded into `state.players.p1...pN`. */
+export interface GameManifestPlayersTemplate {
+  metrics: Record<string, number>;
+  flags?: Record<string, boolean>;
+  objects?: Record<string, unknown>;
+  status?: "active" | "eliminated";
+  visibility?: {
+    metrics?: "public" | "private";
+    flags?: "public" | "private";
+  };
+}
+
 export interface GameManifestState<TPublicState = Record<string, unknown>, TSecretState = Record<string, unknown>> {
   public: TPublicState;
   secret?: TSecretState;
+  playersTemplate?: GameManifestPlayersTemplate;
 }
 
 export type GameManifestObjectScope = "session";
@@ -316,6 +338,39 @@ export interface GameManifestTransportRegion {
   polygon: Array<GameManifestCanonicalPoint>;
 }
 
+/** Declarative collection and invariant bindings for one-edge vehicle movement. */
+export interface GameManifestTransportMovementModel {
+  vehicleCollection: string;
+  vehicleObjectTypes: Array<string>;
+  locationAttribute: string;
+  actionPointsAttribute: string;
+  traversableNodeStates: Array<GameManifestObjectFacetValue>;
+  traversableEdgeStates: Array<GameManifestObjectFacetValue>;
+  capacityCollection: string;
+  capacityObjectTypes: Array<string>;
+  capacityLocationAttribute: string;
+  maxVehiclesPerNode: number;
+  coupledCollection: string;
+  coupledObjectTypes: Array<string>;
+  coupledVehicleAttribute: string;
+  coupledLocationAttribute: string;
+}
+
+/** Declarative collection and attribute bindings for completing carried cargo. */
+export interface GameManifestTransportCargoDeliveryModel {
+  wagonCollection: string;
+  wagonObjectTypes: Array<string>;
+  cargoCollection: string;
+  cargoObjectTypes: Array<string>;
+  locationAttribute: string;
+  cargoReferenceAttribute: string;
+  attachedVehicleAttribute: string;
+  cargoDestinationAttribute: string;
+  cargoStateFacet: string;
+  deliverableCargoStates: Array<GameManifestObjectFacetValue>;
+  deliveredCargoState: GameManifestObjectFacetValue;
+}
+
 /** Declarative binding between generic object collections and one transport graph. */
 export interface GameManifestTransportNetworkModel {
   visibility: GameManifestObjectVisibility;
@@ -332,6 +387,8 @@ export interface GameManifestTransportNetworkModel {
   roadCostPerRegionSegment: number;
   waypointCost: number;
   regions: Array<GameManifestTransportRegion>;
+  movement?: GameManifestTransportMovementModel;
+  cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }
 
 export type GameManifestTransportNetworkModelMap = Record<string, GameManifestTransportNetworkModel>;
@@ -341,8 +398,14 @@ export type GameManifestNumericExpression =
   | { [operator: string]: JsonLogicExpression | Array<JsonLogicExpression> };
 
 export type GameManifestMetricEndpoint =
-  | { kind: "bank" }
-  | { kind: "state"; path: string };
+  | { scope: "bank" }
+  | { scope: "state"; path: string }
+  | {
+      scope: "player";
+      /** Runtime-resolved participant; never interpreted as a client-owned state path. */
+      playerId: GameManifestPlayerRef;
+      metricId: string;
+    };
 
 export interface GameManifestConstructionPayment {
   balancePath: string;
@@ -415,6 +478,10 @@ export interface GameManifestDeterministicGuard {
    */
   collectionCount?: GameManifestDeterministicCollectionCount | Array<GameManifestDeterministicCollectionCount>;
   jsonLogic?: JsonLogicExpression;
+  turn?: {
+    actorIsActive?: boolean;
+    phase?: string;
+  };
   [key: string]: unknown;
 }
 
@@ -448,6 +515,7 @@ export interface GameManifestDeterministicMetricCondition {
 export type GameManifestDeterministicEffectCondition =
   | { readFrom?: "current" | "preAction"; metric: GameManifestDeterministicMetricCondition }
   | { readFrom?: "current" | "preAction"; state: GameManifestDeterministicStateCondition }
+  | { readFrom?: "current" | "preAction"; jsonLogic: JsonLogicExpression }
   | {
       readFrom?: "current" | "preAction";
       collectionCount: GameManifestDeterministicCollectionCount;
@@ -479,16 +547,37 @@ export type GameManifestDeterministicEffect =
       canAdvance?: boolean | string;
     })
   | (GameManifestDeterministicEffectBase & {
+      op: "random.roll";
+      dice: string;
+      storePath: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
       op: "metric.add";
       metricId: string;
       delta: number | string | JsonLogicExpression;
+      scope?: "session" | "player";
+      playerId?: GameManifestPlayerRef;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "metric.set";
+      metricId: string;
+      value: GameManifestNumericExpression;
+      scope?: "session" | "player";
+      playerId?: GameManifestPlayerRef;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "turn.next";
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "turn.phase.set";
+      phase: string;
     })
   | (GameManifestDeterministicEffectBase & {
       op: "metric.transfer";
       from: GameManifestMetricEndpoint;
       to: GameManifestMetricEndpoint;
       amount: GameManifestNumericExpression;
-      insufficientFunds: "fail";
+      onInsufficient: "fail";
     })
   | (GameManifestDeterministicEffectBase & {
       op: "transport.road.build";
@@ -503,6 +592,18 @@ export type GameManifestDeterministicEffect =
       edgeParam: string;
       positionParam: string;
       payments: Array<GameManifestConstructionPayment>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.vehicle.move";
+      networkId: string;
+      vehicleParam: string;
+      edgeParam: string;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.cargo.deliver";
+      networkId: string;
+      wagonParam: string;
+      cargoParam: string;
     })
   | (GameManifestDeterministicEffectBase & {
       op: "state.patch";
@@ -871,7 +972,12 @@ export interface GameUiComponent<
    * context. Falsy values skip the component without changing layout state.
    */
   if?: string;
-  props: TProps;
+  /**
+   * Component-specific options are optional in ui-manifest.schema.json.
+   * Structural containers may therefore omit this object entirely; renderers
+   * must treat the omission as an empty object.
+   */
+  props?: TProps;
   children?: Array<GameUiComponent>;
   /** Interactive actions for cardComponent and buttonComponent. */
   actions?: {

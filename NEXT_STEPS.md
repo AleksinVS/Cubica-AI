@@ -33,6 +33,7 @@
 ## Now
 
 - [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: платформенный фундамент и запускаемая оболочка игры реализованы; полный GSR-030 ожидает авторские колоды, выплаты, начальную сеть, канонические координаты, контуры областей и контрольные движения.
+- [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — `review`: PostgreSQL-хранилище, блокировка одновременных ходов, проверка готовности и восстановление после рестарта реализованы и проверены на PostgreSQL 17.
 - [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `review`: реестр, проверки, контент-адресуемая раздача и player/Phaser resolver реализованы первым игровым срезом; миграция LEGACY-0023 остается отдельной.
 - [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — `in_progress`: отдельный трек portal launch surface и тестового VPS; не является автоматическим следующим шагом перед первой игрой.
 - [TSK-20260520-project-review-remediation](docs/tasks/active/TSK-20260520-project-review-remediation.md) — `review`: исправления майского ревью реализованы и ожидают приемки.
@@ -45,7 +46,6 @@
 - [TSK-20260707-player-web-bundle-budget](docs/tasks/active/TSK-20260707-player-web-bundle-budget.md) — `planned`: кандидат на CI-бюджет first-load JavaScript по триггеру игрового среза или приоритету PM.
 - [TSK-20260518-contracts-neutrality-cleanup](docs/tasks/active/TSK-20260518-contracts-neutrality-cleanup.md) — `planned`: убрать игровые детали из общих контрактов.
 - [TSK-20260518-runtime-repository-boundary-and-readiness](docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md) — `planned`: укрепить границу репозитория контента и readiness.
-- [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — `planned`: снять долг in-memory хранения сессий; согласовать с approved multiplayer runtime.
 - [TSK-20260615-antarctica-ui-manifest-screen-normalization](docs/tasks/active/TSK-20260615-antarctica-ui-manifest-screen-normalization.md) — `planned`: отделить сценарные ключи Antarctica от переиспользуемых UI-вариантов.
 - [TSK-20260710-editor-author-version-history](docs/tasks/active/TSK-20260710-editor-author-version-history.md) — `planned`: выбранный PM редакторный срез — понятные точки Save, восстановление грязной сессии и безопасный возврат прежней версии новым сохранением.
 - [TSK-20260707-editor-concept-surfaces](docs/tasks/active/TSK-20260707-editor-concept-surfaces.md) — `planned`: оставшийся Telegram-preview и завершение viewport-пресетов; история версий выделена отдельно.

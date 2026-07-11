@@ -1,0 +1,351 @@
+{
+  "generatedFrom": {
+    "annotationSchemaVersion": "1.0",
+    "annotationStatus": "mock",
+    "warning": "MOCK: вымышленная сеть для разработки. Не публиковать и не переносить в нормативную игру без подтверждения автора.",
+    "sourceImage": {
+      "file": "../assets/images/mock-board.svg",
+      "pixelWidth": 1400,
+      "pixelHeight": 1000,
+      "rightsConfirmed": true
+    },
+    "coordinateSystem": {
+      "origin": "top-left",
+      "units": "design-pixel",
+      "width": 1400,
+      "height": 1000
+    }
+  },
+  "networkModels": {
+    "main": {
+      "visibility": "public",
+      "nodeCollection": "networkNodes",
+      "edgeCollection": "networkEdges",
+      "waypointObjectType": "transport.waypoint",
+      "edgeObjectType": "transport.edge",
+      "nodeStateFacet": "availability",
+      "buildableNodeStates": [
+        "open"
+      ],
+      "edgeStateFacet": "state",
+      "splittableEdgeStates": [
+        "open",
+        "building"
+      ],
+      "builtEdgeState": "building",
+      "sequencePath": "/public/transportNetworks/main/sequence",
+      "roadCostPerRegionSegment": 2,
+      "waypointCost": 5,
+      "regions": [
+        {
+          "id": "mock-region-west",
+          "polygon": [
+            {
+              "x": 50,
+              "y": 50
+            },
+            {
+              "x": 480,
+              "y": 50
+            },
+            {
+              "x": 480,
+              "y": 900
+            },
+            {
+              "x": 50,
+              "y": 900
+            }
+          ]
+        },
+        {
+          "id": "mock-region-central",
+          "polygon": [
+            {
+              "x": 480,
+              "y": 50
+            },
+            {
+              "x": 820,
+              "y": 50
+            },
+            {
+              "x": 820,
+              "y": 900
+            },
+            {
+              "x": 480,
+              "y": 900
+            }
+          ]
+        },
+        {
+          "id": "mock-region-east",
+          "polygon": [
+            {
+              "x": 820,
+              "y": 50
+            },
+            {
+              "x": 1350,
+              "y": 50
+            },
+            {
+              "x": 1350,
+              "y": 900
+            },
+            {
+              "x": 820,
+              "y": 900
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "state": {
+    "public": {
+      "transportNetworks": {
+        "main": {
+          "sequence": 1000
+        }
+      },
+      "objects": {
+        "networkNodes": {
+          "mock-terminal-a": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "A",
+              "position": {
+                "x": 150,
+                "y": 200
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-b": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "B",
+              "position": {
+                "x": 450,
+                "y": 180
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-c": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "C",
+              "position": {
+                "x": 760,
+                "y": 250
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-d": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "D",
+              "position": {
+                "x": 1100,
+                "y": 180
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-e": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "E",
+              "position": {
+                "x": 360,
+                "y": 650
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          },
+          "mock-terminal-f": {
+            "objectType": "transport.terminal",
+            "facets": {
+              "availability": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "label": "F",
+              "position": {
+                "x": 850,
+                "y": 700
+              },
+              "annotationEvidence": "MOCK coordinate"
+            }
+          }
+        },
+        "networkEdges": {
+          "mock-edge-a-b": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-a",
+              "toNodeId": "mock-terminal-b",
+              "geometry": {
+                "from": {
+                  "x": 150,
+                  "y": 200
+                },
+                "to": {
+                  "x": 450,
+                  "y": 180
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-b-c": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-c",
+              "geometry": {
+                "from": {
+                  "x": 450,
+                  "y": 180
+                },
+                "to": {
+                  "x": 760,
+                  "y": 250
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-c-d": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-d",
+              "geometry": {
+                "from": {
+                  "x": 760,
+                  "y": 250
+                },
+                "to": {
+                  "x": 1100,
+                  "y": 180
+                }
+              },
+              "annotationEvidence": "MOCK road that the control news closes at runtime"
+            }
+          },
+          "mock-edge-b-e": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-b",
+              "toNodeId": "mock-terminal-e",
+              "geometry": {
+                "from": {
+                  "x": 450,
+                  "y": 180
+                },
+                "to": {
+                  "x": 360,
+                  "y": 650
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-e-f": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-e",
+              "toNodeId": "mock-terminal-f",
+              "geometry": {
+                "from": {
+                  "x": 360,
+                  "y": 650
+                },
+                "to": {
+                  "x": 850,
+                  "y": 700
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          },
+          "mock-edge-c-f": {
+            "objectType": "transport.edge",
+            "facets": {
+              "state": "open"
+            },
+            "attributes": {
+              "networkId": "main",
+              "fromNodeId": "mock-terminal-c",
+              "toNodeId": "mock-terminal-f",
+              "geometry": {
+                "from": {
+                  "x": 760,
+                  "y": 250
+                },
+                "to": {
+                  "x": 850,
+                  "y": 700
+                }
+              },
+              "annotationEvidence": "MOCK road"
+            }
+          }
+        }
+      },
+      "board": {
+        "canonicalBounds": {
+          "minX": 0,
+          "minY": 0,
+          "maxX": 1400,
+          "maxY": 1000
+        }
+      }
+    }
+  }
+}

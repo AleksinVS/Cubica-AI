@@ -46,6 +46,14 @@ export interface SessionRecoveryResult {
 export interface SessionRecord<TState = unknown> {
   sessionId: SessionId;
   gameId: string;
+  /** Optional owner/player retained so durable adapters do not discard launch identity. */
+  playerId?: PlayerId;
+  /**
+   * Editor-preview content source bound to this session.
+   * It must survive a runtime restart together with the state; otherwise the
+   * restored session could accidentally load canonical content instead.
+   */
+  contentSourceId?: string;
   state: TState;
   /** Trusted role chosen by runtime from the loaded manifest, never per action request. */
   sessionRole?: SessionRole;
@@ -67,9 +75,37 @@ export interface CreateSessionRequest {
 export interface CreateSessionInput<TState = unknown> {
   gameId: string;
   playerId?: PlayerId;
+  contentSourceId?: string;
   initialState: TState;
   sessionRole?: SessionRole;
 }
+
+/**
+ * Compare-and-set precondition for a session write.
+ *
+ * The caller supplies the state version it read before computing the next
+ * snapshot. A store must reject the write when another request has already
+ * advanced that version, preventing a stale action from overwriting progress.
+ */
+export interface UpdateSessionOptions {
+  expectedStateVersion: number;
+}
+
+/**
+ * Result produced while a session is exclusively locked for mutation.
+ *
+ * Omitting `updatedSession` makes the operation read-only. When it is present,
+ * the store persists it before releasing the lock and returns `result` only
+ * after the transaction commits.
+ */
+export interface LockedSessionOperationResult<TState, TResult> {
+  result: TResult;
+  updatedSession?: SessionRecord<TState>;
+}
+
+export type LockedSessionOperation<TState, TResult> = (
+  current: SessionRecord<TState> | null
+) => Promise<LockedSessionOperationResult<TState, TResult>>;
 
 export interface CreateSessionResponse<TState = unknown> {
   sessionId: SessionId;
@@ -119,9 +155,27 @@ export interface RestorePreviewSessionResponse<TState = unknown> {
 }
 
 export interface SessionStorePort<TState = unknown> {
+  /** Human-readable backing-store mode exposed through the readiness endpoint. */
+  readonly mode: string;
   createSession(input: CreateSessionInput<TState>): Promise<SessionRecord<TState>>;
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
-  updateSession(session: SessionRecord<TState>): Promise<SessionRecord<TState>>;
+  updateSession(
+    session: SessionRecord<TState>,
+    options: UpdateSessionOptions
+  ): Promise<SessionRecord<TState>>;
+  /**
+   * Execute the complete state transition while holding an exclusive lock.
+   * Durable stores must keep the same checked-out connection and transaction
+   * from the locked read through the final write.
+   */
+  withLockedSession<TResult>(
+    sessionId: SessionId,
+    operation: LockedSessionOperation<TState, TResult>
+  ): Promise<TResult>;
+  /** Execute the real dependency probe used by `/readiness`. */
+  checkReadiness(): Promise<void>;
+  /** Release connections and timers owned by the store. */
+  close(): Promise<void>;
 }
 
 export type SessionSnapshot<TState = unknown> = SessionRecord<TState>;

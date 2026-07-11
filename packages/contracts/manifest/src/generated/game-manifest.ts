@@ -53,9 +53,18 @@ export type GameManifestDeterministicEffect =
       [k: string]: unknown;
     }
   | {
-      delta: number | string | JsonLogicExpression;
-      metricId: string;
-      op: "metric.add";
+      dice: string;
+      op: "random.roll";
+      storePath: string;
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "turn.next";
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "turn.phase.set";
+      phase: string;
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
@@ -63,7 +72,7 @@ export type GameManifestDeterministicEffect =
       from: GameManifestMetricEndpoint;
       to: GameManifestMetricEndpoint;
       amount: GameManifestNumericExpression;
-      insufficientFunds: "fail";
+      onInsufficient: "fail";
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
@@ -80,6 +89,20 @@ export type GameManifestDeterministicEffect =
       edgeParam: string;
       positionParam: string;
       payments: GameManifestConstructionPayment[];
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "transport.vehicle.move";
+      networkId: string;
+      vehicleParam: string;
+      edgeParam: string;
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
+      op: "transport.cargo.deliver";
+      networkId: string;
+      wagonParam: string;
+      cargoParam: string;
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
@@ -204,6 +227,10 @@ export type GameManifestDeterministicEffectCondition =
       readFrom?: "current" | "preAction";
     }
   | {
+      jsonLogic: JsonLogicExpression;
+      readFrom?: "current" | "preAction";
+    }
+  | {
       /**
        * @minItems 1
        */
@@ -238,16 +265,35 @@ export type JsonLogicExpression =
       [k: string]: JsonLogicExpression | JsonLogicExpression[];
     };
 /**
+ * Explicitly scoped endpoint for transfers between the bank, shared state, and participant balances.
+ *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestMetricEndpoint".
  */
 export type GameManifestMetricEndpoint =
   | {
-      kind: "bank";
+      scope: "bank";
     }
   | {
-      kind: "state";
+      scope: "state";
       path: string;
+    }
+  | {
+      scope: "player";
+      playerId: GameManifestPlayerRef;
+      metricId: string;
+    };
+/**
+ * A literal player id, a trusted actor token, or a public-state pointer that resolves to a player id.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestPlayerRef".
+ */
+export type GameManifestPlayerRef =
+  | string
+  | ("{{actor}}" | "{{activePlayer}}")
+  | {
+      fromPath: string;
     };
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -470,6 +516,10 @@ export interface GameManifestDeterministicGuard {
     line?: string;
     stepIndex?: number | string;
   };
+  turn?: {
+    actorIsActive?: boolean;
+    phase?: string;
+  };
   [k: string]: unknown;
 }
 /**
@@ -626,6 +676,7 @@ export interface GameManifestConfig {
   players: GameManifestPlayerConfig;
   settings: GameManifestSettings;
   sessionMode?: "standard" | "facilitated";
+  turnModel?: GameManifestTurnModel;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -642,6 +693,18 @@ export interface GameManifestPlayerConfig {
 export interface GameManifestSettings {
   locale: GameManifestLocale;
   mode: string;
+}
+/**
+ * Ordered phases used by deterministic turn-based games. The first phase starts every turn.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTurnModel".
+ */
+export interface GameManifestTurnModel {
+  /**
+   * @minItems 1
+   */
+  phases: [string, ...string[]];
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -891,6 +954,8 @@ export interface GameManifestTransportNetworkModel {
    * @minItems 1
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
+  movement?: GameManifestTransportMovementModel;
+  cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }
 /**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
@@ -917,6 +982,71 @@ export interface GameManifestCanonicalPoint {
   y: number;
 }
 /**
+ * Declarative rules for moving authoritative vehicles through one network edge.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportMovementModel".
+ */
+export interface GameManifestTransportMovementModel {
+  vehicleCollection: string;
+  /**
+   * @minItems 1
+   */
+  vehicleObjectTypes: [string, ...string[]];
+  locationAttribute: string;
+  actionPointsAttribute: string;
+  /**
+   * @minItems 1
+   */
+  traversableNodeStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
+  /**
+   * @minItems 1
+   */
+  traversableEdgeStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
+  capacityCollection: string;
+  /**
+   * @minItems 1
+   */
+  capacityObjectTypes: [string, ...string[]];
+  capacityLocationAttribute: string;
+  maxVehiclesPerNode: number;
+  coupledCollection: string;
+  /**
+   * @minItems 1
+   */
+  coupledObjectTypes: [string, ...string[]];
+  coupledVehicleAttribute: string;
+  coupledLocationAttribute: string;
+}
+/**
+ * Declarative object bindings for completing cargo carried by a coupled vehicle.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportCargoDeliveryModel".
+ */
+export interface GameManifestTransportCargoDeliveryModel {
+  wagonCollection: string;
+  /**
+   * @minItems 1
+   */
+  wagonObjectTypes: [string, ...string[]];
+  cargoCollection: string;
+  /**
+   * @minItems 1
+   */
+  cargoObjectTypes: [string, ...string[]];
+  locationAttribute: string;
+  cargoReferenceAttribute: string;
+  attachedVehicleAttribute: string;
+  cargoDestinationAttribute: string;
+  cargoStateFacet: string;
+  /**
+   * @minItems 1
+   */
+  deliverableCargoStates: [GameManifestObjectFacetValue, ...GameManifestObjectFacetValue[]];
+  deliveredCargoState: GameManifestObjectFacetValue;
+}
+/**
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestState<alias-942026824-74138-74264-942026824-0-218439<string,unknown>,alias-942026824-74138-74264-942026824-0-218439<string,unknown>>".
  */
@@ -926,6 +1056,29 @@ export interface GameManifestState3Calias942026824741387426494202682402184393Cst
   };
   secret?: {
     [k: string]: unknown;
+  };
+  playersTemplate?: GameManifestPlayersTemplate;
+}
+/**
+ * Template expanded by runtime into state.players for every local participant.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestPlayersTemplate".
+ */
+export interface GameManifestPlayersTemplate {
+  flags?: {
+    [k: string]: boolean;
+  };
+  metrics: {
+    [k: string]: number;
+  };
+  objects?: {
+    [k: string]: unknown;
+  };
+  status?: "active" | "eliminated";
+  visibility?: {
+    flags?: "public" | "private";
+    metrics?: "public" | "private";
   };
 }
 /**

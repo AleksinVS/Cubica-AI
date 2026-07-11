@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../../docs/architecture/schemas/plugin.schema.json",
+  "id": "cards-money-trains-mock-player",
+  "gameId": "cards-money-trains-mock",
+  "apiVersion": "2.0",
+  "targets": {
+    "player-web": {
+      "entry": "src/index.ts",
+      "contributes": {
+        "phaserSceneFactory": true
+      }
+    }
+  },
+  "validation": {
+    "typecheck": "typecheck",
+    "test": "test"
+  },
+  "permissions": {
+    "network": false,
+    "filesystem": "plugin-root-only",
+    "environment": []
+  },
+  "dependenciesPolicy": "platform-only"
+}

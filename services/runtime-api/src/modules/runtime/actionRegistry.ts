@@ -30,7 +30,8 @@ const createRegistryMap = (bundle: GameBundle) => {
           mode: "manifest-action",
           objectModels: bundle.manifest.objectModels,
           networkModels: bundle.manifest.networkModels,
-          templates: bundle.manifest.templates
+          templates: bundle.manifest.templates,
+          turnPhases: bundle.manifest.config.turnModel?.phases
         })
       );
     }

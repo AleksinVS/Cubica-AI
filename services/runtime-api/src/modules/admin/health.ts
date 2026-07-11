@@ -4,10 +4,9 @@
  * This module provides bounded readiness checking for the runtime-api.
  * It reports only in-process runtime dependencies:
  * - Content subsystem: can the runtime load the current game manifest?
- * - Session store mode: is the session store in-memory and functional?
+ * - Session store: can the configured backing dependency answer a real probe?
  *
  * It does NOT check:
- * - External databases (none exist in this block)
  * - Distributed system state (single-process only)
  * - Background workers (none exist in this block)
  */
@@ -130,14 +129,17 @@ export async function checkContentSubsystem(
 /**
  * Derive a human-readable session-store mode from the injected store.
  *
- * The `SessionStorePort` contract does not expose its persistence mode, so we
- * infer it from the concrete class name. Examples:
+ * The port exposes its mode explicitly. The class-name fallback is retained
+ * only for older injected test doubles. Examples:
  *   `InMemorySessionStore` -> "in-memory"
  *   `RedisSessionStore`     -> "redis"
  * This keeps readiness honest: whatever store is injected is reported, rather
  * than a hardcoded "in-memory".
  */
 export function deriveSessionStoreMode(sessionStore: SessionStorePort<unknown>): string {
+  if (typeof sessionStore.mode === "string" && sessionStore.mode.length > 0) {
+    return sessionStore.mode;
+  }
   const className = sessionStore?.constructor?.name ?? "";
   // Strip the conventional `SessionStore` / `Store` suffix, then convert the
   // remaining CamelCase class name to a kebab-case mode label.
@@ -151,17 +153,26 @@ export function deriveSessionStoreMode(sessionStore: SessionStorePort<unknown>):
 /**
  * Check the session store and report its REAL mode.
  *
- * The store is a single in-process dependency, so being able to reference it is
- * sufficient for the bounded readiness contract; the reported `mode` reflects
- * the actual injected store rather than a hardcoded value.
+ * PostgreSQL readiness executes a real query. This prevents the service from
+ * accepting traffic merely because a pool object was constructed successfully.
  */
-export function checkSessionStore(
+export async function checkSessionStore(
   sessionStore: SessionStorePort<unknown>
-): DependencyCheckResult & { mode: string } {
-  return {
-    status: "ok",
-    mode: deriveSessionStoreMode(sessionStore)
-  };
+): Promise<DependencyCheckResult & { mode: string }> {
+  const mode = deriveSessionStoreMode(sessionStore);
+  try {
+    // PostgreSQL executes `SELECT 1`; the in-memory test/dev adapter resolves
+    // without external work. A failed dependency therefore makes readiness
+    // fail instead of merely reporting that a store object exists.
+    await sessionStore.checkReadiness();
+    return { status: "ok", mode };
+  } catch (error) {
+    return {
+      status: "error",
+      mode,
+      message: error instanceof Error ? error.message : String(error)
+    };
+  }
 }
 
 /**
@@ -183,7 +194,7 @@ export async function buildReadinessResponse(
 ): Promise<ReadinessResponse> {
   const [contentCheck, sessionStoreCheck] = await Promise.all([
     checkContentSubsystem(options.contentProbe),
-    Promise.resolve(checkSessionStore(sessionStore))
+    checkSessionStore(sessionStore)
   ]);
 
   const ready = calculateReadiness(contentCheck, sessionStoreCheck);
@@ -211,7 +222,7 @@ export async function buildGameReadinessResponse(input: {
 }): Promise<GameReadinessResponse> {
   const [contentCheck, sessionStoreCheck] = await Promise.all([
     checkContentSubsystem(),
-    Promise.resolve(checkSessionStore(input.sessionStore))
+    checkSessionStore(input.sessionStore)
   ]);
 
   const baseDependencies = {

@@ -49,5 +49,7 @@ test("ADR-063 registry stays minimal while provenance verifies the optimized der
   assert.equal(asset?.id, "board-guinea-optimized");
   assert.equal(asset?.file, "images/guinea-map.webp");
   assert.equal(digest, delivery.sha256);
-  assert.equal((provenance.rights as Record<string, unknown>).publicationAllowed, false);
+  assert.equal((provenance.rights as Record<string, unknown>).status, "confirmed");
+  assert.equal((provenance.rights as Record<string, unknown>).publicationAllowed, true);
+  assert.equal((provenance.rights as Record<string, unknown>).modificationAllowed, true);
 });

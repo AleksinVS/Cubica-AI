@@ -60,7 +60,7 @@ export interface AgentTurnServiceResponse {
  */
 export class AgentTurnService {
   async runTurn(input: AgentTurnServiceInput): Promise<AgentTurnServiceResponse> {
-    const current = await input.sessionStore.getSession(input.request.sessionId);
+    return input.sessionStore.withLockedSession(input.request.sessionId, async (current) => {
     if (current === null) {
       throw new NotFoundError(`Session "${input.request.sessionId}" was not found`);
     }
@@ -108,10 +108,12 @@ export class AgentTurnService {
 
     if (agentTurn.ok !== true) {
       return {
-        sessionId: current.sessionId,
-        version: current.version,
-        state: current.state,
-        agentTurn
+        result: {
+          sessionId: current.sessionId,
+          version: current.version,
+          state: current.state,
+          agentTurn
+        }
       };
     }
 
@@ -123,13 +125,16 @@ export class AgentTurnService {
       updatedAt: new Date()
     };
 
-    const persisted = await input.sessionStore.updateSession(nextSnapshot);
     return {
-      sessionId: persisted.sessionId,
-      version: persisted.version,
-      state: persisted.state,
-      agentTurn
+      updatedSession: nextSnapshot,
+      result: {
+        sessionId: nextSnapshot.sessionId,
+        version: nextSnapshot.version,
+        state: nextSnapshot.state,
+        agentTurn
+      }
     };
+    });
   }
 }
 

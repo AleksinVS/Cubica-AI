@@ -16,6 +16,7 @@ import type {
   GameManifestObjectAttributePatch,
   GameManifestObjectFacetValue,
   GameManifestObjectModelMap,
+  GameManifestPlayerRef,
   GameManifestObjectState,
   GameManifestObjectStateGuard,
   GameManifestTransportNetworkModelMap,
@@ -23,6 +24,10 @@ import type {
   JsonLogicExpression
 } from "@cubica/contracts-manifest";
 import jsonLogic from "json-logic-js";
+import {
+  rollSessionDice,
+  type SessionRandomState
+} from "./sessionRandom.ts";
 import { applyTransportEffect } from "./transportNetwork.ts";
 
 type RuntimeState = Record<string, unknown>;
@@ -35,6 +40,7 @@ interface DeterministicHandlerOptions {
   objectModels?: GameManifestObjectModelMap;
   networkModels?: GameManifestTransportNetworkModelMap;
   templates?: GameManifestTemplateMap;
+  turnPhases?: ReadonlyArray<string>;
 }
 
 const resolveValue = (value: unknown, params: Record<string, unknown>): any => {
@@ -264,18 +270,38 @@ const setJsonPointerValue = (state: RuntimeState, path: string, value: unknown) 
 
 const buildManifestParameterScope = (context: RuntimeActionContext<RuntimeState>): Record<string, unknown> => {
   const raw = isObjectRecord(context.manifestAction.raw) ? context.manifestAction.raw : {};
+  const publicState = ensureObject(context.state.public);
+  const turn = ensureObject(publicState.turn);
+  const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : undefined;
   return {
     ...(isObjectRecord(raw.params) ? raw.params : {}),
     ...(isObjectRecord(context.manifestAction.params) ? context.manifestAction.params : {}),
-    ...(isObjectRecord(context.params) ? context.params : {})
+    ...(isObjectRecord(context.params) ? context.params : {}),
+    // Reserved runtime values are written last so action parameters cannot
+    // impersonate another participant or replace turn ownership. Null is
+    // deliberate: absence must also overwrite a client-supplied reserved key.
+    actor: context.actorPlayerId ?? null,
+    activePlayer: activePlayerId ?? null
   };
 };
 
-/** JsonLogic receives params in one explicit branch; params are never spread into state. */
-const buildJsonLogicContext = (state: RuntimeState, params: Record<string, unknown>) => ({
-  ...state,
-  params
-});
+/** JsonLogic receives params and materialized participant branches explicitly. */
+const buildJsonLogicContext = (state: RuntimeState, params: Record<string, unknown>) => {
+  const players = ensureObject(state.players);
+  const actorId = typeof params.actor === "string" ? params.actor : undefined;
+  const activePlayerId = typeof params.activePlayer === "string" ? params.activePlayer : undefined;
+  const actorState = actorId && isObjectRecord(players[actorId]) ? players[actorId] : undefined;
+  const activePlayerState = activePlayerId && isObjectRecord(players[activePlayerId])
+    ? players[activePlayerId]
+    : undefined;
+
+  return {
+    ...state,
+    params,
+    ...(actorState ? { actor: { playerId: actorId, ...actorState } } : {}),
+    ...(activePlayerState ? { activePlayer: { playerId: activePlayerId, ...activePlayerState } } : {})
+  };
+};
 
 const objectVisibilityRoot = (
   state: RuntimeState,
@@ -516,7 +542,8 @@ const selectEffectConditionState = (
 const evaluateEffectCondition = (
   currentState: RuntimeState,
   preActionState: RuntimeState,
-  condition: GameManifestDeterministicEffectCondition
+  condition: GameManifestDeterministicEffectCondition,
+  params: Record<string, unknown>
 ): boolean => {
   if ("metric" in condition) {
     return evaluateMetricCondition(
@@ -537,16 +564,24 @@ const evaluateEffectCondition = (
     return evaluateCollectionCount(sourceState, condition.collectionCount);
   }
 
+  if ("jsonLogic" in condition) {
+    const sourceState = selectEffectConditionState(currentState, preActionState, condition.readFrom);
+    return Boolean(jsonLogic.apply(
+      condition.jsonLogic as Parameters<typeof jsonLogic.apply>[0],
+      buildJsonLogicContext(sourceState, params)
+    ));
+  }
+
   if ("all" in condition) {
-    return condition.all.every((item) => evaluateEffectCondition(currentState, preActionState, item));
+    return condition.all.every((item) => evaluateEffectCondition(currentState, preActionState, item, params));
   }
 
   if ("any" in condition) {
-    return condition.any.some((item) => evaluateEffectCondition(currentState, preActionState, item));
+    return condition.any.some((item) => evaluateEffectCondition(currentState, preActionState, item, params));
   }
 
   if ("not" in condition) {
-    return !evaluateEffectCondition(currentState, preActionState, condition.not);
+    return !evaluateEffectCondition(currentState, preActionState, condition.not, params);
   }
 
   return true;
@@ -772,6 +807,7 @@ const evaluateManifestGuard = (
 
   const publicState = ensureObject(state.public);
   const timeline = ensureObject(publicState.timeline);
+  const turn = ensureObject(publicState.turn);
 
   if (guard.timeline?.line !== undefined && timeline.line !== guard.timeline.line) {
     failures.push(`public.timeline.line expected "${guard.timeline.line}"`);
@@ -788,6 +824,24 @@ const evaluateManifestGuard = (
     const expectedCanAdvance = typeof guard.timeline.canAdvance === 'string' ? guard.timeline.canAdvance === 'true' : guard.timeline.canAdvance;
     if (timeline.canAdvance !== expectedCanAdvance) {
       failures.push(`public.timeline.canAdvance expected ${String(expectedCanAdvance)}`);
+    }
+  }
+
+  if (guard.turn?.phase !== undefined && turn.phase !== guard.turn.phase) {
+    failures.push(`public.turn.phase expected "${guard.turn.phase}"`);
+  }
+
+  if (guard.turn?.actorIsActive !== undefined) {
+    const actorPlayerId = typeof params.actor === "string" ? params.actor : undefined;
+    if (!actorPlayerId) {
+      failures.push("turn guard requires an actor player id");
+    } else {
+      const actorIsActive = turn.activePlayerId === actorPlayerId;
+      if (actorIsActive !== guard.turn.actorIsActive) {
+        failures.push(
+          `turn actor active expected ${String(guard.turn.actorIsActive)} (actor: ${actorPlayerId}, active: ${String(turn.activePlayerId)})`
+        );
+      }
     }
   }
 
@@ -846,13 +900,66 @@ const readMetricSnapshot = (state: RuntimeState): Record<string, unknown> => {
   return { ...ensureObject(publicState.metrics) };
 };
 
-const applyMetricChange = (
+const resolvePlayerRef = (
   state: RuntimeState,
-  change: { metricId: string; delta: number | string | JsonLogicExpression },
+  playerRef: GameManifestPlayerRef | undefined,
   params: Record<string, unknown>
-) => {
+): string => {
+  if (playerRef && typeof playerRef !== "string") {
+    assertSafeJsonPointer(playerRef.fromPath);
+    if (!playerRef.fromPath.startsWith("/public/") || playerRef.fromPath.includes("{{")) {
+      throw new Error("Player reference paths must be static pointers under public state");
+    }
+  }
+  const resolved = typeof playerRef === "string"
+    ? resolveValue(playerRef, params)
+    : playerRef && "fromPath" in playerRef
+      ? readJsonPointer(state, playerRef.fromPath)
+      : undefined;
+
+  if (typeof resolved !== "string" || !resolved) {
+    throw new Error("Player-scoped effect could not resolve a participant id");
+  }
+  const players = ensureObject(state.players);
+  if (!isObjectRecord(players[resolved])) {
+    throw new Error(`Player-scoped effect references unknown participant "${resolved}"`);
+  }
+  return resolved;
+};
+
+const ensureMetricContainer = (
+  state: RuntimeState,
+  scope: "session" | "player" | undefined,
+  playerRef: GameManifestPlayerRef | undefined,
+  params: Record<string, unknown>
+): { metrics: Record<string, unknown>; targetPrefix: string } => {
+  if (scope === "player") {
+    const playerId = resolvePlayerRef(state, playerRef, params);
+    const players = ensureObject(state.players);
+    const player = players[playerId] as Record<string, unknown>;
+    const metrics = ensureObject(player.metrics);
+    player.metrics = metrics;
+    return { metrics, targetPrefix: `players.${playerId}.metrics` };
+  }
+
   const publicState = ensureObject(state.public);
   const metrics = ensureObject(publicState.metrics);
+  publicState.metrics = metrics;
+  state.public = publicState;
+  return { metrics, targetPrefix: "public.metrics" };
+};
+
+const applyMetricChange = (
+  state: RuntimeState,
+  change: {
+    metricId: string;
+    delta: number | string | JsonLogicExpression;
+    scope?: "session" | "player";
+    playerId?: GameManifestPlayerRef;
+  },
+  params: Record<string, unknown>
+): string => {
+  const { metrics, targetPrefix } = ensureMetricContainer(state, change.scope, change.playerId, params);
 
   const current = typeof metrics[change.metricId] === "number" ? (metrics[change.metricId] as number) : 0;
   // Resolve the addition value: number literal, template string, or JsonLogic expression.
@@ -868,10 +975,27 @@ const applyMetricChange = (
     changeValue = 0;
   }
   const nextValue = current + changeValue;
+  if (!Number.isFinite(nextValue)) {
+    throw new Error(`Metric "${change.metricId}" addition must produce a finite number`);
+  }
   metrics[change.metricId] = Math.round(nextValue * 1_000_000) / 1_000_000;
+  return `${targetPrefix}.${change.metricId}`;
+};
 
-  publicState.metrics = metrics;
-  state.public = publicState;
+const applyMetricSet = (
+  state: RuntimeState,
+  effect: Extract<GameManifestDeterministicEffect, { op: "metric.set" }>,
+  params: Record<string, unknown>
+): string => {
+  const { metrics, targetPrefix } = ensureMetricContainer(state, effect.scope, effect.playerId, params);
+  const resolved = typeof effect.value === "object" && effect.value !== null
+    ? jsonLogic.apply(effect.value as Parameters<typeof jsonLogic.apply>[0], buildJsonLogicContext(state, params))
+    : effect.value;
+  if (typeof resolved !== "number" || !Number.isFinite(resolved)) {
+    throw new Error(`Metric "${effect.metricId}" assignment must produce a finite number`);
+  }
+  metrics[effect.metricId] = Math.round(resolved * 1_000_000) / 1_000_000;
+  return `${targetPrefix}.${effect.metricId}`;
 };
 
 const resolveNumericExpression = (
@@ -889,31 +1013,180 @@ const resolveNumericExpression = (
   return amount;
 };
 
-/** Apply one nonnegative transfer. The caller works on a cloned action state. */
+type ResolvedMetricTransferEndpoint =
+  | { scope: "bank"; target: "bank" }
+  | {
+      scope: "balance";
+      target: string;
+      value: unknown;
+      write: (value: number) => void;
+    };
+
+/**
+ * Resolve a schema-owned economic endpoint into one balance slot.
+ *
+ * Player endpoints are intentionally mapped through `resolvePlayerRef` instead
+ * of concatenating a manifest or client value into a state path. This keeps
+ * participant selection bounded to an existing server-owned player branch.
+ */
+const resolveMetricTransferEndpoint = (
+  state: RuntimeState,
+  endpoint: Extract<GameManifestDeterministicEffect, { op: "metric.transfer" }>["from"],
+  params: Record<string, unknown>
+): ResolvedMetricTransferEndpoint => {
+  if (endpoint.scope === "bank") {
+    return { scope: "bank", target: "bank" };
+  }
+
+  if (endpoint.scope === "state") {
+    if (endpoint.path.includes("{{")) {
+      throw new Error("Metric transfer state paths must be static");
+    }
+    assertWritableManifestEffectPath(endpoint.path);
+    return {
+      scope: "balance",
+      target: `state:${endpoint.path}`,
+      value: readJsonPointer(state, endpoint.path),
+      write: (value) => setJsonPointerValue(state, endpoint.path, value)
+    };
+  }
+
+  if (forbiddenPointerSegments.has(endpoint.metricId)) {
+    throw new Error(`Metric transfer uses forbidden metric id "${endpoint.metricId}"`);
+  }
+  const playerId = resolvePlayerRef(state, endpoint.playerId, params);
+  const players = ensureObject(state.players);
+  const player = players[playerId] as Record<string, unknown>;
+  const metrics = ensureObject(player.metrics);
+  return {
+    scope: "balance",
+    target: `player:${JSON.stringify([playerId, endpoint.metricId])}`,
+    value: metrics[endpoint.metricId],
+    write: (value) => {
+      metrics[endpoint.metricId] = value;
+      player.metrics = metrics;
+    }
+  };
+};
+
+const readValidMetricBalance = (
+  endpoint: ResolvedMetricTransferEndpoint,
+  role: "source" | "destination"
+): number | undefined => {
+  if (endpoint.scope === "bank") {
+    return undefined;
+  }
+  if (typeof endpoint.value !== "number" || !Number.isFinite(endpoint.value) || endpoint.value < 0) {
+    throw new Error(`Metric transfer ${role} must be a finite non-negative balance`);
+  }
+  return endpoint.value;
+};
+
+/**
+ * Apply one nonnegative transfer atomically inside the action's cloned state.
+ * Every endpoint and resulting balance is validated before either side writes.
+ */
 const applyMetricTransfer = (
   state: RuntimeState,
   effect: Extract<GameManifestDeterministicEffect, { op: "metric.transfer" }>,
   params: Record<string, unknown>
-) => {
+): string => {
   const amount = resolveNumericExpression(effect.amount, state, params);
-  if (effect.from.kind === "state") assertWritableManifestEffectPath(effect.from.path);
-  if (effect.to.kind === "state") assertWritableManifestEffectPath(effect.to.path);
-  const sourceValue = effect.from.kind === "bank" ? undefined : readJsonPointer(state, effect.from.path);
-  const destinationValue = effect.to.kind === "bank" ? undefined : readJsonPointer(state, effect.to.path);
-  if (effect.from.kind === "state" &&
-      (typeof sourceValue !== "number" || !Number.isFinite(sourceValue) || sourceValue < amount)) {
+  const source = resolveMetricTransferEndpoint(state, effect.from, params);
+  const destination = resolveMetricTransferEndpoint(state, effect.to, params);
+  const sourceValue = readValidMetricBalance(source, "source");
+  const destinationValue = readValidMetricBalance(destination, "destination");
+
+  if (sourceValue !== undefined && sourceValue < amount) {
     throw new Error("Metric transfer cannot make a source balance negative");
   }
-  if (effect.to.kind === "state" &&
-      (typeof destinationValue !== "number" || !Number.isFinite(destinationValue) || destinationValue < 0)) {
-    throw new Error("Metric transfer destination must be a finite non-negative balance");
+
+  // A transfer to the same balance is valid but must be a no-op. Handling it
+  // explicitly also prevents a second write from overwriting the debit.
+  if (source.target === destination.target) {
+    return destination.target;
   }
-  if (effect.from.kind === "state") {
-    setJsonPointerValue(state, effect.from.path, (sourceValue as number) - amount);
+
+  const nextSource = sourceValue === undefined ? undefined : sourceValue - amount;
+  const nextDestination = destinationValue === undefined ? undefined : destinationValue + amount;
+  if (nextDestination !== undefined && !Number.isFinite(nextDestination)) {
+    throw new Error("Metric transfer destination balance would overflow");
   }
-  if (effect.to.kind === "state") {
-    setJsonPointerValue(state, effect.to.path, (destinationValue as number) + amount);
+
+  if (source.scope === "balance") {
+    source.write(nextSource as number);
   }
+  if (destination.scope === "balance") {
+    destination.write(nextDestination as number);
+  }
+  return destination.target;
+};
+
+const applyRandomRoll = (
+  state: RuntimeState,
+  effect: Extract<GameManifestDeterministicEffect, { op: "random.roll" }>
+) => {
+  const secretState = ensureObject(state.secret);
+  if (!isObjectRecord(secretState.random)) {
+    throw new Error("random.roll requires runtime-owned state.secret.random");
+  }
+  const roll = rollSessionDice(secretState.random as unknown as SessionRandomState, effect.dice);
+  secretState.random = roll.random;
+  state.secret = secretState;
+  setJsonPointerValue(state, effect.storePath, roll.result);
+  return roll.result;
+};
+
+const applyTurnNext = (state: RuntimeState, turnPhases: ReadonlyArray<string> | undefined) => {
+  const publicState = ensureObject(state.public);
+  const turn = ensureObject(publicState.turn);
+  const order = Array.isArray(turn.order)
+    ? turn.order.filter((value): value is string => typeof value === "string")
+    : [];
+  const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : undefined;
+  if (order.length === 0 || !activePlayerId || !order.includes(activePlayerId)) {
+    throw new Error("turn.next requires a valid public.turn order and active participant");
+  }
+
+  const players = ensureObject(state.players);
+  const activeIndex = order.indexOf(activePlayerId);
+  let nextPlayerId: string | undefined;
+  for (let offset = 1; offset <= order.length; offset += 1) {
+    const candidateId = order[(activeIndex + offset) % order.length];
+    const candidate = players[candidateId];
+    if (isObjectRecord(candidate) && candidate.status !== "eliminated") {
+      nextPlayerId = candidateId;
+      break;
+    }
+  }
+  if (!nextPlayerId) {
+    throw new Error("turn.next could not find an active participant");
+  }
+
+  turn.activePlayerId = nextPlayerId;
+  turn.phase = turnPhases?.[0] ?? turn.phase;
+  turn.turnNumber = (typeof turn.turnNumber === "number" ? turn.turnNumber : 0) + 1;
+  publicState.turn = turn;
+  state.public = publicState;
+  return { activePlayerId: nextPlayerId, phase: turn.phase, turnNumber: turn.turnNumber };
+};
+
+const applyTurnPhase = (
+  state: RuntimeState,
+  phase: string,
+  turnPhases: ReadonlyArray<string> | undefined
+) => {
+  if (turnPhases && !turnPhases.includes(phase)) {
+    throw new Error(`turn.phase.set cannot select undeclared phase "${phase}"`);
+  }
+  const publicState = ensureObject(state.public);
+  const turn = ensureObject(publicState.turn);
+  if (typeof turn.activePlayerId !== "string") {
+    throw new Error("turn.phase.set requires initialized public.turn state");
+  }
+  turn.phase = phase;
+  publicState.turn = turn;
+  state.public = publicState;
 };
 
 const appendStructuredLogEntry = (
@@ -985,7 +1258,8 @@ const applyManifestEffects = (
   preActionState: RuntimeState,
   metricsBefore: Record<string, unknown>,
   objectModels?: GameManifestObjectModelMap,
-  networkModels?: GameManifestTransportNetworkModelMap
+  networkModels?: GameManifestTransportNetworkModelMap,
+  turnPhases?: ReadonlyArray<string>
 ): Array<RuntimeActionEffect> => {
   const declaredEffects = Array.isArray(metadata.effects) ? metadata.effects : [];
   const runtimeEffects: Array<RuntimeActionEffect> = [];
@@ -993,7 +1267,7 @@ const applyManifestEffects = (
 
   for (const declaredEffect of declaredEffects) {
     const effect = resolveValue(declaredEffect, params) as GameManifestDeterministicEffect;
-    if (effect.when && !evaluateEffectCondition(state, preActionState, effect.when)) {
+    if (effect.when && !evaluateEffectCondition(state, preActionState, effect.when, params)) {
       continue;
     }
 
@@ -1067,11 +1341,35 @@ const applyManifestEffects = (
         });
         break;
       }
+      case "random.roll": {
+        const result = applyRandomRoll(state, effect);
+        const logEntry = {
+          actionId: context.actionId,
+          kind: "random.roll",
+          dice: effect.dice,
+          result,
+          at: context.now.toISOString()
+        };
+        appendLogEntry(state, logEntry);
+        runtimeEffects.push({
+          kind: "random",
+          target: effect.storePath,
+          value: result,
+          data: { op: effect.op, dice: effect.dice }
+        });
+        runtimeEffects.push({ kind: "log", target: "public.log", data: logEntry });
+        break;
+      }
       case "metric.add": {
-        applyMetricChange(state, { metricId: effect.metricId, delta: effect.delta }, params);
+        const target = applyMetricChange(state, {
+          metricId: effect.metricId,
+          delta: effect.delta,
+          scope: effect.scope,
+          playerId: effect.playerId
+        }, params);
         runtimeEffects.push({
           kind: "state",
-          target: `public.metrics.${effect.metricId}`,
+          target,
           value: "add",
           data: {
             capability: context.manifestAction.capability,
@@ -1082,18 +1380,50 @@ const applyManifestEffects = (
         });
         break;
       }
-      case "metric.transfer": {
-        applyMetricTransfer(state, effect, params);
+      case "metric.set": {
+        const target = applyMetricSet(state, effect, params);
         runtimeEffects.push({
           kind: "state",
-          target: effect.to.kind === "state" ? effect.to.path : "bank",
+          target,
+          value: "set",
+          data: { op: effect.op, metricId: effect.metricId, value: effect.value }
+        });
+        break;
+      }
+      case "turn.next": {
+        const nextTurn = applyTurnNext(state, turnPhases);
+        runtimeEffects.push({
+          kind: "turn",
+          target: "public.turn",
+          value: "next",
+          data: { op: effect.op, ...nextTurn }
+        });
+        break;
+      }
+      case "turn.phase.set": {
+        applyTurnPhase(state, effect.phase, turnPhases);
+        runtimeEffects.push({
+          kind: "turn",
+          target: "public.turn.phase",
+          value: effect.phase,
+          data: { op: effect.op }
+        });
+        break;
+      }
+      case "metric.transfer": {
+        const target = applyMetricTransfer(state, effect, params);
+        runtimeEffects.push({
+          kind: "state",
+          target,
           value: "metric.transfer",
           data: { op: effect.op, from: effect.from, to: effect.to, amount: effect.amount }
         });
         break;
       }
       case "transport.road.build":
-      case "transport.waypoint.build": {
+      case "transport.waypoint.build":
+      case "transport.vehicle.move":
+      case "transport.cargo.deliver": {
         const result = applyTransportEffect({
           state,
           effect,
@@ -1340,7 +1670,8 @@ const buildManifestActionTransition = (
   capabilityFamily: CapabilityFamily,
   templates?: GameManifestTemplateMap,
   objectModels?: GameManifestObjectModelMap,
-  networkModels?: GameManifestTransportNetworkModelMap
+  networkModels?: GameManifestTransportNetworkModelMap,
+  turnPhases?: ReadonlyArray<string>
 ): RuntimeActionResult<RuntimeState> => {
   if (
     context.manifestAction.handlerType !== "manifest-data" &&
@@ -1391,7 +1722,8 @@ const buildManifestActionTransition = (
       context.state,
       metricsBefore,
       objectModels,
-      networkModels
+      networkModels,
+      turnPhases
     );
   } catch (error) {
     return {
@@ -1438,7 +1770,8 @@ export function createDeterministicHandler(
       capabilityFamily,
       options.templates,
       options.objectModels,
-      options.networkModels
+      options.networkModels,
+      options.turnPhases
     );
   }
 

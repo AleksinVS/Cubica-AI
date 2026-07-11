@@ -27,10 +27,18 @@
     "smartSubsample": true
   },
   "rights": {
-    "status": "unconfirmed",
-    "license": "not-provided",
-    "owner": "not-provided",
-    "publicationAllowed": false,
-    "note": "The authored-in-repo derivative is available for local implementation and review; publication remains prohibited until the owner confirms rights."
+    "status": "confirmed",
+    "license": "direct-permission-from-author-and-rightsholder",
+    "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
+    "publicationAllowed": true,
+    "modificationAllowed": true,
+    "distributionChannels": [
+      "Cubica web application",
+      "development and test environments",
+      "published game package"
+    ],
+    "confirmedBy": "PM",
+    "confirmedAt": "2026-07-11",
+    "note": "The PM confirmed that use of the map is agreed with both the game author and the rightsholder. Cubica may optimize, include, and publish the derivative without a known rights risk."
   }
 }

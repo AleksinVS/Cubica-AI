@@ -1,0 +1,89 @@
+{
+  "fixtureKind": "development-control-transcript",
+  "gameId": "cards-money-trains-mock",
+  "warning": "MOCK: контрольная последовательность проверяет платформу, но не подтверждает правила автора.",
+  "preconditions": {
+    "phase": "news",
+    "allTeamCoins": 10,
+    "existingEdgeForWaypoint": "mock-edge-a-b",
+    "unconnectedRoadEndpoints": ["mock-terminal-b", "mock-terminal-d"]
+  },
+  "steps": [
+    {
+      "order": 1,
+      "actionId": "mock.news.block-road",
+      "params": null,
+      "expected": { "phase": "maintenance", "edgeId": "mock-edge-c-d", "edgeState": "blocked" }
+    },
+    {
+      "order": 2,
+      "actionId": "mock.maintenance.pay",
+      "params": null,
+      "expected": {
+        "phase": "movement",
+        "newBalances": { "white-logistics": 8, "red-logistics": 8, "purple-guild": 9, "green-guild": 9 }
+      }
+    },
+    {
+      "order": 3,
+      "actionId": "mock.locomotive.move",
+      "params": { "vehicleId": "mock-locomotive-purple-1", "edgeId": "mock-edge-b-c" },
+      "expected": {
+        "nodeId": "mock-terminal-c",
+        "actionPoints": 4,
+        "coupledWagonNodeId": "mock-terminal-c"
+      }
+    },
+    {
+      "order": 4,
+      "actionId": "mock.cargo.deliver",
+      "params": { "wagonId": "mock-wagon-white-1", "cargoId": "mock-cargo-b-c" },
+      "expected": {
+        "phase": "construction",
+        "cargoState": "delivered",
+        "wagonDetached": true,
+        "newBalances": { "white-logistics": 15, "red-logistics": 8, "purple-guild": 11, "green-guild": 9 }
+      }
+    },
+    {
+      "order": 5,
+      "actionId": "construction.road.build",
+      "params": {
+        "fromNodeId": "mock-terminal-b",
+        "toNodeId": "mock-terminal-d",
+        "whiteContribution": 2,
+        "redContribution": 2,
+        "purpleContribution": 1,
+        "greenContribution": 1
+      },
+      "expected": {
+        "constructionCost": 6,
+        "regionSegments": 3,
+        "newBalances": { "white-logistics": 13, "red-logistics": 6, "purple-guild": 10, "green-guild": 8 }
+      }
+    },
+    {
+      "order": 6,
+      "actionId": "construction.waypoint.build",
+      "params": {
+        "edgeId": "mock-edge-a-b",
+        "positionT": 0.5,
+        "whiteContribution": 3,
+        "redContribution": 2,
+        "purpleContribution": 0,
+        "greenContribution": 0
+      },
+      "expected": {
+        "constructionCost": 5,
+        "replacedEdgeRemoved": true,
+        "newBalances": { "white-logistics": 10, "red-logistics": 4, "purple-guild": 10, "green-guild": 8 }
+      }
+    },
+    {
+      "order": 7,
+      "actionId": "construction.phase.finish",
+      "params": null,
+      "expected": { "phase": "reporting", "constructionAvailable": false }
+    }
+  ]
+}

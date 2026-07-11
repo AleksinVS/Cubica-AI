@@ -71,8 +71,8 @@ test("buildReadinessResponse is ready with the default (real) content probe", as
   assert.equal(readiness.dependencies.sessionStore.status, "ok");
 });
 
-test("session store mode reflects the injected in-memory store", () => {
-  const check = checkSessionStore(new InMemorySessionStore());
+test("session store mode reflects the injected in-memory store", async () => {
+  const check = await checkSessionStore(new InMemorySessionStore());
   assert.equal(check.mode, "in-memory");
 });
 
@@ -80,6 +80,7 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
   // A hypothetical alternate backing store must be reported honestly, proving
   // the mode is not hardcoded to "in-memory".
   class RedisSessionStore {
+    readonly mode = "redis";
     async createSession() {
       return {} as never;
     }
@@ -89,6 +90,11 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async updateSession(session: unknown) {
       return session as never;
     }
+    async withLockedSession() {
+      return undefined as never;
+    }
+    async checkReadiness() {}
+    async close() {}
   }
 
   assert.equal(deriveSessionStoreMode(new RedisSessionStore()), "redis");

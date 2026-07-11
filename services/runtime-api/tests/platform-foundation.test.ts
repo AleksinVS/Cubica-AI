@@ -52,6 +52,21 @@ const neutralManifest = {
       collection: "edges",
       scope: "session",
       facets: { status: { initial: "open", values: ["open", "building", "blocked"] } }
+    },
+    "network.vehicle": {
+      collection: "vehicles",
+      scope: "session",
+      facets: { status: { initial: "active", values: ["active"] } }
+    },
+    "network.carrier": {
+      collection: "carriers",
+      scope: "session",
+      facets: { status: { initial: "active", values: ["active"] } }
+    },
+    "network.cargo": {
+      collection: "cargo",
+      scope: "session",
+      facets: { status: { initial: "in_transit", values: ["in_transit", "delivered"] } }
     }
   },
   networkModels: {
@@ -69,6 +84,35 @@ const neutralManifest = {
       sequencePath: "/public/transportNetworks/grid/sequence",
       roadCostPerRegionSegment: 2,
       waypointCost: 5,
+      movement: {
+        vehicleCollection: "vehicles",
+        vehicleObjectTypes: ["network.vehicle"],
+        locationAttribute: "nodeId",
+        actionPointsAttribute: "actionPoints",
+        traversableNodeStates: ["active"],
+        traversableEdgeStates: ["open"],
+        capacityCollection: "vehicles",
+        capacityObjectTypes: ["network.vehicle"],
+        capacityLocationAttribute: "nodeId",
+        maxVehiclesPerNode: 2,
+        coupledCollection: "carriers",
+        coupledObjectTypes: ["network.carrier"],
+        coupledVehicleAttribute: "vehicleId",
+        coupledLocationAttribute: "nodeId"
+      },
+      cargoDelivery: {
+        wagonCollection: "carriers",
+        wagonObjectTypes: ["network.carrier"],
+        cargoCollection: "cargo",
+        cargoObjectTypes: ["network.cargo"],
+        locationAttribute: "nodeId",
+        cargoReferenceAttribute: "cargoId",
+        attachedVehicleAttribute: "vehicleId",
+        cargoDestinationAttribute: "destinationNodeId",
+        cargoStateFacet: "status",
+        deliverableCargoStates: ["in_transit"],
+        deliveredCargoState: "delivered"
+      },
       regions: [{
         id: "region-a",
         polygon: [{ x: -1, y: -1 }, { x: 11, y: -1 }, { x: 11, y: 11 }, { x: -1, y: 11 }]
@@ -124,6 +168,27 @@ const neutralManifest = {
               geometry: { from: { x: 0, y: 0 }, to: { x: 5, y: 0 } }
             }
           }
+        },
+        vehicles: {
+          mover: {
+            objectType: "network.vehicle",
+            facets: { status: "active" },
+            attributes: { networkId: "grid", nodeId: "a", actionPoints: 2 }
+          }
+        },
+        carriers: {
+          carrier: {
+            objectType: "network.carrier",
+            facets: { status: "active" },
+            attributes: { networkId: "grid", nodeId: "a", vehicleId: "mover", cargoId: "parcel" }
+          }
+        },
+        cargo: {
+          parcel: {
+            objectType: "network.cargo",
+            facets: { status: "in_transit" },
+            attributes: { networkId: "grid", destinationNodeId: "b" }
+          }
         }
       },
       log: []
@@ -142,10 +207,10 @@ const neutralManifest = {
       deterministic: {
         effects: [{
           op: "metric.transfer",
-          from: { kind: "state", path: "/public/balances/alpha" },
-          to: { kind: "state", path: "/public/balances/beta" },
+          from: { scope: "state", path: "/public/balances/alpha" },
+          to: { scope: "state", path: "/public/balances/beta" },
           amount: { var: "params.amount" },
-          insufficientFunds: "fail"
+          onInsufficient: "fail"
         }]
       }
     },
@@ -155,10 +220,10 @@ const neutralManifest = {
       deterministic: {
         effects: [{
           op: "metric.transfer",
-          from: { kind: "state", path: "/public/balances/alpha" },
-          to: { kind: "state", path: "/public/balances/beta" },
+          from: { scope: "state", path: "/public/balances/alpha" },
+          to: { scope: "state", path: "/public/balances/beta" },
           amount: { "/": [1, 2] },
-          insufficientFunds: "fail"
+          onInsufficient: "fail"
         }]
       }
     },
@@ -206,6 +271,48 @@ const neutralManifest = {
           edgeParam: "edgeId",
           positionParam: "positionT",
           payments: [{ balancePath: "/public/balances/beta", amount: { var: "params.contribution" } }]
+        }]
+      }
+    },
+    moveVehicle: {
+      handlerType: "manifest-data",
+      allowedSessionRoles: ["facilitator"],
+      paramsSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          vehicleId: refSchema("vehicles", ["network.vehicle"]),
+          edgeId: refSchema("edges", ["network.edge"])
+        },
+        required: ["vehicleId", "edgeId"]
+      },
+      deterministic: {
+        effects: [{
+          op: "transport.vehicle.move",
+          networkId: "grid",
+          vehicleParam: "vehicleId",
+          edgeParam: "edgeId"
+        }]
+      }
+    },
+    deliverCargo: {
+      handlerType: "manifest-data",
+      allowedSessionRoles: ["facilitator"],
+      paramsSchema: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          wagonId: refSchema("carriers", ["network.carrier"]),
+          cargoId: refSchema("cargo", ["network.cargo"])
+        },
+        required: ["wagonId", "cargoId"]
+      },
+      deterministic: {
+        effects: [{
+          op: "transport.cargo.deliver",
+          networkId: "grid",
+          wagonParam: "wagonId",
+          cargoParam: "cargoId"
         }]
       }
     },
@@ -359,6 +466,37 @@ test("schema-declared references build a road and split that dynamic edge with a
   current = await store.getSession(session.sessionId);
   assert.equal((current?.state as any).public.phase, "construction");
   assert.equal((current?.state as any).public.objects.edges["grid:edge:5"].attributes.fromNodeId, "grid:node:2");
+});
+
+test("schema-declared vehicle movement carries coupled objects and completes cargo at destination", async () => {
+  const { store, session } = await createStore();
+  await dispatchRuntimeAction({
+    sessionStore: store,
+    bundle,
+    input: {
+      sessionId: session.sessionId,
+      actionId: "moveVehicle",
+      params: { vehicleId: "mover", edgeId: "edge-a-b" }
+    }
+  });
+  let current = await store.getSession(session.sessionId);
+  assert.equal((current?.state as any).public.objects.vehicles.mover.attributes.nodeId, "b");
+  assert.equal((current?.state as any).public.objects.vehicles.mover.attributes.actionPoints, 1);
+  assert.equal((current?.state as any).public.objects.carriers.carrier.attributes.nodeId, "b");
+
+  await dispatchRuntimeAction({
+    sessionStore: store,
+    bundle,
+    input: {
+      sessionId: session.sessionId,
+      actionId: "deliverCargo",
+      params: { wagonId: "carrier", cargoId: "parcel" }
+    }
+  });
+  current = await store.getSession(session.sessionId);
+  assert.equal((current?.state as any).public.objects.carriers.carrier.attributes.vehicleId, null);
+  assert.equal((current?.state as any).public.objects.carriers.carrier.attributes.cargoId, null);
+  assert.equal((current?.state as any).public.objects.cargo.parcel.facets.status, "delivered");
 });
 
 test("invalid live reference and underfunded construction leave graph and version unchanged", async () => {

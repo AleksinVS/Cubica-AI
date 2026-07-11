@@ -1,0 +1,75 @@
+{
+  "fixtureKind": "development-mock",
+  "gameId": "cards-money-trains-mock",
+  "warning": "MOCK: вымышленные команды, выплаты и маршруты. Не являются авторскими правилами.",
+  "maintenance": {
+    "coinsPerVehicle": 1,
+    "warning": "MOCK: тариф нужен только для проверки атомарного обслуживания."
+  },
+  "teams": [
+    {
+      "id": "white-logistics",
+      "label": "Белая (MOCK)",
+      "type": "logistics_company",
+      "coins": 10,
+      "vehicles": [
+        {
+          "id": "mock-wagon-white-1",
+          "kind": "wagon",
+          "nodeId": "mock-terminal-b",
+          "attachedVehicleId": "mock-locomotive-purple-1",
+          "cargoId": "mock-cargo-b-c"
+        },
+        { "id": "mock-wagon-white-2", "kind": "wagon", "nodeId": "mock-terminal-b" }
+      ]
+    },
+    {
+      "id": "red-logistics",
+      "label": "Красная (MOCK)",
+      "type": "logistics_company",
+      "coins": 10,
+      "vehicles": [
+        { "id": "mock-wagon-red-1", "kind": "wagon", "nodeId": "mock-terminal-e" },
+        { "id": "mock-wagon-red-2", "kind": "wagon", "nodeId": "mock-terminal-f" }
+      ]
+    },
+    {
+      "id": "purple-guild",
+      "label": "Фиолетовая (MOCK)",
+      "type": "locomotive_guild",
+      "coins": 10,
+      "vehicles": [
+        { "id": "mock-locomotive-purple-1", "kind": "locomotive", "nodeId": "mock-terminal-b", "actionPoints": 5 }
+      ]
+    },
+    {
+      "id": "green-guild",
+      "label": "Зеленая (MOCK)",
+      "type": "locomotive_guild",
+      "coins": 10,
+      "vehicles": [
+        { "id": "mock-locomotive-green-1", "kind": "locomotive", "nodeId": "mock-terminal-f", "actionPoints": 5 }
+      ]
+    }
+  ],
+  "cargoCards": [
+    {
+      "id": "mock-cargo-b-c",
+      "fromNodeId": "mock-terminal-b",
+      "toNodeId": "mock-terminal-c",
+      "payout": 9,
+      "transportFee": 2,
+      "copies": 1
+    },
+    { "id": "mock-cargo-a-d", "fromNodeId": "mock-terminal-a", "toNodeId": "mock-terminal-d", "payout": 9, "copies": 2 },
+    { "id": "mock-cargo-e-c", "fromNodeId": "mock-terminal-e", "toNodeId": "mock-terminal-c", "payout": 6, "copies": 2 },
+    { "id": "mock-cargo-b-f", "fromNodeId": "mock-terminal-b", "toNodeId": "mock-terminal-f", "payout": 7, "copies": 1 }
+  ],
+  "newsCards": [
+    {
+      "id": "mock-news-block-c-d",
+      "summary": "MOCK: дорога C–D временно закрыта",
+      "effect": { "kind": "edge-state", "edgeId": "mock-edge-c-d", "state": "blocked" }
+    }
+  ]
+}

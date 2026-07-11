@@ -1,0 +1,153 @@
+{
+  "$schema": "./map-annotation.schema.json",
+  "schemaVersion": "1.0",
+  "status": "mock",
+  "warning": "MOCK: вымышленная сеть для разработки. Не публиковать и не переносить в нормативную игру без подтверждения автора.",
+  "sourceImage": {
+    "file": "../assets/images/mock-board.svg",
+    "pixelWidth": 1400,
+    "pixelHeight": 1000,
+    "rightsConfirmed": true
+  },
+  "coordinateSystem": {
+    "origin": "top-left",
+    "units": "design-pixel",
+    "width": 1400,
+    "height": 1000
+  },
+  "nodes": [
+    {
+      "id": "mock-terminal-a",
+      "label": "A",
+      "kind": "terminal",
+      "position": { "x": 150, "y": 200 },
+      "state": "open",
+      "evidence": "MOCK coordinate"
+    },
+    {
+      "id": "mock-terminal-b",
+      "label": "B",
+      "kind": "terminal",
+      "position": { "x": 450, "y": 180 },
+      "state": "open",
+      "evidence": "MOCK coordinate"
+    },
+    {
+      "id": "mock-terminal-c",
+      "label": "C",
+      "kind": "terminal",
+      "position": { "x": 760, "y": 250 },
+      "state": "open",
+      "evidence": "MOCK coordinate"
+    },
+    {
+      "id": "mock-terminal-d",
+      "label": "D",
+      "kind": "terminal",
+      "position": { "x": 1100, "y": 180 },
+      "state": "open",
+      "evidence": "MOCK coordinate"
+    },
+    {
+      "id": "mock-terminal-e",
+      "label": "E",
+      "kind": "terminal",
+      "position": { "x": 360, "y": 650 },
+      "state": "open",
+      "evidence": "MOCK coordinate"
+    },
+    {
+      "id": "mock-terminal-f",
+      "label": "F",
+      "kind": "terminal",
+      "position": { "x": 850, "y": 700 },
+      "state": "open",
+      "evidence": "MOCK coordinate"
+    }
+  ],
+  "edges": [
+    {
+      "id": "mock-edge-a-b",
+      "fromNodeId": "mock-terminal-a",
+      "toNodeId": "mock-terminal-b",
+      "state": "open",
+      "evidence": "MOCK road"
+    },
+    {
+      "id": "mock-edge-b-c",
+      "fromNodeId": "mock-terminal-b",
+      "toNodeId": "mock-terminal-c",
+      "state": "open",
+      "evidence": "MOCK road"
+    },
+    {
+    "id": "mock-edge-c-d",
+      "fromNodeId": "mock-terminal-c",
+      "toNodeId": "mock-terminal-d",
+    "state": "open",
+    "evidence": "MOCK road that the control news closes at runtime"
+    },
+    {
+      "id": "mock-edge-b-e",
+      "fromNodeId": "mock-terminal-b",
+      "toNodeId": "mock-terminal-e",
+      "state": "open",
+      "evidence": "MOCK road"
+    },
+    {
+      "id": "mock-edge-e-f",
+      "fromNodeId": "mock-terminal-e",
+      "toNodeId": "mock-terminal-f",
+      "state": "open",
+      "evidence": "MOCK road"
+    },
+    {
+      "id": "mock-edge-c-f",
+      "fromNodeId": "mock-terminal-c",
+      "toNodeId": "mock-terminal-f",
+      "state": "open",
+      "evidence": "MOCK road"
+    }
+  ],
+  "regions": [
+    {
+      "id": "mock-region-west",
+      "label": "Западная область",
+      "countryId": "mock-country-north",
+      "polygon": [
+        { "x": 50, "y": 50 },
+        { "x": 480, "y": 50 },
+        { "x": 480, "y": 900 },
+        { "x": 50, "y": 900 },
+        { "x": 50, "y": 50 }
+      ],
+      "evidence": "MOCK region"
+    },
+    {
+      "id": "mock-region-central",
+      "label": "Центральная область",
+      "countryId": "mock-country-north",
+      "polygon": [
+        { "x": 480, "y": 50 },
+        { "x": 820, "y": 50 },
+        { "x": 820, "y": 900 },
+        { "x": 480, "y": 900 },
+        { "x": 480, "y": 50 }
+      ],
+      "evidence": "MOCK region"
+    },
+    {
+      "id": "mock-region-east",
+      "label": "Восточная область",
+      "countryId": "mock-country-south",
+      "polygon": [
+        { "x": 820, "y": 50 },
+        { "x": 1350, "y": 50 },
+        { "x": 1350, "y": 900 },
+        { "x": 820, "y": 900 },
+        { "x": 820, "y": 50 }
+      ],
+      "evidence": "MOCK region"
+    }
+  ]
+}

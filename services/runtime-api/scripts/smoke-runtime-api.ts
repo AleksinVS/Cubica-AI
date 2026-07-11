@@ -1,4 +1,5 @@
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
+import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 
 type RuntimeState = {
   runtime?: Record<string, unknown>;
@@ -20,7 +21,10 @@ const assert = (condition: unknown, message: string) => {
 };
 
 const main = async () => {
-  const runtimeApi = createRuntimeApiServer({ port: 0 });
+  const runtimeApi = createRuntimeApiServer({
+    port: 0,
+    sessionStore: new InMemorySessionStore<Record<string, unknown>>()
+  });
   await runtimeApi.start();
 
   try {
@@ -103,7 +107,7 @@ const main = async () => {
     // eslint-disable-next-line no-console
     console.log(`runtime-api smoke passed on ${baseUrl}`);
   } finally {
-    await new Promise<void>((resolve) => runtimeApi.server.close(() => resolve()));
+    await runtimeApi.close();
   }
 };
 

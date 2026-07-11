@@ -52,6 +52,8 @@ export interface RuntimeActionContext<TState = unknown> {
   actionId: string;
   payload?: unknown;
   params?: Record<string, unknown>;
+  /** Participant attributed to this action by the current delivery mode. */
+  actorPlayerId?: string;
   sessionRole?: "player" | "facilitator" | "assistant" | "observer";
   resolvedRefs?: Record<string, RuntimeResolvedReference>;
   state: TState;

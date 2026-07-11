@@ -408,33 +408,56 @@
       ]
     },
     "GameManifestMetricEndpoint": {
+      "description": "Explicitly scoped endpoint for transfers between the bank, shared state, and participant balances.",
       "oneOf": [
         {
           "additionalProperties": false,
           "properties": {
-            "kind": {
+            "scope": {
               "const": "bank"
             }
           },
           "required": [
-            "kind"
+            "scope"
           ],
           "type": "object"
         },
         {
           "additionalProperties": false,
           "properties": {
-            "kind": {
+            "scope": {
               "const": "state"
             },
             "path": {
-              "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "pattern": "^/(?:public|secret)/(?!.*\\{\\{)(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
               "type": "string"
             }
           },
           "required": [
-            "kind",
+            "scope",
             "path"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "scope": {
+              "const": "player"
+            },
+            "playerId": {
+              "$ref": "#/definitions/GameManifestPlayerRef"
+            },
+            "metricId": {
+              "minLength": 1,
+              "pattern": "^(?!(?:__proto__|constructor|prototype)$).+$",
+              "type": "string"
+            }
+          },
+          "required": [
+            "scope",
+            "playerId",
+            "metricId"
           ],
           "type": "object"
         }
@@ -491,6 +514,106 @@
       "required": [
         "id",
         "polygon"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportMovementModel": {
+      "additionalProperties": false,
+      "description": "Declarative rules for moving authoritative vehicles through one network edge.",
+      "properties": {
+        "vehicleCollection": { "minLength": 1, "type": "string" },
+        "vehicleObjectTypes": {
+          "items": { "minLength": 1, "type": "string" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "locationAttribute": { "minLength": 1, "type": "string" },
+        "actionPointsAttribute": { "minLength": 1, "type": "string" },
+        "traversableNodeStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "traversableEdgeStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "capacityCollection": { "minLength": 1, "type": "string" },
+        "capacityObjectTypes": {
+          "items": { "minLength": 1, "type": "string" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "capacityLocationAttribute": { "minLength": 1, "type": "string" },
+        "maxVehiclesPerNode": { "minimum": 1, "type": "integer" },
+        "coupledCollection": { "minLength": 1, "type": "string" },
+        "coupledObjectTypes": {
+          "items": { "minLength": 1, "type": "string" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "coupledVehicleAttribute": { "minLength": 1, "type": "string" },
+        "coupledLocationAttribute": { "minLength": 1, "type": "string" }
+      },
+      "required": [
+        "vehicleCollection",
+        "vehicleObjectTypes",
+        "locationAttribute",
+        "actionPointsAttribute",
+        "traversableNodeStates",
+        "traversableEdgeStates",
+        "capacityCollection",
+        "capacityObjectTypes",
+        "capacityLocationAttribute",
+        "maxVehiclesPerNode",
+        "coupledCollection",
+        "coupledObjectTypes",
+        "coupledVehicleAttribute",
+        "coupledLocationAttribute"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportCargoDeliveryModel": {
+      "additionalProperties": false,
+      "description": "Declarative object bindings for completing cargo carried by a coupled vehicle.",
+      "properties": {
+        "wagonCollection": { "minLength": 1, "type": "string" },
+        "wagonObjectTypes": {
+          "items": { "minLength": 1, "type": "string" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "cargoCollection": { "minLength": 1, "type": "string" },
+        "cargoObjectTypes": {
+          "items": { "minLength": 1, "type": "string" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "locationAttribute": { "minLength": 1, "type": "string" },
+        "cargoReferenceAttribute": { "minLength": 1, "type": "string" },
+        "attachedVehicleAttribute": { "minLength": 1, "type": "string" },
+        "cargoDestinationAttribute": { "minLength": 1, "type": "string" },
+        "cargoStateFacet": { "minLength": 1, "type": "string" },
+        "deliverableCargoStates": {
+          "items": { "$ref": "#/definitions/GameManifestObjectFacetValue" },
+          "minItems": 1,
+          "type": "array"
+        },
+        "deliveredCargoState": { "$ref": "#/definitions/GameManifestObjectFacetValue" }
+      },
+      "required": [
+        "wagonCollection",
+        "wagonObjectTypes",
+        "cargoCollection",
+        "cargoObjectTypes",
+        "locationAttribute",
+        "cargoReferenceAttribute",
+        "attachedVehicleAttribute",
+        "cargoDestinationAttribute",
+        "cargoStateFacet",
+        "deliverableCargoStates",
+        "deliveredCargoState"
       ],
       "type": "object"
     },
@@ -559,6 +682,12 @@
           },
           "minItems": 1,
           "type": "array"
+        },
+        "movement": {
+          "$ref": "#/definitions/GameManifestTransportMovementModel"
+        },
+        "cargoDelivery": {
+          "$ref": "#/definitions/GameManifestTransportCargoDeliveryModel"
         }
       },
       "required": [
@@ -642,6 +771,9 @@
             "facilitated"
           ],
           "type": "string"
+        },
+        "turnModel": {
+          "$ref": "#/definitions/GameManifestTurnModel"
         }
       },
       "required": [
@@ -935,6 +1067,19 @@
             }
           },
           "type": "object"
+        },
+        "turn": {
+          "additionalProperties": false,
+          "properties": {
+            "actorIsActive": {
+              "type": "boolean"
+            },
+            "phase": {
+              "minLength": 1,
+              "type": "string"
+            }
+          },
+          "type": "object"
         }
       },
       "type": "object"
@@ -1152,6 +1297,25 @@
         {
           "additionalProperties": false,
           "properties": {
+            "jsonLogic": {
+              "$ref": "#/definitions/JsonLogicExpression"
+            },
+            "readFrom": {
+              "enum": [
+                "current",
+                "preAction"
+              ],
+              "type": "string"
+            }
+          },
+          "required": [
+            "jsonLogic"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "all": {
               "items": {
                 "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
@@ -1297,6 +1461,51 @@
         },
         {
           "additionalProperties": false,
+          "description": "Roll deterministic dice through the session PRNG and store the public result.",
+          "properties": {
+            "dice": {
+              "pattern": "^[1-9][0-9]?d(?:[2-9]|[1-9][0-9]{1,2}|1000)$",
+              "type": "string"
+            },
+            "op": {
+              "const": "random.roll"
+            },
+            "storePath": {
+              "pattern": "^/public/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "dice",
+            "storePath"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "scope": {
+                    "const": "player"
+                  }
+                },
+                "required": [
+                  "scope"
+                ]
+              },
+              "then": {
+                "required": [
+                  "playerId"
+                ]
+              }
+            }
+          ],
           "properties": {
             "delta": {
               "anyOf": [
@@ -1318,6 +1527,17 @@
             "op": {
               "const": "metric.add"
             },
+            "playerId": {
+              "$ref": "#/definitions/GameManifestPlayerRef"
+            },
+            "scope": {
+              "default": "session",
+              "enum": [
+                "session",
+                "player"
+              ],
+              "type": "string"
+            },
             "when": {
               "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
             }
@@ -1331,21 +1551,46 @@
         },
         {
           "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "scope": {
+                    "const": "player"
+                  }
+                },
+                "required": [
+                  "scope"
+                ]
+              },
+              "then": {
+                "required": [
+                  "playerId"
+                ]
+              }
+            }
+          ],
           "properties": {
+            "metricId": {
+              "minLength": 1,
+              "type": "string"
+            },
             "op": {
-              "const": "metric.transfer"
+              "const": "metric.set"
             },
-            "from": {
-              "$ref": "#/definitions/GameManifestMetricEndpoint"
+            "playerId": {
+              "$ref": "#/definitions/GameManifestPlayerRef"
             },
-            "to": {
-              "$ref": "#/definitions/GameManifestMetricEndpoint"
+            "scope": {
+              "default": "session",
+              "enum": [
+                "session",
+                "player"
+              ],
+              "type": "string"
             },
-            "amount": {
+            "value": {
               "$ref": "#/definitions/GameManifestNumericExpression"
-            },
-            "insufficientFunds": {
-              "const": "fail"
             },
             "when": {
               "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
@@ -1353,11 +1598,57 @@
           },
           "required": [
             "op",
-            "from",
-            "to",
-            "amount",
-            "insufficientFunds"
+            "metricId",
+            "value"
           ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "turn.next"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": {
+              "const": "turn.phase.set"
+            },
+            "phase": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "phase"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "op": { "const": "metric.transfer" },
+            "from": { "$ref": "#/definitions/GameManifestMetricEndpoint" },
+            "to": { "$ref": "#/definitions/GameManifestMetricEndpoint" },
+            "amount": { "$ref": "#/definitions/GameManifestNumericExpression" },
+            "onInsufficient": { "const": "fail" },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "from", "to", "amount", "onInsufficient"],
           "type": "object"
         },
         {
@@ -1432,6 +1723,32 @@
             "positionParam",
             "payments"
           ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Move one schema-selected vehicle across one schema-selected network edge.",
+          "properties": {
+            "op": { "const": "transport.vehicle.move" },
+            "networkId": { "minLength": 1, "type": "string" },
+            "vehicleParam": { "minLength": 1, "type": "string" },
+            "edgeParam": { "minLength": 1, "type": "string" },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "networkId", "vehicleParam", "edgeParam"],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Complete a schema-selected cargo on its coupled wagon at the declared destination.",
+          "properties": {
+            "op": { "const": "transport.cargo.deliver" },
+            "networkId": { "minLength": 1, "type": "string" },
+            "wagonParam": { "minLength": 1, "type": "string" },
+            "cargoParam": { "minLength": 1, "type": "string" },
+            "when": { "$ref": "#/definitions/GameManifestDeterministicEffectCondition" }
+          },
+          "required": ["op", "networkId", "wagonParam", "cargoParam"],
           "type": "object"
         },
         {
@@ -2299,6 +2616,108 @@
       ],
       "type": "object"
     },
+    "GameManifestTurnModel": {
+      "additionalProperties": false,
+      "description": "Ordered phases used by deterministic turn-based games. The first phase starts every turn.",
+      "properties": {
+        "phases": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "phases"
+      ],
+      "type": "object"
+    },
+    "GameManifestPlayerRef": {
+      "description": "A literal player id, a trusted actor token, or a public-state pointer that resolves to a player id.",
+      "oneOf": [
+        {
+          "minLength": 1,
+          "pattern": "^(?!\\{\\{).+",
+          "type": "string"
+        },
+        {
+          "enum": [
+            "{{actor}}",
+            "{{activePlayer}}"
+          ],
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "fromPath": {
+              "pattern": "^/public/(?!.*\\{\\{)(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+              "type": "string"
+            }
+          },
+          "required": [
+            "fromPath"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "GameManifestPlayersTemplate": {
+      "additionalProperties": false,
+      "description": "Template expanded by runtime into state.players for every local participant.",
+      "properties": {
+        "flags": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "type": "object"
+        },
+        "metrics": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "type": "object"
+        },
+        "objects": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "status": {
+          "enum": [
+            "active",
+            "eliminated"
+          ],
+          "type": "string"
+        },
+        "visibility": {
+          "additionalProperties": false,
+          "properties": {
+            "flags": {
+              "enum": [
+                "public",
+                "private"
+              ],
+              "type": "string"
+            },
+            "metrics": {
+              "enum": [
+                "public",
+                "private"
+              ],
+              "type": "string"
+            }
+          },
+          "type": "object"
+        }
+      },
+      "required": [
+        "metrics"
+      ],
+      "type": "object"
+    },
     "GameManifestSettings": {
       "additionalProperties": false,
       "properties": {
@@ -2325,6 +2744,9 @@
         "secret": {
           "additionalProperties": {},
           "type": "object"
+        },
+        "playersTemplate": {
+          "$ref": "#/definitions/GameManifestPlayersTemplate"
         }
       },
       "required": [

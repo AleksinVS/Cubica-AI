@@ -1,0 +1,256 @@
+{
+  "meta": {
+    "id": "cards-money-trains-mock.ui.web",
+    "version": "0.1.0",
+    "schema_version": "1.0",
+    "game_id": "cards-money-trains-mock",
+    "game_manifest_version": "0.1.0-mock.1",
+    "channel": "web",
+    "author": "Cubica"
+  },
+  "entry_point": "facilitator",
+  "screen_routing": [
+    {
+      "screenKey": "facilitator",
+      "conditions": {
+        "screenId": "facilitator",
+        "layoutMode": "topbar"
+      }
+    }
+  ],
+  "screens": {
+    "facilitator": {
+      "title": "[MOCK] Карты, деньги, поезда",
+      "layout_mode": "topbar",
+      "root": {
+        "id": "facilitator.root",
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "topbar-screen-shell"
+        },
+        "children": [
+          {
+            "id": "facilitator.statusbar",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "game-variables-container"
+            },
+            "children": [
+              {
+                "id": "facilitator.status",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "facilitator.main",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "main-content-area"
+            },
+            "children": [
+              {
+                "id": "facilitator.board",
+                "type": "interactiveBoardSurface",
+                "props": {
+                  "sceneId": "main",
+                  "designWidth": 1400,
+                  "designHeight": 1000,
+                  "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
+                }
+              },
+              {
+                "id": "facilitator.team-status",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container topbar-cards-container",
+                  "topbarCssClass": "topbar-cards-container"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.team-status-copy",
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.action-guidance",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
+                }
+              },
+              {
+                "id": "facilitator.construction-controls",
+                "type": "areaComponent",
+                "if": "{{game.state.public.construction.available}}",
+                "props": {
+                  "cssClass": "button-container"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.build-road-mode",
+                    "type": "buttonComponent",
+                    "props": {
+                      "caption": "Дорога",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "construction.mode.road"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.build-waypoint-mode",
+                    "type": "buttonComponent",
+                    "props": {
+                      "caption": "Полустанок",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "construction.mode.waypoint"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.finish-construction",
+                    "type": "buttonComponent",
+                    "props": {
+                      "caption": "Завершить этап строительства",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "construction.phase.finish"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.log",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-game-log"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.log-title",
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
+                    }
+                  },
+                  {
+                    "id": "facilitator.log-entries",
+                    "type": "areaComponent",
+                    "props": {
+                      "cssClass": "board-game-log-entries"
+                    },
+                    "itemTemplate": {
+                      "collection": "{{game.state.public.log}}",
+                      "itemKey": "logEntry"
+                    },
+                    "children": [
+                      {
+                        "id": "facilitator.log-entry",
+                        "type": "richTextComponent",
+                        "props": {
+                          "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                        }
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.finish-controls",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "button-container"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.finish-request",
+                    "type": "buttonComponent",
+                    "if": "{{game.state.public.session.canRequestFinish}}",
+                    "props": {
+                      "caption": "Завершить игру…",
+                      "variant": "helper"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "session.finish.request"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.finish-confirm",
+                    "type": "buttonComponent",
+                    "if": "{{game.state.public.session.finishConfirmationPending}}",
+                    "props": {
+                      "caption": "Подтвердить завершение",
+                      "variant": "action"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "session.finish.confirm"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "id": "facilitator.finish-cancel",
+                    "type": "buttonComponent",
+                    "if": "{{game.state.public.session.finishConfirmationPending}}",
+                    "props": {
+                      "caption": "Продолжить игру",
+                      "variant": "helper"
+                    },
+                    "actions": {
+                      "onClick": {
+                        "command": "requestServer",
+                        "payload": {
+                          "actionId": "session.finish.cancel"
+                        }
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.content-gate",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

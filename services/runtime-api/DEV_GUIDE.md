@@ -1,34 +1,75 @@
-# Руководство по разработке: Runtime API
+# Руководство по разработке Runtime API
+
+## Оглавление
+
+- [Назначение](#назначение)
+- [Внутренняя структура](#внутренняя-структура)
+- [Принципы](#принципы)
+- [Хранение сессий](#хранение-сессий)
+- [Локальный запуск](#локальный-запуск)
+- [Проверки](#проверки)
 
 ## Назначение
-- Единый deployable backend для ближайшей фазы Cubica.
-- Объединяет player-facing API, управление сессиями, runtime исполнения, доступ к контенту, AI-capabilities и telemetry.
-- Является реализацией ADR-017: модульный монолит вместо преждевременной сервисной декомпозиции.
 
-## Внутренняя модульная структура
-- `player-api/` — внешние endpoints для клиентов.
-- `session/` — lifecycle, locking, sequencing, recovery.
-- `runtime/` — action dispatch, deterministic transitions, script execution.
-- `content/` — загрузка и валидация manifest bundle.
-- `ai/` — prompt building, model calls, normalization, eval hooks.
-- `telemetry/` — logs, traces, metrics, audit trail.
-- `admin/` — health, readiness, inspect/replay, internal ops endpoints.
+- Единый развёртываемый сервер ближайшей фазы Cubica.
+- Объединяет внешний API игрока, управление сессиями, исполнение правил, доступ
+  к контенту, возможности ИИ и диагностику.
+- Сохраняет строгие внутренние границы модульного монолита: одного процесса с
+  отдельными предметными модулями.
+
+## Внутренняя структура
+
+- `player-api/` — внешние HTTP-точки входа для клиентов.
+- `session/` — жизненный цикл, постоянное хранение, блокировки и версии сессии.
+- `runtime/` — детерминированное исполнение действий.
+- `content/` — загрузка и проверка пакета манифестов.
+- `ai/` — исполнение ходов ИИ и проверка их результатов.
+- `admin/` — health/readiness и внутренние операции.
 
 ## Принципы
-- Один deployable backend, но строгие внутренние границы между модулями.
-- Межмодульное взаимодействие только через публичные интерфейсы, команды, query и доменные события.
-- Прямой импорт внутренних деталей соседнего модуля запрещён.
-- DTO и event contracts должны выноситься в общий contracts layer по мере стабилизации.
 
-## Объем ближайшей фазы
-- Один рабочий vertical slice для `games/antarctica`.
-- HTTP API для `createSession`, `getSessionState`, `dispatchAction`.
-- In-memory или file-backed session store для MVP.
-- Загрузка content bundle напрямую из `games/`.
-- AI слой как optional capability, а не обязательный центр runtime.
+- Межмодульное взаимодействие идёт через публичные интерфейсы и контракты.
+- PostgreSQL является источником истины для сессий рабочего окружения.
+- Новые игровые механики добавляются декларативными возможностями манифеста, а
+  не проверкой идентификатора конкретной игры в сервере.
+- HTTP-слой проверяет запрос и вызывает предметный сервис; правила не живут в
+  обработчиках HTTP.
 
-## Следующие шаги
-1. Создать базовый HTTP bootstrap и health endpoints.
-2. Перенести router/session contracts в модули `player-api` и `session`.
-3. Собрать deterministic runtime path для одной игры.
-4. Добавить integration tests через публичный API.
+## Хранение сессий
+
+Постоянный адаптер находится в `src/modules/session/postgresSessionStore.ts`.
+Он хранит полный снимок в JSONB и удерживает `SELECT FOR UPDATE NOWAIT` от чтения
+до атомарной записи. Обычные действия, ходы ИИ и восстановление предпросмотра
+используют единый метод `withLockedSession`. Версия состояния всегда растёт
+ровно на единицу; предпросмотр возвращает старый указатель события, но сохраняет
+его как новый снимок с новой версией.
+
+Настройка, миграции и ограничения подробно описаны в
+`docs/architecture/backend/session-persistence.md`.
+
+## Локальный запуск
+
+Без базы, только для разработки:
+
+```bash
+npm run dev --workspace @cubica/runtime-api
+```
+
+С PostgreSQL:
+
+```bash
+export SESSION_STORE=postgresql
+export DATABASE_URL='postgresql://user:password@host:5432/cubica'
+npm run migrate:sessions --workspace @cubica/runtime-api
+node --experimental-strip-types --enable-source-maps services/runtime-api/src/bootstrap.ts
+```
+
+## Проверки
+
+```bash
+npm run typecheck --workspace @cubica/runtime-api
+node --test --experimental-strip-types services/runtime-api/tests/postgres-session-store.test.ts
+```
+
+Полный набор runtime-api запускается после завершения крупного серверного блока,
+а не после каждого промежуточного изменения.

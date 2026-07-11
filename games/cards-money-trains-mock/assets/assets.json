@@ -1,0 +1,13 @@
+{
+  "gameId": "cards-money-trains-mock",
+  "assets": [
+    {
+      "id": "board-guinea-optimized",
+      "file": "images/mock-board.svg",
+      "kind": "image",
+      "origin": {
+        "type": "authored-in-repo"
+      }
+    }
+  ]
+}

@@ -71,6 +71,29 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
         );
       }
     }
+    for (const [configField, collectionField, objectTypesField] of [
+      ["movement", "vehicleCollection", "vehicleObjectTypes"],
+      ["movement", "capacityCollection", "capacityObjectTypes"],
+      ["movement", "coupledCollection", "coupledObjectTypes"],
+      ["cargoDelivery", "wagonCollection", "wagonObjectTypes"],
+      ["cargoDelivery", "cargoCollection", "cargoObjectTypes"]
+    ] as const) {
+      const config = isRecord(network[configField]) ? network[configField] as JsonRecord : undefined;
+      if (!config) continue;
+      const collection = config[collectionField];
+      const objectTypes = config[objectTypesField];
+      if (typeof collection !== "string" || !Array.isArray(objectTypes)) continue;
+      for (const objectType of objectTypes) {
+        const objectModel = typeof objectType === "string" && isRecord(objectModels[objectType])
+          ? objectModels[objectType] as JsonRecord
+          : undefined;
+        if (!objectModel || objectModel.collection !== collection) {
+          throw new ManifestValidationError(
+            `Network "${networkId}" ${configField}.${objectTypesField} must reference object models in ${collection}`
+          );
+        }
+      }
+    }
   }
 
   const actions = isRecord(manifest.actions) ? manifest.actions : {};
@@ -83,8 +106,20 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
       const ref = rawProperty["x-cubica-ref"] as JsonRecord;
       if (typeof ref.network === "string") {
         const network = isRecord(networkModels[ref.network]) ? networkModels[ref.network] as JsonRecord : undefined;
-        if (!network || ref.visibility !== network.visibility ||
-            (ref.collection !== network.nodeCollection && ref.collection !== network.edgeCollection)) {
+        const movement = network && isRecord(network.movement) ? network.movement as JsonRecord : undefined;
+        const cargoDelivery = network && isRecord(network.cargoDelivery)
+          ? network.cargoDelivery as JsonRecord
+          : undefined;
+        const networkCollections = new Set([
+          network?.nodeCollection,
+          network?.edgeCollection,
+          movement?.vehicleCollection,
+          movement?.capacityCollection,
+          movement?.coupledCollection,
+          cargoDelivery?.wagonCollection,
+          cargoDelivery?.cargoCollection
+        ].filter((value): value is string => typeof value === "string"));
+        if (!network || ref.visibility !== network.visibility || !networkCollections.has(String(ref.collection))) {
           throw new ManifestValidationError(
             `Action "${actionId}" param "${paramName}" references an unknown network collection`
           );
@@ -107,17 +142,27 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
     const deterministic = isRecord(rawAction.deterministic) ? rawAction.deterministic : {};
     const effects = Array.isArray(deterministic.effects) ? deterministic.effects : [];
     for (const rawEffect of effects) {
-      if (!isRecord(rawEffect) ||
-          (rawEffect.op !== "transport.road.build" && rawEffect.op !== "transport.waypoint.build")) continue;
+      if (!isRecord(rawEffect) || ![
+        "transport.road.build",
+        "transport.waypoint.build",
+        "transport.vehicle.move",
+        "transport.cargo.deliver"
+      ].includes(String(rawEffect.op))) continue;
       const network = typeof rawEffect.networkId === "string" && isRecord(networkModels[rawEffect.networkId])
         ? networkModels[rawEffect.networkId] as JsonRecord
         : undefined;
       if (!network) {
         throw new ManifestValidationError(`Action "${actionId}" references an unknown transport network`);
       }
+      const movement = isRecord(network.movement) ? network.movement as JsonRecord : undefined;
+      const cargoDelivery = isRecord(network.cargoDelivery) ? network.cargoDelivery as JsonRecord : undefined;
       const referenceParams = rawEffect.op === "transport.road.build"
         ? [[rawEffect.fromNodeParam, network.nodeCollection], [rawEffect.toNodeParam, network.nodeCollection]]
-        : [[rawEffect.edgeParam, network.edgeCollection]];
+        : rawEffect.op === "transport.waypoint.build"
+          ? [[rawEffect.edgeParam, network.edgeCollection]]
+          : rawEffect.op === "transport.vehicle.move"
+            ? [[rawEffect.vehicleParam, movement?.vehicleCollection], [rawEffect.edgeParam, network.edgeCollection]]
+            : [[rawEffect.wagonParam, cargoDelivery?.wagonCollection], [rawEffect.cargoParam, cargoDelivery?.cargoCollection]];
       for (const [rawParamName, expectedCollection] of referenceParams) {
         const property = typeof rawParamName === "string" && isRecord(properties[rawParamName])
           ? properties[rawParamName] as JsonRecord

@@ -261,13 +261,15 @@ const assertAllowedFacetState = (
 ) => {
   const facets = isRecord(object?.facets) ? object.facets : {};
   if (!allowed.includes(facets[facet] as GameManifestObjectFacetValue)) {
-    throw new Error(`Selected transport ${resourceKind} is not available for construction`);
+    throw new Error(`Selected transport ${resourceKind} is not in an allowed state`);
   }
 };
 
 export interface ApplyTransportEffectOptions {
   state: RuntimeState;
-  effect: Extract<GameManifestDeterministicEffect, { op: "transport.road.build" | "transport.waypoint.build" }>;
+  effect: Extract<GameManifestDeterministicEffect, {
+    op: "transport.road.build" | "transport.waypoint.build" | "transport.vehicle.move" | "transport.cargo.deliver"
+  }>;
   params: Record<string, unknown>;
   resolvedRefs: Record<string, RuntimeResolvedReference>;
   networkModels?: GameManifestTransportNetworkModelMap;
@@ -325,46 +327,154 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
     return { edgeId, cost, regionSegments };
   }
 
-  const edgeRef = requireReference(resolvedRefs, effect.edgeParam, model.edgeCollection, effect.networkId);
-  const edge = isRecord(edges[edgeRef.id]) ? edges[edgeRef.id] as JsonRecord : undefined;
-  if (!edge) throw new Error("Selected transport edge is unavailable");
-  assertAllowedFacetState(edge, model.edgeStateFacet, model.splittableEdgeStates, "edge");
-  const positionT = params[effect.positionParam];
-  if (typeof positionT !== "number" || !Number.isFinite(positionT) || positionT <= 0 || positionT >= 1) {
-    throw new Error("Waypoint position must be strictly inside the selected edge");
-  }
-  const endpoints = edgeEndpoints(edge);
-  const fromNode = isRecord(nodes[endpoints.fromNodeId]) ? nodes[endpoints.fromNodeId] as JsonRecord : undefined;
-  const toNode = isRecord(nodes[endpoints.toNodeId]) ? nodes[endpoints.toNodeId] as JsonRecord : undefined;
-  const from = pointFromObject(fromNode);
-  const to = pointFromObject(toNode);
-  const position = interpolate(from, to, positionT);
-  applyPayments(state, effect.payments, model.waypointCost, params);
-
-  const nodeId = allocateId(state, model, effect.networkId, "node", nodes);
-  const firstEdgeId = allocateId(state, model, effect.networkId, "edge", edges);
-  const secondEdgeId = allocateId(state, model, effect.networkId, "edge", edges);
-  nodes[nodeId] = {
-    objectType: model.waypointObjectType,
-    facets: initialFacets(objectModels, model.waypointObjectType, model.nodeCollection),
-    attributes: { networkId: effect.networkId, position }
-  };
-  const originalFacets = isRecord(edge.facets) ? structuredClone(edge.facets) : {};
-  const originalAttributes = isRecord(edge.attributes) ? edge.attributes : {};
-  const makeSplitEdge = (fromNodeId: string, toNodeId: string, geometryFrom: Point, geometryTo: Point) => ({
-    objectType: typeof edge.objectType === "string" ? edge.objectType : model.edgeObjectType,
-    facets: structuredClone(originalFacets),
-    attributes: {
-      ...structuredClone(originalAttributes),
-      networkId: effect.networkId,
-      fromNodeId,
-      toNodeId,
-      geometry: { from: geometryFrom, to: geometryTo },
-      splitFromEdgeId: edgeRef.id
+  if (effect.op === "transport.waypoint.build") {
+    const edgeRef = requireReference(resolvedRefs, effect.edgeParam, model.edgeCollection, effect.networkId);
+    const edge = isRecord(edges[edgeRef.id]) ? edges[edgeRef.id] as JsonRecord : undefined;
+    if (!edge) throw new Error("Selected transport edge is unavailable");
+    assertAllowedFacetState(edge, model.edgeStateFacet, model.splittableEdgeStates, "edge");
+    const positionT = params[effect.positionParam];
+    if (typeof positionT !== "number" || !Number.isFinite(positionT) || positionT <= 0 || positionT >= 1) {
+      throw new Error("Waypoint position must be strictly inside the selected edge");
     }
-  });
-  edges[firstEdgeId] = makeSplitEdge(endpoints.fromNodeId, nodeId, from, position);
-  edges[secondEdgeId] = makeSplitEdge(nodeId, endpoints.toNodeId, position, to);
-  delete edges[edgeRef.id];
-  return { nodeId, edgeIds: [firstEdgeId, secondEdgeId], cost: model.waypointCost, replacedEdgeId: edgeRef.id };
+    const endpoints = edgeEndpoints(edge);
+    const fromNode = isRecord(nodes[endpoints.fromNodeId]) ? nodes[endpoints.fromNodeId] as JsonRecord : undefined;
+    const toNode = isRecord(nodes[endpoints.toNodeId]) ? nodes[endpoints.toNodeId] as JsonRecord : undefined;
+    const from = pointFromObject(fromNode);
+    const to = pointFromObject(toNode);
+    const position = interpolate(from, to, positionT);
+    applyPayments(state, effect.payments, model.waypointCost, params);
+
+    const nodeId = allocateId(state, model, effect.networkId, "node", nodes);
+    const firstEdgeId = allocateId(state, model, effect.networkId, "edge", edges);
+    const secondEdgeId = allocateId(state, model, effect.networkId, "edge", edges);
+    nodes[nodeId] = {
+      objectType: model.waypointObjectType,
+      facets: initialFacets(objectModels, model.waypointObjectType, model.nodeCollection),
+      attributes: { networkId: effect.networkId, position }
+    };
+    const originalFacets = isRecord(edge.facets) ? structuredClone(edge.facets) : {};
+    const originalAttributes = isRecord(edge.attributes) ? edge.attributes : {};
+    const makeSplitEdge = (fromNodeId: string, toNodeId: string, geometryFrom: Point, geometryTo: Point) => ({
+      objectType: typeof edge.objectType === "string" ? edge.objectType : model.edgeObjectType,
+      facets: structuredClone(originalFacets),
+      attributes: {
+        ...structuredClone(originalAttributes),
+        networkId: effect.networkId,
+        fromNodeId,
+        toNodeId,
+        geometry: { from: geometryFrom, to: geometryTo },
+        splitFromEdgeId: edgeRef.id
+      }
+    });
+    edges[firstEdgeId] = makeSplitEdge(endpoints.fromNodeId, nodeId, from, position);
+    edges[secondEdgeId] = makeSplitEdge(nodeId, endpoints.toNodeId, position, to);
+    delete edges[edgeRef.id];
+    return { nodeId, edgeIds: [firstEdgeId, secondEdgeId], cost: model.waypointCost, replacedEdgeId: edgeRef.id };
+  }
+
+  if (effect.op === "transport.vehicle.move") {
+    const movement = model.movement;
+    if (!movement) throw new Error(`Transport network "${effect.networkId}" does not declare movement rules`);
+    const vehicleRef = requireReference(
+      resolvedRefs,
+      effect.vehicleParam,
+      movement.vehicleCollection,
+      effect.networkId
+    );
+    const edgeRef = requireReference(resolvedRefs, effect.edgeParam, model.edgeCollection, effect.networkId);
+    const vehicles = stateCollection(state, model, movement.vehicleCollection);
+    const capacityVehicles = stateCollection(state, model, movement.capacityCollection);
+    const coupledVehicles = stateCollection(state, model, movement.coupledCollection);
+    const vehicle = isRecord(vehicles[vehicleRef.id]) ? vehicles[vehicleRef.id] as JsonRecord : undefined;
+    const edge = isRecord(edges[edgeRef.id]) ? edges[edgeRef.id] as JsonRecord : undefined;
+    if (!vehicle || !movement.vehicleObjectTypes.includes(String(vehicle.objectType))) {
+      throw new Error("Selected transport vehicle is unavailable for movement");
+    }
+    if (!edge) throw new Error("Selected transport edge is unavailable for movement");
+    assertAllowedFacetState(edge, model.edgeStateFacet, movement.traversableEdgeStates, "edge");
+    const attributes = isRecord(vehicle.attributes) ? vehicle.attributes : {};
+    const currentNodeId = attributes[movement.locationAttribute];
+    const actionPoints = attributes[movement.actionPointsAttribute];
+    if (typeof currentNodeId !== "string") throw new Error("Transport vehicle has no current node");
+    if (!Number.isSafeInteger(actionPoints) || (actionPoints as number) <= 0) {
+      throw new Error("Transport vehicle has no action points remaining");
+    }
+    const endpoints = edgeEndpoints(edge);
+    const destinationNodeId = endpoints.fromNodeId === currentNodeId
+      ? endpoints.toNodeId
+      : endpoints.toNodeId === currentNodeId
+        ? endpoints.fromNodeId
+        : undefined;
+    if (!destinationNodeId) throw new Error("Selected transport edge is not incident to the vehicle node");
+    const destinationNode = isRecord(nodes[destinationNodeId]) ? nodes[destinationNodeId] as JsonRecord : undefined;
+    if (!destinationNode) throw new Error("Transport destination node is unavailable");
+    assertAllowedFacetState(destinationNode, model.nodeStateFacet, movement.traversableNodeStates, "node");
+
+    const occupancy = Object.entries(capacityVehicles).filter(([id, candidate]) => {
+      if (id === vehicleRef.id || !isRecord(candidate) || !movement.capacityObjectTypes.includes(String(candidate.objectType))) {
+        return false;
+      }
+      const candidateAttributes = isRecord(candidate.attributes) ? candidate.attributes : {};
+      return candidateAttributes[movement.capacityLocationAttribute] === destinationNodeId;
+    }).length;
+    if (occupancy >= movement.maxVehiclesPerNode) {
+      throw new Error("Transport destination node has reached its vehicle capacity");
+    }
+
+    attributes[movement.locationAttribute] = destinationNodeId;
+    attributes[movement.actionPointsAttribute] = (actionPoints as number) - 1;
+    vehicle.attributes = attributes;
+    const coupledVehicleIds: string[] = [];
+    for (const [id, candidate] of Object.entries(coupledVehicles)) {
+      if (!isRecord(candidate) || !movement.coupledObjectTypes.includes(String(candidate.objectType))) continue;
+      const candidateAttributes = isRecord(candidate.attributes) ? candidate.attributes : {};
+      if (candidateAttributes[movement.coupledVehicleAttribute] !== vehicleRef.id) continue;
+      candidateAttributes[movement.coupledLocationAttribute] = destinationNodeId;
+      candidate.attributes = candidateAttributes;
+      coupledVehicleIds.push(id);
+    }
+    return {
+      vehicleId: vehicleRef.id,
+      edgeId: edgeRef.id,
+      fromNodeId: currentNodeId,
+      toNodeId: destinationNodeId,
+      actionPointsRemaining: (actionPoints as number) - 1,
+      coupledVehicleIds
+    };
+  }
+
+  const delivery = model.cargoDelivery;
+  if (!delivery) throw new Error(`Transport network "${effect.networkId}" does not declare cargo-delivery rules`);
+  const wagonRef = requireReference(resolvedRefs, effect.wagonParam, delivery.wagonCollection, effect.networkId);
+  const cargoRef = requireReference(resolvedRefs, effect.cargoParam, delivery.cargoCollection, effect.networkId);
+  const wagons = stateCollection(state, model, delivery.wagonCollection);
+  const cargos = stateCollection(state, model, delivery.cargoCollection);
+  const wagon = isRecord(wagons[wagonRef.id]) ? wagons[wagonRef.id] as JsonRecord : undefined;
+  const cargo = isRecord(cargos[cargoRef.id]) ? cargos[cargoRef.id] as JsonRecord : undefined;
+  if (!wagon || !delivery.wagonObjectTypes.includes(String(wagon.objectType))) {
+    throw new Error("Selected wagon is unavailable for cargo delivery");
+  }
+  if (!cargo || !delivery.cargoObjectTypes.includes(String(cargo.objectType))) {
+    throw new Error("Selected cargo is unavailable for delivery");
+  }
+  assertAllowedFacetState(cargo, delivery.cargoStateFacet, delivery.deliverableCargoStates, "cargo");
+  const wagonAttributes = isRecord(wagon.attributes) ? wagon.attributes : {};
+  const cargoAttributes = isRecord(cargo.attributes) ? cargo.attributes : {};
+  if (wagonAttributes[delivery.cargoReferenceAttribute] !== cargoRef.id) {
+    throw new Error("Selected wagon does not carry the selected cargo");
+  }
+  if (wagonAttributes[delivery.locationAttribute] !== cargoAttributes[delivery.cargoDestinationAttribute]) {
+    throw new Error("Selected cargo has not reached its destination");
+  }
+  wagonAttributes[delivery.cargoReferenceAttribute] = null;
+  wagonAttributes[delivery.attachedVehicleAttribute] = null;
+  wagon.attributes = wagonAttributes;
+  const cargoFacets = isRecord(cargo.facets) ? cargo.facets : {};
+  cargoFacets[delivery.cargoStateFacet] = delivery.deliveredCargoState;
+  cargo.facets = cargoFacets;
+  return {
+    wagonId: wagonRef.id,
+    cargoId: cargoRef.id,
+    destinationNodeId: cargoAttributes[delivery.cargoDestinationAttribute]
+  };
 };

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import { createRuntimeApiServer } from "../src/modules/player-api/httpServer.ts";
+import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 
 type SessionVersion = {
   sessionId: string;
@@ -112,7 +113,10 @@ type AgentTurnResponse = {
   };
 };
 
-const runtimeApi = createRuntimeApiServer({ port: 0 });
+const runtimeApi = createRuntimeApiServer({
+  port: 0,
+  sessionStore: new InMemorySessionStore<Record<string, unknown>>()
+});
 let baseUrl = "";
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 const previewContentRoot = path.join(repoRoot, ".tmp", "editor-worktrees", "runtime-content-source-test");
@@ -437,7 +441,7 @@ before(async () => {
 });
 
 after(async () => {
-  await new Promise<void>((resolve) => runtimeApi.server.close(() => resolve()));
+  await runtimeApi.close();
   await rm(previewContentRoot, { recursive: true, force: true });
 });
 
@@ -1351,6 +1355,7 @@ test("POST /sessions/:id/preview-restore rewinds only editor preview sessions", 
     })
   });
   assert.equal(createResponse.status, 201);
+  assert.equal(initial.version.stateVersion, 0);
   assert.equal(initial.version.lastEventSequence, 0);
 
   const { response: actionResponse, body: accepted } = await dispatchAction(
@@ -1359,8 +1364,23 @@ test("POST /sessions/:id/preview-restore rewinds only editor preview sessions", 
     "choice.accept"
   );
   assert.equal(actionResponse.status, 200);
+  assert.equal((accepted as ActionResponse).version.stateVersion, 1);
   assert.equal((accepted as ActionResponse).version.lastEventSequence, 1);
   assert.equal((accepted as ActionResponse).state.public.timeline.screenId, "result");
+
+  const mismatchedTarget = await requestJson<{ error: string }>(
+    `/sessions/${initial.sessionId}/preview-restore`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        state: initial.state,
+        version: initial.version,
+        targetEventSequence: 1
+      })
+    }
+  );
+  assert.equal(mismatchedTarget.response.status, 400);
+  assert.match(mismatchedTarget.body.error, /must match version.lastEventSequence/u);
 
   const { response: restoreResponse, body: restored } = await requestJson<SessionResponse & { restored: true }>(
     `/sessions/${initial.sessionId}/preview-restore`,
@@ -1377,6 +1397,7 @@ test("POST /sessions/:id/preview-restore rewinds only editor preview sessions", 
   assert.equal(restoreResponse.status, 200);
   assert.equal(restored.restored, true);
   assert.equal(restored.sessionId, initial.sessionId);
+  assert.equal(restored.version.stateVersion, 2);
   assert.equal(restored.version.lastEventSequence, 0);
   assert.equal(restored.state.public.timeline.screenId, "intro");
   assert.equal(restored.state.public.metrics?.score, 0);
@@ -1387,6 +1408,7 @@ test("POST /sessions/:id/preview-restore rewinds only editor preview sessions", 
     "choice.accept"
   );
   assert.equal(replayResponse.status, 200);
+  assert.equal((replayed as ActionResponse).version.stateVersion, 3);
   assert.equal((replayed as ActionResponse).version.lastEventSequence, 1);
   assert.equal((replayed as ActionResponse).state.public.timeline.screenId, "result");
 
