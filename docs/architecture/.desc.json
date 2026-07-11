@@ -4,6 +4,7 @@
   "ai-agent-safety-remediation.md": "Проектная документация по исправлению review findings миграции Cubica Surface и AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel policies and production backend auth.",
   "agent-ui-foundation.md": "Проектная архитектура UI ИИ-агентов на CopilotKit/AG-UI: границы, контекст, инструменты, безопасность и future assistant surfaces.",
   "agent-ui-portability-and-risk-controls.md": "Проектные правила переносимости Agent UI, контроля рисков и предотвращения узких мест вокруг CopilotKit, AG-UI и production LLM backend.",
+  "cards-money-trains-platform-design.md": "Нормативный архитектурный дизайн игры «Карты, деньги, поезда»: границы платформы и игры, состояние, фазы, транспортная сеть, интерфейс, надежность и последовательность поставки.",
   "element-prompt-contract.md": "Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.",
   "generative-ui-surface-protocol.md": "Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.",
   "runtime-api-openapi.yaml": "Current OpenAPI 3.1 contract for the implemented services/runtime-api modular monolith HTTP API по ADR-051."
