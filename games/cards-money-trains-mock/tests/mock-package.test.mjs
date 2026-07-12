@@ -248,15 +248,18 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
 test("full mock data declares hidden reproducible decks and accepted reusable effects", async () => {
   const manifest = validateGameManifest(await readJson("game.manifest.json"));
   const gameplay = await readJson("fixtures/mock-gameplay-data.json");
+  const textContent = await readJson("fixtures/mock-text-content.json");
   assert.deepEqual(gameplay.phaseOrder, [
     "setup", "news", "maintenance", "market", "cargo",
     "operations", "construction", "debrief", "finished"
   ]);
-  assert.equal(gameplay.newsCards.length >= 6, true);
-  assert.equal(gameplay.cargoCards.length >= 12, true);
+  assert.equal(textContent.newsCards.length >= 6, true);
+  assert.equal(textContent.cargoCards.length >= 12, true);
   assert.deepEqual(Object.keys(manifest.state.secret).sort(), ["decks", "random"]);
-  assert.equal(Object.keys(manifest.state.public.objects.newsCards).length, gameplay.newsCards.length);
-  assert.equal(Object.keys(manifest.state.public.objects.cargoCards).length, gameplay.cargoCards.length);
+  assert.equal(Object.keys(manifest.state.public.objects.newsCards).length, textContent.newsCards.length);
+  assert.equal(Object.keys(manifest.state.public.objects.cargoCards).length, textContent.cargoCards.length);
+  assert.deepEqual(manifest.content.data.mockGameplay.roles, textContent.roles);
+  assert.equal(manifest.content.data.mockGameplay.newsCards[0].title, textContent.newsCards[0].title);
 
   const effects = Object.values(manifest.actions).flatMap((action) => action.deterministic?.effects ?? []);
   for (const expected of [

@@ -314,96 +314,12 @@
             "availability": "reserve"
           }
         ],
-        "cargoCards": [
-          {
-            "id": "mock-cargo-b-c",
-            "fromNodeId": "mock-terminal-b",
-            "toNodeId": "mock-terminal-c",
-            "payout": 9,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-a-d",
-            "fromNodeId": "mock-terminal-a",
-            "toNodeId": "mock-terminal-d",
-            "payout": 9,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-e-c",
-            "fromNodeId": "mock-terminal-e",
-            "toNodeId": "mock-terminal-c",
-            "payout": 6,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-b-f",
-            "fromNodeId": "mock-terminal-b",
-            "toNodeId": "mock-terminal-f",
-            "payout": 30,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-a-e",
-            "fromNodeId": "mock-terminal-a",
-            "toNodeId": "mock-terminal-e",
-            "payout": 8,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-d-b",
-            "fromNodeId": "mock-terminal-d",
-            "toNodeId": "mock-terminal-b",
-            "payout": 8,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-f-a",
-            "fromNodeId": "mock-terminal-f",
-            "toNodeId": "mock-terminal-a",
-            "payout": 10,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-c-e",
-            "fromNodeId": "mock-terminal-c",
-            "toNodeId": "mock-terminal-e",
-            "payout": 7,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-e-d",
-            "fromNodeId": "mock-terminal-e",
-            "toNodeId": "mock-terminal-d",
-            "payout": 9,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-b-a",
-            "fromNodeId": "mock-terminal-b",
-            "toNodeId": "mock-terminal-a",
-            "payout": 5,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-c-f",
-            "fromNodeId": "mock-terminal-c",
-            "toNodeId": "mock-terminal-f",
-            "payout": 6,
-            "copies": 1
-          },
-          {
-            "id": "mock-cargo-f-d",
-            "fromNodeId": "mock-terminal-f",
-            "toNodeId": "mock-terminal-d",
-            "payout": 8,
-            "copies": 1
-          }
-        ],
         "newsCards": [
           {
             "id": "mock-news-block-c-d",
+            "title": "Ремонт на линии C–D",
             "summary": "MOCK: дорога C–D временно закрыта",
+            "facilitatorNote": "Попросите команды назвать, какие договоренности затронет закрытие дороги.",
             "effect": {
               "kind": "edge-state",
               "edgeId": "mock-edge-c-d",
@@ -412,7 +328,9 @@
           },
           {
             "id": "mock-news-open-c-d",
+            "title": "Линия C–D снова открыта",
             "summary": "MOCK: дорога C–D снова открыта",
+            "facilitatorNote": "Уточните, готовы ли команды вернуться к первоначальному маршруту или сохранят новый.",
             "effect": {
               "kind": "edge-state",
               "edgeId": "mock-edge-c-d",
@@ -421,7 +339,9 @@
           },
           {
             "id": "mock-news-costly-service",
+            "title": "Стоимость хранения",
             "summary": "MOCK: команды обсуждают стоимость удержания груза",
+            "facilitatorNote": "Сравните цену ожидания с риском немедленной отправки.",
             "effect": {
               "kind": "methodical-prompt",
               "promptId": "mock-prompt-held-cargo"
@@ -429,7 +349,9 @@
           },
           {
             "id": "mock-news-cheap-wagons",
+            "title": "Скидка на вагоны",
             "summary": "MOCK: тестовая цена покупки вагона снижена",
+            "facilitatorNote": "Попросите команды объяснить, меняет ли временная скидка их долгосрочный план.",
             "effect": {
               "kind": "market-price",
               "vehicleKind": "wagon",
@@ -438,7 +360,9 @@
           },
           {
             "id": "mock-news-construction-window",
+            "title": "Окно для совместного строительства",
             "summary": "MOCK: обсуждение совместного строительства обязательно перед ходом",
+            "facilitatorNote": "Дайте сторонам договориться о вкладах до перехода к строительству.",
             "effect": {
               "kind": "methodical-prompt",
               "promptId": "mock-prompt-investment"
@@ -446,29 +370,198 @@
           },
           {
             "id": "mock-news-stable-day",
+            "title": "Стабильный день",
             "summary": "MOCK: сеть работает без дополнительных изменений",
+            "facilitatorNote": "Используйте отсутствие внешнего события, чтобы обсудить инициативу самих команд.",
             "effect": {
               "kind": "none"
             }
           }
         ],
+        "cargoCards": [
+          {
+            "id": "mock-cargo-b-c",
+            "title": "Детали B–C",
+            "briefing": "MOCK: срочная короткая перевозка деталей.",
+            "fromNodeId": "mock-terminal-b",
+            "toNodeId": "mock-terminal-c",
+            "payout": 9,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-a-d",
+            "title": "Оборудование A–D",
+            "briefing": "MOCK: доставка учебного оборудования.",
+            "fromNodeId": "mock-terminal-a",
+            "toNodeId": "mock-terminal-d",
+            "payout": 9,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-e-c",
+            "title": "Материалы E–C",
+            "briefing": "MOCK: небольшая партия материалов.",
+            "fromNodeId": "mock-terminal-e",
+            "toNodeId": "mock-terminal-c",
+            "payout": 6,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-b-f",
+            "title": "Комплект B–F",
+            "briefing": "MOCK: дорогая перевозка через несколько участков сети.",
+            "fromNodeId": "mock-terminal-b",
+            "toNodeId": "mock-terminal-f",
+            "payout": 30,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-a-e",
+            "title": "Запчасти A–E",
+            "briefing": "MOCK: стандартная партия запасных частей.",
+            "fromNodeId": "mock-terminal-a",
+            "toNodeId": "mock-terminal-e",
+            "payout": 8,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-d-b",
+            "title": "Инструменты D–B",
+            "briefing": "MOCK: возвратная перевозка инструментов.",
+            "fromNodeId": "mock-terminal-d",
+            "toNodeId": "mock-terminal-b",
+            "payout": 8,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-f-a",
+            "title": "Модули F–A",
+            "briefing": "MOCK: длинная перевозка сборочных модулей.",
+            "fromNodeId": "mock-terminal-f",
+            "toNodeId": "mock-terminal-a",
+            "payout": 10,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-c-e",
+            "title": "Образцы C–E",
+            "briefing": "MOCK: перевозка контрольных образцов.",
+            "fromNodeId": "mock-terminal-c",
+            "toNodeId": "mock-terminal-e",
+            "payout": 7,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-e-d",
+            "title": "Контейнер E–D",
+            "briefing": "MOCK: доставка универсального контейнера.",
+            "fromNodeId": "mock-terminal-e",
+            "toNodeId": "mock-terminal-d",
+            "payout": 9,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-b-a",
+            "title": "Документы B–A",
+            "briefing": "MOCK: короткая перевозка архивных материалов.",
+            "fromNodeId": "mock-terminal-b",
+            "toNodeId": "mock-terminal-a",
+            "payout": 5,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-c-f",
+            "title": "Приборы C–F",
+            "briefing": "MOCK: партия измерительных приборов.",
+            "fromNodeId": "mock-terminal-c",
+            "toNodeId": "mock-terminal-f",
+            "payout": 6,
+            "copies": 1
+          },
+          {
+            "id": "mock-cargo-f-d",
+            "title": "Комплектующие F–D",
+            "briefing": "MOCK: заключительная тестовая партия комплектующих.",
+            "fromNodeId": "mock-terminal-f",
+            "toNodeId": "mock-terminal-d",
+            "payout": 8,
+            "copies": 1
+          }
+        ],
         "methodicalPauses": [
           {
             "id": "mock-pause-after-turn-3",
+            "title": "Сверка ожиданий",
             "afterTurn": 3,
-            "prompt": "Какие наблюдаемые изменения произошли, чего команды ожидали и что сообщили партнерам?"
+            "prompt": "Какие наблюдаемые изменения произошли, чего команды ожидали и что сообщили партнерам?",
+            "facilitatorGoal": "Разделить наблюдаемые факты, предположения и коммуникацию между командами."
           },
           {
             "id": "mock-pause-after-turn-5",
+            "title": "Стратегии партнеров",
             "afterTurn": 5,
-            "prompt": "Как собственная стратегия соотносится со стратегиями партнеров и будущим результатом?"
+            "prompt": "Как собственная стратегия соотносится со стратегиями партнеров и будущим результатом?",
+            "facilitatorGoal": "Помочь участникам увидеть взаимозависимость решений перевозчиков и гильдий."
           },
           {
             "id": "mock-final-reflection",
+            "title": "Перенос в практику",
             "afterPhase": "finished",
-            "prompt": "Какие игровые решения похожи на реальные рабочие ситуации и что участники перенесут в практику?"
+            "prompt": "Какие игровые решения похожи на реальные рабочие ситуации и что участники перенесут в практику?",
+            "facilitatorGoal": "Зафиксировать один конкретный вывод и одно проверяемое действие после игры."
           }
-        ]
+        ],
+        "roles": [
+          {
+            "id": "mock-role-facilitator",
+            "label": "Ведущий",
+            "audience": "facilitator",
+            "briefing": "Управляет этапами и подтверждает только решения, уже озвученные участниками.",
+            "responsibilities": [
+              "Следить за текущим этапом.",
+              "Проговаривать последствия действия до подтверждения.",
+              "Проводить методические паузы без подсказки оптимальной стратегии."
+            ]
+          },
+          {
+            "id": "mock-role-logistics-company",
+            "label": "Команда перевозчиков",
+            "audience": "logistics_company",
+            "briefing": "Управляет вагонами, грузами и денежным результатом перевозок.",
+            "responsibilities": [
+              "Выбирать грузы и маршруты.",
+              "Согласовывать тягу с паровозной гильдией.",
+              "Сравнивать выплату, тариф и риск задержки."
+            ]
+          },
+          {
+            "id": "mock-role-locomotive-guild",
+            "label": "Паровозная гильдия",
+            "audience": "locomotive_guild",
+            "briefing": "Управляет локомотивами и договаривается об условиях перевозок.",
+            "responsibilities": [
+              "Распределять единицы действия локомотивов.",
+              "Согласовывать сцепку и маршрут.",
+              "Оценивать вклад в строительство сети."
+            ]
+          }
+        ],
+        "instructions": {
+          "facilitator": [
+            {
+              "id": "mock-instruction-facilitator-session",
+              "title": "Проведение тестовой сессии",
+              "body": "Перед началом напомните, что все названия, цены и тексты являются тестовыми. На каждом этапе сначала получите решение команды, затем выполните соответствующее действие на общем экране."
+            }
+          ],
+          "participants": [
+            {
+              "id": "mock-instruction-participants-turn",
+              "title": "Как принимать решение",
+              "body": "Называйте цель, доступные ресурсы, ожидаемый результат и договоренности с другой стороной до того, как ведущий подтвердит действие."
+            }
+          ]
+        }
       },
       "integrationReadiness": {
         "status": "integrated-shared-runtime-contracts",
@@ -3528,7 +3621,9 @@
             },
             "attributes": {
               "id": "mock-news-block-c-d",
+              "title": "Ремонт на линии C–D",
               "summary": "MOCK: дорога C–D временно закрыта",
+              "facilitatorNote": "Попросите команды назвать, какие договоренности затронет закрытие дороги.",
               "effect": {
                 "kind": "edge-state",
                 "edgeId": "mock-edge-c-d",
@@ -3543,7 +3638,9 @@
             },
             "attributes": {
               "id": "mock-news-open-c-d",
+              "title": "Линия C–D снова открыта",
               "summary": "MOCK: дорога C–D снова открыта",
+              "facilitatorNote": "Уточните, готовы ли команды вернуться к первоначальному маршруту или сохранят новый.",
               "effect": {
                 "kind": "edge-state",
                 "edgeId": "mock-edge-c-d",
@@ -3558,7 +3655,9 @@
             },
             "attributes": {
               "id": "mock-news-costly-service",
+              "title": "Стоимость хранения",
               "summary": "MOCK: команды обсуждают стоимость удержания груза",
+              "facilitatorNote": "Сравните цену ожидания с риском немедленной отправки.",
               "effect": {
                 "kind": "methodical-prompt",
                 "promptId": "mock-prompt-held-cargo"
@@ -3572,7 +3671,9 @@
             },
             "attributes": {
               "id": "mock-news-cheap-wagons",
+              "title": "Скидка на вагоны",
               "summary": "MOCK: тестовая цена покупки вагона снижена",
+              "facilitatorNote": "Попросите команды объяснить, меняет ли временная скидка их долгосрочный план.",
               "effect": {
                 "kind": "market-price",
                 "vehicleKind": "wagon",
@@ -3587,7 +3688,9 @@
             },
             "attributes": {
               "id": "mock-news-construction-window",
+              "title": "Окно для совместного строительства",
               "summary": "MOCK: обсуждение совместного строительства обязательно перед ходом",
+              "facilitatorNote": "Дайте сторонам договориться о вкладах до перехода к строительству.",
               "effect": {
                 "kind": "methodical-prompt",
                 "promptId": "mock-prompt-investment"
@@ -3601,7 +3704,9 @@
             },
             "attributes": {
               "id": "mock-news-stable-day",
+              "title": "Стабильный день",
               "summary": "MOCK: сеть работает без дополнительных изменений",
+              "facilitatorNote": "Используйте отсутствие внешнего события, чтобы обсудить инициативу самих команд.",
               "effect": {
                 "kind": "none"
               }
@@ -3616,6 +3721,8 @@
             },
             "attributes": {
               "id": "mock-cargo-b-c",
+              "title": "Детали B–C",
+              "briefing": "MOCK: срочная короткая перевозка деталей.",
               "fromNodeId": "mock-terminal-b",
               "toNodeId": "mock-terminal-c",
               "payout": 9,
@@ -3629,6 +3736,8 @@
             },
             "attributes": {
               "id": "mock-cargo-a-d",
+              "title": "Оборудование A–D",
+              "briefing": "MOCK: доставка учебного оборудования.",
               "fromNodeId": "mock-terminal-a",
               "toNodeId": "mock-terminal-d",
               "payout": 9,
@@ -3642,6 +3751,8 @@
             },
             "attributes": {
               "id": "mock-cargo-e-c",
+              "title": "Материалы E–C",
+              "briefing": "MOCK: небольшая партия материалов.",
               "fromNodeId": "mock-terminal-e",
               "toNodeId": "mock-terminal-c",
               "payout": 6,
@@ -3655,6 +3766,8 @@
             },
             "attributes": {
               "id": "mock-cargo-b-f",
+              "title": "Комплект B–F",
+              "briefing": "MOCK: дорогая перевозка через несколько участков сети.",
               "fromNodeId": "mock-terminal-b",
               "toNodeId": "mock-terminal-f",
               "payout": 30,
@@ -3668,6 +3781,8 @@
             },
             "attributes": {
               "id": "mock-cargo-a-e",
+              "title": "Запчасти A–E",
+              "briefing": "MOCK: стандартная партия запасных частей.",
               "fromNodeId": "mock-terminal-a",
               "toNodeId": "mock-terminal-e",
               "payout": 8,
@@ -3681,6 +3796,8 @@
             },
             "attributes": {
               "id": "mock-cargo-d-b",
+              "title": "Инструменты D–B",
+              "briefing": "MOCK: возвратная перевозка инструментов.",
               "fromNodeId": "mock-terminal-d",
               "toNodeId": "mock-terminal-b",
               "payout": 8,
@@ -3694,6 +3811,8 @@
             },
             "attributes": {
               "id": "mock-cargo-f-a",
+              "title": "Модули F–A",
+              "briefing": "MOCK: длинная перевозка сборочных модулей.",
               "fromNodeId": "mock-terminal-f",
               "toNodeId": "mock-terminal-a",
               "payout": 10,
@@ -3707,6 +3826,8 @@
             },
             "attributes": {
               "id": "mock-cargo-c-e",
+              "title": "Образцы C–E",
+              "briefing": "MOCK: перевозка контрольных образцов.",
               "fromNodeId": "mock-terminal-c",
               "toNodeId": "mock-terminal-e",
               "payout": 7,
@@ -3720,6 +3841,8 @@
             },
             "attributes": {
               "id": "mock-cargo-e-d",
+              "title": "Контейнер E–D",
+              "briefing": "MOCK: доставка универсального контейнера.",
               "fromNodeId": "mock-terminal-e",
               "toNodeId": "mock-terminal-d",
               "payout": 9,
@@ -3733,6 +3856,8 @@
             },
             "attributes": {
               "id": "mock-cargo-b-a",
+              "title": "Документы B–A",
+              "briefing": "MOCK: короткая перевозка архивных материалов.",
               "fromNodeId": "mock-terminal-b",
               "toNodeId": "mock-terminal-a",
               "payout": 5,
@@ -3746,6 +3871,8 @@
             },
             "attributes": {
               "id": "mock-cargo-c-f",
+              "title": "Приборы C–F",
+              "briefing": "MOCK: партия измерительных приборов.",
               "fromNodeId": "mock-terminal-c",
               "toNodeId": "mock-terminal-f",
               "payout": 6,
@@ -3759,6 +3886,8 @@
             },
             "attributes": {
               "id": "mock-cargo-f-d",
+              "title": "Комплектующие F–D",
+              "briefing": "MOCK: заключительная тестовая партия комплектующих.",
               "fromNodeId": "mock-terminal-f",
               "toNodeId": "mock-terminal-d",
               "payout": 8,

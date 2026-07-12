@@ -1,0 +1,207 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.example/schemas/cards-money-trains-mock-text-content.schema.json",
+  "title": "Cards, Money, Trains mock text content input",
+  "description": "The single structural source of truth for synthetic text imported into the development-only game package.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "fixtureKind",
+    "gameId",
+    "locale",
+    "warning",
+    "controlMetadata",
+    "newsCards",
+    "cargoCards",
+    "methodicalPauses",
+    "roles",
+    "instructions"
+  ],
+  "properties": {
+    "fixtureKind": { "const": "development-mock-text-content" },
+    "gameId": { "const": "cards-money-trains-mock" },
+    "locale": { "const": "ru-RU" },
+    "warning": { "type": "string", "minLength": 20, "pattern": "MOCK" },
+    "controlMetadata": { "$ref": "#/$defs/controlMetadata" },
+    "newsCards": {
+      "type": "array",
+      "minItems": 6,
+      "items": { "$ref": "#/$defs/newsCard" }
+    },
+    "cargoCards": {
+      "type": "array",
+      "minItems": 12,
+      "items": { "$ref": "#/$defs/cargoCard" }
+    },
+    "methodicalPauses": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/methodicalPause" }
+    },
+    "roles": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/role" }
+    },
+    "instructions": { "$ref": "#/$defs/instructions" }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^mock-[a-z0-9]+(?:[.-][a-z0-9]+)*$",
+      "maxLength": 128
+    },
+    "nonEmptyText": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "controlMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contentRevision", "sourceKind", "normativeUseAllowed", "authorApprovalRequired"],
+      "properties": {
+        "contentRevision": { "type": "integer", "minimum": 1 },
+        "sourceKind": { "const": "synthetic-test" },
+        "normativeUseAllowed": { "const": false },
+        "authorApprovalRequired": { "const": true }
+      }
+    },
+    "newsCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "facilitatorNote", "effect"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "$ref": "#/$defs/nonEmptyText" },
+        "summary": { "$ref": "#/$defs/nonEmptyText" },
+        "facilitatorNote": { "$ref": "#/$defs/nonEmptyText" },
+        "effect": {
+          "oneOf": [
+            { "$ref": "#/$defs/edgeStateEffect" },
+            { "$ref": "#/$defs/methodicalPromptEffect" },
+            { "$ref": "#/$defs/marketPriceEffect" },
+            { "$ref": "#/$defs/noEffect" }
+          ]
+        }
+      }
+    },
+    "edgeStateEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "edgeId", "state"],
+      "properties": {
+        "kind": { "const": "edge-state" },
+        "edgeId": { "$ref": "#/$defs/identifier" },
+        "state": { "enum": ["open", "blocked"] }
+      }
+    },
+    "methodicalPromptEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "promptId"],
+      "properties": {
+        "kind": { "const": "methodical-prompt" },
+        "promptId": { "$ref": "#/$defs/identifier" }
+      }
+    },
+    "marketPriceEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "vehicleKind", "purchase"],
+      "properties": {
+        "kind": { "const": "market-price" },
+        "vehicleKind": { "enum": ["locomotive", "wagon"] },
+        "purchase": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "noEffect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind"],
+      "properties": { "kind": { "const": "none" } }
+    },
+    "cargoCard": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "briefing", "fromNodeId", "toNodeId", "payout", "copies"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "$ref": "#/$defs/nonEmptyText" },
+        "briefing": { "$ref": "#/$defs/nonEmptyText" },
+        "fromNodeId": { "$ref": "#/$defs/identifier" },
+        "toNodeId": { "$ref": "#/$defs/identifier" },
+        "payout": { "type": "integer", "minimum": 0 },
+        "copies": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "methodicalPause": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "prompt", "facilitatorGoal"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "$ref": "#/$defs/nonEmptyText" },
+        "prompt": { "$ref": "#/$defs/nonEmptyText" },
+        "facilitatorGoal": { "$ref": "#/$defs/nonEmptyText" },
+        "afterTurn": { "type": "integer", "minimum": 1 },
+        "afterPhase": { "enum": ["setup", "news", "maintenance", "market", "cargo", "operations", "construction", "debrief", "finished"] }
+      },
+      "oneOf": [
+        {
+          "required": ["afterTurn"],
+          "properties": {
+            "afterTurn": { "type": "integer", "minimum": 1 },
+            "afterPhase": false
+          }
+        },
+        {
+          "required": ["afterPhase"],
+          "properties": {
+            "afterTurn": false,
+            "afterPhase": { "enum": ["setup", "news", "maintenance", "market", "cargo", "operations", "construction", "debrief", "finished"] }
+          }
+        }
+      ]
+    },
+    "role": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "audience", "briefing", "responsibilities"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "label": { "$ref": "#/$defs/nonEmptyText" },
+        "audience": { "enum": ["facilitator", "logistics_company", "locomotive_guild"] },
+        "briefing": { "$ref": "#/$defs/nonEmptyText" },
+        "responsibilities": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyText" }
+        }
+      }
+    },
+    "instructionEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "body"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "title": { "$ref": "#/$defs/nonEmptyText" },
+        "body": { "$ref": "#/$defs/nonEmptyText" }
+      }
+    },
+    "instructions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["facilitator", "participants"],
+      "properties": {
+        "facilitator": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/instructionEntry" }
+        },
+        "participants": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/instructionEntry" }
+        }
+      }
+    }
+  }
+}

@@ -12,6 +12,10 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { toManifestFragment, toReviewOverlaySvg, validateAnnotation } from "./convert-map-annotation.mjs";
+import {
+  loadMockTextContent,
+  writeImportedMockTextContent
+} from "./import-mock-text-content.mjs";
 
 const scriptFile = fileURLToPath(import.meta.url);
 const packageRoot = path.resolve(path.dirname(scriptFile), "..");
@@ -1129,7 +1133,24 @@ const build = async () => {
   const annotationPath = path.join(packageRoot, "annotations", "map-annotation.mock.json");
   const gameplayPath = path.join(packageRoot, "fixtures", "mock-gameplay-data.json");
   const annotation = await validateAnnotation(await readJson(annotationPath), annotationPath);
-  const gameplay = await readJson(gameplayPath);
+  const gameplayCore = await readJson(gameplayPath);
+  const textContent = await loadMockTextContent();
+  for (const importedField of ["newsCards", "cargoCards", "methodicalPauses", "roles", "instructions"]) {
+    if (Object.hasOwn(gameplayCore, importedField)) {
+      throw new Error(`mock-gameplay-data.json must not duplicate imported field "${importedField}"`);
+    }
+  }
+  // Keep mechanical tuning separate from author-facing words. The merged
+  // object preserves the manifest shape while the text input remains the
+  // only editable source for cards, pauses, roles and instructions.
+  const gameplay = {
+    ...gameplayCore,
+    newsCards: textContent.newsCards,
+    cargoCards: textContent.cargoCards,
+    methodicalPauses: textContent.methodicalPauses,
+    roles: textContent.roles,
+    instructions: textContent.instructions
+  };
   assertGameplayReferences(gameplay, annotation);
   const network = toManifestFragment(annotation);
 
@@ -1559,6 +1580,7 @@ const build = async () => {
     applyMockDispatcherUi(screen.root);
   }
 
+  await writeImportedMockTextContent();
   await writeJson(path.join(packageRoot, "generated", "network.manifest-fragment.json"), network);
   await writeJson(path.join(packageRoot, "authoring", "game.authoring.json"), game);
   await writeJson(path.join(packageRoot, "authoring", "ui", "web.authoring.json"), ui);

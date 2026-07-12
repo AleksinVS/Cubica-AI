@@ -1515,444 +1515,6 @@
         "pointer": "/root/content/data/mockGameplay/reservedMarketVehicles"
       }
     ],
-    "/content/data/mockGameplay/cargoCards/0": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/0"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/0/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/0/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/0/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/0/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/0/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/0/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/0/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/0/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/0/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/0/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/1"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/1/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/1/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/1/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/1/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/1/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/1/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/1/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/1/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/1/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/1/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/2": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/2"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/2/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/2/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/2/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/2/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/2/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/2/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/2/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/2/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/2/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/2/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/3": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/3"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/3/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/3/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/3/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/3/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/3/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/3/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/3/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/3/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/3/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/3/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/4": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/4"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/4/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/4/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/4/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/4/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/4/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/4/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/4/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/4/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/4/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/4/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/5": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/5"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/5/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/5/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/5/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/5/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/5/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/5/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/5/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/5/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/5/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/5/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/6": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/6"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/6/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/6/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/6/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/6/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/6/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/6/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/6/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/6/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/6/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/6/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/7": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/7"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/7/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/7/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/7/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/7/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/7/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/7/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/7/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/7/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/7/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/7/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/8": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/8"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/8/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/8/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/8/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/8/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/8/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/8/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/8/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/8/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/8/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/8/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/9": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/9"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/9/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/9/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/9/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/9/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/9/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/9/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/9/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/9/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/9/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/9/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/10": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/10"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/10/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/10/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/10/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/10/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/10/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/10/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/10/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/10/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/10/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/10/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/11": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/11"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/11/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/11/id"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/11/fromNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/11/fromNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/11/toNodeId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/11/toNodeId"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/11/payout": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/11/payout"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards/11/copies": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards/11/copies"
-      }
-    ],
-    "/content/data/mockGameplay/cargoCards": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/content/data/mockGameplay/cargoCards"
-      }
-    ],
     "/content/data/mockGameplay/newsCards/0": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -1965,10 +1527,22 @@
         "pointer": "/root/content/data/mockGameplay/newsCards/0/id"
       }
     ],
+    "/content/data/mockGameplay/newsCards/0/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/0/title"
+      }
+    ],
     "/content/data/mockGameplay/newsCards/0/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/newsCards/0/summary"
+      }
+    ],
+    "/content/data/mockGameplay/newsCards/0/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/0/facilitatorNote"
       }
     ],
     "/content/data/mockGameplay/newsCards/0/effect": [
@@ -2007,10 +1581,22 @@
         "pointer": "/root/content/data/mockGameplay/newsCards/1/id"
       }
     ],
+    "/content/data/mockGameplay/newsCards/1/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/1/title"
+      }
+    ],
     "/content/data/mockGameplay/newsCards/1/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/newsCards/1/summary"
+      }
+    ],
+    "/content/data/mockGameplay/newsCards/1/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/1/facilitatorNote"
       }
     ],
     "/content/data/mockGameplay/newsCards/1/effect": [
@@ -2049,10 +1635,22 @@
         "pointer": "/root/content/data/mockGameplay/newsCards/2/id"
       }
     ],
+    "/content/data/mockGameplay/newsCards/2/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/2/title"
+      }
+    ],
     "/content/data/mockGameplay/newsCards/2/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/newsCards/2/summary"
+      }
+    ],
+    "/content/data/mockGameplay/newsCards/2/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/2/facilitatorNote"
       }
     ],
     "/content/data/mockGameplay/newsCards/2/effect": [
@@ -2085,10 +1683,22 @@
         "pointer": "/root/content/data/mockGameplay/newsCards/3/id"
       }
     ],
+    "/content/data/mockGameplay/newsCards/3/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/3/title"
+      }
+    ],
     "/content/data/mockGameplay/newsCards/3/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/newsCards/3/summary"
+      }
+    ],
+    "/content/data/mockGameplay/newsCards/3/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/3/facilitatorNote"
       }
     ],
     "/content/data/mockGameplay/newsCards/3/effect": [
@@ -2127,10 +1737,22 @@
         "pointer": "/root/content/data/mockGameplay/newsCards/4/id"
       }
     ],
+    "/content/data/mockGameplay/newsCards/4/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/4/title"
+      }
+    ],
     "/content/data/mockGameplay/newsCards/4/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/newsCards/4/summary"
+      }
+    ],
+    "/content/data/mockGameplay/newsCards/4/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/4/facilitatorNote"
       }
     ],
     "/content/data/mockGameplay/newsCards/4/effect": [
@@ -2163,10 +1785,22 @@
         "pointer": "/root/content/data/mockGameplay/newsCards/5/id"
       }
     ],
+    "/content/data/mockGameplay/newsCards/5/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/5/title"
+      }
+    ],
     "/content/data/mockGameplay/newsCards/5/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/newsCards/5/summary"
+      }
+    ],
+    "/content/data/mockGameplay/newsCards/5/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/newsCards/5/facilitatorNote"
       }
     ],
     "/content/data/mockGameplay/newsCards/5/effect": [
@@ -2187,6 +1821,588 @@
         "pointer": "/root/content/data/mockGameplay/newsCards"
       }
     ],
+    "/content/data/mockGameplay/cargoCards/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/0/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/0/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/1/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/1/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/2/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/2/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/3/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/3/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/4/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/4/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/5/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/5/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/6/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/6/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/7/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/7/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/8/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/8/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/9/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/9/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/10/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/10/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/id"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/title"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/fromNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/fromNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/toNodeId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/toNodeId"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/payout": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/payout"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards/11/copies": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards/11/copies"
+      }
+    ],
+    "/content/data/mockGameplay/cargoCards": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/cargoCards"
+      }
+    ],
     "/content/data/mockGameplay/methodicalPauses/0": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -2197,6 +2413,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/methodicalPauses/0/id"
+      }
+    ],
+    "/content/data/mockGameplay/methodicalPauses/0/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/methodicalPauses/0/title"
       }
     ],
     "/content/data/mockGameplay/methodicalPauses/0/afterTurn": [
@@ -2211,6 +2433,12 @@
         "pointer": "/root/content/data/mockGameplay/methodicalPauses/0/prompt"
       }
     ],
+    "/content/data/mockGameplay/methodicalPauses/0/facilitatorGoal": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/methodicalPauses/0/facilitatorGoal"
+      }
+    ],
     "/content/data/mockGameplay/methodicalPauses/1": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -2221,6 +2449,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/methodicalPauses/1/id"
+      }
+    ],
+    "/content/data/mockGameplay/methodicalPauses/1/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/methodicalPauses/1/title"
       }
     ],
     "/content/data/mockGameplay/methodicalPauses/1/afterTurn": [
@@ -2235,6 +2469,12 @@
         "pointer": "/root/content/data/mockGameplay/methodicalPauses/1/prompt"
       }
     ],
+    "/content/data/mockGameplay/methodicalPauses/1/facilitatorGoal": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/methodicalPauses/1/facilitatorGoal"
+      }
+    ],
     "/content/data/mockGameplay/methodicalPauses/2": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -2245,6 +2485,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/methodicalPauses/2/id"
+      }
+    ],
+    "/content/data/mockGameplay/methodicalPauses/2/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/methodicalPauses/2/title"
       }
     ],
     "/content/data/mockGameplay/methodicalPauses/2/afterPhase": [
@@ -2259,10 +2505,250 @@
         "pointer": "/root/content/data/mockGameplay/methodicalPauses/2/prompt"
       }
     ],
+    "/content/data/mockGameplay/methodicalPauses/2/facilitatorGoal": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/methodicalPauses/2/facilitatorGoal"
+      }
+    ],
     "/content/data/mockGameplay/methodicalPauses": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/content/data/mockGameplay/methodicalPauses"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/id"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/label": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/label"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/audience": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/audience"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/responsibilities/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/responsibilities/0"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/responsibilities/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/responsibilities/1"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/responsibilities/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/responsibilities/2"
+      }
+    ],
+    "/content/data/mockGameplay/roles/0/responsibilities": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/0/responsibilities"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/id"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/label": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/label"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/audience": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/audience"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/responsibilities/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/responsibilities/0"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/responsibilities/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/responsibilities/1"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/responsibilities/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/responsibilities/2"
+      }
+    ],
+    "/content/data/mockGameplay/roles/1/responsibilities": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/1/responsibilities"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/id"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/label": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/label"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/audience": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/audience"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/briefing"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/responsibilities/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/responsibilities/0"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/responsibilities/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/responsibilities/1"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/responsibilities/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/responsibilities/2"
+      }
+    ],
+    "/content/data/mockGameplay/roles/2/responsibilities": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles/2/responsibilities"
+      }
+    ],
+    "/content/data/mockGameplay/roles": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/roles"
+      }
+    ],
+    "/content/data/mockGameplay/instructions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/facilitator/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/facilitator/0"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/facilitator/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/facilitator/0/id"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/facilitator/0/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/facilitator/0/title"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/facilitator/0/body": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/facilitator/0/body"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/facilitator": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/facilitator"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/participants/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/participants/0"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/participants/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/participants/0/id"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/participants/0/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/participants/0/title"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/participants/0/body": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/participants/0/body"
+      }
+    ],
+    "/content/data/mockGameplay/instructions/participants": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/mockGameplay/instructions/participants"
       }
     ],
     "/content/data/integrationReadiness": [
@@ -15693,10 +16179,22 @@
         "pointer": "/root/state/public/objects/newsCards/mock-news-block-c-d/attributes/id"
       }
     ],
+    "/state/public/objects/newsCards/mock-news-block-c-d/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-block-c-d/attributes/title"
+      }
+    ],
     "/state/public/objects/newsCards/mock-news-block-c-d/attributes/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/newsCards/mock-news-block-c-d/attributes/summary"
+      }
+    ],
+    "/state/public/objects/newsCards/mock-news-block-c-d/attributes/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-block-c-d/attributes/facilitatorNote"
       }
     ],
     "/state/public/objects/newsCards/mock-news-block-c-d/attributes/effect": [
@@ -15759,10 +16257,22 @@
         "pointer": "/root/state/public/objects/newsCards/mock-news-open-c-d/attributes/id"
       }
     ],
+    "/state/public/objects/newsCards/mock-news-open-c-d/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-open-c-d/attributes/title"
+      }
+    ],
     "/state/public/objects/newsCards/mock-news-open-c-d/attributes/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/newsCards/mock-news-open-c-d/attributes/summary"
+      }
+    ],
+    "/state/public/objects/newsCards/mock-news-open-c-d/attributes/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-open-c-d/attributes/facilitatorNote"
       }
     ],
     "/state/public/objects/newsCards/mock-news-open-c-d/attributes/effect": [
@@ -15825,10 +16335,22 @@
         "pointer": "/root/state/public/objects/newsCards/mock-news-costly-service/attributes/id"
       }
     ],
+    "/state/public/objects/newsCards/mock-news-costly-service/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-costly-service/attributes/title"
+      }
+    ],
     "/state/public/objects/newsCards/mock-news-costly-service/attributes/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/newsCards/mock-news-costly-service/attributes/summary"
+      }
+    ],
+    "/state/public/objects/newsCards/mock-news-costly-service/attributes/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-costly-service/attributes/facilitatorNote"
       }
     ],
     "/state/public/objects/newsCards/mock-news-costly-service/attributes/effect": [
@@ -15885,10 +16407,22 @@
         "pointer": "/root/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/id"
       }
     ],
+    "/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/title"
+      }
+    ],
     "/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/summary"
+      }
+    ],
+    "/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/facilitatorNote"
       }
     ],
     "/state/public/objects/newsCards/mock-news-cheap-wagons/attributes/effect": [
@@ -15951,10 +16485,22 @@
         "pointer": "/root/state/public/objects/newsCards/mock-news-construction-window/attributes/id"
       }
     ],
+    "/state/public/objects/newsCards/mock-news-construction-window/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-construction-window/attributes/title"
+      }
+    ],
     "/state/public/objects/newsCards/mock-news-construction-window/attributes/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/newsCards/mock-news-construction-window/attributes/summary"
+      }
+    ],
+    "/state/public/objects/newsCards/mock-news-construction-window/attributes/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-construction-window/attributes/facilitatorNote"
       }
     ],
     "/state/public/objects/newsCards/mock-news-construction-window/attributes/effect": [
@@ -16011,10 +16557,22 @@
         "pointer": "/root/state/public/objects/newsCards/mock-news-stable-day/attributes/id"
       }
     ],
+    "/state/public/objects/newsCards/mock-news-stable-day/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-stable-day/attributes/title"
+      }
+    ],
     "/state/public/objects/newsCards/mock-news-stable-day/attributes/summary": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/newsCards/mock-news-stable-day/attributes/summary"
+      }
+    ],
+    "/state/public/objects/newsCards/mock-news-stable-day/attributes/facilitatorNote": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/newsCards/mock-news-stable-day/attributes/facilitatorNote"
       }
     ],
     "/state/public/objects/newsCards/mock-news-stable-day/attributes/effect": [
@@ -16069,6 +16627,18 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-c/attributes/id"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-b-c/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-c/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-b-c/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-c/attributes/briefing"
       }
     ],
     "/state/public/objects/cargoCards/mock-cargo-b-c/attributes/fromNodeId": [
@@ -16131,6 +16701,18 @@
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-a-d/attributes/id"
       }
     ],
+    "/state/public/objects/cargoCards/mock-cargo-a-d/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-a-d/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-a-d/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-a-d/attributes/briefing"
+      }
+    ],
     "/state/public/objects/cargoCards/mock-cargo-a-d/attributes/fromNodeId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -16189,6 +16771,18 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-e-c/attributes/id"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-e-c/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-e-c/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-e-c/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-e-c/attributes/briefing"
       }
     ],
     "/state/public/objects/cargoCards/mock-cargo-e-c/attributes/fromNodeId": [
@@ -16251,6 +16845,18 @@
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-f/attributes/id"
       }
     ],
+    "/state/public/objects/cargoCards/mock-cargo-b-f/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-f/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-b-f/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-f/attributes/briefing"
+      }
+    ],
     "/state/public/objects/cargoCards/mock-cargo-b-f/attributes/fromNodeId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -16309,6 +16915,18 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-a-e/attributes/id"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-a-e/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-a-e/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-a-e/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-a-e/attributes/briefing"
       }
     ],
     "/state/public/objects/cargoCards/mock-cargo-a-e/attributes/fromNodeId": [
@@ -16371,6 +16989,18 @@
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-d-b/attributes/id"
       }
     ],
+    "/state/public/objects/cargoCards/mock-cargo-d-b/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-d-b/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-d-b/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-d-b/attributes/briefing"
+      }
+    ],
     "/state/public/objects/cargoCards/mock-cargo-d-b/attributes/fromNodeId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -16429,6 +17059,18 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-f-a/attributes/id"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-f-a/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-f-a/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-f-a/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-f-a/attributes/briefing"
       }
     ],
     "/state/public/objects/cargoCards/mock-cargo-f-a/attributes/fromNodeId": [
@@ -16491,6 +17133,18 @@
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-c-e/attributes/id"
       }
     ],
+    "/state/public/objects/cargoCards/mock-cargo-c-e/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-c-e/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-c-e/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-c-e/attributes/briefing"
+      }
+    ],
     "/state/public/objects/cargoCards/mock-cargo-c-e/attributes/fromNodeId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -16549,6 +17203,18 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-e-d/attributes/id"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-e-d/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-e-d/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-e-d/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-e-d/attributes/briefing"
       }
     ],
     "/state/public/objects/cargoCards/mock-cargo-e-d/attributes/fromNodeId": [
@@ -16611,6 +17277,18 @@
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-a/attributes/id"
       }
     ],
+    "/state/public/objects/cargoCards/mock-cargo-b-a/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-a/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-b-a/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-b-a/attributes/briefing"
+      }
+    ],
     "/state/public/objects/cargoCards/mock-cargo-b-a/attributes/fromNodeId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -16671,6 +17349,18 @@
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-c-f/attributes/id"
       }
     ],
+    "/state/public/objects/cargoCards/mock-cargo-c-f/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-c-f/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-c-f/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-c-f/attributes/briefing"
+      }
+    ],
     "/state/public/objects/cargoCards/mock-cargo-c-f/attributes/fromNodeId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -16729,6 +17419,18 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/objects/cargoCards/mock-cargo-f-d/attributes/id"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-f-d/attributes/title": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-f-d/attributes/title"
+      }
+    ],
+    "/state/public/objects/cargoCards/mock-cargo-f-d/attributes/briefing": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/objects/cargoCards/mock-cargo-f-d/attributes/briefing"
       }
     ],
     "/state/public/objects/cargoCards/mock-cargo-f-d/attributes/fromNodeId": [
