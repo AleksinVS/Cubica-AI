@@ -511,11 +511,32 @@ test("params schema, trusted role and atomic nonnegative transfer are enforced",
   await dispatchRuntimeAction({
     sessionStore: store,
     bundle,
-    input: { sessionId: session.sessionId, actionId: "transfer", params: { amount: 4 } }
+    input: {
+      sessionId: session.sessionId,
+      expectedStateVersion: 0,
+      actionId: "transfer",
+      params: { amount: 4 }
+    }
   });
   let current = await store.getSession(session.sessionId);
   assert.equal((current?.state as any).public.balances.alpha, 6);
   assert.equal((current?.state as any).public.balances.beta, 14);
+  const afterAcceptedTransfer = structuredClone(current);
+
+  await assert.rejects(
+    dispatchRuntimeAction({
+      sessionStore: store,
+      bundle,
+      input: {
+        sessionId: session.sessionId,
+        expectedStateVersion: 0,
+        actionId: "transfer",
+        params: { amount: 4 }
+      }
+    }),
+    /changed after version 0/
+  );
+  assert.deepEqual(await store.getSession(session.sessionId), afterAcceptedTransfer);
 
   await assert.rejects(
     dispatchRuntimeAction({
@@ -570,7 +591,7 @@ test("client cannot spoof facilitator and params are rejected for an action with
     /does not accept params/
   );
   assert.throws(
-    () => parseDispatchActionRequest({ sessionId: "s", actionId: "a", role: "facilitator" }),
+    () => parseDispatchActionRequest({ sessionId: "s", expectedStateVersion: 0, actionId: "a", role: "facilitator" }),
     /cannot be supplied by the client/
   );
 });
@@ -579,7 +600,7 @@ test("prototype-pollution property names are rejected before action validation",
   for (const key of ["__proto__", "constructor", "prototype"]) {
     const params = JSON.parse(`{"${key}":"unsafe"}`) as Record<string, unknown>;
     assert.throws(
-      () => parseDispatchActionRequest({ sessionId: "s", actionId: "a", params }),
+      () => parseDispatchActionRequest({ sessionId: "s", expectedStateVersion: 0, actionId: "a", params }),
       /forbidden property name/
     );
   }

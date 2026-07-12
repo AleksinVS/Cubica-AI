@@ -336,6 +336,7 @@ export class GamePresenter {
         this.session.sessionId,
         this.config.playerId,
         request.type,
+        this.session.version.stateVersion,
         request.payload ?? {}
       );
 
@@ -349,6 +350,7 @@ export class GamePresenter {
       this.agentSurface = null;
       this.clearError();
     } catch (err) {
+      await this.refreshSessionAfterVersionConflict(err);
       this.captureError(err, "Action dispatch failed");
     } finally {
       this.isPending = false;
@@ -383,6 +385,7 @@ export class GamePresenter {
         this.session.sessionId,
         this.config.playerId,
         actionId,
+        this.session.version.stateVersion,
         payload
       );
       this.session = applyJsonMergePatch(
@@ -392,6 +395,7 @@ export class GamePresenter {
       this.agentSurface = null;
       this.clearError();
     } catch (error) {
+      await this.refreshSessionAfterVersionConflict(error);
       this.captureError(error, "Board action dispatch failed");
       throw error instanceof Error
         ? error
@@ -437,6 +441,7 @@ export class GamePresenter {
           this.session.sessionId,
           this.config.playerId,
           actionId,
+          this.session.version.stateVersion,
           surfacePayloadToRecord(action.payload)
         );
         this.session = { ...next, gameId: this.config.gameId };
@@ -444,6 +449,7 @@ export class GamePresenter {
       }
       this.clearError();
     } catch (err) {
+      await this.refreshSessionAfterVersionConflict(err);
       this.captureError(err, "Surface action failed");
     } finally {
       this.isPending = false;
@@ -577,6 +583,25 @@ export class GamePresenter {
   private clearError(): void {
     this.error = null;
     this.errorStatus = null;
+  }
+  /**
+   * Refreshes the authoritative snapshot after a stale action without
+   * repeating that action. The facilitator must review the new state and
+   * explicitly submit a new intent, which prevents a hidden double payment.
+   */
+  private async refreshSessionAfterVersionConflict(error: unknown): Promise<void> {
+    if (!(error instanceof RuntimeClientError) || error.statusCode !== 409 || this.session === null) {
+      return;
+    }
+
+    try {
+      const refreshed = await resumeSession(this.session.sessionId);
+      this.session = { ...refreshed, gameId: this.config.gameId };
+      this.agentSurface = null;
+    } catch {
+      // Preserve the original 409 as the user-facing error. A subsequent boot
+      // or manual reload will use the normal session recovery path.
+    }
   }
 
   private captureError(error: unknown, fallback: string): void {

@@ -32,7 +32,7 @@
 
 ## Now
 
-- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: платформенный фундамент и запускаемая оболочка игры реализованы; полный GSR-030 ожидает авторские колоды, выплаты, начальную сеть, канонические координаты, контуры областей и контрольные движения.
+- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: полный GSR-035 на mock-данных реализован и архитектурно принят, включая PostgreSQL, защиту повторных действий, канонический replay и браузер; нормативный GSR-030 ожидает авторские колоды, выплаты, начальную сеть, канонические координаты, контуры областей и контрольные движения.
 - [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — `review`: PostgreSQL-хранилище, блокировка одновременных ходов, проверка готовности и восстановление после рестарта реализованы и проверены на PostgreSQL 17.
 - [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `review`: реестр, проверки, контент-адресуемая раздача и player/Phaser resolver реализованы первым игровым срезом; миграция LEGACY-0023 остается отдельной.
 - [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — `in_progress`: отдельный трек portal launch surface и тестового VPS; не является автоматическим следующим шагом перед первой игрой.

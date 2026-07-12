@@ -45,6 +45,12 @@
 - Root verification scripts являются governance layer и блокируют architecture drift раньше E2E.
 - Gameplay behavior проверяется через manifest validation, deterministic runtime tests и replay fixtures.
 - LLM behavior проверяется через replay/golden traces в PR и live eval только вне быстрого PR-гейта.
+- Канонический отпечаток replay по принятому ADR-078 (версионированный стабильный SHA-256-хеш результата повторного
+  выполнения) строится по игровому состоянию с рекурсивной сортировкой ключей.
+  Из него исключаются только `public.log[*].at` и `runtime.lastUpdatedAt` —
+  служебные отметки реального времени. Они остаются в сохранённом состоянии и
+  журнале ведущего; все остальные поля, включая одноимённые поля вне этих двух
+  путей, участвуют в сравнении.
 
 Обязательная классификация тестов:
 
@@ -65,6 +71,13 @@
 - Для LLM-сценариев потребуется отдельный replay/eval storage and reporting policy.
 - Coverage thresholds должны вводиться постепенно по package-level ratchet (порог, который можно только повышать или удерживать), а не как единый монорепозиторный процент.
 - Политика детализируется в `docs/architecture/testing-strategy.md`.
+- Канонизация не изменяет исходный снимок и не подменяет реальные часы
+  искусственным игровым временем. Два повтора с одинаковыми решениями получают
+  одинаковый отпечаток, но полный аудит по-прежнему показывает фактическое время.
+- Исключение всех полей с именами `at` или `lastUpdatedAt` отклонено как слишком
+  широкое: оно могло бы скрыть значимое игровое расхождение. Полностью
+  детерминированные искусственные часы также отклонены, потому что ухудшают
+  фактический журнал проведения.
 
 ## Связанные артефакты
 
@@ -76,3 +89,4 @@
 - `docs/architecture/adrs/030-semantic-prototype-manifests.md`
 - `docs/architecture/adrs/031-lightweight-task-plan-and-handoff-system.md`
 - `docs/architecture/adrs/037-project-local-plugins-and-marketplace-safe-evolution.md`
+- `docs/architecture/adrs/078-canonical-replay-state-fingerprint.md`

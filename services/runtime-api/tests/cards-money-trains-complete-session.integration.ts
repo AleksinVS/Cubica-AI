@@ -96,7 +96,7 @@ const migrationPath = path.join(repoRoot, "services", "runtime-api", "migrations
 const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
 const transcript = await readTranscriptIfReady();
 
-test("ordinary game id conducts the complete facilitated mock session through Runtime API", {
+test("ordinary game id conducts the complete mock session and rejects every exact duplicate", {
   skip: transcript === null ? "complete mock transcript is being produced by the game-content slice" : false
 }, async () => {
   assert.ok(transcript);
@@ -117,14 +117,6 @@ test("ordinary game id conducts the complete facilitated mock session through Ru
     await api.close();
   }
 });
-
-// Real duplicate protection is intentionally not simulated in a fixture: the
-// current DispatchActionInput/POST /actions contract has neither an expected
-// state version nor a durable request identifier. LEGACY-0052 keeps this
-// acceptance gap explicit until the public reliability contract is approved.
-test("repeating the same action request does not apply money, cards or movement twice", {
-  skip: "blocked by LEGACY-0052 until the action precondition contract is approved"
-}, () => undefined);
 
 test("the same mock session survives two new Runtime API and PostgreSQL store instances", {
   skip: transcript === null
@@ -260,8 +252,9 @@ async function dispatchAction(
   previous: SessionSnapshot,
   step: TranscriptStep
 ): Promise<SessionSnapshot> {
-  const response = await postJson(baseUrl, "/actions", {
+  const requestBody = {
     sessionId: previous.sessionId,
+    expectedStateVersion: previous.version.stateVersion,
     playerId: "facilitator-acceptance",
     actionId: step.actionId,
     ...(step.params ? { params: step.params } : {}),
@@ -274,7 +267,8 @@ async function dispatchAction(
         teams: { forged: { coins: 1_000_000 } }
       }
     }
-  });
+  };
+  const response = await postJson(baseUrl, "/actions", requestBody);
   assert.equal(response.status, 200, `step ${step.order} ${step.actionId}: ${JSON.stringify(response.body)}`);
   const snapshot = response.body as SessionSnapshot;
   assert.equal(snapshot.version.stateVersion, previous.version.stateVersion + 1);
@@ -285,6 +279,18 @@ async function dispatchAction(
   // or test-side shadow state that was never persisted by Runtime API.
   const restored = await getSession(baseUrl, snapshot.sessionId);
   assertCommittedSnapshot(restored, snapshot, `step ${step.order} was not persisted exactly`);
+
+  // Repeat the exact request with the now-stale precondition. Because this
+  // runs after all 88 successful steps, the proof covers money, cards,
+  // movement, construction and finalization without special game branches.
+  const repeated = await postJson(baseUrl, "/actions", requestBody);
+  assert.equal(repeated.status, 409, `step ${step.order} duplicate was not rejected`);
+  assert.match(String(readRecordValue(repeated.body, "duplicate error").error), /changed after version/iu);
+  assertCommittedSnapshot(
+    await getSession(baseUrl, snapshot.sessionId),
+    restored,
+    `step ${step.order} duplicate changed the stored snapshot`
+  );
   return snapshot;
 }
 
@@ -330,6 +336,7 @@ async function runRejectionProbes(
     const before = await getSession(baseUrl, snapshot.sessionId);
     const response = await postJson(baseUrl, "/actions", {
       sessionId: snapshot.sessionId,
+      expectedStateVersion: snapshot.version.stateVersion,
       playerId: "facilitator-acceptance",
       actionId: probe.actionId,
       ...(probe.params ? { params: probe.params } : {})

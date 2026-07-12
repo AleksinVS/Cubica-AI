@@ -168,16 +168,22 @@ const dispatchAction = async (
   playerId: string,
   actionId: string,
   payload?: unknown
-) =>
-  requestJson<ActionResponse | { error: string }>("/actions", {
+) => {
+  const { response: snapshotResponse, body: snapshot } = await requestJson<SessionResponse>(
+    `/sessions/${encodeURIComponent(sessionId)}`
+  );
+  assert.equal(snapshotResponse.status, 200);
+  return requestJson<ActionResponse | { error: string }>("/actions", {
     method: "POST",
     body: JSON.stringify({
       sessionId,
+      expectedStateVersion: snapshot.version.stateVersion,
       playerId,
       actionId,
       payload
     })
   });
+};
 
 const runAgentTurn = async (
   sessionId: string,
@@ -1160,6 +1166,7 @@ test("POST /actions applies a deterministic runtime transition", async () => {
     method: "POST",
     body: JSON.stringify({
       sessionId: created.sessionId,
+      expectedStateVersion: created.version.stateVersion,
       playerId: "actor",
       actionId: "opening.info.i0.advance",
       payload: { source: "integration-test" }
@@ -1191,12 +1198,45 @@ test("POST /actions applies a deterministic runtime transition", async () => {
   assert.equal(persisted.state.public.log.length, 1);
 });
 
+test("POST /actions rejects an exact repeated request with HTTP 409 and no second mutation", async () => {
+  const created = await createSession({ playerId: "repeat-protection" });
+  const requestBody = JSON.stringify({
+    sessionId: created.sessionId,
+    expectedStateVersion: created.version.stateVersion,
+    playerId: "repeat-protection",
+    actionId: "opening.info.i0.advance",
+    payload: { source: "repeat-protection" }
+  });
+
+  const accepted = await requestJson<ActionResponse>("/actions", {
+    method: "POST",
+    body: requestBody
+  });
+  assert.equal(accepted.response.status, 200);
+  assert.equal(accepted.body.version.stateVersion, 1);
+
+  const repeated = await requestJson<{ error: string }>("/actions", {
+    method: "POST",
+    body: requestBody
+  });
+  assert.equal(repeated.response.status, 409);
+  assert.match(repeated.body.error, /changed after version 0/iu);
+
+  const persisted = await requestJson<SessionResponse>(
+    `/sessions/${encodeURIComponent(created.sessionId)}`
+  );
+  assert.equal(persisted.response.status, 200);
+  assert.deepEqual(persisted.body.version, accepted.body.version);
+  assert.deepEqual(persisted.body.state, accepted.body.state);
+});
+
 test("POST /actions routes different Antarctica actions through manifest capability families", async () => {
   const created = await createSession({ playerId: "router" });
   const { response, body: action } = await requestJson<ActionResponse>("/actions", {
     method: "POST",
     body: JSON.stringify({
       sessionId: created.sessionId,
+      expectedStateVersion: created.version.stateVersion,
       playerId: "router",
       actionId: "requestServer",
       payload: { source: "integration-test" }
@@ -3245,12 +3285,32 @@ test("POST /actions rejects invalid request bodies", async () => {
     method: "POST",
     body: JSON.stringify({
       sessionId: created.sessionId,
+      expectedStateVersion: created.version.stateVersion,
       actionId: 123
     })
   });
 
   assert.equal(response.status, 400);
   assert.match(body.error, /actionId is required and must be a non-empty string/);
+});
+
+test("POST /actions requires a non-negative integer expectedStateVersion", async () => {
+  const created = await createSession({ playerId: "version-validator" });
+  for (const expectedStateVersion of [undefined, -1, 0.5, "0"]) {
+    const requestBody: Record<string, unknown> = {
+      sessionId: created.sessionId,
+      actionId: "opening.info.i0.advance"
+    };
+    if (expectedStateVersion !== undefined) {
+      requestBody.expectedStateVersion = expectedStateVersion;
+    }
+    const { response, body } = await requestJson<{ error: string }>("/actions", {
+      method: "POST",
+      body: JSON.stringify(requestBody)
+    });
+    assert.equal(response.status, 400);
+    assert.match(body.error, /expectedStateVersion must be a non-negative integer/);
+  }
 });
 
 test("GET /games/:gameId/player-content returns player-facing content DTO", async () => {

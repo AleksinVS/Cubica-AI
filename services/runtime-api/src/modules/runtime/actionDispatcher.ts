@@ -6,10 +6,19 @@ import type {
 import type { RuntimeActionResult } from "@cubica/contracts-runtime";
 import type { GameBundle } from "../content/manifestLoader.ts";
 import { NotFoundError, RequestValidationError } from "../errors.ts";
+import { SessionVersionConflictError } from "../session/sessionStoreErrors.ts";
 import { createRuntimeActionRegistry, getRegisteredActionDefinition } from "./actionRegistry.ts";
 import { resolveActionReferences, validateActionParameters } from "./actionParameters.ts";
 
 type RuntimeState = Record<string, unknown>;
+/**
+ * Trusted in-process callers (for example deterministic fixture runners) may
+ * omit the HTTP concurrency precondition. Every public request is parsed as
+ * DispatchActionInput and therefore always carries it.
+ */
+type InternalDispatchActionInput = Omit<DispatchActionInput, "expectedStateVersion"> & {
+  expectedStateVersion?: number;
+};
 const RUNTIME_VALIDATION_ERROR_CODES = new Set([
   "RUNTIME_ACTION_GUARD_FAILED",
   "RUNTIME_ACTION_EFFECT_FAILED",
@@ -26,7 +35,7 @@ const createNextVersion = (current: SessionRecord<RuntimeState>) => ({
 export interface DispatchRuntimeActionOptions {
   sessionStore: SessionStorePort<RuntimeState>;
   bundle: GameBundle;
-  input: DispatchActionInput;
+  input: DispatchActionInput | InternalDispatchActionInput;
 }
 
 export interface DispatchRuntimeActionOutcome {
@@ -41,6 +50,19 @@ export async function dispatchRuntimeAction(
 
   if (!current) {
     throw new NotFoundError(`Session "${options.input.sessionId}" was not found`);
+  }
+
+  // WHY: this comparison must happen while the store's exclusive session lock
+  // is held. Checking before the lock would leave a race in which two callers
+  // both observe the same version and apply the same payment or move twice.
+  if (
+    options.input.expectedStateVersion !== undefined &&
+    current.version.stateVersion !== options.input.expectedStateVersion
+  ) {
+    throw new SessionVersionConflictError(
+      current.sessionId,
+      options.input.expectedStateVersion
+    );
   }
 
   const { bundle } = options;

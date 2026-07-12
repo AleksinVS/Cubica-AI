@@ -39,6 +39,9 @@ interface RuntimeSnapshot {
   readonly sessionId: string;
   /** Create/GET include gameId; action responses intentionally omit it. */
   readonly gameId?: string;
+  readonly version: {
+    readonly stateVersion: number;
+  };
   readonly state: {
     readonly secret?: { readonly decks?: unknown; [key: string]: unknown };
     readonly public: {
@@ -96,7 +99,7 @@ test.describe("Cards Money Trains complete mock session", () => {
     // deterministic middle through the same Next.js proxy, preserving the one
     // browser-owned session and checking every returned player projection.
     for (const step of steps.slice(1, firstFinishIndex)) {
-      snapshot = await postAction(request, snapshot.sessionId, step);
+      snapshot = await postAction(request, snapshot, step);
       expectStep(snapshot, step);
     }
     expect(snapshot.state.public.session.turnNumber).toBeGreaterThan(6);
@@ -111,7 +114,7 @@ test.describe("Cards Money Trains complete mock session", () => {
     for (const step of steps.slice(firstFinishIndex)) {
       const controlId = finishControlId(step.actionId);
       if (controlId === null) {
-        snapshot = await postAction(request, snapshot.sessionId, step);
+        snapshot = await postAction(request, snapshot, step);
         expectStep(snapshot, step);
         await reloadStoredSession(page, snapshot.sessionId);
         continue;
@@ -153,12 +156,13 @@ function readTranscriptIfReady(): CompleteSessionTranscript | null {
 
 async function postAction(
   request: APIRequestContext,
-  sessionId: string,
+  current: RuntimeSnapshot,
   step: TranscriptStep
 ): Promise<RuntimeSnapshot> {
   const response = await request.post("/api/runtime/actions", {
     data: {
-      sessionId,
+      sessionId: current.sessionId,
+      expectedStateVersion: current.version.stateVersion,
       playerId: "player-web",
       actionId: step.actionId,
       ...(step.params ? { params: step.params } : {})

@@ -14,6 +14,7 @@ import {
   loadPlayerFacingContent
 } from "../../../services/runtime-api/src/modules/content/contentService.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
+import { createCanonicalReplayFingerprint } from "../../../services/runtime-api/src/modules/runtime/replayFingerprint.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
 import {
   toManifestFragment,
@@ -300,30 +301,31 @@ test("complete seven-turn gameplay is replay-stable and finishes only after faci
       initialState: structuredClone(manifest.state)
     });
     const bundle = { gameId: manifest.meta.id, manifest };
+    let current = session;
     for (const step of transcript.steps) {
       await dispatchRuntimeAction({
         sessionStore: store,
         bundle,
         input: {
           sessionId: session.sessionId,
+          expectedStateVersion: current.version.stateVersion,
           actionId: step.actionId,
           ...(step.params ? { params: step.params } : {})
         }
       });
-      const current = await store.getSession(session.sessionId);
+      current = await store.getSession(session.sessionId);
+      assert.ok(current);
       assert.equal(current.state.public.session.phase, step.expected.phase, `phase after step ${step.order}`);
       assert.equal(current.state.public.session.turnNumber, step.expected.turnNumber, `turn after step ${step.order}`);
     }
-    return store.getSession(session.sessionId);
+    return current;
   };
 
   const first = await replay();
   const second = await replay();
-  const withoutWallClockAuditFields = (state) => JSON.parse(JSON.stringify(state, (key, value) =>
-    key === "at" || key === "lastUpdatedAt" ? undefined : value));
-  assert.deepEqual(
-    withoutWallClockAuditFields(first.state),
-    withoutWallClockAuditFields(second.state)
+  assert.equal(
+    createCanonicalReplayFingerprint(first.state),
+    createCanonicalReplayFingerprint(second.state)
   );
   assert.equal(first.state.public.session.phase, "finished");
   assert.equal(first.state.public.session.turnNumber, 7);

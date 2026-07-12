@@ -116,6 +116,11 @@ export interface CreateSessionResponse<TState = unknown> {
 
 export interface DispatchActionInput {
   sessionId: SessionId;
+  /**
+   * Version of the authoritative snapshot on which the caller based this
+   * action. Runtime rejects stale or repeated requests before any effect runs.
+   */
+  expectedStateVersion: number;
   playerId?: PlayerId;
   actionId: string;
   params?: Record<string, unknown>;

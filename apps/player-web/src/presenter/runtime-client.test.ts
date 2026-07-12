@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createNewSession,
+  dispatchAction,
   getGameReadiness,
   RuntimeClientError
 } from "./runtime-client";
@@ -62,5 +63,37 @@ describe("runtime-client", () => {
     )));
 
     await expect(getGameReadiness("ai-driven-choice")).rejects.toBeInstanceOf(RuntimeClientError);
+  });
+  it("sends the authoritative state version with a deterministic action", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-1",
+      version: { sessionId: "session-1", stateVersion: 2, lastEventSequence: 1 },
+      state: { public: {}, secret: {} }
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await dispatchAction("session-1", "p1", "turn.roll", 1);
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      sessionId: "session-1",
+      expectedStateVersion: 1,
+      playerId: "p1",
+      actionId: "turn.roll",
+      payload: {}
+    });
+  });
+
+  it("preserves HTTP 409 so the presenter can refresh without repeating the action", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ error: "Session changed after version 1; reload it before retrying." }),
+      { status: 409, statusText: "Conflict" }
+    )));
+
+    await expect(dispatchAction("session-1", "p1", "turn.roll", 1)).rejects.toMatchObject({
+      name: "RuntimeClientError",
+      statusCode: 409,
+      message: "Session changed after version 1; reload it before retrying."
+    });
   });
 });

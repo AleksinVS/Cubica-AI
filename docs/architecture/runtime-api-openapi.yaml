@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cubica Runtime API",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
   },
   "x-cubica-contract-status": "current-implemented-contract",
@@ -474,6 +474,9 @@
           "404": {
             "$ref": "#/components/responses/NotFound"
           },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
           "500": {
             "$ref": "#/components/responses/InternalError"
           }
@@ -671,6 +674,16 @@
           }
         }
       },
+      "Conflict": {
+        "description": "The session version changed before the action could be applied.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
       "InternalError": {
         "description": "Runtime API internal error.",
         "content": {
@@ -787,9 +800,10 @@
       },
       "DispatchActionRequest": {
         "type": "object",
-        "required": ["sessionId", "actionId"],
+        "required": ["sessionId", "expectedStateVersion", "actionId"],
         "properties": {
           "sessionId": { "type": "string", "minLength": 1 },
+          "expectedStateVersion": { "type": "integer", "minimum": 0 },
           "playerId": { "type": "string", "minLength": 1 },
           "actionId": { "type": "string", "minLength": 1 },
           "params": { "$ref": "#/components/schemas/JsonObject" },

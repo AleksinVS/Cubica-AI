@@ -56,9 +56,9 @@
 | CMT-041 | кратчайший открытый маршрут и атомарный тариф | сценарий/инструкция | общий shortest-route settlement + mock tariff | 035 | открытый маршрут, объяснение суммы и полный откат отказа | verified-mock |
 | CMT-042 | две промежуточные паузы, финальная рефлексия и ручное завершение | главный сценарий + решение PM | facilitator actions + mock methodology | 035 | pause/skip/resume, cancel/confirm finish, отсутствие персонального scoring | verified-mock |
 | CMT-043 | два независимых победителя или равенство | главный сценарий | общий ranking compute + mock scoring declaration | 035 | объяснимый `cash + nominal vehicles`, отдельный рейтинг по типу | verified-mock |
-| CMT-044 | полная партия переживает перезапуск и воспроизводится | длительность продукта | PostgreSQL session store + replay | 035 | два restart checkpoint и совпадающие игровые данные/будущие карты; канонический hash ожидает решение PM о wall-clock полях | partial-architecture-decision |
+| CMT-044 | полная партия переживает перезапуск и воспроизводится | длительность продукта | PostgreSQL session store + replay | 035 | два restart checkpoint и одинаковый версионированный отпечаток полного серверного состояния, включая будущие карты | verified-mock |
 | CMT-045 | mock-данные не становятся нормативной игрой | решение PM | отдельный game package + content intake | 035 | маркировка UI/экспорта, разные gameId, отсутствие автоматического переноса | verified-mock |
-| CMT-046 | повторная отправка одного действия не применяет деньги, карту или движение дважды | надежность длительной сессии | precondition версии в публичном action contract | 035 | повтор с прежней `expectedStateVersion` получает конфликт, версия и состояние не меняются | blocked-architecture-decision |
+| CMT-046 | повторная отправка одного действия не применяет деньги, карту или движение дважды | надежность длительной сессии | precondition версии в публичном action contract | 035 | каждое из 88 действий повторяется с прежней `expectedStateVersion`, получает 409, версия и состояние не меняются | verified-mock |
 
 ## Правило обновления
 

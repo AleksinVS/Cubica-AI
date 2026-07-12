@@ -79,6 +79,7 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {
   assertRecord(body, "POST /actions body");
   assertRequiredString(body.sessionId, "sessionId");
+  assertNonNegativeInteger(body.expectedStateVersion, "expectedStateVersion");
   assertRequiredString(body.actionId, "actionId");
   assertOptionalString(body.playerId, "playerId");
   if (body.params !== undefined) {

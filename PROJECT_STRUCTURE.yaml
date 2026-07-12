@@ -54,6 +54,7 @@ docs: # Архитектура, задачи, планирование
       073-phaser-interactive-board-surface.md: file # ADR-073: принятая гибридная Phaser-поверхность для интерактивного пошагового поля при сохранении панелей и методики в обычном web-интерфейсе.
       074-schema-declared-resource-references.md: file # ADR-074: принятая безопасная модель объявленных JSON Schema ссылок на динамические игровые ресурсы без интерпретации клиентских строк как путей состояния.
       076-player-aware-economic-transfers.md: file # ADR-076: единый безопасный денежный перевод между банком, участником и общим состоянием без отрицательного баланса и без клиентских путей к деньгам.
+      078-canonical-replay-state-fingerprint.md: file # ADR-078: принятый версионированный отпечаток полного серверного состояния для воспроизводимых replay с точным исключением служебных отметок времени.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
       external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.

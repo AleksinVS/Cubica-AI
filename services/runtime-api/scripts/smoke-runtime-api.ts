@@ -63,8 +63,13 @@ const main = async () => {
     });
 
     assert(sessionResponse.status === 201, `Expected 201 from POST /sessions, got ${sessionResponse.status}`);
-    const sessionBody = (await sessionResponse.json()) as { sessionId?: string };
+    const sessionBody = (await sessionResponse.json()) as {
+      sessionId?: string;
+      version?: { stateVersion?: number };
+    };
     assert(typeof sessionBody.sessionId === "string", "POST /sessions did not return sessionId");
+    assert(sessionBody.version?.stateVersion === 0, "POST /sessions did not return initial stateVersion 0");
+    const expectedStateVersion = sessionBody.version?.stateVersion ?? 0;
 
     const actionResponse = await fetch(`${baseUrl}/actions`, {
       method: "POST",
@@ -73,6 +78,7 @@ const main = async () => {
       },
       body: JSON.stringify({
         sessionId: sessionBody.sessionId,
+        expectedStateVersion,
         actionId: "opening.info.i0.advance",
         payload: { source: "smoke" }
       })

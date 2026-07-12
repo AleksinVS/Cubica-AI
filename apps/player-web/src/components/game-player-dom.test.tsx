@@ -314,6 +314,11 @@ const mockS1Ui: GamePlayerUiContent = {
 
 const mockSession = {
   sessionId: "test-session-id",
+  version: {
+    sessionId: "test-session-id",
+    stateVersion: 0,
+    lastEventSequence: 0
+  },
   state: {
     public: {
       metrics: mockMetrics,

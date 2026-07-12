@@ -122,12 +122,13 @@ export async function dispatchAction(
   sessionId: string,
   playerId: string,
   actionId: string,
+  expectedStateVersion: number,
   payload: Record<string, unknown> = {}
 ): Promise<ActionSnapshot> {
   const response = await fetch("/api/runtime/actions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, playerId, actionId, payload })
+    body: JSON.stringify({ sessionId, expectedStateVersion, playerId, actionId, payload })
   });
   if (!response.ok) {
     throw await readRuntimeError(response, `Action "${actionId}" failed`);

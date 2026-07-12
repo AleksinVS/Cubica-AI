@@ -279,6 +279,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
           contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
           input: {
             sessionId: requestBody.sessionId,
+            expectedStateVersion: requestBody.expectedStateVersion,
             playerId: requestBody.playerId,
             actionId: requestBody.actionId,
             params: requestBody.params,

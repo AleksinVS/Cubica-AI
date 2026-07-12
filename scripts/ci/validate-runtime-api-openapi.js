@@ -308,6 +308,26 @@ function validateSchemaCoverage(spec) {
   }
 }
 
+/**
+ * Keep the duplicate-action safety contract from drifting out of OpenAPI.
+ * Generic schema coverage alone would still pass if this one required field or
+ * its conflict response were accidentally removed.
+ */
+function validateActionConcurrencyContract(spec) {
+  const schema = spec.components.schemas.DispatchActionRequest;
+  if (!Array.isArray(schema.required) || !schema.required.includes("expectedStateVersion")) {
+    fail("DispatchActionRequest must require expectedStateVersion");
+  }
+  const version = schema.properties?.expectedStateVersion;
+  if (version?.type !== "integer" || version.minimum !== 0) {
+    fail("DispatchActionRequest.expectedStateVersion must be an integer with minimum 0");
+  }
+  const conflict = spec.paths?.["/actions"]?.post?.responses?.["409"];
+  if (conflict?.$ref !== "#/components/responses/Conflict") {
+    fail("POST /actions must document the shared 409 Conflict response");
+  }
+}
+
 try {
   const spec = parseOpenApi();
   validateSpecShape(spec);
@@ -316,6 +336,7 @@ try {
   validateRuntimeRouteMarkers();
   validateHistoricalSpecs();
   validateSchemaCoverage(spec);
+  validateActionConcurrencyContract(spec);
   console.log("validate-runtime-api-openapi: OK");
 } catch (error) {
   console.error("validate-runtime-api-openapi: failed");
