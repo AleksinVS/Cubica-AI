@@ -219,11 +219,11 @@ export async function PUT(request: NextRequest) {
       if (!commit.committed || commit.versionId === undefined || commit.version === undefined) {
         throw new EditorVersionStoreError("Save does not contain authoring changes.", 400, "invalid_request");
       }
-      const sessionMetadataSynchronized = await markEditorSessionSaved({
+      const sessionMetadataSyncCode = await markEditorSessionSaved({
         sessionId: session.session.sessionId,
         commitHash: commit.commitHash,
         versionId: commit.versionId
-      }).then(() => true).catch(() => false);
+      }).then(() => undefined).catch(() => "metadata_sync_failed" as const);
 
       return Response.json({
         ...saved,
@@ -231,7 +231,8 @@ export async function PUT(request: NextRequest) {
         commit,
         version: commit.version,
         pluginValidation,
-        sessionMetadataSynchronized
+        sessionMetadataSynchronized: sessionMetadataSyncCode === undefined,
+        ...(sessionMetadataSyncCode === undefined ? {} : { sessionMetadataSyncCode })
       });
     });
   } catch (error) {

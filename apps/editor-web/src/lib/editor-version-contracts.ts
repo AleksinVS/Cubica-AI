@@ -80,6 +80,8 @@ export interface EditorVersionRestoreResult {
   readonly currentVersionId: string;
   readonly restoredVersionId: string;
   readonly changedPaths: readonly string[];
+  readonly sessionMetadataSynchronized: boolean;
+  readonly sessionMetadataSyncCode?: "metadata_sync_failed";
 }
 
 export type EditorVersionErrorCode =

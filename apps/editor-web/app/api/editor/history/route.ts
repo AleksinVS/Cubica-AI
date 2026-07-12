@@ -71,6 +71,7 @@ export async function POST(request: Request) {
       typeof body.sessionId !== "string" ||
       typeof body.versionId !== "string" ||
       !isOpaqueVersionId(body.versionId) ||
+      body.expectedHead === undefined ||
       (body.expectedHead !== null && (typeof body.expectedHead !== "string" || !isOpaqueVersionId(body.expectedHead)))
     ) {
       throw new EditorVersionStoreError(
@@ -103,18 +104,19 @@ export async function POST(request: Request) {
         throw new EditorVersionStoreError("Restore did not create a durable version.", 409, "version_conflict");
       }
 
-      const sessionMetadataSynchronized = await markEditorSessionSaved({
+      const sessionMetadataSyncCode = await markEditorSessionSaved({
         sessionId: session.sessionId,
         commitHash: restored.commitHash,
         versionId: restored.versionId
-      }).then(() => true).catch(() => false);
+      }).then(() => undefined).catch(() => "metadata_sync_failed" as const);
 
       return noStoreJson({
         version: restored.version,
         currentVersionId: restored.versionId,
         restoredVersionId: body.versionId,
         changedPaths: restored.changedPaths,
-        sessionMetadataSynchronized
+        sessionMetadataSynchronized: sessionMetadataSyncCode === undefined,
+        ...(sessionMetadataSyncCode === undefined ? {} : { sessionMetadataSyncCode })
       });
     });
   } catch (error) {

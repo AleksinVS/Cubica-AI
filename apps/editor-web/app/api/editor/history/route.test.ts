@@ -64,7 +64,7 @@ describe("editor history route", () => {
       currentVersionId: session.currentVersionId!
     });
     vi.mocked(restoreDurableProjectVersion).mockReset();
-    vi.mocked(markEditorSessionSaved).mockReset();
+    vi.mocked(markEditorSessionSaved).mockReset().mockResolvedValue(session);
     vi.mocked(evaluateEditorSessionCompatibility).mockReset().mockReturnValue({
       ok: true,
       requiresUpgrade: false,
@@ -115,6 +115,46 @@ describe("editor history route", () => {
     expect(await response.json()).toMatchObject({ code: "invalid_request" });
   });
 
+  it("accepts null expectedHead as a valid restore request", async () => {
+    const restoredVersionId = "d".repeat(40);
+    vi.mocked(restoreDurableProjectVersion).mockResolvedValue({
+      committed: true,
+      commitHash: "e".repeat(40),
+      versionId: restoredVersionId,
+      version: {
+        versionId: restoredVersionId,
+        kind: "restore",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        authorName: "Neutral Author",
+        summary: "Восстановлена авторская версия",
+        changedFileCount: 1,
+        restoredFromVersionId: "c".repeat(40)
+      },
+      changedPaths: ["games/neutral-game/authoring/game.authoring.json"]
+    });
+
+    const response = await POST(new Request("http://localhost/api/editor/history", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        sessionId: session.sessionId,
+        versionId: "c".repeat(40),
+        expectedHead: null
+      })
+    }));
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body).toMatchObject({
+      currentVersionId: restoredVersionId,
+      sessionMetadataSynchronized: true
+    });
+    expect(body).not.toHaveProperty("sessionMetadataSyncCode");
+    expect(restoreDurableProjectVersion).toHaveBeenCalledWith(expect.objectContaining({
+      expectedHead: null
+    }));
+  });
+
   it("returns a committed restore when only the post-CAS metadata write fails", async () => {
     const restoredVersionId = "d".repeat(40);
     vi.mocked(restoreDurableProjectVersion).mockResolvedValue({
@@ -147,7 +187,8 @@ describe("editor history route", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toMatchObject({
       currentVersionId: restoredVersionId,
-      sessionMetadataSynchronized: false
+      sessionMetadataSynchronized: false,
+      sessionMetadataSyncCode: "metadata_sync_failed"
     });
   });
 
