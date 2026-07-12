@@ -23,7 +23,8 @@ export function ImageComponent({
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
 }) {
-  const { src, alt, cssClass } = component.props;
+  const props: Partial<GameUiImageComponentProps> = component.props ?? {};
+  const { src, alt, cssClass } = props;
   const resolvedSrc = resolveStringProp(src, gameState, localContext);
   const resolvedAlt = resolveStringProp(alt, gameState, localContext);
   const resolvedCssClass = resolveStringProp(cssClass, gameState, localContext);

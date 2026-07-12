@@ -33,22 +33,20 @@
 ## Now
 
 - [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: полный GSR-035 на mock-данных реализован и архитектурно принят, включая PostgreSQL, защиту повторных действий, канонический replay и браузер; нормативный GSR-030 ожидает авторские колоды, выплаты, начальную сеть, канонические координаты, контуры областей и контрольные движения.
+- [TSK-20260705-board-game-platform-capabilities](docs/tasks/active/TSK-20260705-board-game-platform-capabilities.md) — `in_progress`: участники, воспроизводимый бросок, ход, движение, проекция и минимальная экономика для GSR-034 реализованы; остальной пакет не реализуется заранее.
 - [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — `review`: PostgreSQL-хранилище, блокировка одновременных ходов, проверка готовности и восстановление после рестарта реализованы и проверены на PostgreSQL 17.
+- [TSK-20260705-monopoly-classic-game](docs/tasks/active/TSK-20260705-monopoly-classic-game.md) — `in_progress`: первый локальный срез Estate Race завершён и прошёл браузерную приёмку; полная классическая игра не завершена и продолжится последовательными GSR.
 - [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `review`: реестр, проверки, контент-адресуемая раздача и player/Phaser resolver реализованы первым игровым срезом; миграция LEGACY-0023 остается отдельной.
 - [TSK-20260518-portal-test-vps-and-antarctica-launch](docs/tasks/active/TSK-20260518-portal-test-vps-and-antarctica-launch.md) — `in_progress`: отдельный трек portal launch surface и тестового VPS; не является автоматическим следующим шагом перед первой игрой.
 - [TSK-20260520-project-review-remediation](docs/tasks/active/TSK-20260520-project-review-remediation.md) — `review`: исправления майского ревью реализованы и ожидают приемки.
 
 ## Next
 
-- [TSK-20260705-board-game-platform-capabilities](docs/tasks/active/TSK-20260705-board-game-platform-capabilities.md) — `planned`: кандидат на общий пакет пошаговых настольных механик, если он понадобится выбранной игре.
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `planned`: кандидат на постоянные сессии, участников, события и WebSocket-доставку по потребности игрового среза.
 - [TSK-20260706-flow-simulation-platform-capabilities](docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md) — `planned`: кандидат на общие возможности симуляций реального времени, если их потребует выбранная игра.
 - [TSK-20260707-player-web-bundle-budget](docs/tasks/active/TSK-20260707-player-web-bundle-budget.md) — `planned`: кандидат на CI-бюджет first-load JavaScript по триггеру игрового среза или приоритету PM.
 - [TSK-20260518-contracts-neutrality-cleanup](docs/tasks/active/TSK-20260518-contracts-neutrality-cleanup.md) — `planned`: убрать игровые детали из общих контрактов.
 - [TSK-20260518-runtime-repository-boundary-and-readiness](docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md) — `planned`: укрепить границу репозитория контента и readiness.
-- [TSK-20260615-antarctica-ui-manifest-screen-normalization](docs/tasks/active/TSK-20260615-antarctica-ui-manifest-screen-normalization.md) — `planned`: отделить сценарные ключи Antarctica от переиспользуемых UI-вариантов.
-- [TSK-20260710-editor-author-version-history](docs/tasks/active/TSK-20260710-editor-author-version-history.md) — `planned`: выбранный PM редакторный срез — понятные точки Save, восстановление грязной сессии и безопасный возврат прежней версии новым сохранением.
-- [TSK-20260707-editor-concept-surfaces](docs/tasks/active/TSK-20260707-editor-concept-surfaces.md) — `planned`: оставшийся Telegram-preview и завершение viewport-пресетов; история версий выделена отдельно.
 
 ## Later
 
@@ -60,7 +58,6 @@
 ## Blocked
 
 - [TSK-20260705-agent-controlled-players](docs/tasks/active/TSK-20260705-agent-controlled-players.md) — `blocked`: ожидает turn-flow платформы.
-- [TSK-20260705-monopoly-classic-game](docs/tasks/active/TSK-20260705-monopoly-classic-game.md) — `blocked`: ожидает настольные механики, мультиплеер и ИИ-места.
 - [TSK-20260706-conveyor-mini-game](docs/tasks/active/TSK-20260706-conveyor-mini-game.md) — `blocked`: ожидает платформенные фазы flow-simulation и общие эффекты метрик.
 - [TSK-20260706-rail-tycoon-mini-game](docs/tasks/active/TSK-20260706-rail-tycoon-mini-game.md) — `blocked`: ожидает PRNG, общие эффекты, Phaser-host и канал ассетов.
 

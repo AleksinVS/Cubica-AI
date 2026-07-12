@@ -137,6 +137,10 @@ textarea {
   min-width: 58px;
 }
 
+.orientation-control button {
+  min-width: 72px;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: 48px var(--left-sidebar-width, 340px) minmax(420px, 1fr);
@@ -531,18 +535,45 @@ textarea {
   padding: 16px;
 }
 
-.preview-viewport-tablet .preview-viewport-canvas {
+.preview-viewport-tablet.preview-orientation-landscape .preview-viewport-canvas {
+  border-radius: 10px;
+  box-shadow: 0 18px 44px rgba(20, 33, 53, 0.18);
+  height: min(100%, 820px);
+  width: min(100%, 1080px);
+}
+
+.preview-viewport-tablet.preview-orientation-portrait .preview-viewport-canvas {
   border-radius: 10px;
   box-shadow: 0 18px 44px rgba(20, 33, 53, 0.18);
   height: min(100%, 1080px);
   width: min(100%, 820px);
 }
 
-.preview-viewport-mobile .preview-viewport-canvas {
+.preview-viewport-mobile.preview-orientation-landscape .preview-viewport-canvas {
+  border-radius: 18px;
+  box-shadow: 0 18px 44px rgba(20, 33, 53, 0.2);
+  height: min(100%, 390px);
+  width: min(100%, 844px);
+}
+
+.preview-viewport-mobile.preview-orientation-portrait .preview-viewport-canvas {
   border-radius: 18px;
   box-shadow: 0 18px 44px rgba(20, 33, 53, 0.2);
   height: min(100%, 844px);
   width: min(100%, 390px);
+}
+
+/* Desktop normally fills the workspace. Portrait mode narrows only the frame;
+   the iframe and its running content stay mounted and are never transformed. */
+.preview-viewport-desktop.preview-orientation-portrait {
+  background: #dfe5ed;
+  padding: 16px;
+}
+
+.preview-viewport-desktop.preview-orientation-portrait .preview-viewport-canvas {
+  box-shadow: 0 18px 44px rgba(20, 33, 53, 0.16);
+  height: 100%;
+  width: min(100%, 900px);
 }
 
 .preview-viewport-canvas iframe {
@@ -550,6 +581,135 @@ textarea {
   display: block;
   height: 100%;
   width: 100%;
+}
+
+/* Telegram is a source-backed structural feed, deliberately not a replica of
+   the official client. The neutral styling keeps that distinction visible. */
+.telegram-structural-viewer {
+  background: #eef2f6;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  height: 100%;
+  overflow: auto;
+  padding: 18px;
+  width: 100%;
+}
+
+.telegram-structural-warning {
+  align-self: center;
+  background: #fff1c2;
+  border: 1px solid #d5aa26;
+  border-radius: 6px;
+  color: #6e5310;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 7px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.telegram-missing-view-callout {
+  align-self: center;
+  background: #fff7df;
+  border-left: 3px solid #b77a12;
+  color: #634b1b;
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  gap: 3px;
+  max-width: 560px;
+  padding: 9px 12px;
+  width: calc(100% - 24px);
+}
+
+.telegram-structural-feed {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 560px;
+  width: 100%;
+}
+
+.telegram-structural-feed > header {
+  color: #526070;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.telegram-message {
+  align-self: flex-start;
+  background: #fff;
+  border: 1px solid #ccd5df;
+  border-radius: 10px;
+  box-shadow: 0 3px 12px rgba(28, 45, 67, 0.08);
+  max-width: 88%;
+  overflow: hidden;
+  width: 420px;
+}
+
+.telegram-message-unknown {
+  border-color: #d39b92;
+}
+
+.telegram-message-body {
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  color: #17212b;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.telegram-message-body small {
+  color: #657384;
+  font-weight: 700;
+}
+
+.telegram-message-body code {
+  color: #8e4b43;
+  font-size: 10px;
+  overflow-wrap: anywhere;
+}
+
+.telegram-message-body[aria-pressed="true"],
+.telegram-inline-actions button.is-selected {
+  box-shadow: inset 0 0 0 2px #168acd;
+}
+
+.telegram-inline-actions {
+  border-top: 1px solid #dde4ec;
+  display: grid;
+}
+
+.telegram-inline-actions button {
+  background: #f8fbfd;
+  border: 0;
+  color: #1475ad;
+  cursor: pointer;
+  font-weight: 700;
+  padding: 9px 12px;
+}
+
+.telegram-structural-empty {
+  align-items: center;
+  color: #526070;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  justify-content: center;
+  margin: auto;
+  max-width: 520px;
+  text-align: center;
 }
 
 /* Mode plate + apply state over the preview (design-spec §3.3, mockup zone 3).
@@ -2315,6 +2475,213 @@ textarea {
     top: auto !important;
     width: 100%;
   }
+}
+
+/* Durable author history: a dense chronological ledger, not a card dashboard. */
+.history-panel-body {
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 0 24px;
+}
+
+.history-panel-state,
+.history-panel-error {
+  color: #5d6878;
+  font-size: 13px;
+  margin: 24px 16px;
+}
+
+.history-panel-error {
+  align-items: flex-start;
+  background: #fff3f1;
+  border-left: 3px solid #b85343;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.history-panel-error.is-compact { margin: 8px 12px; }
+.history-panel-error button,
+.history-load-more,
+.history-restore-action {
+  background: #fff;
+  border: 1px solid #c7d0dd;
+  border-radius: 6px;
+  color: #26364d;
+  cursor: pointer;
+  min-height: 30px;
+  padding: 0 10px;
+}
+
+.history-version-list,
+.history-change-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.history-version-list > li { border-bottom: 1px solid #e3e8ef; }
+.history-version-list > li > button {
+  background: transparent;
+  border: 0;
+  color: #243247;
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  padding: 12px 14px;
+  text-align: left;
+  width: 100%;
+}
+
+.history-version-list > li > button:hover,
+.history-version-list > li > button.is-selected {
+  background: #edf3ff;
+  box-shadow: inset 3px 0 #3566b8;
+}
+
+.history-version-summary { font-size: 13px; font-weight: 700; line-height: 1.35; }
+.history-version-meta {
+  color: #677488;
+  display: flex;
+  font-size: 11px;
+  gap: 8px;
+  justify-content: space-between;
+}
+.history-version-count { color: #748196; font-size: 10px; }
+.history-load-more { display: block; margin: 12px auto; }
+
+.history-version-details {
+  border-top: 1px solid #cfd7e2;
+  margin-top: 12px;
+  padding: 14px;
+}
+.history-version-details h3,
+.history-version-details h4 { margin: 0 0 10px; }
+.history-version-details h3 { font-size: 14px; }
+.history-version-details h4 { color: #657287; font-size: 11px; text-transform: uppercase; }
+.history-version-comment { color: #36465c; font-size: 12px; line-height: 1.5; }
+.history-change-list li {
+  border-top: 1px solid #e5e9ef;
+  display: grid;
+  gap: 4px;
+  padding: 9px 0;
+}
+.history-change-list strong { font-size: 11px; overflow-wrap: anywhere; }
+.history-change-list small { color: #68758a; line-height: 1.4; }
+.history-change-kind { color: #38609b; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.history-change-deleted { color: #a23e32; }
+.history-change-created { color: #267257; }
+.history-restore-blocked {
+  background: #fff7dc;
+  border-left: 3px solid #c49a24;
+  display: grid;
+  font-size: 11px;
+  gap: 4px;
+  margin: 12px 0;
+  padding: 9px 10px;
+}
+.history-restore-action { width: 100%; }
+.history-restore-action:disabled { cursor: not-allowed; opacity: .55; }
+
+.history-restore-backdrop {
+  align-items: center;
+  background: rgba(15, 24, 37, .48);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 20px;
+  position: fixed;
+  z-index: 80;
+}
+.history-restore-dialog {
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 22px 60px rgba(11, 24, 42, .26);
+  color: #243247;
+  max-width: 480px;
+  padding: 22px;
+  width: 100%;
+}
+.history-restore-dialog h2 { font-size: 18px; margin: 0 0 14px; }
+.history-restore-dialog p { color: #5c697c; line-height: 1.5; }
+.history-restore-dialog > div { display: flex; gap: 8px; justify-content: flex-end; }
+.history-restore-dialog button {
+  background: #fff;
+  border: 1px solid #c7d0dd;
+  border-radius: 6px;
+  cursor: pointer;
+  min-height: 34px;
+  padding: 0 12px;
+}
+.history-restore-dialog .history-restore-confirm { background: #234f91; border-color: #234f91; color: #fff; }
+
+/* Optional Save metadata is a compact disclosure adjacent to the primary action. */
+.save-version-control { align-items: center; display: inline-flex; position: relative; }
+.save-version-details > summary {
+  align-items: center;
+  border: 1px solid #cfd6e2;
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  color: #536177;
+  cursor: pointer;
+  display: flex;
+  font-size: 0;
+  height: 30px;
+  justify-content: center;
+  list-style: none;
+  width: 25px;
+}
+.save-version-details > summary::after { content: "…"; font-size: 14px; }
+.save-version-details > summary::-webkit-details-marker { display: none; }
+.save-version-control > button { border-radius: 6px 0 0 6px; }
+.save-version-popover {
+  background: #fff;
+  border: 1px solid #cbd3df;
+  border-radius: 8px;
+  box-shadow: 0 16px 36px rgba(18, 33, 54, .18);
+  color: #27364b;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  position: absolute;
+  right: 0;
+  top: 38px;
+  width: 300px;
+  z-index: 30;
+}
+.save-version-popover > span,
+.save-version-popover small { color: #6a7688; font-size: 11px; }
+.save-version-popover > strong { font-size: 12px; }
+.save-version-popover label { display: grid; font-size: 11px; gap: 5px; }
+.save-version-popover textarea { min-height: 72px; resize: vertical; }
+
+.session-recovery-banner {
+  align-items: flex-start;
+  background: #fff8df;
+  border: 1px solid #d2ae45;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(38, 45, 57, .18);
+  color: #594817;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  left: 64px;
+  max-width: min(560px, calc(100vw - 92px));
+  padding: 12px 14px;
+  position: fixed;
+  top: 58px;
+  z-index: 40;
+}
+.session-recovery-banner p { font-size: 12px; margin: 5px 0; }
+.session-recovery-banner ul { font-size: 11px; margin: 6px 0 0; padding-left: 18px; }
+.session-recovery-banner li { overflow-wrap: anywhere; }
+.session-recovery-banner button { background: transparent; border: 0; color: inherit; cursor: pointer; font-weight: 700; }
+
+@media (max-width: 700px) {
+  .history-restore-backdrop { align-items: flex-end; padding: 0; }
+  .history-restore-dialog { border-radius: 12px 12px 0 0; max-width: none; }
+  .save-version-popover { left: auto; right: 0; width: min(300px, calc(100vw - 64px)); }
 }
 
 .selection-summary {

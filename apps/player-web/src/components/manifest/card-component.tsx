@@ -28,7 +28,8 @@ export function CardComponent({
   previewAttributes?: PreviewElementAttributes;
 }) {
   const t = useLocale();
-  const { text, title, summary, chips, selectLabel, visualState, visible, interactive } = component.props;
+  const props: GameUiCardComponentProps = component.props ?? {};
+  const { text, title, summary, chips, selectLabel, visualState, visible, interactive } = props;
   const command = (component as GameUiComponent).actions?.onClick?.command;
   const componentId = (component as GameUiComponent).id ?? "";
   const cardIdMatch = componentId.match(/^card-(\d+)$/);

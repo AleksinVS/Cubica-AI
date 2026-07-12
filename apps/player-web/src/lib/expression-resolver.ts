@@ -103,18 +103,26 @@ function resolvePath(
     return getByPath(state, `secret.${statePath}`);
   }
 
-  // 4. Convenience alias: metrics.* → state.public.metrics.*
+  // 4. Turn-based participant state is a player-facing top-level branch.
+  // Keep the manifest expression spelling symmetric with public/secret while
+  // resolving it only from the already projected snapshot supplied by runtime.
+  if (path.startsWith("game.state.players.")) {
+    const statePath = path.slice("game.state.players.".length);
+    return getByPath(state, `players.${statePath}`);
+  }
+
+  // 5. Convenience alias: metrics.* → state.public.metrics.*
   if (path.startsWith("metrics.")) {
     const metricPath = path.slice("metrics.".length);
     return getByPath(state, `public.metrics.${metricPath}`);
   }
 
-  // 5. Прямой путь в state
+  // 6. Прямой путь в state
   if (path.startsWith("state.")) {
     return getByPath(state, path.slice("state.".length));
   }
 
-  // 6. Прямой путь в state без префикса
+  // 7. Прямой путь в state без префикса
   return getByPath(state, path);
 }
 
@@ -136,7 +144,10 @@ export function resolvePayloadExpressions(
   for (const [key, value] of Object.entries(payload)) {
     if (typeof value === "string") {
       if (value.startsWith("{{") && value.endsWith("}}")) {
-        resolved[key] = resolveExpression(value, state ?? {}, localContext);
+        // A full binding can point to an object (for example a manifest action
+        // `params` record). Preserve that value instead of coercing it to
+        // "[object Object]"; mixed text bindings remain strings below.
+        resolved[key] = resolveExpressions(value, state ?? {}, localContext);
       } else if (value.includes("{{")) {
         resolved[key] = resolveExpressions(value, state ?? {}, localContext);
       } else {

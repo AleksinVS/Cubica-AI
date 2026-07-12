@@ -1,5 +1,6 @@
 {
   ".": "Playwright end-to-end tests for browser-level player-web, runtime-api and portal launch binding flows.",
   "cards-money-trains-mock.spec.ts": "Browser acceptance for the complete test-only facilitator session, including keyboard board access and manual finish confirmation.",
+  "estate-race.spec.ts": "Focused GSR-034 browser acceptance for the Estate Race board, hotseat actor switching, first purchase and first rent.",
   "player-web.spec.ts": "E2E coverage for normal Antarctica session boot, runtime action dispatch and portal launch session binding."
 }

@@ -1,0 +1,138 @@
+{
+  "meta": {
+    "id": "estate-race.ui.web",
+    "version": "0.1.0",
+    "schema_version": "1.0",
+    "game_id": "estate-race",
+    "game_manifest_version": "0.1.0",
+    "channel": "web",
+    "author": "Cubica"
+  },
+  "entry_point": "table",
+  "screen_routing": [
+    {
+      "screenKey": "table",
+      "conditions": {
+        "screenId": "table",
+        "layoutMode": "topbar"
+      }
+    }
+  ],
+  "screens": {
+    "table": {
+      "title": "Estate Race · прототип",
+      "layout_mode": "topbar",
+      "root": {
+        "id": "table.root",
+        "type": "screenComponent",
+        "props": {
+          "cssClass": "board-game-shell"
+        },
+        "children": [
+          {
+            "id": "table.header",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "board-game-header"
+            },
+            "children": [
+              {
+                "id": "table.title",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h1>Estate Race · прототип</h1><p>Ход {{game.state.public.turn.turnNumber}} · активен {{game.state.public.turn.activePlayerId}} · этап {{game.state.public.turn.phase}}</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "table.players",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "board-game-players"
+            },
+            "children": [
+              {
+                "id": "table.player-one",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h2>Игрок 1</h2><p>{{game.state.players.p1.metrics.cash}} монет · клетка {{game.state.players.p1.metrics.position}}</p>"
+                }
+              },
+              {
+                "id": "table.player-two",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h2>Игрок 2</h2><p>{{game.state.players.p2.metrics.cash}} монет · клетка {{game.state.players.p2.metrics.position}}</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "table.workspace",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "board-game-workspace"
+            },
+            "children": [
+              {
+                "id": "table.board",
+                "type": "interactiveBoardSurface",
+                "props": {
+                  "sceneId": "main",
+                  "designWidth": 1400,
+                  "designHeight": 1000,
+                  "accessibleLabel": "Игровое поле Estate Race"
+                }
+              }
+            ]
+          },
+          {
+            "id": "table.roll",
+            "type": "richTextComponent",
+            "props": {
+              "cssClass": "board-game-roll",
+              "html": "<p><strong>Последний бросок:</strong> {{game.state.public.board.lastRoll.values}} · сумма {{game.state.public.board.lastRoll.total}}</p>"
+            }
+          },
+          {
+            "id": "table.log",
+            "type": "areaComponent",
+            "props": {
+              "cssClass": "board-game-log"
+            },
+            "children": [
+              {
+                "id": "table.log-title",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h2>Журнал</h2>"
+                }
+              },
+              {
+                "id": "table.log-entries",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-game-log-entries"
+                },
+                "itemTemplate": {
+                  "collection": "{{game.state.public.log}}",
+                  "itemKey": "logEntry"
+                },
+                "children": [
+                  {
+                    "id": "table.log-entry",
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<p><strong>{{logEntry.kind}}</strong> {{logEntry.summary}}</p>"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}

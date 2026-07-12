@@ -17,6 +17,8 @@ import type { RoutedEditorDiagnostic } from "@/lib/editor-web-adapter";
 
 import {
   aggregateWorkspaceChecks,
+  channelDiagnosticNavigation,
+  collectKnownViewCreationChannels,
   groupChecksBySeverity,
   resolveEntityForPointer,
   summarizeCheckCounts
@@ -92,7 +94,9 @@ describe("aggregateWorkspaceChecks", () => {
       pluginDiagnostics: [],
       projectionDiagnostics: projection.diagnostics,
       projection,
-      activeFilePath: FILE
+      activeFilePath: FILE,
+      activeChannel: "telegram",
+      viewCreationChannels: ["telegram"]
     });
 
     expect(checks).toHaveLength(2);
@@ -104,6 +108,7 @@ describe("aggregateWorkspaceChecks", () => {
     const projectionRow = checks.find((item) => item.code === "entity-missing-view");
     expect(projectionRow?.entityId).toBe("ui:card");
     expect(projectionRow?.badge).toBe("смысл");
+    expect(projectionRow?.channel).toBe("telegram");
     // The only deterministic quick fix in this slice.
     expect(projectionRow?.quickFix).toBe("create-view");
     expect(schemaRow?.quickFix).toBeUndefined();
@@ -169,6 +174,68 @@ describe("aggregateWorkspaceChecks", () => {
       activeFilePath: FILE
     });
     expect(checks[0]?.quickFix).toBeUndefined();
+  });
+
+  it("withholds create-view when the channel insertion container is not known", () => {
+    const card = entity({ entityId: "game:card", pointer: "/root/cards/0" });
+    const diagnostic: EditorEntityProjectionDiagnostic = {
+      severity: "warning",
+      code: "entity-missing-view",
+      message: "Any translated text",
+      source: card.primarySource
+    };
+    const projection = projectionOf([card], [diagnostic]);
+    const checks = aggregateWorkspaceChecks({
+      routedDiagnostics: [],
+      pluginDiagnostics: [],
+      projectionDiagnostics: [diagnostic],
+      projection,
+      activeFilePath: FILE,
+      activeChannel: "telegram",
+      viewCreationChannels: []
+    });
+
+    expect(checks[0]).toMatchObject({ code: "entity-missing-view", channel: "telegram", entityId: "game:card" });
+    expect(checks[0]?.quickFix).toBeUndefined();
+  });
+
+  it("recognises only the container shape supported by add-view", () => {
+    expect(collectKnownViewCreationChannels([
+      { filePath: "ui/web.json", documentKind: "ui", channel: "web", json: { root: { children: [] } } },
+      { filePath: "ui/telegram.json", documentKind: "ui", channel: "telegram", json: { root: { screens: [] } } },
+      { filePath: "game.json", documentKind: "game", json: { root: { children: [] } } }
+    ])).toEqual(["web"]);
+  });
+
+  it("maps Telegram missing-view navigation from code/channel metadata, never message text", () => {
+    const intent = channelDiagnosticNavigation({
+      id: "missing",
+      severity: "warning",
+      message: "Completely unrelated wording",
+      source: "projection",
+      code: "entity-missing-view",
+      channel: "telegram",
+      badge: "смысл",
+      pointer: "/root/cards/0",
+      entityId: "game:card",
+      entityLabel: "Карточка"
+    });
+    expect(intent).toEqual({
+      previewChannel: "telegram",
+      entityId: "game:card",
+      callout: { entityId: "game:card", label: "Карточка" }
+    });
+    expect(channelDiagnosticNavigation({
+      id: "web",
+      severity: "warning",
+      message: "Telegram appears only in text",
+      source: "projection",
+      code: "entity-missing-view",
+      channel: "web",
+      badge: "смысл",
+      pointer: "",
+      entityId: "game:card"
+    })).toBeUndefined();
   });
 });
 

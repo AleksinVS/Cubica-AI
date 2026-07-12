@@ -13,6 +13,7 @@ import { getVisibleGraphBudgetLabel } from "@/lib/editor-web-adapter";
 import { PluginDiagnosticsJournal } from "@/components/plugin-diagnostics-journal";
 import { PrototypeAuditNotice } from "@/components/prototype-audit-notice";
 import { PreviewFreshnessIndicator } from "@/components/workspace/preview-freshness-indicator";
+import { formatRelativeVersionTime } from "@/components/workspace/history-sidebar-panel";
 
 import { humanizeDiffSummaryItem } from "./workspace-helpers.ts";
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
@@ -27,6 +28,7 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
     altPlayActive,
     previewPointerPlayMode,
     previewViewportMode,
+    previewViewportOrientation,
     previewUrl,
     previewFreshnessDescriptor,
     previewEntities,
@@ -45,7 +47,9 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
     aiDiffSummary,
     aiApplyState,
     checkCounts,
-    setLeftSidebarPanel
+    setLeftSidebarPanel,
+    latestSavedAt,
+    unsavedFileCount
   } = controller;
   // Compact «Проверки» counter (mockup zone 7): errors + warnings; clicking it
   // opens the Checks tab (§9.6 "счётчики в статус-баре открывают Проверки").
@@ -59,8 +63,11 @@ export function WorkspaceStatusBar({ controller }: { controller: EditorWorkspace
           {syncLabel}
         </span>
         <span>{statusMessage}</span>
+        {latestSavedAt !== undefined ? (
+          <span>{t.statusBar.savedAndDirtyFiles(formatRelativeVersionTime(latestSavedAt), unsavedFileCount)}</span>
+        ) : null}
         <span>{t.statusBar.mode}: {previewModeLabel}{altPlayActive || previewPointerPlayMode ? t.statusBar.altSuffix : ""}</span>
-        <span>{t.statusBar.viewport}: {t.statusBar.viewportValue(previewViewportMode)}</span>
+        <span>{t.statusBar.viewport}: {t.statusBar.viewportValue(previewViewportMode, previewViewportOrientation)}</span>
         <span>{previewUrl === null ? t.statusBar.previewNotPrepared : t.statusBar.previewSelectable(previewEntities.length)}</span>
         {/* Preview freshness on the playthrough axis (editor-preview-first-ux
             §9.6; design-spec §4 codes preview-stale / preview-blocked). */}

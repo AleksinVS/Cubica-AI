@@ -129,6 +129,10 @@ export function UiComponentNode({
   // declared directly in the UI manifest (the forward-nav button owns the
   // action), so the renderer just renders the declared children as-is.
   const children = component.children ?? [];
+  // `props` is optional for ordinary UI components in ui-manifest.schema.json.
+  // Keep the renderer aligned with that declarative contract: structural
+  // containers without visual options are valid and behave like empty props.
+  const componentProps = component.props ?? {};
   const effectiveVisualMode = component.visualMode ?? parentVisualMode ?? "auto";
   const componentRuntimePointer = resolvePreviewRuntimePointer(component, runtimePointer);
   const previewAttributes = createPreviewElementAttributes({
@@ -203,7 +207,7 @@ export function UiComponentNode({
     // обернуть результат в контейнерный div с CSS-классом.
     // Для других типов компонентов — вернуть как фрагмент без обёртки.
     if (component.type === "areaComponent" || component.type === "screenComponent") {
-      const props = component.props as GameUiAreaComponentProps;
+      const props = componentProps as GameUiAreaComponentProps;
       const cssClass = component.type === "areaComponent"
         ? resolveAreaCssClass(props.cssClass, layoutMode, props.topbarCssClass)
         : (props as GameUiScreenComponentProps).cssClass ?? "";
@@ -224,7 +228,7 @@ export function UiComponentNode({
 
   switch (component.type) {
     case "screenComponent": {
-      const props = component.props as GameUiScreenComponentProps;
+      const props = componentProps as GameUiScreenComponentProps;
       const cssClass =
         layoutMode === "topbar"
           ? appendClassName(props.cssClass, "topbar-screen-shell")
@@ -278,7 +282,7 @@ export function UiComponentNode({
     }
 
     case "areaComponent": {
-      const props = component.props as GameUiAreaComponentProps;
+      const props = componentProps as GameUiAreaComponentProps;
       // visualMode="image": use design mockup as background for area
       const areaBgImage = isImageMode && resolvedDesignImage ? resolvedDesignImage : undefined;
       return (
@@ -313,7 +317,7 @@ export function UiComponentNode({
     }
 
     case "gameVariableComponent": {
-      const props = component.props as GameUiGameVariableComponentProps;
+      const props = componentProps as GameUiGameVariableComponentProps;
       return (
         <GameVariableComponent
           component={component as GameUiComponent<GameUiGameVariableComponentProps>}

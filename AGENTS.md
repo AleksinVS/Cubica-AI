@@ -33,7 +33,8 @@ Agents must always:
 1. **When planning, configuring, and developing, use Context7 MCP to get up-to-date documentation and best practices.**
 2. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
-   - Re-read the project-local `.codex/skills/cubica/SKILL.md` when the current work uses the Cubica development workflow.
+   - Re-read the project-local `skills/C_cubica/SKILL.md` when the current work uses the Cubica development workflow.
+   - Read project skills only from `skills/`; `.codex/skills/` is a Codex discovery bridge and must not contain independent copies.
    - Treat this reload as mandatory before continuing implementation, review, or planning after a compaction boundary.
 3. **Maintain documentation**
    - Create and update documentation wherever it is needed;
@@ -136,7 +137,7 @@ Agents must always:
 
 ## 2.1 Опциональный процесс `$cubica`
 
-При использовании проектного навыка `.codex/skills/cubica/SKILL.md` действуют правила ADR-068:
+При использовании проектного навыка `skills/C_cubica/SKILL.md` действуют правила ADR-068:
 
 - только навык `$cubica` применяется по явному указанию пользователя; остальные навыки, включая перенесенные или адаптированные из `agent-skills` и `superpowers`, могут включаться автоматически по своим обычным правилам сопоставления запроса;
 - человек утверждает общий план корневой `TSK-*` и архитектурные решения;

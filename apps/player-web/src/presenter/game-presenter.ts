@@ -35,6 +35,32 @@ import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest"
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * Resolves the participant attributed to the next local gameplay action.
+ *
+ * A hotseat session (several people sharing one browser) publishes the current
+ * participant in `public.turn.activePlayerId`. That server-confirmed value must
+ * win over the launch identity so a single player-web instance can alternate
+ * between participants. Games without a turn model keep their configured
+ * player id, preserving the existing single-player and portal launch paths.
+ */
+export function resolveRuntimeActorPlayerId(
+  session: GameSession | null,
+  configuredPlayerId: string
+): string {
+  const state = session?.state;
+  const publicState = isRecord(state) ? state.public : undefined;
+  const turn = isRecord(publicState) ? publicState.turn : undefined;
+  const activePlayerId = isRecord(turn) ? turn.activePlayerId : undefined;
+
+  return typeof activePlayerId === "string" && activePlayerId.trim() !== ""
+    ? activePlayerId
+    : configuredPlayerId;
+}
+
 /**
  * Generic Presenter для игрового Web-плеера.
  *
@@ -334,7 +360,7 @@ export class GamePresenter {
 
       const next = await dispatchRuntimeAction(
         this.session.sessionId,
-        this.config.playerId,
+        resolveRuntimeActorPlayerId(this.session, this.config.playerId),
         request.type,
         this.session.version.stateVersion,
         request.payload ?? {}
@@ -383,7 +409,7 @@ export class GamePresenter {
     try {
       const next = await dispatchRuntimeAction(
         this.session.sessionId,
-        this.config.playerId,
+        resolveRuntimeActorPlayerId(this.session, this.config.playerId),
         actionId,
         this.session.version.stateVersion,
         payload
@@ -439,7 +465,7 @@ export class GamePresenter {
         const actionId = action.target ?? action.id;
         const next = await dispatchRuntimeAction(
           this.session.sessionId,
-          this.config.playerId,
+          resolveRuntimeActorPlayerId(this.session, this.config.playerId),
           actionId,
           this.session.version.stateVersion,
           surfacePayloadToRecord(action.payload)
@@ -584,6 +610,7 @@ export class GamePresenter {
     this.error = null;
     this.errorStatus = null;
   }
+
   /**
    * Refreshes the authoritative snapshot after a stale action without
    * repeating that action. The facilitator must review the new state and

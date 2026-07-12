@@ -11,6 +11,14 @@
 import type { EditorPatchIntent, JsonValue } from "@cubica/editor-engine";
 
 import type { PrototypeAuditNoticeRecord } from "@/components/prototype-audit-notice";
+import type {
+  EditorVersionDetails,
+  EditorVersionErrorCode,
+  EditorVersionErrorResponse,
+  EditorVersionPage,
+  EditorVersionRestoreRequest,
+  EditorVersionRestoreResult
+} from "@/lib/editor-version-contracts";
 
 import type {
   AuthoringFileDocument,
@@ -27,6 +35,54 @@ import type {
   StateFixtureListResult,
   UploadGameAssetResult
 } from "./types.ts";
+
+/** Expected history failure with a stable server code safe to branch on in UI. */
+export class EditorVersionApiError extends Error {
+  constructor(
+    message: string,
+    readonly code: EditorVersionErrorCode | undefined,
+    readonly status: number
+  ) {
+    super(message);
+    this.name = "EditorVersionApiError";
+  }
+}
+
+/** Reads one newest-first page without importing any server-only repository code. */
+export async function fetchEditorVersionPage(input: {
+  readonly sessionId: string;
+  readonly cursor?: string;
+  readonly limit?: number;
+}): Promise<EditorVersionPage> {
+  const params = new URLSearchParams({ sessionId: input.sessionId });
+  if (input.cursor !== undefined) params.set("cursor", input.cursor);
+  if (input.limit !== undefined) params.set("limit", String(input.limit));
+  return historyRequest<EditorVersionPage>(`/api/editor/history?${params.toString()}`);
+}
+
+/** Reads details for an opaque version selected from the current history page. */
+export async function fetchEditorVersionDetails(sessionId: string, versionId: string): Promise<EditorVersionDetails> {
+  const params = new URLSearchParams({ sessionId, versionId });
+  return historyRequest<EditorVersionDetails>(`/api/editor/history?${params.toString()}`);
+}
+
+/** Requests safe restore; the server repeats dirty and expected-head checks. */
+export async function restoreEditorVersion(input: EditorVersionRestoreRequest): Promise<EditorVersionRestoreResult> {
+  return historyRequest<EditorVersionRestoreResult>("/api/editor/history", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input)
+  });
+}
+
+async function historyRequest<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, { cache: "no-store", ...init });
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as Partial<EditorVersionErrorResponse>;
+    throw new EditorVersionApiError(payload.error ?? `History request failed with HTTP ${response.status}.`, payload.code, response.status);
+  }
+  return (await response.json()) as T;
+}
 
 export async function fetchAuthoringList(gameId: string | null, sessionId?: string): Promise<AuthoringListResult> {
   const params = new URLSearchParams();

@@ -214,9 +214,9 @@ gh api repos/AleksinVS/Cubica-AI/rulesets
 
 Исполнитель обязан сохранить все исходные пользовательские и параллельные изменения. В частности, без прямой необходимости для пунктов 1–4 запрещено редактировать:
 
-- `.codex/skills/external-skill-adapter/**`;
-- `.codex/skills/debugging-and-error-recovery/**`;
-- `.codex/skills/verification-before-completion/**`;
+- `skills/C_external-skill-adapter/**`;
+- `skills/debugging-and-error-recovery/**`;
+- `skills/verification-before-completion/**`;
 - `docs/agents/external-skills/**`;
 - `docs/architecture/adrs/069-managed-external-skill-adaptation.md`;
 - `docs/tasks/archive/TSK-20260710-external-skill-adapter.md`;

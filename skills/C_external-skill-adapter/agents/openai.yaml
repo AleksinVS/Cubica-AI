@@ -1,0 +1,3 @@
+interface:
+  display_name: "C_external-skill-adapter"
+  short_description: "Адаптация внешних навыков для Cubica"

@@ -42,6 +42,17 @@ export function LeftActivityBar({ controller }: { controller: EditorWorkspaceCon
       </button>
       <button
         type="button"
+        className={leftSidebarPanel === "history" ? "is-active" : ""}
+        aria-pressed={leftSidebarPanel === "history"}
+        aria-label={t.activityBar.history}
+        title={t.activityBar.history}
+        data-testid="activity-bar-history"
+        onClick={() => setLeftSidebarPanel((current) => (current === "history" ? undefined : "history"))}
+      >
+        <span aria-hidden="true">{t.activityBar.historyGlyph}</span>
+      </button>
+      <button
+        type="button"
         className={leftSidebarPanel === "chat" ? "is-active" : ""}
         aria-pressed={leftSidebarPanel === "chat"}
         aria-label={t.activityBar.aiChat}

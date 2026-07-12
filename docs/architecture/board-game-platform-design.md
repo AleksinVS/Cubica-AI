@@ -129,7 +129,7 @@
 | `deck.extract` | `deckId`; `cardId`: строка \| `{"fromPath": …}` | Удаляет id из `order` И из `discard` — карта покидает ротацию колоды (игрок удерживает карту, например «Освобождение из тюрьмы») | Отсутствие id в колоде — no-op (не ошибка): операция идемпотентна |
 | `deck.return` | `deckId`; `cardId`: строка \| `{"fromPath": …}` | Добавляет id в конец `discard` (карта возвращается в ротацию и вернётся в `order` при перетасовке) | Если id уже есть в `order` или `discard` — отклонение действия (защита от дублирования карт) |
 | `metric.set` | `scope`: `"session"` \| `"player"`; `playerId` (playerRef, только при `scope:"player"`); `metricId`; `value`: число \| `{"jsonLogic": <выражение>}` | Присваивает значение метрике; выражение исполняет runtime полной `json-logic-js` над контекстом выше | Нечисловой результат выражения — отклонение действия |
-| `metric.transfer` | `from`, `to`: объект `{scope: "player"\|"bank", playerId?}` (playerRef при `player`); `metricId`; `amount`: число \| `{"jsonLogic": …}`; `onInsufficient`: `"fail"` | Уменьшает метрику у `from`, увеличивает у `to`; сторона `bank` баланса не имеет и не проверяется | `amount < 0` или нечисловой — отклонение; у `from:player` меньше `amount` — отклонение действия целиком (единственная политика MVP) |
+| `metric.transfer` | `from`, `to`: одна из форм `{scope:"bank"}`, `{scope:"player", playerId, metricId}` или `{scope:"state", path}`; `playerId` — playerRef; `amount`: число или JsonLogic; `onInsufficient`: `"fail"` | Уменьшает баланс `from`, увеличивает баланс `to`; `bank` баланса не имеет, `player` адресуется типизированно, `state` использует только статический путь | Отрицательная/нечисловая сумма, неизвестный участник, динамический state-путь или недостаток средств отклоняют действие целиком |
 | `turn.next` | нет полей | Передаёт ход следующему участнику со статусом `active` по кругу `order`; `phase` сбрасывается в первую из `config.turnModel.phases`; `turnNumber` +1 при полном круге | Если `active` остался один — ход остаётся у него (завершение решают `endConditions`) |
 | `turn.repeat` | нет полей | Активный игрок сохраняется; `phase` сбрасывается в первую | — |
 | `turn.phase.set` | `phase`: строка | Устанавливает `public.turn.phase` | Значение не из `config.turnModel.phases` — ошибка валидации манифеста (схема этого проверить не может — проверяет загрузчик манифеста) |
@@ -255,9 +255,8 @@ Runtime разворачивает шаблон при создании сесс
 
 ```json
 { "op": "metric.transfer",
-  "from": { "scope": "player", "playerId": "{{actor}}" },
+  "from": { "scope": "player", "playerId": "{{actor}}", "metricId": "cash" },
   "to":   { "scope": "bank" },
-  "metricId": "cash",
   "amount": 100,
   "onInsufficient": "fail" }
 ```
@@ -266,11 +265,11 @@ Runtime разворачивает шаблон при создании сесс
 
 ```json
 { "op": "metric.transfer",
-  "from": { "scope": "player", "playerId": "{{actor}}" },
+  "from": { "scope": "player", "playerId": "{{actor}}", "metricId": "cash" },
   "to":   { "scope": "player",
-            "playerId": { "fromPath": "/public/objects/cells/cell-12/attributes/ownerPlayerId" } },
-  "metricId": "cash",
-  "amount": { "jsonLogic": { "*": [ 4, { "var": "public.turn.lastRoll.total" } ] } },
+            "playerId": { "fromPath": "/public/objects/cells/cell-12/attributes/ownerPlayerId" },
+            "metricId": "cash" },
+  "amount": { "*": [ 4, { "var": "public.turn.lastRoll.total" } ] },
   "onInsufficient": "fail" }
 ```
 

@@ -23,8 +23,9 @@ export function RichTextComponent({
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
 }) {
-  const { html, cssClass } = component.props;
-  const resolvedHtml = resolveExpressions(html, gameState ?? {}, localContext);
+  const props: Partial<GameUiRichTextComponentProps> = component.props ?? {};
+  const { html, cssClass } = props;
+  const resolvedHtml = resolveExpressions(html ?? "", gameState ?? {}, localContext);
   const normalized = String(resolvedHtml).trim();
 
   if (!normalized) {

@@ -6,14 +6,17 @@
  * otherwise it shows the empty state with a "Prepare preview" button.
  * Presentational: all state and handlers come from the {@link EditorWorkspaceController}.
  */
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { editorRu as t } from "@/lib/locale";
 import { PreviewSelectionOverlay } from "@/components/preview-selection-overlay";
 import { EntityInspector } from "@/components/workspace/entity-inspector";
+import { collectKnownViewCreationChannels } from "@/components/workspace/checks-helpers";
 import { DeleteEntityDialog, RenameEntityIdDialog } from "@/components/workspace/entity-refactor-dialog";
 import { PreviewModeBanner } from "@/components/workspace/preview-mode-banner";
+import { TelegramStructuralViewer, type TelegramStructuralSelection } from "@/components/workspace/telegram-structural-viewer";
 import { formatPreviewUnbuiltMessage } from "@/components/workspace/workspace-helpers";
+import { projectTelegramAuthoringManifest } from "@/lib/telegram-structural-projection";
 
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
@@ -27,6 +30,8 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     selectedFixtureId,
     handleSelectFixture,
     previewViewportMode,
+    previewViewportOrientation,
+    previewChannel,
     previewUrl,
     previewIframeRef,
     effectivePreviewInspectMode,
@@ -37,6 +42,7 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     previewAiIntent,
     previewUnresolvedEntityCount,
     handlePreviewEntitySelect,
+    handleChannelEntitySelect,
     handlePreviewRegionSelect,
     setSelectedPreviewEntityId,
     setPreviewPromptContext,
@@ -68,13 +74,18 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     handleUploadAsset,
     aiDiffSummary,
     previewBlockedPlate,
-    handleNavigateToFirstError
+    handleNavigateToFirstError,
+    telegramMissingViewCallout
   } = controller;
 
   // Refactor affordances only when there is a worktree to persist sibling facets
   // into (a repository session); the embedded fallback hides them, mirroring the
   // «+» create menu's `canCreateEntity` gate.
   const canRefactorEntity = currentDocument.source === "repository";
+  const requestedViewChannel = previewChannel === "telegram" ? "telegram" : activeChannel;
+  const canCreateViewInRequestedChannel =
+    requestedViewChannel !== undefined &&
+    collectKnownViewCreationChannels(viewModel.entityProjectionDocuments).includes(requestedViewChannel);
 
   // The entity the inspector shows (Phase 3.c). `undefined` -> the panel renders
   // only its (inert) measurement layer, so nothing floats over the preview.
@@ -93,10 +104,60 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
     [aiDiffSummary]
   );
 
+  // The ordinary Telegram viewer reads the sibling UI authoring document. It
+  // must never fall back to the generative CubicaSurface projection: those are
+  // different sources of truth for different product modes.
+  const telegramDocument = useMemo(
+    () => viewModel.entityProjectionDocuments.find((document) => document.documentKind === "ui" && document.channel === "telegram"),
+    [viewModel.entityProjectionDocuments]
+  );
+  const telegramProjection = useMemo(
+    () => telegramDocument?.json === undefined ? null : projectTelegramAuthoringManifest(telegramDocument.json, telegramDocument.filePath),
+    [telegramDocument]
+  );
+
+  const resolveTelegramEntityId = useCallback((sourceFilePath: string, sourcePointer: string): string | undefined => {
+    let pointer = sourcePointer;
+    while (pointer !== "") {
+      const entity = viewModel.editorEntityProjection.entitiesBySourcePointer
+        .get(`${sourceFilePath}#${pointer}`)?.[0];
+      if (entity !== undefined) return entity.entityId;
+      pointer = pointer.slice(0, pointer.lastIndexOf("/"));
+    }
+    return undefined;
+  }, [viewModel.editorEntityProjection.entitiesBySourcePointer]);
+
+  const selectedTelegramSourcePointer = telegramProjection?.messages.flatMap((message) => [message, ...message.actions])
+    .find((item) => resolveTelegramEntityId(item.sourceFilePath, item.sourcePointer) === selectedPreviewEntityId)
+    ?.sourcePointer;
+
+  function handleTelegramSelection(selection: TelegramStructuralSelection) {
+    if (telegramDocument === undefined) return;
+    // Buttons are often facets of their containing component rather than a
+    // standalone entity. Walk towards the document root until the entity
+    // projection provides the nearest stable authoring owner.
+    const entityId = resolveTelegramEntityId(selection.sourceFilePath, selection.sourcePointer);
+    if (entityId !== undefined) handleChannelEntitySelect(entityId);
+  }
+
   return (
     <section className="preview-stage" aria-label={t.previewStage.stageAria}>
-      <div className={`preview-frame-shell preview-viewport-${previewViewportMode}`}>
-        {previewUrl !== null ? (
+      <div
+        className={`preview-frame-shell preview-viewport-${previewViewportMode} preview-orientation-${previewViewportOrientation}`}
+        data-viewport-orientation={previewViewportOrientation}
+      >
+        {previewChannel === "telegram" ? (
+          <div className="preview-viewport-canvas">
+            <TelegramStructuralViewer
+              projection={telegramProjection}
+              selectedSourcePointer={selectedTelegramSourcePointer}
+              onSelect={handleTelegramSelection}
+              resolveEditorEntityId={resolveTelegramEntityId}
+              inspectMode={effectivePreviewInspectMode}
+              missingViewCallout={telegramMissingViewCallout}
+            />
+          </div>
+        ) : previewUrl !== null ? (
           <div className="preview-viewport-canvas">
             {/* Mode plate + apply state (design-spec §3.3, mockup zone 3). */}
             <PreviewModeBanner
@@ -194,7 +255,11 @@ export function PreviewStage({ controller }: { controller: EditorWorkspaceContro
           onOpenFile={handleFileChange}
           onCaptureEntitySource={captureEntitySource}
           onApplyReturnedIntent={applyEntityReturnedIntent}
-          onCreateView={canRefactorEntity ? handleCreateEntityView : undefined}
+          onCreateView={
+            canRefactorEntity && canCreateViewInRequestedChannel
+              ? (entity) => handleCreateEntityView(entity, requestedViewChannel)
+              : undefined
+          }
           onRequestRename={canRefactorEntity ? handleRequestRenameEntity : undefined}
           onRequestDelete={canRefactorEntity ? handleRequestDeleteEntity : undefined}
           onBeginAssetPick={canRefactorEntity ? beginAssetPick : undefined}

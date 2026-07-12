@@ -25,9 +25,14 @@ import path from "node:path";
  * capture. Playwright records trace and video during EVERY run and only
  * decides retention afterwards ("retain-on-failure"), so recording itself
  * costs CPU — a real tax on a starved host. CI keeps full capture.
+ *
+ * Player-only mode (E2E_PLAYER_ONLY=1): starts runtime-api and player-web but
+ * not editor-web. Use it for delivery tests that never visit the authoring
+ * surface; this avoids a second Next.js dev process on the shared host.
  */
 const serverMode = process.env.E2E_SERVER_MODE === "prod" ? "prod" : "dev";
 const lowResource = process.env.E2E_LOW_RESOURCE === "1";
+const playerOnly = process.env.E2E_PLAYER_ONLY === "1";
 
 const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
@@ -35,10 +40,14 @@ const editorPort = Number(process.env.E2E_EDITOR_PORT ?? 3202);
 const runtimeUrl = `http://127.0.0.1:${runtimePort}`;
 const playerUrl = `http://127.0.0.1:${playerPort}`;
 const editorUrl = `http://127.0.0.1:${editorPort}`;
-const editorProjectRoot = process.env.E2E_EDITOR_PROJECT_ROOT ?? prepareEditorProjectRoot();
+const editorProjectRoot = playerOnly
+  ? ""
+  : process.env.E2E_EDITOR_PROJECT_ROOT ?? prepareEditorProjectRoot();
 
-process.env.E2E_EDITOR_PROJECT_ROOT = editorProjectRoot;
-process.env.E2E_EDITOR_URL = editorUrl;
+if (!playerOnly) {
+  process.env.E2E_EDITOR_PROJECT_ROOT = editorProjectRoot;
+  process.env.E2E_EDITOR_URL = editorUrl;
+}
 process.env.E2E_RUNTIME_URL = runtimeUrl;
 process.env.E2E_PLAYER_URL = playerUrl;
 
@@ -97,7 +106,7 @@ export default defineConfig({
       timeout: 120_000,
       reuseExistingServer: !process.env.CI
     },
-    {
+    ...(!playerOnly ? [{
       command: nextAppCommand("@cubica/editor-web", editorPort),
       url: editorUrl,
       env: {
@@ -109,7 +118,7 @@ export default defineConfig({
       },
       timeout: 120_000,
       reuseExistingServer: !process.env.CI
-    }
+    }] : [])
   ]
 });
 

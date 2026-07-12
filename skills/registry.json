@@ -1,0 +1,47 @@
+{
+  "schemaVersion": "1.0",
+  "skills": [
+    {
+      "catalogName": "C_cubica",
+      "runtimeName": "cubica",
+      "origin": "internal",
+      "capability": "orchestration.cubica",
+      "activationMode": "explicit",
+      "canonicalSkillPath": "skills/C_cubica/SKILL.md"
+    },
+    {
+      "catalogName": "C_external-skill-adapter",
+      "runtimeName": "external-skill-adapter",
+      "origin": "internal",
+      "capability": "skills.external-adaptation",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/C_external-skill-adapter/SKILL.md"
+    },
+    {
+      "catalogName": "debugging-and-error-recovery",
+      "runtimeName": "debugging-and-error-recovery",
+      "origin": "adapted",
+      "capability": "debugging.root-cause",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/debugging-and-error-recovery/SKILL.md",
+      "externalRegistryPath": "docs/agents/external-skills/registry.json"
+    },
+    {
+      "catalogName": "verification-before-completion",
+      "runtimeName": "verification-before-completion",
+      "origin": "adapted",
+      "capability": "verification.completion",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/verification-before-completion/SKILL.md",
+      "externalRegistryPath": "docs/agents/external-skills/registry.json"
+    },
+    {
+      "catalogName": "C_low-memory-host-operations",
+      "runtimeName": "low-memory-host-operations",
+      "origin": "internal",
+      "capability": "operations.low-memory-host",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/C_low-memory-host-operations/SKILL.md"
+    }
+  ]
+}

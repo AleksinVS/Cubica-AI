@@ -503,11 +503,17 @@ export function createDefaultGameConfig(data: GameConfigData): GameConfig {
       const state = session?.state as Record<string, unknown> | undefined;
       const publicState = (state?.public ?? {}) as Record<string, unknown>;
       const secretState = (state?.secret ?? {}) as Record<string, unknown>;
+      // Turn-based manifests materialize participant metrics beside `public`
+      // rather than inside it. Expose that player-facing branch to declarative
+      // UI templates so generic hotseat panels can render balances and
+      // positions without a game-specific config plugin.
+      const playersState = (state?.players ?? {}) as Record<string, unknown>;
       const contentData = content.content?.data ?? content.content ?? null;
 
       return {
         public: publicState,
         secret: secretState,
+        players: playersState,
         content: contentData,
         objectModels: content.objectModels ?? {},
         objectViews: projectObjectViews(content.objectModels, contentData, publicState),

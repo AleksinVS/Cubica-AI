@@ -7,13 +7,13 @@
       "id": "agents-general",
       "path": "AGENTS.md",
       "heading": "2. General rules for agents",
-      "normalizedSha256": "bfae246e72bb813d958b494c9b38d3ef5ccee3f70bb79f73181b92cc689e473f"
+      "normalizedSha256": "849969c5d1d5fc355523dfdf03acb3d82e72a03be3b0d1a70623ddeee302095c"
     },
     {
       "id": "agents-autonomous",
       "path": "AGENTS.md",
       "heading": "2.1 Опциональный процесс `$cubica`",
-      "normalizedSha256": "b70aeefd1a9fec667ba21f851d22bb608ab2c6813f6e4b4e03a9c0110e8566ac"
+      "normalizedSha256": "61fe6acd5d193c1e6ade2eaa169eff3d3485144c41badd2a671fbf91b7f2b5ba"
     },
     {
       "id": "agents-adr-sync",
@@ -37,13 +37,13 @@
       "id": "adr-068-decision",
       "path": "docs/architecture/adrs/068-human-approved-autonomous-agent-workflow.md",
       "heading": "Решение",
-      "normalizedSha256": "c830fa38c6b474b60ab6bae44d995e65ca166b3239372e2fd5ea4e39322fd717"
+      "normalizedSha256": "fab4bb792608e3bd5b21f9c6ec6cf2d25b4bd123ebe4687cd1f8e4cfcebd7259"
     },
     {
       "id": "adr-069-decision",
       "path": "docs/architecture/adrs/069-managed-external-skill-adaptation.md",
       "heading": "Решение",
-      "normalizedSha256": "a2dc78a8d655997e8bc787f008ed9a93f08027b0983153df73273d86875e6c2a"
+      "normalizedSha256": "94218861e8f26476aa93d4c5025d3585df238e30b20e7df4b4acd325a184a49b"
     },
     {
       "id": "task-format",

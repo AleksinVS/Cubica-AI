@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.local/schemas/project-skill-registry.schema.json",
+  "title": "Cubica Project Skill Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "skills"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "catalogName",
+          "runtimeName",
+          "origin",
+          "capability",
+          "activationMode",
+          "canonicalSkillPath"
+        ],
+        "properties": {
+          "catalogName": {
+            "type": "string",
+            "minLength": 1
+          },
+          "runtimeName": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$"
+          },
+          "origin": {
+            "enum": [
+              "internal",
+              "adapted"
+            ]
+          },
+          "capability": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9.-]+$"
+          },
+          "activationMode": {
+            "enum": [
+              "automatic",
+              "explicit"
+            ]
+          },
+          "canonicalSkillPath": {
+            "type": "string",
+            "pattern": "^skills/[^/]+/SKILL\\.md$"
+          },
+          "externalRegistryPath": {
+            "type": "string",
+            "pattern": "^docs/agents/external-skills/registry\\.json$"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "origin": {
+                  "const": "internal"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "catalogName": {
+                  "pattern": "^C_[A-Za-z0-9_-]+$"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "origin": {
+                  "const": "adapted"
+                }
+              }
+            },
+            "then": {
+              "required": [
+                "externalRegistryPath"
+              ],
+              "properties": {
+                "catalogName": {
+                  "pattern": "^[a-z0-9-]+$"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  }
+}

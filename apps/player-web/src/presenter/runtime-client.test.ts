@@ -64,7 +64,29 @@ describe("runtime-client", () => {
 
     await expect(getGameReadiness("ai-driven-choice")).rejects.toBeInstanceOf(RuntimeClientError);
   });
-  it("sends the authoritative state version with a deterministic action", async () => {
+
+  it("sends deterministic action input as validated params and legacy payload", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      sessionId: "session-1",
+      version: { sessionId: "session-1", stateVersion: 2, lastEventSequence: 1 },
+      state: { public: {}, secret: {} }
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await dispatchAction("session-1", "p2", "property.buy", 1, { cellId: "harbor-row" });
+
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      sessionId: "session-1",
+      expectedStateVersion: 1,
+      playerId: "p2",
+      actionId: "property.buy",
+      params: { cellId: "harbor-row" },
+      payload: { cellId: "harbor-row" }
+    });
+  });
+
+  it("omits params for a parameterless manifest action", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       sessionId: "session-1",
       version: { sessionId: "session-1", stateVersion: 2, lastEventSequence: 1 },

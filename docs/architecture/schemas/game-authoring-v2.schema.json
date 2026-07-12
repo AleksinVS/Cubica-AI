@@ -76,6 +76,9 @@
                 },
                 "secret": {
                   "type": "object"
+                },
+                "playersTemplate": {
+                  "$ref": "#/definitions/playersTemplate"
                 }
               },
               "additionalProperties": false
@@ -89,6 +92,59 @@
           "additionalProperties": true
         }
       ]
+    },
+    "playersTemplate": {
+      "type": "object",
+      "description": "Authoring form compiled unchanged into the runtime-owned participant template.",
+      "required": [
+        "metrics"
+      ],
+      "properties": {
+        "metrics": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          }
+        },
+        "flags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "boolean"
+          }
+        },
+        "objects": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "active",
+            "eliminated"
+          ]
+        },
+        "visibility": {
+          "type": "object",
+          "properties": {
+            "metrics": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private"
+              ]
+            },
+            "flags": {
+              "type": "string",
+              "enum": [
+                "public",
+                "private"
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
     },
     "gameMeta": {
       "type": "object",

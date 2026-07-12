@@ -6,6 +6,7 @@
  * writing directly into the main checkout.
  */
 import { createEditorSession, closeEditorSession, listEditorSessions } from "@/lib/editor-session-store";
+import { EditorSessionLeaseError } from "@/lib/editor-session-lease";
 import { EditorRepositoryError } from "@/lib/editor-repository";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import { type NextRequest } from "next/server";
@@ -76,8 +77,14 @@ export async function DELETE(request: Request) {
 
 function errorResponse(error: unknown): Response {
   if (error instanceof EditorRepositoryError) {
-    return Response.json({ error: error.message }, { status: error.statusCode });
+    if (error.statusCode >= 500) {
+      return Response.json({ error: "Unexpected editor session failure." }, { status: 500 });
+    }
+    return Response.json({
+      error: error.message,
+      ...(error instanceof EditorSessionLeaseError ? { code: error.code } : {})
+    }, { status: error.statusCode });
   }
 
-  return Response.json({ error: error instanceof Error ? error.message : "Unexpected editor session failure." }, { status: 500 });
+  return Response.json({ error: "Unexpected editor session failure." }, { status: 500 });
 }

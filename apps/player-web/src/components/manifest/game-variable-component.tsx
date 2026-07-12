@@ -33,17 +33,18 @@ export function GameVariableComponent({
   metricBackgroundImages?: Record<string, string>;
   previewAttributes?: PreviewElementAttributes;
 }) {
-  const { value } = component.props;
-  const metricId = component.props.metricId ?? (component as GameUiComponent).id;
+  const props: GameUiGameVariableComponentProps = component.props ?? {};
+  const { value } = props;
+  const metricId = props.metricId ?? (component as GameUiComponent).id;
   const metricView = resolveMetricView(gameState, metricId);
   const resolvedValue = value
     ? resolveMetricBinding(value, metrics)
     : metricView?.formattedValue ?? formatMetricValue(metricId ? metrics[metricId] : undefined);
   const id = (component as GameUiComponent).id ?? metricId;
-  const caption = metricView?.label ?? component.props.caption ?? metricId ?? "";
-  const description = metricView?.description ?? component.props.description;
+  const caption = metricView?.label ?? props.caption ?? metricId ?? "";
+  const description = metricView?.description ?? props.description;
   const resolvedBackgroundImage = resolveMetricBackgroundImage(id, backgroundImage, layoutMode, metricBackgroundImages);
-  const isProminent = component.props.layout === "prominent";
+  const isProminent = props.layout === "prominent";
 
   if (layoutMode === "topbar") {
     const prominentStyle: CSSProperties | undefined = isProminent

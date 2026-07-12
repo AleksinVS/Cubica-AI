@@ -21,7 +21,7 @@ none
 - сохранить архивный снимок старых общих навыков и проектных точек подключения;
 - удалить устаревший `PROJECT_WORKFLOW_CONFIG.json`;
 - заменить старые workflow-правила в `AGENTS.md`, `CLAUDE.md` и `.codex/skills/AGENTS.md`;
-- добавить новый проектный `.codex/skills/cubica/SKILL.md`;
+- добавить новый проектный `skills/C_cubica/SKILL.md`;
 - обновить структуру репозитория и проверить отсутствие активных ссылок на старый workflow.
 
 Не входит в работу:
@@ -81,7 +81,7 @@ git diff --check
 
 - `docs/architecture/adrs/068-human-approved-autonomous-agent-workflow.md` — принятое архитектурное решение.
 - `archive/agent-workflows/wf-cubica-2026-07-10/` — снимок старого процесса.
-- `.codex/skills/cubica/SKILL.md` — новый проектный процессный навык.
+- `skills/C_cubica/SKILL.md` — новый проектный процессный навык.
 
 ## Plan Amendments
 

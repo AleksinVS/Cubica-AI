@@ -142,6 +142,20 @@ describe("project Git workspace", () => {
     });
     expect(validatePluginChangeSetBoundary({ gameId: "simple-choice", changeSet: platformChangeSet }).ok).toBe(false);
   });
+
+  it("refuses recursive cleanup outside the registered editor-worktree root", async () => {
+    const protectedDirectory = path.join(repoRoot, "protected-content");
+    const protectedFile = path.join(protectedDirectory, "keep.txt");
+    await mkdir(protectedDirectory, { recursive: true });
+    await writeFile(protectedFile, "must survive\n", "utf8");
+
+    await expect(removeProjectGitSession({
+      projectRoot: repoRoot,
+      worktreePath: protectedDirectory,
+      branchName: "editor/session/protected-content"
+    })).rejects.toMatchObject({ statusCode: 500 });
+    expect(await readFile(protectedFile, "utf8")).toBe("must survive\n");
+  });
 });
 
 async function git(cwd: string, args: readonly string[]): Promise<string> {

@@ -12,8 +12,19 @@ import {
 } from "@cubica/editor-engine";
 
 import { EditorRepositoryError, listAuthoringFiles, openAuthoringFile, saveAuthoringFile } from "@/lib/editor-repository";
-import { markEditorSessionSaved, repoRootForSession, touchEditorSession } from "@/lib/editor-session-store";
-import { allowedSavePathsForGame, saveProjectGitSession } from "@/lib/project-git-workspace";
+import {
+  markEditorSessionSaved,
+  repoRootForSession,
+  touchEditorSession,
+  withEditorSessionMutationLease
+} from "@/lib/editor-session-store";
+import { EditorSessionLeaseError } from "@/lib/editor-session-lease";
+import {
+  allowedSavePathsForGame,
+  EditorVersionStoreError,
+  saveProjectGitSession
+} from "@/lib/project-git-workspace";
+import { type EditorVersionChangeFact } from "@/lib/editor-version-contracts";
 import { configuredEditorProjectRoot } from "@/lib/editor-project-root";
 import { validateAndBundleProjectPlugins } from "@/lib/project-plugin-validation";
 import { loadProjectionEnvelopeWithCache } from "@/lib/editor-project-cache";
@@ -137,58 +148,91 @@ export async function PUT(request: NextRequest) {
       readonly versionHash: string;
       readonly sessionId: string;
       readonly commitMessage: string;
+      readonly authorComment: string;
+      readonly changeFacts: readonly EditorVersionChangeFact[];
+      readonly expectedHead: string | null;
     }>;
 
     if (
       typeof body.gameId !== "string" ||
       typeof body.filePath !== "string" ||
       typeof body.text !== "string" ||
-      typeof body.versionHash !== "string"
+      typeof body.versionHash !== "string" ||
+      typeof body.sessionId !== "string" ||
+      body.sessionId === ""
     ) {
-      throw new EditorRepositoryError("Save requests require gameId, filePath, text, and versionHash.", 400);
+      throw new EditorRepositoryError("Save requests require gameId, filePath, text, versionHash, and sessionId.", 400);
+    }
+    if (body.authorComment !== undefined && typeof body.authorComment !== "string") {
+      throw new EditorRepositoryError("Save authorComment must be a string when provided.", 400);
+    }
+    if (body.changeFacts !== undefined && !Array.isArray(body.changeFacts)) {
+      throw new EditorRepositoryError("Save changeFacts must be an array when provided.", 400);
+    }
+    if (body.expectedHead !== undefined && body.expectedHead !== null && typeof body.expectedHead !== "string") {
+      throw new EditorRepositoryError("Save expectedHead must be a version id or null.", 400);
     }
 
-    const session = await repoRootForSession(body.sessionId, body.gameId);
-    const saved = await saveAuthoringFile({
-      gameId: body.gameId,
-      filePath: body.filePath,
-      text: body.text,
-      versionHash: body.versionHash,
-      repoRoot: session.repoRoot ?? configuredEditorProjectRoot()
-    });
+    return await withEditorSessionMutationLease(body.sessionId, "save", async () => {
+      const session = await repoRootForSession(body.sessionId, body.gameId);
+      if (session.session === undefined || session.repoRoot === undefined) {
+        throw new EditorRepositoryError("Save requires an active editor session.", 400);
+      }
+      const saved = await saveAuthoringFile({
+        gameId: body.gameId!,
+        filePath: body.filePath!,
+        text: body.text!,
+        versionHash: body.versionHash!,
+        repoRoot: session.repoRoot
+      });
 
-    if (session.session === undefined) {
-      return Response.json(saved);
-    }
+      const pluginValidation = await validateAndBundleProjectPlugins({
+        gameId: body.gameId!,
+        repoRoot: session.session.worktreePath
+      });
+      if (!pluginValidation.ok) {
+        await touchEditorSession(session.session.sessionId);
+        return Response.json({
+          ...saved,
+          sessionId: session.session.sessionId,
+          pluginValidation
+        }, { status: 422 });
+      }
 
-    const pluginValidation = await validateAndBundleProjectPlugins({
-      gameId: body.gameId,
-      repoRoot: session.session.worktreePath
-    });
-    if (!pluginValidation.ok) {
-      await touchEditorSession(session.session.sessionId);
+      const commit = await saveProjectGitSession({
+        worktreePath: session.session.worktreePath,
+        projectRoot: session.session.projectRoot,
+        gameId: body.gameId!,
+        expectedHead: body.expectedHead === undefined ? session.session.currentVersionId ?? null : body.expectedHead,
+        message: body.commitMessage ?? `Save ${body.gameId}/${body.filePath}`,
+        allowedPaths: allowedSavePathsForGame({ gameId: body.gameId! }),
+        authorName: session.session.userId,
+        authorComment: body.authorComment,
+        changeFacts: body.changeFacts?.map((fact) => ({
+          ...fact,
+          filePath: toProjectAuthoringPath(body.gameId!, fact.filePath),
+          previousFilePath: fact.previousFilePath === undefined
+            ? undefined
+            : toProjectAuthoringPath(body.gameId!, fact.previousFilePath)
+        }))
+      });
+      if (!commit.committed || commit.versionId === undefined || commit.version === undefined) {
+        throw new EditorVersionStoreError("Save does not contain authoring changes.", 400, "invalid_request");
+      }
+      const sessionMetadataSynchronized = await markEditorSessionSaved({
+        sessionId: session.session.sessionId,
+        commitHash: commit.commitHash,
+        versionId: commit.versionId
+      }).then(() => true).catch(() => false);
+
       return Response.json({
         ...saved,
         sessionId: session.session.sessionId,
-        pluginValidation
-      }, { status: 422 });
-    }
-
-    const commit = await saveProjectGitSession({
-      worktreePath: session.session.worktreePath,
-      message: body.commitMessage ?? `Save ${body.gameId}/${body.filePath}`,
-      allowedPaths: allowedSavePathsForGame({ gameId: body.gameId })
-    });
-    await markEditorSessionSaved({
-      sessionId: session.session.sessionId,
-      commitHash: commit.commitHash
-    });
-
-    return Response.json({
-      ...saved,
-      sessionId: session.session.sessionId,
-      commit,
-      pluginValidation
+        commit,
+        version: commit.version,
+        pluginValidation,
+        sessionMetadataSynchronized
+      });
     });
   } catch (error) {
     return errorResponse(error);
@@ -204,9 +248,22 @@ function requireQueryParam(request: NextRequest, name: string): string {
   return value;
 }
 
+/** Browser journals use paths relative to `authoring/`; Git policy uses project paths. */
+function toProjectAuthoringPath(gameId: string, filePath: string): string {
+  return filePath.startsWith(`games/${gameId}/`)
+    ? filePath
+    : `games/${gameId}/authoring/${filePath.replace(/^\/+/, "")}`;
+}
+
 function errorResponse(error: unknown): Response {
   if (error instanceof EditorRepositoryError) {
-    return Response.json({ error: error.message }, { status: error.statusCode });
+    if (error.statusCode >= 500) {
+      return Response.json({ error: "Unexpected editor repository failure." }, { status: 500 });
+    }
+    return Response.json({
+      error: error.message,
+      ...(error instanceof EditorVersionStoreError || error instanceof EditorSessionLeaseError ? { code: error.code } : {})
+    }, { status: error.statusCode });
   }
 
   return Response.json({ error: "Unexpected editor repository failure." }, { status: 500 });

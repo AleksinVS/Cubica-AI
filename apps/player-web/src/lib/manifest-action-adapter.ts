@@ -1,5 +1,27 @@
 import { ManifestAction } from "@cubica/contracts-manifest";
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/**
+ * Separates UI routing metadata from deterministic action parameters.
+ *
+ * `actionId` tells player-web where to route the click; it is not part of a
+ * game's params schema. New manifests can group parameters under `params`,
+ * while older manifests may keep application fields beside `actionId`.
+ */
+const manifestActionParams = (
+  payload: Record<string, unknown>,
+  routingKeys: ReadonlySet<string>
+): Record<string, unknown> => {
+  if (isRecord(payload.params)) {
+    return payload.params;
+  }
+  return Object.fromEntries(
+    Object.entries(payload).filter(([key]) => !routingKeys.has(key) && key !== "params")
+  );
+};
+
 /**
  * Creates an adapter that converts UI commands from the manifest
  * into runtime action IDs for dispatch.
@@ -47,7 +69,7 @@ export function createManifestActionAdapter(options: {
     if (command === ManifestAction.REQUEST_SERVER) {
       const actionId = payload.actionId;
       if (typeof actionId === "string" && actionId.trim()) {
-        dispatchAction(actionId, payload);
+        dispatchAction(actionId, manifestActionParams(payload, new Set(["actionId"])));
         return;
       }
 
@@ -58,7 +80,7 @@ export function createManifestActionAdapter(options: {
     if (command === ManifestAction.ADVANCE) {
       const actionId = payload.actionId ?? payload.advanceActionId;
       if (typeof actionId === "string" && actionId.trim()) {
-        dispatchAction(actionId, payload);
+        dispatchAction(actionId, manifestActionParams(payload, new Set(["actionId", "advanceActionId"])));
         return;
       }
 

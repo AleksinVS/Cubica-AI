@@ -38,6 +38,16 @@ export interface DomPreviewAdapterOptions {
    * degrades the region prompt to the entity list (correct per §8).
    */
   readonly snapshotCanvas?: HTMLCanvasElement | string;
+  /**
+   * Optional element whose top-left corner defines adapter coordinates.
+   *
+   * `getBoundingClientRect()` returns viewport coordinates. Same-origin channel
+   * renderers live inside the editor page, while the shared selection overlay
+   * works in coordinates local to its preview canvas. Subtracting this origin
+   * keeps both renderers on the same adapter contract without changing the Web
+   * iframe/message path.
+   */
+  readonly coordinateRoot?: Element;
 }
 
 const defaultEntitySelector = "[data-editor-entity-id][data-authoring-pointer]";
@@ -47,13 +57,13 @@ export function createDomPreviewAdapter(root: ParentNode, options: DomPreviewAda
 
   return {
     getEntities() {
-      return collectDomPreviewEntities(root, selector);
+      return collectDomPreviewEntities(root, selector, options.coordinateRoot);
     },
     hitTestPoint(point: PreviewPoint, hitOptions?: PreviewHitTestOptions): PreviewHitTestResult {
-      return hitTestPreviewPoint(collectDomPreviewEntities(root, selector), point, hitOptions);
+      return hitTestPreviewPoint(collectDomPreviewEntities(root, selector, options.coordinateRoot), point, hitOptions);
     },
     hitTestRect(rect: PreviewRect, hitOptions?: PreviewHitTestOptions): PreviewHitTestResult {
-      return hitTestPreviewRect(collectDomPreviewEntities(root, selector), rect, hitOptions);
+      return hitTestPreviewRect(collectDomPreviewEntities(root, selector, options.coordinateRoot), rect, hitOptions);
     },
     highlight(command: PreviewHighlightCommand) {
       applyDomHighlight(root, selector, command);
@@ -142,16 +152,25 @@ function resolveSnapshotCanvas(root: ParentNode, snapshotCanvas?: HTMLCanvasElem
   return candidate instanceof HTMLCanvasElement ? candidate : null;
 }
 
-export function collectDomPreviewEntities(root: ParentNode, selector = defaultEntitySelector): readonly PreviewEntityDescriptor[] {
-  return [...root.querySelectorAll(selector)].map((element, index) => toPreviewEntityDescriptor(element, index));
+export function collectDomPreviewEntities(
+  root: ParentNode,
+  selector = defaultEntitySelector,
+  coordinateRoot?: Element
+): readonly PreviewEntityDescriptor[] {
+  const originRect = coordinateRoot?.getBoundingClientRect();
+  return [...root.querySelectorAll(selector)].map((element, index) =>
+    toPreviewEntityDescriptor(element, index, originRect)
+  );
 }
 
-function toPreviewEntityDescriptor(element: Element, renderOrder: number): PreviewEntityDescriptor {
+function toPreviewEntityDescriptor(element: Element, renderOrder: number, originRect?: DOMRect): PreviewEntityDescriptor {
   const entityId = readRequiredAttribute(element, "data-editor-entity-id");
   const authoringPointer = readRequiredAttribute(element, "data-authoring-pointer");
   const rect = element.getBoundingClientRect();
   const visible = readBooleanAttribute(element, "data-editor-visible", !element.hasAttribute("hidden") && isStyleVisible(element));
   const selectable = readBooleanAttribute(element, "data-editor-selectable", true);
+  const sourceFilePath = readOptionalAttribute(element, "data-authoring-file");
+  const editorEntityId = readOptionalAttribute(element, "data-editor-owner-entity-id");
   const label =
     readOptionalAttribute(element, "data-editor-label") ??
     readOptionalAttribute(element, "aria-label") ??
@@ -168,13 +187,19 @@ function toPreviewEntityDescriptor(element: Element, renderOrder: number): Previ
     zIndex: readNumberAttribute(element, "data-editor-z-index") ?? readComputedZIndex(element),
     renderOrder,
     bounds: {
-      x: rect.x,
-      y: rect.y,
+      x: rect.x - (originRect?.x ?? 0),
+      y: rect.y - (originRect?.y ?? 0),
       width: rect.width,
       height: rect.height
     },
     visible,
-    selectable
+    selectable,
+    // A JSON Pointer is only unique inside its source file. Channel renderers
+    // therefore carry the file alongside the pointer in the existing neutral
+    // metadata bag; Web renderers that omit the attribute remain unchanged.
+    ...(sourceFilePath !== undefined || editorEntityId !== undefined
+      ? { metadata: { ...(sourceFilePath !== undefined ? { sourceFilePath } : {}), ...(editorEntityId !== undefined ? { editorEntityId } : {}) } }
+      : {})
   };
 }
 

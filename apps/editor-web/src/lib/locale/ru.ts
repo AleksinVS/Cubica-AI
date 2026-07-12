@@ -36,6 +36,11 @@ export const editorRu = {
     /** Preview axis: play the game as a player would. */
     modePreview: "Превью",
 
+    /** Channel renderer selector shown next to the preview modes. */
+    channelAria: "Канал предпросмотра",
+    channelWeb: "Web",
+    channelTelegram: "Telegram",
+
     /** Play/Осмотр axis label (screen readers). */
     previewModeAria: "Режим предпросмотра",
     /** Interact with the running preview as a player. */
@@ -51,6 +56,12 @@ export const editorRu = {
     viewportTablet: "Планшет",
     /** Phone viewport preset. */
     viewportMobile: "Телефон",
+    /** Preview orientation axis label (screen readers). */
+    orientationAria: "Ориентация экрана",
+    /** Wide preview frame. */
+    orientationLandscape: "Альбомная",
+    /** Tall preview frame. */
+    orientationPortrait: "Книжная",
 
     /** Game selector label (screen readers). */
     gameAria: "Игра",
@@ -65,6 +76,13 @@ export const editorRu = {
     reset: "Сброс",
     /** Save the active file into the session worktree. */
     save: "Сохранить",
+    saving: "Сохраняем…",
+    /** Opens the optional author comment without adding a mandatory Save step. */
+    saveComment: "Комментарий к сохранению",
+    saveCommentAria: "Необязательный комментарий к сохранению",
+    saveCommentPlaceholder: "Например: готов первый сценарий",
+    saveSummary: "Будет сохранено",
+    saveCommentLimit: (remaining: number) => `Осталось знаков: ${remaining}`,
     /** Undo the last AI/edit change. */
     undo: "Отменить",
     /** Redo the last undone change. */
@@ -126,10 +144,18 @@ export const editorRu = {
     noBlockingDiagnostics: "Нет блокирующих проблем",
     /** AI apply summary "+N more" tail. */
     andMore: (count: number) => `; ещё ${count}`,
+    /** Durable Save state followed by the number of draft files. */
+    savedAndDirtyFiles: (saved: string, count: number) =>
+      `Сохранено ${saved} · несохранённых файлов: ${count}`,
 
-    /** Human viewport-preset value for the "Экран: …" readout. */
-    viewportValue: (mode: "desktop" | "tablet" | "mobile") =>
-      mode === "desktop" ? "десктоп" : mode === "tablet" ? "планшет" : "телефон",
+    /** Human viewport-preset and orientation value for the "Экран: …" readout. */
+    viewportValue: (
+      mode: "desktop" | "tablet" | "mobile",
+      orientation: "landscape" | "portrait"
+    ) => {
+      const viewport = mode === "desktop" ? "десктоп" : mode === "tablet" ? "планшет" : "телефон";
+      return `${viewport} · ${orientation === "landscape" ? "альбомная" : "книжная"}`;
+    },
     /** Human label for the raw workflow state token in the "Процесс: …" readout. */
     workflowLabel: {
       idle: "ожидание",
@@ -190,6 +216,10 @@ export const editorRu = {
     timeline: "Таймлайн",
     /** Short glyph caption for the timeline button. */
     timelineGlyph: "Врм",
+    /** Durable author version history panel. */
+    history: "История",
+    /** Short glyph caption for version history. */
+    historyGlyph: "Ист",
     /** AI chat panel. */
     aiChat: "ИИ-чат",
     /** Short glyph caption for the AI chat button. */
@@ -204,6 +234,58 @@ export const editorRu = {
     checksGlyph: "Прв",
     /** JSON editor panel. */
     json: "JSON"
+  },
+
+  /** Durable author version history and restore flow. */
+  history: {
+    title: "История",
+    collapseAria: "Свернуть панель истории",
+    listAria: "Сохранённые версии проекта",
+    loading: "Загружаем сохранённые версии…",
+    empty: "Сохранённых версий пока нет.",
+    retry: "Повторить",
+    errorDefault: "Не удалось загрузить историю.",
+    errorRefresh: "Не удалось обновить историю. Повторите попытку.",
+    errorDirty: "Сначала сохраните текущие изменения, затем повторите возврат.",
+    errorConflict: "История уже изменилась в другой вкладке. Список обновлён — выберите версию снова.",
+    errorVersionMissing: "Эта версия больше недоступна. Обновите список.",
+    errorSessionMissing: "Сессия редактирования больше недоступна. Откройте проект заново.",
+    errorSessionIncompatible: "Эту сессию нужно обновить до текущей версии редактора.",
+    errorCursor: "Не удалось продолжить список. История будет загружена заново.",
+    errorRequest: "Не удалось обновить историю. Проверьте данные и повторите попытку.",
+    errorReloadAfterRestore: "Версия возвращена, но редактор не смог обновить экран. Перезагрузите страницу; повторять возврат не нужно.",
+    loadMore: "Показать более ранние",
+    loadingMore: "Загружаем…",
+    details: "Сведения о версии",
+    changedFiles: "Изменённые файлы",
+    noComment: "Без комментария автора",
+    restore: "Вернуть эту версию",
+    restoreBlockedTitle: "Сначала сохраните текущие изменения",
+    restoreBlockedBody: "Возврат недоступен, пока в рабочей копии есть несохранённые изменения.",
+    restoreConfirmTitle: "Вернуть выбранную версию?",
+    restoreConfirmBody: "Содержимое выбранной версии станет текущим. Более новые версии не исчезнут, а возврат будет сохранён как новая версия.",
+    restoreConfirm: "Вернуть версию",
+    cancel: "Отменить",
+    restoring: "Возвращаем…",
+    restored: "Версия возвращена. Локальная история отмены и очередь ожидающих изменений очищены.",
+    unknownAuthor: "Автор не указан",
+    versionTimeAria: (exact: string) => `Точное время сохранения: ${exact}`,
+    fileCount: (count: number) => `файлов: ${count}`,
+    changeKind: {
+      created: "создан",
+      updated: "изменён",
+      deleted: "удалён",
+      renamed: "переименован"
+    } as Record<"created" | "updated" | "deleted" | "renamed", string>
+  },
+
+  /** Banner shown when an existing dirty editing session is resumed. */
+  sessionRecovery: {
+    title: "Есть несохранённые изменения из прошлой сессии",
+    body: (count: number) => `Продолжаем работу с ними без сброса. Изменённых файлов: ${count}.`,
+    dismiss: "Понятно",
+    filesAria: "Несохранённые файлы восстановленной сессии",
+    moreFiles: (count: number) => `Ещё ${count}`
   },
 
   /** Preview mode banner over the canvas (mockup zone 3). */

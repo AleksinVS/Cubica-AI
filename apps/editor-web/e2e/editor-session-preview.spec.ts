@@ -199,6 +199,28 @@ test.describe("editor-web session preview", () => {
       await expect(titleEntity).toBeVisible();
       await expect(editorStatus).toContainText(/выбираемых [1-9][0-9]*/);
 
+      // Viewport presets and orientation only reshape the editor frame. Assert
+      // both tablet/portrait and mobile/landscape while the Web preview is live.
+      const previewFrameShell = page.locator(".preview-frame-shell");
+      await page.getByLabel("Размер экрана").getByRole("button", { name: "Планшет" }).click();
+      await page.getByLabel("Ориентация экрана").getByRole("button", { name: "Книжная" }).click();
+      await expect(previewFrameShell).toHaveClass(/preview-viewport-tablet/);
+      await expect(previewFrameShell).toHaveAttribute("data-viewport-orientation", "portrait");
+      await expect(titleEntity).toBeVisible();
+
+      await page.getByLabel("Размер экрана").getByRole("button", { name: "Телефон" }).click();
+      await page.getByLabel("Ориентация экрана").getByRole("button", { name: "Альбомная" }).click();
+      await expect(previewFrameShell).toHaveClass(/preview-viewport-mobile/);
+      await expect(previewFrameShell).toHaveAttribute("data-viewport-orientation", "landscape");
+
+      // Telegram is intentionally a bounded structural viewer, not an emulator.
+      await page.getByLabel("Канал предпросмотра").getByRole("button", { name: "Telegram" }).click();
+      const telegramViewer = page.getByTestId("telegram-structural-viewer");
+      await expect(telegramViewer).toBeVisible();
+      await expect(telegramViewer.locator(".telegram-structural-warning")).toHaveText("Структурный просмотр, не эмуляция клиента");
+      await page.getByLabel("Канал предпросмотра").getByRole("button", { name: "Web" }).click();
+      await expect(titleEntity).toBeVisible();
+
       await page.getByLabel("Режим предпросмотра").getByRole("button", { name: "Осмотр" }).click();
       const overlay = page.getByTestId("preview-selection-overlay");
       const targetPoint = await centerOfFrameElement(titleEntity);

@@ -701,6 +701,160 @@ select {
   display: flex;
 }
 
+/*
+ * Reusable full-table layout for manifest-authored board games.
+ *
+ * WHY: the historical topbar grid is optimized for card screens and assigns
+ * unclassified children to 10/80/10 percent columns. A board game declares
+ * these semantic classes in its UI manifest so the generic player can give the
+ * spatial field priority without learning a game id or any gameplay rules.
+ */
+.game-screen.board-game-shell {
+  display: grid;
+  grid-template-areas:
+    "header header"
+    "players players"
+    "board log"
+    "roll log";
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, 20rem);
+  grid-template-rows: auto auto minmax(26rem, 1fr) auto;
+  gap: 0.75rem;
+  width: 100%;
+  height: 100vh;
+  min-height: 100vh;
+  padding: clamp(0.75rem, 1.5vw, 1.5rem);
+  overflow: auto;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 75% 0%, rgb(184 147 91 / 16%), transparent 34rem),
+    linear-gradient(145deg, #13251f 0%, #0c1714 58%, #17130f 100%);
+  color: #f4eddd;
+}
+
+.board-game-shell > .additional-background {
+  display: none;
+}
+
+.board-game-header {
+  grid-area: header;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: 0.15rem;
+  border-bottom: 1px solid rgb(196 157 96 / 32%);
+}
+
+.board-game-header h1,
+.board-game-header p,
+.board-game-players h2,
+.board-game-players p,
+.board-game-roll p,
+.board-game-log h2,
+.board-game-log p {
+  margin: 0;
+}
+
+.board-game-header h1 {
+  color: #f8f1df;
+  font-size: clamp(1.45rem, 2.4vw, 2.25rem);
+  letter-spacing: 0.02em;
+}
+
+.board-game-header p,
+.board-game-players p,
+.board-game-roll,
+.board-game-log p {
+  color: #c9c0aa;
+}
+
+.board-game-players {
+  grid-area: players;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.board-game-players > * {
+  min-width: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgb(216 181 117 / 24%);
+  border-radius: 0.5rem;
+  background: rgb(244 237 221 / 7%);
+}
+
+.board-game-players h2 {
+  margin-bottom: 0.2rem;
+  color: #d9b56f;
+  font-size: 1rem;
+}
+
+.board-game-workspace {
+  grid-area: board;
+  display: block;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid rgb(216 181 117 / 28%);
+  border-radius: 0.65rem;
+  box-shadow: 0 1.25rem 3.5rem rgb(0 0 0 / 28%);
+}
+
+.board-game-workspace > section {
+  width: 100%;
+  height: 100%;
+}
+
+.board-game-roll {
+  grid-area: roll;
+  padding: 0.65rem 0.85rem;
+  border-left: 0.2rem solid #b58b4f;
+  background: rgb(181 139 79 / 9%);
+}
+
+.board-game-log {
+  grid-area: log;
+  display: block;
+  min-height: 0;
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid rgb(216 181 117 / 22%);
+  border-radius: 0.65rem;
+  background: rgb(7 14 12 / 72%);
+}
+
+.board-game-log h2 {
+  margin-bottom: 0.75rem;
+  color: #d9b56f;
+  font-size: 1.05rem;
+}
+
+.board-game-log-entries {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.board-game-log-entries > * {
+  padding-top: 0.55rem;
+  border-top: 1px solid rgb(244 237 221 / 11%);
+}
+
+@media (max-width: 900px) {
+  .game-screen.board-game-shell {
+    grid-template-areas:
+      "header"
+      "players"
+      "board"
+      "roll"
+      "log";
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(30rem, auto) auto minmax(10rem, auto);
+    height: auto;
+  }
+
+  .board-game-players {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 /* Cards container (3x2 grid with gap 24) - target 900px width, 650px height */
 .cards-container {
   display: grid;

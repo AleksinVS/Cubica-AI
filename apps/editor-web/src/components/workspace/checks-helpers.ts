@@ -21,8 +21,11 @@ import type {
   DiagnosticSeverity,
   EditorEntity,
   EditorEntityProjection,
-  EditorEntityProjectionDiagnostic
+  EditorEntityProjectionDocument,
+  EditorEntityProjectionDiagnostic,
+  JsonValue
 } from "@cubica/editor-engine";
+import { isPlainJsonObject } from "@cubica/editor-engine";
 
 import type { RoutedEditorDiagnostic } from "@/lib/editor-web-adapter";
 
@@ -59,6 +62,8 @@ export interface WorkspaceCheckItem {
   readonly source: string;
   /** Stable diagnostic code from the registry, when present. */
   readonly code?: string;
+  /** Channel the finding was evaluated for; explicit metadata, never message parsing. */
+  readonly channel?: string;
   /** Short Russian facet/source badge shown on the row (mockup: «смысл», «сценарий»). */
   readonly badge: string;
   /** File the diagnostic points into (active document when unspecified). */
@@ -170,6 +175,30 @@ function toCheckSeverity(severity: DiagnosticSeverity | string): WorkspaceCheckS
   return severity === "error" || severity === "warning" ? severity : "info";
 }
 
+/**
+ * Finds channels where the current add-view operation has a proven target.
+ * The operation currently writes to `/root/children`; other channel shapes are
+ * deliberately excluded until their schema exposes an explicit container.
+ */
+export function collectKnownViewCreationChannels(
+  documents: readonly EditorEntityProjectionDocument[]
+): readonly string[] {
+  const channels = new Set<string>();
+  for (const document of documents) {
+    if (document.documentKind !== "ui" || document.channel === undefined) continue;
+    const json = document.json;
+    if (!isPlainJsonObject(json)) continue;
+    // The package's recursive JSON union can retain its readonly-array branch
+    // across the workspace declaration boundary even after the shared predicate
+    // succeeds. The narrow structural view is safe here because the runtime
+    // guard above has already excluded arrays, primitives and null.
+    const root = (json as { readonly root?: JsonValue }).root;
+    if (!isPlainJsonObject(root)) continue;
+    if (Array.isArray(root.children)) channels.add(document.channel);
+  }
+  return [...channels];
+}
+
 interface AggregateWorkspaceChecksInput {
   /** Schema/syntax/semantic + reverse + AI + workflow diagnostics (already merged on the view model). */
   readonly routedDiagnostics: readonly RoutedEditorDiagnostic[];
@@ -181,6 +210,10 @@ interface AggregateWorkspaceChecksInput {
   readonly projection: EditorEntityProjection;
   /** Active document path, used when a routed diagnostic omits its `filePath`. */
   readonly activeFilePath: string;
+  /** Channel used to build projection diagnostics such as `entity-missing-view`. */
+  readonly activeChannel?: string;
+  /** Channels whose UI document has a schema-known insertion container. */
+  readonly viewCreationChannels?: readonly string[];
 }
 
 /**
@@ -211,6 +244,9 @@ export function aggregateWorkspaceChecks(input: AggregateWorkspaceChecksInput): 
       message: diagnostic.message,
       source: diagnostic.source,
       code: diagnostic.code,
+      ...(diagnostic.code === "entity-missing-view" && input.activeChannel !== undefined
+        ? { channel: input.activeChannel }
+        : {}),
       badge: badgeFor(diagnostic.source, diagnostic.code),
       filePath,
       pointer: diagnostic.pointer,
@@ -242,6 +278,9 @@ export function aggregateWorkspaceChecks(input: AggregateWorkspaceChecksInput): 
       message: diagnostic.message,
       source: "projection",
       code: diagnostic.code,
+      ...(diagnostic.code === "entity-missing-view" && input.activeChannel !== undefined
+        ? { channel: input.activeChannel }
+        : {}),
       badge: badgeFor("projection", diagnostic.code),
       filePath,
       pointer,
@@ -250,11 +289,44 @@ export function aggregateWorkspaceChecks(input: AggregateWorkspaceChecksInput): 
       // The ONLY deterministic quick fix in this slice: a game entity that
       // requires a view but has none in the active channel → «Создать вид»
       // (reuses `buildAddViewFacetChangeSet`; design-spec §3.5).
-      quickFix: diagnostic.code === "entity-missing-view" && entity !== undefined ? "create-view" : undefined
+      // Adding into a guessed `/root/children` container can corrupt a channel
+      // document whose schema uses another shape. Offer the action only when the
+      // caller has positively identified a writable container for this channel.
+      quickFix:
+        diagnostic.code === "entity-missing-view" &&
+        entity !== undefined &&
+        input.activeChannel !== undefined &&
+        input.viewCreationChannels?.includes(input.activeChannel)
+          ? "create-view"
+          : undefined
     });
   }
 
   return items;
+}
+
+export interface WorkspaceChannelDiagnosticNavigation {
+  readonly previewChannel: "telegram";
+  readonly entityId: string;
+  readonly callout: { readonly entityId: string; readonly label: string };
+}
+
+/**
+ * Maps a channel diagnostic to UI navigation using stable code/channel fields.
+ * Messages are intentionally ignored: translated or reworded diagnostics must
+ * still open the same renderer and entity inspector.
+ */
+export function channelDiagnosticNavigation(
+  item: WorkspaceCheckItem
+): WorkspaceChannelDiagnosticNavigation | undefined {
+  if (item.code !== "entity-missing-view" || item.channel !== "telegram" || item.entityId === undefined) {
+    return undefined;
+  }
+  return {
+    previewChannel: "telegram",
+    entityId: item.entityId,
+    callout: { entityId: item.entityId, label: item.entityLabel ?? "Выбранная сущность" }
+  };
 }
 
 /** Groups checks by severity in render order, dropping empty groups. */

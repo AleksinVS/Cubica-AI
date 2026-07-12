@@ -1,0 +1,17 @@
+{
+  "$schema": "../../../docs/architecture/schemas/player-web-plugin-bundles.schema.json",
+  "schemaVersion": "1.0",
+  "bundles": [
+    {
+      "pluginId": "estate-race-player",
+      "gameId": "estate-race",
+      "apiVersion": "2.0",
+      "target": "player-web",
+      "scope": "published",
+      "contentHash": "1fbb00e9a178144b37efc993b3ffb1d4aec6f94ed059124bef9bfd1dd7d7f8c7",
+      "integrity": "sha256-H7sA6aF4FEs378mTs/+x1K7G+U7QWRJL75v9HdfX+Mc=",
+      "filePath": "published/estate-race-player.1fbb00e9a178144b37efc993b3ffb1d4aec6f94ed059124bef9bfd1dd7d7f8c7.mjs",
+      "url": "/published-plugin-bundles/estate-race/estate-race-player/1fbb00e9a178144b37efc993b3ffb1d4aec6f94ed059124bef9bfd1dd7d7f8c7.mjs"
+    }
+  ]
+}

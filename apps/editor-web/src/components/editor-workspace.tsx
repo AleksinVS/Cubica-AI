@@ -19,6 +19,7 @@ import { LeftSidebar } from "@/components/workspace/left-sidebar";
 import { PreviewStage } from "@/components/workspace/preview-stage";
 import { RightSidebar } from "@/components/workspace/right-sidebar";
 import { WorkspaceStatusBar } from "@/components/workspace/workspace-status-bar";
+import { SessionRecoveryBanner } from "@/components/workspace/session-recovery-banner";
 import { useEditorWorkspace } from "@/components/workspace/use-editor-workspace";
 
 export function EditorWorkspace() {
@@ -40,6 +41,10 @@ export function EditorWorkspace() {
     <main className="editor-shell">
       <EditorAgentRuntimeHooks enabled={agentConnection.copilotReady} context={editorAgentContext} tools={editorAgentTools} />
       <EditorToolbar controller={controller} />
+      <SessionRecoveryBanner
+        changedPaths={controller.sessionRecoveryPaths}
+        onDismiss={controller.dismissSessionRecovery}
+      />
 
       <section
         className={`workspace-grid ${rightSidebarOpen ? "" : "json-collapsed"} ${leftSidebarOpen ? "" : "left-sidebar-collapsed"} ${previewUrl !== null && !effectivePreviewInspectMode ? "preview-play-mode" : ""} ${sidebarResizeState !== null ? "is-resizing" : ""}`}

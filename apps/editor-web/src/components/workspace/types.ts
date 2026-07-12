@@ -84,8 +84,20 @@ export interface EditorSessionSummary {
   readonly gameId: string;
   readonly branchName: string;
   readonly baseCommit: string;
+  readonly status: "active" | "idle" | "dirty" | "saved" | "closed" | "expired" | "orphaned";
   readonly createdAt: string;
   readonly updatedAt: string;
+  readonly lastUsedAt: string;
+  readonly expiresAt: string;
+  readonly dirtySummary: {
+    readonly isDirty: boolean;
+    readonly changedPaths: readonly string[];
+    readonly checkedAt: string;
+  };
+  /** True only when opening the editor resumed an existing worktree. */
+  readonly reused: boolean;
+  /** Opaque current durable version used for optimistic Save/restore checks. */
+  readonly currentVersionId: string | null;
 }
 
 export interface EditorSessionListResult extends AuthoringListResult {
@@ -97,6 +109,7 @@ export interface SavedAuthoringFileDocument extends AuthoringFileDocument {
   readonly commit?: {
     readonly committed: boolean;
     readonly commitHash?: string;
+    readonly versionId?: string;
     readonly changedPaths: readonly string[];
   };
   readonly pluginValidation?: EditorPluginValidationResult;
@@ -263,9 +276,13 @@ export interface SemanticNodeData extends Record<string, unknown> {
 
 export type SemanticFlowNode = Node<SemanticNodeData, "semantic">;
 export type SemanticFlowEdge = Edge<{ readonly role: EditorViewEdge["role"]; readonly label?: string }, "semantic">;
-export type LeftSidebarPanel = "tree" | "timeline" | "chat" | "checks" | "assets";
+export type LeftSidebarPanel = "tree" | "timeline" | "history" | "chat" | "checks" | "assets";
 export type RightSidebarPanel = "properties" | "json";
 export type PreviewViewportMode = "desktop" | "tablet" | "mobile";
+/** Orientation of the simulated screen inside the editor preview frame. */
+export type PreviewViewportOrientation = "landscape" | "portrait";
+/** Authoring channel shown in the central preview surface. */
+export type PreviewChannel = "web" | "telegram";
 
 export interface SidebarResizeState {
   readonly side: "left" | "json";

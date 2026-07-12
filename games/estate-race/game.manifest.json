@@ -1,0 +1,1924 @@
+{
+  "meta": {
+    "id": "estate-race",
+    "version": "0.1.0",
+    "name": "Estate Race · прототип",
+    "description": "Локальная экономическая игра о маршруте по авторскому двенадцатиклеточному городу, покупке участка и первой ренте.",
+    "author": "Cubica",
+    "schemaVersion": "1.3",
+    "minEngineVersion": "0.1.0",
+    "tags": [
+      "hotseat",
+      "turn-based",
+      "economy",
+      "prototype"
+    ]
+  },
+  "config": {
+    "players": {
+      "min": 2,
+      "max": 2
+    },
+    "settings": {
+      "mode": "local-hotseat",
+      "locale": "ru-RU"
+    },
+    "sessionMode": "standard",
+    "turnModel": {
+      "phases": [
+        "roll",
+        "acquire",
+        "rent",
+        "finish"
+      ]
+    }
+  },
+  "content": {
+    "data": {
+      "rules": {
+        "boardSize": 12,
+        "dice": "2d6",
+        "startingCash": 900,
+        "lapReward": 80,
+        "ownership": "one-player-per-estate",
+        "debtAllowed": false
+      },
+      "board": {
+        "sceneId": "main",
+        "designWidth": 1400,
+        "designHeight": 1000,
+        "visualThesis": "Тёмный лакированный стол, светлое чертёжное поле и сдержанный медно-зелёный акцент."
+      }
+    }
+  },
+  "objectModels": {
+    "estate.cell": {
+      "collection": "boardCells",
+      "scope": "session",
+      "facets": {
+        "category": {
+          "initial": "landmark",
+          "values": [
+            "start",
+            "estate",
+            "landmark"
+          ]
+        }
+      },
+      "idField": "id",
+      "view": {
+        "facets": {
+          "category.start": {
+            "visible": true,
+            "interactive": false,
+            "visualState": "start"
+          },
+          "category.estate": {
+            "visible": true,
+            "interactive": true,
+            "visualState": "estate"
+          },
+          "category.landmark": {
+            "visible": true,
+            "interactive": false,
+            "visualState": "landmark"
+          }
+        }
+      }
+    }
+  },
+  "engine": {
+    "systemPrompt": "Apply only manifest-declared Estate Race rules. Runtime state is authoritative for turns, money and ownership."
+  },
+  "state": {
+    "playersTemplate": {
+      "metrics": {
+        "cash": 900,
+        "position": 0
+      },
+      "flags": {},
+      "objects": {},
+      "status": "active",
+      "visibility": {
+        "metrics": "public",
+        "flags": "public"
+      }
+    },
+    "public": {
+      "timeline": {
+        "screenId": "table",
+        "screen_id": "table"
+      },
+      "board": {
+        "size": 12,
+        "lastRoll": null,
+        "availableActions": [
+          {
+            "id": "roll",
+            "label": "Бросить кости",
+            "actionId": "turn.roll"
+          }
+        ]
+      },
+      "objects": {
+        "boardCells": {
+          "cell-00": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "start"
+            },
+            "attributes": {
+              "id": "cell-00",
+              "index": 0,
+              "label": "Стартовый причал",
+              "shortLabel": "Старт",
+              "x": 150,
+              "y": 820,
+              "width": 245,
+              "height": 150,
+              "kind": "start"
+            }
+          },
+          "cell-01": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-01",
+              "index": 1,
+              "label": "Площадь компаса",
+              "shortLabel": "Компас",
+              "x": 415,
+              "y": 820,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-02": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "estate"
+            },
+            "attributes": {
+              "id": "cell-02",
+              "index": 2,
+              "label": "Липовая аллея",
+              "shortLabel": "Липовая",
+              "x": 680,
+              "y": 820,
+              "width": 245,
+              "height": 150,
+              "kind": "estate",
+              "price": 120,
+              "rent": 18
+            }
+          },
+          "cell-03": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-03",
+              "index": 3,
+              "label": "Сад фонарей",
+              "shortLabel": "Фонари",
+              "x": 945,
+              "y": 820,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-04": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-04",
+              "index": 4,
+              "label": "Восточные ворота",
+              "shortLabel": "Ворота",
+              "x": 1210,
+              "y": 820,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-05": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "estate"
+            },
+            "attributes": {
+              "id": "cell-05",
+              "index": 5,
+              "label": "Медная улица",
+              "shortLabel": "Медная",
+              "x": 1210,
+              "y": 540,
+              "width": 245,
+              "height": 150,
+              "kind": "estate",
+              "price": 160,
+              "rent": 24
+            }
+          },
+          "cell-06": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-06",
+              "index": 6,
+              "label": "Часовая башня",
+              "shortLabel": "Башня",
+              "x": 1210,
+              "y": 260,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-07": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-07",
+              "index": 7,
+              "label": "Северный круг",
+              "shortLabel": "Круг",
+              "x": 945,
+              "y": 120,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-08": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "estate"
+            },
+            "attributes": {
+              "id": "cell-08",
+              "index": 8,
+              "label": "Тихая набережная",
+              "shortLabel": "Набережная",
+              "x": 680,
+              "y": 120,
+              "width": 245,
+              "height": 150,
+              "kind": "estate",
+              "price": 200,
+              "rent": 30
+            }
+          },
+          "cell-09": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-09",
+              "index": 9,
+              "label": "Двор ветров",
+              "shortLabel": "Ветры",
+              "x": 415,
+              "y": 120,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-10": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "landmark"
+            },
+            "attributes": {
+              "id": "cell-10",
+              "index": 10,
+              "label": "Западный мост",
+              "shortLabel": "Мост",
+              "x": 150,
+              "y": 120,
+              "width": 245,
+              "height": 150,
+              "kind": "landmark"
+            }
+          },
+          "cell-11": {
+            "objectType": "estate.cell",
+            "facets": {
+              "category": "estate"
+            },
+            "attributes": {
+              "id": "cell-11",
+              "index": 11,
+              "label": "Оранжерейный проезд",
+              "shortLabel": "Оранжерея",
+              "x": 150,
+              "y": 470,
+              "width": 245,
+              "height": 150,
+              "kind": "estate",
+              "price": 240,
+              "rent": 36
+            }
+          }
+        }
+      },
+      "ui": {
+        "activeScreen": "topbar"
+      },
+      "log": []
+    },
+    "secret": {}
+  },
+  "actions": {
+    "turn.roll": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.roll",
+      "displayName": "Бросить кости",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "roll"
+          }
+        },
+        "effects": [
+          {
+            "op": "random.roll",
+            "dice": "2d6",
+            "storePath": "/public/board/lastRoll"
+          },
+          {
+            "op": "metric.set",
+            "scope": "player",
+            "playerId": "{{actor}}",
+            "metricId": "position",
+            "value": {
+              "%": [
+                {
+                  "+": [
+                    {
+                      "var": "actor.metrics.position"
+                    },
+                    {
+                      "var": "public.board.lastRoll.total"
+                    }
+                  ]
+                },
+                12
+              ]
+            }
+          },
+          {
+            "op": "metric.add",
+            "scope": "player",
+            "playerId": "{{actor}}",
+            "metricId": "cash",
+            "delta": 80,
+            "when": {
+              "jsonLogic": {
+                "<": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  {
+                    "var": "public.board.lastRoll.total"
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "acquire",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      2
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      2
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "buy-cell-02",
+                    "label": "Купить участок",
+                    "description": "Липовая аллея · 120",
+                    "actionId": "property.buy.cell-02",
+                    "params": {
+                      "cellId": "cell-02"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "rent",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      2
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      2
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "rent-cell-02",
+                    "label": "Оплатить ренту",
+                    "description": "Липовая аллея · 18",
+                    "actionId": "property.rent.cell-02",
+                    "params": {
+                      "cellId": "cell-02"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "acquire",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      5
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      5
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "buy-cell-05",
+                    "label": "Купить участок",
+                    "description": "Медная улица · 160",
+                    "actionId": "property.buy.cell-05",
+                    "params": {
+                      "cellId": "cell-05"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "rent",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      5
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      5
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "rent-cell-05",
+                    "label": "Оплатить ренту",
+                    "description": "Медная улица · 24",
+                    "actionId": "property.rent.cell-05",
+                    "params": {
+                      "cellId": "cell-05"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "acquire",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      8
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      8
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "buy-cell-08",
+                    "label": "Купить участок",
+                    "description": "Тихая набережная · 200",
+                    "actionId": "property.buy.cell-08",
+                    "params": {
+                      "cellId": "cell-08"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "rent",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      8
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      8
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "rent-cell-08",
+                    "label": "Оплатить ренту",
+                    "description": "Тихая набережная · 30",
+                    "actionId": "property.rent.cell-08",
+                    "params": {
+                      "cellId": "cell-08"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "acquire",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      11
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      11
+                    ]
+                  },
+                  {
+                    "!": {
+                      "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                    }
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "buy-cell-11",
+                    "label": "Купить участок",
+                    "description": "Оранжерейный проезд · 240",
+                    "actionId": "property.buy.cell-11",
+                    "params": {
+                      "cellId": "cell-11"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "rent",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      11
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "op": "state.patch",
+            "when": {
+              "jsonLogic": {
+                "and": [
+                  {
+                    "==": [
+                      {
+                        "var": "actor.metrics.position"
+                      },
+                      11
+                    ]
+                  },
+                  {
+                    "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                  },
+                  {
+                    "!=": [
+                      {
+                        "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                      },
+                      {
+                        "var": "params.actor"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "rent-cell-11",
+                    "label": "Оплатить ренту",
+                    "description": "Оранжерейный проезд · 36",
+                    "actionId": "property.rent.cell-11",
+                    "params": {
+                      "cellId": "cell-11"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "movement",
+            "summary": "Активный участник бросил кости и переместил фишку."
+          }
+        ]
+      }
+    },
+    "property.buy.cell-02": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.buy",
+      "displayName": "Купить Липовую аллею",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-02"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "acquire"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  2
+                ]
+              },
+              {
+                "!": {
+                  "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                }
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": 120,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "boardCells",
+            "objectId": "{{cellId}}",
+            "patches": [
+              {
+                "op": "add",
+                "path": "/ownerPlayerId",
+                "value": "{{actor}}"
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "purchase",
+            "summary": "Участник приобрёл Липовую аллею."
+          }
+        ]
+      }
+    },
+    "property.buy.cell-05": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.buy",
+      "displayName": "Купить Медную улицу",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-05"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "acquire"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  5
+                ]
+              },
+              {
+                "!": {
+                  "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                }
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": 160,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "boardCells",
+            "objectId": "{{cellId}}",
+            "patches": [
+              {
+                "op": "add",
+                "path": "/ownerPlayerId",
+                "value": "{{actor}}"
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "purchase",
+            "summary": "Участник приобрёл Медную улицу."
+          }
+        ]
+      }
+    },
+    "property.buy.cell-08": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.buy",
+      "displayName": "Купить Тихую набережную",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-08"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "acquire"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  8
+                ]
+              },
+              {
+                "!": {
+                  "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                }
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": 200,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "boardCells",
+            "objectId": "{{cellId}}",
+            "patches": [
+              {
+                "op": "add",
+                "path": "/ownerPlayerId",
+                "value": "{{actor}}"
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "purchase",
+            "summary": "Участник приобрёл Тихую набережную."
+          }
+        ]
+      }
+    },
+    "property.buy.cell-11": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.buy",
+      "displayName": "Купить Оранжерейный проезд",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-11"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "acquire"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  11
+                ]
+              },
+              {
+                "!": {
+                  "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                }
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "bank"
+            },
+            "amount": 240,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "object.attribute.patch",
+            "visibility": "public",
+            "collection": "boardCells",
+            "objectId": "{{cellId}}",
+            "patches": [
+              {
+                "op": "add",
+                "path": "/ownerPlayerId",
+                "value": "{{actor}}"
+              }
+            ]
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "purchase",
+            "summary": "Участник приобрёл Оранжерейный проезд."
+          }
+        ]
+      }
+    },
+    "property.rent.cell-02": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.pay-rent",
+      "displayName": "Оплатить ренту за Липовую аллею",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-02"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "rent"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  2
+                ]
+              },
+              {
+                "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+              },
+              {
+                "!=": [
+                  {
+                    "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                  },
+                  {
+                    "var": "params.actor"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "player",
+              "playerId": {
+                "fromPath": "/public/objects/boardCells/cell-02/attributes/ownerPlayerId"
+              },
+              "metricId": "cash"
+            },
+            "amount": 18,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "rent",
+            "summary": "Рента за Липовую аллею переведена владельцу."
+          }
+        ]
+      }
+    },
+    "property.rent.cell-05": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.pay-rent",
+      "displayName": "Оплатить ренту за Медную улицу",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-05"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "rent"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  5
+                ]
+              },
+              {
+                "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+              },
+              {
+                "!=": [
+                  {
+                    "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                  },
+                  {
+                    "var": "params.actor"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "player",
+              "playerId": {
+                "fromPath": "/public/objects/boardCells/cell-05/attributes/ownerPlayerId"
+              },
+              "metricId": "cash"
+            },
+            "amount": 24,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "rent",
+            "summary": "Рента за Медную улицу переведена владельцу."
+          }
+        ]
+      }
+    },
+    "property.rent.cell-08": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.pay-rent",
+      "displayName": "Оплатить ренту за Тихую набережную",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-08"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "rent"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  8
+                ]
+              },
+              {
+                "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+              },
+              {
+                "!=": [
+                  {
+                    "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                  },
+                  {
+                    "var": "params.actor"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "player",
+              "playerId": {
+                "fromPath": "/public/objects/boardCells/cell-08/attributes/ownerPlayerId"
+              },
+              "metricId": "cash"
+            },
+            "amount": 30,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "rent",
+            "summary": "Рента за Тихую набережную переведена владельцу."
+          }
+        ]
+      }
+    },
+    "property.rent.cell-11": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "property.pay-rent",
+      "displayName": "Оплатить ренту за Оранжерейный проезд",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "cellId": {
+            "type": "string",
+            "maxLength": 128,
+            "enum": [
+              "cell-11"
+            ],
+            "x-cubica-ref": {
+              "kind": "object",
+              "collection": "boardCells",
+              "allowedTypes": [
+                "estate.cell"
+              ],
+              "visibility": "public"
+            }
+          }
+        },
+        "required": [
+          "cellId"
+        ]
+      },
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "rent"
+          },
+          "jsonLogic": {
+            "and": [
+              {
+                "==": [
+                  {
+                    "var": "actor.metrics.position"
+                  },
+                  11
+                ]
+              },
+              {
+                "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+              },
+              {
+                "!=": [
+                  {
+                    "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                  },
+                  {
+                    "var": "params.actor"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "effects": [
+          {
+            "op": "metric.transfer",
+            "from": {
+              "scope": "player",
+              "playerId": "{{actor}}",
+              "metricId": "cash"
+            },
+            "to": {
+              "scope": "player",
+              "playerId": {
+                "fromPath": "/public/objects/boardCells/cell-11/attributes/ownerPlayerId"
+              },
+              "metricId": "cash"
+            },
+            "amount": 36,
+            "onInsufficient": "fail"
+          },
+          {
+            "op": "turn.phase.set",
+            "phase": "finish"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "finish",
+                    "label": "Завершить ход",
+                    "actionId": "turn.finish"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "rent",
+            "summary": "Рента за Оранжерейный проезд переведена владельцу."
+          }
+        ]
+      }
+    },
+    "turn.finish": {
+      "handlerType": "manifest-data",
+      "capabilityFamily": "runtime.server",
+      "capability": "turn.finish",
+      "displayName": "Завершить ход",
+      "allowedSessionRoles": [
+        "player"
+      ],
+      "deterministic": {
+        "guard": {
+          "turn": {
+            "actorIsActive": true,
+            "phase": "finish"
+          }
+        },
+        "effects": [
+          {
+            "op": "turn.next"
+          },
+          {
+            "op": "state.patch",
+            "patches": [
+              {
+                "op": "replace",
+                "path": "/public/board/availableActions",
+                "value": [
+                  {
+                    "id": "roll",
+                    "label": "Бросить кости",
+                    "actionId": "turn.roll"
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "op": "log.append",
+            "kind": "turn",
+            "summary": "Ход передан следующему участнику."
+          }
+        ]
+      }
+    }
+  }
+}

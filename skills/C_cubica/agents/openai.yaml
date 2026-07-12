@@ -1,0 +1,4 @@
+interface:
+  display_name: "C_cubica"
+  short_description: "Явно включаемая автономная разработка Cubica"
+  default_prompt: "Use $cubica only after the user explicitly invokes it, then execute the approved Cubica TSK plan autonomously with bounded subagents and verified acceptance."

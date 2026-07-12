@@ -23,7 +23,7 @@
     "verify:runtime-api": "npm run typecheck --workspace services/runtime-api && npm test --workspace services/runtime-api && npm run smoke --workspace services/runtime-api",
     "verify:player-web": "npm run typecheck --workspace @cubica/player-web && npm test --workspace @cubica/player-web && npm run build --workspace @cubica/player-web",
     "verify:legacy": "node scripts/ci/validate-legacy.js",
-    "verify:external-skills": "node .codex/skills/external-skill-adapter/scripts/validate-external-skills.mjs && node --test .codex/skills/external-skill-adapter/scripts/external-skill-adapter.test.mjs",
+    "verify:external-skills": "node skills/C_external-skill-adapter/scripts/validate-external-skills.mjs && node --test skills/C_external-skill-adapter/scripts/external-skill-adapter.test.mjs && node scripts/ci/validate-project-skills.mjs",
     "verify:node-runtime": "node scripts/ci/validate-node-runtime.js",
     "verify:api-contracts": "node scripts/ci/validate-runtime-api-openapi.js",
     "verify:agent-ui-boundaries": "node scripts/ci/validate-agent-ui-boundaries.js",

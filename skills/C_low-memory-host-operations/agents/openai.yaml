@@ -1,0 +1,3 @@
+interface:
+  display_name: "C_low-memory-host-operations"
+  short_description: "Безопасная работа Cubica на хосте с малой памятью"

@@ -125,10 +125,23 @@ export async function dispatchAction(
   expectedStateVersion: number,
   payload: Record<string, unknown> = {}
 ): Promise<ActionSnapshot> {
+  const hasParams = Object.keys(payload).length > 0;
   const response = await fetch("/api/runtime/actions", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ sessionId, expectedStateVersion, playerId, actionId, payload })
+    // Deterministic manifest actions consume schema-validated `params`
+    // (ADR-061). Omit that field for parameterless actions because the runtime
+    // deliberately distinguishes "no parameter contract" from an empty input.
+    // Keep `payload` while legacy handlers still read it; whenever params are
+    // present both names describe one user intent and must never diverge.
+    body: JSON.stringify({
+      sessionId,
+      expectedStateVersion,
+      playerId,
+      actionId,
+      ...(hasParams ? { params: payload } : {}),
+      payload
+    })
   });
   if (!response.ok) {
     throw await readRuntimeError(response, `Action "${actionId}" failed`);

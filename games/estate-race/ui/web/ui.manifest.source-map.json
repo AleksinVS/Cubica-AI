@@ -1,0 +1,601 @@
+{
+  "version": 1,
+  "generatedFile": "games/estate-race/ui/web/ui.manifest.json",
+  "sourceFile": "games/estate-race/authoring/ui/web.authoring.json",
+  "mappings": {
+    "": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root"
+      }
+    ],
+    "/meta": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta"
+      }
+    ],
+    "/meta/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/id"
+      }
+    ],
+    "/meta/version": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/version"
+      }
+    ],
+    "/meta/schema_version": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/schema_version"
+      }
+    ],
+    "/meta/game_id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/game_id"
+      }
+    ],
+    "/meta/game_manifest_version": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/game_manifest_version"
+      }
+    ],
+    "/meta/channel": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/channel"
+      }
+    ],
+    "/meta/author": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/meta/author"
+      }
+    ],
+    "/entry_point": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/entry_point"
+      }
+    ],
+    "/screen_routing/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0"
+      }
+    ],
+    "/screen_routing/0/screenKey": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/screenKey"
+      }
+    ],
+    "/screen_routing/0/conditions": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions"
+      }
+    ],
+    "/screen_routing/0/conditions/screenId": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions/screenId"
+      }
+    ],
+    "/screen_routing/0/conditions/layoutMode": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing/0/conditions/layoutMode"
+      }
+    ],
+    "/screen_routing": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screen_routing"
+      }
+    ],
+    "/screens/table": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0"
+      }
+    ],
+    "/screens/table/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/id"
+      }
+    ],
+    "/screens/table/title": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/title"
+      }
+    ],
+    "/screens/table/layout_mode": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/layout_mode"
+      }
+    ],
+    "/screens/table/root": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root"
+      }
+    ],
+    "/screens/table/root/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/id"
+      }
+    ],
+    "/screens/table/root/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/type"
+      }
+    ],
+    "/screens/table/root/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props"
+      }
+    ],
+    "/screens/table/root/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0"
+      }
+    ],
+    "/screens/table/root/children/0/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/id"
+      }
+    ],
+    "/screens/table/root/children/0/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/type"
+      }
+    ],
+    "/screens/table/root/children/0/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props"
+      }
+    ],
+    "/screens/table/root/children/0/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/0/children/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0"
+      }
+    ],
+    "/screens/table/root/children/0/children/0/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/id"
+      }
+    ],
+    "/screens/table/root/children/0/children/0/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/type"
+      }
+    ],
+    "/screens/table/root/children/0/children/0/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props"
+      }
+    ],
+    "/screens/table/root/children/0/children/0/props/html": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children/0/props/html"
+      }
+    ],
+    "/screens/table/root/children/0/children": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/children"
+      }
+    ],
+    "/screens/table/root/children/1": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1"
+      }
+    ],
+    "/screens/table/root/children/1/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/id"
+      }
+    ],
+    "/screens/table/root/children/1/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/type"
+      }
+    ],
+    "/screens/table/root/children/1/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props"
+      }
+    ],
+    "/screens/table/root/children/1/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/1/children/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0"
+      }
+    ],
+    "/screens/table/root/children/1/children/0/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/id"
+      }
+    ],
+    "/screens/table/root/children/1/children/0/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/type"
+      }
+    ],
+    "/screens/table/root/children/1/children/0/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props"
+      }
+    ],
+    "/screens/table/root/children/1/children/0/props/html": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/0/props/html"
+      }
+    ],
+    "/screens/table/root/children/1/children/1": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1"
+      }
+    ],
+    "/screens/table/root/children/1/children/1/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/id"
+      }
+    ],
+    "/screens/table/root/children/1/children/1/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/type"
+      }
+    ],
+    "/screens/table/root/children/1/children/1/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/props"
+      }
+    ],
+    "/screens/table/root/children/1/children/1/props/html": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children/1/props/html"
+      }
+    ],
+    "/screens/table/root/children/1/children": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/children"
+      }
+    ],
+    "/screens/table/root/children/2": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2"
+      }
+    ],
+    "/screens/table/root/children/2/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/id"
+      }
+    ],
+    "/screens/table/root/children/2/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/type"
+      }
+    ],
+    "/screens/table/root/children/2/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/props"
+      }
+    ],
+    "/screens/table/root/children/2/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/2/children/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/id"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/type"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/props/sceneId": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props/sceneId"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/props/designWidth": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props/designWidth"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/props/designHeight": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props/designHeight"
+      }
+    ],
+    "/screens/table/root/children/2/children/0/props/accessibleLabel": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props/accessibleLabel"
+      }
+    ],
+    "/screens/table/root/children/2/children": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children"
+      }
+    ],
+    "/screens/table/root/children/3": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3"
+      }
+    ],
+    "/screens/table/root/children/3/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/id"
+      }
+    ],
+    "/screens/table/root/children/3/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/type"
+      }
+    ],
+    "/screens/table/root/children/3/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/props"
+      }
+    ],
+    "/screens/table/root/children/3/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/3/props/html": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/props/html"
+      }
+    ],
+    "/screens/table/root/children/4": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4"
+      }
+    ],
+    "/screens/table/root/children/4/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/id"
+      }
+    ],
+    "/screens/table/root/children/4/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/type"
+      }
+    ],
+    "/screens/table/root/children/4/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/props"
+      }
+    ],
+    "/screens/table/root/children/4/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/4/children/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0"
+      }
+    ],
+    "/screens/table/root/children/4/children/0/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/id"
+      }
+    ],
+    "/screens/table/root/children/4/children/0/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/type"
+      }
+    ],
+    "/screens/table/root/children/4/children/0/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/props"
+      }
+    ],
+    "/screens/table/root/children/4/children/0/props/html": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/props/html"
+      }
+    ],
+    "/screens/table/root/children/4/children/1": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/id"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/type"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/props"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/props/cssClass": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/props/cssClass"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/itemTemplate": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/itemTemplate"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/itemTemplate/collection": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/itemTemplate/collection"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/itemTemplate/itemKey": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/itemTemplate/itemKey"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/children/0": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/children/0/id": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/id"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/children/0/type": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/type"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/children/0/props": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/props"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/children/0/props/html": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/props/html"
+      }
+    ],
+    "/screens/table/root/children/4/children/1/children": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children"
+      }
+    ],
+    "/screens/table/root/children/4/children": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children"
+      }
+    ],
+    "/screens/table/root/children": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children"
+      }
+    ],
+    "/screens": [
+      {
+        "file": "games/estate-race/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens"
+      }
+    ]
+  }
+}

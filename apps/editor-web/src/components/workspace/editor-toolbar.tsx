@@ -10,6 +10,8 @@
  */
 import { editorRu as t } from "@/lib/locale";
 
+import { PreviewOrientationControl } from "./preview-orientation-control.tsx";
+import { SaveVersionControl } from "./save-version-control.tsx";
 import type { EditorWorkspaceController } from "./use-editor-workspace.ts";
 
 export function EditorToolbar({ controller }: { controller: EditorWorkspaceController }) {
@@ -27,6 +29,10 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
     setPropertyPanelOpen,
     previewViewportMode,
     setPreviewViewportMode,
+    previewChannel,
+    setPreviewChannel,
+    previewViewportOrientation,
+    setPreviewViewportOrientation,
     availableGames,
     currentDocument,
     handleGameChange,
@@ -35,6 +41,9 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
     resetCurrentFile,
     loadState,
     handleSave,
+    saveAuthorComment,
+    setSaveAuthorComment,
+    proposedSaveSummary,
     isDirty,
     hasBlockingDiagnostics,
     saveState,
@@ -81,6 +90,14 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             onClick={() => setEditorMode("preview")}
           >
             {t.toolbar.modePreview}
+          </button>
+        </div>
+        <div className="segmented-control channel-control" role="group" aria-label={t.toolbar.channelAria}>
+          <button type="button" className={previewChannel === "web" ? "is-active" : ""} aria-pressed={previewChannel === "web"} onClick={() => setPreviewChannel("web")}>
+            {t.toolbar.channelWeb}
+          </button>
+          <button type="button" className={previewChannel === "telegram" ? "is-active" : ""} aria-pressed={previewChannel === "telegram"} onClick={() => setPreviewChannel("telegram")}>
+            {t.toolbar.channelTelegram}
           </button>
         </div>
         <div className="segmented-control" role="group" aria-label={t.toolbar.previewModeAria}>
@@ -131,6 +148,10 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             </button>
           ))}
         </div>
+        <PreviewOrientationControl
+          orientation={previewViewportOrientation}
+          onOrientationChange={setPreviewViewportOrientation}
+        />
         <select
           aria-label={t.toolbar.gameAria}
           disabled={availableGames.length === 0}
@@ -160,10 +181,13 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
         <button type="button" onClick={resetCurrentFile} disabled={loadState === "loading"}>
           {t.toolbar.reset}
         </button>
-        <button
-          type="button"
-          onClick={handleSave}
-          title={blockedTitle}
+        <SaveVersionControl
+          onSave={() => void handleSave()}
+          saving={saveState === "saving"}
+          blockedTitle={blockedTitle}
+          proposedSummary={proposedSaveSummary}
+          authorComment={saveAuthorComment}
+          onAuthorCommentChange={setSaveAuthorComment}
           disabled={
             currentDocument.source !== "repository" ||
             !isDirty ||
@@ -171,9 +195,7 @@ export function EditorToolbar({ controller }: { controller: EditorWorkspaceContr
             saveState === "saving" ||
             loadState === "loading"
           }
-        >
-          {t.toolbar.save}
-        </button>
+        />
         <button type="button" onClick={handleUndoAiChange} disabled={aiPatchJournal.length === 0 || aiApplyState === "planning" || aiApplyState === "applying"}>
           {t.toolbar.undo}
         </button>

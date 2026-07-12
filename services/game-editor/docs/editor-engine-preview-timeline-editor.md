@@ -349,7 +349,7 @@ prompt
 
 Large manifest rule: AI must receive selected subtrees, nearest parent/sibling context, schema fragments and diagnostics. It must not receive or rewrite a whole large authoring file when a pointer-scoped edit is enough.
 
-Implementation status on 2026-05-28:
+Implementation status on 2026-07-12:
 
 - `packages/editor-engine` now exposes the Phase 8 contract and safety helpers: `EditorPatchIntent`, `EditorChangeSet`, `PatchJournalStep`, guarded JSON Patch `test`, inverse patch generation, dry-run validation and diff summaries.
 - `apps/editor-web` has a baseline `/api/editor/ai/patch` route. It uses a deterministic local planner for simple text/label edits so the automatic apply flow is testable before a production AI provider is connected.
@@ -389,8 +389,8 @@ Implementation status on 2026-05-28:
 - `saveProjectGitSession` commits only explicitly allowed project paths. `allowedSavePathsForGame` keeps generated manifests/source maps out of commits unless the project policy includes them.
 - `restoreSavedVersion` restores allowed paths from a saved ref and creates a new commit instead of using `reset --hard`.
 - `/api/editor/session` creates and closes session worktrees. Session metadata is stored under `.tmp/editor-sessions/<sessionId>.json`.
-- `/api/editor/files`, `/api/editor/file` and `/api/editor/layout` accept optional `sessionId`; with `sessionId` they use the session worktree, without it they keep the legacy direct repository fallback.
-- `EditorWorkspace` opens/reuses a session per selected game and sends `sessionId` on file/layout reads and Save. Save creates a Git commit in the session branch.
+- `/api/editor/files` and `/api/editor/layout` accept optional `sessionId` for reads/layout compatibility; user-facing `PUT /api/editor/file` requires `sessionId` and always saves through the session worktree and durable line.
+- `EditorWorkspace` opens/reuses a session per selected game and sends `sessionId` on file/layout reads and Save. Save commits the session draft and advances the durable project version line from ADR-075.
 - `/api/editor/validate` and `/api/editor/compile` accept optional `sessionId`; with `sessionId` they load the shared authoring compiler from the session worktree, so validation and generated-manifest writes use isolated session content.
 - `/api/editor/preview` also accepts optional `sessionId`, compiles the session worktree, registers that worktree in runtime-api as a temporary `contentSourceId`, creates a runtime session with that source and opens player-web with the same source.
 - runtime-api guards local preview content roots with an allowlist. By default it accepts the monorepo `.tmp/editor-worktrees` root; e2e and local isolated project runs can extend this with `EDITOR_PREVIEW_WORKTREES_ROOTS`.
@@ -641,6 +641,7 @@ Decision for first implementation: use thin React DOM adapter as the reference i
 | AI prompt makes uncontrolled source edits. | Require bounded ChangeSet, dry-run validation, undo journal and scoped context. |
 | Unsaved prompt edits are lost or cannot be undone. | Store per-session patch journal with inverse ChangeSets in the session worktree. |
 | Git workflow damages project history. | Use session worktrees, Save commits and revert/restore commits; never destructive reset from platform UI. |
+| Concurrent Save/Restore/Close/GC partially changes one worktree. | ADR-077 is implemented with one inter-process session lease, fresh Git status under that lease and a verified worktree root. |
 | Plugin edits bypass platform boundaries. | Keep plugins inside project repo, run plugin validation gates and block platform core branches tied to one concrete game. |
 | Timeline trace becomes hidden source of game logic. | Keep traces temporary; manifest chronology remains in authoring JSON. |
 | Entity tree hides too much for technical debugging. | Provide advanced full JSON mode. |
@@ -650,16 +651,26 @@ Decision for first implementation: use thin React DOM adapter as the reference i
 
 ## 17. Открытые вопросы
 
-- Minimum authoring schema v2 needed before UI rewrite.
-- Whether flow-chart should remain available as a hidden/secondary tab.
-- Whether the first renderer adapter should target current React player or a Phaser prototype.
+Закрыто: authoring schema v2 реализована; flow-chart сохранён как secondary
+tab; reference renderer adapter — current React/DOM preview; named fixtures,
+ChangeSet diff summary и project-local player plugin discovery/bundle wiring
+реализованы последующими срезами ADR-037/039/057.
+
+Остаётся открыто:
+
 - How to represent nonlinear systems in `root.logic.systems` without inventing a full DSL too early.
-- Whether playthrough traces should eventually become named test scenarios.
-- What user-facing diff summary format is minimally sufficient for non-technical users.
 - Which generated artifacts should be committed by default for each project type.
-- `plugin.json` schema exists for the first project-local player-web target; remaining details are discovery result shape, validation diagnostics and bundle reference wiring.
 - Which plugin capabilities need sandboxing before AI can edit plugin code automatically or before marketplace plugins can run.
-- Exact `PlayerPluginApi` facade and the first schema/runtime slice for `effects[]` in the declarative mechanics language.
+- Plugin-local unit test runner (`LEGACY-0047`) and concrete Phaser adapter
+  metadata/hit-test integration.
+- Закрыто ADR-075: Save продвигает разрешённое authoring-содержимое в
+  долговечную проектную линию, доступную новым сессиям; возврат создаёт новую
+  версию, а текущий platform checkout не откатывается вместе с игровым
+  содержимым.
+- Принято ADR-077: пользовательский Save требует действующую сессию, а
+  Save/Restore/Close/GC одной сессии сериализуются общей межпроцессной арендой.
+  Реализация защиты и корневая сквозная проверка завершены 2026-07-12;
+  `LEGACY-0051` закрыт.
 
 ## 18. Источники и практики
 

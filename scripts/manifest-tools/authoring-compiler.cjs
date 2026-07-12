@@ -213,7 +213,18 @@ function assertNoMergeOperatorConflicts(node, filePath, pointer) {
 
 function isDeclarativeExpressionPointer(pointer) {
   const segments = pointer.split("/").filter(Boolean);
-  return segments.includes("jsonLogic") || segments.includes("expression");
+  if (segments.includes("jsonLogic") || segments.includes("expression")) {
+    return true;
+  }
+
+  // Deterministic numeric effect fields are also JsonLogic expression slots.
+  // Without this bounded exception an operator such as `+` is mistaken for
+  // authoring prototype merge syntax before the compiled runtime schema can
+  // validate it. Limit the exception to effects so ordinary authoring objects
+  // keep the conflict protection above.
+  const effectsIndex = segments.lastIndexOf("effects");
+  const effectField = effectsIndex >= 0 ? segments[effectsIndex + 2] : undefined;
+  return effectField === "value" || effectField === "delta" || effectField === "amount";
 }
 
 function mergeObjects(parentValue, childValue) {

@@ -28,7 +28,10 @@ export function ButtonComponent({
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
 }) {
-  const { caption, variant, disabled } = component.props;
+  // The UI schema permits an ordinary component to omit props entirely.
+  // A malformed/incomplete button then renders disabled instead of crashing.
+  const props: Partial<GameUiButtonComponentProps> = component.props ?? {};
+  const { caption, variant, disabled } = props;
   const command = (component as GameUiComponent).actions?.onClick?.command;
   const basePayload = (component as GameUiComponent).actions?.onClick?.payload ?? {};
   const resolvedPayload = resolvePayloadExpressions(basePayload, gameState, localContext);

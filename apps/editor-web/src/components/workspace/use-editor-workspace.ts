@@ -164,6 +164,8 @@ import {
   saveEditorLayout,
   toPrototypeAuditNotice
 } from "@/components/workspace/api-client";
+import { useEditorVersionHistory } from "@/components/workspace/use-editor-version-history";
+import { buildSaveVersionMetadata } from "@/components/workspace/save-version-metadata";
 import { dryRunMultiDocumentChangeSet } from "@/components/workspace/multi-document-apply";
 import {
   deriveIntentJournalEntries,
@@ -227,6 +229,8 @@ import {
 } from "@/components/workspace/workspace-helpers";
 import {
   aggregateWorkspaceChecks,
+  channelDiagnosticNavigation,
+  collectKnownViewCreationChannels,
   groupChecksBySeverity,
   summarizeCheckCounts,
   type WorkspaceCheckItem
@@ -480,6 +484,10 @@ export function useEditorWorkspace() {
     setPreviewPointSelectionMode,
     previewViewportMode,
     setPreviewViewportMode,
+    previewChannel,
+    setPreviewChannel,
+    previewViewportOrientation,
+    setPreviewViewportOrientation,
     editorMode,
     setEditorMode,
     previewAppliedVersionHash,
@@ -626,6 +634,24 @@ export function useEditorWorkspace() {
     { readonly pointer: string; readonly value: JsonValue; readonly valueType: EditorProperty["valueType"]; readonly label: string } | undefined
   >(undefined);
   const [selectedFixtureId, setSelectedFixtureId] = useState<string | undefined>(undefined);
+  // Set only by an explicit `entity-missing-view` navigation. The callout lives
+  // in the Telegram surface and is cleared when the author changes renderer or
+  // makes an ordinary channel selection.
+  const [telegramMissingViewCallout, setTelegramMissingViewCallout] = useState<{
+    readonly entityId: string;
+    readonly label: string;
+  } | null>(null);
+
+  // Durable author history is independent from the preview timeline. The
+  // optional Save comment stays in browser state until a Save succeeds.
+  const [saveAuthorComment, setSaveAuthorComment] = useState("");
+  const [sessionRecoveryDismissed, setSessionRecoveryDismissed] = useState(false);
+  const [restorePreviewNonce, setRestorePreviewNonce] = useState(0);
+  const versionHistory = useEditorVersionHistory({
+    sessionId: editorSession?.sessionId,
+    initialCurrentVersionId: editorSession?.currentVersionId,
+    onRestored: reloadWorkspaceAfterVersionRestore
+  });
 
   // --- Last valid preview snapshot retention (ADR-057 §4.12; §9.6; design-spec
   //     §3.5, Phase 8.2) ----------------------------------------------------------
@@ -871,6 +897,10 @@ export function useEditorWorkspace() {
     (diagnostic) => diagnostic.severity === "error" && (diagnostic.source === "syntax" || diagnostic.source === "schema")
   );
   const isDirty = jsonText !== savedText;
+  const saveVersionMetadata = useMemo(
+    () => buildSaveVersionMetadata(currentDocument.filePath, aiDiffSummary),
+    [aiDiffSummary, currentDocument.filePath]
+  );
   const nonVisualEntityCounts = useMemo(() => summarizeNonVisualEntities(viewModel.fullNodes), [viewModel.fullNodes]);
   // --- «Проверки» tab model (Phase 8.1; design-spec §3.5; UX §9.6; ADR-057 §4.12) ---
   //
@@ -880,12 +910,15 @@ export function useEditorWorkspace() {
   // checks. Aggregation is a pure, deduplicated transform (`checks-helpers`); the
   // panel groups the result by severity and the counts drive the status bar.
   const workspaceChecks = useMemo(() => {
+    const viewCreationChannels = collectKnownViewCreationChannels(viewModel.entityProjectionDocuments);
     const base = aggregateWorkspaceChecks({
       routedDiagnostics: viewModel.diagnostics,
       pluginDiagnostics,
       projectionDiagnostics: viewModel.editorEntityProjection.diagnostics,
       projection: viewModel.editorEntityProjection,
-      activeFilePath: currentDocument.filePath
+      activeFilePath: currentDocument.filePath,
+      activeChannel,
+      viewCreationChannels
     });
     // Orphan assets (0 uses) surface as `asset-orphan` info rows in the Checks tab
     // (design-spec §4). They point at a file, not an entity, so they carry no
@@ -903,7 +936,7 @@ export function useEditorWorkspace() {
         pointer: ""
       }));
     return [...base, ...orphanChecks];
-  }, [viewModel.diagnostics, viewModel.editorEntityProjection, pluginDiagnostics, currentDocument.filePath, gameAssets]);
+  }, [viewModel.diagnostics, viewModel.editorEntityProjection, viewModel.entityProjectionDocuments, pluginDiagnostics, currentDocument.filePath, activeChannel, gameAssets]);
   const checkGroups = useMemo(() => groupChecksBySeverity(workspaceChecks), [workspaceChecks]);
   const checkCounts = useMemo(() => summarizeCheckCounts(workspaceChecks), [workspaceChecks]);
   const previewTraceEntries = previewTrace.events.slice(-8);
@@ -1349,6 +1382,19 @@ export function useEditorWorkspace() {
   }, [currentDocument.gameId, currentDocument.source, currentDocument.versionHash, editorSession?.sessionId]);
 
   useEffect(() => {
+    setSessionRecoveryDismissed(false);
+  }, [editorSession?.sessionId]);
+
+  // A restore first commits the freshly loaded document/projection state, then
+  // this effect prepares a new preview against that exact version. Running the
+  // preview request in the reload function itself would capture the old render.
+  useEffect(() => {
+    if (restorePreviewNonce === 0 || currentDocument.source !== "repository") return;
+    void preparePreviewSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nonce marks one completed restore reload.
+  }, [restorePreviewNonce]);
+
+  useEffect(() => {
     if (monacoApi === null) {
       return;
     }
@@ -1553,6 +1599,11 @@ export function useEditorWorkspace() {
   }, [sidebarResizeState]);
 
   useEffect(() => {
+    // Telegram owns a separate same-origin DOM adapter. Its project entity ids
+    // are not expected in the Web iframe descriptor list.
+    if (previewChannel !== "web") {
+      return;
+    }
     if (selectedPreviewEntityId === undefined) {
       return;
     }
@@ -1560,9 +1611,12 @@ export function useEditorWorkspace() {
     if (!previewEntities.some((entity) => entity.entityId === selectedPreviewEntityId)) {
       setSelectedPreviewEntityId(undefined);
     }
-  }, [previewEntities, selectedPreviewEntityId]);
+  }, [previewChannel, previewEntities, selectedPreviewEntityId]);
 
   useEffect(() => {
+    if (previewChannel !== "web") {
+      return;
+    }
     const pointer = selectedNode?.pointer;
     if (pointer === undefined) {
       return;
@@ -1580,7 +1634,7 @@ export function useEditorWorkspace() {
         setSelectedPreviewEntityId(undefined);
       }
     }
-  }, [previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
+  }, [previewChannel, previewEntities, selectedNode?.pointer, selectedPreviewEntityId]);
 
   const onNodesChange = useCallback((changes: NodeChange[]) => {
     setFlowNodes((nodes) => applyNodeChanges(changes, nodes));
@@ -1729,6 +1783,14 @@ export function useEditorWorkspace() {
     setAgentPlannedChangeSet(null);
   }
 
+  /** Drops local actions captured against a version that is no longer current. */
+  function clearIntentQueueState() {
+    intentQueueRef.current = [];
+    intentRunnersRef.current.clear();
+    intentStartedRef.current.clear();
+    setIntentQueue([]);
+  }
+
   function clearWorkflowAndPluginDiagnostics() {
     setWorkflowDiagnostics([]);
     setPluginDiagnostics([]);
@@ -1810,11 +1872,74 @@ export function useEditorWorkspace() {
    * entity panel, Phase 3.c).
    */
   function handleEntityTreeSelectEntity(entityId: string) {
+    setTelegramMissingViewCallout(null);
     setEntityTreeSelectedEntityId(entityId);
     const entity = viewModel.editorEntityProjection.entityById.get(entityId);
     if (entity !== undefined && entity.primarySource.filePath === currentDocument.filePath) {
       handleTreeSelectPointer(entity.primarySource.pointer);
     }
+  }
+
+  /**
+   * Selects an entity resolved by a same-origin channel renderer.
+   *
+   * Unlike iframe selection this does not navigate to a sibling source file:
+   * loading that file would immediately reset the selection. The entity inspector
+   * can already read every projection document, so it is the stable read-only
+   * destination for a channel-viewer selection.
+   */
+  function handleChannelEntitySelect(entityId: string) {
+    setTelegramMissingViewCallout(null);
+    setEntityTreeSelectedEntityId(entityId);
+    setSelectedPreviewEntityId(entityId);
+    setPreviewPromptContext(null);
+    setPreviewAiIntent(null);
+  }
+
+  /**
+   * Switches the central renderer without carrying a renderer-specific
+   * selection into the other channel. The running Web iframe remains mounted;
+   * only editor selection/prompt context is cleared as stale UI state.
+   */
+  function handlePreviewChannelChange(channel: typeof previewChannel) {
+    setTelegramMissingViewCallout(null);
+    setPreviewChannel(channel);
+    setSelectedPreviewEntityId(undefined);
+    setEntityTreeSelectedEntityId(undefined);
+    setPreviewPromptContext(null);
+    setPreviewAiIntent(null);
+  }
+
+  /**
+   * Rehydrates every browser projection after the server creates a restore
+   * version. The active document response includes sibling documents, so one
+   * reload refreshes the file list, project entity projection and diagnostics.
+   * Preview preparation is deferred to an effect after React commits the new
+   * document; local undo/redo and queued intents are discarded explicitly.
+   */
+  async function reloadWorkspaceAfterVersionRestore() {
+    const session = editorSessionRef.current;
+    if (session === null || currentDocument.source !== "repository") return;
+
+    setLoadState("loading");
+    const list = await fetchAuthoringList(session.gameId, session.sessionId);
+    const filePath = list.files.some((file) => file.filePath === currentDocument.filePath)
+      ? currentDocument.filePath
+      : list.defaultFilePath;
+    if (filePath === undefined) throw new Error("После возврата не найден редактируемый файл.");
+
+    const [document, layout] = await Promise.all([
+      fetchAuthoringFile(session.gameId, filePath, session.sessionId),
+      fetchEditorLayout(session.gameId, filePath, session.sessionId).catch(() => undefined)
+    ]);
+    setAvailableGames(list.games);
+    setAvailableFiles(list.files);
+    clearIntentQueueState();
+    applyLoadedDocument(document, layout);
+    setLoadState("ready");
+    setSaveState("saved");
+    setStatusMessage(t.history.restored);
+    setRestorePreviewNonce((value) => value + 1);
   }
 
   async function handleSave() {
@@ -1836,13 +1961,17 @@ export function useEditorWorkspace() {
           text: jsonText,
           versionHash: currentDocument.versionHash,
           sessionId: editorSession?.sessionId,
-          commitMessage: `Save ${currentDocument.gameId}/${currentDocument.filePath}`
+          commitMessage: `Save ${currentDocument.gameId}/${currentDocument.filePath}`,
+          authorComment: saveAuthorComment.trim() === "" ? undefined : saveAuthorComment.trim(),
+          changeFacts: saveVersionMetadata.changeFacts,
+          expectedHead: versionHistory.currentVersionId
         })
       });
 
       if (!response.ok) {
         const body = (await response.json().catch(() => ({}))) as Partial<SavedAuthoringFileDocument> & {
           readonly error?: string;
+          readonly code?: string;
           readonly pluginValidation?: EditorPluginValidationResult;
         };
         if (response.status === 422 && body.pluginValidation !== undefined) {
@@ -1853,6 +1982,12 @@ export function useEditorWorkspace() {
           setSaveState("error");
           setWorkflowState("blocked");
           setStatusMessage(nextPluginDiagnostics[0]?.message ?? "Plugin validation blocked save.");
+          return;
+        }
+        if (response.status === 409 && body.code === "version_conflict") {
+          setSaveState("conflict");
+          setStatusMessage(t.history.errorConflict);
+          await versionHistory.loadFirstPage();
           return;
         }
 
@@ -1868,10 +2003,10 @@ export function useEditorWorkspace() {
       clearAiSessionState();
       clearPreparedPreview();
       setWorkflowState("idle");
-      const commitLabel = saved.commit?.committed === true && saved.commit.commitHash !== undefined
-        ? ` commit ${saved.commit.commitHash.slice(0, 8)}`
-        : "";
-      setStatusMessage(editorSession === null ? "Saved to repository" : `Saved to session${commitLabel}`);
+      setSaveAuthorComment("");
+      setSessionRecoveryDismissed(true);
+      await versionHistory.loadFirstPage();
+      setStatusMessage(editorSession === null ? "Сохранено в проекте" : "Создана новая сохранённая версия");
     } catch (error) {
       const message = error instanceof Error ? error.message : "Save failed.";
       setSaveState(message.includes("changed on disk") ? "conflict" : "error");
@@ -3492,8 +3627,8 @@ export function useEditorWorkspace() {
    * game entity in the active channel via `buildAddViewFacetChangeSet`, then applies
    * it through the shared atomic commit. Never dangerous (a structural UI add).
    */
-  async function handleCreateEntityView(entity: EditorEntity) {
-    const channel = activeChannel ?? entityCreateChannel;
+  async function handleCreateEntityView(entity: EditorEntity, requestedChannel?: string) {
+    const channel = requestedChannel ?? activeChannel ?? entityCreateChannel;
     if (channel === undefined) {
       setStatusMessage("Нет активного канала для создания вида.");
       return;
@@ -4242,6 +4377,14 @@ export function useEditorWorkspace() {
    * pointer with no graph node still opens the JSON sidebar at that pointer.
    */
   function handleCheckNavigate(item: WorkspaceCheckItem) {
+    const channelNavigation = channelDiagnosticNavigation(item);
+    if (channelNavigation !== undefined) {
+      setPreviewChannel(channelNavigation.previewChannel);
+      handleChannelEntitySelect(channelNavigation.entityId);
+      setTelegramMissingViewCallout(channelNavigation.callout);
+      return;
+    }
+    setTelegramMissingViewCallout(null);
     if (item.entityId !== undefined) {
       handleEntityTreeSelectEntity(item.entityId);
     }
@@ -4281,7 +4424,7 @@ export function useEditorWorkspace() {
     if (item.quickFix === "create-view" && item.entityId !== undefined) {
       const entity = viewModel.editorEntityProjection.entityById.get(item.entityId);
       if (entity !== undefined) {
-        void handleCreateEntityView(entity);
+        void handleCreateEntityView(entity, item.channel);
       }
       return;
     }
@@ -4661,6 +4804,15 @@ export function useEditorWorkspace() {
     currentDocument,
     statusMessage
   });
+  const serverHistoryDirty = versionHistory.dirtySummary?.isDirty ?? editorSession?.dirtySummary.isDirty ?? false;
+  const historyIsDirty = isDirty || serverHistoryDirty;
+  const unsavedFileCount = Math.max(
+    versionHistory.dirtySummary?.changedPaths.length ?? editorSession?.dirtySummary.changedPaths.length ?? 0,
+    isDirty ? 1 : 0
+  );
+  const resumedDirtyPaths = editorSession?.reused === true && editorSession.dirtySummary.isDirty
+    ? editorSession.dirtySummary.changedPaths
+    : [];
 
 
   return {
@@ -4679,6 +4831,10 @@ export function useEditorWorkspace() {
     handleApplyEditsToPreview: () => applyEditsToPreview("preview"),
     previewViewportMode,
     setPreviewViewportMode,
+    previewChannel,
+    setPreviewChannel: handlePreviewChannelChange,
+    previewViewportOrientation,
+    setPreviewViewportOrientation,
     setPreviewInspectMode,
     setAltPlayActive,
     setPreviewPointerPlayMode,
@@ -4699,6 +4855,9 @@ export function useEditorWorkspace() {
     statusMessage,
     syncLabel,
     handleSave,
+    saveAuthorComment,
+    setSaveAuthorComment,
+    proposedSaveSummary: saveVersionMetadata.proposedSummary,
     handleUndoAiChange,
     handleRedoAiChange,
     handleValidate,
@@ -4716,6 +4875,12 @@ export function useEditorWorkspace() {
     intentQueue,
     handleCancelIntent,
     handleResolveStaleIntent,
+    versionHistory,
+    historyIsDirty,
+    latestSavedAt: versionHistory.versions[0]?.createdAt,
+    unsavedFileCount,
+    sessionRecoveryPaths: sessionRecoveryDismissed ? [] : resumedDirtyPaths,
+    dismissSessionRecovery: () => setSessionRecoveryDismissed(true),
     // «Проверки» tab (Phase 8.1; design-spec §3.5; UX §9.6; ADR-057 §4.12): the
     // aggregated diagnostics grouped by severity, their counts, and the
     // navigate / quick-fix / fix-with-agent handlers.
@@ -4761,6 +4926,8 @@ export function useEditorWorkspace() {
     entityGroupingTree,
     entityTreeActiveEntityId,
     handleEntityTreeSelectEntity,
+    handleChannelEntitySelect,
+    telegramMissingViewCallout,
     // «+» entity/prototype creation (Phase 6.2a, part B; design-spec §3.1).
     entityCreateOptions,
     canCreateEntity: currentDocument.source === "repository",

@@ -275,6 +275,41 @@ describe("ManifestRenderer", () => {
     expect(mockOnAction).not.toHaveBeenCalledWith("requestServer", { actionId: "choice.accept" });
   });
 
+  it("renders an item-template area when optional props are omitted", () => {
+    render(
+      <ManifestRenderer
+        screenDefinition={{
+          type: "screen",
+          title: "Declarative log",
+          root: {
+            type: "screenComponent",
+            props: {},
+            children: [
+              {
+                type: "areaComponent",
+                itemTemplate: {
+                  collection: "{{public.log}}",
+                  itemKey: "entry",
+                },
+                children: [
+                  {
+                    type: "richTextComponent",
+                    props: { html: "<p>{{entry.summary}}</p>" },
+                  },
+                ],
+              },
+            ],
+          },
+        }}
+        metrics={{}}
+        onAction={mockOnAction}
+        gameState={{ public: { log: [{ summary: "First entry" }] } }}
+      />
+    );
+
+    expect(screen.getByText("First entry")).toBeDefined();
+  });
+
   it("renders bottom buttons and dispatches action", () => {
     render(
       <ManifestRenderer

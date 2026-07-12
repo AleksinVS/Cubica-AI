@@ -321,15 +321,25 @@ Costs:
 
 ## 14. Открытые вопросы
 
+Закрыто последующими решениями и реализацией:
+
+- preview использует iframe + проверяемый `postMessage` boundary;
+- reference implementation — thin DOM adapter текущего React player;
+- именованные сценарии реализованы как authoring fixtures по ADR-057;
+- Agent UI пишет только через `EditorChangeSet`, approval/dry-run gates и
+  bounded context ADR-044/047/057;
+- reusable capability и game-specific plugin code разделены ADR-037/040;
+- production/remote publication boundary принята ADR-065.
+
+Остаётся открыто:
+
 - Нужна ли совместимость authoring schema v1/v2 через compiler adapter или миграция должна быть one-way.
-- Должен ли preview быть same-origin embedded component or iframe with postMessage boundary.
-- Какой первый renderer adapter должен стать reference implementation: current React player renderer или Phaser prototype.
-- Где хранить long-lived named playthrough scenarios, если они станут частью тестирования.
-- Какой минимальный protocol нужен AI assistant для region selection, automatic ChangeSet generation and repair attempts.
 - Какие technical fields скрывать в entity tree by default, and how to expose advanced mode.
-- Где проходит граница между reusable platform capability and game-specific plugin code.
 - Какая политика проекта определяет, коммитятся ли generated manifests/source maps together with authoring files.
-- Как переносить `contentSourceId` model в удаленную/production среду: через uploaded generated bundle, object storage, repository service API или isolated runtime worker.
+- Какой конкретный storage/worker adapter реализует принятую ADR-065 удалённую
+  preview/publication model.
+- Как Phaser/canvas adapters предоставляют bounds, hit-test и highlight для
+  конкретных игровых поверхностей.
 
 ## 15. Связанные артефакты
 

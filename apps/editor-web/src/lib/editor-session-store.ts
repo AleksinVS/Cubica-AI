@@ -6,15 +6,19 @@
  * Next.js route handlers can resolve the same draft without keeping process
  * memory. The metadata is tooling-only and must never be committed.
  */
+import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
   createProjectGitSession,
+  allowedSavePathsForGame,
+  doesProjectGitSessionMatchVersion,
   getProjectGitStatusSummary,
   listProjectGitWorktrees,
   pruneProjectGitWorktrees,
   removeProjectGitSession,
+  readProjectVersionHead,
   resolveProjectGitRoot,
   type ProjectGitSession
 } from "./project-git-workspace";
@@ -23,6 +27,11 @@ import {
   listAuthoringFiles,
   type AuthoringListResult
 } from "./editor-repository";
+import {
+  EditorSessionLeaseError,
+  type EditorSessionLeaseOptions,
+  withEditorSessionLease
+} from "./editor-session-lease";
 import { EDITOR_CACHE_DEFAULT_MAX_BYTES, garbageCollectEditorCache } from "./editor-file-cache";
 import { retainPreviewCheckpoints } from "./preview-checkpoint-retention";
 
@@ -35,7 +44,7 @@ export interface EditorSessionDirtySummary {
 }
 
 export interface EditorSessionDocument extends ProjectGitSession {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
   readonly userId: string;
   readonly projectId: string;
   readonly gameId: string;
@@ -48,6 +57,7 @@ export interface EditorSessionDocument extends ProjectGitSession {
   readonly expiresAt: string;
   readonly dirtySummary: EditorSessionDirtySummary;
   readonly lastSavedCommit?: string;
+  readonly currentVersionId?: string;
   readonly label?: string;
 }
 
@@ -69,6 +79,7 @@ export interface EditorSessionPublic {
   readonly lastUsedAt: string;
   readonly expiresAt: string;
   readonly dirtySummary: EditorSessionDirtySummary;
+  readonly currentVersionId: string | null;
   readonly reused: boolean;
 }
 
@@ -117,7 +128,7 @@ export interface EditorSessionGarbageCollectResult {
   readonly diagnostics: readonly string[];
 }
 
-const sessionSchemaVersion = 2;
+const sessionSchemaVersion = 3;
 const sessionIdPattern = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$/u;
 const defaultUserId = "local-developer";
 const defaultPlatformReleaseId = "local-dev";
@@ -131,6 +142,22 @@ const editorCacheMaxBytes = readPositiveIntegerEnv("CUBICA_EDITOR_CACHE_MAX_BYTE
 // `.tmp/editor-playthroughs/`; older-than-N snapshots are trimmed on each GC pass.
 const playthroughCheckpointsPerSession = readPositiveIntegerEnv("CUBICA_EDITOR_PLAYTHROUGH_CHECKPOINTS_PER_SESSION", 20);
 
+/** Public orchestration boundary used by Save and Restore route handlers. */
+export async function withEditorSessionMutationLease<T>(
+  sessionId: string,
+  operation: string,
+  callback: () => Promise<T>,
+  options?: EditorSessionLeaseOptions
+): Promise<T> {
+  validateSessionId(sessionId);
+  return withEditorSessionLease({
+    repoRoot: await resolveRepositoryRoot(),
+    sessionId,
+    operation,
+    options
+  }, callback);
+}
+
 export async function createEditorSession(input: {
   readonly gameId?: string | null;
   readonly repoRoot?: string;
@@ -140,6 +167,7 @@ export async function createEditorSession(input: {
 }): Promise<CreateEditorSessionResult> {
   const initialList = await listAuthoringFiles({ gameId: input.gameId, repoRoot: input.repoRoot });
   const projectRoot = await resolveProjectGitRoot(input.repoRoot ?? process.cwd());
+  const leaseRoot = await resolveRepositoryRoot();
   const userId = normalizeUserId(input.userId);
   const platform = currentEditorPlatformRelease();
 
@@ -165,39 +193,49 @@ export async function createEditorSession(input: {
     }
   }
 
-  const gitSession = await createProjectGitSession({
-    projectRoot,
-    gameId: initialList.gameId
+  const sessionId = createEditorSessionId(initialList.gameId);
+  return withEditorSessionLease({ repoRoot: leaseRoot, sessionId, operation: "create" }, async () => {
+    let gitSession: ProjectGitSession | undefined;
+    try {
+      gitSession = await createProjectGitSession({
+        projectRoot,
+        gameId: initialList.gameId,
+        sessionId
+      });
+      const now = new Date().toISOString();
+      const session: EditorSessionDocument = {
+        ...gitSession,
+        schemaVersion: sessionSchemaVersion,
+        userId,
+        projectId: projectRoot,
+        gameId: initialList.gameId,
+        platformReleaseId: platform.platformReleaseId,
+        pluginApiVersion: platform.pluginApiVersion,
+        status: "active",
+        createdAt: now,
+        updatedAt: now,
+        lastUsedAt: now,
+        expiresAt: expiresAt(now, false),
+        dirtySummary: cleanDirtySummary(now),
+        label: normalizeOptionalLabel(input.label)
+      };
+
+      await writeSessionDocument(session);
+      const sessionList = await listAuthoringFiles({
+        gameId: session.gameId,
+        repoRoot: session.worktreePath
+      });
+      return {
+        ...sessionList,
+        session: toPublicSession(session, false)
+      };
+    } catch (error) {
+      if (gitSession !== undefined) {
+        await removeProjectGitSession(gitSession).catch(() => undefined);
+      }
+      throw error;
+    }
   });
-  const now = new Date().toISOString();
-  const session: EditorSessionDocument = {
-    ...gitSession,
-    schemaVersion: sessionSchemaVersion,
-    userId,
-    projectId: projectRoot,
-    gameId: initialList.gameId,
-    platformReleaseId: platform.platformReleaseId,
-    pluginApiVersion: platform.pluginApiVersion,
-    status: "active",
-    createdAt: now,
-    updatedAt: now,
-    lastUsedAt: now,
-    expiresAt: expiresAt(now, false),
-    dirtySummary: cleanDirtySummary(now),
-    label: normalizeOptionalLabel(input.label)
-  };
-
-  await writeSessionDocument(session);
-
-  const sessionList = await listAuthoringFiles({
-    gameId: session.gameId,
-    repoRoot: session.worktreePath
-  });
-
-  return {
-    ...sessionList,
-    session: toPublicSession(session, false)
-  };
 }
 
 export async function listEditorSessions(input: {
@@ -235,24 +273,43 @@ export async function readEditorSession(sessionId: string): Promise<EditorSessio
     throw new EditorRepositoryError("Editor session metadata id does not match the requested session.", 500);
   }
   if (migrated) {
-    await writeSessionDocument(session);
+    return withEditorSessionLease({ repoRoot, sessionId, operation: "metadata-migration" }, async () => {
+      // The first read happened before the lease. Re-read after acquisition so
+      // a migration can never overwrite a newer Save/touch metadata document.
+      const latestText = await readFile(filePath, "utf8");
+      const latestParsed = JSON.parse(latestText) as Partial<EditorSessionDocument> & Record<string, unknown>;
+      const latest = normalizeSessionDocument(latestParsed);
+      if (latest.session.sessionId !== sessionId) {
+        throw new EditorRepositoryError("Editor session metadata id does not match the requested session.", 500);
+      }
+      if (latest.migrated) {
+        await writeSessionDocument(latest.session);
+      }
+      return latest.session;
+    });
   }
 
   return session;
 }
 
 export async function touchEditorSession(sessionId: string): Promise<EditorSessionDocument> {
+  return withEditorSessionMutationLease(sessionId, "touch", () => touchEditorSessionUnderLease(sessionId));
+}
+
+async function touchEditorSessionUnderLease(sessionId: string): Promise<EditorSessionDocument> {
   const session = await readEditorSession(sessionId);
   assertSessionCanBeUsed(session);
   const now = new Date().toISOString();
   const dirtySummary = await readDirtySummary(session, now);
+  const currentVersionId = await reconcileDurableVersion(session, dirtySummary);
   const next: EditorSessionDocument = {
     ...session,
-    status: dirtySummary.isDirty ? "dirty" : session.lastSavedCommit === undefined ? "active" : "saved",
+    status: dirtySummary.isDirty ? "dirty" : currentVersionId === undefined ? "active" : "saved",
     updatedAt: now,
     lastUsedAt: now,
     expiresAt: expiresAt(now, dirtySummary.isDirty),
-    dirtySummary
+    dirtySummary,
+    currentVersionId
   };
 
   await writeSessionDocument(next);
@@ -262,18 +319,29 @@ export async function touchEditorSession(sessionId: string): Promise<EditorSessi
 export async function markEditorSessionSaved(input: {
   readonly sessionId: string;
   readonly commitHash?: string;
+  readonly versionId?: string;
+}): Promise<EditorSessionDocument> {
+  return withEditorSessionMutationLease(input.sessionId, "mark-saved", () => markEditorSessionSavedUnderLease(input));
+}
+
+async function markEditorSessionSavedUnderLease(input: {
+  readonly sessionId: string;
+  readonly commitHash?: string;
+  readonly versionId?: string;
 }): Promise<EditorSessionDocument> {
   const session = await readEditorSession(input.sessionId);
   assertSessionCanBeUsed(session);
   const now = new Date().toISOString();
+  const dirtySummary = await readDirtySummary(session, now);
   const next: EditorSessionDocument = {
     ...session,
-    status: "saved",
+    status: dirtySummary.isDirty ? "dirty" : "saved",
     updatedAt: now,
     lastUsedAt: now,
-    expiresAt: expiresAt(now, false),
-    dirtySummary: cleanDirtySummary(now),
-    lastSavedCommit: input.commitHash ?? session.lastSavedCommit
+    expiresAt: expiresAt(now, dirtySummary.isDirty),
+    dirtySummary,
+    lastSavedCommit: input.commitHash ?? session.lastSavedCommit,
+    currentVersionId: input.versionId ?? session.currentVersionId
   };
 
   await writeSessionDocument(next);
@@ -283,6 +351,10 @@ export async function markEditorSessionSaved(input: {
 export async function closeEditorSession(sessionId: string): Promise<CloseEditorSessionResult> {
   validateSessionId(sessionId);
   const repoRoot = await resolveRepositoryRoot();
+  return withEditorSessionLease({ repoRoot, sessionId, operation: "close" }, () => closeEditorSessionUnderLease(sessionId, repoRoot));
+}
+
+async function closeEditorSessionUnderLease(sessionId: string, repoRoot: string): Promise<CloseEditorSessionResult> {
   const diagnostics: string[] = [];
 
   const session = await readEditorSession(sessionId).catch((error: unknown) => {
@@ -296,7 +368,10 @@ export async function closeEditorSession(sessionId: string): Promise<CloseEditor
     diagnostics.push("Editor session metadata was already absent.");
     await removeProjectGitSession({
       projectRoot: repoRoot,
-      worktreePath: path.join(repoRoot, ".tmp", "editor-worktrees", sessionId)
+      worktreePath: path.join(repoRoot, ".tmp", "editor-worktrees", sessionId),
+      branchName: `editor/session/${sessionId}`
+    }).catch(() => {
+      diagnostics.push("Editor session cleanup could not be completed safely.");
     });
     await rm(sessionDocumentPath(repoRoot, sessionId), { force: true });
     return { ok: true, sessionId, removed: false, diagnostics };
@@ -310,12 +385,16 @@ export async function closeEditorSession(sessionId: string): Promise<CloseEditor
     lastUsedAt: closedAt,
     expiresAt: closedAt
   });
-  await removeProjectGitSession(session).catch(async (error: unknown) => {
-    diagnostics.push(error instanceof Error ? error.message : "Failed to remove editor session worktree.");
-    await rm(session.worktreePath, { recursive: true, force: true }).catch(() => undefined);
-  });
-  await rm(sessionDocumentPath(repoRoot, sessionId), { force: true });
-  return { ok: true, sessionId, removed: true, diagnostics };
+  const removed = await removeProjectGitSession(session)
+    .then(() => true)
+    .catch(() => {
+      diagnostics.push("Editor session cleanup could not be completed safely.");
+      return false;
+    });
+  if (removed) {
+    await rm(sessionDocumentPath(repoRoot, sessionId), { force: true });
+  }
+  return { ok: true, sessionId, removed, diagnostics };
 }
 
 export async function repoRootForSession(
@@ -351,6 +430,7 @@ export function toPublicSession(session: EditorSessionDocument, reused = false):
     lastUsedAt: session.lastUsedAt,
     expiresAt: session.expiresAt,
     dirtySummary: session.dirtySummary,
+    currentVersionId: session.currentVersionId ?? null,
     reused
   };
 }
@@ -436,42 +516,94 @@ export async function garbageCollectEditorSessions(input: {
   const skippedDirtySessions: string[] = [];
   const diagnostics: string[] = [];
 
-  for (const session of documents) {
-    const worktreeExists = await directoryExists(session.worktreePath);
-    const sessionExpired = isExpired(session, now);
-    const removable =
-      session.status === "closed" ||
-      session.status === "expired" ||
-      session.status === "orphaned" ||
-      sessionExpired ||
-      !worktreeExists;
+  for (const listedSession of documents) {
+    try {
+      await withEditorSessionLease({
+        repoRoot,
+        sessionId: listedSession.sessionId,
+        operation: "gc",
+        options: { waitMs: 0 }
+      }, async () => {
+        const session = await readEditorSession(listedSession.sessionId).catch((error: unknown) => {
+          if (error instanceof EditorRepositoryError && error.statusCode === 404) {
+            return undefined;
+          }
+          throw error;
+        });
+        if (session === undefined) {
+          documentIds.delete(listedSession.sessionId);
+          return;
+        }
 
-    if (!removable) {
-      continue;
-    }
-    if (session.dirtySummary.isDirty && !removeDirty && worktreeExists) {
-      skippedDirtySessions.push(session.sessionId);
-      continue;
-    }
+        const worktreeExists = await directoryExists(session.worktreePath);
+        const freshDirtySummary = worktreeExists
+          ? await getProjectGitStatusSummary(session.worktreePath).then((status) => ({
+              isDirty: status.isDirty,
+              changedPaths: status.changedPaths,
+              checkedAt: new Date().toISOString()
+            }))
+          : session.dirtySummary;
 
-    removedSessions.push(session.sessionId);
-    if (!dryRun) {
-      await removeProjectGitSession(session).catch((error: unknown) => {
-        diagnostics.push(error instanceof Error ? error.message : `Failed to remove worktree for ${session.sessionId}.`);
+        const removable =
+          session.status === "closed" ||
+          session.status === "expired" ||
+          session.status === "orphaned" ||
+          isExpired(session, now) ||
+          !worktreeExists;
+        if (!removable) {
+          return;
+        }
+
+        // The destructive decision is made only after the lease and a fresh
+        // Git status. Persisting a newly-discovered dirty state also extends its
+        // lifetime so the next GC cannot repeat the same stale decision.
+        if (worktreeExists && freshDirtySummary.isDirty && !removeDirty) {
+          skippedDirtySessions.push(session.sessionId);
+          if (!dryRun) {
+            const checkedAt = freshDirtySummary.checkedAt;
+            await writeSessionDocument({
+              ...session,
+              status: "dirty",
+              updatedAt: checkedAt,
+              expiresAt: expiresAt(checkedAt, true),
+              dirtySummary: freshDirtySummary
+            });
+          }
+          return;
+        }
+
+        if (!dryRun) {
+          try {
+            await removeProjectGitSession(session);
+          } catch {
+            diagnostics.push(`Editor session cleanup failed safely for ${session.sessionId}.`);
+            return;
+          }
+          await rm(sessionDocumentPath(repoRoot, session.sessionId), { force: true });
+          documentIds.delete(session.sessionId);
+        }
+        removedSessions.push(session.sessionId);
+        removedMetadata.push(session.sessionId);
+        if (worktreeExists) {
+          // Public GC results identify the logical resource, never its absolute
+          // host path.
+          removedWorktrees.push(session.sessionId);
+        }
       });
-      await rm(sessionDocumentPath(repoRoot, session.sessionId), { force: true });
-    }
-    removedMetadata.push(session.sessionId);
-    if (worktreeExists) {
-      removedWorktrees.push(session.worktreePath);
+    } catch (error) {
+      if (error instanceof EditorSessionLeaseError) {
+        diagnostics.push(`Editor session ${listedSession.sessionId} was busy and was not removed.`);
+      } else {
+        diagnostics.push(`Editor session cleanup failed safely for ${listedSession.sessionId}.`);
+      }
     }
   }
 
   const projectRoots = new Set<string>([repoRoot, ...documents.map((session) => session.projectRoot)]);
-  for (const projectRoot of projectRoots) {
-    const worktrees = await listProjectGitWorktrees(projectRoot).catch(() => []);
+  for (const contentProjectRoot of projectRoots) {
+    const worktrees = await listProjectGitWorktrees(contentProjectRoot).catch(() => []);
     for (const worktree of worktrees) {
-      if (!isEditorWorktreePath(projectRoot, worktree.worktreePath)) {
+      if (!isEditorWorktreePath(contentProjectRoot, worktree.worktreePath)) {
         continue;
       }
       const sessionId = path.basename(worktree.worktreePath);
@@ -479,11 +611,34 @@ export async function garbageCollectEditorSessions(input: {
         continue;
       }
 
-      removedWorktrees.push(worktree.worktreePath);
-      if (!dryRun) {
-        await removeProjectGitSession({ projectRoot, worktreePath: worktree.worktreePath }).catch((error: unknown) => {
-          diagnostics.push(error instanceof Error ? error.message : `Failed to remove orphan worktree ${worktree.worktreePath}.`);
+      try {
+        await withEditorSessionLease({ repoRoot, sessionId, operation: "gc-orphan", options: { waitMs: 0 } }, async () => {
+          const appearedSession = await readEditorSession(sessionId).catch((error: unknown) => {
+            if (error instanceof EditorRepositoryError && error.statusCode === 404) {
+              return undefined;
+            }
+            throw error;
+          });
+          if (appearedSession !== undefined) {
+            // A session may have completed creation after GC took its initial
+            // metadata snapshot. The lease plus this second lookup closes that
+            // race before orphan cleanup becomes destructive.
+            documentIds.add(sessionId);
+            return;
+          }
+          if (!dryRun) {
+            await removeProjectGitSession({
+              projectRoot: contentProjectRoot,
+              worktreePath: worktree.worktreePath,
+              branchName: worktree.branch?.replace(/^refs\/heads\//u, "")
+            });
+          }
+          removedWorktrees.push(sessionId);
         });
+      } catch (error) {
+        diagnostics.push(error instanceof EditorSessionLeaseError
+          ? `Editor session ${sessionId} was busy and was not removed.`
+          : `Orphan editor worktree ${sessionId} failed safe cleanup.`);
       }
     }
   }
@@ -521,8 +676,8 @@ export async function garbageCollectEditorSessions(input: {
   });
 
   if (!dryRun) {
-    for (const projectRoot of projectRoots) {
-      await pruneProjectGitWorktrees(projectRoot).catch(() => undefined);
+    for (const contentProjectRoot of projectRoots) {
+      await pruneProjectGitWorktrees(contentProjectRoot).catch(() => undefined);
     }
   }
 
@@ -532,10 +687,10 @@ export async function garbageCollectEditorSessions(input: {
     removedSessions,
     removedMetadata,
     removedWorktrees: uniqueSorted(removedWorktrees),
-    removedPluginBundles,
-    removedPreviewTraces,
-    trimmedCheckpoints,
-    removedCacheEntries,
+    removedPluginBundles: removedPluginBundles.map((item) => safeToolingIdentifier(repoRoot, item)),
+    removedPreviewTraces: removedPreviewTraces.map((item) => safeToolingIdentifier(repoRoot, item)),
+    trimmedCheckpoints: trimmedCheckpoints.map((item) => safeToolingIdentifier(repoRoot, item)),
+    removedCacheEntries: removedCacheEntries.map((item) => safeToolingIdentifier(repoRoot, item)),
     skippedDirtySessions,
     diagnostics
   };
@@ -673,6 +828,7 @@ function normalizeSessionDocument(
     expiresAt: expires,
     dirtySummary,
     lastSavedCommit: typeof parsed.lastSavedCommit === "string" ? parsed.lastSavedCommit : undefined,
+    currentVersionId: typeof parsed.currentVersionId === "string" ? parsed.currentVersionId : undefined,
     label: typeof parsed.label === "string" ? parsed.label : undefined
   };
 
@@ -687,6 +843,7 @@ function normalizeSessionDocument(
       parsed.status !== session.status ||
       parsed.lastUsedAt !== session.lastUsedAt ||
       parsed.expiresAt !== session.expiresAt ||
+      parsed.currentVersionId !== session.currentVersionId ||
       !isDirtySummary(parsed.dirtySummary)
   };
 }
@@ -709,6 +866,34 @@ async function readDirtySummary(session: EditorSessionDocument, checkedAt: strin
     changedPaths: summary.changedPaths,
     checkedAt
   };
+}
+
+/**
+ * Repairs only a proven post-CAS metadata gap.
+ *
+ * A clean but older session must not silently adopt another session's newer
+ * head: doing so would let stale files overwrite that version. We advance the
+ * stored id only when the allowlisted files are byte-equivalent to the current
+ * durable snapshot.
+ */
+async function reconcileDurableVersion(
+  session: EditorSessionDocument,
+  dirtySummary: EditorSessionDirtySummary
+): Promise<string | undefined> {
+  if (dirtySummary.isDirty) {
+    return session.currentVersionId;
+  }
+  const durableHead = await readProjectVersionHead(session.projectRoot, session.gameId);
+  if (durableHead === undefined || durableHead === session.currentVersionId) {
+    return durableHead;
+  }
+  const matches = await doesProjectGitSessionMatchVersion({
+    projectRoot: session.projectRoot,
+    worktreePath: session.worktreePath,
+    versionId: durableHead,
+    allowedPaths: allowedSavePathsForGame({ gameId: session.gameId })
+  });
+  return matches ? durableHead : session.currentVersionId;
 }
 
 async function cleanupGeneratedFiles(input: {
@@ -884,10 +1069,26 @@ function uniqueSorted(values: readonly string[]): readonly string[] {
   return [...new Set(values)].sort();
 }
 
+/** Converts internal absolute artifact paths to stable repository-relative ids. */
+function safeToolingIdentifier(repoRoot: string, identifier: string): string {
+  const separatorIndex = identifier.lastIndexOf("#");
+  const filePath = separatorIndex === -1 ? identifier : identifier.slice(0, separatorIndex);
+  const suffix = separatorIndex === -1 ? "" : identifier.slice(separatorIndex);
+  const relative = path.relative(repoRoot, filePath);
+  const safePath = relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative)
+    ? relative.replaceAll("\\", "/")
+    : path.basename(filePath);
+  return `${safePath}${suffix}`;
+}
+
 function validateSessionId(sessionId: string): void {
   if (!sessionIdPattern.test(sessionId) || sessionId.includes("..")) {
     throw new EditorRepositoryError("Session id must be a safe editor session segment.", 400);
   }
+}
+
+function createEditorSessionId(gameId: string): string {
+  return `${gameId}-${Date.now().toString(36)}-${randomUUID().slice(0, 8)}`;
 }
 
 function readPositiveIntegerEnv(name: string, fallback: number): number {

@@ -1,0 +1,12 @@
+{
+  "extends": "../../../../apps/player-web/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "incremental": false,
+    "paths": {
+      "@/*": ["../../../../apps/player-web/src/*"],
+      "@cubica/player-web/plugin-api": ["../../../../apps/player-web/src/plugins/player-plugin-api.ts"]
+    }
+  },
+  "include": ["src/**/*.ts", "tests/**/*.ts"]
+}

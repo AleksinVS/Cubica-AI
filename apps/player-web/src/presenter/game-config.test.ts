@@ -4,6 +4,7 @@ import { ManifestAction } from "@cubica/contracts-manifest";
 
 import { createDefaultGameConfigData, createDefaultGameConfig } from "./game-config";
 import { buildGameConfig } from "./game-config-registry";
+import { resolveExpressions } from "@/lib/expression-resolver";
 
 const simpleChoiceContent: PlayerFacingContent = {
   gameId: "simple-choice",
@@ -82,6 +83,10 @@ describe("default game config", () => {
       gameId: "simple-choice",
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
       state: {
+        players: {
+          p1: { metrics: { cash: 900, position: 0 } },
+          p2: { metrics: { cash: 900, position: 0 } },
+        },
         public: {
           metrics: { score: 0 },
           choice: { outcome: "pending" },
@@ -94,6 +99,14 @@ describe("default game config", () => {
       metrics: { score: 0 },
       choice: { outcome: "pending" },
     });
+    expect(state.players).toEqual({
+      p1: { metrics: { cash: 900, position: 0 } },
+      p2: { metrics: { cash: 900, position: 0 } },
+    });
+    expect(resolveExpressions(
+      "Игрок 1: {{game.state.players.p1.metrics.cash}} монет",
+      state
+    )).toBe("Игрок 1: 900 монет");
     expect(state.content).toEqual({
       choices: [{ id: "accept", actionId: "choice.accept" }],
     });
@@ -117,8 +130,34 @@ describe("default game config", () => {
     expect(dispatched).toEqual([
       {
         actionId: "choice.accept",
-        payload: { actionId: "choice.accept" },
+        payload: {},
       },
+    ]);
+  });
+
+  it("unwraps schema-validated params from generic requestServer routing metadata", () => {
+    const data = createDefaultGameConfigData(simpleChoiceContent);
+    const config = createDefaultGameConfig(data);
+    const dispatched: Array<{ actionId: string; payload?: Record<string, unknown> }> = [];
+    const adapter = config.createManifestActionAdapter(
+      simpleChoiceContent,
+      {},
+      (actionId, payload) => dispatched.push({ actionId, payload }),
+      (message) => {
+        throw new Error(message);
+      }
+    );
+
+    adapter(ManifestAction.REQUEST_SERVER, {
+      actionId: "property.buy",
+      params: { cellId: "cell-02" }
+    });
+
+    expect(dispatched).toEqual([
+      {
+        actionId: "property.buy",
+        payload: { cellId: "cell-02" }
+      }
     ]);
   });
 

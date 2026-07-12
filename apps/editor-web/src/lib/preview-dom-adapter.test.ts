@@ -42,6 +42,43 @@ describe("preview DOM adapter", () => {
     expect(entities[1]?.label).toBe("Кнопка далее");
   });
 
+  it("maps channel DOM into local coordinates and preserves the source file", () => {
+    const root = document.createElement("div");
+    root.innerHTML = `
+      <button
+        data-editor-entity-id="message"
+        data-authoring-pointer="/root/screens/0/root/children/0"
+        data-authoring-file="authoring/ui/telegram.authoring.json"
+      >Сообщение</button>
+    `;
+    setRect(root, { x: 120, y: 80, width: 400, height: 600 });
+    setRect(root.children[0] as Element, { x: 144, y: 112, width: 180, height: 60 });
+
+    const adapter = createDomPreviewAdapter(root, { coordinateRoot: root });
+
+    expect(adapter.getEntities()[0]).toMatchObject({
+      entityId: "message",
+      authoringPointer: "/root/screens/0/root/children/0",
+      bounds: { x: 24, y: 32, width: 180, height: 60 },
+      metadata: { sourceFilePath: "authoring/ui/telegram.authoring.json" }
+    });
+    expect(adapter.hitTestPoint({ x: 30, y: 40 }).entities[0]?.entityId).toBe("message");
+    expect(adapter.hitTestRect({ x: 20, y: 30, width: 40, height: 40 }).entities[0]?.entityId).toBe("message");
+  });
+
+  it("keeps the Web DOM descriptor shape unchanged when channel metadata is absent", () => {
+    const root = document.createElement("div");
+    root.innerHTML = `<div data-editor-entity-id="web" data-authoring-pointer="/root/web"></div>`;
+    setRect(root.children[0] as Element, { x: 10, y: 20, width: 30, height: 40 });
+
+    expect(createDomPreviewAdapter(root).getEntities()[0]).toMatchObject({
+      entityId: "web",
+      authoringPointer: "/root/web",
+      bounds: { x: 10, y: 20, width: 30, height: 40 }
+    });
+    expect(createDomPreviewAdapter(root).getEntities()[0]?.metadata).toBeUndefined();
+  });
+
   it("hit-tests DOM entities through editor-engine geometry helpers", () => {
     const root = document.createElement("div");
     root.innerHTML = `

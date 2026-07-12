@@ -7,6 +7,7 @@
  */
 import { garbageCollectEditorSessions } from "@/lib/editor-session-store";
 import { EditorRepositoryError } from "@/lib/editor-repository";
+import { EditorSessionLeaseError } from "@/lib/editor-session-lease";
 
 export const runtime = "nodejs";
 
@@ -35,8 +36,14 @@ export async function POST(request: Request) {
 
 function errorResponse(error: unknown): Response {
   if (error instanceof EditorRepositoryError) {
-    return Response.json({ error: error.message }, { status: error.statusCode });
+    if (error.statusCode >= 500) {
+      return Response.json({ error: "Unexpected editor session GC failure." }, { status: 500 });
+    }
+    return Response.json({
+      error: error.message,
+      ...(error instanceof EditorSessionLeaseError ? { code: error.code } : {})
+    }, { status: error.statusCode });
   }
 
-  return Response.json({ error: error instanceof Error ? error.message : "Unexpected editor session GC failure." }, { status: 500 });
+  return Response.json({ error: "Unexpected editor session GC failure." }, { status: 500 });
 }

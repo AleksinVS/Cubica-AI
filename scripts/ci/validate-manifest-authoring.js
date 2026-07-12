@@ -372,15 +372,19 @@ function collectActionReferences(value, filePath, pointer = "") {
     return references;
   }
 
-  if (value.payload && typeof value.payload.actionId === "string") {
+  // Item templates may resolve an action id from a server-projected collection
+  // at render time. Static ids still participate in the dangling-reference
+  // check; a full `{{path}}` expression is validated through its binding path.
+  const payloadActionId = value.payload?.actionId;
+  if (typeof payloadActionId === "string" && !/^\{\{[^{}]+\}\}$/u.test(payloadActionId)) {
     references.push({
       kind: "payload.actionId",
-      actionId: value.payload.actionId,
+      actionId: payloadActionId,
       filePath,
       pointer: `${pointer}/payload/actionId`
     });
   }
-  if (typeof value.advanceActionId === "string") {
+  if (typeof value.advanceActionId === "string" && !/^\{\{[^{}]+\}\}$/u.test(value.advanceActionId)) {
     references.push({
       kind: "advanceActionId",
       actionId: value.advanceActionId,

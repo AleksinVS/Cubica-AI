@@ -57,7 +57,9 @@ import type {
   MonacoEditorInstance,
   PlannedAiChangeSet,
   PlannedPrototypeExtractionProposal,
+  PreviewChannel,
   PreviewViewportMode,
+  PreviewViewportOrientation,
   SemanticFlowEdge,
   SidebarResizeState
 } from "./types.ts";
@@ -199,6 +201,14 @@ export function usePreviewRuntimeState() {
   const [previewPointerPlayMode, setPreviewPointerPlayMode] = useState(false);
   const [previewPointSelectionMode, setPreviewPointSelectionMode] = useState(false);
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
+  // This selects an editor renderer only. Telegram remains a structural view of
+  // its authoring document and never changes or replaces the running Web iframe.
+  const [previewChannel, setPreviewChannel] = useState<PreviewChannel>("web");
+  // Orientation changes only the preview frame dimensions. It deliberately
+  // does not reload the iframe or mutate authoring content, so authors can
+  // compare responsive layouts without losing the current runtime state.
+  const [previewViewportOrientation, setPreviewViewportOrientation] =
+    useState<PreviewViewportOrientation>("landscape");
   // Top-level editor mode (ADR-057 §4.8; design-spec §3.3). "design" auto-applies
   // valid edits to the preview by debounce; "preview" keeps a running playthrough
   // and applies edits only on explicit request. Orthogonal to Play/Inspect input
@@ -256,6 +266,10 @@ export function usePreviewRuntimeState() {
     setPreviewPointSelectionMode,
     previewViewportMode,
     setPreviewViewportMode,
+    previewChannel,
+    setPreviewChannel,
+    previewViewportOrientation,
+    setPreviewViewportOrientation,
     editorMode,
     setEditorMode,
     previewAppliedVersionHash,

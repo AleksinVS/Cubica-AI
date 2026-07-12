@@ -17,6 +17,7 @@ import { AiChatSidebarPanel } from "./ai-chat-sidebar-panel.tsx";
 import { AssetLibraryPanel } from "./asset-library-panel.tsx";
 import { ChecksSidebarPanel } from "./checks-sidebar-panel.tsx";
 import { IntentQueuePanel } from "./intent-queue-panel.tsx";
+import { HistorySidebarPanel } from "./history-sidebar-panel.tsx";
 import { EntityTree } from "./entity-tree.tsx";
 import { edgeTypes, nodeTypes } from "./semantic-graph.tsx";
 import { TimelineSidebarPanel } from "./timeline-sidebar-panel.tsx";
@@ -69,6 +70,8 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
     intentQueue,
     handleCancelIntent,
     handleResolveStaleIntent,
+    versionHistory,
+    historyIsDirty,
     checkGroups,
     handleCheckNavigate,
     handleCheckQuickFix,
@@ -89,6 +92,8 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
       aria-label={
         leftSidebarPanel === "timeline"
           ? t.activityBar.timeline
+          : leftSidebarPanel === "history"
+            ? t.activityBar.history
           : leftSidebarPanel === "chat"
             ? t.activityBar.aiChat
             : leftSidebarPanel === "checks"
@@ -201,6 +206,23 @@ export function LeftSidebar({ controller }: { controller: EditorWorkspaceControl
           onReplayCurrent={handlePreviewReplayCurrent}
           canPinFixture={canPinFixture}
           onPinFixture={handlePinFixture}
+        />
+      ) : leftSidebarPanel === "history" ? (
+        <HistorySidebarPanel
+          versions={versionHistory.versions}
+          nextCursor={versionHistory.nextCursor}
+          selectedVersionId={versionHistory.selectedVersionId}
+          selectedDetails={versionHistory.selectedDetails}
+          listState={versionHistory.listState}
+          detailsState={versionHistory.detailsState}
+          restoreState={versionHistory.restoreState}
+          error={versionHistory.error}
+          isDirty={historyIsDirty}
+          onCollapse={() => setLeftSidebarPanel(undefined)}
+          onRetry={() => void versionHistory.loadFirstPage()}
+          onLoadMore={() => void versionHistory.loadMore()}
+          onSelectVersion={(versionId) => void versionHistory.selectVersion(versionId)}
+          onRestore={(versionId) => void versionHistory.restore(versionId)}
         />
       ) : leftSidebarPanel === "checks" ? (
         /* «Проверки» tab (Phase 8.1; design-spec §3.5; UX §9.6; ADR-057 §4.12):
