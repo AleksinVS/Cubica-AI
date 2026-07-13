@@ -1,0 +1,280 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.local/schemas/ui-comparison-profile.v2.json",
+  "title": "Cubica Reproducible UI Comparison Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "mode",
+    "reference",
+    "inventory",
+    "viewports",
+    "capture",
+    "compare",
+    "accessibility",
+    "tool"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://cubica.local/schemas/ui-comparison-profile.v2.json"
+    },
+    "schemaVersion": {
+      "const": "2.0"
+    },
+    "mode": {
+      "enum": [
+        "pixel-parity",
+        "style-parity"
+      ]
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "source"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "source": {
+          "$ref": "https://cubica.local/schemas/ui-comparison-inventory.v1.json#/definitions/source"
+        }
+      }
+    },
+    "inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "viewports": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "width",
+          "height"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "width": {
+            "type": "integer",
+            "minimum": 240
+          },
+          "height": {
+            "type": "integer",
+            "minimum": 240
+          },
+          "referencePath": {
+            "type": "string",
+            "minLength": 1
+          },
+          "referenceSha256": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "capture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dpr",
+        "colorScheme",
+        "reducedMotion",
+        "locale",
+        "timezoneId",
+        "waitMs",
+        "stabilityFrames",
+        "stabilityIntervalMs",
+        "maxStabilityAttempts"
+      ],
+      "properties": {
+        "dpr": {
+          "type": "number",
+          "const": 1
+        },
+        "colorScheme": {
+          "enum": [
+            "light",
+            "dark",
+            "no-preference"
+          ]
+        },
+        "reducedMotion": {
+          "const": "reduce"
+        },
+        "locale": {
+          "type": "string",
+          "minLength": 2
+        },
+        "timezoneId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "waitMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 30000
+        },
+        "stabilityFrames": {
+          "const": 2
+        },
+        "stabilityIntervalMs": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5000
+        },
+        "maxStabilityAttempts": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 20
+        },
+        "waitSelector": {
+          "type": "string",
+          "minLength": 1
+        },
+        "steps": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "compare": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "threshold",
+        "gate",
+        "cellGate",
+        "tolerance",
+        "includeAA"
+      ],
+      "properties": {
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "gate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "cellGate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "tolerance": {
+          "type": "number",
+          "minimum": 0
+        },
+        "includeAA": {
+          "type": "boolean"
+        }
+      }
+    },
+    "accessibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimumTargetSize",
+        "normalTextContrast",
+        "largeTextContrast",
+        "maxAuditedElements"
+      ],
+      "properties": {
+        "minimumTargetSize": {
+          "type": "number",
+          "minimum": 1
+        },
+        "normalTextContrast": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21
+        },
+        "largeTextContrast": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 21
+        },
+        "maxAuditedElements": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contractVersion",
+        "captureAlgorithmVersion",
+        "scriptSha256",
+        "node",
+        "playwright",
+        "platform",
+        "arch"
+      ],
+      "properties": {
+        "contractVersion": {
+          "const": "2.0.0"
+        },
+        "captureAlgorithmVersion": {
+          "const": "2.0.0"
+        },
+        "scriptSha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "node": {
+          "type": "string",
+          "minLength": 1
+        },
+        "playwright": {
+          "type": "string",
+          "minLength": 1
+        },
+        "platform": {
+          "type": "string",
+          "minLength": 1
+        },
+        "arch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

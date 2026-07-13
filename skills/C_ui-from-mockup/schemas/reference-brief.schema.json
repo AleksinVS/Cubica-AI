@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.local/schemas/ui-reference-brief.v1.json",
+  "title": "Cubica UI Reference Brief",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "scope",
+    "mode",
+    "target",
+    "references",
+    "states",
+    "interactions",
+    "responsiveRules",
+    "semantics",
+    "uncertainties",
+    "acceptance"
+  ],
+  "properties": {
+    "$schema": { "const": "https://cubica.local/schemas/ui-reference-brief.v1.json" },
+    "schemaVersion": { "const": "1.0" },
+    "scope": { "enum": ["patch", "screen", "flow"] },
+    "mode": { "enum": ["pixel-parity", "style-parity"] },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["surface"],
+      "properties": {
+        "surface": { "type": "string", "minLength": 1 },
+        "route": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "references": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "sha256", "state"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "$ref": "#/definitions/sha256" },
+          "state": { "$ref": "#/definitions/id" },
+          "viewport": { "$ref": "#/definitions/viewport" },
+          "reviewedCrops": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "reuse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inventory", "profile", "scanManifest"],
+      "properties": {
+        "inventory": { "$ref": "#/definitions/artifact" },
+        "profile": { "$ref": "#/definitions/artifact" },
+        "scanManifest": { "$ref": "#/definitions/artifact" }
+      }
+    },
+    "states": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "source", "description"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "source": { "$ref": "#/definitions/source" },
+          "description": { "type": "string", "minLength": 1 },
+          "dataFixture": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "interactions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "regionId", "trigger", "outcome", "source"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "regionId": { "$ref": "#/definitions/id" },
+          "trigger": {
+            "enum": ["click", "tap", "keyboard", "hover", "drag", "scroll", "system"]
+          },
+          "outcome": { "type": "string", "minLength": 1 },
+          "source": { "$ref": "#/definitions/source" }
+        }
+      }
+    },
+    "responsiveRules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["regionId", "behavior", "source"],
+        "properties": {
+          "regionId": { "$ref": "#/definitions/id" },
+          "behavior": {
+            "enum": ["preserve", "stack", "collapse", "scroll", "crop", "hide", "replace"]
+          },
+          "source": { "$ref": "#/definitions/source" },
+          "minWidth": { "type": "integer", "minimum": 240 },
+          "maxWidth": { "type": "integer", "minimum": 240 },
+          "notes": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "semantics": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["regionId", "role"],
+        "properties": {
+          "regionId": { "$ref": "#/definitions/id" },
+          "role": { "type": "string", "minLength": 1 },
+          "accessibleName": { "type": "string", "minLength": 1 },
+          "keyboard": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "focusOrder": { "type": "integer", "minimum": 1 },
+          "live": { "enum": ["off", "polite", "assertive"] }
+        }
+      }
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "question", "impact", "resolution"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "question": { "type": "string", "minLength": 1 },
+          "impact": { "enum": ["implementation", "product", "architecture"] },
+          "resolution": { "enum": ["agent", "pm", "pending"] },
+          "decision": { "type": "string", "minLength": 1 }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "resolution": { "enum": ["agent", "pm"] } } },
+            "then": { "required": ["decision"] }
+          }
+        ]
+      }
+    },
+    "acceptance": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "description"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "kind": { "enum": ["visual", "functional", "responsive", "accessibility", "architecture"] },
+          "description": { "type": "string", "minLength": 1 },
+          "evidence": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "scope": { "const": "patch" } } },
+      "then": { "required": ["reuse"] }
+    }
+  ],
+  "definitions": {
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*$" },
+    "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "source": { "enum": ["observed", "inferred", "approved"] },
+    "viewport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 240 },
+        "height": { "type": "integer", "minimum": 240 }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/definitions/sha256" }
+      }
+    }
+  }
+}

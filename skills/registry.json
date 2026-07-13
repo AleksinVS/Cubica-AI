@@ -1,5 +1,5 @@
 {
-  "schemaVersion": "1.0",
+  "schemaVersion": "1.1",
   "skills": [
     {
       "catalogName": "C_cubica",
@@ -57,7 +57,10 @@
       "origin": "internal",
       "capability": "ui.mockup-implementation",
       "activationMode": "automatic",
-      "canonicalSkillPath": "skills/C_ui-from-mockup/SKILL.md"
+      "canonicalSkillPath": "skills/C_ui-from-mockup/SKILL.md",
+      "requires": [
+        "C_ui-compare"
+      ]
     }
   ]
 }

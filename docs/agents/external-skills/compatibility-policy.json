@@ -1,13 +1,13 @@
 {
   "schemaVersion": "1.0",
-  "policyVersion": "1.0.1",
+  "policyVersion": "1.1.0",
   "adapterVersion": "1.0.0",
   "sources": [
     {
       "id": "agents-general",
       "path": "AGENTS.md",
       "heading": "2. General rules for agents",
-      "normalizedSha256": "7b9b167b5c699d383bb481c3635ba7d387ca9573b754e39d73dbaf3372817523"
+      "normalizedSha256": "2e18a2c2804c42f05a6b8b56e3425fc334751e00ed6be0252caa2741335d5617"
     },
     {
       "id": "agents-autonomous",
@@ -43,7 +43,7 @@
       "id": "adr-069-decision",
       "path": "docs/architecture/adrs/069-managed-external-skill-adaptation.md",
       "heading": "Решение",
-      "normalizedSha256": "94218861e8f26476aa93d4c5025d3585df238e30b20e7df4b4acd325a184a49b"
+      "normalizedSha256": "762ee2d417a6bc56a225f2e490c12f4d266b2e6287ee7b9276092b288fdbcb33"
     },
     {
       "id": "task-format",
@@ -136,6 +136,21 @@
       "remediation": "Сузить description до конкретных симптомов и задач, исключив мета-оркестрацию.",
       "sourceIds": [
         "agents-autonomous",
+        "adr-069-decision"
+      ]
+    },
+    {
+      "id": "activation.candidates-inert",
+      "severity": "block",
+      "tags": [
+        "activation",
+        "adaptation",
+        "global"
+      ],
+      "statement": "Неадаптированный внешний навык из skill-candidates является только референсом и не может выполняться, включаться или попадать в путь автоматического обнаружения.",
+      "remediation": "Оставить точный снимок в skill-candidates и материализовать отдельную очищенную проектную версию в skills после смысловой адаптации.",
+      "sourceIds": [
+        "agents-general",
         "adr-069-decision"
       ]
     },

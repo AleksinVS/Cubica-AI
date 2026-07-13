@@ -34,7 +34,8 @@ Agents must always:
 2. **After any full context compaction, reload the canonical process files**
    - Re-read the nearest `AGENTS.md`.
    - Re-read the project-local `skills/C_cubica/SKILL.md` when the current work uses the Cubica development workflow.
-   - Read project skills only from `skills/`; `.codex/skills/` is a Codex discovery bridge and must not contain independent copies.
+   - Read active project skills only from `skills/`; `.codex/skills/` is a Codex discovery bridge and must not contain independent copies.
+   - Never apply or invoke `SKILL.md` files from `skill-candidates/`. That catalog contains inactive external snapshots for reference and future adaptation only.
    - Treat this reload as mandatory before continuing implementation, review, or planning after a compaction boundary.
 3. **Maintain documentation**
    - Create and update documentation wherever it is needed;
@@ -95,7 +96,14 @@ Agents must always:
    - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
    - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
 
-8. **Развивать платформу через конкретные игры**
+8. **Use subagents and parallelize work where justified**
+   - Там, где это оправдано, используй субагентов и распараллеливай работу.
+   - Модель и reasoning (глубину рассуждения модели) выбирай исходя из сложности и критичности задачи:
+     - `luna` с reasoning `medium`, `high` или `xhigh` — для механической работы и выполнения тестов. Разрабатывать тесты и исправлять выявленные ошибки должны `terra`, `sol` или основной агент — в зависимости от сложности тестов и ошибок. Для выполнения тестов всегда используй субагента `luna`, кроме двух случаев: когда оправдано повышение до `terra` или `sol`; когда речь идет о единичных тестах, которые дешевле запустить без субагентов;
+     - `terra` с reasoning `high` или `xhigh` — для простых и очевидных задач;
+     - `sol` с reasoning `high`, `xhigh` или `max` — для сложных, неочевидных, критичных, ответственных и архитектурных задач.
+
+9. **Развивать платформу через конкретные игры**
    - По умолчанию новая продуктовая разработка начинается с вводных PM по конкретной игре и одного **вертикального среза** (законченного сценария от правил и состояния до интерфейса и проверок).
    - Агент готовит и реализует единый план игрового среза. В плане он обязан отделить готовые возможности платформы, недостающие общие возможности и содержимое, которое остается только в этой игре.
    - Архитектурные пробелы закрываются параллельно с игрой, но только в минимальном объеме, необходимом выбранному срезу. Не нужные ему платформенные блоки не реализуются «на будущее».
@@ -103,11 +111,11 @@ Agents must always:
    - Новая общая возможность доказывается сценарием выбранной игры и нейтральной тестовой фикстурой (минимальным набором тестовых данных без имен и правил этой игры).
    - Этот режим не включает `$cubica`. Навык `$cubica` применяется только по прямому указанию пользователя. Полное описание режима хранится в `docs/tasks/STRATEGY.md`.
 
-9. **Manage architectural drift and legacy gaps**
+10. **Manage architectural drift and legacy gaps**
     - A gap between the current state and the target architecture is allowed, but it MUST be intentional, planned, and strictly documented as tech debt or legacy.
     - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
 
-10. **Platform purity over game-specific hacks**
+11. **Platform purity over game-specific hacks**
     - Any new game mechanic MUST be implemented by extending the manifest schema (capabilities, handlers, state extensions).
     - NEVER add game-specific `if/else` branches or hardcode game IDs (e.g., "antarctica") in the core platform layers (like `services/runtime-api`).
     - Before designing or implementing a game mechanic, the agent MUST explicitly analyze whether the mechanic is:
@@ -116,16 +124,16 @@ Agents must always:
     - If the classification is unclear, the agent MUST clarify it with the user or document the assumption before implementation.
     - General mechanics belong in platform contracts, schema extensions, reusable handlers, or shared renderer behavior. Game-specific mechanics belong in the concrete game bundle/plugin/manifest and must not leak into generic player/runtime layers.
 
-11. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
+12. **Maintain PROJECT_STRUCTURE.yaml and .desc files**
     - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.
     - When adding new significant directories, you MUST create a `.desc.json` file inside them containing a short semantic description (1-2 sentences).
     - After any structural changes (adding/removing folders or `.desc.json` files), you MUST run `node scripts/dev/generate-structure.js` to regenerate `PROJECT_STRUCTURE.yaml` and keep the architecture context up to date.
 
-12. **ANTI-PATTERN: Declarative vs. Imperative Drift**
+13. **ANTI-PATTERN: Declarative vs. Imperative Drift**
     - NEVER replace declarative, cross-platform contracts (e.g., JSON Schema, OpenAPI specs) with language-specific imperative code (e.g., manual TypeScript type guards, Zod schemas isolated in backend code).
     - JSON Schema is the Single Source of Truth (SSOT) for data structures like Game Manifests. Validation must be performed by executing a standard validator (like AJV) against the JSON Schema, not by writing manual `if (typeof x !== 'string')` checks.
 
-13. **Scale verification to the size and risk of the change**
+14. **Scale verification to the size and risk of the change**
     - A commit by itself is not a reason to run the entire project test suite.
     - After an ordinary small or medium change, run only the focused tests for the changed behavior and the cheapest relevant static checks, such as type checking, schema validation, or `git diff --check`.
     - After a large implementation block that changes several subsystem boundaries, run an expanded cross-subsystem verification once the block is stable. Do not repeat the same expensive checks after every intermediate commit when the verified code has not changed.
