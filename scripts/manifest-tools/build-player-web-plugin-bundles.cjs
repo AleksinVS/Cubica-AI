@@ -27,11 +27,11 @@ const bundleSchema = readJson(path.join(schemasRoot, "player-web-plugin-bundles.
 const pluginSchemaId = "https://cubica.platform/schemas/plugin.schema.json";
 const bundleSchemaId = "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json";
 const supportedApiVersion = "2.0";
-// A cold project-local plugin typecheck currently completes near 15 seconds on
-// the supported low-memory host. Keep the validation bounded, but leave enough
-// headroom for process startup and scheduler contention so valid plugins do not
-// fail at the wrapper boundary.
-const validationTimeoutMs = 30_000;
+// A cold project-local plugin typecheck normally completes quickly, but the
+// supported low-memory host also runs browsers and independent agent sessions.
+// Keep the validation bounded while allowing scheduler contention to slow the
+// real typecheck; the check itself is never skipped or weakened.
+const validationTimeoutMs = 60_000;
 
 function parseArgs(argv) {
   const options = {

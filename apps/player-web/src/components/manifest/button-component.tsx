@@ -4,6 +4,11 @@ import type {
 } from "@cubica/contracts-manifest";
 import { resolveExpressions, resolvePayloadExpressions } from "@/lib/expression-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
+import type { GameSession } from "@/types/game-state";
+import {
+  isSessionActionUnavailable,
+  sessionActionUnavailableReason
+} from "@/lib/session-action-availability";
 
 /**
  * Рендерит buttonComponent (кнопка действия в UI манифесте).
@@ -20,6 +25,8 @@ export function ButtonComponent({
   localContext,
   gameState,
   previewAttributes,
+  session,
+  isPending = false,
 }: {
   component: GameUiComponent<GameUiButtonComponentProps>;
   onAction: (command: string, payload: Record<string, unknown>) => void;
@@ -27,6 +34,8 @@ export function ButtonComponent({
   localContext?: Record<string, unknown>;
   gameState?: Record<string, unknown>;
   previewAttributes?: PreviewElementAttributes;
+  session?: GameSession;
+  isPending?: boolean;
 }) {
   // The UI schema permits an ordinary component to omit props entirely.
   // A malformed/incomplete button then renders disabled instead of crashing.
@@ -37,6 +46,8 @@ export function ButtonComponent({
   const resolvedPayload = resolvePayloadExpressions(basePayload, gameState, localContext);
   const resolvedCaption = resolveStringProp(caption, gameState, localContext);
   const resolvedDisabled = resolveBooleanProp(disabled, false, gameState, localContext);
+  const unavailable = command ? isSessionActionUnavailable(session, command) : false;
+  const unavailableReason = command ? sessionActionUnavailableReason(session, command) : undefined;
 
   // Определяем CSS классы по variant
   let className: string;
@@ -62,8 +73,9 @@ export function ButtonComponent({
       className={className}
       type="button"
       onClick={() => command && onAction(command, resolvedPayload)}
-      disabled={!command || resolvedDisabled}
+      disabled={!command || resolvedDisabled || unavailable || isPending}
       aria-label={resolvedCaption}
+      title={unavailableReason}
     >
       {variant === "nav" ? null : resolvedCaption}
     </button>

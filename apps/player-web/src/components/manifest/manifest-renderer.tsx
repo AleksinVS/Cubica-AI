@@ -30,6 +30,7 @@ export function ManifestRenderer({
   session,
   onBoardAction,
   assetResolver,
+  isPending = false,
 }: {
   screenDefinition: GameUiScreenDefinition | GameUiPanelDefinition;
   metrics: MetricsSnapshot;
@@ -59,6 +60,8 @@ export function ManifestRenderer({
   onBoardAction?: (actionId: string, params?: Record<string, unknown>) => Promise<void>;
   /** Optional game asset index; `asset:` references fail closed while absent. */
   assetResolver?: GameAssetResolver | null;
+  /** Prevents a second command while the previous server transition is pending. */
+  isPending?: boolean;
 }) {
   // Layout from screen definition takes priority over prop
   const layoutMode =
@@ -84,6 +87,7 @@ export function ManifestRenderer({
         session={session}
         onBoardAction={onBoardAction}
         assetResolver={assetResolver}
+        isPending={isPending}
       />
     </div>
   );

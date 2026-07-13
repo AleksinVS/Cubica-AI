@@ -19,7 +19,7 @@
  *
  * Зависимости берутся из node_modules корня репозитория (playwright, pixelmatch,
  * pngjs уже объявлены в корневом package.json) — запускать из корня репозитория:
- *   node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs <команда> ...
+ *   node skills/C_ui-compare/scripts/ui-visual-tool.mjs <команда> ...
  *
  * Все артефакты по умолчанию пишутся в .tmp/ui-compare/ (правило проекта:
  * временные файлы живут в .tmp/ и не коммитятся).
@@ -42,8 +42,8 @@ async function loadDep(name, entry) {
     } catch {
       console.error(
         `Не найдена зависимость "${name}". Установи в каталоге запуска (корне проекта):\n` +
-        `  npm install --no-save pngjs pixelmatch playwright\n` +
-        `и запускай инструмент из корня проекта.`
+        `  npm install\n` +
+        `Используй зафиксированные package.json/package-lock.json и запускай инструмент из корня проекта.`
       );
       process.exit(1);
     }
@@ -55,7 +55,7 @@ const pixelmatch = (await loadDep("pixelmatch", "index.js")).default;
 // Playwright загружается лениво внутри команд, которым нужен браузер (см. loadDep).
 
 // Фактический путь запуска этого скрипта — для подсказок с готовыми командами
-// (навык может лежать не в .claude/skills, путь нельзя жёстко зашивать).
+// (навык может подключаться через мост среды агента, путь нельзя вычислять из него).
 const SELF = path.relative(process.cwd(), process.argv[1]) || path.basename(process.argv[1]);
 
 const DEFAULT_OUT_DIR = path.join(".tmp", "ui-compare");

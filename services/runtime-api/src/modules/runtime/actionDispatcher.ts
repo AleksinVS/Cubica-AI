@@ -108,6 +108,14 @@ export async function dispatchRuntimeAction(
 
   if (!result.ok) {
     const message = result.error?.message ?? `Action "${options.input.actionId}" did not produce a state transition`;
+    if (result.error?.code === "RUNTIME_ACTION_GUARD_FAILED") {
+      // Internal guard diagnostics can contain JSON paths and actual values.
+      // They are useful inside runtime tests/logging but are not a safe or
+      // understandable public API response for a player or facilitator.
+      throw new RequestValidationError(
+        `Action "${options.input.actionId}" is not available in the current session state`
+      );
+    }
     if (result.error && RUNTIME_VALIDATION_ERROR_CODES.has(result.error.code)) {
       throw new RequestValidationError(message);
     }

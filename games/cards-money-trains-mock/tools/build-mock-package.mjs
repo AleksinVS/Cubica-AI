@@ -1324,14 +1324,16 @@ const build = async () => {
         label: "MOCK: открыть следующую новость",
         actionId: "mock.news.draw",
         phase: "news",
-        section: "news"
+        section: "news",
+        disabledReason: "Сначала примените уже открытую новость."
       },
       {
         id: "mock-apply-news-block-road",
         label: "Применить открытую карту: закрыть C–D",
         actionId: "mock.news.apply.block-road",
         phase: "news",
-        section: "news"
+        section: "news",
+        disabledReason: "Сначала откройте эту новость."
       },
       ...[
         ["open-road", "Применить открытую карту: открыть C–D"],
@@ -1344,7 +1346,8 @@ const build = async () => {
         label,
         actionId: `mock.news.apply.${id}`,
         phase: "news",
-        section: "news"
+        section: "news",
+        disabledReason: "Сначала откройте эту новость."
       })),
       {
         id: "mock-pay-maintenance",

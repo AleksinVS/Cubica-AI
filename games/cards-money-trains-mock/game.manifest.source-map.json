@@ -17571,6 +17571,12 @@
         "pointer": "/root/state/public/board/availableActions/1/section"
       }
     ],
+    "/state/public/board/availableActions/1/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/1/disabledReason"
+      }
+    ],
     "/state/public/board/availableActions/2": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -17605,6 +17611,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/board/availableActions/2/section"
+      }
+    ],
+    "/state/public/board/availableActions/2/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/2/disabledReason"
       }
     ],
     "/state/public/board/availableActions/3": [
@@ -17643,6 +17655,12 @@
         "pointer": "/root/state/public/board/availableActions/3/section"
       }
     ],
+    "/state/public/board/availableActions/3/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/3/disabledReason"
+      }
+    ],
     "/state/public/board/availableActions/4": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -17677,6 +17695,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/board/availableActions/4/section"
+      }
+    ],
+    "/state/public/board/availableActions/4/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/4/disabledReason"
       }
     ],
     "/state/public/board/availableActions/5": [
@@ -17715,6 +17739,12 @@
         "pointer": "/root/state/public/board/availableActions/5/section"
       }
     ],
+    "/state/public/board/availableActions/5/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/5/disabledReason"
+      }
+    ],
     "/state/public/board/availableActions/6": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -17751,6 +17781,12 @@
         "pointer": "/root/state/public/board/availableActions/6/section"
       }
     ],
+    "/state/public/board/availableActions/6/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/6/disabledReason"
+      }
+    ],
     "/state/public/board/availableActions/7": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -17785,6 +17821,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/state/public/board/availableActions/7/section"
+      }
+    ],
+    "/state/public/board/availableActions/7/disabledReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/availableActions/7/disabledReason"
       }
     ],
     "/state/public/board/availableActions/8": [

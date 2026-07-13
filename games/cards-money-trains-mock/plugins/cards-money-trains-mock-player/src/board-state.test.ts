@@ -116,6 +116,39 @@ test("does not invent topology or actions when content is absent", () => {
   assert.deepEqual(projection.cargoOfferLabels, []);
 });
 
+test("disables an authored action when the server projects it as unavailable", () => {
+  const projection = projectBoardSession({
+    actionAvailability: [
+      { actionId: "news.draw", status: "unavailable", reasonCode: "state_condition_failed" },
+      { actionId: "news.apply", status: "available" }
+    ],
+    state: {
+      public: {
+        session: { phase: "news" },
+        board: {
+          availableActions: [
+            {
+              id: "draw",
+              label: "Открыть новость",
+              actionId: "news.draw",
+              phase: "news",
+              disabledReason: "Сначала примените уже открытую новость."
+            },
+            { id: "apply", label: "Применить новость", actionId: "news.apply", phase: "news" }
+          ]
+        }
+      }
+    }
+  });
+
+  assert.equal(projection.availableActions[0]?.disabled, true);
+  assert.equal(
+    projection.availableActions[0]?.disabledReason,
+    "Сначала примените уже открытую новость."
+  );
+  assert.equal(projection.availableActions[1]?.disabled, false);
+});
+
 test("ignores malformed optional facilitator fields without inventing values", () => {
   const projection = projectBoardSession({
     state: {

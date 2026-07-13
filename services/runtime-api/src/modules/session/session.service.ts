@@ -12,6 +12,7 @@ import { HttpError, NotFoundError, RequestValidationError } from "../errors.ts";
 import { initializeTurnBasedSessionState } from "./turnBasedSessionState.ts";
 import { projectPlayerSessionState } from "./playerSessionProjection.ts";
 import type { SessionStorePort } from "@cubica/contracts-session";
+import { projectSessionActionAvailability } from "../runtime/actionAvailability.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -57,12 +58,14 @@ export class SessionService {
       initialState,
       sessionRole
     });
+    const bundle = await contentService.getBundle(snapshot.gameId, snapshot.contentSourceId);
 
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
       version: snapshot.version,
-      state: projectPlayerSessionState(snapshot.state)
+      state: projectPlayerSessionState(snapshot.state),
+      actionAvailability: projectSessionActionAvailability(snapshot, bundle)
     };
   }
 
@@ -71,12 +74,14 @@ export class SessionService {
     if (!snapshot) {
       return null;
     }
+    const bundle = await contentService.getBundle(snapshot.gameId, snapshot.contentSourceId);
 
     return {
       sessionId: snapshot.sessionId,
       gameId: snapshot.gameId,
       version: snapshot.version,
-      state: projectPlayerSessionState(snapshot.state)
+      state: projectPlayerSessionState(snapshot.state),
+      actionAvailability: projectSessionActionAvailability(snapshot, bundle)
     };
   }
 
@@ -106,6 +111,7 @@ export class SessionService {
       },
       updatedAt: new Date()
     };
+    const bundle = await contentService.getBundle(restored.gameId, restored.contentSourceId);
 
     return {
       updatedSession: restored,
@@ -113,7 +119,8 @@ export class SessionService {
         sessionId: restored.sessionId,
         gameId: restored.gameId,
         version: restored.version,
-        state: restored.state,
+        state: projectPlayerSessionState(restored.state),
+        actionAvailability: projectSessionActionAvailability(restored, bundle),
         restored: true
       }
     };

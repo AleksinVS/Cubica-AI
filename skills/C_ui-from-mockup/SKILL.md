@@ -48,7 +48,7 @@ description: >-
 В этом репозитории команды выглядят так:
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs <команда> ...
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs <команда> ...
 ```
 
 ## 2. Шаг 0 — зафиксируй рамки
@@ -68,7 +68,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs <команда> ...
 ## 3. Шаг 1 — макет в PNG
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs to-png <МАКЕТ> --out .tmp/ui-compare/mockup.png
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs to-png <МАКЕТ> --out .tmp/ui-compare/mockup.png
 ```
 
 Запиши из вывода ширину W и высоту H — они нужны в шагах 2 и 7.
@@ -84,7 +84,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs to-png <МАКЕТ> --
 Сделай 9 кропов (r и c — от 0 до 2):
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs crop .tmp/ui-compare/mockup.png --rect <c*CW>,<r*CH>,<CW>,<CH> --scale 2 --out .tmp/ui-compare/scan-r<r>c<c>.png
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs crop .tmp/ui-compare/mockup.png --rect <c*CW>,<r*CH>,<CW>,<CH> --scale 2 --out .tmp/ui-compare/scan-r<r>c<c>.png
 ```
 
 Для макета 1920×1080 (CW=640, CH=360) прямоугольники такие:
@@ -130,8 +130,8 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs crop .tmp/ui-compare/m
 5. **Фон — тоже зона** (например `id: "background"` с bounds на весь макет).
 6. **Цвета — только из sample**, на глаз запрещено:
    ```bash
-   node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/mockup.png --rect <x,y,w,h>
-   node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/mockup.png --points "<x,y>"
+   node skills/C_ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/mockup.png --rect <x,y,w,h>
+   node skills/C_ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/mockup.png --points "<x,y>"
    ```
    `--rect` — для фонов (среднее и доминирующие цвета сглаживают
    JPEG-артефакты), `--points` — для тонких элементов.
@@ -142,7 +142,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs crop .tmp/ui-compare/m
 ## 6. Шаг 4 — проверь полноту числом
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs coverage .tmp/ui-compare/mockup.png --regions <ИНВЕНТАРЬ>
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs coverage .tmp/ui-compare/mockup.png --regions <ИНВЕНТАРЬ>
 ```
 
 - `СТАТУС: FAIL` → открой маску `coverage-mask.png`: красное = площадь, не

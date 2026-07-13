@@ -198,7 +198,7 @@ const createCardsMoneyTrainsScene = (context) => {
                 const highlight = edgeHighlights.get(edge.id);
                 graphics.lineStyle(highlight ? 9 : 5, edgeColor(edge), 0.95);
                 graphics.lineBetween(from.x, from.y, to.x, to.y);
-                if (highlight?.actionId) {
+                if (highlight?.actionId && !context.isInteractionPending()) {
                     const hitArea = this.add.zone((from.x + to.x) / 2, (from.y + to.y) / 2, Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y), 48);
                     hitArea.setRotation(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y));
                     hitArea.setInteractive({ useHandCursor: true });
@@ -224,7 +224,7 @@ const createCardsMoneyTrainsScene = (context) => {
                     fontFamily: "sans-serif",
                     fontSize: "18px"
                 }).setOrigin(0.5, 1);
-                if (highlight?.actionId) {
+                if (highlight?.actionId && !context.isInteractionPending()) {
                     // The transparent zone is at least 52×52 design pixels, which keeps
                     // the target usable on touch after the FIT scale is applied.
                     const hitArea = this.add.zone(position.x, position.y, 52, 52);
@@ -234,7 +234,7 @@ const createCardsMoneyTrainsScene = (context) => {
             }
         }
         dispatchHighlight(highlight) {
-            if (!highlight.actionId)
+            if (!highlight.actionId || context.isInteractionPending())
                 return;
             void context.dispatchAction(highlight.actionId, { ...highlight.params })
                 .then(() => { lastError = null; })
@@ -541,7 +541,22 @@ const readActionPhases = (value) => {
     const phases = value.flatMap((item) => text(item) ?? []);
     return phases.length > 0 ? phases : undefined;
 };
-const readActions = (board, currentPhase) => {
+const serverUnavailableReason = (reasonCode) => {
+    if (reasonCode === "role_not_allowed")
+        return "Действие недоступно для роли ведущего.";
+    if (reasonCode === "runtime_unsupported")
+        return "Действие не поддерживается игровой системой.";
+    return "Действие недоступно в текущем состоянии игры.";
+};
+const readActionAvailability = (value) => {
+    const entries = Array.isArray(value) ? value : [];
+    return new Map(entries.flatMap((entry) => {
+        if (!isRecord(entry) || typeof entry.actionId !== "string")
+            return [];
+        return [[entry.actionId, entry]];
+    }));
+};
+const readActions = (board, currentPhase, availability) => {
     if (!Array.isArray(board.availableActions))
         return [];
     return board.availableActions.flatMap((raw, index) => {
@@ -551,7 +566,12 @@ const readActions = (board, currentPhase) => {
         const label = text(raw.label);
         if (!actionId || !label)
             return [];
-        const disabledReason = text(raw.disabledReason) ?? text(raw.reason) ?? undefined;
+        const projectedAvailability = availability.get(actionId);
+        const serverDisabled = projectedAvailability?.status === "unavailable";
+        const authoredDisabledReason = text(raw.disabledReason) ?? text(raw.reason) ?? undefined;
+        const disabledReason = serverDisabled
+            ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
+            : raw.disabled === true ? authoredDisabledReason : undefined;
         const phases = readActionPhases(raw.phase);
         // `phase` is authored by the server-side manifest. The client only applies
         // that explicit presentation filter; it never derives phase eligibility.
@@ -563,7 +583,7 @@ const readActions = (board, currentPhase) => {
                 description: text(raw.description) ?? disabledReason,
                 actionId,
                 params: isRecord(raw.params) ? raw.params : undefined,
-                disabled: raw.disabled === true,
+                disabled: raw.disabled === true || serverDisabled,
                 disabledReason,
                 section: text(raw.section) ?? undefined,
                 phases
@@ -644,7 +664,7 @@ function projectBoardSession(session) {
     const phase = text(sessionState.phase) ?? "unknown";
     const nodes = readNodes(publicState);
     const vehicles = readVehicles(publicState);
-    const availableActions = readActions(board, phase);
+    const availableActions = readActions(board, phase, readActionAvailability(session.actionAvailability));
     const deckPresentation = readDeckPresentation(publicState, nodes);
     return {
         nodes,

@@ -795,16 +795,69 @@ const evaluateObjectStateGuard = (
   return failures;
 };
 
+interface ManifestGuardEvaluation {
+  readonly failures: Array<string>;
+  readonly parameterChecksDeferred: boolean;
+}
+
+const hasUnresolvedParameterPlaceholder = (value: unknown): boolean => {
+  if (typeof value === "string") {
+    return /\{\{.+?\}\}/.test(value);
+  }
+  if (Array.isArray(value)) {
+    return value.some(hasUnresolvedParameterPlaceholder);
+  }
+  return isObjectRecord(value)
+    ? Object.values(value).some(hasUnresolvedParameterPlaceholder)
+    : false;
+};
+
+const collectJsonLogicVariables = (value: unknown, variables = new Set<string>()): Set<string> => {
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectJsonLogicVariables(item, variables));
+    return variables;
+  }
+  if (!isObjectRecord(value)) {
+    return variables;
+  }
+  if (typeof value.var === "string") {
+    variables.add(value.var);
+  }
+  Object.values(value).forEach((item) => collectJsonLogicVariables(item, variables));
+  return variables;
+};
+
+const jsonLogicNeedsMissingParameters = (
+  expression: JsonLogicExpression,
+  params: Record<string, unknown>
+): boolean => {
+  for (const variable of collectJsonLogicVariables(expression)) {
+    if (variable === "actor" || variable.startsWith("actor.")) {
+      if (typeof params.actor !== "string") return true;
+    }
+    if (variable === "activePlayer" || variable.startsWith("activePlayer.")) {
+      if (typeof params.activePlayer !== "string") return true;
+    }
+    if (variable.startsWith("params.")) {
+      const parameterName = variable.slice("params.".length).split(".")[0];
+      if (parameterName && params[parameterName] === undefined) return true;
+    }
+  }
+  return false;
+};
+
 const evaluateManifestGuard = (
   state: RuntimeState,
   metadata: GameManifestDeterministicActionMetadata,
-  params: Record<string, unknown> = {}
-): Array<string> => {
+  params: Record<string, unknown> = {},
+  options: { deferMissingParameters?: boolean } = {}
+): ManifestGuardEvaluation => {
   const failures: Array<string> = [];
+  let parameterChecksDeferred = false;
   const guard = metadata.guard;
 
   if (!guard) {
-    return failures;
+    return { failures, parameterChecksDeferred };
   }
 
   const publicState = ensureObject(state.public);
@@ -836,7 +889,11 @@ const evaluateManifestGuard = (
   if (guard.turn?.actorIsActive !== undefined) {
     const actorPlayerId = typeof params.actor === "string" ? params.actor : undefined;
     if (!actorPlayerId) {
-      failures.push("turn guard requires an actor player id");
+      if (options.deferMissingParameters) {
+        parameterChecksDeferred = true;
+      } else {
+        failures.push("turn guard requires an actor player id");
+      }
     } else {
       const actorIsActive = turn.activePlayerId === actorPlayerId;
       if (actorIsActive !== guard.turn.actorIsActive) {
@@ -879,22 +936,62 @@ const evaluateManifestGuard = (
     const objectGuards = Array.isArray(guard.object) ? guard.object : [guard.object];
     for (const objectGuard of objectGuards) {
       const resolvedGuard = resolveValue(objectGuard, params) as GameManifestObjectStateGuard;
-      failures.push(...evaluateObjectStateGuard(state, resolvedGuard));
+      if (options.deferMissingParameters && hasUnresolvedParameterPlaceholder(resolvedGuard)) {
+        parameterChecksDeferred = true;
+      } else {
+        failures.push(...evaluateObjectStateGuard(state, resolvedGuard));
+      }
     }
   }
 
   // Tier 2 guard: JsonLogic expression evaluation
   if (guard.jsonLogic) {
-    const result = jsonLogic.apply(
-      guard.jsonLogic as Parameters<typeof jsonLogic.apply>[0],
-      buildJsonLogicContext(state, params)
-    );
-    if (!result) {
-      failures.push(`JsonLogic guard evaluated to false`);
+    if (
+      options.deferMissingParameters &&
+      jsonLogicNeedsMissingParameters(guard.jsonLogic, params)
+    ) {
+      parameterChecksDeferred = true;
+    } else {
+      const result = jsonLogic.apply(
+        guard.jsonLogic as Parameters<typeof jsonLogic.apply>[0],
+        buildJsonLogicContext(state, params)
+      );
+      if (!result) {
+        failures.push(`JsonLogic guard evaluated to false`);
+      }
     }
   }
 
-  return failures;
+  return { failures, parameterChecksDeferred };
+};
+
+/**
+ * Evaluate the same deterministic guard used by dispatch without executing an
+ * action. Parameter-dependent checks can be deferred for a pre-input session
+ * projection, while every state-only condition is still evaluated exactly by
+ * the dispatch implementation.
+ */
+export const evaluateManifestActionGuardForProjection = (
+  context: RuntimeActionContext<RuntimeState>,
+  templates?: GameManifestTemplateMap
+): { metadataPresent: boolean; failures: Array<string>; parameterChecksDeferred: boolean } => {
+  const metadata = readManifestDeterministicMetadata(context, templates);
+  if (!metadata) {
+    return { metadataPresent: false, failures: [], parameterChecksDeferred: false };
+  }
+  const parameterScope = buildManifestParameterScope(context);
+  const requiredParameters = Array.isArray(context.manifestAction.paramsSchema?.required)
+    ? context.manifestAction.paramsSchema.required.filter((name): name is string => typeof name === "string")
+    : [];
+  const missingRequiredParameter = requiredParameters.some((name) => parameterScope[name] === undefined);
+  const evaluation = evaluateManifestGuard(context.state, metadata, parameterScope, {
+    deferMissingParameters: true
+  });
+  return {
+    metadataPresent: true,
+    failures: evaluation.failures,
+    parameterChecksDeferred: evaluation.parameterChecksDeferred || missingRequiredParameter
+  };
 };
 
 const readMetricSnapshot = (state: RuntimeState): Record<string, unknown> => {
@@ -1724,7 +1821,11 @@ const buildManifestActionTransition = (
     };
   }
 
-  const guardFailures = evaluateManifestGuard(context.state, metadata, buildManifestParameterScope(context));
+  const guardFailures = evaluateManifestGuard(
+    context.state,
+    metadata,
+    buildManifestParameterScope(context)
+  ).failures;
   if (guardFailures.length > 0) {
     return {
       ok: false,

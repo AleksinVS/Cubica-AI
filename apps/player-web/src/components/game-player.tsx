@@ -424,6 +424,7 @@ export function GamePlayer({
           session={sessionSnapshot}
           onBoardAction={handleBoardAction}
           assetResolver={gameAssets}
+          isPending={state.isPending}
         />
       ) : state.agentSurface ? (
         <CubicaSurfaceRenderer
@@ -446,6 +447,7 @@ export function GamePlayer({
           session={sessionSnapshot}
           onBoardAction={handleBoardAction}
           assetResolver={gameAssets}
+          isPending={state.isPending}
         />
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">

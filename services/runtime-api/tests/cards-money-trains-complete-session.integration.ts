@@ -31,6 +31,11 @@ interface SessionSnapshot {
     readonly lastEventSequence: number;
   };
   readonly state: RuntimeState;
+  readonly actionAvailability: ReadonlyArray<{
+    readonly actionId: string;
+    readonly status: "available" | "unavailable" | "parameter-dependent";
+    readonly reasonCode?: string;
+  }>;
 }
 
 interface TranscriptStep {
@@ -311,6 +316,15 @@ async function executeTranscript(
   for (const step of steps) {
     snapshot = await dispatchAction(baseUrl, snapshot, step);
     assertStepExpectation(snapshot, step);
+    if (step.actionId === "mock.setup.start") {
+      assert.equal(readAvailability(snapshot, "mock.news.draw").status, "available");
+      assert.equal(readAvailability(snapshot, "mock.news.apply.block-road").status, "unavailable");
+    }
+    if (step.order === 2 && step.actionId === "mock.news.draw") {
+      assert.equal(readAvailability(snapshot, "mock.news.draw").status, "unavailable");
+      assert.equal(readAvailability(snapshot, "mock.news.apply.block-road").status, "available");
+      await assertCurrentNewsCannotBeDrawnTwice(baseUrl, snapshot);
+    }
     const session = readSession(snapshot);
     observedPhases.add(String(session.phase));
     if (Number(session.turnNumber) > 6 && session.status === "active") {
@@ -323,6 +337,32 @@ async function executeTranscript(
   }
 
   return { snapshot, observedPhases, observedActiveTurnAfterSix, finishActions, rejectionKinds };
+}
+
+async function assertCurrentNewsCannotBeDrawnTwice(
+  baseUrl: string,
+  snapshot: SessionSnapshot
+): Promise<void> {
+  const before = await getSession(baseUrl, snapshot.sessionId);
+  const response = await postJson(baseUrl, "/actions", {
+    sessionId: snapshot.sessionId,
+    expectedStateVersion: snapshot.version.stateVersion,
+    playerId: "facilitator-acceptance",
+    actionId: "mock.news.draw"
+  });
+  assert.equal(response.status, 400, JSON.stringify(response.body));
+  assert.match(String(readRecordValue(response.body, "repeat draw error").error), /not available in the current session state/iu);
+  assert.deepEqual(
+    await getSession(baseUrl, snapshot.sessionId),
+    before,
+    "a guard-rejected repeat draw changed the stored session"
+  );
+}
+
+function readAvailability(snapshot: SessionSnapshot, actionId: string) {
+  const entry = snapshot.actionAvailability.find((item) => item.actionId === actionId);
+  assert.ok(entry, `missing action availability for ${actionId}`);
+  return entry;
 }
 
 async function runRejectionProbes(

@@ -42,6 +42,22 @@
       "capability": "operations.low-memory-host",
       "activationMode": "automatic",
       "canonicalSkillPath": "skills/C_low-memory-host-operations/SKILL.md"
+    },
+    {
+      "catalogName": "C_ui-compare",
+      "runtimeName": "ui-compare",
+      "origin": "internal",
+      "capability": "ui.reference-comparison",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/C_ui-compare/SKILL.md"
+    },
+    {
+      "catalogName": "C_ui-from-mockup",
+      "runtimeName": "ui-from-mockup",
+      "origin": "internal",
+      "capability": "ui.mockup-implementation",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/C_ui-from-mockup/SKILL.md"
     }
   ]
 }

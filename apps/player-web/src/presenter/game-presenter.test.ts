@@ -19,6 +19,7 @@ const turnSession = (activePlayerId: unknown): GameSession => ({
     stateVersion: 1,
     lastEventSequence: 0
   },
+  actionAvailability: [],
   state: {
     public: {
       turn: { activePlayerId }

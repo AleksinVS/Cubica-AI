@@ -32,7 +32,8 @@ export function InteractiveBoardSurface({
   session,
   assets,
   manifestProps,
-  dispatchAction
+  dispatchAction,
+  isPending = false
 }: {
   readonly gameId: string;
   readonly content: PlayerFacingContent;
@@ -43,17 +44,20 @@ export function InteractiveBoardSurface({
     actionId: string,
     params?: Record<string, unknown>
   ) => Promise<void>;
+  readonly isPending?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const handleRef = useRef<InteractiveBoardSceneHandle | null>(null);
   const sessionRef = useRef(session);
   const dispatchRef = useRef(dispatchAction);
+  const isPendingRef = useRef(isPending);
   const [accessibleActions, setAccessibleActions] = useState<readonly AccessibleBoardAction[]>([]);
   const [diagnostic, setDiagnostic] = useState<string | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
   sessionRef.current = session;
   dispatchRef.current = dispatchAction;
+  isPendingRef.current = isPending;
 
   useEffect(() => {
     const handle = handleRef.current;
@@ -67,7 +71,7 @@ export function InteractiveBoardSurface({
     } catch (error) {
       setDiagnostic(errorMessage(error, "Не удалось обновить интерактивное поле."));
     }
-  }, [session]);
+  }, [isPending, session]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -103,7 +107,13 @@ export function InteractiveBoardSurface({
           content,
           session: initialSession,
           assets,
-          dispatchAction: (actionId, params) => dispatchRef.current(actionId, params)
+          isInteractionPending: () => isPendingRef.current,
+          dispatchAction: (actionId, params) => {
+            if (isPendingRef.current) {
+              return Promise.reject(new Error("Дождитесь завершения предыдущего действия."));
+            }
+            return dispatchRef.current(actionId, params);
+          }
         });
 
         if (!(handle.scene instanceof Phaser.Scene)) {
@@ -171,6 +181,7 @@ export function InteractiveBoardSurface({
   const label = manifestProps.accessibleLabel ?? "Интерактивное игровое поле";
 
   const runAccessibleAction = async (action: AccessibleBoardAction) => {
+    if (isPending || pendingActionId !== null || action.disabled === true) return;
     setPendingActionId(action.id);
     setDiagnostic(null);
     try {
@@ -204,7 +215,7 @@ export function InteractiveBoardSurface({
                   <button
                     type="button"
                     className={styles.actionButton}
-                    disabled={action.disabled === true || pendingActionId !== null}
+                    disabled={action.disabled === true || isPending || pendingActionId !== null}
                     aria-describedby={action.description ? descriptionId : undefined}
                     onClick={() => void runAccessibleAction(action)}
                   >

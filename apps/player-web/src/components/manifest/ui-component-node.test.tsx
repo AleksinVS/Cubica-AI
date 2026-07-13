@@ -114,6 +114,44 @@ describe("UiComponentNode declarative action binding (ADR-055)", () => {
     expect(navRight.disabled).toBe(true);
   });
 
+  it("disables a runtime action from the server session projection", () => {
+    const { container } = render(
+      <ManifestRenderer
+        screenDefinition={buildScreen()}
+        metrics={{}}
+        onAction={vi.fn()}
+        session={{
+          sessionId: "session-1",
+          gameId: "neutral-game",
+          version: { sessionId: "session-1", stateVersion: 1, lastEventSequence: 1 },
+          state: {},
+          actionAvailability: [{
+            actionId: "requestServer",
+            status: "unavailable",
+            reasonCode: "state_condition_failed"
+          }]
+        }}
+      />
+    );
+
+    const navRight = container.querySelector("#nav-right") as HTMLButtonElement;
+    expect(navRight.disabled).toBe(true);
+    expect(navRight.title).toContain("текущем состоянии игры");
+  });
+
+  it("disables manifest actions while Presenter waits for the previous command", () => {
+    const { container } = render(
+      <ManifestRenderer
+        screenDefinition={buildScreen()}
+        metrics={{}}
+        onAction={vi.fn()}
+        isPending
+      />
+    );
+
+    expect((container.querySelector("#nav-right") as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("renders the decorative background layer when props.decorativeBackground is true (non-topbar)", () => {
     const { container } = render(
       <ManifestRenderer

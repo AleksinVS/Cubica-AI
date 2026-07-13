@@ -234,14 +234,43 @@ const readActionPhases = (value: unknown): readonly string[] | undefined => {
   return phases.length > 0 ? phases : undefined;
 };
 
-const readActions = (board: JsonRecord, currentPhase: string): ProjectedBoardAction[] => {
+type SessionAvailabilityEntry = {
+  readonly actionId?: unknown;
+  readonly status?: unknown;
+  readonly reasonCode?: unknown;
+};
+
+const serverUnavailableReason = (reasonCode: unknown): string => {
+  if (reasonCode === "role_not_allowed") return "Действие недоступно для роли ведущего.";
+  if (reasonCode === "runtime_unsupported") return "Действие не поддерживается игровой системой.";
+  return "Действие недоступно в текущем состоянии игры.";
+};
+
+const readActionAvailability = (value: unknown): Map<string, SessionAvailabilityEntry> => {
+  const entries = Array.isArray(value) ? value : [];
+  return new Map(entries.flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.actionId !== "string") return [];
+    return [[entry.actionId, entry] as const];
+  }));
+};
+
+const readActions = (
+  board: JsonRecord,
+  currentPhase: string,
+  availability: ReadonlyMap<string, SessionAvailabilityEntry>
+): ProjectedBoardAction[] => {
   if (!Array.isArray(board.availableActions)) return [];
   return board.availableActions.flatMap((raw, index) => {
     if (!isRecord(raw)) return [];
     const actionId = text(raw.actionId);
     const label = text(raw.label);
     if (!actionId || !label) return [];
-    const disabledReason = text(raw.disabledReason) ?? text(raw.reason) ?? undefined;
+    const projectedAvailability = availability.get(actionId);
+    const serverDisabled = projectedAvailability?.status === "unavailable";
+    const authoredDisabledReason = text(raw.disabledReason) ?? text(raw.reason) ?? undefined;
+    const disabledReason = serverDisabled
+      ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
+      : raw.disabled === true ? authoredDisabledReason : undefined;
     const phases = readActionPhases(raw.phase);
     // `phase` is authored by the server-side manifest. The client only applies
     // that explicit presentation filter; it never derives phase eligibility.
@@ -252,7 +281,7 @@ const readActions = (board: JsonRecord, currentPhase: string): ProjectedBoardAct
       description: text(raw.description) ?? disabledReason,
       actionId,
       params: isRecord(raw.params) ? raw.params : undefined,
-      disabled: raw.disabled === true,
+      disabled: raw.disabled === true || serverDisabled,
       disabledReason,
       section: text(raw.section) ?? undefined,
       phases
@@ -333,7 +362,7 @@ const readDeckPresentation = (
 };
 
 /** Convert a player-facing session snapshot into a deterministic board view. */
-export function projectBoardSession(session: { state?: unknown }): BoardProjection {
+export function projectBoardSession(session: { state?: unknown; actionAvailability?: unknown }): BoardProjection {
   const state = isRecord(session.state) ? session.state : {};
   const publicState = isRecord(state.public) ? state.public : {};
   const board = isRecord(publicState.board) ? publicState.board : {};
@@ -342,7 +371,11 @@ export function projectBoardSession(session: { state?: unknown }): BoardProjecti
   const phase = text(sessionState.phase) ?? "unknown";
   const nodes = readNodes(publicState);
   const vehicles = readVehicles(publicState);
-  const availableActions = readActions(board, phase);
+  const availableActions = readActions(
+    board,
+    phase,
+    readActionAvailability(session.actionAvailability)
+  );
   const deckPresentation = readDeckPresentation(publicState, nodes);
   return {
     nodes,

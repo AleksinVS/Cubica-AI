@@ -4131,49 +4131,56 @@
               "label": "MOCK: открыть следующую новость",
               "actionId": "mock.news.draw",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала примените уже открытую новость."
             },
             {
               "id": "mock-apply-news-block-road",
               "label": "Применить открытую карту: закрыть C–D",
               "actionId": "mock.news.apply.block-road",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала откройте эту новость."
             },
             {
               "id": "mock-apply-news-open-road",
               "label": "Применить открытую карту: открыть C–D",
               "actionId": "mock.news.apply.open-road",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала откройте эту новость."
             },
             {
               "id": "mock-apply-news-held-cargo-prompt",
               "label": "Применить открытую карту: обсуждение груза",
               "actionId": "mock.news.apply.held-cargo-prompt",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала откройте эту новость."
             },
             {
               "id": "mock-apply-news-cheap-wagons",
               "label": "Применить открытую карту: дешёвые вагоны",
               "actionId": "mock.news.apply.cheap-wagons",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала откройте эту новость."
             },
             {
               "id": "mock-apply-news-construction-prompt",
               "label": "Применить открытую карту: обсудить строительство",
               "actionId": "mock.news.apply.construction-prompt",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала откройте эту новость."
             },
             {
               "id": "mock-apply-news-stable-day",
               "label": "Применить открытую карту: стабильная работа",
               "actionId": "mock.news.apply.stable-day",
               "phase": "news",
-              "section": "news"
+              "section": "news",
+              "disabledReason": "Сначала откройте эту новость."
             },
             {
               "id": "mock-pay-maintenance",

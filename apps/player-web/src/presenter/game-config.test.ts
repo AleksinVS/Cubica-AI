@@ -82,6 +82,7 @@ describe("default game config", () => {
       sessionId: "s1",
       gameId: "simple-choice",
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
+      actionAvailability: [],
       state: {
         players: {
           p1: { metrics: { cash: 900, position: 0 } },
@@ -216,6 +217,7 @@ describe("default game config", () => {
       sessionId: "s1",
       gameId: "simple-choice",
       version: { sessionId: "s1", stateVersion: 1, lastEventSequence: 0 },
+      actionAvailability: [],
       state: {
         public: {
           objects: {

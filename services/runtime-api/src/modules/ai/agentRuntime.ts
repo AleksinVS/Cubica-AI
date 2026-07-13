@@ -23,9 +23,15 @@ import type {
   GameManifestAgentRuntimeConfig,
   GameManifestExecutionMode
 } from "@cubica/contracts-manifest";
-import type { SessionRecord, SessionStorePort } from "@cubica/contracts-session";
+import type {
+  SessionActionAvailability,
+  SessionRecord,
+  SessionStorePort
+} from "@cubica/contracts-session";
 import { contentService } from "../content/contentService.ts";
 import { HttpError, NotFoundError, RequestValidationError } from "../errors.ts";
+import { projectSessionActionAvailability } from "../runtime/actionAvailability.ts";
+import { projectPlayerSessionState } from "../session/playerSessionProjection.ts";
 import {
   buildAgentRuntimeUnavailableMessage,
   checkAgentRuntimeReadiness,
@@ -52,6 +58,7 @@ export interface AgentTurnServiceResponse {
   readonly sessionId: string;
   readonly version: SessionRecord<RuntimeState>["version"];
   readonly state: RuntimeState;
+  readonly actionAvailability: ReadonlyArray<SessionActionAvailability>;
   readonly agentTurn: CubicaAgentTurnResult;
 }
 
@@ -65,7 +72,8 @@ export class AgentTurnService {
       throw new NotFoundError(`Session "${input.request.sessionId}" was not found`);
     }
 
-    const manifest = await contentService.getGameManifest(current.gameId, input.contentSourceId);
+    const bundle = await contentService.getBundle(current.gameId, current.contentSourceId);
+    const manifest = bundle.manifest;
     const executionMode = manifest.executionMode ?? "deterministic";
     if (executionMode === "deterministic") {
       throw new RequestValidationError("Agent turns are available only for hybrid or AI-driven games.");
@@ -111,7 +119,8 @@ export class AgentTurnService {
         result: {
           sessionId: current.sessionId,
           version: current.version,
-          state: current.state,
+          state: projectPlayerSessionState(current.state),
+          actionAvailability: projectSessionActionAvailability(current, bundle),
           agentTurn
         }
       };
@@ -130,7 +139,8 @@ export class AgentTurnService {
       result: {
         sessionId: nextSnapshot.sessionId,
         version: nextSnapshot.version,
-        state: nextSnapshot.state,
+        state: projectPlayerSessionState(nextSnapshot.state),
+        actionAvailability: projectSessionActionAvailability(nextSnapshot, bundle),
         agentTurn
       }
     };

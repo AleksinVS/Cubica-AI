@@ -47,18 +47,19 @@ description: >-
 Выполни из корня репозитория:
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs
 ```
 
 - Увидел список команд → окружение готово, полный справочник флагов перед
   тобой (перечитывай его отсюда, не по памяти).
-- Увидел `Не найдена зависимость` → выполни
-  `npm install --no-save pngjs pixelmatch playwright` и повтори.
-- Браузерная команда упала с `Executable doesn't exist` → выполни
-  `node node_modules/playwright/cli.js install chromium` и повтори.
+- Увидел `Не найдена зависимость` → проверь корневые `package.json` и
+  `package-lock.json`. Не устанавливай пакеты через `--no-save`; используй
+  принятый проектом способ установки и требуемое средой разрешение на сеть.
+- Браузерная команда сообщила об отсутствующем Chromium → установка браузера
+  требует сетевого доступа; выполни ее только после получения необходимого
+  разрешения среды.
 
-Навык установлен не в `.claude/skills/`? Замени префикс
-`.claude/skills/ui-compare` на фактический каталог навыка во всех командах.
+Канонический каталог инструмента — `skills/C_ui-compare/`.
 Все артефакты пиши в `.tmp/ui-compare/` (в репозиторий не коммитить, после
 задачи подчистить).
 
@@ -84,8 +85,10 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs
 - [ ] **Данные одинаковы.** Реализация показывает те же тексты, карточки и
   значения, что образец (фикстуры или продвижение по состояниям). Diff
   60–90% почти всегда означает нарушение именно этого пункта.
-- [ ] **Ровно один dev-сервер со свежим bundle.** Убей все процессы порта и
-  запусти один заново; признаки устаревшего кэша — методология §9.6.
+- [ ] **Ровно один dev-сервер со свежим bundle.** Определи владельца процесса
+  на порту и останавливай только сервер, запущенный текущей задачей. Если порт
+  занят чужим процессом, используй другой порт; признаки устаревшего кэша —
+  методология §9.6.
 - [ ] **Целевой экран достигается детерминированно.** Если до него нужно
   кликать — опиши шаги в файле `steps.json`:
   ```json
@@ -96,7 +99,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs
 ### Шаг 1 — образец в PNG
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs to-png <ПУТЬ-К-ОБРАЗЦУ> --out .tmp/ui-compare/ref.png
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs to-png <ПУТЬ-К-ОБРАЗЦУ> --out .tmp/ui-compare/ref.png
 ```
 
 Запиши размеры из вывода (например `(1920x1080)`) — это viewport для шага 2.
@@ -104,7 +107,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs to-png <ПУТЬ-К-О
 ### Шаг 2 — скриншот реализации
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs capture <URL> --out .tmp/ui-compare/impl.png --viewport <WxH-ИЗ-ШАГА-1> --wait-selector <СЕЛЕКТОР-ЦЕЛЕВОГО-ЭКРАНА> --steps steps.json
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs capture <URL> --out .tmp/ui-compare/impl.png --viewport <WxH-ИЗ-ШАГА-1> --wait-selector <СЕЛЕКТОР-ЦЕЛЕВОГО-ЭКРАНА> --steps steps.json
 ```
 
 (`--steps` — только если нужен сценарий; `--wait-selector` ставь всегда,
@@ -114,7 +117,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs capture <URL> --out .t
 ### Шаг 3 — измерить
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs compare .tmp/ui-compare/ref.png .tmp/ui-compare/impl.png --regions <РАЗМЕТКА.design.json>
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs compare .tmp/ui-compare/ref.png .tmp/ui-compare/impl.png --regions <РАЗМЕТКА.design.json>
 ```
 
 `--regions` подключай всегда, когда у образца есть разметка зон
@@ -129,7 +132,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs compare .tmp/ui-compar
 ### Шаг 5 — проверка по элементам (если есть селекторы и живой URL)
 
 ```bash
-node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs compare-elements .tmp/ui-compare/ref.png <URL> --regions <РАЗМЕТКА> --steps steps.json
+node skills/C_ui-compare/scripts/ui-visual-tool.mjs compare-elements .tmp/ui-compare/ref.png <URL> --regions <РАЗМЕТКА> --steps steps.json
 ```
 
 На каждый элемент — независимые вердикты: геометрия («не там», допуск ±2px),
@@ -144,8 +147,8 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs compare-elements .tmp/
 2. Цвет проверяй только числом, по одинаковым координатам выровненных копий
    `ref.png` и `impl.png` из out-dir:
    ```bash
-   node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/ref.png --points "<x,y>"
-   node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/impl.png --points "<x,y>"
+   node skills/C_ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/ref.png --points "<x,y>"
+   node skills/C_ui-compare/scripts/ui-visual-tool.mjs sample .tmp/ui-compare/impl.png --points "<x,y>"
    ```
 3. Размеры, отступы, шрифт, z-index смотри через `getComputedStyle` в
    Playwright (шаблон — методология §9.1), а не чтением CSS-файла: файл
@@ -191,7 +194,7 @@ node .claude/skills/ui-compare/scripts/ui-visual-tool.mjs compare-elements .tmp/
 | `MISSING` | Элемента нет в DOM | Реализуй элемент; если он есть — исправь селектор |
 | `OFFSCREEN` | Элемент вне вьюпорта или нулевого размера | Чини layout; скроллящиеся экраны сравнивай по частям — инструмент не скроллит |
 | `ПЕРЕКРЫТ (интерактивный!)` | Кнопка видна, но клик перехватит чужой слой | Оверлею `pointer-events: none` или кнопке `z-index: 1`; НЕ двигай grid-строки (методология §3.8, §7.5) |
-| Фиксы «не применяются» визуально | Устаревший bundle dev-сервера | Методология §9.6: убить все процессы порта, запустить один, жёсткая перезагрузка |
+| Фиксы «не применяются» визуально | Устаревший bundle dev-сервера | Методология §9.6: определить владельца порта, перезапустить только свой сервер или выбрать другой порт, затем обновить страницу |
 | `СТАТУС: PASS` во всех прогонах | Готово | Раздел 7: ворота и отчёт |
 
 ## 7. Ворота приёмки и шаблон отчёта

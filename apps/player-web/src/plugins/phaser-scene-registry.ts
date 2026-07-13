@@ -38,6 +38,8 @@ export interface PhaserSceneContext {
   readonly session: InteractiveBoardSessionSnapshot;
   /** Game-owned image URLs resolved by stable asset id, never repository path. */
   readonly assets: GameAssetResolver;
+  /** True while Presenter is waiting for the previous authoritative snapshot. */
+  readonly isInteractionPending: () => boolean;
   /** Dispatches through the normal runtime path and rejects on refusal. */
   readonly dispatchAction: (
     actionId: string,

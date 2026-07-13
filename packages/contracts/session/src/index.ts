@@ -81,6 +81,34 @@ export interface CreateSessionInput<TState = unknown> {
 }
 
 /**
+ * Stable, non-technical explanation for why an action cannot be used now.
+ *
+ * Runtime deliberately does not expose guard expressions, JSON paths, or
+ * secret state through this contract. Delivery clients translate these codes
+ * into localized product copy and may add a more specific manifest-authored
+ * explanation when one is available.
+ */
+export type SessionActionAvailabilityReasonCode =
+  | "role_not_allowed"
+  | "state_condition_failed"
+  | "parameters_required"
+  | "runtime_unsupported";
+
+/**
+ * Server projection of one declared action for the current session snapshot.
+ *
+ * `parameter-dependent` means the state-only checks passed, but the final
+ * decision needs parameters selected by the player (for example a road id).
+ * Such an action may remain interactive; runtime validates the completed
+ * command again against the latest authoritative state.
+ */
+export interface SessionActionAvailability {
+  actionId: string;
+  status: "available" | "unavailable" | "parameter-dependent";
+  reasonCode?: SessionActionAvailabilityReasonCode;
+}
+
+/**
  * Compare-and-set precondition for a session write.
  *
  * The caller supplies the state version it read before computing the next
@@ -112,6 +140,7 @@ export interface CreateSessionResponse<TState = unknown> {
   gameId: string;
   version: SessionStateVersion;
   state: TState;
+  actionAvailability: Array<SessionActionAvailability>;
 }
 
 export interface DispatchActionInput {
@@ -132,6 +161,7 @@ export interface DispatchActionResponse<TState = unknown> {
   sessionId: SessionId;
   version: SessionStateVersion;
   state: TState;
+  actionAvailability: Array<SessionActionAvailability>;
 }
 
 export interface RestorePreviewSessionRequest<TState = unknown> {
@@ -156,6 +186,7 @@ export interface RestorePreviewSessionResponse<TState = unknown> {
   gameId: string;
   version: SessionStateVersion;
   state: TState;
+  actionAvailability: Array<SessionActionAvailability>;
   restored: true;
 }
 
@@ -196,6 +227,7 @@ export interface SessionResponse<TState = unknown> {
   gameId: string;
   version: SessionStateVersion;
   state: TState;
+  actionAvailability: Array<SessionActionAvailability>;
 }
 
 /**
@@ -206,6 +238,7 @@ export interface ActionResponse<TState = unknown> {
   sessionId: SessionId;
   version: SessionStateVersion;
   state: TState;
+  actionAvailability: Array<SessionActionAvailability>;
 }
 
 /**

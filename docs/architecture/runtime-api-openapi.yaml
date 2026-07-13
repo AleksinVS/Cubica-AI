@@ -3,12 +3,13 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cubica Runtime API",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
   },
   "x-cubica-contract-status": "current-implemented-contract",
   "x-cubica-yaml-profile": "json-compatible-yaml",
   "x-cubica-architecture-source": "docs/architecture/adrs/051-api-first-contract-for-modular-monolith.md",
+  "x-cubica-action-availability-source": "docs/architecture/adrs/079-server-projected-action-availability.md",
   "externalDocs": {
     "description": "ADR-051: API First Contract For Modular Monolith",
     "url": "./adrs/051-api-first-contract-for-modular-monolith.md"
@@ -718,13 +719,34 @@
     "schemas": {
       "ActionResponse": {
         "type": "object",
-        "required": ["sessionId", "version", "state"],
+        "required": ["sessionId", "version", "state", "actionAvailability"],
         "properties": {
           "sessionId": { "type": "string" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
-          "state": { "$ref": "#/components/schemas/JsonObject" }
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" }
         },
         "additionalProperties": false
+      },
+      "SessionActionAvailability": {
+        "type": "object",
+        "required": ["actionId", "status"],
+        "properties": {
+          "actionId": { "type": "string", "minLength": 1 },
+          "status": {
+            "type": "string",
+            "enum": ["available", "unavailable", "parameter-dependent"]
+          },
+          "reasonCode": {
+            "type": "string",
+            "enum": ["role_not_allowed", "state_condition_failed", "parameters_required", "runtime_unsupported"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SessionActionAvailabilityList": {
+        "type": "array",
+        "items": { "$ref": "#/components/schemas/SessionActionAvailability" }
       },
       "AgentTurnRequest": {
         "type": "object",
@@ -739,11 +761,12 @@
       },
       "AgentTurnResponse": {
         "type": "object",
-        "required": ["sessionId", "version", "state", "agentTurn"],
+        "required": ["sessionId", "version", "state", "actionAvailability", "agentTurn"],
         "properties": {
           "sessionId": { "type": "string" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
           "agentTurn": { "$ref": "#/components/schemas/JsonObject" }
         },
         "additionalProperties": false
@@ -959,12 +982,13 @@
       },
       "SessionResponse": {
         "type": "object",
-        "required": ["sessionId", "gameId", "version", "state"],
+        "required": ["sessionId", "gameId", "version", "state", "actionAvailability"],
         "properties": {
           "sessionId": { "type": "string" },
           "gameId": { "$ref": "#/components/schemas/GameId" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
-          "state": { "$ref": "#/components/schemas/JsonObject" }
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" }
         },
         "additionalProperties": false
       },

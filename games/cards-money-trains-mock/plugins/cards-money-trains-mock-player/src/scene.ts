@@ -201,7 +201,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
         const highlight = edgeHighlights.get(edge.id);
         graphics.lineStyle(highlight ? 9 : 5, edgeColor(edge), 0.95);
         graphics.lineBetween(from.x, from.y, to.x, to.y);
-        if (highlight?.actionId) {
+        if (highlight?.actionId && !context.isInteractionPending()) {
           const hitArea = this.add.zone(
             (from.x + to.x) / 2,
             (from.y + to.y) / 2,
@@ -241,7 +241,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           fontSize: "18px"
         }).setOrigin(0.5, 1);
 
-        if (highlight?.actionId) {
+        if (highlight?.actionId && !context.isInteractionPending()) {
           // The transparent zone is at least 52×52 design pixels, which keeps
           // the target usable on touch after the FIT scale is applied.
           const hitArea = this.add.zone(position.x, position.y, 52, 52);
@@ -252,7 +252,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     }
 
     private dispatchHighlight(highlight: BoardHighlightView) {
-      if (!highlight.actionId) return;
+      if (!highlight.actionId || context.isInteractionPending()) return;
       void context.dispatchAction(highlight.actionId, { ...highlight.params })
         .then(() => { lastError = null; })
         .catch((error: unknown) => {

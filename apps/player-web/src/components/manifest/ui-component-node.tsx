@@ -89,6 +89,7 @@ export function UiComponentNode({
   session,
   onBoardAction,
   assetResolver,
+  isPending = false,
 }: {
   component: GameUiComponent;
   metrics: MetricsSnapshot;
@@ -116,6 +117,8 @@ export function UiComponentNode({
   onBoardAction?: (actionId: string, params?: Record<string, unknown>) => Promise<void>;
   /** Resolves documented `asset:<id>` image properties without exposing paths. */
   assetResolver?: GameAssetResolver | null;
+  /** Shared presenter lock while one server action is in flight. */
+  isPending?: boolean;
 }) {
   if (component.if) {
     const condition = resolveExpressions(component.if, gameState ?? {}, localContext);
@@ -195,6 +198,7 @@ export function UiComponentNode({
                   session={session}
                   onBoardAction={onBoardAction}
                   assetResolver={assetResolver}
+                  isPending={isPending}
                 />
               ))}
             </React.Fragment>
@@ -275,6 +279,7 @@ export function UiComponentNode({
               session={session}
               onBoardAction={onBoardAction}
               assetResolver={assetResolver}
+              isPending={isPending}
             />
           ))}
         </div>
@@ -310,6 +315,7 @@ export function UiComponentNode({
               session={session}
               onBoardAction={onBoardAction}
               assetResolver={assetResolver}
+              isPending={isPending}
             />
           ))}
         </div>
@@ -352,6 +358,8 @@ export function UiComponentNode({
           localContext={localContext}
           gameState={gameState}
           previewAttributes={previewAttributes}
+          session={session}
+          isPending={isPending}
         />
       );
     }
@@ -391,6 +399,7 @@ export function UiComponentNode({
           assets={assetResolver}
           manifestProps={component.props as GameUiInteractiveBoardSurfaceProps}
           dispatchAction={onBoardAction}
+          isPending={isPending}
         />
       );
     }

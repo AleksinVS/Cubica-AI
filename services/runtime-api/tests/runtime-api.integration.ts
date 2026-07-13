@@ -1579,7 +1579,7 @@ test("POST /actions progresses from first board through i7 to second board after
   );
   assert.equal(replayAdvanceResponse.status, 400);
   const replayAdvanceErrorBody = replayAdvanceBody as { error: string };
-  assert.match(replayAdvanceErrorBody.error, /guard failed/);
+  assert.match(replayAdvanceErrorBody.error, /not available in the current session state/);
 });
 
 test("POST /actions allows non-go opening card before opening.card.3 and rejects non-go replay", async () => {
@@ -1632,7 +1632,7 @@ test("POST /actions allows non-go opening card before opening.card.3 and rejects
   );
   assert.equal(replayResponse.status, 400);
   const replayErrorBody = replayBody as { error: string };
-  assert.match(replayErrorBody.error, /guard failed/);
+  assert.match(replayErrorBody.error, /not available in the current session state/);
 
   const { response: card3Response, body: card3Body } = await dispatchAction(
     created.sessionId,
@@ -1710,7 +1710,7 @@ test("POST /actions allows second-board non-go opening.card.12 before go opening
   );
   assert.equal(replayCard12Response.status, 400);
   const replayCard12Error = replayCard12Body as { error: string };
-  assert.match(replayCard12Error.error, /guard failed/);
+  assert.match(replayCard12Error.error, /not available in the current session state/);
 
   const { response: card9Response, body: card9Body } = await dispatchAction(
     created.sessionId,
@@ -1858,7 +1858,7 @@ test("POST /actions advances from opening.card.9 to the team-selection boundary 
   );
   assert.equal(replayCard13Response.status, 400);
   const replayCard13Error = replayCard13Body as { error: string };
-  assert.match(replayCard13Error.error, /guard failed/);
+  assert.match(replayCard13Error.error, /not available in the current session state/);
 
   const { response: card18Response, body: card18Body } = await dispatchAction(
     created.sessionId,
@@ -2043,7 +2043,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(replayResponse.status, 400);
   const replayErrorBody = replayBody as { error: string };
-  assert.match(replayErrorBody.error, /guard failed/);
+  assert.match(replayErrorBody.error, /not available in the current session state/);
 
   const { response: confirmBeforeFifthResponse, body: confirmBeforeFifthBody } = await dispatchAction(
     created.sessionId,
@@ -2052,7 +2052,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(confirmBeforeFifthResponse.status, 400);
   const confirmBeforeFifthErrorBody = confirmBeforeFifthBody as { error: string };
-  assert.match(confirmBeforeFifthErrorBody.error, /guard failed/);
+  assert.match(confirmBeforeFifthErrorBody.error, /not available in the current session state/);
 
   const fifthPick = teamPicks[4];
   const { response: fifthResponse, body: fifthBody } = await dispatchAction(
@@ -2088,7 +2088,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(sixthResponse.status, 400);
   const sixthErrorBody = sixthBody as { error: string };
-  assert.match(sixthErrorBody.error, /guard failed/);
+  assert.match(sixthErrorBody.error, /not available in the current session state/);
 
   const { response: confirmResponse, body: confirmBody } = await dispatchAction(
     created.sessionId,
@@ -2139,7 +2139,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(card21ReplayResponse.status, 400);
   const card21ReplayErrorBody = card21ReplayBody as { error: string };
-  assert.match(card21ReplayErrorBody.error, /guard failed/);
+  assert.match(card21ReplayErrorBody.error, /not available in the current session state/);
 
   const { response: replaySessionResponse, body: replaySession } = await requestJson<SessionResponse>(
     `/sessions/${created.sessionId}`
@@ -2234,7 +2234,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(advanceBeforeThresholdResponse.status, 400);
   const advanceBeforeThresholdErrorBody = advanceBeforeThresholdBody as { error: string };
-  assert.match(advanceBeforeThresholdErrorBody.error, /guard failed/);
+  assert.match(advanceBeforeThresholdErrorBody.error, /not available in the current session state/);
 
   const { response: card27Response, body: card27Body } = await dispatchAction(
     created.sessionId,
@@ -2259,7 +2259,7 @@ test("POST /actions applies bounded team selection through the step 18 boundary"
   );
   assert.equal(replayCard26Response.status, 400);
   const replayCard26ErrorBody = replayCard26Body as { error: string };
-  assert.match(replayCard26ErrorBody.error, /guard failed/);
+  assert.match(replayCard26ErrorBody.error, /not available in the current session state/);
 
   const { response: boardAdvanceResponse, body: boardAdvanceBody } = await dispatchAction(
     created.sessionId,
@@ -2481,7 +2481,7 @@ test("POST /actions keeps opening.card.39 locked until the third resolved step-2
     "opening.card.39"
   );
   assert.equal(locked39Response.status, 400);
-  assert.match((locked39Body as { error: string }).error, /guard failed/);
+  assert.match((locked39Body as { error: string }).error, /not available in the current session state/);
 
   for (const actionId of ["opening.card.37", "opening.card.38"] as const) {
     const { response, body } = await dispatchAction(created.sessionId, "step-23-low-pro", actionId);
@@ -2597,7 +2597,7 @@ test("POST /actions exposes opening.card.3902 immediately on a high-pro step-23 
     "opening.card.39"
   );
   assert.equal(base39Response.status, 400);
-  assert.match((base39Body as { error: string }).error, /guard failed/);
+  assert.match((base39Body as { error: string }).error, /not available in the current session state/);
 
   const beforeCard3902Time = Number(step23Action.state.public.metrics?.time ?? 0);
   const { response: card3902Response, body: card3902Body } = await dispatchAction(
@@ -3256,7 +3256,7 @@ test("POST /actions rejects replay of opening.card.3 with HTTP 400", async () =>
   const { response, body } = await dispatchAction(created.sessionId, "card-replay", "opening.card.3");
   assert.equal(response.status, 400);
   const errorBody = body as { error: string };
-  assert.match(errorBody.error, /guard failed/);
+  assert.match(errorBody.error, /not available in the current session state/);
 });
 
 test("POST /actions rejects opening.card.3 before intro reaches step 9 with HTTP 400", async () => {

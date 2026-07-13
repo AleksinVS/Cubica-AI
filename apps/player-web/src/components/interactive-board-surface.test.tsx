@@ -62,7 +62,8 @@ function session(sequence: number): GameSession {
       stateVersion: sequence,
       lastEventSequence: sequence
     },
-    state: { public: { sequence } }
+    state: { public: { sequence } },
+    actionAvailability: []
   };
 }
 
@@ -175,5 +176,38 @@ describe("InteractiveBoardSurface", () => {
     );
 
     expect(screen.getByRole("alert").textContent).toContain("Игра не предоставила сцену");
+  });
+
+  it("blocks DOM and scene dispatch while a previous action is pending", async () => {
+    let sceneDispatch: (() => Promise<void>) | undefined;
+    const disposeRegistration = registerPhaserSceneFactory(content.gameId, (context) => {
+      sceneDispatch = () => context.dispatchAction("board.move");
+      return {
+        scene: new context.Phaser.Scene(),
+        updateSession() {},
+        destroy() {},
+        getAccessibleActions() {
+          return [{ id: "move", label: "Переместить", actionId: "board.move" }];
+        }
+      };
+    });
+    const dispatchAction = vi.fn();
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+        isPending
+      />
+    );
+
+    expect((await screen.findByRole("button", { name: "Переместить" }) as HTMLButtonElement).disabled).toBe(true);
+    await expect(sceneDispatch?.()).rejects.toThrow("Дождитесь завершения");
+    expect(dispatchAction).not.toHaveBeenCalled();
+    disposeRegistration();
   });
 });

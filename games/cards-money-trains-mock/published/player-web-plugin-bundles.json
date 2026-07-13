@@ -8,10 +8,10 @@
       "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
-      "contentHash": "4425583f076898c9942982d70883ca9cb4af7a34872e582fa59ca7cc35b04f3a",
-      "integrity": "sha256-RCVYPwdomMmUKYLXCIPKnLSvejSHLlgvpZynzDWwTzo=",
-      "filePath": "published/cards-money-trains-mock-player.4425583f076898c9942982d70883ca9cb4af7a34872e582fa59ca7cc35b04f3a.mjs",
-      "url": "/published-plugin-bundles/cards-money-trains-mock/cards-money-trains-mock-player/4425583f076898c9942982d70883ca9cb4af7a34872e582fa59ca7cc35b04f3a.mjs"
+      "contentHash": "f5b59b07ff2edf31aa6cc1388c420e96ab4379b9b65a83c426786a84b8bb03e6",
+      "integrity": "sha256-9bWbB/8u3zGqbME4jEIOlqtDebm2WoPEJnhqhLi7A+Y=",
+      "filePath": "published/cards-money-trains-mock-player.f5b59b07ff2edf31aa6cc1388c420e96ab4379b9b65a83c426786a84b8bb03e6.mjs",
+      "url": "/published-plugin-bundles/cards-money-trains-mock/cards-money-trains-mock-player/f5b59b07ff2edf31aa6cc1388c420e96ab4379b9b65a83c426786a84b8bb03e6.mjs"
     }
   ]
 }

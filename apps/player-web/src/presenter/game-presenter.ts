@@ -326,7 +326,7 @@ export class GamePresenter {
    * Обрабатывает событие от View или системы.
    */
   async handleEvent(request: ClientRequest): Promise<void> {
-    if (this.booting || !this.session) {
+    if (this.booting || this.isPending || !this.session) {
       return;
     }
 
@@ -401,6 +401,9 @@ export class GamePresenter {
     if (this.booting || !this.session) {
       throw new Error("Игровая сессия еще не готова к действию на поле.");
     }
+    if (this.isPending) {
+      throw new Error("Дождитесь завершения предыдущего действия.");
+    }
 
     this.isPending = true;
     this.clearError();
@@ -440,7 +443,7 @@ export class GamePresenter {
    * before the next snapshot is accepted.
    */
   async handleSurfaceAction(action: CubicaSurfaceAction): Promise<void> {
-    if (this.booting || !this.session) {
+    if (this.booting || this.isPending || !this.session) {
       return;
     }
 
@@ -598,7 +601,8 @@ export class GamePresenter {
       sessionId: next.sessionId,
       gameId: this.config.gameId,
       version: next.version,
-      state: next.state
+      state: next.state,
+      actionAvailability: next.actionAvailability
     };
     this.agentSurface = next.agentTurn.surface ?? null;
     this.runtimeStatus = "ready";

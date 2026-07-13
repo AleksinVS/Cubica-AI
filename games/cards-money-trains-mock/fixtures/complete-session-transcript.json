@@ -800,7 +800,7 @@
       "id": "wrong-phase",
       "afterStepOrder": 1,
       "actionId": "mock.market.finish",
-      "expectedError": "guard|phase",
+      "expectedError": "not available in the current session state",
       "expectedStateVersionDelta": 0
     },
     {

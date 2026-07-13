@@ -1,0 +1,3 @@
+interface:
+  display_name: "C_ui-compare"
+  short_description: "Измеряемое сравнение UI с визуальным образцом"
