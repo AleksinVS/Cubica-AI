@@ -28,6 +28,7 @@ import {
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import type { GameConfig } from "@/presenter/game-config";
 import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting } from "@/lib/screen-router";
+import { normalizePlayerLayoutMode } from "@/lib/player-layout-mode";
 import type { ClientRequest } from "@/presenter/types";
 import type { PlayerRuntimeStatus, PlayerState } from "@/presenter/types";
 import type { CubicaJsonValue, CubicaSurface, CubicaSurfaceAction } from "@cubica/contracts-ai";
@@ -173,9 +174,17 @@ export class GamePresenter {
         : resolveScreenKeyDefault(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi, this.gameUi)
       : null;
 
-    const layoutMode = this.config.resolveLayoutMode
-      ? this.config.resolveLayoutMode(screenKey, runtimeUi, gameState)
-      : resolveLayoutModeFromRouting(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi) ?? "topbar";
+    // The selected screen is the most local declarative owner of its layout.
+    // Routing only chooses a screen; it must not silently downgrade an
+    // explicit map-first workspace to the historical topbar fallback.
+    const declaredScreenLayout = screenKey
+      ? normalizePlayerLayoutMode(this.gameUi?.screens[screenKey]?.layoutMode)
+      : undefined;
+    const layoutMode = declaredScreenLayout ?? (
+      this.config.resolveLayoutMode
+        ? this.config.resolveLayoutMode(screenKey, runtimeUi, gameState)
+        : resolveLayoutModeFromRouting(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi) ?? "topbar"
+    );
 
     const rawActivePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;
     let activePanel: string | null = null;

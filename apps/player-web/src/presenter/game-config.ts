@@ -12,6 +12,7 @@ import type {
 import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
 import { createManifestActionAdapter as createGenericManifestActionAdapter } from "@/lib/manifest-action-adapter";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Спецификация одной fallback-метрики.
@@ -108,7 +109,7 @@ export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePl
     screenKey: string | null,
     runtimeUi: RuntimeUiState,
     gameState: TGameState
-  ) => "leftsidebar" | "topbar";
+  ) => PlayerLayoutMode;
 
   /**
    * Разрешает PlayerFacingContent + session snapshot в game-specific состояние.

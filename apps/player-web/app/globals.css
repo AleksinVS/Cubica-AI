@@ -3624,3 +3624,344 @@ select {
 .game-renderer:has(.journal-screen) .game-variables-container {
   display: none !important;
 }
+
+/* ==========================================================================
+   Declarative map-first workspace
+
+   Placement depends only on `layout_mode: map-first` and the bounded
+   `workspaceSlot` vocabulary. Game-authored classes may style content inside a
+   slot, but cannot choose coordinates or stacking order.
+   ========================================================================== */
+
+.game-player-root:has(.game-renderer--map-first) {
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+.game-renderer.game-renderer--map-first {
+  position: relative;
+  isolation: isolate;
+  display: block;
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #171612;
+  box-shadow: none;
+  transform: none;
+}
+
+.game-renderer--map-first .map-first-screen {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  background-image: none;
+}
+
+.game-renderer--map-first .map-first-slot {
+  position: absolute;
+  display: block;
+  box-sizing: border-box;
+  width: auto;
+  height: auto;
+  min-width: 0;
+  min-height: 0;
+  max-width: none;
+  margin: 0;
+  flex: none;
+  pointer-events: none;
+}
+
+.game-renderer--map-first .map-first-slot[hidden] {
+  /* Author styles are allowed on slot content, but cannot reveal a drawer
+     which the platform presentation state has closed. */
+  display: none !important;
+}
+
+.game-renderer--map-first .map-first-slot > .map-first-slot-content {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  pointer-events: auto;
+}
+
+.game-renderer--map-first .map-first-slot--board {
+  z-index: 0;
+  inset: 0;
+  pointer-events: auto;
+  background: #171612;
+}
+
+.game-renderer--map-first .map-first-slot--board > .map-first-slot-content {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+}
+
+.game-renderer--map-first .map-first-slot--status {
+  z-index: 6;
+  top: 0.75rem;
+  right: clamp(23rem, 28vw, 31rem);
+  left: 0.75rem;
+  max-height: 5.5rem;
+  padding: 0.65rem 0.9rem;
+  overflow: hidden;
+  border: 1px solid rgb(246 240 223 / 22%);
+  border-radius: 0.7rem;
+  background: rgb(24 22 17 / 90%);
+  box-shadow: 0 0.8rem 2.2rem rgb(0 0 0 / 32%);
+  backdrop-filter: blur(12px);
+}
+
+.game-renderer--map-first .map-first-slot--status > .map-first-slot-content {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem 0.75rem;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  flex: none;
+}
+
+.game-renderer--map-first .map-first-slot--status h1,
+.game-renderer--map-first .map-first-slot--status h2,
+.game-renderer--map-first .map-first-slot--status p {
+  display: inline;
+  margin: 0 0.75rem 0 0;
+}
+
+.game-renderer--map-first .map-first-slot--status h1 {
+  font-size: clamp(1rem, 1.5vw, 1.35rem);
+}
+
+.game-renderer--map-first .map-first-slot--primary-panel,
+.game-renderer--map-first .map-first-slot--context-panel {
+  z-index: 5;
+  top: 6.75rem;
+  bottom: 6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: min(22rem, calc(100vw - 2rem));
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  padding: 1rem;
+  overflow: auto;
+  border: 1px solid rgb(246 240 223 / 22%);
+  border-radius: 0.8rem;
+  background: rgb(24 22 17 / 92%);
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 38%);
+  backdrop-filter: blur(14px);
+  pointer-events: auto;
+}
+
+.game-renderer--map-first .map-first-slot--primary-panel > .map-first-slot-content,
+.game-renderer--map-first .map-first-slot--context-panel > .map-first-slot-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 0.75rem;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  grid-template: none;
+  align-content: initial;
+}
+
+.game-renderer--map-first .map-first-slot--primary-panel {
+  left: 0.75rem;
+}
+
+.game-renderer--map-first .map-first-slot--context-panel {
+  right: 0.75rem;
+}
+
+.game-renderer--map-first .map-first-slot--action-tray {
+  z-index: 7;
+  /* The board surface owns a fixed camera cluster at the lower end edge.
+     Reserve that platform-controlled safe area so neither control can cover
+     or intercept the other. */
+  right: clamp(30rem, 36vw, 34rem);
+  bottom: 0.75rem;
+  left: max(4.5rem, 14vw);
+  max-height: 5rem;
+  padding: 0.7rem 0.9rem;
+  overflow-x: auto;
+  border: 1px solid rgb(246 240 223 / 22%);
+  border-radius: 0.8rem;
+  background: rgb(24 22 17 / 94%);
+  box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 38%);
+  backdrop-filter: blur(14px);
+}
+
+.game-renderer--map-first .map-first-slot--action-tray > .map-first-slot-content {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+}
+
+.game-renderer--map-first .map-first-slot--action-tray .button-container {
+  display: flex;
+  flex-flow: row nowrap;
+  gap: 0.65rem;
+  padding: 0;
+  overflow-x: auto;
+}
+
+.game-renderer--map-first .map-first-slot--action-tray button {
+  /* Critical phase transitions must remain touch- and keyboard-friendly even
+     when an older game theme gives helper buttons a compact height. */
+  min-height: 2.75rem;
+  padding-block: 0.55rem;
+}
+
+.game-renderer--map-first .map-first-slot--floating-controls {
+  z-index: 8;
+  right: 0.75rem;
+  bottom: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.game-renderer--map-first .map-first-slot--overlay {
+  z-index: 10;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: auto;
+  background: rgb(0 0 0 / 48%);
+  pointer-events: auto;
+}
+
+.map-first-panel-toggles {
+  position: absolute;
+  z-index: 9;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  pointer-events: auto;
+}
+
+.map-first-panel-toggle {
+  min-height: 2.75rem;
+  padding: 0.55rem 0.85rem;
+  border: 1px solid rgb(246 240 223 / 28%);
+  border-radius: 0.65rem;
+  background: rgb(24 22 17 / 94%);
+  box-shadow: 0 0.7rem 1.8rem rgb(0 0 0 / 32%);
+  color: #f6f0df;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(12px);
+}
+
+.map-first-panel-toggle:hover,
+.map-first-panel-toggle[aria-expanded="true"] {
+  border-color: rgb(246 240 223 / 58%);
+  background: rgb(57 51 38 / 96%);
+}
+
+.map-first-panel-toggle:focus-visible {
+  outline: 3px solid #f2c866;
+  outline-offset: 2px;
+}
+
+.map-first-manifest-panel-layer {
+  position: fixed;
+  z-index: 30;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  overflow: auto;
+  background: rgb(0 0 0 / 52%);
+}
+
+.map-first-manifest-panel-layer .game-renderer--embedded-overlay {
+  width: min(48rem, 100%);
+  min-height: 0;
+  height: auto;
+  max-height: calc(100dvh - 2rem);
+  margin: auto;
+  overflow: auto;
+  border: 1px solid rgb(246 240 223 / 26%);
+  border-radius: 0.9rem;
+  background: rgb(24 22 17 / 98%);
+  box-shadow: 0 1.5rem 4rem rgb(0 0 0 / 48%);
+}
+
+.map-first-manifest-panel-layer .game-renderer--embedded-overlay .game-screen {
+  min-height: 0;
+  height: auto;
+  background-image: none;
+}
+
+.game-player-root:has(.game-renderer--map-first) > .inline-error {
+  position: fixed;
+  z-index: 20;
+  right: 1rem;
+  bottom: 1rem;
+  left: 1rem;
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .game-renderer--map-first .map-first-slot--status {
+    top: 4.25rem;
+    right: 0.75rem;
+  }
+
+  .game-renderer--map-first .map-first-slot--primary-panel,
+  .game-renderer--map-first .map-first-slot--context-panel {
+    top: auto;
+    right: 0.75rem;
+    bottom: 5.75rem;
+    left: 0.75rem;
+    width: auto;
+    max-height: 44vh;
+  }
+
+  .game-renderer--map-first .map-first-slot--action-tray {
+    right: 0.75rem;
+    left: 0.75rem;
+  }
+}

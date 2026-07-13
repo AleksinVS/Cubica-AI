@@ -1,14 +1,47 @@
 {
   "gameId": "cards-money-trains-mock",
   "assetId": "board-guinea-optimized",
+  "deliveryFile": "assets/images/guinea-map.webp",
+  "delivery": {
+    "mimeType": "image/webp",
+    "width": 2560,
+    "height": 1828,
+    "byteSize": 306808,
+    "sha256": "c6c52f27b348e4f2d56fb936227518921da98542ce3bf69794abf6fdf58480be"
+  },
   "source": {
-    "kind": "generated-test-diagram",
-    "file": "assets/images/mock-board.svg"
+    "kind": "registered-copy-of-normative-game-asset",
+    "gameId": "cards-money-trains",
+    "assetId": "board-guinea-optimized",
+    "deliveryFile": "../cards-money-trains/assets/images/guinea-map.webp",
+    "provenanceFile": "../cards-money-trains/asset-provenance.json",
+    "originalSourcePath": "draft/trains/Игровая Карта.png",
+    "copyIsByteIdentical": true
   },
   "rights": {
     "status": "confirmed",
-    "owner": "Cubica",
+    "license": "direct-permission-from-author-and-rightsholder",
+    "owner": "game author/rightsholder; legal name is not recorded in repository metadata",
+    "publicationAllowed": true,
+    "modificationAllowed": true,
+    "confirmedBy": "PM",
+    "confirmedAt": "2026-07-11",
+    "note": "The map itself may be used, optimized and published in Cubica. This mock package is blocked from publication because its network and gameplay data are synthetic, not because of the map rights."
+  },
+  "mockPackagePolicy": {
+    "testOnly": true,
     "publicationAllowed": false,
-    "note": "Ресурс создан только как тестовая подложка; запрет публикации относится к mock-пакету, а не к согласованной авторской карте нормативной игры."
+    "replaceBeforePublication": true,
+    "reason": "The transport network, regions, cargo, news and control transcript are synthetic development data."
+  },
+  "geometryFixture": {
+    "assetId": "mock-board-geometry-fixture",
+    "file": "assets/images/mock-board.svg",
+    "kind": "generated-test-diagram",
+    "usedAsRuntimeBoard": false,
+    "usedBy": [
+      "annotations/map-annotation.mock.json",
+      "generated/annotation-review-overlay.svg"
+    ]
   }
 }

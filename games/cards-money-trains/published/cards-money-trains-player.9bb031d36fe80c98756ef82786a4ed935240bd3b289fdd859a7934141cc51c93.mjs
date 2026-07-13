@@ -290,10 +290,14 @@ __pluginDefine("src/scene.ts", (exports, module) => {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createCardsMoneyTrainsScene = void 0;
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
+const camera_math_ts_1 = __pluginRequire("src/camera-math.ts");
 const board_state_ts_1 = __pluginRequire("src/board-state.ts");
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
 const BOARD_PADDING = 72;
+const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+const MAX_CAMERA_ZOOM = 3;
+const WHEEL_ZOOM_STEP = 1.15;
 const edgeColor = (edge) => {
     if (edge.visualState === "blocked")
         return 0xc94c4c;
@@ -316,6 +320,10 @@ const createCardsMoneyTrainsScene = (context) => {
          * that Phaser has already released.
          */
         projectionReady = false;
+        cameraInteractionReady = false;
+        overviewActive = true;
+        cameraViewport = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+        dragState = null;
         constructor() {
             super({ key: `cards-money-trains:${context.sceneId}` });
         }
@@ -327,24 +335,137 @@ const createCardsMoneyTrainsScene = (context) => {
         create() {
             this.projectionReady = true;
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-                this.projectionReady = false;
+                this.stopProjection();
             });
             this.cameras.main.setBackgroundColor("#f3ead8");
+            this.configureCameraInteraction();
             this.renderProjection();
         }
+        /**
+         * Release scene-owned listeners before Phaser tears down its managers.
+         * Ordinary DOM actions are registered separately and do not depend on this
+         * lifecycle or on the camera being available.
+         */
+        stopProjection() {
+            this.projectionReady = false;
+            if (!this.cameraInteractionReady)
+                return;
+            this.cameraInteractionReady = false;
+            this.dragState = null;
+            this.input.off("wheel", this.handleWheel);
+            this.input.off("pointerdown", this.handlePointerDown);
+            this.input.off("pointermove", this.handlePointerMove);
+            this.input.off("pointerup", this.handlePointerUp);
+            this.input.off("pointerupoutside", this.handlePointerUp);
+            this.input.off("gameout", this.cancelDrag);
+            this.scale.off("resize", this.handleResize);
+        }
+        /** Return to the complete-world overview exposed by the host DOM control. */
+        fitToView() {
+            if (!this.projectionReady)
+                return;
+            this.overviewActive = true;
+            this.applyCameraView((0, camera_math_ts_1.overviewCameraView)(this.currentViewport(), CAMERA_WORLD));
+        }
+        /** Zoom around the viewport centre; factors above one mean zooming in. */
+        zoomBy(factor) {
+            if (!this.projectionReady || !Number.isFinite(factor) || factor <= 0)
+                return;
+            const viewport = this.currentViewport();
+            this.applyZoomAt({ x: viewport.width / 2, y: viewport.height / 2 }, factor);
+        }
+        configureCameraInteraction() {
+            const camera = this.cameras.main;
+            camera.setBounds(CAMERA_WORLD.x, CAMERA_WORLD.y, CAMERA_WORLD.width, CAMERA_WORLD.height);
+            this.cameraViewport = this.currentViewport();
+            this.cameraInteractionReady = true;
+            this.fitToView();
+            this.input.on("wheel", this.handleWheel);
+            this.input.on("pointerdown", this.handlePointerDown);
+            this.input.on("pointermove", this.handlePointerMove);
+            this.input.on("pointerup", this.handlePointerUp);
+            this.input.on("pointerupoutside", this.handlePointerUp);
+            this.input.on("gameout", this.cancelDrag);
+            this.scale.on("resize", this.handleResize);
+        }
+        currentViewport() {
+            const camera = this.cameras.main;
+            return { width: Math.max(1, camera.width), height: Math.max(1, camera.height) };
+        }
+        currentCameraView() {
+            const camera = this.cameras.main;
+            return { scrollX: camera.scrollX, scrollY: camera.scrollY, zoom: camera.zoom };
+        }
+        applyCameraView(view) {
+            this.cameras.main.setZoom(view.zoom).setScroll(view.scrollX, view.scrollY);
+        }
+        applyZoomAt(point, factor) {
+            const viewport = this.currentViewport();
+            const current = this.currentCameraView();
+            const minimumZoom = (0, camera_math_ts_1.fitCameraZoom)(viewport, CAMERA_WORLD);
+            const next = (0, camera_math_ts_1.zoomCameraViewAtPoint)(current, point, current.zoom * factor, viewport, CAMERA_WORLD, { min: minimumZoom, max: MAX_CAMERA_ZOOM });
+            this.overviewActive = false;
+            this.applyCameraView(next);
+        }
+        handleWheel = (pointer, _currentlyOver, _deltaX, deltaY) => {
+            if (deltaY === 0)
+                return;
+            this.applyZoomAt({ x: pointer.x, y: pointer.y }, deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP);
+        };
+        handlePointerDown = (pointer, currentlyOver) => {
+            // A drag starts only on empty world space. Interactive nodes and road
+            // zones keep their existing click behavior and are never stolen by pan.
+            if (currentlyOver.length > 0)
+                return;
+            this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+        };
+        handlePointerMove = (pointer) => {
+            const previous = this.dragState;
+            if (!previous || previous.pointerId !== pointer.id || !pointer.isDown)
+                return;
+            const delta = { x: pointer.x - previous.x, y: pointer.y - previous.y };
+            this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+            if (delta.x === 0 && delta.y === 0)
+                return;
+            this.overviewActive = false;
+            this.applyCameraView((0, camera_math_ts_1.panCameraViewBy)(this.currentCameraView(), delta, this.currentViewport(), CAMERA_WORLD));
+        };
+        handlePointerUp = (pointer) => {
+            if (this.dragState?.pointerId === pointer.id)
+                this.dragState = null;
+        };
+        cancelDrag = () => {
+            this.dragState = null;
+        };
+        handleResize = () => {
+            if (!this.cameraInteractionReady)
+                return;
+            const previousViewport = this.cameraViewport;
+            const nextViewport = this.currentViewport();
+            this.cameraViewport = nextViewport;
+            this.cameras.main.setBounds(CAMERA_WORLD.x, CAMERA_WORLD.y, CAMERA_WORLD.width, CAMERA_WORLD.height);
+            if (this.overviewActive) {
+                this.applyCameraView((0, camera_math_ts_1.overviewCameraView)(nextViewport, CAMERA_WORLD));
+                return;
+            }
+            this.applyCameraView((0, camera_math_ts_1.resizeCameraView)(this.currentCameraView(), previousViewport, nextViewport, CAMERA_WORLD));
+        };
         renderProjection() {
             if (!this.projectionReady)
                 return;
             this.children.removeAll(true);
             const projection = (0, board_state_ts_1.projectBoardSession)(currentSession);
-            const graphics = this.add.graphics();
-            graphics.fillStyle(0xf3ead8, 1);
-            graphics.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+            const background = this.add.graphics();
+            background.fillStyle(0xf3ead8, 1);
+            background.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
             if (this.textures.exists("cards-money-trains-board")) {
                 this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
                     .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT)
                     .setAlpha(0.82);
             }
+            // Roads and nodes are semantic session data, so they must render above
+            // the decorative map rather than being muted underneath its texture.
+            const graphics = this.add.graphics();
             const toScreen = this.coordinateMapper(projection);
             this.drawEdges(graphics, projection, toScreen);
             this.drawNodes(graphics, projection, toScreen);
@@ -484,14 +605,112 @@ const createCardsMoneyTrainsScene = (context) => {
         },
         destroy() {
             lastError = null;
+            scene.stopProjection();
             if (scene.sys?.isActive()) {
                 scene.children.removeAll(true);
             }
+        },
+        fitToView() {
+            scene.fitToView();
+        },
+        zoomBy(factor) {
+            scene.zoomBy(factor);
         },
         getAccessibleActions: accessible_actions_ts_1.provideCardsMoneyTrainsAccessibleBoardActions
     };
 };
 exports.createCardsMoneyTrainsScene = createCardsMoneyTrainsScene;
+
+});
+__pluginDefine("src/camera-math.ts", (exports, module) => {
+"use strict";
+/**
+ * Pure camera calculations for the Cards Money Trains world.
+ *
+ * Phaser owns rendering and input, while this module owns deterministic
+ * geometry only. Keeping the calculations browser-free makes pointer-centred
+ * zoom, bounded panning, overview reset, and resize preservation cheap to
+ * verify without starting WebGL or a DOM.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.fitCameraZoom = fitCameraZoom;
+exports.clampCameraView = clampCameraView;
+exports.overviewCameraView = overviewCameraView;
+exports.zoomCameraViewAtPoint = zoomCameraViewAtPoint;
+exports.panCameraViewBy = panCameraViewBy;
+exports.resizeCameraView = resizeCameraView;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const safeDimension = (value) => Math.max(1, value);
+/** Return the largest undistorted zoom that still shows the complete world. */
+function fitCameraZoom(viewport, world) {
+    return Math.min(safeDimension(viewport.width) / safeDimension(world.width), safeDimension(viewport.height) / safeDimension(world.height));
+}
+/**
+ * Match Phaser's centred-camera bounds for one axis.
+ *
+ * Phaser zooms around the viewport centre, so `scrollX = 0` is only the
+ * world's left edge at zoom 1. The offset below is what prevents blank space
+ * from appearing at other zoom levels when `Camera.setBounds` is also active.
+ */
+function clampScrollAxis(value, viewportSize, worldStart, worldSize, zoom) {
+    const visibleSize = safeDimension(viewportSize) / zoom;
+    const minScroll = worldStart + (visibleSize - safeDimension(viewportSize)) / 2;
+    const maxScroll = minScroll + Math.max(0, worldSize - visibleSize);
+    return clamp(value, minScroll, maxScroll);
+}
+/** Clamp a view to the declared world without changing its zoom. */
+function clampCameraView(view, viewport, world) {
+    const zoom = Math.max(Number.EPSILON, view.zoom);
+    return {
+        scrollX: clampScrollAxis(view.scrollX, viewport.width, world.x, world.width, zoom),
+        scrollY: clampScrollAxis(view.scrollY, viewport.height, world.y, world.height, zoom),
+        zoom
+    };
+}
+/** Build the reproducible “show the whole map” view. */
+function overviewCameraView(viewport, world) {
+    const zoom = fitCameraZoom(viewport, world);
+    return clampCameraView({
+        scrollX: world.x + world.width / 2 - viewport.width / 2,
+        scrollY: world.y + world.height / 2 - viewport.height / 2,
+        zoom
+    }, viewport, world);
+}
+/**
+ * Zoom around a screen point while keeping the same world point underneath it.
+ */
+function zoomCameraViewAtPoint(view, pointer, requestedZoom, viewport, world, limits) {
+    const zoom = clamp(requestedZoom, limits.min, limits.max);
+    const originX = viewport.width / 2;
+    const originY = viewport.height / 2;
+    const worldX = view.scrollX + originX + (pointer.x - originX) / view.zoom;
+    const worldY = view.scrollY + originY + (pointer.y - originY) / view.zoom;
+    return clampCameraView({
+        scrollX: worldX - originX - (pointer.x - originX) / zoom,
+        scrollY: worldY - originY - (pointer.y - originY) / zoom,
+        zoom
+    }, viewport, world);
+}
+/** Move the world with a drag gesture, expressed in screen pixels. */
+function panCameraViewBy(view, screenDelta, viewport, world) {
+    return clampCameraView({
+        scrollX: view.scrollX - screenDelta.x / view.zoom,
+        scrollY: view.scrollY - screenDelta.y / view.zoom,
+        zoom: view.zoom
+    }, viewport, world);
+}
+/**
+ * Preserve the world point at the viewport centre after a logical resize.
+ */
+function resizeCameraView(view, previousViewport, nextViewport, world) {
+    const centreX = view.scrollX + previousViewport.width / 2;
+    const centreY = view.scrollY + previousViewport.height / 2;
+    return clampCameraView({
+        scrollX: centreX - nextViewport.width / 2,
+        scrollY: centreY - nextViewport.height / 2,
+        zoom: view.zoom
+    }, nextViewport, world);
+}
 
 });
 const __entry = __pluginRequire("src/index.ts");

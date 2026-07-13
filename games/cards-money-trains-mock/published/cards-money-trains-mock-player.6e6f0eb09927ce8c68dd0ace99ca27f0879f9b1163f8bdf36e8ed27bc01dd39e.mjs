@@ -382,15 +382,14 @@ __pluginDefine("src/scene.ts", (exports, module) => {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createCardsMoneyTrainsScene = void 0;
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
+const camera_math_ts_1 = __pluginRequire("src/camera-math.ts");
 const board_state_ts_1 = __pluginRequire("src/board-state.ts");
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
-const MAP_LEFT = 24;
-const MAP_TOP = 104;
-const MAP_WIDTH = 1000;
-const MAP_HEIGHT = 714;
-const SIDEBAR_LEFT = 1048;
-const SIDEBAR_WIDTH = 328;
+const BOARD_PADDING = 72;
+const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+const MAX_CAMERA_ZOOM = 3;
+const WHEEL_ZOOM_STEP = 1.15;
 const edgeColor = (edge) => {
     if (edge.visualState === "blocked")
         return 0xc94c4c;
@@ -400,29 +399,6 @@ const edgeColor = (edge) => {
 };
 const nodeColor = (node) => node.objectType === "transport.waypoint" ? 0xe5a338 : 0xf4ead5;
 const errorText = (error) => error instanceof Error ? error.message : "Действие отклонено runtime";
-const phaseLabels = {
-    setup: "Подготовка",
-    news: "Новость",
-    maintenance: "Обслуживание",
-    market: "Рынок техники",
-    cargo: "Выбор грузов",
-    operations: "Операции",
-    movement: "Перевозки",
-    construction: "Строительство",
-    reporting: "Подведение итогов",
-    debrief: "Разбор игры",
-    finished: "Игра завершена",
-    unknown: "Этап не указан"
-};
-const phaseLabel = (phase) => phaseLabels[phase] ?? phase;
-const constructionModeLabel = (mode) => {
-    if (mode === "road")
-        return "строится дорога";
-    if (mode === "waypoint")
-        return "ставится полустанок";
-    return "объект не выбран";
-};
-const truncate = (value, length) => value.length <= length ? value : `${value.slice(0, length - 1)}…`;
 /** Build a scene instance exclusively from platform-injected Phaser. */
 const createCardsMoneyTrainsScene = (context) => {
     const Phaser = context.Phaser;
@@ -437,6 +413,10 @@ const createCardsMoneyTrainsScene = (context) => {
          * that Phaser has already released.
          */
         projectionReady = false;
+        cameraInteractionReady = false;
+        overviewActive = true;
+        cameraViewport = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+        dragState = null;
         constructor() {
             super({ key: `cards-money-trains:${context.sceneId}` });
         }
@@ -450,12 +430,13 @@ const createCardsMoneyTrainsScene = (context) => {
                 return;
             this.projectionReady = true;
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-                this.projectionReady = false;
+                this.stopProjection();
             });
             this.cameras.main.setBackgroundColor("#e8decb");
             // One restrained entrance confirms that the working surface is ready.
             // Phaser owns the tween and removes it with the scene lifecycle.
             this.cameras.main.fadeIn(180, 232, 222, 203);
+            this.configureCameraInteraction();
             this.renderProjection();
         }
         renderProjection() {
@@ -463,60 +444,172 @@ const createCardsMoneyTrainsScene = (context) => {
                 return;
             this.children.removeAll(true);
             const projection = (0, board_state_ts_1.projectBoardSession)(currentSession);
-            const graphics = this.add.graphics();
-            graphics.fillStyle(0xe8decb, 1);
-            graphics.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
-            graphics.fillStyle(0x20323b, 1);
-            graphics.fillRect(0, 0, DESIGN_WIDTH, 82);
-            graphics.fillStyle(0xfffbf3, 1);
-            graphics.fillRoundedRect(MAP_LEFT - 8, MAP_TOP - 8, MAP_WIDTH + 16, MAP_HEIGHT + 16, 12);
-            graphics.fillRoundedRect(SIDEBAR_LEFT, MAP_TOP, SIDEBAR_WIDTH, 872, 12);
-            graphics.fillRoundedRect(MAP_LEFT - 8, 838, MAP_WIDTH + 16, 138, 12);
+            const background = this.add.graphics();
+            background.fillStyle(0xe8decb, 1);
+            background.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
             if (this.textures.exists("cards-money-trains-board")) {
-                this.add.image(MAP_LEFT + MAP_WIDTH / 2, MAP_TOP + MAP_HEIGHT / 2, "cards-money-trains-board")
-                    .setDisplaySize(MAP_WIDTH, MAP_HEIGHT)
+                // In map-first mode the scene is the map, not a miniature board inside
+                // a second page. Text, actions and the journal stay in accessible DOM
+                // panels owned by the generic player workspace.
+                this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
+                    .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT)
                     .setAlpha(0.88);
             }
+            // Dynamic geometry must remain above the decorative raster. Keeping it
+            // in a separate display object avoids washing roads out under the map.
+            const graphics = this.add.graphics();
             const toScreen = this.coordinateMapper(projection);
             this.drawEdges(graphics, projection, toScreen);
             this.drawNodes(graphics, projection, toScreen);
             this.drawVehicles(projection, toScreen);
-            this.drawHeader(projection);
-            this.drawFacilitatorPanel(projection);
-            this.drawLog(projection);
+            // The warning is game content, not a control panel. Keeping it compact
+            // makes the test package unmistakable without sacrificing the map-first
+            // composition that the package is meant to prove.
+            this.add.text(DESIGN_WIDTH / 2, 24, "MOCK · ТЕСТОВЫЕ ДАННЫЕ · НЕ ПУБЛИКОВАТЬ", {
+                color: "#fff8e9",
+                backgroundColor: "#8b2f2fdd",
+                padding: { x: 14, y: 8 },
+                fontFamily: "sans-serif",
+                fontStyle: "bold",
+                fontSize: "20px"
+            }).setOrigin(0.5, 0);
             if (projection.nodes.length === 0) {
-                this.add.text(MAP_LEFT + MAP_WIDTH / 2, MAP_TOP + MAP_HEIGHT / 2, "Ожидаются авторские узлы, координаты и начальная сеть", { color: "#24343d", fontFamily: "sans-serif", fontSize: "26px", align: "center" })
+                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "Ожидаются авторские узлы, координаты и начальная сеть", { color: "#24343d", fontFamily: "sans-serif", fontSize: "26px", align: "center" })
                     .setOrigin(0.5);
             }
             if (lastError) {
-                this.add.text(MAP_LEFT + MAP_WIDTH / 2, 812, lastError, {
+                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 34, lastError, {
                     color: "#ffffff",
                     backgroundColor: "#9e2f2f",
                     padding: { x: 14, y: 8 },
                     fontFamily: "sans-serif",
                     fontSize: "18px",
-                    wordWrap: { width: MAP_WIDTH - 80 }
+                    wordWrap: { width: DESIGN_WIDTH - BOARD_PADDING * 2 }
                 }).setOrigin(0.5, 1);
             }
         }
-        /** Stop late snapshot callbacks before Phaser releases scene managers. */
+        /**
+         * Stop late callbacks and release camera listeners before Phaser releases
+         * scene managers. DOM action controls live in the host and remain separate.
+         */
         stopProjection() {
             this.projectionReady = false;
+            if (!this.cameraInteractionReady)
+                return;
+            this.cameraInteractionReady = false;
+            this.dragState = null;
+            this.input.off("wheel", this.handleWheel);
+            this.input.off("pointerdown", this.handlePointerDown);
+            this.input.off("pointermove", this.handlePointerMove);
+            this.input.off("pointerup", this.handlePointerUp);
+            this.input.off("pointerupoutside", this.handlePointerUp);
+            this.input.off("gameout", this.cancelDrag);
+            this.scale.off("resize", this.handleResize);
         }
+        /** Return to the complete-world overview exposed by the host DOM control. */
+        fitToView() {
+            if (!this.projectionReady)
+                return;
+            this.overviewActive = true;
+            this.applyCameraView((0, camera_math_ts_1.overviewCameraView)(this.currentViewport(), CAMERA_WORLD));
+        }
+        /** Zoom around the viewport centre; factors above one mean zooming in. */
+        zoomBy(factor) {
+            if (!this.projectionReady || !Number.isFinite(factor) || factor <= 0)
+                return;
+            const viewport = this.currentViewport();
+            this.applyZoomAt({ x: viewport.width / 2, y: viewport.height / 2 }, factor);
+        }
+        configureCameraInteraction() {
+            const camera = this.cameras.main;
+            camera.setBounds(CAMERA_WORLD.x, CAMERA_WORLD.y, CAMERA_WORLD.width, CAMERA_WORLD.height);
+            this.cameraViewport = this.currentViewport();
+            this.cameraInteractionReady = true;
+            this.fitToView();
+            this.input.on("wheel", this.handleWheel);
+            this.input.on("pointerdown", this.handlePointerDown);
+            this.input.on("pointermove", this.handlePointerMove);
+            this.input.on("pointerup", this.handlePointerUp);
+            this.input.on("pointerupoutside", this.handlePointerUp);
+            this.input.on("gameout", this.cancelDrag);
+            this.scale.on("resize", this.handleResize);
+        }
+        currentViewport() {
+            const camera = this.cameras.main;
+            return { width: Math.max(1, camera.width), height: Math.max(1, camera.height) };
+        }
+        currentCameraView() {
+            const camera = this.cameras.main;
+            return { scrollX: camera.scrollX, scrollY: camera.scrollY, zoom: camera.zoom };
+        }
+        applyCameraView(view) {
+            this.cameras.main.setZoom(view.zoom).setScroll(view.scrollX, view.scrollY);
+        }
+        applyZoomAt(point, factor) {
+            const viewport = this.currentViewport();
+            const current = this.currentCameraView();
+            const minimumZoom = (0, camera_math_ts_1.fitCameraZoom)(viewport, CAMERA_WORLD);
+            const next = (0, camera_math_ts_1.zoomCameraViewAtPoint)(current, point, current.zoom * factor, viewport, CAMERA_WORLD, { min: minimumZoom, max: MAX_CAMERA_ZOOM });
+            this.overviewActive = false;
+            this.applyCameraView(next);
+        }
+        handleWheel = (pointer, _currentlyOver, _deltaX, deltaY) => {
+            if (deltaY === 0)
+                return;
+            this.applyZoomAt({ x: pointer.x, y: pointer.y }, deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP);
+        };
+        handlePointerDown = (pointer, currentlyOver) => {
+            // Interactive road and node targets keep their click behavior; only an
+            // empty part of the mock world may initiate camera panning.
+            if (currentlyOver.length > 0)
+                return;
+            this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+        };
+        handlePointerMove = (pointer) => {
+            const previous = this.dragState;
+            if (!previous || previous.pointerId !== pointer.id || !pointer.isDown)
+                return;
+            const delta = { x: pointer.x - previous.x, y: pointer.y - previous.y };
+            this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+            if (delta.x === 0 && delta.y === 0)
+                return;
+            this.overviewActive = false;
+            this.applyCameraView((0, camera_math_ts_1.panCameraViewBy)(this.currentCameraView(), delta, this.currentViewport(), CAMERA_WORLD));
+        };
+        handlePointerUp = (pointer) => {
+            if (this.dragState?.pointerId === pointer.id)
+                this.dragState = null;
+        };
+        cancelDrag = () => {
+            this.dragState = null;
+        };
+        handleResize = () => {
+            if (!this.cameraInteractionReady)
+                return;
+            const previousViewport = this.cameraViewport;
+            const nextViewport = this.currentViewport();
+            this.cameraViewport = nextViewport;
+            this.cameras.main.setBounds(CAMERA_WORLD.x, CAMERA_WORLD.y, CAMERA_WORLD.width, CAMERA_WORLD.height);
+            if (this.overviewActive) {
+                this.applyCameraView((0, camera_math_ts_1.overviewCameraView)(nextViewport, CAMERA_WORLD));
+                return;
+            }
+            this.applyCameraView((0, camera_math_ts_1.resizeCameraView)(this.currentCameraView(), previousViewport, nextViewport, CAMERA_WORLD));
+        };
         coordinateMapper(projection) {
             const bounds = projection.bounds;
             if (!bounds)
                 return (_point) => ({
-                    x: MAP_LEFT + MAP_WIDTH / 2,
-                    y: MAP_TOP + MAP_HEIGHT / 2
+                    x: DESIGN_WIDTH / 2,
+                    y: DESIGN_HEIGHT / 2
                 });
             const width = Math.max(1, bounds.maxX - bounds.minX);
             const height = Math.max(1, bounds.maxY - bounds.minY);
-            const scale = Math.min(MAP_WIDTH / width, MAP_HEIGHT / height);
+            const scale = Math.min((DESIGN_WIDTH - BOARD_PADDING * 2) / width, (DESIGN_HEIGHT - BOARD_PADDING * 2) / height);
             const renderedWidth = width * scale;
             const renderedHeight = height * scale;
-            const offsetX = MAP_LEFT + (MAP_WIDTH - renderedWidth) / 2;
-            const offsetY = MAP_TOP + (MAP_HEIGHT - renderedHeight) / 2;
+            const offsetX = (DESIGN_WIDTH - renderedWidth) / 2;
+            const offsetY = (DESIGN_HEIGHT - renderedHeight) / 2;
             return (value) => ({
                 x: offsetX + (value.x - bounds.minX) * scale,
                 y: offsetY + (value.y - bounds.minY) * scale
@@ -598,107 +691,6 @@ const createCardsMoneyTrainsScene = (context) => {
                 });
             }
         }
-        drawHeader(projection) {
-            this.add.text(28, 17, "КАРТЫ, ДЕНЬГИ, ПОЕЗДА", {
-                color: "#fff8e9",
-                fontFamily: "sans-serif",
-                fontStyle: "bold",
-                fontSize: "26px"
-            });
-            this.add.text(28, 50, "Тестовый контур · данные будут заменены материалами автора", {
-                color: "#cbd5d8",
-                fontFamily: "sans-serif",
-                fontSize: "15px"
-            });
-            this.add.text(DESIGN_WIDTH - 28, 22, `ХОД ${projection.turnNumber}  ·  ${phaseLabel(projection.phase)}`, {
-                color: "#fff8e9",
-                fontFamily: "sans-serif",
-                fontStyle: "bold",
-                fontSize: "22px"
-            }).setOrigin(1, 0);
-        }
-        drawFacilitatorPanel(projection) {
-            const left = SIDEBAR_LEFT + 22;
-            const textWidth = SIDEBAR_WIDTH - 44;
-            this.add.text(left, 126, "ТЕКУЩИЙ ЭТАП", {
-                color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-            });
-            this.add.text(left, 151, phaseLabel(projection.phase), {
-                color: "#18323d", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "25px"
-            });
-            const phaseHint = projection.phase === "construction"
-                ? `Режим: ${constructionModeLabel(projection.constructionMode)}`
-                : projection.phase === "news" && projection.currentNewsSummary
-                    ? projection.currentNewsSummary
-                    : projection.phase === "cargo" && projection.cargoOfferLabels.length > 0
-                        ? `Предложение: ${projection.cargoOfferLabels.join(" · ")}`
-                        : projection.status === "finished"
-                            ? "Сессия завершена ведущим"
-                            : "Действия подтверждает сервер";
-            this.add.text(left, 185, phaseHint, {
-                color: "#54656c", fontFamily: "sans-serif", fontSize: "16px", wordWrap: { width: textWidth }
-            });
-            this.add.text(left, 230, "КОМАНДЫ", {
-                color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-            });
-            if (projection.teams.length === 0) {
-                this.add.text(left, 258, "Данные команд пока не переданы", {
-                    color: "#6b777c", fontFamily: "sans-serif", fontSize: "16px", wordWrap: { width: textWidth }
-                });
-            }
-            projection.teams.slice(0, 5).forEach((team, index) => {
-                const top = 258 + index * 76;
-                this.add.text(left, top, truncate(team.label, 28), {
-                    color: "#18323d", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "18px"
-                });
-                this.add.text(left, top + 25, `${team.coins === null ? "—" : team.coins} мон.  ·  ${team.locomotives} лок.  ·  ${team.wagons} ваг.`, {
-                    color: "#53646b", fontFamily: "sans-serif", fontSize: "16px"
-                });
-            });
-            const enabledActions = projection.availableActions.filter((action) => action.disabled !== true);
-            const disabledActions = projection.availableActions.filter((action) => action.disabled === true);
-            this.add.text(left, 590, "ДЕЙСТВИЯ", {
-                color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-            });
-            this.add.text(left, 617, enabledActions.length > 0
-                ? `Доступно: ${enabledActions.length}. Кнопки находятся сразу под картой.`
-                : "Сейчас сервер не передал доступных действий.", {
-                color: "#18323d", fontFamily: "sans-serif", fontSize: "17px", wordWrap: { width: textWidth }
-            });
-            let actionTop = 674;
-            for (const action of disabledActions.slice(0, 3)) {
-                const reason = action.disabledReason ?? "Причина не передана сервером";
-                this.add.text(left, actionTop, `Недоступно: ${truncate(action.label, 31)}`, {
-                    color: "#7d3934", fontFamily: "sans-serif", fontSize: "15px", wordWrap: { width: textWidth }
-                });
-                this.add.text(left, actionTop + 22, truncate(reason, 72), {
-                    color: "#6b5a58", fontFamily: "sans-serif", fontSize: "14px", wordWrap: { width: textWidth }
-                });
-                actionTop += 68;
-            }
-            this.add.text(left, 918, "Клавиатура: используйте обычные кнопки под полем. Карта поддерживает мышь и касание.", {
-                color: "#68767b", fontFamily: "sans-serif", fontSize: "14px", wordWrap: { width: textWidth }
-            });
-        }
-        drawLog(projection) {
-            this.add.text(MAP_LEFT + 12, 854, "ЖУРНАЛ ПОДТВЕРЖДЁННЫХ ДЕЙСТВИЙ", {
-                color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-            });
-            const entries = projection.log.slice(-3).reverse();
-            if (entries.length === 0) {
-                this.add.text(MAP_LEFT + 12, 884, "Записей пока нет — первая подтверждённая операция появится здесь.", {
-                    color: "#617178", fontFamily: "sans-serif", fontSize: "17px"
-                });
-                return;
-            }
-            entries.forEach((entry, index) => {
-                this.add.text(MAP_LEFT + 12, 884 + index * 28, `${index === 0 ? "Последнее" : "Ранее"}: ${truncate(entry.summary, 112)}`, {
-                    color: index === 0 ? "#18323d" : "#617178",
-                    fontFamily: "sans-serif",
-                    fontSize: index === 0 ? "17px" : "15px"
-                });
-            });
-        }
     }
     const scene = new CardsMoneyTrainsScene();
     return {
@@ -720,10 +712,97 @@ const createCardsMoneyTrainsScene = (context) => {
                 scene.children.removeAll(true);
             }
         },
+        fitToView() {
+            scene.fitToView();
+        },
+        zoomBy(factor) {
+            scene.zoomBy(factor);
+        },
         getAccessibleActions: accessible_actions_ts_1.provideCardsMoneyTrainsAccessibleBoardActions
     };
 };
 exports.createCardsMoneyTrainsScene = createCardsMoneyTrainsScene;
+
+});
+__pluginDefine("src/camera-math.ts", (exports, module) => {
+"use strict";
+/**
+ * Pure camera calculations for the Cards Money Trains mock world.
+ *
+ * This is deliberately game-owned rather than platform-owned: the host only
+ * supplies Phaser, while this mock plugin proves the same public camera
+ * behaviour with replaceable test content. The calculations stay browser-free
+ * so they can be verified without WebGL or a DOM.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.fitCameraZoom = fitCameraZoom;
+exports.clampCameraView = clampCameraView;
+exports.overviewCameraView = overviewCameraView;
+exports.zoomCameraViewAtPoint = zoomCameraViewAtPoint;
+exports.panCameraViewBy = panCameraViewBy;
+exports.resizeCameraView = resizeCameraView;
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const safeDimension = (value) => Math.max(1, value);
+/** Return the largest undistorted zoom that still shows the complete world. */
+function fitCameraZoom(viewport, world) {
+    return Math.min(safeDimension(viewport.width) / safeDimension(world.width), safeDimension(viewport.height) / safeDimension(world.height));
+}
+/** Match Phaser's centred-camera bounds for one axis. */
+function clampScrollAxis(value, viewportSize, worldStart, worldSize, zoom) {
+    const visibleSize = safeDimension(viewportSize) / zoom;
+    const minScroll = worldStart + (visibleSize - safeDimension(viewportSize)) / 2;
+    const maxScroll = minScroll + Math.max(0, worldSize - visibleSize);
+    return clamp(value, minScroll, maxScroll);
+}
+/** Clamp a view to the declared world without changing its zoom. */
+function clampCameraView(view, viewport, world) {
+    const zoom = Math.max(Number.EPSILON, view.zoom);
+    return {
+        scrollX: clampScrollAxis(view.scrollX, viewport.width, world.x, world.width, zoom),
+        scrollY: clampScrollAxis(view.scrollY, viewport.height, world.y, world.height, zoom),
+        zoom
+    };
+}
+/** Build the reproducible “show the whole map” view. */
+function overviewCameraView(viewport, world) {
+    const zoom = fitCameraZoom(viewport, world);
+    return clampCameraView({
+        scrollX: world.x + world.width / 2 - viewport.width / 2,
+        scrollY: world.y + world.height / 2 - viewport.height / 2,
+        zoom
+    }, viewport, world);
+}
+/** Zoom around a screen point while keeping its world coordinate stable. */
+function zoomCameraViewAtPoint(view, pointer, requestedZoom, viewport, world, limits) {
+    const zoom = clamp(requestedZoom, limits.min, limits.max);
+    const originX = viewport.width / 2;
+    const originY = viewport.height / 2;
+    const worldX = view.scrollX + originX + (pointer.x - originX) / view.zoom;
+    const worldY = view.scrollY + originY + (pointer.y - originY) / view.zoom;
+    return clampCameraView({
+        scrollX: worldX - originX - (pointer.x - originX) / zoom,
+        scrollY: worldY - originY - (pointer.y - originY) / zoom,
+        zoom
+    }, viewport, world);
+}
+/** Move the world with a drag gesture, expressed in screen pixels. */
+function panCameraViewBy(view, screenDelta, viewport, world) {
+    return clampCameraView({
+        scrollX: view.scrollX - screenDelta.x / view.zoom,
+        scrollY: view.scrollY - screenDelta.y / view.zoom,
+        zoom: view.zoom
+    }, viewport, world);
+}
+/** Preserve the world point at the viewport centre after a logical resize. */
+function resizeCameraView(view, previousViewport, nextViewport, world) {
+    const centreX = view.scrollX + previousViewport.width / 2;
+    const centreY = view.scrollY + previousViewport.height / 2;
+    return clampCameraView({
+        scrollX: centreX - nextViewport.width / 2,
+        scrollY: centreY - nextViewport.height / 2,
+        zoom: view.zoom
+    }, nextViewport, world);
+}
 
 });
 const __entry = __pluginRequire("src/index.ts");

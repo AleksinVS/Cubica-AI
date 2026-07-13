@@ -71,7 +71,8 @@
             "title": { "type": "string" },
             "layout_mode": {
               "type": "string",
-              "description": "Runtime layout hint used by the player presenter, for example topbar or leftsidebar."
+              "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+              "description": "Runtime layout selected by the player presenter. map-first makes one spatial board the full-screen workspace and places semantic UI zones above it."
             },
             "layout_id": {
               "type": "string",
@@ -89,7 +90,54 @@
               "$ref": "#/definitions/uiComponent"
             }
           },
-          "additionalProperties": false
+          "additionalProperties": false,
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "layout_mode": { "const": "map-first" }
+                },
+                "required": ["layout_mode"]
+              },
+              "then": {
+                "properties": {
+                  "root": {
+                    "type": "object",
+                    "required": ["type", "children"],
+                    "properties": {
+                      "type": { "const": "screenComponent" },
+                      "children": {
+                        "type": "array",
+                        "minItems": 1,
+                        "items": { "$ref": "#/definitions/mapFirstWorkspaceZone" },
+                        "contains": {
+                          "type": "object",
+                          "required": ["type", "props"],
+                          "properties": {
+                            "type": { "const": "areaComponent" },
+                            "props": {
+                              "type": "object",
+                              "required": ["workspaceSlot"],
+                              "properties": {
+                                "workspaceSlot": { "const": "board" }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "else": {
+                "properties": {
+                  "root": {
+                    "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+                  }
+                }
+              }
+            }
+          ]
         }
       },
       "additionalProperties": false
@@ -192,7 +240,8 @@
         },
         "layout_mode": {
           "type": "string",
-          "description": "Runtime layout hint used by the player presenter, for example topbar or leftsidebar."
+          "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+          "description": "Runtime layout selected by the player presenter. Workspace slots remain screen-only and are not valid inside transient panels."
         },
         "layout_id": {
           "type": "string",
@@ -210,7 +259,16 @@
           "$ref": "#/definitions/uiComponent"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "properties": {
+            "root": {
+              "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+            }
+          }
+        }
+      ]
     },
     "uiComponentType": {
       "type": "string",
@@ -269,6 +327,65 @@
         "sceneId"
       ]
     },
+    "workspaceSlot": {
+      "type": "string",
+      "description": "Semantic placement owned by the generic map-first workspace. Games select a role; the player decides its physical position and stacking.",
+      "enum": [
+        "board",
+        "status",
+        "primary-panel",
+        "context-panel",
+        "action-tray",
+        "floating-controls",
+        "overlay"
+      ]
+    },
+    "componentTreeContainsWorkspaceSlot": {
+      "description": "Recursive detector used to forbid workspaceSlot outside direct map-first zones.",
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["props"],
+          "properties": {
+            "props": {
+              "type": "object",
+              "required": ["workspaceSlot"]
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["children"],
+          "properties": {
+            "children": {
+              "type": "array",
+              "contains": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+            }
+          }
+        }
+      ]
+    },
+    "mapFirstWorkspaceZone": {
+      "type": "object",
+      "description": "A direct child of a map-first screen root. Nested children are ordinary components and cannot declare another workspace zone.",
+      "required": ["type", "props"],
+      "properties": {
+        "type": { "const": "areaComponent" },
+        "props": {
+          "type": "object",
+          "required": ["workspaceSlot"],
+          "properties": {
+            "workspaceSlot": { "$ref": "#/definitions/workspaceSlot" }
+          }
+        },
+        "children": {
+          "type": "array",
+          "items": {
+            "not": { "$ref": "#/definitions/componentTreeContainsWorkspaceSlot" }
+          }
+        }
+      }
+    },
     "uiComponent": {
       "type": "object",
       "description": "Описание UI-компонента в декларативном формате Hybrid SDUI.",
@@ -295,7 +412,10 @@
         },
         "props": {
           "type": "object",
-          "description": "Component-specific properties, may include data bindings like {{state.public.hp}}."
+          "description": "Component-specific properties, may include data bindings like {{state.public.hp}}.",
+          "properties": {
+            "workspaceSlot": { "$ref": "#/definitions/workspaceSlot" }
+          }
         },
         "style": {
           "$ref": "#/definitions/uiStyle"
@@ -336,6 +456,22 @@
       },
       "additionalProperties": false,
       "allOf": [
+        {
+          "if": {
+            "required": ["props"],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": ["workspaceSlot"]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "type": { "const": "areaComponent" }
+            }
+          }
+        },
         {
           "if": {
             "properties": {

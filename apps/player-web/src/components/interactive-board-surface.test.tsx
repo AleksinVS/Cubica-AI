@@ -19,13 +19,15 @@ import { InteractiveBoardSurface } from "./interactive-board-surface";
 const phaserMock = vi.hoisted(() => {
   const lifecycle: string[] = [];
   const configs: unknown[] = [];
+  const scales: Array<{ refresh: ReturnType<typeof vi.fn>; setParentSize: ReturnType<typeof vi.fn> }> = [];
 
   class Scene {}
   class Game {
-    readonly scale = { refresh: vi.fn() };
+    readonly scale = { refresh: vi.fn(), setParentSize: vi.fn() };
 
     constructor(config: unknown) {
       configs.push(config);
+      scales.push(this.scale);
       lifecycle.push("game:create");
     }
 
@@ -34,12 +36,12 @@ const phaserMock = vi.hoisted(() => {
     }
   }
 
-  return { lifecycle, configs, Scene, Game };
+  return { lifecycle, configs, scales, Scene, Game };
 });
 
 vi.mock("phaser", () => ({
   AUTO: "AUTO",
-  Scale: { FIT: "FIT", CENTER_BOTH: "CENTER_BOTH" },
+  Scale: { FIT: "FIT", RESIZE: "RESIZE", CENTER_BOTH: "CENTER_BOTH", NO_CENTER: "NO_CENTER" },
   Scene: phaserMock.Scene,
   Game: phaserMock.Game
 }));
@@ -73,6 +75,8 @@ function session(sequence: number): GameSession {
 afterEach(() => {
   phaserMock.lifecycle.splice(0);
   phaserMock.configs.splice(0);
+  phaserMock.scales.splice(0);
+  vi.unstubAllGlobals();
 });
 
 describe("InteractiveBoardSurface", () => {
@@ -354,6 +358,87 @@ describe("InteractiveBoardSurface", () => {
     expect((await screen.findByRole("button", { name: "Переместить" }) as HTMLButtonElement).disabled).toBe(true);
     await expect(sceneDispatch?.()).rejects.toThrow("Дождитесь завершения");
     expect(dispatchAction).not.toHaveBeenCalled();
+    disposeRegistration();
+  });
+
+  it("exposes map camera commands as ordinary DOM controls", async () => {
+    const zoomBy = vi.fn();
+    const fitToView = vi.fn();
+    const disposeRegistration = registerPhaserSceneFactory(content.gameId, (context) => ({
+      scene: new context.Phaser.Scene(),
+      updateSession() {},
+      destroy() {},
+      zoomBy,
+      fitToView
+    }));
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn()}
+        layoutMode="map-first"
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Увеличить карту" }));
+    fireEvent.click(screen.getByRole("button", { name: "Показать всю карту" }));
+
+    expect(zoomBy).toHaveBeenCalledWith(1.2);
+    expect(fitToView).toHaveBeenCalledOnce();
+    expect(document.querySelector('[data-layout-mode="map-first"]')).toBeDefined();
+    expect(phaserMock.configs.at(-1)).toMatchObject({
+      scale: { mode: "RESIZE", autoCenter: "NO_CENTER" }
+    });
+    disposeRegistration();
+  });
+
+  it("applies observed host dimensions before refreshing a resizable canvas", async () => {
+    let resizeCallback: ResizeObserverCallback | undefined;
+    const disconnect = vi.fn();
+    vi.stubGlobal("ResizeObserver", class {
+      constructor(callback: ResizeObserverCallback) {
+        resizeCallback = callback;
+      }
+
+      observe() {}
+      unobserve() {}
+      disconnect() {
+        disconnect();
+      }
+    });
+
+    const disposeRegistration = registerPhaserSceneFactory(content.gameId, (context) => ({
+      scene: new context.Phaser.Scene(),
+      updateSession() {},
+      destroy() {}
+    }));
+
+    const view = render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn()}
+        layoutMode="map-first"
+      />
+    );
+
+    await waitFor(() => expect(resizeCallback).toBeDefined());
+    resizeCallback?.([
+      { contentRect: { width: 1920, height: 1080 } } as ResizeObserverEntry
+    ], {} as ResizeObserver);
+
+    expect(phaserMock.scales.at(-1)?.setParentSize).toHaveBeenCalledWith(1920, 1080);
+    expect(phaserMock.scales.at(-1)?.refresh).not.toHaveBeenCalled();
+
+    view.unmount();
+    expect(disconnect).toHaveBeenCalledOnce();
     disposeRegistration();
   });
 });

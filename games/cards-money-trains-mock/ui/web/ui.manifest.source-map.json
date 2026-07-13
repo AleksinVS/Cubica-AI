@@ -87,12 +87,6 @@
         "pointer": "/root/screen_routing/0/conditions/screenId"
       }
     ],
-    "/screen_routing/0/conditions/layoutMode": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screen_routing/0/conditions/layoutMode"
-      }
-    ],
     "/screen_routing": [
       {
         "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
@@ -177,6 +171,12 @@
         "pointer": "/root/screens/0/root/children/0/props"
       }
     ],
+    "/screens/facilitator/root/children/0/props/workspaceSlot": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/0/props/workspaceSlot"
+      }
+    ],
     "/screens/facilitator/root/children/0/props/cssClass": [
       {
         "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
@@ -243,6 +243,12 @@
         "pointer": "/root/screens/0/root/children/1/props"
       }
     ],
+    "/screens/facilitator/root/children/1/props/workspaceSlot": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/1/props/workspaceSlot"
+      }
+    ],
     "/screens/facilitator/root/children/1/props/cssClass": [
       {
         "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
@@ -297,784 +303,874 @@
         "pointer": "/root/screens/0/root/children/1/children/0/props/accessibleLabel"
       }
     ],
-    "/screens/facilitator/root/children/1/children/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/props/cssClass": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/props/cssClass"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/props/topbarCssClass": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/props/topbarCssClass"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/children/0": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/children/0"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/children/0/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/children/0/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/children/0/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/children/0/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/children/0/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/children/0/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/children/0/props/html": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/children/0/props/html"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/1/children": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/1/children"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/2": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/2"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/2/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/2/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/2/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/2/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/2/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/2/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/2/props/html": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/2/props/html"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/props/cssClass": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/props/cssClass"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/0": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/0"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/0/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/0/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/0/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/0/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/0/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/0/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/0/props/html": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/0/props/html"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/props/cssClass": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/props/cssClass"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/itemTemplate": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/itemTemplate"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/itemTemplate/collection": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/itemTemplate/collection"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/itemTemplate/itemKey": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/itemTemplate/itemKey"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/children/0": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/children/0"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/children/0/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/children/0/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/children/0/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/children/0/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/children/0/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/children/0/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/children/0/props/html": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/children/0/props/html"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children/1/children": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children/1/children"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/3/children": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/3/children"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/if": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/if"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/props/cssClass": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/props/cssClass"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/props/caption": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/props/caption"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/props/variant": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/props/variant"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/actions": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/actions"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/actions/onClick": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/actions/onClick"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/actions/onClick/command": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/actions/onClick/command"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/actions/onClick/payload": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/actions/onClick/payload"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/0/actions/onClick/payload/actionId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/0/actions/onClick/payload/actionId"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/props/caption": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/props/caption"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/props/variant": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/props/variant"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/actions": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/actions"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/actions/onClick": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/actions/onClick"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/actions/onClick/command": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/actions/onClick/command"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/actions/onClick/payload": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/actions/onClick/payload"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/1/actions/onClick/payload/actionId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/1/actions/onClick/payload/actionId"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/props/caption": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/props/caption"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/props/variant": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/props/variant"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/actions": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/actions"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/actions/onClick": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/actions/onClick"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/actions/onClick/command": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/actions/onClick/command"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/actions/onClick/payload": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/actions/onClick/payload"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children/2/actions/onClick/payload/actionId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children/2/actions/onClick/payload/actionId"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/4/children": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/4/children"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/props/cssClass": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/props/cssClass"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/if": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/if"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/props/caption": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/props/caption"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/props/variant": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/props/variant"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/actions": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/actions"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/actions/onClick": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/actions/onClick"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/actions/onClick/command": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/actions/onClick/command"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/actions/onClick/payload": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/actions/onClick/payload"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/0/actions/onClick/payload/actionId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/0/actions/onClick/payload/actionId"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/if": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/if"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/props/caption": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/props/caption"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/props/variant": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/props/variant"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/actions": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/actions"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/actions/onClick": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/actions/onClick"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/actions/onClick/command": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/actions/onClick/command"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/actions/onClick/payload": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/actions/onClick/payload"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/1/actions/onClick/payload/actionId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/1/actions/onClick/payload/actionId"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/if": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/if"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/props/caption": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/props/caption"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/props/variant": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/props/variant"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/actions": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/actions"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/actions/onClick": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/actions/onClick"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/actions/onClick/command": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/actions/onClick/command"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/actions/onClick/payload": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/actions/onClick/payload"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children/2/actions/onClick/payload/actionId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children/2/actions/onClick/payload/actionId"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/5/children": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/5/children"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/6": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/6"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/6/id": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/6/id"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/6/type": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/6/type"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/6/props": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/6/props"
-      }
-    ],
-    "/screens/facilitator/root/children/1/children/6/props/html": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/children/1/children/6/props/html"
-      }
-    ],
     "/screens/facilitator/root/children/1/children": [
       {
         "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
         "pointer": "/root/screens/0/root/children/1/children"
+      }
+    ],
+    "/screens/facilitator/root/children/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/2/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/2/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/2/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/2/props/workspaceSlot": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/props/workspaceSlot"
+      }
+    ],
+    "/screens/facilitator/root/children/2/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/2/props/topbarCssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/props/topbarCssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/2/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/2/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/2/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/2/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/2/children/0/props/html": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children/0/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/2/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/2/children"
+      }
+    ],
+    "/screens/facilitator/root/children/3": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3"
+      }
+    ],
+    "/screens/facilitator/root/children/3/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/props/workspaceSlot": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/props/workspaceSlot"
+      }
+    ],
+    "/screens/facilitator/root/children/3/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/0/props/html": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/0/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/0/props/html": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/0/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/itemTemplate": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/itemTemplate"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/itemTemplate/collection": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/itemTemplate/collection"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/itemTemplate/itemKey": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/itemTemplate/itemKey"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/children/0/props/html": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/children/0/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children/1/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children/1/children"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/1/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/1/children"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/2/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/2/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/2/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children/2/props/html": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children/2/props/html"
+      }
+    ],
+    "/screens/facilitator/root/children/3/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/3/children"
+      }
+    ],
+    "/screens/facilitator/root/children/4": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4"
+      }
+    ],
+    "/screens/facilitator/root/children/4/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/props/workspaceSlot": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/props/workspaceSlot"
+      }
+    ],
+    "/screens/facilitator/root/children/4/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/if": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/if"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/props/caption": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/props/variant": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/actions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/actions/onClick": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/0/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/0/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/props/caption": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/props/variant": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/actions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/actions/onClick": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/1/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/1/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/props/caption": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/props/variant": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/actions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/actions/onClick": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children/2/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children/2/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/0/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/0/children"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/props/cssClass": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/props/cssClass"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/if": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/if"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/props/caption": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/props/variant": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/actions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/actions/onClick": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/0/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/0/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/if": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/if"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/props/caption": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/props/variant": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/actions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/actions/onClick": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/1/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/1/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/id"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/type": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/type"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/if": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/if"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/props": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/props"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/props/caption": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/props/caption"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/props/variant": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/props/variant"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/actions": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/actions"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/actions/onClick": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/actions/onClick"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/actions/onClick/command": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/actions/onClick/command"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/actions/onClick/payload": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/actions/onClick/payload"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children/2/actions/onClick/payload/actionId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children/2/actions/onClick/payload/actionId"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children/1/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children/1/children"
+      }
+    ],
+    "/screens/facilitator/root/children/4/children": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/0/root/children/4/children"
       }
     ],
     "/screens/facilitator/root/children": [

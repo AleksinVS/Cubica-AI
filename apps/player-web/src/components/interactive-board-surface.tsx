@@ -27,6 +27,7 @@ import {
 } from "@/plugins/phaser-scene-registry";
 
 import styles from "./interactive-board-surface.module.css";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 export function InteractiveBoardSurface({
   gameId,
@@ -35,7 +36,8 @@ export function InteractiveBoardSurface({
   assets,
   manifestProps,
   dispatchAction,
-  isPending = false
+  isPending = false,
+  layoutMode = "topbar"
 }: {
   readonly gameId: string;
   readonly content: PlayerFacingContent;
@@ -47,7 +49,9 @@ export function InteractiveBoardSurface({
     params?: Record<string, unknown>
   ) => Promise<void>;
   readonly isPending?: boolean;
+  readonly layoutMode?: PlayerLayoutMode;
 }) {
+  const surfaceRef = useRef<HTMLElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const handleRef = useRef<InteractiveBoardSceneHandle | null>(null);
   const sessionRef = useRef(session);
@@ -58,6 +62,7 @@ export function InteractiveBoardSurface({
   const [actionDiagnostic, setActionDiagnostic] = useState<string | null>(null);
   const [dispatchDiagnostic, setDispatchDiagnostic] = useState<string | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
+  const [sceneReady, setSceneReady] = useState(false);
 
   sessionRef.current = session;
   dispatchRef.current = dispatchAction;
@@ -147,8 +152,11 @@ export function InteractiveBoardSurface({
           backgroundColor: "#00000000",
           render: { antialias: true },
           scale: {
-            mode: Phaser.Scale.FIT,
-            autoCenter: Phaser.Scale.CENTER_BOTH,
+            // FIT preserves the historical embedded board. A map-first board
+            // owns the whole workspace, so RESIZE gives its camera the actual
+            // viewport while the scene keeps its declared logical world bounded.
+            mode: layoutMode === "map-first" ? Phaser.Scale.RESIZE : Phaser.Scale.FIT,
+            autoCenter: layoutMode === "map-first" ? Phaser.Scale.NO_CENTER : Phaser.Scale.CENTER_BOTH,
             width: boundedDimension(manifestProps.designWidth, 1400),
             height: boundedDimension(manifestProps.designHeight, 1000)
           },
@@ -163,6 +171,7 @@ export function InteractiveBoardSurface({
         }
 
         handleRef.current = handle;
+        setSceneReady(true);
         handle.updateSession(initialSession);
         try {
           setAccessibleActions(resolveAccessibleActions(gameId, initialSession, handle));
@@ -177,7 +186,18 @@ export function InteractiveBoardSurface({
         setSceneDiagnostic(null);
 
         if (typeof ResizeObserver !== "undefined") {
-          resizeObserver = new ResizeObserver(() => game?.scale.refresh());
+          resizeObserver = new ResizeObserver((entries) => {
+            const observed = entries.at(-1);
+            if (!game || !observed) return;
+
+            const width = Math.max(1, observed.contentRect.width);
+            const height = Math.max(1, observed.contentRect.height);
+            // `refresh()` recalculates from Phaser's previously cached parent
+            // bounds before reading the new DOM bounds. Feeding the observed
+            // content size first makes RESIZE update the canvas in the same
+            // frame and prevents a viewport change from leaving stale pixels.
+            game.scale.setParentSize(width, height);
+          });
           resizeObserver.observe(container);
         }
       })
@@ -188,6 +208,7 @@ export function InteractiveBoardSurface({
         if (handleRef.current === handle) {
           handleRef.current = null;
         }
+        setSceneReady(false);
         destroySurface(handle, game);
         handle = null;
         game = null;
@@ -203,9 +224,10 @@ export function InteractiveBoardSurface({
       if (handleRef.current === handle) {
         handleRef.current = null;
       }
+      setSceneReady(false);
       destroySurface(handle, game);
     };
-  }, [assets, content, gameId, manifestProps.designHeight, manifestProps.designWidth, manifestProps.sceneId]);
+  }, [assets, content, gameId, layoutMode, manifestProps.designHeight, manifestProps.designWidth, manifestProps.sceneId]);
 
   const label = manifestProps.accessibleLabel ?? "Интерактивное игровое поле";
 
@@ -226,14 +248,80 @@ export function InteractiveBoardSurface({
 
   const diagnostic = dispatchDiagnostic ?? actionDiagnostic ?? sceneDiagnostic;
 
+  const runCameraCommand = (command: (handle: InteractiveBoardSceneHandle) => void) => {
+    const handle = handleRef.current;
+    if (!handle) return;
+    try {
+      command(handle);
+      setSceneDiagnostic(null);
+    } catch (error) {
+      setSceneDiagnostic(errorMessage(error, "Не удалось изменить обзор карты."));
+    }
+  };
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await surfaceRef.current?.requestFullscreen();
+      }
+    } catch (error) {
+      setSceneDiagnostic(errorMessage(error, "Не удалось переключить полноэкранный режим."));
+    }
+  };
+
   return (
-    <section className={styles.surface} aria-label={label}>
+    <section
+      ref={surfaceRef}
+      className={`${styles.surface} ${layoutMode === "map-first" ? styles.surfaceMapFirst : ""}`}
+      aria-label={label}
+      data-layout-mode={layoutMode}
+    >
       <div
         ref={containerRef}
         className={styles.canvasHost}
         aria-hidden="true"
         data-testid="interactive-board-canvas-host"
       />
+
+      {layoutMode === "map-first" ? (
+        <div className={styles.cameraControls} aria-label="Управление обзором карты">
+          <button
+            type="button"
+            className={styles.cameraButton}
+            disabled={!sceneReady}
+            aria-label="Увеличить карту"
+            onClick={() => runCameraCommand((handle) => handle.zoomBy?.(1.2))}
+          >
+            +
+          </button>
+          <button
+            type="button"
+            className={styles.cameraButton}
+            disabled={!sceneReady}
+            aria-label="Уменьшить карту"
+            onClick={() => runCameraCommand((handle) => handle.zoomBy?.(1 / 1.2))}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            className={styles.cameraButtonWide}
+            disabled={!sceneReady}
+            onClick={() => runCameraCommand((handle) => handle.fitToView?.())}
+          >
+            Показать всю карту
+          </button>
+          <button
+            type="button"
+            className={styles.cameraButtonWide}
+            onClick={() => void toggleFullscreen()}
+          >
+            На весь экран
+          </button>
+        </div>
+      ) : null}
 
       <div className={styles.accessibleControls}>
         <h2 className={styles.controlsTitle}>Действия на поле</h2>

@@ -13,26 +13,26 @@
     {
       "screenKey": "facilitator",
       "conditions": {
-        "screenId": "facilitator",
-        "layoutMode": "topbar"
+        "screenId": "facilitator"
       }
     }
   ],
   "screens": {
     "facilitator": {
       "title": "Карты, деньги, поезда",
-      "layout_mode": "topbar",
+      "layout_mode": "map-first",
       "root": {
         "id": "facilitator.root",
         "type": "screenComponent",
         "props": {
-          "cssClass": "topbar-screen-shell"
+          "cssClass": "map-first-screen-shell"
         },
         "children": [
           {
             "id": "facilitator.statusbar",
             "type": "areaComponent",
             "props": {
+              "workspaceSlot": "status",
               "cssClass": "game-variables-container"
             },
             "children": [
@@ -46,10 +46,11 @@
             ]
           },
           {
-            "id": "facilitator.main",
+            "id": "facilitator.board-zone",
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "workspaceSlot": "board",
+              "cssClass": "map-first-board-zone"
             },
             "children": [
               {
@@ -61,7 +62,17 @@
                   "designHeight": 1000,
                   "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
                 }
-              },
+              }
+            ]
+          },
+          {
+            "id": "facilitator.action-tray",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "action-tray",
+              "cssClass": "map-first-action-tray"
+            },
+            "children": [
               {
                 "id": "facilitator.construction-controls",
                 "type": "areaComponent",
@@ -179,7 +190,17 @@
                     }
                   }
                 ]
-              },
+              }
+            ]
+          },
+          {
+            "id": "facilitator.context-panel",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "context-panel",
+              "cssClass": "map-first-context-panel"
+            },
+            "children": [
               {
                 "id": "facilitator.content-gate",
                 "type": "richTextComponent",

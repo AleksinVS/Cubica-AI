@@ -14,6 +14,15 @@ import type {
 
 import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import {
+  fitCameraZoom,
+  overviewCameraView,
+  panCameraViewBy,
+  resizeCameraView,
+  zoomCameraViewAtPoint,
+  type CameraSize,
+  type CameraView
+} from "./camera-math.ts";
+import {
   projectBoardSession,
   type BoardEdgeView,
   type BoardHighlightView,
@@ -25,6 +34,17 @@ import {
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
 const BOARD_PADDING = 72;
+const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT } as const;
+const MAX_CAMERA_ZOOM = 3;
+const WHEEL_ZOOM_STEP = 1.15;
+
+/** Minimal pointer shape used by camera input without importing Phaser. */
+type CameraPointer = {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly isDown: boolean;
+};
 
 const edgeColor = (edge: BoardEdgeView) => {
   if (edge.visualState === "blocked") return 0xc94c4c;
@@ -53,6 +73,10 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
      * that Phaser has already released.
      */
     private projectionReady = false;
+    private cameraInteractionReady = false;
+    private overviewActive = true;
+    private cameraViewport: CameraSize = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+    private dragState: { pointerId: number; x: number; y: number } | null = null;
 
     constructor() {
       super({ key: `cards-money-trains:${context.sceneId}` });
@@ -67,20 +91,168 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     create() {
       this.projectionReady = true;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        this.projectionReady = false;
+        this.stopProjection();
       });
       this.cameras.main.setBackgroundColor("#f3ead8");
+      this.configureCameraInteraction();
       this.renderProjection();
     }
+
+    /**
+     * Release scene-owned listeners before Phaser tears down its managers.
+     * Ordinary DOM actions are registered separately and do not depend on this
+     * lifecycle or on the camera being available.
+     */
+    stopProjection() {
+      this.projectionReady = false;
+      if (!this.cameraInteractionReady) return;
+      this.cameraInteractionReady = false;
+      this.dragState = null;
+      this.input.off("wheel", this.handleWheel);
+      this.input.off("pointerdown", this.handlePointerDown);
+      this.input.off("pointermove", this.handlePointerMove);
+      this.input.off("pointerup", this.handlePointerUp);
+      this.input.off("pointerupoutside", this.handlePointerUp);
+      this.input.off("gameout", this.cancelDrag);
+      this.scale.off("resize", this.handleResize);
+    }
+
+    /** Return to the complete-world overview exposed by the host DOM control. */
+    fitToView() {
+      if (!this.projectionReady) return;
+      this.overviewActive = true;
+      this.applyCameraView(overviewCameraView(this.currentViewport(), CAMERA_WORLD));
+    }
+
+    /** Zoom around the viewport centre; factors above one mean zooming in. */
+    zoomBy(factor: number) {
+      if (!this.projectionReady || !Number.isFinite(factor) || factor <= 0) return;
+      const viewport = this.currentViewport();
+      this.applyZoomAt({ x: viewport.width / 2, y: viewport.height / 2 }, factor);
+    }
+
+    private configureCameraInteraction() {
+      const camera = this.cameras.main;
+      camera.setBounds(CAMERA_WORLD.x, CAMERA_WORLD.y, CAMERA_WORLD.width, CAMERA_WORLD.height);
+      this.cameraViewport = this.currentViewport();
+      this.cameraInteractionReady = true;
+      this.fitToView();
+      this.input.on("wheel", this.handleWheel);
+      this.input.on("pointerdown", this.handlePointerDown);
+      this.input.on("pointermove", this.handlePointerMove);
+      this.input.on("pointerup", this.handlePointerUp);
+      this.input.on("pointerupoutside", this.handlePointerUp);
+      this.input.on("gameout", this.cancelDrag);
+      this.scale.on("resize", this.handleResize);
+    }
+
+    private currentViewport(): CameraSize {
+      const camera = this.cameras.main;
+      return { width: Math.max(1, camera.width), height: Math.max(1, camera.height) };
+    }
+
+    private currentCameraView(): CameraView {
+      const camera = this.cameras.main;
+      return { scrollX: camera.scrollX, scrollY: camera.scrollY, zoom: camera.zoom };
+    }
+
+    private applyCameraView(view: CameraView) {
+      this.cameras.main.setZoom(view.zoom).setScroll(view.scrollX, view.scrollY);
+    }
+
+    private applyZoomAt(point: { x: number; y: number }, factor: number) {
+      const viewport = this.currentViewport();
+      const current = this.currentCameraView();
+      const minimumZoom = fitCameraZoom(viewport, CAMERA_WORLD);
+      const next = zoomCameraViewAtPoint(
+        current,
+        point,
+        current.zoom * factor,
+        viewport,
+        CAMERA_WORLD,
+        { min: minimumZoom, max: MAX_CAMERA_ZOOM }
+      );
+      this.overviewActive = false;
+      this.applyCameraView(next);
+    }
+
+    private readonly handleWheel = (
+      pointer: CameraPointer,
+      _currentlyOver: readonly unknown[],
+      _deltaX: number,
+      deltaY: number
+    ) => {
+      if (deltaY === 0) return;
+      this.applyZoomAt(
+        { x: pointer.x, y: pointer.y },
+        deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP
+      );
+    };
+
+    private readonly handlePointerDown = (
+      pointer: CameraPointer,
+      currentlyOver: readonly unknown[]
+    ) => {
+      // A drag starts only on empty world space. Interactive nodes and road
+      // zones keep their existing click behavior and are never stolen by pan.
+      if (currentlyOver.length > 0) return;
+      this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+    };
+
+    private readonly handlePointerMove = (pointer: CameraPointer) => {
+      const previous = this.dragState;
+      if (!previous || previous.pointerId !== pointer.id || !pointer.isDown) return;
+      const delta = { x: pointer.x - previous.x, y: pointer.y - previous.y };
+      this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+      if (delta.x === 0 && delta.y === 0) return;
+      this.overviewActive = false;
+      this.applyCameraView(panCameraViewBy(
+        this.currentCameraView(),
+        delta,
+        this.currentViewport(),
+        CAMERA_WORLD
+      ));
+    };
+
+    private readonly handlePointerUp = (pointer: CameraPointer) => {
+      if (this.dragState?.pointerId === pointer.id) this.dragState = null;
+    };
+
+    private readonly cancelDrag = () => {
+      this.dragState = null;
+    };
+
+    private readonly handleResize = () => {
+      if (!this.cameraInteractionReady) return;
+      const previousViewport = this.cameraViewport;
+      const nextViewport = this.currentViewport();
+      this.cameraViewport = nextViewport;
+      this.cameras.main.setBounds(
+        CAMERA_WORLD.x,
+        CAMERA_WORLD.y,
+        CAMERA_WORLD.width,
+        CAMERA_WORLD.height
+      );
+      if (this.overviewActive) {
+        this.applyCameraView(overviewCameraView(nextViewport, CAMERA_WORLD));
+        return;
+      }
+      this.applyCameraView(resizeCameraView(
+        this.currentCameraView(),
+        previousViewport,
+        nextViewport,
+        CAMERA_WORLD
+      ));
+    };
 
     renderProjection() {
       if (!this.projectionReady) return;
       this.children.removeAll(true);
       const projection = projectBoardSession(currentSession);
-      const graphics = this.add.graphics();
+      const background = this.add.graphics();
 
-      graphics.fillStyle(0xf3ead8, 1);
-      graphics.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+      background.fillStyle(0xf3ead8, 1);
+      background.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
 
       if (this.textures.exists("cards-money-trains-board")) {
         this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
@@ -88,6 +260,9 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           .setAlpha(0.82);
       }
 
+      // Roads and nodes are semantic session data, so they must render above
+      // the decorative map rather than being muted underneath its texture.
+      const graphics = this.add.graphics();
       const toScreen = this.coordinateMapper(projection);
       this.drawEdges(graphics, projection, toScreen);
       this.drawNodes(graphics, projection, toScreen);
@@ -262,9 +437,16 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     },
     destroy() {
       lastError = null;
+      scene.stopProjection();
       if (scene.sys?.isActive()) {
         scene.children.removeAll(true);
       }
+    },
+    fitToView() {
+      scene.fitToView();
+    },
+    zoomBy(factor) {
+      scene.zoomBy(factor);
     },
     getAccessibleActions: provideCardsMoneyTrainsAccessibleBoardActions
   };

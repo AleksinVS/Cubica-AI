@@ -164,6 +164,84 @@ describe("interactive board surface UI contract", () => {
   });
 });
 
+describe("map-first workspace UI contract", () => {
+  const validateUiManifest = buildValidator("ui-manifest.schema.json");
+  const fixture = {
+    meta: { id: "neutral.workspace.web", version: "1.0.0", game_id: "neutral-workspace" },
+    entry_point: "workspace",
+    screens: {
+      workspace: {
+        type: "screen",
+        layout_mode: "map-first",
+        root: {
+          type: "screenComponent",
+          children: [
+            {
+              type: "areaComponent",
+              props: { workspaceSlot: "board" },
+              children: [
+                {
+                  type: "interactiveBoardSurface",
+                  props: { sceneId: "neutral-scene", accessibleLabel: "Spatial workspace" }
+                }
+              ]
+            },
+            {
+              type: "areaComponent",
+              props: { workspaceSlot: "status" },
+              children: [{ type: "richTextComponent", props: { html: "Ready" } }]
+            }
+          ]
+        }
+      }
+    }
+  };
+
+  it("accepts neutral direct workspace zones with one board", () => {
+    const valid = validateUiManifest(fixture);
+    if (!valid) {
+      throw new Error(`neutral map-first fixture failed schema validation: ${formatErrors(validateUiManifest)}`);
+    }
+    expect(valid).toBe(true);
+  });
+
+  it("rejects an unsupported workspace slot", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[1].props.workspaceSlot = "side-widget";
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects a map-first screen without a direct board zone", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[0].props.workspaceSlot = "primary-panel";
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects workspace slots nested below a direct zone", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[1].children[0] = {
+      type: "areaComponent",
+      props: { workspaceSlot: "overlay" }
+    };
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects workspace slots in a non-map-first screen", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.layout_mode = "topbar";
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
+  it("rejects direct zones that are not area components", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.workspace.root.children[1] = {
+      type: "richTextComponent",
+      props: { html: "Ready", workspaceSlot: "status" }
+    };
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+});
+
 describe("built-in leaf component UI contract", () => {
   const validateUiManifest = buildValidator("ui-manifest.schema.json");
   const manifestWithRoot = (root: Record<string, unknown>) => ({

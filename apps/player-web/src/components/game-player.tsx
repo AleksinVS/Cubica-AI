@@ -35,6 +35,7 @@ import {
   uiUsesGameAssets,
   type GameAssetResolver
 } from "@/lib/game-asset-resolver";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -111,7 +112,7 @@ export function GamePlayer({
 
   const [playerState, setPlayerState] = useState<PlayerState | null>(null);
   const [screenKey, setScreenKey] = useState<string | undefined>(undefined);
-  const [layoutMode, setLayoutMode] = useState<"leftsidebar" | "topbar">("topbar");
+  const [layoutMode, setLayoutMode] = useState<PlayerLayoutMode>("topbar");
   const [activePanel, setActivePanel] = useState<string | null>(null);
   const [lastCompletedPreviewAction, setLastCompletedPreviewAction] = useState<EditorPreviewCompletedAction | undefined>(
     undefined
@@ -246,7 +247,7 @@ export function GamePlayer({
         }
         case "NAVIGATE": {
           const nextScreenKey = command.payload?.screenKey as string | undefined;
-          const nextLayoutMode = command.payload?.layoutMode as "leftsidebar" | "topbar" | undefined;
+          const nextLayoutMode = command.payload?.layoutMode as PlayerLayoutMode | undefined;
           if (nextScreenKey) {
             setScreenKey(nextScreenKey);
           }
@@ -404,11 +405,17 @@ export function GamePlayer({
 
   const metrics = state.metrics;
   const activeManifestPanel = state.activePanel ? gameUi?.panels?.[state.activePanel] : undefined;
+  const activeManifestScreen = screenKey ? gameUi?.screens[screenKey] : undefined;
+  const keepsMapBehindPanel = Boolean(
+    activeManifestPanel && activeManifestScreen && (
+      activeManifestScreen.layoutMode === "map-first" || layoutMode === "map-first"
+    )
+  );
   const sessionSnapshot = presenterRef.current?.sessionSnapshot ?? undefined;
 
   return (
     <main ref={rootRef} className="shell game-player-root" style={rootStyle}>
-      {activeManifestPanel ? (
+      {activeManifestPanel && !keepsMapBehindPanel ? (
         <ManifestRenderer
           screenDefinition={activeManifestPanel}
           metrics={metrics}
@@ -432,23 +439,47 @@ export function GamePlayer({
           isPending={state.isPending}
           onAction={handleSurfaceAction}
         />
-      ) : screenKey && gameUi?.screens[screenKey] ? (
-        <ManifestRenderer
-          screenDefinition={gameUi.screens[screenKey]}
-          metrics={metrics}
-          onAction={handleManifestAction}
-          screenKey={screenKey}
-          layoutMode={layoutMode}
-          metricBackgroundImages={fullConfig.metricBackgroundImages}
-          gameState={state as Record<string, unknown>}
-          designArtifacts={gameUi?.designArtifacts}
-          editorPreviewMode={editorPreviewMode}
-          content={content}
-          session={sessionSnapshot}
-          onBoardAction={handleBoardAction}
-          assetResolver={gameAssets}
-          isPending={state.isPending}
-        />
+      ) : screenKey && activeManifestScreen ? (
+        <>
+          <ManifestRenderer
+            screenDefinition={activeManifestScreen}
+            metrics={metrics}
+            onAction={handleManifestAction}
+            screenKey={screenKey}
+            layoutMode={layoutMode}
+            metricBackgroundImages={fullConfig.metricBackgroundImages}
+            gameState={state as Record<string, unknown>}
+            designArtifacts={gameUi?.designArtifacts}
+            editorPreviewMode={editorPreviewMode}
+            content={content}
+            session={sessionSnapshot}
+            onBoardAction={handleBoardAction}
+            assetResolver={gameAssets}
+            isPending={state.isPending}
+          />
+          {keepsMapBehindPanel && activeManifestPanel ? (
+            <div className="map-first-manifest-panel-layer" role="presentation">
+              <ManifestRenderer
+                screenDefinition={activeManifestPanel}
+                metrics={metrics}
+                onAction={handleManifestAction}
+                screenKey={state.activePanel ?? undefined}
+                rootRuntimePointer={`/panels/${state.activePanel}/root`}
+                layoutMode={layoutMode}
+                metricBackgroundImages={fullConfig.metricBackgroundImages}
+                gameState={state as Record<string, unknown>}
+                designArtifacts={gameUi?.designArtifacts}
+                editorPreviewMode={editorPreviewMode}
+                content={content}
+                session={sessionSnapshot}
+                onBoardAction={handleBoardAction}
+                assetResolver={gameAssets}
+                isPending={state.isPending}
+                embeddedOverlay
+              />
+            </div>
+          ) : null}
+        </>
       ) : state.booting || !state.sessionId ? (
         <div className="loading-state">
           <div className="loading-spinner" />
@@ -461,7 +492,7 @@ export function GamePlayer({
           metrics={metrics}
           fallbackMetrics={fullConfig.fallbackMetrics}
           gameUi={gameUi}
-          layoutMode={layoutMode}
+          layoutMode={layoutMode === "map-first" ? "topbar" : layoutMode}
           screenKey={screenKey}
           dispatchAction={handleAction}
           fallbackScreenBuilder={fullConfig.fallbackScreenBuilder}

@@ -8,6 +8,7 @@ import type { MetricsSnapshot } from "@/types/game-state";
 import { resolveMetricBinding } from "@/lib/metric-resolvers";
 import { resolveMetricBackgroundImage } from "@/lib/layout-helpers";
 import type { PreviewElementAttributes } from "./preview-metadata";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Renders gameVariableComponent (metric display in sidebar or topbar).
@@ -29,7 +30,7 @@ export function GameVariableComponent({
   metrics: MetricsSnapshot;
   gameState?: Record<string, unknown>;
   backgroundImage?: string;
-  layoutMode?: "leftsidebar" | "topbar";
+  layoutMode?: PlayerLayoutMode;
   metricBackgroundImages?: Record<string, string>;
   previewAttributes?: PreviewElementAttributes;
 }) {

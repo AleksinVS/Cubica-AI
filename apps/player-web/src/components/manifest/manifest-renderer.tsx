@@ -8,6 +8,7 @@ import type { GameSession, MetricsSnapshot } from "@/types/game-state";
 import type { GameAssetResolver } from "@/lib/game-asset-resolver";
 import { UiComponentNode } from "./ui-component-node";
 import { screenRootRuntimePointer } from "./preview-metadata";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Ограниченный рендерер, управляемый манифестом.
@@ -31,6 +32,7 @@ export function ManifestRenderer({
   onBoardAction,
   assetResolver,
   isPending = false,
+  embeddedOverlay = false,
 }: {
   screenDefinition: GameUiScreenDefinition | GameUiPanelDefinition;
   metrics: MetricsSnapshot;
@@ -45,7 +47,7 @@ export function ManifestRenderer({
    * back through the existing source map.
    */
   rootRuntimePointer?: string;
-  layoutMode?: "leftsidebar" | "topbar";
+  layoutMode?: PlayerLayoutMode;
   metricBackgroundImages?: Record<string, string>;
   /** Полное состояние игры для разрешения выражений и itemTemplate. */
   gameState?: Record<string, unknown>;
@@ -62,6 +64,8 @@ export function ManifestRenderer({
   assetResolver?: GameAssetResolver | null;
   /** Prevents a second command while the previous server transition is pending. */
   isPending?: boolean;
+  /** Render a manifest panel inside the map-first platform overlay layer. */
+  embeddedOverlay?: boolean;
 }) {
   // Layout from screen definition takes priority over prop
   const layoutMode =
@@ -70,7 +74,7 @@ export function ManifestRenderer({
       : layoutModeProp;
 
   return (
-    <div className={`game-renderer game-renderer--${layoutMode}`}>
+    <div className={`game-renderer game-renderer--${layoutMode}${embeddedOverlay ? " game-renderer--embedded-overlay" : ""}`}>
       <UiComponentNode
         component={screenDefinition.root}
         metrics={metrics}

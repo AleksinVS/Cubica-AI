@@ -67,6 +67,10 @@ export interface InteractiveBoardSceneHandle {
   updateSession(session: InteractiveBoardSessionSnapshot): void;
   /** Releases plugin-owned listeners and transient scene resources. */
   destroy(): void;
+  /** Return the world to the complete, bounded overview. */
+  fitToView?(): void;
+  /** Apply a relative camera zoom; values above one zoom in. */
+  zoomBy?(factor: number): void;
   /**
    * Returns complete actions for keyboard and assistive-technology users.
    *

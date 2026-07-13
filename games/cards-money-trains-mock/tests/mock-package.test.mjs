@@ -340,7 +340,7 @@ test("complete seven-turn gameplay is replay-stable and finishes only after faci
   assert.deepEqual(first.state.public.ranking.groups.guilds.winners, transcript.final.winners.guilds);
 });
 
-test("published repository loads mock UI, immutable plugin and SVG asset by ordinary gameId", async () => {
+test("published repository loads mock UI, immutable plugin and registered WebP map by ordinary gameId", async () => {
   const { content } = await loadPlayerFacingContent({ gameId: "cards-money-trains-mock" });
   assert.equal(content.gameId, "cards-money-trains-mock");
   assert.equal(content.ui.id, "cards-money-trains-mock.ui.web");
@@ -356,7 +356,7 @@ test("published repository loads mock UI, immutable plugin and SVG asset by ordi
   const assetIndex = await getGameAssetIndex("cards-money-trains-mock");
   const asset = assetIndex.assets["board-guinea-optimized"];
   assert.ok(asset);
-  const match = asset.url.match(/\/([a-f0-9]{64})\.(svg)$/u);
+  const match = asset.url.match(/\/([a-f0-9]{64})\.(webp)$/u);
   assert.ok(match);
   const delivery = await getGameAssetFile({
     gameId: "cards-money-trains-mock",
@@ -364,8 +364,11 @@ test("published repository loads mock UI, immutable plugin and SVG asset by ordi
     contentHash: match[1],
     extension: match[2]
   });
-  assert.equal(delivery.contentType, "image/svg+xml");
-  assert.match(delivery.bytes.toString("utf8"), /ВЫМЫШЛЕННАЯ КАРТА/);
+  assert.equal(delivery.contentType, "image/webp");
+  const normativeMap = await readFile(
+    path.join(packageRoot, "..", "cards-money-trains", "assets", "images", "guinea-map.webp")
+  );
+  assert.deepEqual(delivery.bytes, normativeMap);
 });
 
 test("normative manifest remains separately addressed and contains no mock marker", async () => {

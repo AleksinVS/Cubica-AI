@@ -14,6 +14,15 @@ import type {
 
 import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import {
+  fitCameraZoom,
+  overviewCameraView,
+  panCameraViewBy,
+  resizeCameraView,
+  zoomCameraViewAtPoint,
+  type CameraSize,
+  type CameraView
+} from "./camera-math.ts";
+import {
   projectBoardSession,
   type BoardEdgeView,
   type BoardHighlightView,
@@ -24,12 +33,18 @@ import {
 
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
-const MAP_LEFT = 24;
-const MAP_TOP = 104;
-const MAP_WIDTH = 1000;
-const MAP_HEIGHT = 714;
-const SIDEBAR_LEFT = 1048;
-const SIDEBAR_WIDTH = 328;
+const BOARD_PADDING = 72;
+const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT } as const;
+const MAX_CAMERA_ZOOM = 3;
+const WHEEL_ZOOM_STEP = 1.15;
+
+/** Minimal pointer shape used by camera input without importing Phaser. */
+type CameraPointer = {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly isDown: boolean;
+};
 
 const edgeColor = (edge: BoardEdgeView) => {
   if (edge.visualState === "blocked") return 0xc94c4c;
@@ -41,32 +56,6 @@ const nodeColor = (node: BoardNodeView) =>
   node.objectType === "transport.waypoint" ? 0xe5a338 : 0xf4ead5;
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : "Действие отклонено runtime";
-
-const phaseLabels: Readonly<Record<string, string>> = {
-  setup: "Подготовка",
-  news: "Новость",
-  maintenance: "Обслуживание",
-  market: "Рынок техники",
-  cargo: "Выбор грузов",
-  operations: "Операции",
-  movement: "Перевозки",
-  construction: "Строительство",
-  reporting: "Подведение итогов",
-  debrief: "Разбор игры",
-  finished: "Игра завершена",
-  unknown: "Этап не указан"
-};
-
-const phaseLabel = (phase: string) => phaseLabels[phase] ?? phase;
-
-const constructionModeLabel = (mode: string | null) => {
-  if (mode === "road") return "строится дорога";
-  if (mode === "waypoint") return "ставится полустанок";
-  return "объект не выбран";
-};
-
-const truncate = (value: string, length: number) =>
-  value.length <= length ? value : `${value.slice(0, length - 1)}…`;
 
 /** Build a scene instance exclusively from platform-injected Phaser. */
 export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
@@ -85,6 +74,10 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
      * that Phaser has already released.
      */
     private projectionReady = false;
+    private cameraInteractionReady = false;
+    private overviewActive = true;
+    private cameraViewport: CameraSize = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
+    private dragState: { pointerId: number; x: number; y: number } | null = null;
 
     constructor() {
       super({ key: `cards-money-trains:${context.sceneId}` });
@@ -100,12 +93,13 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       if (disposed) return;
       this.projectionReady = true;
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-        this.projectionReady = false;
+        this.stopProjection();
       });
       this.cameras.main.setBackgroundColor("#e8decb");
       // One restrained entrance confirms that the working surface is ready.
       // Phaser owns the tween and removes it with the scene lifecycle.
       this.cameras.main.fadeIn(180, 232, 222, 203);
+      this.configureCameraInteraction();
       this.renderProjection();
     }
 
@@ -113,72 +107,221 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       if (!this.projectionReady || disposed) return;
       this.children.removeAll(true);
       const projection = projectBoardSession(currentSession);
-      const graphics = this.add.graphics();
+      const background = this.add.graphics();
 
-      graphics.fillStyle(0xe8decb, 1);
-      graphics.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
-      graphics.fillStyle(0x20323b, 1);
-      graphics.fillRect(0, 0, DESIGN_WIDTH, 82);
-
-      graphics.fillStyle(0xfffbf3, 1);
-      graphics.fillRoundedRect(MAP_LEFT - 8, MAP_TOP - 8, MAP_WIDTH + 16, MAP_HEIGHT + 16, 12);
-      graphics.fillRoundedRect(SIDEBAR_LEFT, MAP_TOP, SIDEBAR_WIDTH, 872, 12);
-      graphics.fillRoundedRect(MAP_LEFT - 8, 838, MAP_WIDTH + 16, 138, 12);
+      background.fillStyle(0xe8decb, 1);
+      background.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
 
       if (this.textures.exists("cards-money-trains-board")) {
-        this.add.image(MAP_LEFT + MAP_WIDTH / 2, MAP_TOP + MAP_HEIGHT / 2, "cards-money-trains-board")
-          .setDisplaySize(MAP_WIDTH, MAP_HEIGHT)
+        // In map-first mode the scene is the map, not a miniature board inside
+        // a second page. Text, actions and the journal stay in accessible DOM
+        // panels owned by the generic player workspace.
+        this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
+          .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT)
           .setAlpha(0.88);
       }
 
+      // Dynamic geometry must remain above the decorative raster. Keeping it
+      // in a separate display object avoids washing roads out under the map.
+      const graphics = this.add.graphics();
       const toScreen = this.coordinateMapper(projection);
       this.drawEdges(graphics, projection, toScreen);
       this.drawNodes(graphics, projection, toScreen);
       this.drawVehicles(projection, toScreen);
-      this.drawHeader(projection);
-      this.drawFacilitatorPanel(projection);
-      this.drawLog(projection);
+
+      // The warning is game content, not a control panel. Keeping it compact
+      // makes the test package unmistakable without sacrificing the map-first
+      // composition that the package is meant to prove.
+      this.add.text(DESIGN_WIDTH / 2, 24, "MOCK · ТЕСТОВЫЕ ДАННЫЕ · НЕ ПУБЛИКОВАТЬ", {
+        color: "#fff8e9",
+        backgroundColor: "#8b2f2fdd",
+        padding: { x: 14, y: 8 },
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        fontSize: "20px"
+      }).setOrigin(0.5, 0);
 
       if (projection.nodes.length === 0) {
-        this.add.text(MAP_LEFT + MAP_WIDTH / 2, MAP_TOP + MAP_HEIGHT / 2,
+        this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2,
           "Ожидаются авторские узлы, координаты и начальная сеть",
           { color: "#24343d", fontFamily: "sans-serif", fontSize: "26px", align: "center" })
           .setOrigin(0.5);
       }
 
       if (lastError) {
-        this.add.text(MAP_LEFT + MAP_WIDTH / 2, 812, lastError, {
+        this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 34, lastError, {
           color: "#ffffff",
           backgroundColor: "#9e2f2f",
           padding: { x: 14, y: 8 },
           fontFamily: "sans-serif",
           fontSize: "18px",
-          wordWrap: { width: MAP_WIDTH - 80 }
+          wordWrap: { width: DESIGN_WIDTH - BOARD_PADDING * 2 }
         }).setOrigin(0.5, 1);
       }
     }
 
-    /** Stop late snapshot callbacks before Phaser releases scene managers. */
+    /**
+     * Stop late callbacks and release camera listeners before Phaser releases
+     * scene managers. DOM action controls live in the host and remain separate.
+     */
     stopProjection() {
       this.projectionReady = false;
+      if (!this.cameraInteractionReady) return;
+      this.cameraInteractionReady = false;
+      this.dragState = null;
+      this.input.off("wheel", this.handleWheel);
+      this.input.off("pointerdown", this.handlePointerDown);
+      this.input.off("pointermove", this.handlePointerMove);
+      this.input.off("pointerup", this.handlePointerUp);
+      this.input.off("pointerupoutside", this.handlePointerUp);
+      this.input.off("gameout", this.cancelDrag);
+      this.scale.off("resize", this.handleResize);
     }
+
+    /** Return to the complete-world overview exposed by the host DOM control. */
+    fitToView() {
+      if (!this.projectionReady) return;
+      this.overviewActive = true;
+      this.applyCameraView(overviewCameraView(this.currentViewport(), CAMERA_WORLD));
+    }
+
+    /** Zoom around the viewport centre; factors above one mean zooming in. */
+    zoomBy(factor: number) {
+      if (!this.projectionReady || !Number.isFinite(factor) || factor <= 0) return;
+      const viewport = this.currentViewport();
+      this.applyZoomAt({ x: viewport.width / 2, y: viewport.height / 2 }, factor);
+    }
+
+    private configureCameraInteraction() {
+      const camera = this.cameras.main;
+      camera.setBounds(CAMERA_WORLD.x, CAMERA_WORLD.y, CAMERA_WORLD.width, CAMERA_WORLD.height);
+      this.cameraViewport = this.currentViewport();
+      this.cameraInteractionReady = true;
+      this.fitToView();
+      this.input.on("wheel", this.handleWheel);
+      this.input.on("pointerdown", this.handlePointerDown);
+      this.input.on("pointermove", this.handlePointerMove);
+      this.input.on("pointerup", this.handlePointerUp);
+      this.input.on("pointerupoutside", this.handlePointerUp);
+      this.input.on("gameout", this.cancelDrag);
+      this.scale.on("resize", this.handleResize);
+    }
+
+    private currentViewport(): CameraSize {
+      const camera = this.cameras.main;
+      return { width: Math.max(1, camera.width), height: Math.max(1, camera.height) };
+    }
+
+    private currentCameraView(): CameraView {
+      const camera = this.cameras.main;
+      return { scrollX: camera.scrollX, scrollY: camera.scrollY, zoom: camera.zoom };
+    }
+
+    private applyCameraView(view: CameraView) {
+      this.cameras.main.setZoom(view.zoom).setScroll(view.scrollX, view.scrollY);
+    }
+
+    private applyZoomAt(point: { x: number; y: number }, factor: number) {
+      const viewport = this.currentViewport();
+      const current = this.currentCameraView();
+      const minimumZoom = fitCameraZoom(viewport, CAMERA_WORLD);
+      const next = zoomCameraViewAtPoint(
+        current,
+        point,
+        current.zoom * factor,
+        viewport,
+        CAMERA_WORLD,
+        { min: minimumZoom, max: MAX_CAMERA_ZOOM }
+      );
+      this.overviewActive = false;
+      this.applyCameraView(next);
+    }
+
+    private readonly handleWheel = (
+      pointer: CameraPointer,
+      _currentlyOver: readonly unknown[],
+      _deltaX: number,
+      deltaY: number
+    ) => {
+      if (deltaY === 0) return;
+      this.applyZoomAt(
+        { x: pointer.x, y: pointer.y },
+        deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP
+      );
+    };
+
+    private readonly handlePointerDown = (
+      pointer: CameraPointer,
+      currentlyOver: readonly unknown[]
+    ) => {
+      // Interactive road and node targets keep their click behavior; only an
+      // empty part of the mock world may initiate camera panning.
+      if (currentlyOver.length > 0) return;
+      this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+    };
+
+    private readonly handlePointerMove = (pointer: CameraPointer) => {
+      const previous = this.dragState;
+      if (!previous || previous.pointerId !== pointer.id || !pointer.isDown) return;
+      const delta = { x: pointer.x - previous.x, y: pointer.y - previous.y };
+      this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
+      if (delta.x === 0 && delta.y === 0) return;
+      this.overviewActive = false;
+      this.applyCameraView(panCameraViewBy(
+        this.currentCameraView(),
+        delta,
+        this.currentViewport(),
+        CAMERA_WORLD
+      ));
+    };
+
+    private readonly handlePointerUp = (pointer: CameraPointer) => {
+      if (this.dragState?.pointerId === pointer.id) this.dragState = null;
+    };
+
+    private readonly cancelDrag = () => {
+      this.dragState = null;
+    };
+
+    private readonly handleResize = () => {
+      if (!this.cameraInteractionReady) return;
+      const previousViewport = this.cameraViewport;
+      const nextViewport = this.currentViewport();
+      this.cameraViewport = nextViewport;
+      this.cameras.main.setBounds(
+        CAMERA_WORLD.x,
+        CAMERA_WORLD.y,
+        CAMERA_WORLD.width,
+        CAMERA_WORLD.height
+      );
+      if (this.overviewActive) {
+        this.applyCameraView(overviewCameraView(nextViewport, CAMERA_WORLD));
+        return;
+      }
+      this.applyCameraView(resizeCameraView(
+        this.currentCameraView(),
+        previousViewport,
+        nextViewport,
+        CAMERA_WORLD
+      ));
+    };
 
     private coordinateMapper(projection: BoardProjection) {
       const bounds = projection.bounds;
       if (!bounds) return (_point: CanonicalPoint) => ({
-        x: MAP_LEFT + MAP_WIDTH / 2,
-        y: MAP_TOP + MAP_HEIGHT / 2
+        x: DESIGN_WIDTH / 2,
+        y: DESIGN_HEIGHT / 2
       });
       const width = Math.max(1, bounds.maxX - bounds.minX);
       const height = Math.max(1, bounds.maxY - bounds.minY);
       const scale = Math.min(
-        MAP_WIDTH / width,
-        MAP_HEIGHT / height
+        (DESIGN_WIDTH - BOARD_PADDING * 2) / width,
+        (DESIGN_HEIGHT - BOARD_PADDING * 2) / height
       );
       const renderedWidth = width * scale;
       const renderedHeight = height * scale;
-      const offsetX = MAP_LEFT + (MAP_WIDTH - renderedWidth) / 2;
-      const offsetY = MAP_TOP + (MAP_HEIGHT - renderedHeight) / 2;
+      const offsetX = (DESIGN_WIDTH - renderedWidth) / 2;
+      const offsetY = (DESIGN_HEIGHT - renderedHeight) / 2;
       return (value: CanonicalPoint) => ({
         x: offsetX + (value.x - bounds.minX) * scale,
         y: offsetY + (value.y - bounds.minY) * scale
@@ -285,116 +428,6 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       }
     }
 
-    private drawHeader(projection: BoardProjection) {
-      this.add.text(28, 17, "КАРТЫ, ДЕНЬГИ, ПОЕЗДА", {
-        color: "#fff8e9",
-        fontFamily: "sans-serif",
-        fontStyle: "bold",
-        fontSize: "26px"
-      });
-      this.add.text(28, 50, "Тестовый контур · данные будут заменены материалами автора", {
-        color: "#cbd5d8",
-        fontFamily: "sans-serif",
-        fontSize: "15px"
-      });
-      this.add.text(DESIGN_WIDTH - 28, 22, `ХОД ${projection.turnNumber}  ·  ${phaseLabel(projection.phase)}`, {
-        color: "#fff8e9",
-        fontFamily: "sans-serif",
-        fontStyle: "bold",
-        fontSize: "22px"
-      }).setOrigin(1, 0);
-    }
-
-    private drawFacilitatorPanel(projection: BoardProjection) {
-      const left = SIDEBAR_LEFT + 22;
-      const textWidth = SIDEBAR_WIDTH - 44;
-      this.add.text(left, 126, "ТЕКУЩИЙ ЭТАП", {
-        color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-      });
-      this.add.text(left, 151, phaseLabel(projection.phase), {
-        color: "#18323d", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "25px"
-      });
-      const phaseHint = projection.phase === "construction"
-        ? `Режим: ${constructionModeLabel(projection.constructionMode)}`
-        : projection.phase === "news" && projection.currentNewsSummary
-          ? projection.currentNewsSummary
-          : projection.phase === "cargo" && projection.cargoOfferLabels.length > 0
-            ? `Предложение: ${projection.cargoOfferLabels.join(" · ")}`
-            : projection.status === "finished"
-              ? "Сессия завершена ведущим"
-              : "Действия подтверждает сервер";
-      this.add.text(left, 185, phaseHint, {
-        color: "#54656c", fontFamily: "sans-serif", fontSize: "16px", wordWrap: { width: textWidth }
-      });
-
-      this.add.text(left, 230, "КОМАНДЫ", {
-        color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-      });
-      if (projection.teams.length === 0) {
-        this.add.text(left, 258, "Данные команд пока не переданы", {
-          color: "#6b777c", fontFamily: "sans-serif", fontSize: "16px", wordWrap: { width: textWidth }
-        });
-      }
-      projection.teams.slice(0, 5).forEach((team, index) => {
-        const top = 258 + index * 76;
-        this.add.text(left, top, truncate(team.label, 28), {
-          color: "#18323d", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "18px"
-        });
-        this.add.text(left, top + 25,
-          `${team.coins === null ? "—" : team.coins} мон.  ·  ${team.locomotives} лок.  ·  ${team.wagons} ваг.`, {
-            color: "#53646b", fontFamily: "sans-serif", fontSize: "16px"
-          });
-      });
-
-      const enabledActions = projection.availableActions.filter((action) => action.disabled !== true);
-      const disabledActions = projection.availableActions.filter((action) => action.disabled === true);
-      this.add.text(left, 590, "ДЕЙСТВИЯ", {
-        color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-      });
-      this.add.text(left, 617,
-        enabledActions.length > 0
-          ? `Доступно: ${enabledActions.length}. Кнопки находятся сразу под картой.`
-          : "Сейчас сервер не передал доступных действий.", {
-          color: "#18323d", fontFamily: "sans-serif", fontSize: "17px", wordWrap: { width: textWidth }
-        });
-
-      let actionTop = 674;
-      for (const action of disabledActions.slice(0, 3)) {
-        const reason = action.disabledReason ?? "Причина не передана сервером";
-        this.add.text(left, actionTop, `Недоступно: ${truncate(action.label, 31)}`, {
-          color: "#7d3934", fontFamily: "sans-serif", fontSize: "15px", wordWrap: { width: textWidth }
-        });
-        this.add.text(left, actionTop + 22, truncate(reason, 72), {
-          color: "#6b5a58", fontFamily: "sans-serif", fontSize: "14px", wordWrap: { width: textWidth }
-        });
-        actionTop += 68;
-      }
-
-      this.add.text(left, 918, "Клавиатура: используйте обычные кнопки под полем. Карта поддерживает мышь и касание.", {
-        color: "#68767b", fontFamily: "sans-serif", fontSize: "14px", wordWrap: { width: textWidth }
-      });
-    }
-
-    private drawLog(projection: BoardProjection) {
-      this.add.text(MAP_LEFT + 12, 854, "ЖУРНАЛ ПОДТВЕРЖДЁННЫХ ДЕЙСТВИЙ", {
-        color: "#6b777c", fontFamily: "sans-serif", fontStyle: "bold", fontSize: "14px"
-      });
-      const entries = projection.log.slice(-3).reverse();
-      if (entries.length === 0) {
-        this.add.text(MAP_LEFT + 12, 884, "Записей пока нет — первая подтверждённая операция появится здесь.", {
-          color: "#617178", fontFamily: "sans-serif", fontSize: "17px"
-        });
-        return;
-      }
-      entries.forEach((entry, index) => {
-        this.add.text(MAP_LEFT + 12, 884 + index * 28,
-          `${index === 0 ? "Последнее" : "Ранее"}: ${truncate(entry.summary, 112)}`, {
-            color: index === 0 ? "#18323d" : "#617178",
-            fontFamily: "sans-serif",
-            fontSize: index === 0 ? "17px" : "15px"
-          });
-      });
-    }
   }
 
   const scene = new CardsMoneyTrainsScene();
@@ -414,6 +447,12 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       if (scene.sys?.isActive()) {
         scene.children.removeAll(true);
       }
+    },
+    fitToView() {
+      scene.fitToView();
+    },
+    zoomBy(factor) {
+      scene.zoomBy(factor);
     },
     getAccessibleActions: provideCardsMoneyTrainsAccessibleBoardActions
   };

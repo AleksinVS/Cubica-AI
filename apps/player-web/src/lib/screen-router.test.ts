@@ -48,4 +48,8 @@ describe("screen router", () => {
   it("prefers an explicit info screen over a generic screenId screen", () => {
     expect(resolveScreenKey([], "S1", 31, "i17", { activeScreen: "topbar" }, uiContent)).toBe("i17");
   });
+
+  it("preserves the map-first runtime layout when explicitly requested", () => {
+    expect(resolveLayoutModeFromRouting(undefined, "S1", 0, null, { activeScreen: "map-first" })).toBe("map-first");
+  });
 });

@@ -8,7 +8,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { PlayerFacingContent } from "@cubica/contracts-manifest";
+import type { GamePlayerUiContent, PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import type { GameSession } from "@/types/game-state";
 import { createDefaultGameConfig, createDefaultGameConfigData } from "./game-config";
@@ -106,6 +106,60 @@ describe("GamePresenter board action serialization", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchRequestVersions(fetchMock)).toEqual([1, 2]);
+  });
+});
+
+describe("GamePresenter declarative layout", () => {
+  it("uses the selected screen map-first layout before routing fallbacks", () => {
+    const content: PlayerFacingContent = {
+      gameId: "spatial-fixture",
+      version: "1.0.0",
+      name: "Spatial fixture",
+      description: "Neutral map-first presenter fixture",
+      locale: "ru",
+      playerConfig: { min: 1, max: 1 },
+      actions: [],
+      mockups: []
+    };
+    const gameUi: GamePlayerUiContent = {
+      id: "spatial-fixture.ui.web",
+      version: "1.0.0",
+      gameId: content.gameId,
+      entryPoint: "workspace",
+      screens: {
+        workspace: {
+          type: "screen",
+          title: "Workspace",
+          layoutMode: "map-first",
+          root: {
+            type: "screenComponent",
+            props: {},
+            children: [{
+              type: "areaComponent",
+              props: { workspaceSlot: "board" },
+              children: []
+            }]
+          }
+        }
+      }
+    };
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      gameUi,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", {
+      ...turnSession("p1"),
+      gameId: content.gameId,
+      state: {
+        public: { timeline: { screenId: "workspace" } },
+        secret: {}
+      }
+    } satisfies GameSession);
+
+    expect(presenter.playerState.screenKey).toBe("workspace");
+    expect(presenter.playerState.layoutMode).toBe("map-first");
   });
 });
 

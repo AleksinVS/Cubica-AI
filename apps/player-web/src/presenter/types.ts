@@ -1,5 +1,6 @@
 import type { AgentSurfaceState } from "@/types/game-state";
 import type { GameManifestAgentFailurePolicy, GameMetricView } from "@cubica/contracts-manifest";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Запрос от View или системы к Presenter.
@@ -42,7 +43,7 @@ export type PlayerState = Record<string, unknown> & {
   metrics: Record<string, unknown>;
   metricViews: Record<string, GameMetricView>;
   screenKey: string | null;
-  layoutMode: "leftsidebar" | "topbar";
+  layoutMode: PlayerLayoutMode;
   activePanel: string | null;
   runtimeStatus: PlayerRuntimeStatus;
   runtimeStatusReason: string | null;

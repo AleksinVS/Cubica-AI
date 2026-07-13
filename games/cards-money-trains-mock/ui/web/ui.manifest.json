@@ -13,26 +13,26 @@
     {
       "screenKey": "facilitator",
       "conditions": {
-        "screenId": "facilitator",
-        "layoutMode": "topbar"
+        "screenId": "facilitator"
       }
     }
   ],
   "screens": {
     "facilitator": {
       "title": "[MOCK] Карты, деньги, поезда",
-      "layout_mode": "topbar",
+      "layout_mode": "map-first",
       "root": {
         "id": "facilitator.root",
         "type": "screenComponent",
         "props": {
-          "cssClass": "topbar-screen-shell"
+          "cssClass": "map-first-screen-shell"
         },
         "children": [
           {
             "id": "facilitator.statusbar",
             "type": "areaComponent",
             "props": {
+              "workspaceSlot": "status",
               "cssClass": "game-variables-container"
             },
             "children": [
@@ -40,16 +40,17 @@
                 "id": "facilitator.status",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
+                  "html": "<h1>[MOCK] Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
                 }
               }
             ]
           },
           {
-            "id": "facilitator.main",
+            "id": "facilitator.board-zone",
             "type": "areaComponent",
             "props": {
-              "cssClass": "main-content-area"
+              "workspaceSlot": "board",
+              "cssClass": "map-first-board-zone"
             },
             "children": [
               {
@@ -61,24 +62,35 @@
                   "designHeight": 1000,
                   "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
                 }
-              },
+              }
+            ]
+          },
+          {
+            "id": "facilitator.team-status",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "primary-panel",
+              "cssClass": "cards-container topbar-cards-container",
+              "topbarCssClass": "topbar-cards-container"
+            },
+            "children": [
               {
-                "id": "facilitator.team-status",
-                "type": "areaComponent",
+                "id": "facilitator.team-status-copy",
+                "type": "richTextComponent",
                 "props": {
-                  "cssClass": "cards-container topbar-cards-container",
-                  "topbarCssClass": "topbar-cards-container"
-                },
-                "children": [
-                  {
-                    "id": "facilitator.team-status-copy",
-                    "type": "richTextComponent",
-                    "props": {
-                      "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
-                    }
-                  }
-                ]
-              },
+                  "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "facilitator.context-panel",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "context-panel",
+              "cssClass": "map-first-context-panel"
+            },
+            "children": [
               {
                 "id": "facilitator.action-guidance",
                 "type": "richTextComponent",
@@ -122,6 +134,23 @@
                   }
                 ]
               },
+              {
+                "id": "facilitator.content-gate",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
+                }
+              }
+            ]
+          },
+          {
+            "id": "facilitator.action-tray",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "action-tray",
+              "cssClass": "map-first-action-tray"
+            },
+            "children": [
               {
                 "id": "facilitator.construction-controls",
                 "type": "areaComponent",
@@ -239,13 +268,6 @@
                     }
                   }
                 ]
-              },
-              {
-                "id": "facilitator.content-gate",
-                "type": "richTextComponent",
-                "props": {
-                  "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
-                }
               }
             ]
           }

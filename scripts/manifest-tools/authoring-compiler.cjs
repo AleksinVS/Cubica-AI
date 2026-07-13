@@ -610,6 +610,43 @@ function ensureArray(value, filePath, pointer, label) {
   return value;
 }
 
+/**
+ * Enforces the only map-first relationship that draft-07 cannot express.
+ *
+ * JSON Schema remains the sole source of truth for the slot vocabulary, valid
+ * component types and allowed tree positions. Draft-07 has `contains` but no
+ * `maxContains`, so the schema can require at least one board zone but cannot
+ * prove there is exactly one. This check only supplies that missing upper
+ * bound while authoring pointers are still available for useful diagnostics.
+ */
+function assertUiAuthoringWorkspaceSemantics(root, sourceFile) {
+  const screens = ensureArray(root.screens, sourceFile, "/root/screens", "UI v2 root.screens");
+
+  screens.forEach((screen, screenIndex) => {
+    const screenPointer = joinPointer("/root/screens", screenIndex);
+    const screenObject = ensureObject(screen, sourceFile, screenPointer, "UI v2 screen");
+    if (screenObject.layout_mode !== "map-first") {
+      return;
+    }
+
+    const rootPointer = joinPointer(screenPointer, "root");
+    const rootComponent = ensureObject(screenObject.root, sourceFile, rootPointer, "UI v2 screen root");
+    const childrenPointer = joinPointer(rootPointer, "children");
+    const zones = ensureArray(rootComponent.children, sourceFile, childrenPointer, "map-first screen root.children");
+    const boardZones = zones.filter(
+      (zone) => hasPlainObject(zone) && hasPlainObject(zone.props) && zone.props.workspaceSlot === "board"
+    ).length;
+
+    if (boardZones !== 1) {
+      throw new CompileError(
+        `A map-first screen requires exactly one direct board zone; found ${boardZones}`,
+        sourceFile,
+        childrenPointer
+      );
+    }
+  });
+}
+
 function sourceFor(compiled, sourceFile, pointer) {
   return compiled.mappings[pointer] || [{ file: relativePath(sourceFile), pointer }];
 }
@@ -938,6 +975,7 @@ function appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFil
 function compileUiAuthoringV2(job, compiledRoot) {
   const sourceFile = job.sourceFile;
   const root = ensureObject(compiledRoot.value, sourceFile, "/root", "UI v2 root");
+  assertUiAuthoringWorkspaceSemantics(root, sourceFile);
   const manifest = {};
   const mappings = {
     "": sourceFor(compiledRoot, sourceFile, "/root")

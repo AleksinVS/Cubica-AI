@@ -1,4 +1,6 @@
 import type { ScreenRoutingEntry, GamePlayerUiContent } from "@cubica/contracts-manifest";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
+import { normalizePlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Manifest-driven screen router — resolves UI screen key from runtime state.
@@ -124,15 +126,7 @@ function matchesConditions(
   return true;
 }
 
-function normalizeActiveScreen(activeScreen: string | undefined): "leftsidebar" | "topbar" | undefined {
-  if (activeScreen === "left-sidebar" || activeScreen === "leftsidebar") {
-    return "leftsidebar";
-  }
-  if (activeScreen === "topbar") {
-    return "topbar";
-  }
-  return undefined;
-}
+const normalizeActiveScreen = normalizePlayerLayoutMode;
 
 /**
  * Determines layout mode from routing entry (if found)
@@ -144,25 +138,21 @@ export function resolveLayoutModeFromRouting(
   stepIndex: number | null,
   activeInfoId: string | null,
   runtimeUi: { activeScreen?: string },
-  fallback: "leftsidebar" | "topbar" = "topbar"
-): "leftsidebar" | "topbar" | null {
+  fallback: PlayerLayoutMode = "topbar"
+): PlayerLayoutMode | null {
   if (screenRouting) {
     for (const entry of screenRouting) {
       if (matchesConditions(entry, screenId, stepIndex, activeInfoId, runtimeUi)) {
         if (entry.conditions.layoutMode) {
-          return entry.conditions.layoutMode;
+          return normalizePlayerLayoutMode(entry.conditions.layoutMode) ?? fallback;
         }
       }
     }
   }
 
   // Fallback: runtimeUi.activeScreen
-  if (runtimeUi.activeScreen === "left-sidebar") {
-    return "leftsidebar";
-  }
-  if (runtimeUi.activeScreen === "topbar") {
-    return "topbar";
-  }
+  const runtimeLayout = normalizeActiveScreen(runtimeUi.activeScreen);
+  if (runtimeLayout) return runtimeLayout;
 
   return fallback;
 }

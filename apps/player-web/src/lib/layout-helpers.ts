@@ -1,4 +1,5 @@
 import { appendClassName } from "@/lib/classname-utils";
+import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
  * Дополняет CSS-класс area-контейнера объявленными в манифесте topbar-модификаторами.
@@ -13,7 +14,7 @@ import { appendClassName } from "@/lib/classname-utils";
  */
 export function resolveAreaCssClass(
   cssClass: string | undefined,
-  layoutMode?: "leftsidebar" | "topbar",
+  layoutMode?: PlayerLayoutMode,
   topbarCssClass?: string
 ): string {
   let next = cssClass ?? "";
@@ -34,7 +35,7 @@ export function resolveAreaCssClass(
 export function resolveMetricBackgroundImage(
   id: string | undefined,
   backgroundImage: string | undefined,
-  layoutMode?: "leftsidebar" | "topbar",
+  layoutMode?: PlayerLayoutMode,
   metricBackgroundImages?: Record<string, string>
 ): string | undefined {
   if (layoutMode === "topbar" && id && metricBackgroundImages) {

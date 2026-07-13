@@ -861,6 +861,27 @@ export type GameUiComponentType =
   | "interactiveBoardSurface";
 
 /**
+ * Layout policy selected declaratively by a UI screen or panel.
+ * `map-first` gives the spatial board the whole workspace while the remaining
+ * semantic zones are rendered as platform-owned layers above it.
+ */
+export type GameUiLayoutMode = "leftsidebar" | "topbar" | "map-first" | "auto";
+
+/**
+ * Stable semantic roles available to direct zones of a map-first screen.
+ * The role describes purpose, not CSS coordinates or stacking order; those
+ * remain owned by the delivery channel so the same manifest can adapt safely.
+ */
+export type GameUiWorkspaceSlot =
+  | "board"
+  | "status"
+  | "primary-panel"
+  | "context-panel"
+  | "action-tray"
+  | "floating-controls"
+  | "overlay";
+
+/**
  * Props for screenComponent in S1 layout.
  */
 export interface GameUiScreenComponentProps {
@@ -887,6 +908,11 @@ export interface GameUiScreenComponentProps {
  */
 export interface GameUiAreaComponentProps {
   cssClass?: string;
+  /**
+   * Semantic placement for a direct areaComponent child of a map-first screen
+   * root. It is invalid on nested areas and in all other layout modes.
+   */
+  workspaceSlot?: GameUiWorkspaceSlot;
   /**
    * Declarative topbar-layout CSS modifier(s) (ADR-055): applied by the generic
    * renderer only when the screen is in topbar layout mode. This replaces the
@@ -1117,7 +1143,7 @@ export interface GameUiScreenDefinition {
    * When specified, the renderer uses this directly instead of heuristic resolution.
    * When absent or "auto", the renderer falls back to convention-based layout selection.
    */
-  layoutMode?: "leftsidebar" | "topbar" | "auto";
+  layoutMode?: GameUiLayoutMode;
   /**
    * Design region annotations from mockup files.
    * Provides layout hints (direction, padding, gap, alignment) from design artifacts.
@@ -1142,7 +1168,7 @@ export interface GameUiPanelDefinition {
    * Explicit layout mode for this panel. Most web panels use topbar because
    * they sit above the current game screen instead of replacing timeline state.
    */
-  layoutMode?: "leftsidebar" | "topbar" | "auto";
+  layoutMode?: GameUiLayoutMode;
   designRegions?: DesignRegion[];
   root: GameUiComponent;
 }
@@ -1284,7 +1310,7 @@ export interface ScreenRoutingEntry {
     /** Active info ID to match (e.g., "i19", "i19_1"). */
     activeInfoId?: string;
     /** Layout preference when this routing applies. */
-    layoutMode?: "leftsidebar" | "topbar";
+    layoutMode?: GameUiLayoutMode;
   };
 }
 
