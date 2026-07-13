@@ -6,6 +6,19 @@
 # Note: 'draft', 'sandbox', '.tmp' and 'node_modules' are excluded.
 # Note: ONLY documented files and directories (via .desc.json or package.json) are shown.
 
+.claude:
+  worktrees:
+    priceless-austin-d165b1: # Корень монорепозитория Cubica
+      .gitignore: file # Правила исключения локальных зависимостей, сборочных и тестовых артефактов из Git.
+      AGENTS.md: file # Правила работы ИИ‑агентов
+      NEXT_STEPS.md: file # Ближайшие инженерные шаги и приоритеты миграции
+      package-lock.json: file # Lockfile корневого npm-workspace
+      package.json: file # Корневой npm-workspace
+      playwright.config.ts: file # Конфигурация Playwright e2e-тестов для browser-level проверки player-web и runtime-api.
+      PROJECT_OVERVIEW.md: file # Общий обзор проекта
+      PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
+      PROJECT_WORKFLOW_CONFIG.json: file # Конфигурация workflow-инструментов, поддерживаемая как корневой tool entry point
+      README.md: file # Основное описание репозитория
 .github: # GitHub repository automation configuration, including required CI workflows.
   workflows: # GitHub Actions workflows for canonical validation and legacy/stub governance gates.
     ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
