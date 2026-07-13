@@ -20,6 +20,8 @@ export interface BoardEdgeView {
   readonly id: string;
   readonly fromNodeId: string;
   readonly toNodeId: string;
+  /** Complete route plus straight-road compatibility endpoints. */
+  readonly points: readonly CanonicalPoint[];
   readonly from: CanonicalPoint;
   readonly to: CanonicalPoint;
   readonly visualState: string;
@@ -109,6 +111,13 @@ const point = (value: unknown): CanonicalPoint | null => {
   return x === null || y === null ? null : { x, y };
 };
 
+/** Reject a planned route as a whole when any coordinate is unsafe. */
+const polyline = (value: unknown): readonly CanonicalPoint[] | null => {
+  if (!Array.isArray(value) || value.length < 2) return null;
+  const points = value.map(point);
+  return points.every((item): item is CanonicalPoint => item !== null) ? points : null;
+};
+
 const objectCollection = (publicState: JsonRecord, collectionId: string): JsonRecord => {
   const objects = isRecord(publicState.objects) ? publicState.objects : {};
   return isRecord(objects[collectionId]) ? objects[collectionId] : {};
@@ -139,14 +148,22 @@ const readEdges = (publicState: JsonRecord, nodes: readonly BoardNodeView[]): Bo
     const toNodeId = text(attributes.toNodeId);
     if (!fromNodeId || !toNodeId) return [];
     const geometry = isRecord(attributes.geometry) ? attributes.geometry : {};
-    const from = point(geometry.from) ?? byId.get(fromNodeId)?.position ?? null;
-    const to = point(geometry.to) ?? byId.get(toNodeId)?.position ?? null;
+    const plannedPoints = polyline(geometry.polyline);
+    const legacyFrom = point(geometry.from) ?? byId.get(fromNodeId)?.position ?? null;
+    const legacyTo = point(geometry.to) ?? byId.get(toNodeId)?.position ?? null;
+    const fallbackPoints: readonly CanonicalPoint[] | null =
+      legacyFrom && legacyTo ? [legacyFrom, legacyTo] : null;
+    const points = plannedPoints ?? fallbackPoints;
+    if (!points) return [];
+    const from = points[0];
+    const to = points.at(-1);
     if (!from || !to) return [];
     const facets = isRecord(raw.facets) ? raw.facets : {};
     return [{
       id,
       fromNodeId,
       toNodeId,
+      points,
       from,
       to,
       visualState: text(facets.state) ?? "open"

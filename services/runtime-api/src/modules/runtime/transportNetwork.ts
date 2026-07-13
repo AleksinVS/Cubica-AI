@@ -15,6 +15,11 @@ import type {
   GameManifestTransportNetworkModelMap
 } from "@cubica/contracts-manifest";
 import type { RuntimeResolvedReference } from "@cubica/contracts-runtime";
+import { chooseSessionValue, type SessionRandomState } from "./sessionRandom.ts";
+import {
+  prepareMinimumRegionRoadCandidates,
+  type RegionRoadPassage
+} from "./regionRoadPlanner.ts";
 
 type RuntimeState = Record<string, unknown>;
 type JsonRecord = Record<string, unknown>;
@@ -101,6 +106,176 @@ const interpolate = (a: Point, b: Point, t: number): Point => ({
   x: a.x + (b.x - a.x) * t,
   y: a.y + (b.y - a.y) * t
 });
+
+const pointDistance = (a: Point, b: Point): number => Math.hypot(a.x - b.x, a.y - b.y);
+const pointsEqual = (a: Point, b: Point): boolean => pointDistance(a, b) <= 1e-9;
+
+const finitePoint = (value: unknown, label: string): Point => {
+  if (!isRecord(value) || typeof value.x !== "number" || !Number.isFinite(value.x) ||
+      typeof value.y !== "number" || !Number.isFinite(value.y)) {
+    throw new Error(`${label} must contain finite canonical coordinates`);
+  }
+  return { x: value.x, y: value.y };
+};
+
+/** Read legacy two-point geometry and the new canonical polyline uniformly. */
+const edgePolyline = (edge: JsonRecord, nodeFrom: Point, nodeTo: Point): Array<Point> => {
+  const attributes = isRecord(edge.attributes) ? edge.attributes : {};
+  const geometry = attributes.geometry;
+  if (geometry === undefined) return [nodeFrom, nodeTo];
+  if (!isRecord(geometry)) throw new Error("Transport edge geometry has an unsupported shape");
+  let points: Array<Point>;
+  if (geometry.polyline !== undefined) {
+    if (!Array.isArray(geometry.polyline) || geometry.polyline.length < 2 || geometry.polyline.length > 20_000) {
+      throw new Error("Transport edge polyline must contain 2..20000 points");
+    }
+    points = geometry.polyline.map((point, index) => finitePoint(point, `Transport edge point ${index}`));
+  } else {
+    points = [
+      finitePoint(geometry.from ?? nodeFrom, "Transport edge geometry.from"),
+      finitePoint(geometry.to ?? nodeTo, "Transport edge geometry.to")
+    ];
+  }
+  if (!pointsEqual(points[0], nodeFrom) || !pointsEqual(points[points.length - 1], nodeTo)) {
+    throw new Error("Transport edge polyline endpoints do not match its network nodes");
+  }
+  if (points.some((point, index) => index > 0 && pointsEqual(point, points[index - 1]))) {
+    throw new Error("Transport edge polyline contains a zero-length segment");
+  }
+  return points;
+};
+
+interface PolylineSplit {
+  position: Point;
+  firstPoints: Array<Point>;
+  secondPoints: Array<Point>;
+  splitSegmentIndex: number;
+  splitVertexIndex?: number;
+}
+
+/** Interpret positionT as a fraction of total stored polyline length. */
+const splitPolyline = (points: Array<Point>, positionT: number): PolylineSplit => {
+  const lengths = points.slice(0, -1).map((point, index) => pointDistance(point, points[index + 1]));
+  const totalLength = lengths.reduce((sum, length) => sum + length, 0);
+  if (!Number.isFinite(totalLength) || totalLength <= 1e-9) {
+    throw new Error("Transport edge polyline has no positive length");
+  }
+  const target = totalLength * positionT;
+  let traversed = 0;
+  for (let index = 0; index < lengths.length; index += 1) {
+    const next = traversed + lengths[index];
+    if (index < lengths.length - 1 && Math.abs(target - next) <= 1e-9) {
+      const vertexIndex = index + 1;
+      return {
+        position: { ...points[vertexIndex] },
+        firstPoints: points.slice(0, vertexIndex + 1),
+        secondPoints: points.slice(vertexIndex),
+        splitSegmentIndex: index,
+        splitVertexIndex: vertexIndex
+      };
+    }
+    if (target < next || index === lengths.length - 1) {
+      const localT = (target - traversed) / lengths[index];
+      const position = interpolate(points[index], points[index + 1], localT);
+      return {
+        position,
+        firstPoints: [...points.slice(0, index + 1), position],
+        secondPoints: [position, ...points.slice(index + 1)],
+        splitSegmentIndex: index
+      };
+    }
+    traversed = next;
+  }
+  throw new Error("Transport waypoint position could not be resolved on the polyline");
+};
+
+const passageAssignments = (
+  routePlan: JsonRecord,
+  pointCount: number
+): Array<string> => {
+  if (!Array.isArray(routePlan.passages)) throw new Error("Planned transport route is missing passages");
+  const assignments = Array<string | undefined>(pointCount - 1).fill(undefined);
+  for (const [index, rawPassage] of routePlan.passages.entries()) {
+    if (!isRecord(rawPassage) || typeof rawPassage.regionId !== "string" ||
+        !Number.isSafeInteger(rawPassage.fromPointIndex) || !Number.isSafeInteger(rawPassage.toPointIndex) ||
+        (rawPassage.fromPointIndex as number) < 0 ||
+        (rawPassage.toPointIndex as number) <= (rawPassage.fromPointIndex as number) ||
+        (rawPassage.toPointIndex as number) >= pointCount) {
+      throw new Error(`Planned transport passage ${index} is malformed`);
+    }
+    for (let segment = rawPassage.fromPointIndex as number;
+      segment < (rawPassage.toPointIndex as number);
+      segment += 1) {
+      if (assignments[segment] !== undefined) throw new Error("Planned transport passages overlap");
+      assignments[segment] = rawPassage.regionId;
+    }
+  }
+  if (assignments.some((regionId) => regionId === undefined)) {
+    throw new Error("Planned transport passages do not cover the complete polyline");
+  }
+  return assignments as Array<string>;
+};
+
+const passagesFromAssignments = (assignments: Array<string>): Array<RegionRoadPassage> => {
+  if (assignments.length === 0) throw new Error("A split road must retain at least one region passage");
+  const passages: Array<RegionRoadPassage> = [];
+  let start = 0;
+  for (let index = 1; index <= assignments.length; index += 1) {
+    if (index < assignments.length && assignments[index] === assignments[start]) continue;
+    passages.push({ regionId: assignments[start], fromPointIndex: start, toPointIndex: index });
+    start = index;
+  }
+  return passages;
+};
+
+const splitStoredRoutePlan = (options: {
+  rawRoutePlan: unknown;
+  pointCount: number;
+  split: PolylineSplit;
+  replacedEdgeId: string;
+}): { first?: JsonRecord; second?: JsonRecord } => {
+  if (options.rawRoutePlan === undefined) return {};
+  if (!isRecord(options.rawRoutePlan)) throw new Error("Transport edge routePlan has an unsupported shape");
+  // Capture the validated value before entering makeChild. TypeScript cannot
+  // preserve a narrowing of a mutable object property across a nested closure.
+  const routePlan = structuredClone(options.rawRoutePlan);
+  const assignments = passageAssignments(routePlan, options.pointCount);
+  const firstAssignments = options.split.splitVertexIndex === undefined
+    ? assignments.slice(0, options.split.splitSegmentIndex + 1)
+    : assignments.slice(0, options.split.splitVertexIndex);
+  const secondAssignments = options.split.splitVertexIndex === undefined
+    ? assignments.slice(options.split.splitSegmentIndex)
+    : assignments.slice(options.split.splitVertexIndex);
+  const makeChild = (childAssignments: Array<string>): JsonRecord => {
+    const passages = passagesFromAssignments(childAssignments);
+    return {
+      ...structuredClone(routePlan),
+      regionSequence: passages.map((passage) => passage.regionId),
+      passages,
+      splitFromEdgeId: options.replacedEdgeId
+    };
+  };
+  return { first: makeChild(firstAssignments), second: makeChild(secondAssignments) };
+};
+
+const sessionRandomState = (state: RuntimeState): SessionRandomState => {
+  const value = readPointer(state, "/secret/random");
+  if (!isRecord(value) || typeof value.alg !== "string" || typeof value.seed !== "string" ||
+      typeof value.counter !== "number") {
+    throw new Error("Authoritative road planning requires runtime-owned session random state");
+  }
+  return value as unknown as SessionRandomState;
+};
+
+const excludedRegionIds = (state: RuntimeState, path: string | undefined): Array<string> => {
+  if (!path) return [];
+  const value = readPointer(state, path);
+  if (!Array.isArray(value) || value.some((regionId) => typeof regionId !== "string") ||
+      new Set(value).size !== value.length) {
+    throw new Error("Road-planning excludedRegionIdsPath must resolve to an array of unique region ids");
+  }
+  return value as Array<string>;
+};
 
 const pointOnSegment = (point: Point, a: Point, b: Point): boolean => {
   const area = Math.abs(cross(subtract(point, a), subtract(b, a)));
@@ -417,12 +592,57 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
         throw new Error("A transport road already connects the selected nodes");
       }
     }
-    const regionSegments = countRegionSegments(from, to, model);
+    const prepared = model.roadPlanning
+      ? prepareMinimumRegionRoadCandidates({
+          model,
+          from,
+          to,
+          excludedRegionIds: excludedRegionIds(state, model.roadPlanning.excludedRegionIdsPath)
+        })
+      : undefined;
+    const regionSegments = prepared ? prepared.candidates[0].regionSequence.length : countRegionSegments(from, to, model);
     if (regionSegments === 0) {
       throw new Error("A transport road must contain at least one segment inside a declared region");
     }
     const cost = regionSegments * model.roadCostPerRegionSegment;
     applyPayments(state, effect.payments, cost, params);
+    // A unique minimum route is fully deterministic and must not even require
+    // PRNG state. Only a genuine tie enters the replay-owned random stream.
+    const randomBefore = prepared && prepared.candidates.length > 1 ? sessionRandomState(state) : undefined;
+    const selected = prepared
+      ? randomBefore
+        ? chooseSessionValue(randomBefore, prepared.candidates)
+        : { value: prepared.candidates[0], index: 0, random: undefined }
+      : undefined;
+    if (selected?.random) writePointer(state, "/secret/random", selected.random);
+    const selectedCandidate = selected?.value;
+    const geometry = selectedCandidate
+      ? { from, to, polyline: selectedCandidate.points }
+      : { from, to };
+    const routePlan = selectedCandidate && model.roadPlanning
+      ? {
+          mode: model.roadPlanning.mode,
+          algorithmVersion: model.roadPlanning.algorithmVersion,
+          geometryVersion: model.roadPlanning.geometryVersion,
+          geometryHash: model.roadPlanning.geometryHash,
+          boundaryPolicy: model.roadPlanning.boundaryPolicy,
+          regionSequence: selectedCandidate.regionSequence,
+          passages: selectedCandidate.passages,
+          costRule: {
+            kind: "per-region-segment",
+            rate: model.roadCostPerRegionSegment,
+            segmentCount: selectedCandidate.regionSequence.length
+          },
+          tieBreak: {
+            policy: model.roadPlanning.tieBreak,
+            candidateCount: prepared?.candidates.length ?? 1,
+            selectedCandidateIndex: selected?.index ?? 0,
+            ...(randomBefore && selected?.random
+              ? { randomCounterBefore: randomBefore.counter, randomCounterAfter: selected.random.counter }
+              : {})
+          }
+        }
+      : undefined;
     const edgeId = allocateId(state, model, effect.networkId, "edge", edges);
     edges[edgeId] = {
       objectType: model.edgeObjectType,
@@ -434,9 +654,10 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
         networkId: effect.networkId,
         fromNodeId: fromRef.id,
         toNodeId: toRef.id,
-        geometry: { from, to },
+        geometry,
         constructionCost: cost,
-        regionSegments
+        regionSegments,
+        ...(routePlan ? { routePlan } : {})
       }
     };
     return { edgeId, cost, regionSegments };
@@ -456,7 +677,16 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
     const toNode = isRecord(nodes[endpoints.toNodeId]) ? nodes[endpoints.toNodeId] as JsonRecord : undefined;
     const from = pointFromObject(fromNode);
     const to = pointFromObject(toNode);
-    const position = interpolate(from, to, positionT);
+    const points = edgePolyline(edge, from, to);
+    const split = splitPolyline(points, positionT);
+    const position = split.position;
+    const originalAttributes = isRecord(edge.attributes) ? edge.attributes : {};
+    const splitRoutePlan = splitStoredRoutePlan({
+      rawRoutePlan: originalAttributes.routePlan,
+      pointCount: points.length,
+      split,
+      replacedEdgeId: edgeRef.id
+    });
     applyPayments(state, effect.payments, model.waypointCost, params);
 
     const nodeId = allocateId(state, model, effect.networkId, "node", nodes);
@@ -468,8 +698,12 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
       attributes: { networkId: effect.networkId, position }
     };
     const originalFacets = isRecord(edge.facets) ? structuredClone(edge.facets) : {};
-    const originalAttributes = isRecord(edge.attributes) ? edge.attributes : {};
-    const makeSplitEdge = (fromNodeId: string, toNodeId: string, geometryFrom: Point, geometryTo: Point) => ({
+    const makeSplitEdge = (
+      fromNodeId: string,
+      toNodeId: string,
+      edgePoints: Array<Point>,
+      childRoutePlan?: JsonRecord
+    ) => ({
       objectType: typeof edge.objectType === "string" ? edge.objectType : model.edgeObjectType,
       facets: structuredClone(originalFacets),
       attributes: {
@@ -477,12 +711,25 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
         networkId: effect.networkId,
         fromNodeId,
         toNodeId,
-        geometry: { from: geometryFrom, to: geometryTo },
-        splitFromEdgeId: edgeRef.id
+        geometry: { from: edgePoints[0], to: edgePoints[edgePoints.length - 1], polyline: edgePoints },
+        splitFromEdgeId: edgeRef.id,
+        ...(childRoutePlan
+          ? { routePlan: childRoutePlan, regionSegments: (childRoutePlan.passages as Array<unknown>).length }
+          : {})
       }
     });
-    edges[firstEdgeId] = makeSplitEdge(endpoints.fromNodeId, nodeId, from, position);
-    edges[secondEdgeId] = makeSplitEdge(nodeId, endpoints.toNodeId, position, to);
+    edges[firstEdgeId] = makeSplitEdge(
+      endpoints.fromNodeId,
+      nodeId,
+      split.firstPoints,
+      splitRoutePlan.first
+    );
+    edges[secondEdgeId] = makeSplitEdge(
+      nodeId,
+      endpoints.toNodeId,
+      split.secondPoints,
+      splitRoutePlan.second
+    );
     delete edges[edgeRef.id];
     return { nodeId, edgeIds: [firstEdgeId, secondEdgeId], cost: model.waypointCost, replacedEdgeId: edgeRef.id };
   }

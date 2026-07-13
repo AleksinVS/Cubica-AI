@@ -1,0 +1,60 @@
+{
+  "$schema": "../../../docs/architecture/schemas/map-annotation.schema.json",
+  "schemaVersion": "1.0",
+  "status": "mock",
+  "warning": "Neutral fixture: synthetic geometry for shared tooling tests only.",
+  "sourceImage": {
+    "file": "neutral-map.svg",
+    "pixelWidth": 640,
+    "pixelHeight": 480,
+    "rightsConfirmed": true
+  },
+  "coordinateSystem": {
+    "origin": "top-left",
+    "units": "design-pixel",
+    "width": 640,
+    "height": 480
+  },
+  "nodes": [
+    {
+      "id": "neutral-node-west",
+      "label": "West",
+      "kind": "terminal",
+      "position": { "x": 140, "y": 240 },
+      "state": "open",
+      "evidence": "Neutral fixture coordinate"
+    },
+    {
+      "id": "neutral-node-east",
+      "label": "East",
+      "kind": "terminal",
+      "position": { "x": 500, "y": 240 },
+      "state": "open",
+      "evidence": "Neutral fixture coordinate"
+    }
+  ],
+  "edges": [
+    {
+      "id": "neutral-edge-west-east",
+      "fromNodeId": "neutral-node-west",
+      "toNodeId": "neutral-node-east",
+      "state": "open",
+      "evidence": "Neutral fixture connection"
+    }
+  ],
+  "regions": [
+    {
+      "id": "neutral-region",
+      "label": "Neutral region",
+      "countryId": "neutral-country",
+      "polygon": [
+        { "x": 40, "y": 80 },
+        { "x": 600, "y": 80 },
+        { "x": 600, "y": 420 },
+        { "x": 40, "y": 420 },
+        { "x": 40, "y": 80 }
+      ],
+      "evidence": "Neutral fixture boundary"
+    }
+  ]
+}

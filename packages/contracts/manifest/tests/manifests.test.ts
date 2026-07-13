@@ -157,6 +157,19 @@ describe("interactive board surface UI contract", () => {
     expect(validateUiManifest(fixture)).toBe(true);
   });
 
+  it("accepts a high-detail logical map plane larger than the browser viewport", () => {
+    const highDetailMap = structuredClone(fixture) as any;
+    highDetailMap.screens.board.root.props.designWidth = 5079;
+    highDetailMap.screens.board.root.props.designHeight = 3627;
+    expect(validateUiManifest(highDetailMap)).toBe(true);
+  });
+
+  it("rejects an unbounded logical map plane", () => {
+    const invalid = structuredClone(fixture) as any;
+    invalid.screens.board.root.props.designWidth = 100001;
+    expect(validateUiManifest(invalid)).toBe(false);
+  });
+
   it("rejects a board surface without scene id", () => {
     const invalid = structuredClone(fixture) as any;
     delete invalid.screens.board.root.props.sceneId;

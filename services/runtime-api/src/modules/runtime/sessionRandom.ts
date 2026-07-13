@@ -168,3 +168,21 @@ export const shuffleSessionValues = <T>(
   }
   return { random: sampler.snapshot(), values };
 };
+
+/**
+ * Choose one value with the same persisted, unbiased generator used by dice
+ * and decks. A singleton deliberately consumes no random word: deterministic
+ * operations must not perturb later replay merely because they used this
+ * generic helper.
+ */
+export const chooseSessionValue = <T>(
+  state: SessionRandomState,
+  input: ReadonlyArray<T>
+): { random: SessionRandomState; value: T; index: number } => {
+  assertRandomState(state);
+  if (input.length === 0) throw new Error("Cannot choose a session-random value from an empty list");
+  if (input.length === 1) return { random: { ...state }, value: input[0], index: 0 };
+  const sampler = createRangeSampler(state);
+  const index = sampler.sample(input.length);
+  return { random: sampler.snapshot(), value: input[index], index };
+};

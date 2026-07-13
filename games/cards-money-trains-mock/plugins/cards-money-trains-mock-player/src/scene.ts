@@ -78,6 +78,8 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     private overviewActive = true;
     private cameraViewport: CameraSize = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
     private dragState: { pointerId: number; x: number; y: number } | null = null;
+    /** Prevent overlapping zones of one bent road from dispatching twice. */
+    private readonly pendingHighlights = new Set<string>();
 
     constructor() {
       super({ key: `cards-money-trains:${context.sceneId}` });
@@ -339,21 +341,34 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           .map((item) => [item.targetId, item])
       );
       for (const edge of projection.edges) {
-        const from = toScreen(edge.from);
-        const to = toScreen(edge.to);
+        const points = edge.points.map(toScreen);
         const highlight = edgeHighlights.get(edge.id);
         graphics.lineStyle(highlight ? 9 : 5, edgeColor(edge), 0.95);
-        graphics.lineBetween(from.x, from.y, to.x, to.y);
-        if (highlight?.actionId && !context.isInteractionPending()) {
+        for (let index = 1; index < points.length; index += 1) {
+          const from = points[index - 1];
+          const to = points[index];
+          if (!from || !to) continue;
+          const length = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
+          if (length === 0) continue;
+          graphics.lineBetween(from.x, from.y, to.x, to.y);
+          if (!highlight?.actionId || context.isInteractionPending()) continue;
           const hitArea = this.add.zone(
             (from.x + to.x) / 2,
             (from.y + to.y) / 2,
-            Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y),
+            length,
             48
           );
           hitArea.setRotation(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y));
           hitArea.setInteractive({ useHandCursor: true });
-          hitArea.on("pointerdown", () => this.dispatchHighlight(highlight));
+          hitArea.on("pointerdown", (
+            _pointer: unknown,
+            _localX: number,
+            _localY: number,
+            event: { stopPropagation?: () => void } | undefined
+          ) => {
+            event?.stopPropagation?.();
+            this.dispatchHighlight(highlight);
+          });
         }
       }
     }
@@ -395,7 +410,13 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     }
 
     private dispatchHighlight(highlight: BoardHighlightView) {
-      if (!highlight.actionId || context.isInteractionPending()) return;
+      const pendingKey = `${highlight.targetType}:${highlight.targetId}:${highlight.actionId ?? ""}`;
+      if (
+        !highlight.actionId
+        || context.isInteractionPending()
+        || this.pendingHighlights.has(pendingKey)
+      ) return;
+      this.pendingHighlights.add(pendingKey);
       void context.dispatchAction(highlight.actionId, { ...highlight.params })
         .then(() => { lastError = null; })
         .catch((error: unknown) => {
@@ -403,7 +424,8 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           // refusal leaves the current snapshot in place and only adds feedback.
           lastError = errorText(error);
           this.renderProjection();
-        });
+        })
+        .finally(() => { this.pendingHighlights.delete(pendingKey); });
     }
 
     private drawVehicles(

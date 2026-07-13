@@ -1118,15 +1118,18 @@ const applyMockDispatcherUi = (screenRoot) => {
     status.props.html = "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>";
   }
 
-  const main = findUiNode(screenRoot, "facilitator.main");
-  if (!main || !Array.isArray(main.children)) {
-    throw new Error("normative facilitator UI has no facilitator.main children");
+  // Map-first screens no longer wrap the board and panels in the historical
+  // `facilitator.main` column. Add mock-only status/log content to the declared
+  // context layer so the generator follows the semantic workspace contract,
+  // not one obsolete tree shape.
+  const contextPanel = findUiNode(screenRoot, "facilitator.context-panel");
+  if (!contextPanel || !Array.isArray(contextPanel.children)) {
+    throw new Error("normative facilitator UI has no map-first context panel children");
   }
   const generatedIds = new Set(dispatcherUiComponents().map((component) => component.id));
-  main.children = main.children.filter((component) => !generatedIds.has(component.id));
-  const boardIndex = main.children.findIndex((component) => component.id === "facilitator.board");
-  if (boardIndex < 0) throw new Error("normative facilitator UI has no interactive board");
-  main.children.splice(boardIndex + 1, 0, ...dispatcherUiComponents());
+  contextPanel.children = contextPanel.children
+    .filter((component) => !generatedIds.has(component.id));
+  contextPanel.children.push(...dispatcherUiComponents());
 };
 
 const build = async () => {
@@ -1178,6 +1181,8 @@ const build = async () => {
     replaceWithAuthorContent: ["transport topology", "coordinates", "regions", "cargo payouts", "news", "control transcript"]
   };
   game.root.content.data.mapAnnotation = network.generatedFrom;
+  game.root.content.data.rules.construction.roadGeometry =
+    "server-planned-region-segment-minimum-v1";
   game.root.content.data.mockGameplay = gameplay;
   game.root.content.data.rules.movement.terminalLocomotiveCapacity =
     gameplay.operations.terminalLocomotiveCapacity;
@@ -1259,7 +1264,12 @@ const build = async () => {
       offer: { firstCardId: null, secondCardId: null }
     }
   };
-  publicState.transportNetworks = network.state.public.transportNetworks;
+  // Package composition adds mutable session state that is intentionally not
+  // part of the reusable annotation fragment. Clone the converter output so
+  // this addition cannot mutate `network` through a shared object reference
+  // before the pure fragment is written below.
+  publicState.transportNetworks = structuredClone(network.state.public.transportNetworks);
+  publicState.transportNetworks.main.excludedRegionIds = [];
   publicState.teams = Object.fromEntries(gameplay.teams.map((team) => [team.id, {
     label: team.label,
     type: team.type,

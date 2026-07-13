@@ -11,6 +11,11 @@ import { RequestValidationError } from "../src/modules/errors.ts";
 import { parseDispatchActionRequest } from "../src/modules/player-api/requestValidation.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import { dispatchRuntimeAction } from "../src/modules/runtime/actionDispatcher.ts";
+import {
+  canonicalizeRoadPlanningRegions,
+  computeRegionRoadPlanningHash,
+  deriveRoadPlanningPortalGeometry
+} from "../src/modules/runtime/regionRoadPlanner.ts";
 
 const refSchema = (collection: string, allowedTypes: string[]) => ({
   type: "string",
@@ -506,6 +511,66 @@ const createStore = async (
   return { store, session };
 };
 
+/** Build an opt-in neutral diamond with two equal three-region routes. */
+const createPlannedRoadFixture = () => {
+  const candidate = structuredClone(neutralManifest) as any;
+  const regions = canonicalizeRoadPlanningRegions([
+    { id: "region-a", polygon: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }] },
+    { id: "region-b", polygon: [{ x: 10, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }, { x: 10, y: 10 }] },
+    { id: "region-c", polygon: [{ x: 10, y: 10 }, { x: 20, y: 10 }, { x: 20, y: 20 }, { x: 10, y: 20 }] },
+    { id: "region-d", polygon: [{ x: 20, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 20 }, { x: 20, y: 20 }] }
+  ]);
+  const portals = deriveRoadPlanningPortalGeometry(regions).map((portal, index) => ({
+    id: `portal-${String(index + 1).padStart(2, "0")}`,
+    ...portal
+  }));
+  const planning = {
+    mode: "region-segment-minimum" as const,
+    algorithmVersion: "region-segment-minimum-v1" as const,
+    geometryVersion: "neutral-diamond-v1",
+    geometryHash: computeRegionRoadPlanningHash({
+      algorithmVersion: "region-segment-minimum-v1",
+      boundaryPolicy: "lowest-region-id",
+      regions,
+      portals
+    }),
+    tieBreak: "session-random" as const,
+    boundaryPolicy: "lowest-region-id" as const,
+    excludedRegionIdsPath: "/public/excludedRoadRegions",
+    navigationGraph: { portals }
+  };
+  candidate.networkModels.grid.regions = regions;
+  candidate.networkModels.grid.roadPlanning = planning;
+  candidate.state.public.excludedRoadRegions = [];
+  candidate.state.public.balances.alpha = 20;
+  candidate.state.public.objects.nodes.plannedFrom = {
+    objectType: "network.node",
+    facets: { status: "active" },
+    attributes: { networkId: "grid", position: { x: 5, y: 10 } }
+  };
+  candidate.state.public.objects.nodes.plannedTo = {
+    objectType: "network.node",
+    facets: { status: "active" },
+    attributes: { networkId: "grid", position: { x: 25, y: 10 } }
+  };
+  return candidate;
+};
+
+const createStoreForManifest = async (rawManifest: unknown) => {
+  const plannedManifest = validateGameManifest(rawManifest) as GameManifest;
+  const plannedStore = new InMemorySessionStore<Record<string, unknown>>();
+  const plannedSession = await plannedStore.createSession({
+    gameId: plannedManifest.meta.id,
+    sessionRole: "facilitator",
+    initialState: structuredClone(plannedManifest.state) as unknown as Record<string, unknown>
+  });
+  return {
+    store: plannedStore,
+    session: plannedSession,
+    bundle: { gameId: plannedManifest.meta.id, manifest: plannedManifest }
+  };
+};
+
 test("params schema, trusted role and atomic nonnegative transfer are enforced", async () => {
   const { store, session } = await createStore();
   await dispatchRuntimeAction({
@@ -654,6 +719,189 @@ test("schema-declared references build a road and split that dynamic edge with a
   current = await store.getSession(session.sessionId);
   assert.equal((current?.state as any).public.phase, "construction");
   assert.equal((current?.state as any).public.objects.edges["grid:edge:5"].attributes.fromNodeId, "grid:node:2");
+});
+
+test("authoritative planner chooses a replay-stable minimum region sequence and stores its exact polyline", async () => {
+  const first = await createStoreForManifest(createPlannedRoadFixture());
+  const second = await createStoreForManifest(createPlannedRoadFixture());
+  for (const target of [first, second]) {
+    await dispatchRuntimeAction({
+      sessionStore: target.store,
+      bundle: target.bundle,
+      input: {
+        sessionId: target.session.sessionId,
+        actionId: "buildRoad",
+        params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo", contribution: 6 }
+      }
+    });
+  }
+  const firstState = (await first.store.getSession(first.session.sessionId))?.state as any;
+  const secondState = (await second.store.getSession(second.session.sessionId))?.state as any;
+  const firstEdge = firstState.public.objects.edges["grid:edge:1"].attributes;
+  const secondEdge = secondState.public.objects.edges["grid:edge:1"].attributes;
+
+  assert.equal(firstEdge.regionSegments, 3);
+  assert.equal(firstEdge.constructionCost, 6);
+  assert.equal(firstState.public.balances.alpha, 14);
+  assert.equal(firstEdge.geometry.polyline.length, 4);
+  assert.deepEqual(firstEdge.geometry, secondEdge.geometry);
+  assert.deepEqual(firstEdge.routePlan.regionSequence, secondEdge.routePlan.regionSequence);
+  assert.ok([
+    "region-a,region-b,region-d",
+    "region-a,region-c,region-d"
+  ].includes(firstEdge.routePlan.regionSequence.join(",")));
+  assert.equal(firstEdge.routePlan.tieBreak.candidateCount, 2);
+  assert.equal(firstEdge.routePlan.tieBreak.randomCounterBefore, 0);
+  assert.equal(firstEdge.routePlan.tieBreak.randomCounterAfter, 1);
+  assert.equal(firstState.secret.random.counter, 1);
+  assert.deepEqual(firstState.secret.random, secondState.secret.random);
+});
+
+test("waypoint splits a planned road by polyline length without replanning its region passages", async () => {
+  const target = await createStoreForManifest(createPlannedRoadFixture());
+  await dispatchRuntimeAction({
+    sessionStore: target.store,
+    bundle: target.bundle,
+    input: {
+      sessionId: target.session.sessionId,
+      actionId: "buildRoad",
+      params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo", contribution: 6 }
+    }
+  });
+  const builtState = (await target.store.getSession(target.session.sessionId))?.state as any;
+  const originalPoints = builtState.public.objects.edges["grid:edge:1"].attributes.geometry.polyline;
+  await dispatchRuntimeAction({
+    sessionStore: target.store,
+    bundle: target.bundle,
+    input: {
+      sessionId: target.session.sessionId,
+      actionId: "buildWaypoint",
+      params: { edgeId: "grid:edge:1", positionT: 0.5, contribution: 5 }
+    }
+  });
+  const state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  const firstEdge = state.public.objects.edges["grid:edge:3"].attributes;
+  const secondEdge = state.public.objects.edges["grid:edge:4"].attributes;
+  assert.deepEqual(
+    [...firstEdge.geometry.polyline, ...secondEdge.geometry.polyline.slice(1)],
+    [...originalPoints.slice(0, 2), firstEdge.geometry.polyline.at(-1), ...originalPoints.slice(2)]
+  );
+  assert.equal(firstEdge.geometry.polyline.at(-1).x, 15);
+  assert.equal(secondEdge.geometry.polyline[0].x, 15);
+  assert.equal(firstEdge.routePlan.geometryHash, secondEdge.routePlan.geometryHash);
+  assert.equal(firstEdge.routePlan.splitFromEdgeId, "grid:edge:1");
+  assert.equal(secondEdge.routePlan.splitFromEdgeId, "grid:edge:1");
+  assert.deepEqual(firstEdge.routePlan.regionSequence.slice(-1), secondEdge.routePlan.regionSequence.slice(0, 1));
+  assert.equal(state.secret.random.counter, 1, "splitting stored geometry must not consume randomness");
+});
+
+test("planned road payment and exclusions fail atomically before any route is persisted", async () => {
+  const underpaid = await createStoreForManifest(createPlannedRoadFixture());
+  await assert.rejects(
+    dispatchRuntimeAction({
+      sessionStore: underpaid.store,
+      bundle: underpaid.bundle,
+      input: {
+        sessionId: underpaid.session.sessionId,
+        actionId: "buildRoad",
+        params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo", contribution: 5 }
+      }
+    }),
+    /exactly cover calculated cost/
+  );
+  let state = (await underpaid.store.getSession(underpaid.session.sessionId))?.state as any;
+  assert.equal(state.public.balances.alpha, 20);
+  assert.equal(state.secret.random.counter, 0);
+  assert.equal(state.public.objects.edges["grid:edge:1"], undefined);
+
+  const excludedManifest = createPlannedRoadFixture();
+  excludedManifest.state.public.excludedRoadRegions = ["region-b", "region-c"];
+  const excluded = await createStoreForManifest(excludedManifest);
+  await assert.rejects(
+    dispatchRuntimeAction({
+      sessionStore: excluded.store,
+      bundle: excluded.bundle,
+      input: {
+        sessionId: excluded.session.sessionId,
+        actionId: "buildRoad",
+        params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo", contribution: 6 }
+      }
+    }),
+    /No road route connects/
+  );
+  state = (await excluded.store.getSession(excluded.session.sessionId))?.state as any;
+  assert.equal(state.public.balances.alpha, 20);
+  assert.equal(state.secret.random.counter, 0);
+});
+
+test("planned geometry hash, derived portals and bounded simple polygons are fail-closed", () => {
+  const wrongHash = createPlannedRoadFixture();
+  wrongHash.networkModels.grid.roadPlanning.geometryHash = `sha256:${"0".repeat(64)}`;
+  assert.throws(() => validateGameManifest(wrongHash), /geometry hash mismatch/);
+
+  const inventedPortal = createPlannedRoadFixture();
+  inventedPortal.networkModels.grid.roadPlanning.navigationGraph.portals[0].to = { x: 10, y: 9 };
+  const planning = inventedPortal.networkModels.grid.roadPlanning;
+  planning.geometryHash = computeRegionRoadPlanningHash({
+    algorithmVersion: planning.algorithmVersion,
+    boundaryPolicy: planning.boundaryPolicy,
+    regions: inventedPortal.networkModels.grid.regions,
+    portals: planning.navigationGraph.portals
+  });
+  assert.throws(() => validateGameManifest(inventedPortal), /portals do not match derived shared boundaries/);
+
+  const selfIntersecting = createPlannedRoadFixture();
+  selfIntersecting.networkModels.grid.regions[0].polygon = [
+    { x: 0, y: 0 }, { x: 10, y: 20 }, { x: 0, y: 20 }, { x: 10, y: 0 }
+  ];
+  assert.throws(() => validateGameManifest(selfIntersecting), /not a simple polygon|zero area/);
+
+  const overlapping = createPlannedRoadFixture();
+  overlapping.networkModels.grid.regions[3].polygon = [
+    { x: 19, y: 0 }, { x: 30, y: 0 }, { x: 30, y: 20 }, { x: 19, y: 20 }
+  ];
+  assert.throws(() => validateGameManifest(overlapping), /overlapping interiors/);
+
+  const wrongVisibility = createPlannedRoadFixture();
+  wrongVisibility.networkModels.grid.roadPlanning.excludedRegionIdsPath = "/secret/excludedRoadRegions";
+  assert.throws(() => validateGameManifest(wrongVisibility), /must use the network visibility branch/);
+});
+
+test("lowest-region-id boundary policy removes an ambiguous route along one shared boundary", async () => {
+  const boundaryManifest = createPlannedRoadFixture();
+  const regions = canonicalizeRoadPlanningRegions([
+    { id: "region-a", polygon: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }] },
+    { id: "region-b", polygon: [{ x: 10, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 10 }, { x: 10, y: 10 }] }
+  ]);
+  const portals = deriveRoadPlanningPortalGeometry(regions).map((portal, index) => ({
+    id: `portal-${index + 1}`,
+    ...portal
+  }));
+  boundaryManifest.networkModels.grid.regions = regions;
+  boundaryManifest.networkModels.grid.roadPlanning.navigationGraph.portals = portals;
+  boundaryManifest.networkModels.grid.roadPlanning.geometryHash = computeRegionRoadPlanningHash({
+    algorithmVersion: "region-segment-minimum-v1",
+    boundaryPolicy: "lowest-region-id",
+    regions,
+    portals
+  });
+  boundaryManifest.state.public.objects.nodes.plannedFrom.attributes.position = { x: 10, y: 2 };
+  boundaryManifest.state.public.objects.nodes.plannedTo.attributes.position = { x: 10, y: 8 };
+  const target = await createStoreForManifest(boundaryManifest);
+  await dispatchRuntimeAction({
+    sessionStore: target.store,
+    bundle: target.bundle,
+    input: {
+      sessionId: target.session.sessionId,
+      actionId: "buildRoad",
+      params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo", contribution: 2 }
+    }
+  });
+  const state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  const edge = state.public.objects.edges["grid:edge:1"].attributes;
+  assert.deepEqual(edge.routePlan.regionSequence, ["region-a"]);
+  assert.equal(edge.routePlan.tieBreak.candidateCount, 1);
+  assert.equal(state.secret.random.counter, 0);
 });
 
 test("schema-declared vehicle movement carries coupled objects and completes cargo at destination", async () => {

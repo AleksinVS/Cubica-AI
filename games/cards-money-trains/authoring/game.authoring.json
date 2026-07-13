@@ -99,14 +99,14 @@
           "construction": {
             "waypointCost": 5,
             "repeatUntilExplicitFinish": true,
-            "roadGeometry": "straight-between-canonical-node-coordinates",
+            "roadGeometry": "server-planned-region-segment-minimum-v1",
             "roadCostPerRegionSegment": 2
           }
         },
         "board": {
           "sceneId": "main",
-          "designWidth": 1400,
-          "designHeight": 1000,
+          "designWidth": 5079,
+          "designHeight": 3627,
           "deliveryAssetId": "board-guinea-optimized"
         },
         "assets": [
@@ -123,9 +123,7 @@
             "cargo deck and payouts",
             "initial transport topology",
             "canonical node coordinates",
-            "canonical region polygons",
-            "demonstration moves",
-            "asset publication rights"
+            "canonical region polygons"
           ]
         },
         "constructionActionIntent": {
@@ -839,7 +837,12 @@
           "wagons": {}
         },
         "board": {
-          "canonicalBounds": null,
+          "canonicalBounds": {
+            "minX": 0,
+            "minY": 0,
+            "maxX": 5079,
+            "maxY": 3627
+          },
           "highlights": [],
           "availableActions": []
         },

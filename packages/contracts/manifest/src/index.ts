@@ -339,6 +339,28 @@ export interface GameManifestTransportRegion {
   polygon: Array<GameManifestCanonicalPoint>;
 }
 
+/** Compiler-derived shared boundary used by the authoritative road planner. */
+export interface GameManifestTransportRoadPortal {
+  id: string;
+  regionIds: [string, string];
+  from: GameManifestCanonicalPoint;
+  to: GameManifestCanonicalPoint;
+}
+
+/** Explicit opt-in contract for minimum-region authoritative road planning. */
+export interface GameManifestTransportRoadPlanning {
+  mode: "region-segment-minimum";
+  algorithmVersion: "region-segment-minimum-v1";
+  geometryVersion: string;
+  geometryHash: string;
+  tieBreak: "session-random";
+  boundaryPolicy: "lowest-region-id";
+  excludedRegionIdsPath?: string;
+  navigationGraph: {
+    portals: Array<GameManifestTransportRoadPortal>;
+  };
+}
+
 /** Declarative collection and invariant bindings for one-edge vehicle movement. */
 export interface GameManifestTransportMovementModel {
   vehicleCollection: string;
@@ -423,6 +445,7 @@ export interface GameManifestTransportNetworkModel {
   roadCostPerRegionSegment: number;
   waypointCost: number;
   regions: Array<GameManifestTransportRegion>;
+  roadPlanning?: GameManifestTransportRoadPlanning;
   movement?: GameManifestTransportMovementModel;
   cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }

@@ -102,7 +102,7 @@
           "construction": {
             "waypointCost": 5,
             "repeatUntilExplicitFinish": true,
-            "roadGeometry": "straight-between-canonical-node-coordinates",
+            "roadGeometry": "server-planned-region-segment-minimum-v1",
             "roadCostPerRegionSegment": 2
           }
         },
@@ -4409,7 +4409,8 @@
         },
         "transportNetworks": {
           "main": {
-            "sequence": 1000
+            "sequence": 1000,
+            "excludedRegionIds": []
           }
         }
       },
@@ -4443,27 +4444,6 @@
         "roadCostPerRegionSegment": 2,
         "waypointCost": 5,
         "regions": [
-          {
-            "id": "mock-region-west",
-            "polygon": [
-              {
-                "x": 50,
-                "y": 50
-              },
-              {
-                "x": 480,
-                "y": 50
-              },
-              {
-                "x": 480,
-                "y": 900
-              },
-              {
-                "x": 50,
-                "y": 900
-              }
-            ]
-          },
           {
             "id": "mock-region-central",
             "polygon": [
@@ -4505,8 +4485,72 @@
                 "y": 900
               }
             ]
+          },
+          {
+            "id": "mock-region-west",
+            "polygon": [
+              {
+                "x": 50,
+                "y": 50
+              },
+              {
+                "x": 480,
+                "y": 50
+              },
+              {
+                "x": 480,
+                "y": 900
+              },
+              {
+                "x": 50,
+                "y": 900
+              }
+            ]
           }
         ],
+        "roadPlanning": {
+          "mode": "region-segment-minimum",
+          "algorithmVersion": "region-segment-minimum-v1",
+          "geometryVersion": "mock-regions-v1",
+          "geometryHash": "sha256:418915f2cb120b41bf6a7809c6864a3e53706ca0d825df799c7ec3cf8d53d7d0",
+          "tieBreak": "session-random",
+          "boundaryPolicy": "lowest-region-id",
+          "excludedRegionIdsPath": "/public/transportNetworks/main/excludedRegionIds",
+          "navigationGraph": {
+            "portals": [
+              {
+                "id": "portal:mock-region-central:mock-region-east:1",
+                "regionIds": [
+                  "mock-region-central",
+                  "mock-region-east"
+                ],
+                "from": {
+                  "x": 820,
+                  "y": 50
+                },
+                "to": {
+                  "x": 820,
+                  "y": 900
+                }
+              },
+              {
+                "id": "portal:mock-region-central:mock-region-west:1",
+                "regionIds": [
+                  "mock-region-central",
+                  "mock-region-west"
+                ],
+                "from": {
+                  "x": 480,
+                  "y": 50
+                },
+                "to": {
+                  "x": 480,
+                  "y": 900
+                }
+              }
+            ]
+          }
+        },
         "movement": {
           "vehicleCollection": "locomotives",
           "vehicleObjectTypes": [

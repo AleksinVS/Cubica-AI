@@ -31,9 +31,12 @@ import {
   type CanonicalPoint
 } from "./board-state.ts";
 
-const DESIGN_WIDTH = 1400;
-const DESIGN_HEIGHT = 1000;
-const BOARD_PADDING = 72;
+// The normative authoring data, source PNG and review annotations all use this
+// exact plane. Keeping the renderer one-to-one prevents a correct imported
+// coordinate from drifting away from the marker printed on the author map.
+const DESIGN_WIDTH = 5079;
+const DESIGN_HEIGHT = 3627;
+const BOARD_PADDING = 0;
 const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT } as const;
 const MAX_CAMERA_ZOOM = 3;
 const WHEEL_ZOOM_STEP = 1.15;
@@ -77,6 +80,8 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     private overviewActive = true;
     private cameraViewport: CameraSize = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
     private dragState: { pointerId: number; x: number; y: number } | null = null;
+    /** Prevent overlapping zones of one bent road from dispatching twice. */
+    private readonly pendingHighlights = new Set<string>();
 
     constructor() {
       super({ key: `cards-money-trains:${context.sceneId}` });
@@ -256,8 +261,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
 
       if (this.textures.exists("cards-money-trains-board")) {
         this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
-          .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT)
-          .setAlpha(0.82);
+          .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT);
       }
 
       // Roads and nodes are semantic session data, so they must render above
@@ -267,30 +271,20 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       this.drawEdges(graphics, projection, toScreen);
       this.drawNodes(graphics, projection, toScreen);
       this.drawVehicles(projection, toScreen);
-      this.drawTeamSummary(projection);
-
       if (projection.nodes.length === 0) {
         this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2,
           "Ожидаются авторские узлы, координаты и начальная сеть",
-          { color: "#24343d", fontFamily: "sans-serif", fontSize: "28px", align: "center" })
+          { color: "#24343d", fontFamily: "sans-serif", fontSize: "84px", align: "center" })
           .setOrigin(0.5);
       }
-
-      this.add.text(34, 24, `Ход ${projection.turnNumber} · этап: ${projection.phase}`, {
-        color: "#17252d",
-        backgroundColor: "#fffaf0dd",
-        padding: { x: 12, y: 8 },
-        fontFamily: "sans-serif",
-        fontSize: "22px"
-      });
 
       if (lastError) {
         this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 34, lastError, {
           color: "#ffffff",
           backgroundColor: "#9e2f2f",
-          padding: { x: 14, y: 8 },
+          padding: { x: 28, y: 18 },
           fontFamily: "sans-serif",
-          fontSize: "20px"
+          fontSize: "60px"
         }).setOrigin(0.5, 1);
       }
     }
@@ -325,21 +319,38 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           .map((item) => [item.targetId, item])
       );
       for (const edge of projection.edges) {
-        const from = toScreen(edge.from);
-        const to = toScreen(edge.to);
+        const points = edge.points.map(toScreen);
         const highlight = edgeHighlights.get(edge.id);
         graphics.lineStyle(highlight ? 10 : 6, edgeColor(edge), 0.95);
-        graphics.lineBetween(from.x, from.y, to.x, to.y);
-        if (highlight?.actionId) {
+        for (let index = 1; index < points.length; index += 1) {
+          const from = points[index - 1];
+          const to = points[index];
+          if (!from || !to) continue;
+          const length = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
+          // A repeated portal is harmless route data but cannot form a useful
+          // line or hit target, so it is intentionally skipped.
+          if (length === 0) continue;
+          graphics.lineBetween(from.x, from.y, to.x, to.y);
+          if (!highlight?.actionId || context.isInteractionPending()) continue;
           const hitArea = this.add.zone(
             (from.x + to.x) / 2,
             (from.y + to.y) / 2,
-            Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y),
+            length,
             28
           );
           hitArea.setRotation(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y));
           hitArea.setInteractive({ useHandCursor: true });
-          hitArea.on("pointerdown", () => this.dispatchHighlight(highlight));
+          hitArea.on("pointerdown", (
+            _pointer: unknown,
+            _localX: number,
+            _localY: number,
+            event: { stopPropagation?: () => void } | undefined
+          ) => {
+            // Adjacent segment zones overlap at a bend. Stop propagation and
+            // use the pending guard so one physical click remains one intent.
+            event?.stopPropagation?.();
+            this.dispatchHighlight(highlight);
+          });
         }
       }
     }
@@ -378,7 +389,13 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     }
 
     private dispatchHighlight(highlight: BoardHighlightView) {
-      if (!highlight.actionId) return;
+      const pendingKey = `${highlight.targetType}:${highlight.targetId}:${highlight.actionId ?? ""}`;
+      if (
+        !highlight.actionId
+        || context.isInteractionPending()
+        || this.pendingHighlights.has(pendingKey)
+      ) return;
+      this.pendingHighlights.add(pendingKey);
       void context.dispatchAction(highlight.actionId, { ...highlight.params })
         .then(() => { lastError = null; })
         .catch((error: unknown) => {
@@ -386,7 +403,8 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           // refusal leaves the current snapshot in place and only adds feedback.
           lastError = errorText(error);
           this.renderProjection();
-        });
+        })
+        .finally(() => { this.pendingHighlights.delete(pendingKey); });
     }
 
     private drawVehicles(
@@ -411,20 +429,6 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       }
     }
 
-    private drawTeamSummary(projection: BoardProjection) {
-      if (projection.teams.length === 0) return;
-      const lines = projection.teams.map((team) =>
-        `${team.label}: ${team.coins === null ? "—" : team.coins} мон.`
-      );
-      this.add.text(DESIGN_WIDTH - 28, 24, lines.join("\n"), {
-        color: "#17252d",
-        backgroundColor: "#fffaf0dd",
-        padding: { x: 12, y: 8 },
-        fontFamily: "sans-serif",
-        fontSize: "18px",
-        align: "right"
-      }).setOrigin(1, 0);
-    }
   }
 
   const scene = new CardsMoneyTrainsScene();

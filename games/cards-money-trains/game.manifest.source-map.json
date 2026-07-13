@@ -555,18 +555,6 @@
         "pointer": "/root/content/data/contentGates/missing/4"
       }
     ],
-    "/content/data/contentGates/missing/5": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/content/data/contentGates/missing/5"
-      }
-    ],
-    "/content/data/contentGates/missing/6": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/content/data/contentGates/missing/6"
-      }
-    ],
     "/content/data/contentGates/missing": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
@@ -2341,6 +2329,30 @@
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
         "pointer": "/root/state/public/board/canonicalBounds"
+      }
+    ],
+    "/state/public/board/canonicalBounds/minX": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/canonicalBounds/minX"
+      }
+    ],
+    "/state/public/board/canonicalBounds/minY": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/canonicalBounds/minY"
+      }
+    ],
+    "/state/public/board/canonicalBounds/maxX": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/canonicalBounds/maxX"
+      }
+    ],
+    "/state/public/board/canonicalBounds/maxY": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/state/public/board/canonicalBounds/maxY"
       }
     ],
     "/state/public/board/highlights": [

@@ -37,7 +37,17 @@ test("projects only provided topology, geometry, actions, and team balances", ()
             edge1: {
               objectType: "transport.edge",
               facets: { state: "building" },
-              attributes: { fromNodeId: "a", toNodeId: "b" }
+              attributes: {
+                fromNodeId: "a",
+                toNodeId: "b",
+                geometry: {
+                  // The planned route takes priority over legacy endpoint
+                  // fields, so the client does not straighten the server path.
+                  polyline: [{ x: 10, y: 20 }, { x: 18, y: 35 }, { x: 30, y: 40 }],
+                  from: { x: 1, y: 2 },
+                  to: { x: 3, y: 4 }
+                }
+              }
             }
           },
           locomotives: {
@@ -58,10 +68,57 @@ test("projects only provided topology, geometry, actions, and team balances", ()
   assert.equal(projection.turnNumber, 3);
   assert.deepEqual(projection.nodes.map((node) => node.id), ["a", "b"]);
   assert.equal(projection.edges[0]?.visualState, "building");
+  assert.deepEqual(projection.edges[0]?.points, [
+    { x: 10, y: 20 },
+    { x: 18, y: 35 },
+    { x: 30, y: 40 }
+  ]);
+  assert.deepEqual(projection.edges[0]?.from, { x: 10, y: 20 });
+  assert.deepEqual(projection.edges[0]?.to, { x: 30, y: 40 });
   assert.equal(projection.vehicles[0]?.ownerTeamId, "alpha");
   assert.equal(projection.teams[0]?.coins, 7);
   assert.equal(projection.highlights[0]?.actionId, "select.b");
   assert.equal(projection.availableActions[0]?.params?.nodeId, "b");
+});
+
+test("falls back from malformed planned geometry to legacy endpoints and node positions", () => {
+  const projection = projectBoardSession({
+    state: {
+      public: {
+        objects: {
+          networkNodes: {
+            a: { attributes: { position: { x: 10, y: 20 } } },
+            b: { attributes: { position: { x: 30, y: 40 } } }
+          },
+          networkEdges: {
+            legacy: {
+              attributes: {
+                fromNodeId: "a",
+                toNodeId: "b",
+                geometry: {
+                  polyline: [{ x: 10, y: 20 }, { x: Number.NaN, y: 25 }],
+                  from: { x: 12, y: 22 },
+                  to: { x: 28, y: 38 }
+                }
+              }
+            },
+            nodeFallback: {
+              attributes: { fromNodeId: "a", toNodeId: "b" }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  assert.deepEqual(projection.edges.find((edge) => edge.id === "legacy")?.points, [
+    { x: 12, y: 22 },
+    { x: 28, y: 38 }
+  ]);
+  assert.deepEqual(projection.edges.find((edge) => edge.id === "nodeFallback")?.points, [
+    { x: 10, y: 20 },
+    { x: 30, y: 40 }
+  ]);
 });
 
 test("does not invent topology or actions when content is absent", () => {

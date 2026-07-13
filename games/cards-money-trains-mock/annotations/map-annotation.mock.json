@@ -1,5 +1,5 @@
 {
-  "$schema": "./map-annotation.schema.json",
+  "$schema": "../../../docs/architecture/schemas/map-annotation.schema.json",
   "schemaVersion": "1.0",
   "status": "mock",
   "warning": "MOCK: вымышленная сеть для разработки. Не публиковать и не переносить в нормативную игру без подтверждения автора.",

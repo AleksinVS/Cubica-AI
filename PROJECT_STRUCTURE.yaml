@@ -64,6 +64,7 @@ docs: # Архитектура, задачи, планирование
       game-manifest.schema.json: file # Canonical JSON Schema for runtime game manifests, including deterministic mechanics, object state and AI-driven execution mode declarations.
       manifest-authoring-common.schema.json: file # Shared JSON Schema definitions for ADR-030 authoring manifests and source maps.
       manifest-source-map.schema.json: file # JSON Schema for tooling-only source map companion files generated next to runtime manifests.
+      map-annotation.schema.json: file # Общий schema-first контракт ручной разметки транспортной сети, областей и координат поверх изображения карты.
       project-skill-registry.schema.json: file # JSON Schema общего реестра канонических проектных навыков, их имен, происхождения и режима включения по ADR-070.
       state-fixture.schema.json: file # JSON Schema for pinned editor state fixtures under games/<id>/authoring/fixtures/*.json (ADR-057); runtime/player never read these files.
       ui-authoring.schema.json: file # JSON Schema for editable UI authoring manifests compiled into channel-specific ui.manifest.json files.
@@ -157,9 +158,17 @@ games: # Пакеты игр и связанные ресурсы
       game.authoring.json: file # Authoring source for the generated ai-driven-choice game manifest.
   antarctica: # Пакет игры «Antarctica» (канонический content layer)
     plugins: directory... # Project-local plugins for the Antarctica game. These plugins belong to the game project, not to the shared platform apps.
+  cards-money-trains: # Game-owned package for the facilitated business game «Карты, деньги, поезда». It contains authoring/runtime manifests, bounded fixtures, delivery assets, the player-web board plugin, and root-level asset-provenance.json governance metadata with source hashes, conversion details, and publication-rights status.
+    annotations: directory... # Проверяемые аннотации авторской карты: координаты, транспортная сеть и будущие контуры областей до их контролируемой публикации в runtime-манифесте.
+    assets: directory... # Game-owned delivery assets use the normative ADR-063 assets.json registry. Governance metadata is intentionally stored outside this delivery directory in the game-root asset-provenance.json file.
+    authoring: directory... # Editable source manifests and confirmed game-owned configuration. Generated runtime and UI manifests are compiled from this directory.
+    plugins: directory... # Project-local trusted plugins owned by «Карты, деньги, поезда».
+    published: directory... # Immutable content-addressed player-web plugin bundles generated from the game-owned project-local plugin.
+    tools: directory... # Воспроизводимые инструменты приёма и сборки авторского содержимого игры без ручного редактирования производных манифестов.
+    ui: directory... # Generated channel-specific UI manifests for «Карты, деньги, поезда».
   cards-money-trains-mock: # Отдельный запускаемый тестовый пакет игры «Карты, деньги, поезда». Он содержит только вымышленные данные и не заменяет нормативный пакет cards-money-trains.
-    annotations: directory... # Контракт, шаблоны и проверяемые аннотации для переноса транспортной сети с изображения в декларативные данные манифеста.
-    assets: directory... # Реестр исключительно тестовых ресурсов mock-пакета.
+    annotations: directory... # Шаблоны и проверяемые игровые аннотации для переноса транспортной сети с изображения в декларативные данные манифеста; общий контракт хранится в docs/architecture/schemas.
+    assets: directory... # Реестр ресурсов mock-пакета: для запуска используется локальная копия разрешённой авторской карты, а тестовая топология и содержимое остаются явно ненормативными.
     authoring: directory... # Собираемые исходники исполнимых game/UI-манифестов тестовой копии; все содержимое явно помечено MOCK.
     fixtures: # Вымышленные команды, грузы, выплаты и контрольный сценарий, используемые только для продолжения разработки до ответа автора.
       complete-session-transcript.json: file # Статичный 88-шаговый mock-транскрипт полного фасилитируемого сеанса с двумя контрольными перезапусками и семью атомарными отказами.
@@ -201,6 +210,10 @@ scripts: # Скрипты разработки и индексирования
     compile-authoring-manifests.cjs: file # Compiler for ADR-030 authoring manifests that generates runtime manifests and source map companion files.
     compile-cache.cjs: file # Level-3 compile cache (ADR-057) and hit/miss telemetry: content-hash-keyed, atomic, one-shot .tmp storage that is never a source of truth.
     compile-worker.cjs: file # Worker-thread entry point that compiles one authoring job as a pure function so the compile pool stays byte-identical to a sequential run.
+  map-annotation: # Общий schema-first конвейер ручной разметки транспортной сети поверх карты: проверка связей и геометрии, безопасное SVG-наложение и адаптируемая сборка фрагмента манифеста.
+    fixtures: directory... # Нейтральные данные и минимальная карта для проверки общего конвейера аннотации без терминов и правил конкретной игры.
+    map-annotation.mjs: file # Нейтральный модуль проверки аннотации, визуального наложения и преобразования подтверждённых данных с переданными игрой правилами.
+    map-annotation.test.mjs: file # Сфокусированные нейтральные тесты общего формата, review-draft режима и запрета публикации неподтверждённых данных.
   ops: # Operational (ops) scripts for running the platform on a single host until the orchestrator model (LEGACY-0026) is built.
     service-supervisor.mjs: file # Minimal single-host service supervisor (ADR-067): starts, health-checks and restarts the delivery services (runtime-api + player-web) with backoff and graceful group shutdown, as the interim recovery loop. Runbook: docs/processes/service-recovery-runbook.md.
 services: # Сервисы и инфраструктура 

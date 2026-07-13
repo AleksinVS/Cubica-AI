@@ -40,7 +40,7 @@
                 "id": "facilitator.status",
                 "type": "richTextComponent",
                 "props": {
-                  "html": "<h1>[MOCK] Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
+                  "html": "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
                 }
               }
             ]
@@ -58,87 +58,9 @@
                 "type": "interactiveBoardSurface",
                 "props": {
                   "sceneId": "main",
-                  "designWidth": 1400,
-                  "designHeight": 1000,
+                  "designWidth": 5079,
+                  "designHeight": 3627,
                   "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
-                }
-              }
-            ]
-          },
-          {
-            "id": "facilitator.team-status",
-            "type": "areaComponent",
-            "props": {
-              "workspaceSlot": "primary-panel",
-              "cssClass": "cards-container topbar-cards-container",
-              "topbarCssClass": "topbar-cards-container"
-            },
-            "children": [
-              {
-                "id": "facilitator.team-status-copy",
-                "type": "richTextComponent",
-                "props": {
-                  "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
-                }
-              }
-            ]
-          },
-          {
-            "id": "facilitator.context-panel",
-            "type": "areaComponent",
-            "props": {
-              "workspaceSlot": "context-panel",
-              "cssClass": "map-first-context-panel"
-            },
-            "children": [
-              {
-                "id": "facilitator.action-guidance",
-                "type": "richTextComponent",
-                "props": {
-                  "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
-                }
-              },
-              {
-                "id": "facilitator.log",
-                "type": "areaComponent",
-                "props": {
-                  "cssClass": "board-game-log"
-                },
-                "children": [
-                  {
-                    "id": "facilitator.log-title",
-                    "type": "richTextComponent",
-                    "props": {
-                      "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
-                    }
-                  },
-                  {
-                    "id": "facilitator.log-entries",
-                    "type": "areaComponent",
-                    "props": {
-                      "cssClass": "board-game-log-entries"
-                    },
-                    "itemTemplate": {
-                      "collection": "{{game.state.public.log}}",
-                      "itemKey": "logEntry"
-                    },
-                    "children": [
-                      {
-                        "id": "facilitator.log-entry",
-                        "type": "richTextComponent",
-                        "props": {
-                          "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "id": "facilitator.content-gate",
-                "type": "richTextComponent",
-                "props": {
-                  "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
                 }
               }
             ]
@@ -266,6 +188,83 @@
                         }
                       }
                     }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "facilitator.context-panel",
+            "type": "areaComponent",
+            "props": {
+              "workspaceSlot": "context-panel",
+              "cssClass": "map-first-context-panel"
+            },
+            "children": [
+              {
+                "id": "facilitator.content-gate",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
+                }
+              },
+              {
+                "id": "facilitator.team-status",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "cards-container topbar-cards-container",
+                  "topbarCssClass": "topbar-cards-container"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.team-status-copy",
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "facilitator.action-guidance",
+                "type": "richTextComponent",
+                "props": {
+                  "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
+                }
+              },
+              {
+                "id": "facilitator.log",
+                "type": "areaComponent",
+                "props": {
+                  "cssClass": "board-game-log"
+                },
+                "children": [
+                  {
+                    "id": "facilitator.log-title",
+                    "type": "richTextComponent",
+                    "props": {
+                      "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
+                    }
+                  },
+                  {
+                    "id": "facilitator.log-entries",
+                    "type": "areaComponent",
+                    "props": {
+                      "cssClass": "board-game-log-entries"
+                    },
+                    "itemTemplate": {
+                      "collection": "{{game.state.public.log}}",
+                      "itemKey": "logEntry"
+                    },
+                    "children": [
+                      {
+                        "id": "facilitator.log-entry",
+                        "type": "richTextComponent",
+                        "props": {
+                          "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                        }
+                      }
+                    ]
                   }
                 ]
               }

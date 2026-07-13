@@ -53,3 +53,41 @@ test("ADR-063 registry stays minimal while provenance verifies the optimized der
   assert.equal((provenance.rights as Record<string, unknown>).publicationAllowed, true);
   assert.equal((provenance.rights as Record<string, unknown>).modificationAllowed, true);
 });
+
+test("normative board declarations stay aligned with the 5079 by 3627 author plane", () => {
+  const manifest = readJson("../../../game.manifest.json");
+  const ui = readJson("../../../ui/web/ui.manifest.json");
+  const provenance = readJson("../../../asset-provenance.json");
+  const content = ((manifest.content as Record<string, unknown>).data as Record<string, unknown>);
+  const board = content.board as Record<string, unknown>;
+  const state = manifest.state as Record<string, unknown>;
+  const publicState = state.public as Record<string, unknown>;
+  const runtimeBoard = publicState.board as Record<string, unknown>;
+  const bounds = runtimeBoard.canonicalBounds as Record<string, unknown>;
+  const screens = ui.screens as Record<string, Record<string, unknown>>;
+  const root = screens.facilitator.root as Record<string, unknown>;
+  const children = root.children as Array<Record<string, unknown>>;
+  const boardZone = children.find((child) =>
+    (child.props as Record<string, unknown> | undefined)?.workspaceSlot === "board"
+  );
+  const surface = (boardZone?.children as Array<Record<string, unknown>> | undefined)?.[0];
+  const surfaceProps = surface?.props as Record<string, unknown> | undefined;
+  const source = provenance.source as Record<string, unknown>;
+
+  assert.deepEqual(
+    { width: board.designWidth, height: board.designHeight },
+    { width: 5079, height: 3627 }
+  );
+  assert.deepEqual(
+    { width: surfaceProps?.designWidth, height: surfaceProps?.designHeight },
+    { width: board.designWidth, height: board.designHeight }
+  );
+  assert.deepEqual(
+    { width: bounds.maxX, height: bounds.maxY },
+    { width: board.designWidth, height: board.designHeight }
+  );
+  assert.deepEqual(
+    { width: source.width, height: source.height },
+    { width: board.designWidth, height: board.designHeight }
+  );
+});

@@ -37,8 +37,8 @@
         "root": {
           "id": "facilitator.root",
           "_type": "ui.Component",
-          "_label": "[MOCK] Рабочее пространство ведущего с картой в основе",
-          "_semantics": "Корневая оболочка объявляет только смысловые зоны; тестовая карта занимает рабочую область, а статус, команды, контекст и действия располагаются поверх неё.",
+          "_label": "Рабочее пространство ведущего с картой в основе",
+          "_semantics": "Корневая оболочка объявляет только смысловые зоны; карта занимает рабочую область, а статус, контекст и действия располагаются поверх неё.",
           "type": "screenComponent",
           "props": {
             "cssClass": "map-first-screen-shell"
@@ -47,8 +47,8 @@
             {
               "id": "facilitator.statusbar",
               "_type": "ui.Component",
-              "_label": "[MOCK] Краткий статус хода",
-              "_semantics": "Компактный верхний слой тестовой карты показывает подтвержденные номер хода, этап и состояние сессии.",
+              "_label": "Краткий статус хода",
+              "_semantics": "Компактный верхний слой карты показывает подтвержденные номер хода, этап и состояние сессии.",
               "type": "areaComponent",
               "props": {
                 "workspaceSlot": "status",
@@ -62,7 +62,7 @@
                   "_semantics": "Короткая строка ориентации: статус, номер хода и текущая серверная фаза.",
                   "type": "richTextComponent",
                   "props": {
-                    "html": "<h1>[MOCK] Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
+                    "html": "<h1>Карты, деньги, поезда</h1><p><strong>Ход:</strong> {{game.state.public.session.turnNumber}} · <strong>Этап:</strong> {{game.state.public.session.phase}} · <strong>Сессия:</strong> {{game.state.public.session.status}} · <strong>Контент:</strong> тестовые данные</p>"
                   }
                 }
               ]
@@ -70,8 +70,8 @@
             {
               "id": "facilitator.board-zone",
               "_type": "ui.Component",
-              "_label": "[MOCK] Карта — основная рабочая область",
-              "_semantics": "Единственная зона board заполняет экран и содержит тестовую пространственную поверхность без правил и собственного игрового состояния.",
+              "_label": "Карта — основная рабочая область",
+              "_semantics": "Единственная зона board заполняет экран и содержит пространственную поверхность без правил и собственного игрового состояния.",
               "type": "areaComponent",
               "props": {
                 "workspaceSlot": "board",
@@ -86,114 +86,9 @@
                   "type": "interactiveBoardSurface",
                   "props": {
                     "sceneId": "main",
-                    "designWidth": 1400,
-                    "designHeight": 1000,
+                    "designWidth": 5079,
+                    "designHeight": 3627,
                     "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
-                  }
-                }
-              ]
-            },
-            {
-              "id": "facilitator.team-status",
-              "_type": "ui.Component",
-              "_label": "[MOCK] Команды, деньги и техника",
-              "_semantics": "Постоянная обзорная панель показывает только публичные деньги и фактические позиции тестовой техники; она не вычисляет правила игры.",
-              "type": "areaComponent",
-              "props": {
-                "workspaceSlot": "primary-panel",
-                "cssClass": "cards-container topbar-cards-container",
-                "topbarCssClass": "topbar-cards-container"
-              },
-              "children": [
-                {
-                  "id": "facilitator.team-status-copy",
-                  "_type": "ui.Component",
-                  "_label": "Текущее состояние четырех тестовых команд",
-                  "_semantics": "Фиксированные идентификаторы принадлежат только тестовой игре; значения приходят из публичного snapshot.",
-                  "type": "richTextComponent",
-                  "props": {
-                    "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
-                  }
-                }
-              ]
-            },
-            {
-              "id": "facilitator.context-panel",
-              "_type": "ui.Component",
-              "_label": "[MOCK] Контекст, подсказки и журнал",
-              "_semantics": "Боковая контекстная панель объединяет объяснение доступности, подтвержденный журнал и честную маркировку тестового содержимого.",
-              "type": "areaComponent",
-              "props": {
-                "workspaceSlot": "context-panel",
-                "cssClass": "map-first-context-panel"
-              },
-              "children": [
-                {
-                  "id": "facilitator.action-guidance",
-                  "_type": "ui.Component",
-                  "_label": "Подсказка по доступным действиям",
-                  "_semantics": "Объясняет источник доступности без дублирования или вычисления правил на клиенте.",
-                  "type": "richTextComponent",
-                  "props": {
-                    "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
-                  }
-                },
-                {
-                  "id": "facilitator.log",
-                  "_type": "ui.Component",
-                  "_label": "Журнал подтвержденных действий",
-                  "_semantics": "Доступный текстовый журнал повторяет только записи, уже подтвержденные Runtime API.",
-                  "type": "areaComponent",
-                  "props": {
-                    "cssClass": "board-game-log"
-                  },
-                  "children": [
-                    {
-                      "id": "facilitator.log-title",
-                      "_type": "ui.Component",
-                      "_label": "Заголовок журнала",
-                      "_semantics": "Отделяет подтвержденную историю от текущих намерений ведущего.",
-                      "type": "richTextComponent",
-                      "props": {
-                        "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
-                      }
-                    },
-                    {
-                      "id": "facilitator.log-entries",
-                      "_type": "ui.Component",
-                      "_label": "Записи журнала",
-                      "_semantics": "Повторяет публичный журнал по порядку, не интерпретируя правила игры.",
-                      "type": "areaComponent",
-                      "props": {
-                        "cssClass": "board-game-log-entries"
-                      },
-                      "itemTemplate": {
-                        "collection": "{{game.state.public.log}}",
-                        "itemKey": "logEntry"
-                      },
-                      "children": [
-                        {
-                          "id": "facilitator.log-entry",
-                          "_type": "ui.Component",
-                          "_label": "Подтвержденное действие",
-                          "_semantics": "Показывает переданные сервером вид события и краткое описание.",
-                          "type": "richTextComponent",
-                          "props": {
-                            "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
-                          }
-                        }
-                      ]
-                    }
-                  ]
-                },
-                {
-                  "id": "facilitator.content-gate",
-                  "_type": "ui.Component",
-                  "_label": "[MOCK] Предупреждение о тестовых данных",
-                  "_semantics": "Не дает ведущему принять вымышленный контент за сведения автора игры.",
-                  "type": "richTextComponent",
-                  "props": {
-                    "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
                   }
                 }
               ]
@@ -201,8 +96,8 @@
             {
               "id": "facilitator.action-tray",
               "_type": "ui.Component",
-              "_label": "[MOCK] Основные действия ведущего",
-              "_semantics": "Нижний слой тестовой карты группирует повторяемые строительные операции и отдельное подтверждаемое завершение игры.",
+              "_label": "Основные действия ведущего",
+              "_semantics": "Нижний слой карты группирует повторяемые строительные операции и отдельное подтверждаемое завершение игры.",
               "type": "areaComponent",
               "props": {
                 "workspaceSlot": "action-tray",
@@ -348,6 +243,110 @@
                           }
                         }
                       }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "facilitator.context-panel",
+              "_type": "ui.Component",
+              "_label": "Контекст готовности содержимого",
+              "_semantics": "Боковая контекстная панель честно сообщает, какие авторские данные ещё не загружены в нормативный пакет.",
+              "type": "areaComponent",
+              "props": {
+                "workspaceSlot": "context-panel",
+                "cssClass": "map-first-context-panel"
+              },
+              "children": [
+                {
+                  "id": "facilitator.content-gate",
+                  "_type": "ui.Component",
+                  "_label": "Предупреждение о тестовых данных",
+                  "_semantics": "Не дает ведущему принять вымышленный контент за сведения автора игры.",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "<p><strong>MOCK — только разработка:</strong> сеть, области, грузы, выплаты и контрольные ходы вымышлены. Они будут полностью заменены после подтверждения автора.</p>"
+                  }
+                },
+                {
+                  "id": "facilitator.team-status",
+                  "_type": "ui.Component",
+                  "_label": "Команды, деньги и техника",
+                  "_semantics": "Доступный текстовый дубль компактной панели Phaser; показывает только публичные деньги и фактические позиции тестовой техники.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "cards-container topbar-cards-container",
+                    "topbarCssClass": "topbar-cards-container"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.team-status-copy",
+                      "_type": "ui.Component",
+                      "_label": "Текущее состояние четырех тестовых команд",
+                      "_semantics": "Фиксированные идентификаторы принадлежат только тестовой игре; значения приходят из публичного snapshot.",
+                      "type": "richTextComponent",
+                      "props": {
+                        "html": "<h2>Команды</h2><p><strong>Белая:</strong> {{game.state.public.teams.white-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-white-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-white-2.attributes.nodeId}}</p><p><strong>Красная:</strong> {{game.state.public.teams.red-logistics.coins}} мон. · вагоны: {{game.state.public.objects.wagons.mock-wagon-red-1.attributes.nodeId}}, {{game.state.public.objects.wagons.mock-wagon-red-2.attributes.nodeId}}</p><p><strong>Фиолетовая:</strong> {{game.state.public.teams.purple-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-purple-1.attributes.nodeId}}</p><p><strong>Зелёная:</strong> {{game.state.public.teams.green-guild.coins}} мон. · локомотив: {{game.state.public.objects.locomotives.mock-locomotive-green-1.attributes.nodeId}}</p>"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "id": "facilitator.action-guidance",
+                  "_type": "ui.Component",
+                  "_label": "Подсказка по доступным действиям",
+                  "_semantics": "Объясняет источник доступности без дублирования или вычисления правил на клиенте.",
+                  "type": "richTextComponent",
+                  "props": {
+                    "html": "<h2>Доступные действия</h2><p>Кнопки под картой приходят из игрового состояния. Недоступные операции блокирует сервер и, если передал объяснение, показывает причину рядом с кнопкой.</p>"
+                  }
+                },
+                {
+                  "id": "facilitator.log",
+                  "_type": "ui.Component",
+                  "_label": "Журнал подтвержденных действий",
+                  "_semantics": "Доступный текстовый журнал повторяет только записи, уже подтвержденные Runtime API.",
+                  "type": "areaComponent",
+                  "props": {
+                    "cssClass": "board-game-log"
+                  },
+                  "children": [
+                    {
+                      "id": "facilitator.log-title",
+                      "_type": "ui.Component",
+                      "_label": "Заголовок журнала",
+                      "_semantics": "Отделяет подтвержденную историю от текущих намерений ведущего.",
+                      "type": "richTextComponent",
+                      "props": {
+                        "html": "<h2>Журнал</h2><p>Записи появляются только после успешного выполнения действия.</p>"
+                      }
+                    },
+                    {
+                      "id": "facilitator.log-entries",
+                      "_type": "ui.Component",
+                      "_label": "Записи журнала",
+                      "_semantics": "Повторяет публичный журнал по порядку, не интерпретируя правила игры.",
+                      "type": "areaComponent",
+                      "props": {
+                        "cssClass": "board-game-log-entries"
+                      },
+                      "itemTemplate": {
+                        "collection": "{{game.state.public.log}}",
+                        "itemKey": "logEntry"
+                      },
+                      "children": [
+                        {
+                          "id": "facilitator.log-entry",
+                          "_type": "ui.Component",
+                          "_label": "Подтвержденное действие",
+                          "_semantics": "Показывает переданные сервером вид события и краткое описание.",
+                          "type": "richTextComponent",
+                          "props": {
+                            "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                          }
+                        }
+                      ]
                     }
                   ]
                 }

@@ -1033,6 +1033,7 @@ export interface GameManifestTransportNetworkModel {
    * @minItems 1
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
+  roadPlanning?: GameManifestTransportRoadPlanning;
   movement?: GameManifestTransportMovementModel;
   cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }
@@ -1059,6 +1060,43 @@ export interface GameManifestTransportRegion {
 export interface GameManifestCanonicalPoint {
   x: number;
   y: number;
+}
+/**
+ * Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportRoadPlanning".
+ */
+export interface GameManifestTransportRoadPlanning {
+  mode: "region-segment-minimum";
+  algorithmVersion: "region-segment-minimum-v1";
+  geometryVersion: string;
+  geometryHash: string;
+  tieBreak: "session-random";
+  boundaryPolicy: "lowest-region-id";
+  excludedRegionIdsPath?: string;
+  navigationGraph: {
+    /**
+     * @maxItems 4096
+     */
+    portals: GameManifestTransportRoadPortal[];
+  };
+}
+/**
+ * One compiler-derived positive-length shared boundary between two transport regions.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportRoadPortal".
+ */
+export interface GameManifestTransportRoadPortal {
+  id: string;
+  /**
+   * @minItems 2
+   * @maxItems 2
+   */
+  regionIds: [string, string];
+  from: GameManifestCanonicalPoint;
+  to: GameManifestCanonicalPoint;
 }
 /**
  * Declarative rules for moving authoritative vehicles through one network edge.

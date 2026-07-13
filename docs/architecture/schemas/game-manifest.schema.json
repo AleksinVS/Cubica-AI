@@ -525,6 +525,98 @@
       ],
       "type": "object"
     },
+    "GameManifestTransportRoadPortal": {
+      "additionalProperties": false,
+      "description": "One compiler-derived positive-length shared boundary between two transport regions.",
+      "properties": {
+        "id": {
+          "maxLength": 256,
+          "minLength": 1,
+          "type": "string"
+        },
+        "regionIds": {
+          "items": {
+            "maxLength": 256,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 2,
+          "minItems": 2,
+          "type": "array",
+          "uniqueItems": true
+        },
+        "from": {
+          "$ref": "#/definitions/GameManifestCanonicalPoint"
+        },
+        "to": {
+          "$ref": "#/definitions/GameManifestCanonicalPoint"
+        }
+      },
+      "required": [
+        "id",
+        "regionIds",
+        "from",
+        "to"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportRoadPlanning": {
+      "additionalProperties": false,
+      "description": "Explicit opt-in contract for authoritative minimum-region road planning. The navigation graph and hash are compiler-derived from canonical region polygons.",
+      "properties": {
+        "mode": {
+          "const": "region-segment-minimum"
+        },
+        "algorithmVersion": {
+          "const": "region-segment-minimum-v1"
+        },
+        "geometryVersion": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "geometryHash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "type": "string"
+        },
+        "tieBreak": {
+          "const": "session-random"
+        },
+        "boundaryPolicy": {
+          "const": "lowest-region-id"
+        },
+        "excludedRegionIdsPath": {
+          "pattern": "^/(public|secret)/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+          "type": "string"
+        },
+        "navigationGraph": {
+          "additionalProperties": false,
+          "properties": {
+            "portals": {
+              "items": {
+                "$ref": "#/definitions/GameManifestTransportRoadPortal"
+              },
+              "maxItems": 4096,
+              "type": "array"
+            }
+          },
+          "required": [
+            "portals"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "mode",
+        "algorithmVersion",
+        "geometryVersion",
+        "geometryHash",
+        "tieBreak",
+        "boundaryPolicy",
+        "navigationGraph"
+      ],
+      "type": "object"
+    },
     "GameManifestTransportMovementModel": {
       "additionalProperties": false,
       "description": "Declarative rules for moving authoritative vehicles through one network edge.",
@@ -767,6 +859,9 @@
           },
           "minItems": 1,
           "type": "array"
+        },
+        "roadPlanning": {
+          "$ref": "#/definitions/GameManifestTransportRoadPlanning"
         },
         "movement": {
           "$ref": "#/definitions/GameManifestTransportMovementModel"

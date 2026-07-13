@@ -18969,6 +18969,12 @@
         "pointer": "/root/state/public/transportNetworks/main/sequence"
       }
     ],
+    "/state/public/transportNetworks/main/excludedRegionIds": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/state/public/transportNetworks/main/excludedRegionIds"
+      }
+    ],
     "/state/secret": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -19387,6 +19393,198 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/networkModels/main/regions"
+      }
+    ],
+    "/networkModels/main/roadPlanning": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning"
+      }
+    ],
+    "/networkModels/main/roadPlanning/mode": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/mode"
+      }
+    ],
+    "/networkModels/main/roadPlanning/algorithmVersion": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/algorithmVersion"
+      }
+    ],
+    "/networkModels/main/roadPlanning/geometryVersion": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/geometryVersion"
+      }
+    ],
+    "/networkModels/main/roadPlanning/geometryHash": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/geometryHash"
+      }
+    ],
+    "/networkModels/main/roadPlanning/tieBreak": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/tieBreak"
+      }
+    ],
+    "/networkModels/main/roadPlanning/boundaryPolicy": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/boundaryPolicy"
+      }
+    ],
+    "/networkModels/main/roadPlanning/excludedRegionIdsPath": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/excludedRegionIdsPath"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/id"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/regionIds/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/regionIds/0"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/regionIds/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/regionIds/1"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/regionIds": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/regionIds"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/from": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/from"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/from/x": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/from/x"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/from/y": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/from/y"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/to": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/to"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/to/x": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/to/x"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/0/to/y": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/0/to/y"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/id": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/id"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/regionIds/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/regionIds/0"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/regionIds/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/regionIds/1"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/regionIds": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/regionIds"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/from": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/from"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/from/x": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/from/x"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/from/y": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/from/y"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/to": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/to"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/to/x": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/to/x"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals/1/to/y": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals/1/to/y"
+      }
+    ],
+    "/networkModels/main/roadPlanning/navigationGraph/portals": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals"
       }
     ],
     "/networkModels/main/movement": [

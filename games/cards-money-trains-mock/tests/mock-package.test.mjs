@@ -32,10 +32,28 @@ test("mock annotation validates and reproduces the committed manifest fragment",
   assert.deepEqual(fragment, await readJson("generated/network.manifest-fragment.json"));
   assert.equal(fragment.networkModels.main.regions[0].polygon.length, 4);
   assert.notDeepEqual(fragment.networkModels.main.regions[0].polygon[0], fragment.networkModels.main.regions[0].polygon.at(-1));
+  assert.equal(fragment.networkModels.main.roadPlanning.mode, "region-segment-minimum");
+  assert.equal(fragment.networkModels.main.roadPlanning.navigationGraph.portals.length, 2);
+  assert.match(fragment.networkModels.main.roadPlanning.geometryHash, /^sha256:[0-9a-f]{64}$/u);
+});
+
+test("mock adapter rejects author-confirmed data", async () => {
+  const annotationPath = path.join(packageRoot, "annotations", "map-annotation.mock.json");
+  const source = await readJson("annotations/map-annotation.mock.json");
+  source.status = "author-confirmed";
+  const annotation = await validateAnnotation(source, annotationPath);
+  assert.throws(
+    () => toManifestFragment(annotation),
+    /author-confirmed annotation cannot produce a manifest fragment/
+  );
 });
 
 test("review overlay contains the source image underneath regions, roads and nodes", async () => {
-  const annotation = await readJson("annotations/map-annotation.mock.json");
+  const annotationPath = path.join(packageRoot, "annotations", "map-annotation.mock.json");
+  const annotation = await validateAnnotation(
+    await readJson("annotations/map-annotation.mock.json"),
+    annotationPath
+  );
   const svg = toReviewOverlaySvg(annotation, { backgroundHref: "../assets/images/mock-board.svg" });
   assert.match(svg, /<image href="\.\.\/assets\/images\/mock-board\.svg"/);
   assert.match(svg, /<polygon /);
@@ -106,7 +124,16 @@ test("compiled mock executes the documented operating and construction transcrip
   assert.equal(publicState.objects.wagons["mock-wagon-white-2"].attributes.cargoId, "mock-cargo-b-f");
   assert.equal(publicState.log.length, 18);
   assert.equal(publicState.objects.networkEdges["mock-edge-a-b"], undefined);
-  assert.equal(publicState.objects.networkEdges["main:edge:1001"].attributes.constructionCost, 6);
+  const plannedRoad = publicState.objects.networkEdges["main:edge:1001"].attributes;
+  assert.equal(plannedRoad.constructionCost, 6);
+  assert.equal(plannedRoad.regionSegments, 3);
+  assert.ok(plannedRoad.geometry.polyline.length >= 2);
+  assert.equal(plannedRoad.routePlan.algorithmVersion, "region-segment-minimum-v1");
+  assert.deepEqual(plannedRoad.routePlan.regionSequence, [
+    "mock-region-west",
+    "mock-region-central",
+    "mock-region-east"
+  ]);
   assert.equal(publicState.objects.networkNodes["main:node:1002"].objectType, "transport.waypoint");
 });
 

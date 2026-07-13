@@ -44,6 +44,10 @@ const manifestUsesSessionRandomness = (value: unknown): boolean => {
   return Object.values(value).some(manifestUsesSessionRandomness);
 };
 
+/** Road planning consumes randomness only when several minimum routes exist. */
+const manifestUsesRandomRoadPlanning = (manifest: GameManifest): boolean =>
+  Object.values(manifest.networkModels ?? {}).some((network) => network.roadPlanning?.tieBreak === "session-random");
+
 const validateParticipantCount = (manifest: GameManifest, requested?: number): number => {
   const minimum = manifest.config.players.min;
   const maximum = manifest.config.players.max;
@@ -97,7 +101,8 @@ export const initializeTurnBasedSessionState = (
   // snapshot would expose two competing sources of truth for player balances.
   delete state.playersTemplate;
 
-  if (manifestUsesSessionRandomness(manifest.actions) || manifestUsesSessionRandomness(manifest.templates)) {
+  if (manifestUsesSessionRandomness(manifest.actions) || manifestUsesSessionRandomness(manifest.templates) ||
+      manifestUsesRandomRoadPlanning(manifest)) {
     const secretState = isObjectRecord(state.secret) ? state.secret : {};
     // Random state is session-owned by contract. Always replace authoring data
     // so a seed accidentally committed to a manifest cannot make every new

@@ -58,8 +58,8 @@
                 "type": "interactiveBoardSurface",
                 "props": {
                   "sceneId": "main",
-                  "designWidth": 1400,
-                  "designHeight": 1000,
+                  "designWidth": 5079,
+                  "designHeight": 3627,
                   "accessibleLabel": "Транспортная карта игры. Все доступные действия дублируются обычными кнопками под полем."
                 }
               }

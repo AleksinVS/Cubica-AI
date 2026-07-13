@@ -16,7 +16,7 @@ function __pluginRequire(id) {
 __pluginDefine("src/index.ts", (exports, module) => {
 "use strict";
 /**
- * Public entrypoint for the explicitly test-only Cards Money Trains plugin.
+ * Public entrypoint for the Cards Money Trains player-web plugin.
  *
  * The plugin registers an engine-independent action projection and one Phaser
  * scene factory. Phaser remains platform-owned and is injected into the scene.
@@ -26,8 +26,8 @@ exports.createCardsMoneyTrainsScene = exports.provideCardsMoneyTrainsAccessibleB
 exports.activate = activate;
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
 const scene_ts_1 = __pluginRequire("src/scene.ts");
-exports.CARDS_MONEY_TRAINS_GAME_ID = "cards-money-trains-mock";
-exports.CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = "cards-money-trains-mock-player";
+exports.CARDS_MONEY_TRAINS_GAME_ID = "cards-money-trains";
+exports.CARDS_MONEY_TRAINS_PLAYER_PLUGIN_ID = "cards-money-trains-player";
 var board_state_ts_1 = __pluginRequire("src/board-state.ts");
 Object.defineProperty(exports, "projectBoardSession", { enumerable: true, get: function () { return board_state_ts_1.projectBoardSession; } });
 var accessible_actions_ts_2 = __pluginRequire("src/accessible-actions.ts");
@@ -52,7 +52,7 @@ function activate(api) {
 __pluginDefine("src/accessible-actions.ts", (exports, module) => {
 "use strict";
 /**
- * Accessible action projection for the Cards Money Trains test-only board.
+ * Accessible action projection for the Cards Money Trains board.
  *
  * The provider is intentionally independent from Phaser. It copies actions
  * already published in the authoritative session so the host can expose its
@@ -72,7 +72,7 @@ const toAccessibleAction = (action) => ({
 });
 /**
  * Return only actions present in the authoritative player-facing snapshot.
- * Phase and availability filtering come from the server projection reader.
+ * The plugin does not derive topology or gameplay permission in the browser.
  */
 const provideCardsMoneyTrainsAccessibleBoardActions = (session) => (0, board_state_ts_1.projectBoardSession)(session).availableActions.map(toAccessibleAction);
 exports.provideCardsMoneyTrainsAccessibleBoardActions = provideCardsMoneyTrainsAccessibleBoardActions;
@@ -84,8 +84,8 @@ __pluginDefine("src/board-state.ts", (exports, module) => {
  * Public-snapshot projection for the Cards Money Trains Phaser scene.
  *
  * This module deliberately contains no gameplay validation. Runtime provides
- * authoritative nodes, edges, highlights, and accessible actions; the plugin
- * only normalizes those public values into a safe rendering model.
+ * authoritative nodes, edges, highlights, controls and canonical action
+ * availability; the plugin only combines those public values into a safe view.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.projectBoardSession = projectBoardSession;
@@ -98,6 +98,16 @@ const point = (value) => {
     const x = finiteNumber(value.x);
     const y = finiteNumber(value.y);
     return x === null || y === null ? null : { x, y };
+};
+/**
+ * Read one complete polyline only when every coordinate is finite.
+ * Falling back as a whole avoids drawing a partly corrupted server route.
+ */
+const polyline = (value) => {
+    if (!Array.isArray(value) || value.length < 2)
+        return null;
+    const points = value.map(point);
+    return points.every((item) => item !== null) ? points : null;
 };
 const objectCollection = (publicState, collectionId) => {
     const objects = isRecord(publicState.objects) ? publicState.objects : {};
@@ -130,8 +140,17 @@ const readEdges = (publicState, nodes) => {
         if (!fromNodeId || !toNodeId)
             return [];
         const geometry = isRecord(attributes.geometry) ? attributes.geometry : {};
-        const from = point(geometry.from) ?? byId.get(fromNodeId)?.position ?? null;
-        const to = point(geometry.to) ?? byId.get(toNodeId)?.position ?? null;
+        // New server-planned roads publish a polyline. Older snapshots publish
+        // only explicit endpoints, and the oldest ones rely on node positions.
+        const plannedPoints = polyline(geometry.polyline);
+        const legacyFrom = point(geometry.from) ?? byId.get(fromNodeId)?.position ?? null;
+        const legacyTo = point(geometry.to) ?? byId.get(toNodeId)?.position ?? null;
+        const fallbackPoints = legacyFrom && legacyTo ? [legacyFrom, legacyTo] : null;
+        const points = plannedPoints ?? fallbackPoints;
+        if (!points)
+            return [];
+        const from = points[0];
+        const to = points.at(-1);
         if (!from || !to)
             return [];
         const facets = isRecord(raw.facets) ? raw.facets : {};
@@ -139,6 +158,7 @@ const readEdges = (publicState, nodes) => {
                 id,
                 fromNodeId,
                 toNodeId,
+                points,
                 from,
                 to,
                 visualState: text(facets.state) ?? "open"
@@ -150,10 +170,6 @@ const readVehicles = (publicState) => {
         if (!isRecord(raw))
             return [];
         const attributes = isRecord(raw.attributes) ? raw.attributes : {};
-        const facets = isRecord(raw.facets) ? raw.facets : {};
-        const availability = text(facets.availability);
-        if (availability === "reserve" || availability === "sold")
-            return [];
         return [{
                 id,
                 kind,
@@ -163,7 +179,7 @@ const readVehicles = (publicState) => {
     });
     return [...read("locomotives", "locomotive"), ...read("wagons", "wagon")];
 };
-const readTeams = (publicState, vehicles) => {
+const readTeams = (publicState) => {
     if (!isRecord(publicState.teams))
         return [];
     return Object.entries(publicState.teams).flatMap(([id, raw]) => {
@@ -173,27 +189,7 @@ const readTeams = (publicState, vehicles) => {
                 id,
                 label: text(raw.label) ?? id,
                 type: text(raw.type) ?? "team",
-                coins: finiteNumber(raw.coins),
-                // Counts are a presentation-only aggregation over objects already
-                // present in the public snapshot. They do not decide ownership or rules.
-                locomotives: vehicles.filter((vehicle) => vehicle.ownerTeamId === id && vehicle.kind === "locomotive").length,
-                wagons: vehicles.filter((vehicle) => vehicle.ownerTeamId === id && vehicle.kind === "wagon").length
-            }];
-    });
-};
-const readLog = (publicState) => {
-    if (!Array.isArray(publicState.log))
-        return [];
-    return publicState.log.flatMap((raw, index) => {
-        if (!isRecord(raw))
-            return [];
-        const summary = text(raw.summary);
-        if (!summary)
-            return [];
-        return [{
-                id: text(raw.id) ?? `log-entry-${index}`,
-                kind: text(raw.kind) ?? "event",
-                summary
+                coins: finiteNumber(raw.coins)
             }];
     });
 };
@@ -216,18 +212,9 @@ const readHighlights = (board) => {
             }];
     });
 };
-const readActionPhases = (value) => {
-    if (typeof value === "string") {
-        return text(value) ? [value] : undefined;
-    }
-    if (!Array.isArray(value))
-        return undefined;
-    const phases = value.flatMap((item) => text(item) ?? []);
-    return phases.length > 0 ? phases : undefined;
-};
 const serverUnavailableReason = (reasonCode) => {
     if (reasonCode === "role_not_allowed")
-        return "Действие недоступно для роли ведущего.";
+        return "Действие недоступно для текущей роли.";
     if (reasonCode === "runtime_unsupported")
         return "Действие не поддерживается игровой системой.";
     return "Действие недоступно в текущем состоянии игры.";
@@ -240,7 +227,7 @@ const readActionAvailability = (value) => {
         return [[entry.actionId, entry]];
     }));
 };
-const readActions = (board, currentPhase, availability) => {
+const readActions = (board, availability) => {
     if (!Array.isArray(board.availableActions))
         return [];
     return board.availableActions.flatMap((raw, index) => {
@@ -253,38 +240,17 @@ const readActions = (board, currentPhase, availability) => {
         const projectedAvailability = availability.get(actionId);
         const serverDisabled = projectedAvailability?.status === "unavailable";
         const authoredDisabledReason = text(raw.disabledReason) ?? text(raw.reason) ?? undefined;
-        const disabledReason = serverDisabled
-            ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
-            : raw.disabled === true ? authoredDisabledReason : undefined;
-        const phases = readActionPhases(raw.phase);
-        // `phase` is authored by the server-side manifest. The client only applies
-        // that explicit presentation filter; it never derives phase eligibility.
-        if (phases && !phases.includes(currentPhase))
-            return [];
         return [{
                 id: text(raw.id) ?? `board-action-${index}`,
                 label,
-                description: text(raw.description) ?? disabledReason,
+                description: serverDisabled
+                    ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
+                    : text(raw.description) ?? undefined,
                 actionId,
                 params: isRecord(raw.params) ? raw.params : undefined,
-                disabled: raw.disabled === true || serverDisabled,
-                disabledReason,
-                section: text(raw.section) ?? undefined,
-                phases
+                disabled: raw.disabled === true || serverDisabled
             }];
     });
-};
-const groupActions = (actions) => {
-    const groups = new Map();
-    for (const action of actions) {
-        // Missing metadata stays in one neutral bucket. The client does not infer a
-        // gameplay category from action ids or labels.
-        const section = action.section ?? "actions";
-        const group = groups.get(section) ?? [];
-        group.push(action);
-        groups.set(section, group);
-    }
-    return [...groups].map(([id, groupedActions]) => ({ id, actions: groupedActions }));
 };
 const readBounds = (board, nodes) => {
     if (isRecord(board.canonicalBounds)) {
@@ -311,60 +277,22 @@ const readBounds = (board, nodes) => {
         maxY: maxY === minY ? minY + 1 : maxY
     };
 };
-const readDeckPresentation = (publicState, nodes) => {
-    const decks = isRecord(publicState.decks) ? publicState.decks : {};
-    const news = isRecord(decks.news) ? decks.news : {};
-    const cargo = isRecord(decks.cargo) ? decks.cargo : {};
-    const offer = isRecord(cargo.offer) ? cargo.offer : {};
-    const newsCards = objectCollection(publicState, "newsCards");
-    const cargoCards = objectCollection(publicState, "cargoCards");
-    const nodeLabels = new Map(nodes.map((node) => [node.id, node.label]));
-    const newsId = text(news.currentCardId);
-    const newsCard = newsId && isRecord(newsCards[newsId]) ? newsCards[newsId] : {};
-    const newsAttributes = isRecord(newsCard.attributes) ? newsCard.attributes : {};
-    const cargoOfferLabels = [offer.firstCardId, offer.secondCardId].flatMap((rawId) => {
-        const id = text(rawId);
-        if (!id || !isRecord(cargoCards[id]))
-            return [];
-        const attributes = isRecord(cargoCards[id].attributes) ? cargoCards[id].attributes : {};
-        const fromId = text(attributes.fromNodeId);
-        const toId = text(attributes.toNodeId);
-        if (!fromId || !toId)
-            return [id];
-        return [`${nodeLabels.get(fromId) ?? fromId} → ${nodeLabels.get(toId) ?? toId}`];
-    });
-    return {
-        currentNewsSummary: text(newsAttributes.summary),
-        cargoOfferLabels
-    };
-};
 /** Convert a player-facing session snapshot into a deterministic board view. */
 function projectBoardSession(session) {
     const state = isRecord(session.state) ? session.state : {};
     const publicState = isRecord(state.public) ? state.public : {};
     const board = isRecord(publicState.board) ? publicState.board : {};
     const sessionState = isRecord(publicState.session) ? publicState.session : {};
-    const constructionState = isRecord(publicState.construction) ? publicState.construction : {};
-    const phase = text(sessionState.phase) ?? "unknown";
     const nodes = readNodes(publicState);
-    const vehicles = readVehicles(publicState);
-    const availableActions = readActions(board, phase, readActionAvailability(session.actionAvailability));
-    const deckPresentation = readDeckPresentation(publicState, nodes);
     return {
         nodes,
         edges: readEdges(publicState, nodes),
-        vehicles,
-        teams: readTeams(publicState, vehicles),
+        vehicles: readVehicles(publicState),
+        teams: readTeams(publicState),
         highlights: readHighlights(board),
-        availableActions,
-        actionSections: groupActions(availableActions),
-        log: readLog(publicState),
+        availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
         bounds: readBounds(board, nodes),
-        phase,
-        status: text(sessionState.status) ?? "unknown",
-        constructionMode: text(constructionState.mode),
-        contentMode: text(sessionState.contentMode) ?? "unknown",
-        ...deckPresentation,
+        phase: text(sessionState.phase) ?? "unknown",
         turnNumber: finiteNumber(sessionState.turnNumber) ?? 0
     };
 }
@@ -384,9 +312,12 @@ exports.createCardsMoneyTrainsScene = void 0;
 const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
 const camera_math_ts_1 = __pluginRequire("src/camera-math.ts");
 const board_state_ts_1 = __pluginRequire("src/board-state.ts");
-const DESIGN_WIDTH = 1400;
-const DESIGN_HEIGHT = 1000;
-const BOARD_PADDING = 72;
+// The normative authoring data, source PNG and review annotations all use this
+// exact plane. Keeping the renderer one-to-one prevents a correct imported
+// coordinate from drifting away from the marker printed on the author map.
+const DESIGN_WIDTH = 5079;
+const DESIGN_HEIGHT = 3627;
+const BOARD_PADDING = 0;
 const CAMERA_WORLD = { x: 0, y: 0, width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
 const MAX_CAMERA_ZOOM = 3;
 const WHEEL_ZOOM_STEP = 1.15;
@@ -404,7 +335,6 @@ const createCardsMoneyTrainsScene = (context) => {
     const Phaser = context.Phaser;
     let currentSession = context.session;
     let lastError = null;
-    let disposed = false;
     class CardsMoneyTrainsScene extends Phaser.Scene {
         /**
          * Phaser does not mark a scene active until its `create` callback returns.
@@ -417,6 +347,8 @@ const createCardsMoneyTrainsScene = (context) => {
         overviewActive = true;
         cameraViewport = { width: DESIGN_WIDTH, height: DESIGN_HEIGHT };
         dragState = null;
+        /** Prevent overlapping zones of one bent road from dispatching twice. */
+        pendingHighlights = new Set();
         constructor() {
             super({ key: `cards-money-trains:${context.sceneId}` });
         }
@@ -426,71 +358,18 @@ const createCardsMoneyTrainsScene = (context) => {
             this.load.image("cards-money-trains-board", context.assets.url("board-guinea-optimized"));
         }
         create() {
-            if (disposed)
-                return;
             this.projectionReady = true;
             this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
                 this.stopProjection();
             });
-            this.cameras.main.setBackgroundColor("#e8decb");
-            // One restrained entrance confirms that the working surface is ready.
-            // Phaser owns the tween and removes it with the scene lifecycle.
-            this.cameras.main.fadeIn(180, 232, 222, 203);
+            this.cameras.main.setBackgroundColor("#f3ead8");
             this.configureCameraInteraction();
             this.renderProjection();
         }
-        renderProjection() {
-            if (!this.projectionReady || disposed)
-                return;
-            this.children.removeAll(true);
-            const projection = (0, board_state_ts_1.projectBoardSession)(currentSession);
-            const background = this.add.graphics();
-            background.fillStyle(0xe8decb, 1);
-            background.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
-            if (this.textures.exists("cards-money-trains-board")) {
-                // In map-first mode the scene is the map, not a miniature board inside
-                // a second page. Text, actions and the journal stay in accessible DOM
-                // panels owned by the generic player workspace.
-                this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
-                    .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT)
-                    .setAlpha(0.88);
-            }
-            // Dynamic geometry must remain above the decorative raster. Keeping it
-            // in a separate display object avoids washing roads out under the map.
-            const graphics = this.add.graphics();
-            const toScreen = this.coordinateMapper(projection);
-            this.drawEdges(graphics, projection, toScreen);
-            this.drawNodes(graphics, projection, toScreen);
-            this.drawVehicles(projection, toScreen);
-            // The warning is game content, not a control panel. Keeping it compact
-            // makes the test package unmistakable without sacrificing the map-first
-            // composition that the package is meant to prove.
-            this.add.text(DESIGN_WIDTH / 2, 24, "MOCK · ТЕСТОВЫЕ ДАННЫЕ · НЕ ПУБЛИКОВАТЬ", {
-                color: "#fff8e9",
-                backgroundColor: "#8b2f2fdd",
-                padding: { x: 14, y: 8 },
-                fontFamily: "sans-serif",
-                fontStyle: "bold",
-                fontSize: "20px"
-            }).setOrigin(0.5, 0);
-            if (projection.nodes.length === 0) {
-                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "Ожидаются авторские узлы, координаты и начальная сеть", { color: "#24343d", fontFamily: "sans-serif", fontSize: "26px", align: "center" })
-                    .setOrigin(0.5);
-            }
-            if (lastError) {
-                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 34, lastError, {
-                    color: "#ffffff",
-                    backgroundColor: "#9e2f2f",
-                    padding: { x: 14, y: 8 },
-                    fontFamily: "sans-serif",
-                    fontSize: "18px",
-                    wordWrap: { width: DESIGN_WIDTH - BOARD_PADDING * 2 }
-                }).setOrigin(0.5, 1);
-            }
-        }
         /**
-         * Stop late callbacks and release camera listeners before Phaser releases
-         * scene managers. DOM action controls live in the host and remain separate.
+         * Release scene-owned listeners before Phaser tears down its managers.
+         * Ordinary DOM actions are registered separately and do not depend on this
+         * lifecycle or on the camera being available.
          */
         stopProjection() {
             this.projectionReady = false;
@@ -559,8 +438,8 @@ const createCardsMoneyTrainsScene = (context) => {
             this.applyZoomAt({ x: pointer.x, y: pointer.y }, deltaY < 0 ? WHEEL_ZOOM_STEP : 1 / WHEEL_ZOOM_STEP);
         };
         handlePointerDown = (pointer, currentlyOver) => {
-            // Interactive road and node targets keep their click behavior; only an
-            // empty part of the mock world may initiate camera panning.
+            // A drag starts only on empty world space. Interactive nodes and road
+            // zones keep their existing click behavior and are never stolen by pan.
             if (currentlyOver.length > 0)
                 return;
             this.dragState = { pointerId: pointer.id, x: pointer.x, y: pointer.y };
@@ -596,13 +475,43 @@ const createCardsMoneyTrainsScene = (context) => {
             }
             this.applyCameraView((0, camera_math_ts_1.resizeCameraView)(this.currentCameraView(), previousViewport, nextViewport, CAMERA_WORLD));
         };
+        renderProjection() {
+            if (!this.projectionReady)
+                return;
+            this.children.removeAll(true);
+            const projection = (0, board_state_ts_1.projectBoardSession)(currentSession);
+            const background = this.add.graphics();
+            background.fillStyle(0xf3ead8, 1);
+            background.fillRect(0, 0, DESIGN_WIDTH, DESIGN_HEIGHT);
+            if (this.textures.exists("cards-money-trains-board")) {
+                this.add.image(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "cards-money-trains-board")
+                    .setDisplaySize(DESIGN_WIDTH, DESIGN_HEIGHT);
+            }
+            // Roads and nodes are semantic session data, so they must render above
+            // the decorative map rather than being muted underneath its texture.
+            const graphics = this.add.graphics();
+            const toScreen = this.coordinateMapper(projection);
+            this.drawEdges(graphics, projection, toScreen);
+            this.drawNodes(graphics, projection, toScreen);
+            this.drawVehicles(projection, toScreen);
+            if (projection.nodes.length === 0) {
+                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2, "Ожидаются авторские узлы, координаты и начальная сеть", { color: "#24343d", fontFamily: "sans-serif", fontSize: "84px", align: "center" })
+                    .setOrigin(0.5);
+            }
+            if (lastError) {
+                this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT - 34, lastError, {
+                    color: "#ffffff",
+                    backgroundColor: "#9e2f2f",
+                    padding: { x: 28, y: 18 },
+                    fontFamily: "sans-serif",
+                    fontSize: "60px"
+                }).setOrigin(0.5, 1);
+            }
+        }
         coordinateMapper(projection) {
             const bounds = projection.bounds;
             if (!bounds)
-                return (_point) => ({
-                    x: DESIGN_WIDTH / 2,
-                    y: DESIGN_HEIGHT / 2
-                });
+                return (_point) => ({ x: DESIGN_WIDTH / 2, y: DESIGN_HEIGHT / 2 });
             const width = Math.max(1, bounds.maxX - bounds.minX);
             const height = Math.max(1, bounds.maxY - bounds.minY);
             const scale = Math.min((DESIGN_WIDTH - BOARD_PADDING * 2) / width, (DESIGN_HEIGHT - BOARD_PADDING * 2) / height);
@@ -620,16 +529,31 @@ const createCardsMoneyTrainsScene = (context) => {
                 .filter((item) => item.targetType === "edge")
                 .map((item) => [item.targetId, item]));
             for (const edge of projection.edges) {
-                const from = toScreen(edge.from);
-                const to = toScreen(edge.to);
+                const points = edge.points.map(toScreen);
                 const highlight = edgeHighlights.get(edge.id);
-                graphics.lineStyle(highlight ? 9 : 5, edgeColor(edge), 0.95);
-                graphics.lineBetween(from.x, from.y, to.x, to.y);
-                if (highlight?.actionId && !context.isInteractionPending()) {
-                    const hitArea = this.add.zone((from.x + to.x) / 2, (from.y + to.y) / 2, Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y), 48);
+                graphics.lineStyle(highlight ? 10 : 6, edgeColor(edge), 0.95);
+                for (let index = 1; index < points.length; index += 1) {
+                    const from = points[index - 1];
+                    const to = points[index];
+                    if (!from || !to)
+                        continue;
+                    const length = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
+                    // A repeated portal is harmless route data but cannot form a useful
+                    // line or hit target, so it is intentionally skipped.
+                    if (length === 0)
+                        continue;
+                    graphics.lineBetween(from.x, from.y, to.x, to.y);
+                    if (!highlight?.actionId || context.isInteractionPending())
+                        continue;
+                    const hitArea = this.add.zone((from.x + to.x) / 2, (from.y + to.y) / 2, length, 28);
                     hitArea.setRotation(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y));
                     hitArea.setInteractive({ useHandCursor: true });
-                    hitArea.on("pointerdown", () => this.dispatchHighlight(highlight));
+                    hitArea.on("pointerdown", (_pointer, _localX, _localY, event) => {
+                        // Adjacent segment zones overlap at a bend. Stop propagation and
+                        // use the pending guard so one physical click remains one intent.
+                        event?.stopPropagation?.();
+                        this.dispatchHighlight(highlight);
+                    });
                 }
             }
         }
@@ -644,25 +568,26 @@ const createCardsMoneyTrainsScene = (context) => {
                 graphics.lineStyle(highlight ? 7 : 4, highlight ? 0x2d8f6f : 0x263b46, 1);
                 graphics.fillCircle(position.x, position.y, node.objectType === "transport.waypoint" ? 15 : 23);
                 graphics.strokeCircle(position.x, position.y, node.objectType === "transport.waypoint" ? 15 : 23);
-                this.add.text(position.x, position.y - 34, node.label, {
+                const label = this.add.text(position.x, position.y - 34, node.label, {
                     color: "#17252d",
                     backgroundColor: "#fffaf0cc",
                     padding: { x: 5, y: 3 },
                     fontFamily: "sans-serif",
                     fontSize: "18px"
                 }).setOrigin(0.5, 1);
-                if (highlight?.actionId && !context.isInteractionPending()) {
-                    // The transparent zone is at least 52×52 design pixels, which keeps
-                    // the target usable on touch after the FIT scale is applied.
-                    const hitArea = this.add.zone(position.x, position.y, 52, 52);
-                    hitArea.setInteractive({ useHandCursor: true });
-                    hitArea.on("pointerdown", () => this.dispatchHighlight(highlight));
+                if (highlight?.actionId) {
+                    label.setInteractive({ useHandCursor: true });
+                    label.on("pointerdown", () => this.dispatchHighlight(highlight));
                 }
             }
         }
         dispatchHighlight(highlight) {
-            if (!highlight.actionId || context.isInteractionPending())
+            const pendingKey = `${highlight.targetType}:${highlight.targetId}:${highlight.actionId ?? ""}`;
+            if (!highlight.actionId
+                || context.isInteractionPending()
+                || this.pendingHighlights.has(pendingKey))
                 return;
+            this.pendingHighlights.add(pendingKey);
             void context.dispatchAction(highlight.actionId, { ...highlight.params })
                 .then(() => { lastError = null; })
                 .catch((error) => {
@@ -670,7 +595,8 @@ const createCardsMoneyTrainsScene = (context) => {
                 // refusal leaves the current snapshot in place and only adds feedback.
                 lastError = errorText(error);
                 this.renderProjection();
-            });
+            })
+                .finally(() => { this.pendingHighlights.delete(pendingKey); });
         }
         drawVehicles(projection, toScreen) {
             const nodes = new Map(projection.nodes.map((node) => [node.id, node]));
@@ -696,16 +622,11 @@ const createCardsMoneyTrainsScene = (context) => {
     return {
         scene,
         updateSession(session) {
-            if (disposed)
-                return;
             currentSession = session;
             lastError = null;
             scene.renderProjection();
         },
         destroy() {
-            if (disposed)
-                return;
-            disposed = true;
             lastError = null;
             scene.stopProjection();
             if (scene.sys?.isActive()) {
@@ -727,12 +648,12 @@ exports.createCardsMoneyTrainsScene = createCardsMoneyTrainsScene;
 __pluginDefine("src/camera-math.ts", (exports, module) => {
 "use strict";
 /**
- * Pure camera calculations for the Cards Money Trains mock world.
+ * Pure camera calculations for the Cards Money Trains world.
  *
- * This is deliberately game-owned rather than platform-owned: the host only
- * supplies Phaser, while this mock plugin proves the same public camera
- * behaviour with replaceable test content. The calculations stay browser-free
- * so they can be verified without WebGL or a DOM.
+ * Phaser owns rendering and input, while this module owns deterministic
+ * geometry only. Keeping the calculations browser-free makes pointer-centred
+ * zoom, bounded panning, overview reset, and resize preservation cheap to
+ * verify without starting WebGL or a DOM.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.fitCameraZoom = fitCameraZoom;
@@ -747,7 +668,13 @@ const safeDimension = (value) => Math.max(1, value);
 function fitCameraZoom(viewport, world) {
     return Math.min(safeDimension(viewport.width) / safeDimension(world.width), safeDimension(viewport.height) / safeDimension(world.height));
 }
-/** Match Phaser's centred-camera bounds for one axis. */
+/**
+ * Match Phaser's centred-camera bounds for one axis.
+ *
+ * Phaser zooms around the viewport centre, so `scrollX = 0` is only the
+ * world's left edge at zoom 1. The offset below is what prevents blank space
+ * from appearing at other zoom levels when `Camera.setBounds` is also active.
+ */
 function clampScrollAxis(value, viewportSize, worldStart, worldSize, zoom) {
     const visibleSize = safeDimension(viewportSize) / zoom;
     const minScroll = worldStart + (visibleSize - safeDimension(viewportSize)) / 2;
@@ -772,7 +699,9 @@ function overviewCameraView(viewport, world) {
         zoom
     }, viewport, world);
 }
-/** Zoom around a screen point while keeping its world coordinate stable. */
+/**
+ * Zoom around a screen point while keeping the same world point underneath it.
+ */
 function zoomCameraViewAtPoint(view, pointer, requestedZoom, viewport, world, limits) {
     const zoom = clamp(requestedZoom, limits.min, limits.max);
     const originX = viewport.width / 2;
@@ -793,7 +722,9 @@ function panCameraViewBy(view, screenDelta, viewport, world) {
         zoom: view.zoom
     }, viewport, world);
 }
-/** Preserve the world point at the viewport centre after a logical resize. */
+/**
+ * Preserve the world point at the viewport centre after a logical resize.
+ */
 function resizeCameraView(view, previousViewport, nextViewport, world) {
     const centreX = view.scrollX + previousViewport.width / 2;
     const centreY = view.scrollY + previousViewport.height / 2;

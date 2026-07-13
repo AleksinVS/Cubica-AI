@@ -117,3 +117,26 @@ test("deck-only manifests receive the runtime-owned replay seed", () => {
     });
   }
 });
+
+test("random-tie road planning receives runtime-owned replay state before its first action", () => {
+  const manifest = createManifest();
+  // The initializer only needs to detect the schema-validated capability here;
+  // geometric contract validation is covered by the platform fixture.
+  (manifest as any).networkModels = {
+    grid: { roadPlanning: { tieBreak: "session-random" } }
+  };
+  manifest.actions = {};
+  manifest.state.secret = {};
+
+  const state = initializeTurnBasedSessionState(
+    manifest,
+    declaredState(manifest),
+    { randomSeed: "0123456789abcdeffedcba9876543210" }
+  );
+
+  assert.deepEqual((state.secret as Record<string, unknown>).random, {
+    alg: "xoshiro128ss-v1",
+    seed: "0123456789abcdeffedcba9876543210",
+    counter: 0
+  });
+});

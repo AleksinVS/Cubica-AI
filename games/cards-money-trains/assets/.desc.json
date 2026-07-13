@@ -1,3 +1,3 @@
 {
-  "description": "Game-owned delivery assets use the normative ADR-063 assets.json registry. Governance metadata is intentionally stored outside this delivery directory in the game-root asset-provenance.json file."
+  ".": "Game-owned delivery assets use the normative ADR-063 assets.json registry. Governance metadata is intentionally stored outside this delivery directory in the game-root asset-provenance.json file."
 }

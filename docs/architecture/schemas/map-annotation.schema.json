@@ -1,0 +1,215 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/map-annotation.schema.json",
+  "title": "Transport map annotation",
+  "description": "Общий контракт ручной аннотации транспортной сети поверх изображения. Изображение помогает поставить координаты, но не является источником игровых правил.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "status",
+    "sourceImage",
+    "coordinateSystem",
+    "nodes",
+    "edges",
+    "regions"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "1.0" },
+    "status": { "enum": ["template", "review-draft", "mock", "author-confirmed"] },
+    "warning": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Явная маркировка происхождения и допустимого использования данных."
+    },
+    "reviewIssues": {
+      "type": "array",
+      "description": "Нерешённые вопросы ручной проверки. Они не становятся игровыми правилами и должны быть закрыты до публикации.",
+      "items": { "$ref": "#/definitions/reviewIssue" }
+    },
+    "sourceImage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "pixelWidth", "pixelHeight"],
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "pixelWidth": { "type": "integer", "minimum": 1 },
+        "pixelHeight": { "type": "integer", "minimum": 1 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "rightsConfirmed": { "type": "boolean" }
+      }
+    },
+    "coordinateSystem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["origin", "units", "width", "height"],
+      "properties": {
+        "origin": { "const": "top-left" },
+        "units": { "const": "design-pixel" },
+        "width": { "type": "integer", "minimum": 320, "maximum": 10000 },
+        "height": { "type": "integer", "minimum": 320, "maximum": 10000 }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/edge" }
+    },
+    "regions": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/region" }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "const": "review-draft" } }
+      },
+      "then": {},
+      "else": {
+        "type": "object",
+        "properties": {
+          "nodes": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "allOf": [
+                { "$ref": "#/definitions/node" },
+                {
+                  "type": "object",
+                  "properties": { "state": { "enum": ["open", "closed"] } }
+                }
+              ]
+            }
+          },
+          "edges": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                { "$ref": "#/definitions/edge" },
+                {
+                  "type": "object",
+                  "properties": { "state": { "enum": ["building", "open", "blocked"] } }
+                }
+              ]
+            }
+          },
+          "regions": { "type": "array", "minItems": 1 }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": ["status"],
+        "properties": {
+          "status": { "enum": ["mock", "author-confirmed"] }
+        }
+      },
+      "then": {
+        "properties": {
+          "reviewIssues": { "type": "array", "maxItems": 0 }
+        }
+      }
+    }
+  ],
+  "definitions": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._:-]{0,127}$"
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number", "minimum": 0 },
+        "y": { "type": "number", "minimum": 0 }
+      }
+    },
+    "reviewFields": {
+      "type": "object",
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Оценка уверенности оператора от 0 до 1; она не заменяет ручное подтверждение."
+        },
+        "reviewNote": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Короткое пояснение того, что ещё нужно проверить."
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "kind", "position", "state"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "kind": { "enum": ["terminal", "waypoint"] },
+        "position": { "$ref": "#/definitions/point" },
+        "state": { "enum": ["open", "closed", "unknown"] },
+        "evidence": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/reviewFields/properties/confidence" },
+        "reviewNote": { "$ref": "#/definitions/reviewFields/properties/reviewNote" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "fromNodeId", "toNodeId", "state"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "fromNodeId": { "$ref": "#/definitions/id" },
+        "toNodeId": { "$ref": "#/definitions/id" },
+        "state": { "enum": ["building", "open", "blocked", "unknown"] },
+        "evidence": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/reviewFields/properties/confidence" },
+        "reviewNote": { "$ref": "#/definitions/reviewFields/properties/reviewNote" }
+      }
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "countryId", "polygon"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "countryId": { "$ref": "#/definitions/id" },
+        "polygon": {
+          "type": "array",
+          "minItems": 4,
+          "items": { "$ref": "#/definitions/point" },
+          "description": "Замкнутый контур: последняя точка должна совпадать с первой."
+        },
+        "evidence": { "type": "string", "minLength": 1 },
+        "confidence": { "$ref": "#/definitions/reviewFields/properties/confidence" },
+        "reviewNote": { "$ref": "#/definitions/reviewFields/properties/reviewNote" }
+      }
+    },
+    "reviewIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["message"],
+      "properties": {
+        "code": { "$ref": "#/definitions/id" },
+        "message": { "type": "string", "minLength": 1 },
+        "targetIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/id" }
+        }
+      }
+    }
+  }
+}

@@ -38,6 +38,8 @@
     "verify:player-core-seam": "node scripts/ci/validate-player-core-seam.js",
     "verify:metric-jsonlogic-subset": "node scripts/ci/validate-metric-jsonlogic-subset.js",
     "verify:game-assets": "node --test scripts/ci/validate-game-assets.test.js && node scripts/ci/validate-game-assets.js",
+    "generate:cards-money-trains-vector-review": "node games/cards-money-trains/tools/extract-vector-map-review.mjs",
+    "verify:map-annotations": "node --test scripts/map-annotation/map-annotation.test.mjs games/cards-money-trains/tools/map-annotation.test.mjs games/cards-money-trains/tools/extract-vector-map-review.test.mjs",
     "generate:contracts": "node scripts/manifest-tools/generate-contracts-types.cjs",
     "verify:contracts-schema-parity": "node scripts/ci/validate-contracts-schema-parity.js",
     "verify:contracts-manifest": "npm run typecheck --workspace @cubica/contracts-manifest && npm test --workspace @cubica/contracts-manifest",

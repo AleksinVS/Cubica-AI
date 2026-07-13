@@ -4,8 +4,9 @@ import ajvErrorsLib from "ajv-errors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import type { GameManifest } from "@cubica/contracts-manifest";
+import type { GameManifest, GameManifestTransportNetworkModel } from "@cubica/contracts-manifest";
 import { ManifestValidationError } from "../errors.ts";
+import { compileRegionRoadPlanning } from "../runtime/regionRoadPlanner.ts";
 
 const Ajv = (AjvLib as any).default || AjvLib;
 const addFormats = (addFormatsLib as any).default || addFormatsLib;
@@ -57,6 +58,20 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
   const networkModels = isRecord(manifest.networkModels) ? manifest.networkModels : {};
   for (const [networkId, rawNetwork] of Object.entries(networkModels)) {
     const network = rawNetwork as JsonRecord;
+    if (network.roadPlanning !== undefined) {
+      try {
+        // JSON Schema owns the declared shape. This companion check verifies
+        // the cross-field invariant that compiler-derived portals and hash
+        // exactly match the sibling region polygons.
+        compileRegionRoadPlanning(network as unknown as GameManifestTransportNetworkModel);
+      } catch (error) {
+        throw new ManifestValidationError(
+          `Network "${networkId}" has invalid road-planning geometry: ${
+            error instanceof Error ? error.message : String(error)
+          }`
+        );
+      }
+    }
     for (const [field, collectionField] of [
       ["waypointObjectType", "nodeCollection"],
       ["edgeObjectType", "edgeCollection"]
