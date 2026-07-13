@@ -10,7 +10,10 @@ import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import type { GameSession } from "@/types/game-state";
 import { createEmptyGameAssetResolver } from "@/lib/game-asset-resolver";
-import { registerPhaserSceneFactory } from "@/plugins/phaser-scene-registry";
+import {
+  registerAccessibleBoardActionsProvider,
+  registerPhaserSceneFactory
+} from "@/plugins/phaser-scene-registry";
 import { InteractiveBoardSurface } from "./interactive-board-surface";
 
 const phaserMock = vi.hoisted(() => {
@@ -75,6 +78,12 @@ afterEach(() => {
 describe("InteractiveBoardSurface", () => {
   it("mounts once, updates the handle, and destroys plugin resources before Phaser", async () => {
     const updateSession = vi.fn();
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, (current) => ([{
+      id: `advance-${current.version.lastEventSequence}`,
+      label: `Перейти к соседнему узлу · ${current.version.lastEventSequence}`,
+      actionId: "board.move",
+      params: { targetNodeId: "node-b" }
+    }]));
     const disposeRegistration = registerPhaserSceneFactory(content.gameId, (context) => ({
       scene: new context.Phaser.Scene(),
       updateSession,
@@ -83,10 +92,9 @@ describe("InteractiveBoardSurface", () => {
       },
       getAccessibleActions(current) {
         return [{
-          id: `advance-${current.version.lastEventSequence}`,
-          label: "Перейти к соседнему узлу",
-          actionId: "board.move",
-          params: { targetNodeId: "node-b" }
+          id: `legacy-${current.version.lastEventSequence}`,
+          label: "Устаревший callback сцены",
+          actionId: "legacy.move"
         }];
       }
     }));
@@ -102,7 +110,7 @@ describe("InteractiveBoardSurface", () => {
       />
     );
 
-    await screen.findByRole("button", { name: "Перейти к соседнему узлу" });
+    await screen.findByRole("button", { name: "Перейти к соседнему узлу · 0" });
     expect(phaserMock.configs).toHaveLength(1);
     expect(updateSession).toHaveBeenCalledWith(session(0));
 
@@ -117,11 +125,13 @@ describe("InteractiveBoardSurface", () => {
       />
     );
     await waitFor(() => expect(updateSession).toHaveBeenCalledWith(session(1)));
+    await screen.findByRole("button", { name: "Перейти к соседнему узлу · 1" });
     expect(phaserMock.configs).toHaveLength(1);
 
     view.unmount();
     expect(phaserMock.lifecycle.slice(-2)).toEqual(["handle:destroy", "game:destroy:true"]);
     disposeRegistration();
+    disposeProvider();
   });
 
   it("dispatches the DOM alternative and reports a rejected runtime action", async () => {
@@ -176,6 +186,142 @@ describe("InteractiveBoardSurface", () => {
     );
 
     expect(screen.getByRole("alert").textContent).toContain("Игра не предоставила сцену");
+  });
+
+  it("keeps DOM actions usable when Phaser scene initialization fails", async () => {
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
+      id: "safe-fallback",
+      label: "Доступное действие без Phaser",
+      actionId: "board.safe-action"
+    }]));
+    const disposeScene = registerPhaserSceneFactory(content.gameId, () => ({
+      // The invalid scene reproduces a failed engine/plugin initialization
+      // after the independent DOM projection has already been registered.
+      scene: {},
+      updateSession() {},
+      destroy() {}
+    }));
+    const dispatchAction = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    const action = await screen.findByRole("button", { name: "Доступное действие без Phaser" });
+    await screen.findByRole("alert");
+    expect(screen.getByRole("alert").textContent).toContain("несовместимую сцену Phaser");
+
+    fireEvent.click(action);
+    await waitFor(() => expect(dispatchAction).toHaveBeenCalledWith("board.safe-action", {}));
+
+    disposeScene();
+    disposeProvider();
+  });
+
+  it("updates DOM actions when an already mounted Phaser scene rejects a snapshot", async () => {
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, (current) => ([{
+      id: `safe-${current.version.lastEventSequence}`,
+      label: `Независимое действие · ${current.version.lastEventSequence}`,
+      actionId: "board.safe-action"
+    }]));
+    const disposeScene = registerPhaserSceneFactory(content.gameId, (context) => ({
+      scene: new context.Phaser.Scene(),
+      updateSession(current) {
+        if (current.version.lastEventSequence === 1) {
+          throw new Error("Сцена не приняла новый снимок");
+        }
+      },
+      destroy() {}
+    }));
+    const dispatchAction = vi.fn().mockRejectedValue(new Error("Старое отклонение действия"));
+
+    const view = render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Независимое действие · 0" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("Старое отклонение действия");
+    view.rerender(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(1)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    await screen.findByRole("button", { name: "Независимое действие · 1" });
+    expect(screen.getByRole("alert").textContent).toContain("Сцена не приняла новый снимок");
+
+    view.unmount();
+    disposeScene();
+    disposeProvider();
+  });
+
+  it("clears a provider diagnostic after a newer snapshot projects successfully", async () => {
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, (current) => {
+      if (current.version.lastEventSequence === 0) {
+        throw new Error("Поставщик не построил действия");
+      }
+      return [{
+        id: "recovered-action",
+        label: "Действие восстановлено",
+        actionId: "board.recovered-action"
+      }];
+    });
+    const disposeScene = registerPhaserSceneFactory(content.gameId, (context) => ({
+      scene: new context.Phaser.Scene(),
+      updateSession() {},
+      destroy() {}
+    }));
+
+    const view = render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Поставщик не построил действия"
+    );
+    view.rerender(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(1)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn().mockResolvedValue(undefined)}
+      />
+    );
+
+    await screen.findByRole("button", { name: "Действие восстановлено" });
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    view.unmount();
+    disposeScene();
+    disposeProvider();
   });
 
   it("blocks DOM and scene dispatch while a previous action is pending", async () => {

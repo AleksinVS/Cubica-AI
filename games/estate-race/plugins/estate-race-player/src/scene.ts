@@ -7,18 +7,18 @@
  */
 
 import type {
-  AccessibleBoardAction,
   InteractiveBoardSceneHandle,
   PhaserSceneContext,
   PhaserSceneFactory
 } from "@cubica/player-web/plugin-api";
 
+import { provideEstateRaceAccessibleBoardActions } from "./accessible-actions.ts";
 import {
   projectEstateRaceSession,
   type EstateActionView,
   type EstateBoardProjection,
   type EstateCellView
-} from "./board-state";
+} from "./board-state.ts";
 
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
@@ -268,8 +268,6 @@ export const createEstateRaceScene: PhaserSceneFactory = (
       previousProjection = null;
       if (scene.sys?.isActive()) scene.children.removeAll(true);
     },
-    getAccessibleActions(session): readonly AccessibleBoardAction[] {
-      return projectEstateRaceSession(session).availableActions.map((action) => ({ ...action }));
-    }
+    getAccessibleActions: provideEstateRaceAccessibleBoardActions
   };
 };

@@ -1046,9 +1046,13 @@ export interface GameUiComponent<
    */
   if?: string;
   /**
-   * Component-specific options are optional in ui-manifest.schema.json.
-   * Structural containers may therefore omit this object entirely; renderers
-   * must treat the omission as an empty object.
+   * Structural containers may omit component-specific options; renderers must
+   * treat that omission as an empty object. The JSON Schema requires `props`
+   * and the minimum meaningful field for built-in leaf components (for
+   * example, `caption` for a button and `html` for rich text). This broad base
+   * interface stays optional because the concrete prop requirement depends on
+   * the discriminating `type` value and custom extension components remain
+   * schema-defined by their own contracts.
    */
   props?: TProps;
   children?: Array<GameUiComponent>;

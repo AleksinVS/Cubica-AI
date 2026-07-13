@@ -42,19 +42,29 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
  * Resolves the participant attributed to the next local gameplay action.
  *
  * A hotseat session (several people sharing one browser) publishes the current
- * participant in `public.turn.activePlayerId`. That server-confirmed value must
- * win over the launch identity so a single player-web instance can alternate
- * between participants. Games without a turn model keep their configured
- * player id, preserving the existing single-player and portal launch paths.
+ * participant in `public.turn.activePlayerId`. Its shared launch identity is
+ * absent from `state.players`, so the server-confirmed active participant wins.
+ * A personal/network launch keeps its configured identity when that identity is
+ * an authoritative player key, preventing the browser from impersonating the
+ * active opponent. Games without a turn model also keep the configured id.
  */
 export function resolveRuntimeActorPlayerId(
   session: GameSession | null,
   configuredPlayerId: string
 ): string {
   const state = session?.state;
+  const players = isRecord(state) ? state.players : undefined;
   const publicState = isRecord(state) ? state.public : undefined;
   const turn = isRecord(publicState) ? publicState.turn : undefined;
   const activePlayerId = isRecord(turn) ? turn.activePlayerId : undefined;
+
+  // A configured identity that exists in the authoritative participant map is
+  // a personal/network player and must never impersonate the active opponent.
+  // Hotseat launches use a host identity that is absent from this map, so only
+  // those sessions intentionally follow the currently active participant.
+  if (isRecord(players) && Object.hasOwn(players, configuredPlayerId)) {
+    return configuredPlayerId;
+  }
 
   return typeof activePlayerId === "string" && activePlayerId.trim() !== ""
     ? activePlayerId

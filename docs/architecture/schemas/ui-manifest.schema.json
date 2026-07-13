@@ -340,6 +340,189 @@
           "if": {
             "properties": {
               "type": {
+                "const": "buttonComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": [
+                  "caption"
+                ],
+                "properties": {
+                  "caption": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "richTextComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": [
+                  "html"
+                ],
+                "properties": {
+                  "html": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "imageComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "required": [
+                  "src"
+                ],
+                "properties": {
+                  "src": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "gameVariableComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "anyOf": [
+                  {
+                    "required": ["metricId"],
+                    "properties": {
+                      "metricId": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["caption"],
+                    "properties": {
+                      "caption": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["value"],
+                    "properties": {
+                      "value": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "cardComponent"
+              }
+            },
+            "required": [
+              "type"
+            ]
+          },
+          "then": {
+            "required": [
+              "props"
+            ],
+            "properties": {
+              "props": {
+                "type": "object",
+                "anyOf": [
+                  {
+                    "required": ["text"],
+                    "properties": {
+                      "text": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["title"],
+                    "properties": {
+                      "title": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["summary"],
+                    "properties": {
+                      "summary": { "type": "string", "minLength": 1 }
+                    }
+                  },
+                  {
+                    "required": ["backText"],
+                    "properties": {
+                      "backText": { "type": "string", "minLength": 1 }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "type": {
                 "const": "interactiveBoardSurface"
               }
             },

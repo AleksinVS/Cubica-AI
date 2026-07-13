@@ -3,7 +3,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import { projectBoardSession } from "./board-state.ts";
+import { activate } from "./index.ts";
 
 test("projects only provided topology, geometry, actions, and team balances", () => {
   const projection = projectBoardSession({
@@ -171,4 +173,53 @@ test("ignores malformed optional facilitator fields without inventing values", (
   assert.deepEqual(projection.log, []);
   assert.equal(projection.availableActions.length, 1);
   assert.equal(projection.availableActions[0]?.disabledReason, "Не хватает данных");
+});
+
+test("provides controls using the server-projected availability", () => {
+  const session = {
+    actionAvailability: [{
+      actionId: "construction.road.build",
+      status: "unavailable",
+      reasonCode: "state_condition_failed"
+    }],
+    state: {
+      public: {
+        session: { phase: "construction" },
+        board: {
+          availableActions: [{
+            id: "build-road",
+            label: "Построить дорогу",
+            actionId: "construction.road.build",
+            params: { edgeId: "edge-1" },
+            disabledReason: "Сначала выберите конечный узел."
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideCardsMoneyTrainsAccessibleBoardActions>[0];
+
+  assert.deepEqual(provideCardsMoneyTrainsAccessibleBoardActions(session), [{
+    id: "build-road",
+    label: "Построить дорогу",
+    description: "Сначала выберите конечный узел.",
+    actionId: "construction.road.build",
+    params: { edgeId: "edge-1" },
+    disabled: true
+  }]);
+});
+
+test("keeps an API 2.0 plugin loadable when an older host lacks the new capability", () => {
+  let disposed = false;
+  const legacyApi = {
+    registerGameConfigData() {},
+    registerGameConfigFactory() {},
+    registerPhaserSceneFactory() {
+      return () => { disposed = true; };
+    }
+  } as unknown as Parameters<typeof activate>[0];
+
+  const dispose = activate(legacyApi);
+  dispose();
+
+  assert.equal(disposed, true);
 });

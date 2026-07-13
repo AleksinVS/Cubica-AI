@@ -35,6 +35,8 @@ export interface RuntimeApiServerOptions {
   port?: number;
   /** Explicit dev/test seam; production resolves and validates environment config. */
   sessionStore?: SessionStorePort<RuntimeState>;
+  /** Deterministic-test seam; never populated from an HTTP request or environment variable. */
+  createSessionRandomSeed?: () => string;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile">;
 }
@@ -76,7 +78,10 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
   const assetContentService = options.assetContentService ?? contentService;
   const sessionStore = options.sessionStore ?? createSessionStoreFromEnvironment();
-  const sessionService = new SessionService({ sessionStore });
+  const sessionService = new SessionService({
+    sessionStore,
+    createSessionRandomSeed: options.createSessionRandomSeed
+  });
   const runtimeService = new RuntimeService();
   const agentTurnService = new AgentTurnService();
   let activePort = port;

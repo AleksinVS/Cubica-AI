@@ -23,18 +23,179 @@ __pluginDefine("src/index.ts", (exports, module) => {
  * ownership optimistically.
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createEstateRaceScene = exports.projectEstateRaceSession = exports.ESTATE_RACE_PLAYER_PLUGIN_ID = exports.ESTATE_RACE_GAME_ID = void 0;
+exports.createEstateRaceScene = exports.provideEstateRaceAccessibleBoardActions = exports.projectEstateRaceSession = exports.ESTATE_RACE_PLAYER_PLUGIN_ID = exports.ESTATE_RACE_GAME_ID = void 0;
 exports.activate = activate;
-const scene_1 = __pluginRequire("src/scene.ts");
+const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
+const scene_ts_1 = __pluginRequire("src/scene.ts");
 exports.ESTATE_RACE_GAME_ID = "estate-race";
 exports.ESTATE_RACE_PLAYER_PLUGIN_ID = "estate-race-player";
-var board_state_1 = __pluginRequire("src/board-state.ts");
-Object.defineProperty(exports, "projectEstateRaceSession", { enumerable: true, get: function () { return board_state_1.projectEstateRaceSession; } });
-var scene_2 = __pluginRequire("src/scene.ts");
-Object.defineProperty(exports, "createEstateRaceScene", { enumerable: true, get: function () { return scene_2.createEstateRaceScene; } });
-/** Register this game's scene and return its narrowly scoped disposer. */
+var board_state_ts_1 = __pluginRequire("src/board-state.ts");
+Object.defineProperty(exports, "projectEstateRaceSession", { enumerable: true, get: function () { return board_state_ts_1.projectEstateRaceSession; } });
+var accessible_actions_ts_2 = __pluginRequire("src/accessible-actions.ts");
+Object.defineProperty(exports, "provideEstateRaceAccessibleBoardActions", { enumerable: true, get: function () { return accessible_actions_ts_2.provideEstateRaceAccessibleBoardActions; } });
+var scene_ts_2 = __pluginRequire("src/scene.ts");
+Object.defineProperty(exports, "createEstateRaceScene", { enumerable: true, get: function () { return scene_ts_2.createEstateRaceScene; } });
+/** Register both independent host controls and the Phaser scene. */
 function activate(api) {
-    return api.registerPhaserSceneFactory(exports.ESTATE_RACE_GAME_ID, scene_1.createEstateRaceScene);
+    // Optional chaining keeps a newly published API 2.0 bundle loadable by an
+    // older API 2.0 host. Such a host falls back to the deprecated scene callback.
+    const disposeActions = api.registerAccessibleBoardActionsProvider?.(exports.ESTATE_RACE_GAME_ID, accessible_actions_ts_1.provideEstateRaceAccessibleBoardActions) ?? (() => { });
+    const disposeScene = api.registerPhaserSceneFactory(exports.ESTATE_RACE_GAME_ID, scene_ts_1.createEstateRaceScene);
+    return () => {
+        // Dispose in reverse registration order so neither contribution from an
+        // older preview bundle can remove a newer bundle's registration.
+        disposeScene();
+        disposeActions();
+    };
+}
+
+});
+__pluginDefine("src/accessible-actions.ts", (exports, module) => {
+"use strict";
+/**
+ * Accessible action projection for the Estate Race board.
+ *
+ * This provider deliberately reads the same server-owned public projection as
+ * the Phaser scene. Keeping it independent from scene construction lets the
+ * host render keyboard controls even when the visual engine is unavailable.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.provideEstateRaceAccessibleBoardActions = void 0;
+const board_state_ts_1 = __pluginRequire("src/board-state.ts");
+/** Copy one server-declared action into the public host contribution shape. */
+const toAccessibleAction = (action) => ({
+    id: action.id,
+    label: action.label,
+    actionId: action.actionId,
+    ...(action.description === undefined ? {} : { description: action.description }),
+    ...(action.params === undefined ? {} : { params: { ...action.params } }),
+    ...(action.disabled === undefined ? {} : { disabled: action.disabled })
+});
+/**
+ * Return only actions present in the authoritative player-facing snapshot.
+ * No legality, price, phase, or turn rule is inferred in the browser.
+ */
+const provideEstateRaceAccessibleBoardActions = (session) => (0, board_state_ts_1.projectEstateRaceSession)(session).availableActions.map(toAccessibleAction);
+exports.provideEstateRaceAccessibleBoardActions = provideEstateRaceAccessibleBoardActions;
+
+});
+__pluginDefine("src/board-state.ts", (exports, module) => {
+"use strict";
+/**
+ * Safe public-snapshot projection for the Estate Race field.
+ *
+ * Projection means a read-only view prepared for drawing. The functions below
+ * deliberately do not decide whether buying, paying or finishing is legal.
+ * Runtime API publishes both board controls and canonical action availability;
+ * the plugin only combines and displays those server-owned declarations.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.projectEstateRaceSession = projectEstateRaceSession;
+const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
+const finiteNumber = (value, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
+const text = (value, fallback) => typeof value === "string" && value.trim().length > 0 ? value : fallback;
+const readCells = (publicState) => {
+    const objects = isRecord(publicState.objects) ? publicState.objects : {};
+    const cells = isRecord(objects.boardCells) ? objects.boardCells : {};
+    return Object.entries(cells).flatMap(([id, raw]) => {
+        if (!isRecord(raw))
+            return [];
+        const attributes = isRecord(raw.attributes) ? raw.attributes : {};
+        const kind = attributes.kind === "start" || attributes.kind === "estate" || attributes.kind === "landmark"
+            ? attributes.kind
+            : "landmark";
+        return [{
+                id,
+                index: finiteNumber(attributes.index),
+                label: text(attributes.label, id),
+                shortLabel: text(attributes.shortLabel, text(attributes.label, id)),
+                kind,
+                x: finiteNumber(attributes.x),
+                y: finiteNumber(attributes.y),
+                width: finiteNumber(attributes.width, 220),
+                height: finiteNumber(attributes.height, 140),
+                price: typeof attributes.price === "number" ? attributes.price : null,
+                rent: typeof attributes.rent === "number" ? attributes.rent : null,
+                ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
+            }];
+    }).sort((left, right) => left.index - right.index);
+};
+const readPlayers = (state, activePlayerId) => {
+    const players = isRecord(state.players) ? state.players : {};
+    return Object.entries(players).flatMap(([id, raw], index) => {
+        if (!isRecord(raw))
+            return [];
+        const metrics = isRecord(raw.metrics) ? raw.metrics : {};
+        return [{
+                id,
+                label: `Игрок ${index + 1}`,
+                cash: finiteNumber(metrics.cash),
+                position: finiteNumber(metrics.position),
+                active: id === activePlayerId
+            }];
+    });
+};
+const serverUnavailableReason = (reasonCode) => {
+    if (reasonCode === "role_not_allowed")
+        return "Действие недоступно для текущей роли.";
+    if (reasonCode === "runtime_unsupported")
+        return "Действие не поддерживается игровой системой.";
+    return "Действие недоступно в текущем состоянии игры.";
+};
+const readActionAvailability = (value) => {
+    const entries = Array.isArray(value) ? value : [];
+    return new Map(entries.flatMap((entry) => {
+        if (!isRecord(entry) || typeof entry.actionId !== "string")
+            return [];
+        return [[entry.actionId, entry]];
+    }));
+};
+const readActions = (board, availability) => {
+    if (!Array.isArray(board.availableActions))
+        return [];
+    return board.availableActions.flatMap((raw, index) => {
+        if (!isRecord(raw) || typeof raw.actionId !== "string" || typeof raw.label !== "string")
+            return [];
+        const projectedAvailability = availability.get(raw.actionId);
+        const serverDisabled = projectedAvailability?.status === "unavailable";
+        const authoredDisabledReason = typeof raw.disabledReason === "string"
+            ? raw.disabledReason
+            : typeof raw.reason === "string" ? raw.reason : undefined;
+        return [{
+                id: text(raw.id, `action-${index}`),
+                label: raw.label,
+                description: serverDisabled
+                    ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
+                    : typeof raw.description === "string" ? raw.description : undefined,
+                actionId: raw.actionId,
+                params: isRecord(raw.params) ? raw.params : undefined,
+                disabled: raw.disabled === true || serverDisabled
+            }];
+    });
+};
+const readRoll = (board) => {
+    if (!isRecord(board.lastRoll) || !Array.isArray(board.lastRoll.values))
+        return null;
+    const values = board.lastRoll.values.filter((value) => typeof value === "number" && Number.isSafeInteger(value));
+    const total = finiteNumber(board.lastRoll.total, values.reduce((sum, value) => sum + value, 0));
+    return { values, total, isDouble: board.lastRoll.isDouble === true };
+};
+/** Convert a player-facing session snapshot to deterministic drawing data. */
+function projectEstateRaceSession(session) {
+    const state = isRecord(session.state) ? session.state : {};
+    const publicState = isRecord(state.public) ? state.public : {};
+    const board = isRecord(publicState.board) ? publicState.board : {};
+    const turn = isRecord(publicState.turn) ? publicState.turn : {};
+    const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : null;
+    return {
+        cells: readCells(publicState),
+        players: readPlayers(state, activePlayerId),
+        availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
+        activePlayerId,
+        phase: text(turn.phase, "setup"),
+        turnNumber: finiteNumber(turn.turnNumber),
+        lastRoll: readRoll(board)
+    };
 }
 
 });
@@ -49,7 +210,8 @@ __pluginDefine("src/scene.ts", (exports, module) => {
  */
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createEstateRaceScene = void 0;
-const board_state_1 = __pluginRequire("src/board-state.ts");
+const accessible_actions_ts_1 = __pluginRequire("src/accessible-actions.ts");
+const board_state_ts_1 = __pluginRequire("src/board-state.ts");
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
 const PLAYER_COLORS = [0x245f52, 0xb56f3c];
@@ -82,7 +244,7 @@ const createEstateRaceScene = (context) => {
         renderProjection(initial = false) {
             if (!this.projectionReady)
                 return;
-            const projection = (0, board_state_1.projectEstateRaceSession)(currentSession);
+            const projection = (0, board_state_ts_1.projectEstateRaceSession)(currentSession);
             this.children.removeAll(true);
             const graphics = this.add.graphics();
             graphics.fillStyle(0x13211f, 1);
@@ -262,110 +424,10 @@ const createEstateRaceScene = (context) => {
             if (scene.sys?.isActive())
                 scene.children.removeAll(true);
         },
-        getAccessibleActions(session) {
-            return (0, board_state_1.projectEstateRaceSession)(session).availableActions.map((action) => ({ ...action }));
-        }
+        getAccessibleActions: accessible_actions_ts_1.provideEstateRaceAccessibleBoardActions
     };
 };
 exports.createEstateRaceScene = createEstateRaceScene;
-
-});
-__pluginDefine("src/board-state.ts", (exports, module) => {
-"use strict";
-/**
- * Safe public-snapshot projection for the Estate Race field.
- *
- * Projection means a read-only view prepared for drawing. The functions below
- * deliberately do not decide whether buying, paying or finishing is legal:
- * Runtime API publishes the current `availableActions`, and the plugin merely
- * displays and dispatches those declarations.
- */
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.projectEstateRaceSession = projectEstateRaceSession;
-const isRecord = (value) => value !== null && typeof value === "object" && !Array.isArray(value);
-const finiteNumber = (value, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback;
-const text = (value, fallback) => typeof value === "string" && value.trim().length > 0 ? value : fallback;
-const readCells = (publicState) => {
-    const objects = isRecord(publicState.objects) ? publicState.objects : {};
-    const cells = isRecord(objects.boardCells) ? objects.boardCells : {};
-    return Object.entries(cells).flatMap(([id, raw]) => {
-        if (!isRecord(raw))
-            return [];
-        const attributes = isRecord(raw.attributes) ? raw.attributes : {};
-        const kind = attributes.kind === "start" || attributes.kind === "estate" || attributes.kind === "landmark"
-            ? attributes.kind
-            : "landmark";
-        return [{
-                id,
-                index: finiteNumber(attributes.index),
-                label: text(attributes.label, id),
-                shortLabel: text(attributes.shortLabel, text(attributes.label, id)),
-                kind,
-                x: finiteNumber(attributes.x),
-                y: finiteNumber(attributes.y),
-                width: finiteNumber(attributes.width, 220),
-                height: finiteNumber(attributes.height, 140),
-                price: typeof attributes.price === "number" ? attributes.price : null,
-                rent: typeof attributes.rent === "number" ? attributes.rent : null,
-                ownerPlayerId: typeof attributes.ownerPlayerId === "string" ? attributes.ownerPlayerId : null
-            }];
-    }).sort((left, right) => left.index - right.index);
-};
-const readPlayers = (state, activePlayerId) => {
-    const players = isRecord(state.players) ? state.players : {};
-    return Object.entries(players).flatMap(([id, raw], index) => {
-        if (!isRecord(raw))
-            return [];
-        const metrics = isRecord(raw.metrics) ? raw.metrics : {};
-        return [{
-                id,
-                label: `Игрок ${index + 1}`,
-                cash: finiteNumber(metrics.cash),
-                position: finiteNumber(metrics.position),
-                active: id === activePlayerId
-            }];
-    });
-};
-const readActions = (board) => {
-    if (!Array.isArray(board.availableActions))
-        return [];
-    return board.availableActions.flatMap((raw, index) => {
-        if (!isRecord(raw) || typeof raw.actionId !== "string" || typeof raw.label !== "string")
-            return [];
-        return [{
-                id: text(raw.id, `action-${index}`),
-                label: raw.label,
-                description: typeof raw.description === "string" ? raw.description : undefined,
-                actionId: raw.actionId,
-                params: isRecord(raw.params) ? raw.params : undefined,
-                disabled: raw.disabled === true
-            }];
-    });
-};
-const readRoll = (board) => {
-    if (!isRecord(board.lastRoll) || !Array.isArray(board.lastRoll.values))
-        return null;
-    const values = board.lastRoll.values.filter((value) => typeof value === "number" && Number.isSafeInteger(value));
-    const total = finiteNumber(board.lastRoll.total, values.reduce((sum, value) => sum + value, 0));
-    return { values, total, isDouble: board.lastRoll.isDouble === true };
-};
-/** Convert a player-facing session snapshot to deterministic drawing data. */
-function projectEstateRaceSession(session) {
-    const state = isRecord(session.state) ? session.state : {};
-    const publicState = isRecord(state.public) ? state.public : {};
-    const board = isRecord(publicState.board) ? publicState.board : {};
-    const turn = isRecord(publicState.turn) ? publicState.turn : {};
-    const activePlayerId = typeof turn.activePlayerId === "string" ? turn.activePlayerId : null;
-    return {
-        cells: readCells(publicState),
-        players: readPlayers(state, activePlayerId),
-        availableActions: readActions(board),
-        activePlayerId,
-        phase: text(turn.phase, "setup"),
-        turnNumber: finiteNumber(turn.turnNumber),
-        lastRoll: readRoll(board)
-    };
-}
 
 });
 const __entry = __pluginRequire("src/index.ts");

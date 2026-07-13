@@ -511,6 +511,17 @@ describe("Agent Turn validation", () => {
     expect(result.value?.turnId).toBe("turn-1");
   });
 
+  it("rejects reserved object property names as player ids", () => {
+    for (const playerId of ["__proto__", "constructor", "prototype"]) {
+      const result = validateAgentTurnInput({ ...validAgentTurnInput, playerId });
+
+      expect(result.ok).toBe(false);
+      expect(result.diagnostics).toContainEqual(
+        expect.objectContaining({ code: "schema.not" })
+      );
+    }
+  });
+
   it("rejects deterministic mode for Agent Turn input", () => {
     const result = validateAgentTurnInput({
       ...validAgentTurnInput,

@@ -7,12 +7,12 @@
  */
 
 import type {
-  AccessibleBoardAction,
   InteractiveBoardSceneHandle,
   PhaserSceneContext,
   PhaserSceneFactory
 } from "@cubica/player-web/plugin-api";
 
+import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import {
   projectBoardSession,
   type BoardEdgeView,
@@ -20,7 +20,7 @@ import {
   type BoardNodeView,
   type BoardProjection,
   type CanonicalPoint
-} from "./board-state";
+} from "./board-state.ts";
 
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
@@ -415,8 +415,6 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
         scene.children.removeAll(true);
       }
     },
-    getAccessibleActions(session): readonly AccessibleBoardAction[] {
-      return projectBoardSession(session).availableActions.map((action) => ({ ...action }));
-    }
+    getAccessibleActions: provideCardsMoneyTrainsAccessibleBoardActions
   };
 };

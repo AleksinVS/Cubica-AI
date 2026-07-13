@@ -78,3 +78,42 @@ test("participant count outside manifest bounds is rejected", () => {
     /outside manifest bounds/u
   );
 });
+
+test("deck-only manifests receive the runtime-owned replay seed", () => {
+  for (const effect of [
+    { op: "deck.shuffle" as const, deckId: "events", source: "collection:eventCards" },
+    {
+      op: "deck.draw" as const,
+      deckId: "events",
+      storePath: "/public/drawnCardId",
+      onEmpty: "reshuffle-discard" as const
+    }
+  ]) {
+    const manifest = createManifest();
+    manifest.state.secret = {
+      random: {
+        alg: "xoshiro128ss-v1",
+        seed: "00000000000000000000000000000000",
+        counter: 99
+      }
+    };
+    manifest.actions = {
+      "deck.action": {
+        handlerType: "manifest-data",
+        deterministic: { effects: [effect] }
+      }
+    };
+
+    const state = initializeTurnBasedSessionState(
+      manifest,
+      declaredState(manifest),
+      { randomSeed: "0123456789abcdeffedcba9876543210" }
+    );
+
+    assert.deepEqual((state.secret as Record<string, unknown>).random, {
+      alg: "xoshiro128ss-v1",
+      seed: "0123456789abcdeffedcba9876543210",
+      counter: 0
+    });
+  }
+});

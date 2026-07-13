@@ -921,7 +921,11 @@ export const agentTurnInputSchema = {
     turnId: { type: "string", minLength: 1 },
     sessionId: { type: "string", minLength: 1 },
     gameId: { type: "string", minLength: 1 },
-    playerId: { type: "string" },
+    playerId: {
+      type: "string",
+      minLength: 1,
+      not: { enum: ["__proto__", "constructor", "prototype"] }
+    },
     agentId: { type: "string", minLength: 1 },
     executionMode: { enum: ["hybrid", "ai-driven"] },
     trigger: {

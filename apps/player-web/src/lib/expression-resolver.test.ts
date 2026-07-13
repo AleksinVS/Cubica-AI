@@ -4,7 +4,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { resolveExpressions, resolvePayloadExpressions } from "./expression-resolver";
+import {
+  resolveExpression,
+  resolveExpressions,
+  resolvePayloadExpressions
+} from "./expression-resolver";
 
 const state = {
   players: {
@@ -26,5 +30,16 @@ describe("turn-based expression bindings", () => {
       actionId: "property.buy",
       params: { cellId: "cell-02" }
     });
+  });
+
+  it("uses the same fallback semantics for text and action payload bindings", () => {
+    const expression = "{{state.public.missing || fallback}}";
+
+    expect(resolveExpression(expression, { public: {} })).toBe("fallback");
+    expect(resolveExpressions(`Result: ${expression}`, { public: {} })).toBe("Result: fallback");
+    expect(resolvePayloadExpressions(
+      { value: expression, quoted: "{{state.public.missing || 'not set'}}" },
+      { public: {} }
+    )).toEqual({ value: "fallback", quoted: "not set" });
   });
 });

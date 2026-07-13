@@ -6,8 +6,9 @@
  * The canvas is a spatial view, never a source of gameplay truth. The game
  * plugin receives the latest player-facing snapshot and sends user intent
  * through `dispatchAction`; runtime rejection remains visible to both the scene
- * (as a rejected Promise) and the ordinary player-web error UI. A parallel DOM
- * action list makes the same projected actions usable without precise dragging.
+ * (as a rejected Promise) and the ordinary player-web error UI. A separately
+ * registered pure provider projects the same server-authorized actions into DOM
+ * controls, so keyboard access survives slow or failed Phaser initialization.
  */
 
 import { useEffect, useRef, useState } from "react";
@@ -19,6 +20,7 @@ import type {
 import type { GameSession } from "@/types/game-state";
 import type { GameAssetResolver } from "@/lib/game-asset-resolver";
 import {
+  resolveAccessibleBoardActionsProvider,
   resolvePhaserSceneFactory,
   type AccessibleBoardAction,
   type InteractiveBoardSceneHandle
@@ -52,7 +54,9 @@ export function InteractiveBoardSurface({
   const dispatchRef = useRef(dispatchAction);
   const isPendingRef = useRef(isPending);
   const [accessibleActions, setAccessibleActions] = useState<readonly AccessibleBoardAction[]>([]);
-  const [diagnostic, setDiagnostic] = useState<string | null>(null);
+  const [sceneDiagnostic, setSceneDiagnostic] = useState<string | null>(null);
+  const [actionDiagnostic, setActionDiagnostic] = useState<string | null>(null);
+  const [dispatchDiagnostic, setDispatchDiagnostic] = useState<string | null>(null);
   const [pendingActionId, setPendingActionId] = useState<string | null>(null);
 
   sessionRef.current = session;
@@ -61,17 +65,31 @@ export function InteractiveBoardSurface({
 
   useEffect(() => {
     const handle = handleRef.current;
-    if (!handle) {
-      return;
+
+    if (handle) {
+      try {
+        handle.updateSession(session);
+        setSceneDiagnostic(null);
+      } catch (error) {
+        setDispatchDiagnostic(null);
+        setSceneDiagnostic(errorMessage(error, "Не удалось обновить интерактивное поле."));
+      }
     }
 
     try {
-      handle.updateSession(session);
-      setAccessibleActions(handle.getAccessibleActions?.(session) ?? []);
+      // Keep this projection outside the scene-update try/catch. A broken
+      // visual adapter must not prevent keyboard users from receiving the
+      // actions from the newest authoritative snapshot.
+      setAccessibleActions(resolveAccessibleActions(gameId, session, handle));
+      setActionDiagnostic(null);
     } catch (error) {
-      setDiagnostic(errorMessage(error, "Не удалось обновить интерактивное поле."));
+      // Fail closed on a broken projection so stale actions from an older
+      // snapshot cannot remain clickable after the authoritative turn changes.
+      setAccessibleActions([]);
+      setDispatchDiagnostic(null);
+      setActionDiagnostic(errorMessage(error, "Не удалось обновить доступные действия поля."));
     }
-  }, [isPending, session]);
+  }, [gameId, isPending, session]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -81,7 +99,8 @@ export function InteractiveBoardSurface({
 
     const factory = resolvePhaserSceneFactory(gameId);
     if (!factory) {
-      setDiagnostic("Игра не предоставила сцену для интерактивного поля.");
+      setDispatchDiagnostic(null);
+      setSceneDiagnostic("Игра не предоставила сцену для интерактивного поля.");
       return;
     }
 
@@ -145,8 +164,17 @@ export function InteractiveBoardSurface({
 
         handleRef.current = handle;
         handle.updateSession(initialSession);
-        setAccessibleActions(handle.getAccessibleActions?.(initialSession) ?? []);
-        setDiagnostic(null);
+        try {
+          setAccessibleActions(resolveAccessibleActions(gameId, initialSession, handle));
+          setActionDiagnostic(null);
+        } catch (error) {
+          // A projection failure must not tear down an otherwise usable visual
+          // scene. The ordinary controls stay empty and explain the problem.
+          setAccessibleActions([]);
+          setDispatchDiagnostic(null);
+          setActionDiagnostic(errorMessage(error, "Не удалось обновить доступные действия поля."));
+        }
+        setSceneDiagnostic(null);
 
         if (typeof ResizeObserver !== "undefined") {
           resizeObserver = new ResizeObserver(() => game?.scale.refresh());
@@ -164,7 +192,8 @@ export function InteractiveBoardSurface({
         handle = null;
         game = null;
         if (!cancelled) {
-          setDiagnostic(errorMessage(error, "Не удалось запустить интерактивное поле."));
+          setDispatchDiagnostic(null);
+          setSceneDiagnostic(errorMessage(error, "Не удалось запустить интерактивное поле."));
         }
       });
 
@@ -183,17 +212,19 @@ export function InteractiveBoardSurface({
   const runAccessibleAction = async (action: AccessibleBoardAction) => {
     if (isPending || pendingActionId !== null || action.disabled === true) return;
     setPendingActionId(action.id);
-    setDiagnostic(null);
+    setDispatchDiagnostic(null);
     try {
       await dispatchAction(action.actionId, { ...action.params });
     } catch (error) {
       // The scene receives the same rejection through its injected dispatcher.
       // This local message keeps keyboard users in the context of their action.
-      setDiagnostic(errorMessage(error, "Действие на поле отклонено."));
+      setDispatchDiagnostic(errorMessage(error, "Действие на поле отклонено."));
     } finally {
       setPendingActionId(null);
     }
   };
+
+  const diagnostic = dispatchDiagnostic ?? actionDiagnostic ?? sceneDiagnostic;
 
   return (
     <section className={styles.surface} aria-label={label}>
@@ -238,6 +269,19 @@ export function InteractiveBoardSurface({
       {diagnostic ? <p className={styles.diagnostic} role="alert">{diagnostic}</p> : null}
     </section>
   );
+}
+
+/**
+ * Prefer the engine-independent provider and retain the scene callback only as
+ * a same-major compatibility fallback for plugins not migrated yet.
+ */
+function resolveAccessibleActions(
+  gameId: string,
+  session: GameSession,
+  handle: InteractiveBoardSceneHandle | null
+): readonly AccessibleBoardAction[] {
+  const provider = resolveAccessibleBoardActionsProvider(gameId);
+  return provider?.(session) ?? handle?.getAccessibleActions?.(session) ?? [];
 }
 
 function boundedDimension(value: number | undefined, fallback: number): number {

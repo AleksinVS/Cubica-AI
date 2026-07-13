@@ -22,17 +22,26 @@ export interface InitializeTurnBasedSessionOptions {
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const manifestUsesRandomRoll = (value: unknown): boolean => {
+const SESSION_RANDOM_EFFECTS = new Set(["random.roll", "deck.shuffle", "deck.draw"]);
+
+/**
+ * Detect every effect that consumes the runtime-owned session generator.
+ *
+ * A draw needs the generator even when the current deck is not empty because
+ * its declared empty-deck policy may reshuffle the discard pile. Initializing
+ * from the complete manifest keeps that future branch replay-safe as well.
+ */
+const manifestUsesSessionRandomness = (value: unknown): boolean => {
   if (Array.isArray(value)) {
-    return value.some(manifestUsesRandomRoll);
+    return value.some(manifestUsesSessionRandomness);
   }
   if (!isObjectRecord(value)) {
     return false;
   }
-  if (value.op === "random.roll") {
+  if (typeof value.op === "string" && SESSION_RANDOM_EFFECTS.has(value.op)) {
     return true;
   }
-  return Object.values(value).some(manifestUsesRandomRoll);
+  return Object.values(value).some(manifestUsesSessionRandomness);
 };
 
 const validateParticipantCount = (manifest: GameManifest, requested?: number): number => {
@@ -88,11 +97,12 @@ export const initializeTurnBasedSessionState = (
   // snapshot would expose two competing sources of truth for player balances.
   delete state.playersTemplate;
 
-  if (manifestUsesRandomRoll(manifest.actions) || manifestUsesRandomRoll(manifest.templates)) {
+  if (manifestUsesSessionRandomness(manifest.actions) || manifestUsesSessionRandomness(manifest.templates)) {
     const secretState = isObjectRecord(state.secret) ? state.secret : {};
-    if (!isObjectRecord(secretState.random)) {
-      secretState.random = createSessionRandomState(options.randomSeed);
-    }
+    // Random state is session-owned by contract. Always replace authoring data
+    // so a seed accidentally committed to a manifest cannot make every new
+    // production session consume the same predictable random sequence.
+    secretState.random = createSessionRandomState(options.randomSeed);
     state.secret = secretState;
   }
 

@@ -2,9 +2,9 @@
  * Safe public-snapshot projection for the Estate Race field.
  *
  * Projection means a read-only view prepared for drawing. The functions below
- * deliberately do not decide whether buying, paying or finishing is legal:
- * Runtime API publishes the current `availableActions`, and the plugin merely
- * displays and dispatches those declarations.
+ * deliberately do not decide whether buying, paying or finishing is legal.
+ * Runtime API publishes both board controls and canonical action availability;
+ * the plugin only combines and displays those server-owned declarations.
  */
 
 export interface EstateCellView {
@@ -50,6 +50,11 @@ export interface EstateBoardProjection {
 }
 
 type JsonRecord = Record<string, unknown>;
+
+type SessionAvailabilityEntry = {
+  readonly status?: unknown;
+  readonly reasonCode?: unknown;
+};
 
 const isRecord = (value: unknown): value is JsonRecord =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -101,17 +106,41 @@ const readPlayers = (state: JsonRecord, activePlayerId: string | null): EstatePl
   });
 };
 
-const readActions = (board: JsonRecord): EstateActionView[] => {
+const serverUnavailableReason = (reasonCode: unknown): string => {
+  if (reasonCode === "role_not_allowed") return "Действие недоступно для текущей роли.";
+  if (reasonCode === "runtime_unsupported") return "Действие не поддерживается игровой системой.";
+  return "Действие недоступно в текущем состоянии игры.";
+};
+
+const readActionAvailability = (value: unknown): Map<string, SessionAvailabilityEntry> => {
+  const entries = Array.isArray(value) ? value : [];
+  return new Map(entries.flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.actionId !== "string") return [];
+    return [[entry.actionId, entry] as const];
+  }));
+};
+
+const readActions = (
+  board: JsonRecord,
+  availability: ReadonlyMap<string, SessionAvailabilityEntry>
+): EstateActionView[] => {
   if (!Array.isArray(board.availableActions)) return [];
   return board.availableActions.flatMap((raw, index) => {
     if (!isRecord(raw) || typeof raw.actionId !== "string" || typeof raw.label !== "string") return [];
+    const projectedAvailability = availability.get(raw.actionId);
+    const serverDisabled = projectedAvailability?.status === "unavailable";
+    const authoredDisabledReason = typeof raw.disabledReason === "string"
+      ? raw.disabledReason
+      : typeof raw.reason === "string" ? raw.reason : undefined;
     return [{
       id: text(raw.id, `action-${index}`),
       label: raw.label,
-      description: typeof raw.description === "string" ? raw.description : undefined,
+      description: serverDisabled
+        ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
+        : typeof raw.description === "string" ? raw.description : undefined,
       actionId: raw.actionId,
       params: isRecord(raw.params) ? raw.params : undefined,
-      disabled: raw.disabled === true
+      disabled: raw.disabled === true || serverDisabled
     }];
   });
 };
@@ -126,7 +155,9 @@ const readRoll = (board: JsonRecord): EstateBoardProjection["lastRoll"] => {
 };
 
 /** Convert a player-facing session snapshot to deterministic drawing data. */
-export function projectEstateRaceSession(session: { state?: unknown }): EstateBoardProjection {
+export function projectEstateRaceSession(
+  session: { state?: unknown; actionAvailability?: unknown }
+): EstateBoardProjection {
   const state = isRecord(session.state) ? session.state : {};
   const publicState = isRecord(state.public) ? state.public : {};
   const board = isRecord(publicState.board) ? publicState.board : {};
@@ -135,7 +166,7 @@ export function projectEstateRaceSession(session: { state?: unknown }): EstateBo
   return {
     cells: readCells(publicState),
     players: readPlayers(state, activePlayerId),
-    availableActions: readActions(board),
+    availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
     activePlayerId,
     phase: text(turn.phase, "setup"),
     turnNumber: finiteNumber(turn.turnNumber),

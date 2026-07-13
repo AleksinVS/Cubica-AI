@@ -18,13 +18,20 @@ type RuntimeState = Record<string, unknown>;
 
 interface SessionServiceOptions {
   sessionStore: SessionStorePort<RuntimeState>;
+  /**
+   * Internal deterministic-test seam. Production omits it so each session is
+   * seeded from the operating system's cryptographic random source.
+   */
+  createSessionRandomSeed?: () => string;
 }
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
+  private readonly createSessionRandomSeed?: () => string;
 
   constructor(options: SessionServiceOptions) {
     this.sessionStore = options.sessionStore;
+    this.createSessionRandomSeed = options.createSessionRandomSeed;
   }
 
   async createSession(request: CreateSessionRequest): Promise<CreateSessionResponse<RuntimeState>> {
@@ -45,7 +52,9 @@ export class SessionService {
     const declaredState = (await contentService.getInitialState(gameId, request.contentSourceId)) as RuntimeState;
     // The manifest declares templates; runtime creates concrete participants,
     // turn ownership and replay state for this particular session.
-    const initialState = initializeTurnBasedSessionState(manifest, declaredState);
+    const initialState = initializeTurnBasedSessionState(manifest, declaredState, {
+      randomSeed: this.createSessionRandomSeed?.()
+    });
     // The local facilitator role is derived from trusted game configuration.
     // Accepting it from POST /sessions or POST /actions would let a client grant
     // itself privileges, so facilitated mode is the only source for this role.

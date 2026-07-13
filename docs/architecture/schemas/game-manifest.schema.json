@@ -2867,6 +2867,13 @@
       "oneOf": [
         {
           "minLength": 1,
+          "not": {
+            "enum": [
+              "__proto__",
+              "constructor",
+              "prototype"
+            ]
+          },
           "pattern": "^(?!\\{\\{).+",
           "type": "string"
         },

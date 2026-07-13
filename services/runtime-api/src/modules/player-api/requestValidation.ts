@@ -13,7 +13,10 @@ const isRecord = (value: unknown): value is JsonRecord =>
 
 const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SAFE_CONTENT_SOURCE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$/u;
-const FORBIDDEN_PARAM_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+// These names are inherited or otherwise special on ordinary JavaScript
+// objects. Accepting one as a player id or client parameter can turn an object
+// lookup into a write outside the intended session-state branch.
+const FORBIDDEN_OBJECT_PROPERTY_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 
 const assertRecord: (value: unknown, path: string) => asserts value is JsonRecord = (value, path) => {
   if (!isRecord(value)) {
@@ -30,6 +33,13 @@ export const assertGameId: (value: unknown, path: string) => asserts value is st
 const assertOptionalString: (value: unknown, path: string) => void = (value, path) => {
   if (value !== undefined && (typeof value !== "string" || !value.trim())) {
     throw new RequestValidationError(`${path} must be a non-empty string`);
+  }
+};
+
+const assertOptionalPlayerId: (value: unknown, path: string) => void = (value, path) => {
+  assertOptionalString(value, path);
+  if (typeof value === "string" && FORBIDDEN_OBJECT_PROPERTY_NAMES.has(value)) {
+    throw new RequestValidationError(`${path} uses forbidden property name "${value}"`);
   }
 };
 
@@ -68,7 +78,7 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
     throw new RequestValidationError("gameId is required and must be a non-empty string");
   }
   assertGameId(record.gameId, "gameId");
-  assertOptionalString(record.playerId, "playerId");
+  assertOptionalPlayerId(record.playerId, "playerId");
   if (record.contentSourceId !== undefined) {
     assertContentSourceId(record.contentSourceId, "contentSourceId");
   }
@@ -81,11 +91,11 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
   assertRequiredString(body.sessionId, "sessionId");
   assertNonNegativeInteger(body.expectedStateVersion, "expectedStateVersion");
   assertRequiredString(body.actionId, "actionId");
-  assertOptionalString(body.playerId, "playerId");
+  assertOptionalPlayerId(body.playerId, "playerId");
   if (body.params !== undefined) {
     assertRecord(body.params, "params");
     for (const key of Object.keys(body.params)) {
-      if (FORBIDDEN_PARAM_KEYS.has(key)) {
+      if (FORBIDDEN_OBJECT_PROPERTY_NAMES.has(key)) {
         throw new RequestValidationError(`params contains forbidden property name "${key}"`);
       }
     }
@@ -100,7 +110,7 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
 export const parseAgentTurnRequest = (body: unknown): AgentTurnRequest => {
   assertRecord(body, "POST /agent-turns body");
   assertRequiredString(body.sessionId, "sessionId");
-  assertOptionalString(body.playerId, "playerId");
+  assertOptionalPlayerId(body.playerId, "playerId");
   assertOptionalString(body.actionId, "actionId");
 
   return {

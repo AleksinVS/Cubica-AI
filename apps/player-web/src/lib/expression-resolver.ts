@@ -27,22 +27,7 @@ export function resolveExpression(
 
   const inner = expression.slice(2, -2).trim();
 
-  // Поддержка fallback: {{path || fallback}}
-  const pipeIndex = inner.indexOf("||");
-  if (pipeIndex !== -1) {
-    const path = inner.slice(0, pipeIndex).trim();
-    const fallback = inner.slice(pipeIndex + 2).trim();
-    const value = resolvePath(path, state, localContext);
-    if (value !== undefined && value !== null) {
-      return String(value);
-    }
-    // Fallback может быть числом или строкой
-    return fallback.startsWith("'") || fallback.startsWith('"')
-      ? fallback.slice(1, -1)
-      : fallback;
-  }
-
-  const value = resolvePath(inner, state, localContext);
+  const value = resolveExpressionValue(inner, state, localContext);
   return value !== undefined && value !== null ? String(value) : "";
 }
 
@@ -60,14 +45,48 @@ export function resolveExpressions(
   // Быстрый путь: одно выражение занимает всю строку
   const singleMatch = text.match(/^\{\{(.+?)\}\}$/);
   if (singleMatch) {
-    return resolvePath(singleMatch[1].trim(), state, localContext) ?? "";
+    return resolveExpressionValue(singleMatch[1].trim(), state, localContext) ?? "";
   }
 
   // Множественные выражения или текст вперемешку
   return text.replace(/\{\{(.+?)\}\}/g, (_match, expr: string) => {
-    const value = resolvePath(expr.trim(), state, localContext);
+    const value = resolveExpressionValue(expr.trim(), state, localContext);
     return value !== undefined && value !== null ? String(value) : "";
   });
+}
+
+/**
+ * Resolves one expression body while keeping complete bindings unwrapped.
+ *
+ * `resolveExpression` and `resolveExpressions` used to parse fallback syntax in
+ * different ways. Action payloads use the latter so they can preserve objects;
+ * sharing this helper keeps that behavior while making `||` consistent in UI
+ * text and payload values.
+ */
+function resolveExpressionValue(
+  expressionBody: string,
+  state: Record<string, unknown>,
+  localContext?: Record<string, unknown>
+): unknown {
+  const pipeIndex = expressionBody.indexOf("||");
+  if (pipeIndex === -1) {
+    return resolvePath(expressionBody, state, localContext);
+  }
+
+  const path = expressionBody.slice(0, pipeIndex).trim();
+  const fallback = expressionBody.slice(pipeIndex + 2).trim();
+  const value = resolvePath(path, state, localContext);
+  if (value !== undefined && value !== null) {
+    return value;
+  }
+
+  // Fallback literals intentionally remain strings for compatibility with the
+  // original binding contract; matching quotes only remove authoring syntax.
+  const first = fallback.at(0);
+  const last = fallback.at(-1);
+  return (first === "'" || first === '"') && last === first
+    ? fallback.slice(1, -1)
+    : fallback;
 }
 
 /**

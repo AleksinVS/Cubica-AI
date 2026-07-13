@@ -2,8 +2,8 @@
  * Public-snapshot projection for the Cards Money Trains Phaser scene.
  *
  * This module deliberately contains no gameplay validation. Runtime provides
- * authoritative nodes, edges, highlights, and accessible actions; the plugin
- * only normalizes those public values into a safe rendering model.
+ * authoritative nodes, edges, highlights, controls and canonical action
+ * availability; the plugin only combines those public values into a safe view.
  */
 
 export type CanonicalPoint = Readonly<{ x: number; y: number }>;
@@ -69,6 +69,11 @@ export interface BoardProjection {
 }
 
 type JsonRecord = Record<string, unknown>;
+
+type SessionAvailabilityEntry = {
+  readonly status?: unknown;
+  readonly reasonCode?: unknown;
+};
 
 const isRecord = (value: unknown): value is JsonRecord =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -176,20 +181,42 @@ const readHighlights = (board: JsonRecord): BoardHighlightView[] => {
   });
 };
 
-const readActions = (board: JsonRecord): ProjectedBoardAction[] => {
+const serverUnavailableReason = (reasonCode: unknown): string => {
+  if (reasonCode === "role_not_allowed") return "Действие недоступно для текущей роли.";
+  if (reasonCode === "runtime_unsupported") return "Действие не поддерживается игровой системой.";
+  return "Действие недоступно в текущем состоянии игры.";
+};
+
+const readActionAvailability = (value: unknown): Map<string, SessionAvailabilityEntry> => {
+  const entries = Array.isArray(value) ? value : [];
+  return new Map(entries.flatMap((entry) => {
+    if (!isRecord(entry) || typeof entry.actionId !== "string") return [];
+    return [[entry.actionId, entry] as const];
+  }));
+};
+
+const readActions = (
+  board: JsonRecord,
+  availability: ReadonlyMap<string, SessionAvailabilityEntry>
+): ProjectedBoardAction[] => {
   if (!Array.isArray(board.availableActions)) return [];
   return board.availableActions.flatMap((raw, index) => {
     if (!isRecord(raw)) return [];
     const actionId = text(raw.actionId);
     const label = text(raw.label);
     if (!actionId || !label) return [];
+    const projectedAvailability = availability.get(actionId);
+    const serverDisabled = projectedAvailability?.status === "unavailable";
+    const authoredDisabledReason = text(raw.disabledReason) ?? text(raw.reason) ?? undefined;
     return [{
       id: text(raw.id) ?? `board-action-${index}`,
       label,
-      description: text(raw.description) ?? undefined,
+      description: serverDisabled
+        ? authoredDisabledReason ?? serverUnavailableReason(projectedAvailability?.reasonCode)
+        : text(raw.description) ?? undefined,
       actionId,
       params: isRecord(raw.params) ? raw.params : undefined,
-      disabled: raw.disabled === true
+      disabled: raw.disabled === true || serverDisabled
     }];
   });
 };
@@ -220,7 +247,9 @@ const readBounds = (board: JsonRecord, nodes: readonly BoardNodeView[]): BoardPr
 };
 
 /** Convert a player-facing session snapshot into a deterministic board view. */
-export function projectBoardSession(session: { state?: unknown }): BoardProjection {
+export function projectBoardSession(
+  session: { state?: unknown; actionAvailability?: unknown }
+): BoardProjection {
   const state = isRecord(session.state) ? session.state : {};
   const publicState = isRecord(state.public) ? state.public : {};
   const board = isRecord(publicState.board) ? publicState.board : {};
@@ -232,7 +261,7 @@ export function projectBoardSession(session: { state?: unknown }): BoardProjecti
     vehicles: readVehicles(publicState),
     teams: readTeams(publicState),
     highlights: readHighlights(board),
-    availableActions: readActions(board),
+    availableActions: readActions(board, readActionAvailability(session.actionAvailability)),
     bounds: readBounds(board, nodes),
     phase: text(sessionState.phase) ?? "unknown",
     turnNumber: finiteNumber(sessionState.turnNumber) ?? 0

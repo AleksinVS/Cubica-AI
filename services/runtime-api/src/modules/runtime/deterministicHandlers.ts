@@ -153,6 +153,15 @@ const cloneState = <TState,>(state: TState): TState => structuredClone(state);
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
 
+/** Read only a server-owned branch, never a value inherited from Object.prototype. */
+const readOwnObjectProperty = (
+  record: Record<string, unknown>,
+  key: string
+): Record<string, unknown> | undefined =>
+  Object.prototype.hasOwnProperty.call(record, key) && isObjectRecord(record[key])
+    ? record[key]
+    : undefined;
+
 const resolveCapabilityFamily = (capabilityFamily?: string, capability?: string): CapabilityFamily => {
   const source = capabilityFamily ?? capability ?? "";
   if (!source) {
@@ -292,10 +301,8 @@ const buildJsonLogicContext = (state: RuntimeState, params: Record<string, unkno
   const players = ensureObject(state.players);
   const actorId = typeof params.actor === "string" ? params.actor : undefined;
   const activePlayerId = typeof params.activePlayer === "string" ? params.activePlayer : undefined;
-  const actorState = actorId && isObjectRecord(players[actorId]) ? players[actorId] : undefined;
-  const activePlayerState = activePlayerId && isObjectRecord(players[activePlayerId])
-    ? players[activePlayerId]
-    : undefined;
+  const actorState = actorId ? readOwnObjectProperty(players, actorId) : undefined;
+  const activePlayerState = activePlayerId ? readOwnObjectProperty(players, activePlayerId) : undefined;
 
   return {
     ...state,
@@ -1020,7 +1027,7 @@ const resolvePlayerRef = (
     throw new Error("Player-scoped effect could not resolve a participant id");
   }
   const players = ensureObject(state.players);
-  if (!isObjectRecord(players[resolved])) {
+  if (!readOwnObjectProperty(players, resolved)) {
     throw new Error(`Player-scoped effect references unknown participant "${resolved}"`);
   }
   return resolved;
@@ -1252,7 +1259,7 @@ const applyTurnNext = (state: RuntimeState, turnPhases: ReadonlyArray<string> | 
   let nextPlayerId: string | undefined;
   for (let offset = 1; offset <= order.length; offset += 1) {
     const candidateId = order[(activeIndex + offset) % order.length];
-    const candidate = players[candidateId];
+    const candidate = readOwnObjectProperty(players, candidateId);
     if (isObjectRecord(candidate) && candidate.status !== "eliminated") {
       nextPlayerId = candidateId;
       break;

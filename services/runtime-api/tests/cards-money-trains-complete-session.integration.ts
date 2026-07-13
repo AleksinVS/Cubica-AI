@@ -99,6 +99,10 @@ const transcriptPath = path.join(
 );
 const migrationPath = path.join(repoRoot, "services", "runtime-api", "migrations", "001_game_sessions.up.sql");
 const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
+// The production API never accepts a seed from the player. This test-only
+// server seam locks the fixture's transcript while exercising the same public
+// HTTP requests and runtime effects as a real session.
+const CONTROL_SEED = "39d334ef7701ec6e16d2cc2dab7b1a41";
 const transcript = await readTranscriptIfReady();
 
 test("ordinary game id conducts the complete mock session and rejects every exact duplicate", {
@@ -214,7 +218,11 @@ async function readTranscriptIfReady(): Promise<CompleteSessionTranscript | null
 }
 
 async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<RunningApi> {
-  const server = createRuntimeApiServer({ port: 0, sessionStore });
+  const server = createRuntimeApiServer({
+    port: 0,
+    sessionStore,
+    createSessionRandomSeed: () => CONTROL_SEED
+  });
   await server.start();
   return {
     baseUrl: `http://127.0.0.1:${server.port}`,

@@ -25,6 +25,9 @@ const BOARD_PLUGIN_READY_TIMEOUT_MS = 30_000;
 
 type RuntimeSnapshot = {
   sessionId: string;
+  version: {
+    stateVersion: number;
+  };
   state: {
     players: Record<string, { metrics: { cash: number; position: number } }>;
     secret?: {
@@ -183,7 +186,7 @@ async function rollFreshApiSession(request: APIRequestContext): Promise<RuntimeS
   expect(response.status()).toBe(201);
   const fresh = await response.json() as RuntimeSnapshot;
   expectPlayerSnapshotHasNoPlatformSecrets(fresh);
-  return postRuntimeAction(request, fresh.sessionId, "p1", "turn.roll");
+  return postRuntimeAction(request, fresh.sessionId, fresh.version.stateVersion, "p1", "turn.roll");
 }
 
 async function clickBoardAction(page: Page, label: string): Promise<BrowserActionResult> {
@@ -224,6 +227,7 @@ async function progressToSecondPlayerRent(
     snapshot = await postRuntimeAction(
       request,
       snapshot.sessionId,
+      snapshot.version.stateVersion,
       turn.activePlayerId,
       availableAction.actionId,
       availableAction.params
@@ -236,6 +240,7 @@ async function progressToSecondPlayerRent(
 async function postRuntimeAction(
   request: APIRequestContext,
   sessionId: string,
+  expectedStateVersion: number,
   playerId: string,
   actionId: string,
   params?: Record<string, unknown>
@@ -244,6 +249,7 @@ async function postRuntimeAction(
   const response = await request.post("/api/runtime/actions", {
     data: {
       sessionId,
+      expectedStateVersion,
       playerId,
       actionId,
       ...(hasParams ? { params, payload: params } : { payload: {} })

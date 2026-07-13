@@ -6,7 +6,10 @@ import {
   activatePlayerWebPluginBundles,
   loadPreviewPlayerWebPlugins
 } from "./preview-plugin-loader";
-import { resolvePhaserSceneFactory } from "./phaser-scene-registry";
+import {
+  resolveAccessibleBoardActionsProvider,
+  resolvePhaserSceneFactory
+} from "./phaser-scene-registry";
 
 describe("preview plugin loader", () => {
   it("loads a session plugin module and lets it replace config data without a player-web restart", async () => {
@@ -112,13 +115,16 @@ describe("preview plugin loader", () => {
     expect(key).toBe(`${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`);
   });
 
-  it("releases a Phaser scene contribution with its scoped bundle handle", async () => {
+  it("releases scene and accessible-action contributions with its scoped bundle handle", async () => {
     const gameId = "scoped-board-plugin";
     const source = `
       export function activate(api) {
         api.registerPhaserSceneFactory("${gameId}", () => ({
           scene: {}, updateSession() {}, destroy() {}
         }));
+        api.registerAccessibleBoardActionsProvider("${gameId}", () => ([{
+          id: "move", label: "Move", actionId: "board.move"
+        }]));
       }
     `;
     const bundle: PlayerWebPluginBundleReference = {
@@ -137,7 +143,9 @@ describe("preview plugin loader", () => {
     });
 
     expect(resolvePhaserSceneFactory(gameId)).toBeTypeOf("function");
+    expect(resolveAccessibleBoardActionsProvider(gameId)).toBeTypeOf("function");
     handle.dispose();
     expect(resolvePhaserSceneFactory(gameId)).toBeUndefined();
+    expect(resolveAccessibleBoardActionsProvider(gameId)).toBeUndefined();
   });
 });

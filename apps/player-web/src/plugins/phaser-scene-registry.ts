@@ -1,5 +1,6 @@
 /**
- * Session-safe registry for game-owned Phaser scene factories.
+ * Session-safe registries for game-owned Phaser scene factories and their
+ * engine-independent accessible action projections.
  *
  * Phaser itself belongs to player-web and is injected into a project-local
  * plugin. A plugin registers only a scene factory, so it cannot pull a second
@@ -25,6 +26,17 @@ export interface AccessibleBoardAction {
 
 /** Player-facing session data supplied to both the scene and DOM controls. */
 export type InteractiveBoardSessionSnapshot = GameSession;
+
+/**
+ * Projects server-authorized field actions without loading Phaser.
+ *
+ * The provider may only translate the player-facing snapshot into labels,
+ * parameters and disabled reasons. Runtime remains the authority that decides
+ * whether the action is legal when it is submitted.
+ */
+export type AccessibleBoardActionsProvider = (
+  session: InteractiveBoardSessionSnapshot
+) => readonly AccessibleBoardAction[];
 
 /** Capabilities available to a game-owned scene factory. */
 export interface PhaserSceneContext {
@@ -61,6 +73,9 @@ export interface InteractiveBoardSceneHandle {
    * The host renders these as ordinary buttons. The game plugin derives them
    * from the same public projection used for visual highlights, keeping the
    * generic renderer free of game-specific node, road, or vehicle rules.
+   *
+   * @deprecated Register an `AccessibleBoardActionsProvider` so DOM controls
+   * remain available when Phaser cannot initialize. Kept for API 2.0 bundles.
    */
   getAccessibleActions?(
     session: InteractiveBoardSessionSnapshot
@@ -76,7 +91,13 @@ type Registration = {
   readonly factory: PhaserSceneFactory;
 };
 
+type AccessibleActionsRegistration = {
+  readonly token: symbol;
+  readonly provider: AccessibleBoardActionsProvider;
+};
+
 const registry = new Map<string, Registration>();
+const accessibleActionsRegistry = new Map<string, AccessibleActionsRegistration>();
 
 /** Registers one factory and returns a disposer scoped to this registration. */
 export function registerPhaserSceneFactory(
@@ -98,4 +119,31 @@ export function resolvePhaserSceneFactory(
   gameId: string
 ): PhaserSceneFactory | undefined {
   return registry.get(gameId)?.factory;
+}
+
+/**
+ * Registers a pure DOM-action projection independently from the Phaser scene.
+ *
+ * Ownership-aware disposal mirrors scene registration so an older preview
+ * bundle cannot remove a newer provider during hot reload.
+ */
+export function registerAccessibleBoardActionsProvider(
+  gameId: string,
+  provider: AccessibleBoardActionsProvider
+): () => void {
+  const token = Symbol(gameId);
+  accessibleActionsRegistry.set(gameId, { token, provider });
+
+  return () => {
+    if (accessibleActionsRegistry.get(gameId)?.token === token) {
+      accessibleActionsRegistry.delete(gameId);
+    }
+  };
+}
+
+/** Resolves the action provider that remains usable when Phaser cannot start. */
+export function resolveAccessibleBoardActionsProvider(
+  gameId: string
+): AccessibleBoardActionsProvider | undefined {
+  return accessibleActionsRegistry.get(gameId)?.provider;
 }

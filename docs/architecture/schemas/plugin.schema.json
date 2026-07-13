@@ -62,6 +62,10 @@
                 "phaserSceneFactory": {
                   "type": "boolean",
                   "description": "Registers a Phaser scene factory for interactiveBoardSurface components."
+                },
+                "accessibleBoardActionsProvider": {
+                  "type": "boolean",
+                  "description": "Registers an engine-independent projection of server-authorized board actions for ordinary DOM controls."
                 }
               },
               "minProperties": 1,

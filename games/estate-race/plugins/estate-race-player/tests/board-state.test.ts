@@ -3,7 +3,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { provideEstateRaceAccessibleBoardActions } from "../src/accessible-actions.ts";
 import { projectEstateRaceSession } from "../src/board-state.ts";
+import { activate } from "../src/index.ts";
 
 test("projects cells, participants, roll and only runtime-declared actions", () => {
   const projection = projectEstateRaceSession({
@@ -73,4 +75,82 @@ test("does not invent legal actions or expose malformed state", () => {
   assert.equal(projection.players[0]?.cash, 0);
   assert.equal(projection.lastRoll, null);
   assert.equal("secret" in projection, false);
+});
+
+test("provides server-declared controls without constructing a Phaser scene", () => {
+  const params = { cellId: "cell-02" };
+  const session = {
+    state: {
+      public: {
+        turn: { phase: "acquire" },
+        board: {
+          availableActions: [{
+            id: "buy-cell",
+            label: "Купить участок",
+            description: "Подтверждение выполнит сервер",
+            actionId: "property.buy.cell-02",
+            params,
+            disabled: false
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0];
+
+  const actions = provideEstateRaceAccessibleBoardActions(session);
+
+  assert.deepEqual(actions, [{
+    id: "buy-cell",
+    label: "Купить участок",
+    description: "Подтверждение выполнит сервер",
+    actionId: "property.buy.cell-02",
+    params: { cellId: "cell-02" },
+    disabled: false
+  }]);
+  assert.notEqual(actions[0]?.params, params);
+});
+
+test("disables a board control when canonical server availability rejects it", () => {
+  const session = {
+    actionAvailability: [{
+      actionId: "property.buy.cell-02",
+      status: "unavailable",
+      reasonCode: "state_condition_failed"
+    }],
+    state: {
+      public: {
+        board: {
+          availableActions: [{
+            id: "buy-cell",
+            label: "Купить участок",
+            actionId: "property.buy.cell-02"
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideEstateRaceAccessibleBoardActions>[0];
+
+  assert.deepEqual(provideEstateRaceAccessibleBoardActions(session), [{
+    id: "buy-cell",
+    label: "Купить участок",
+    description: "Действие недоступно в текущем состоянии игры.",
+    actionId: "property.buy.cell-02",
+    disabled: true
+  }]);
+});
+
+test("keeps an API 2.0 plugin loadable when an older host lacks the new capability", () => {
+  let disposed = false;
+  const legacyApi = {
+    registerGameConfigData() {},
+    registerGameConfigFactory() {},
+    registerPhaserSceneFactory() {
+      return () => { disposed = true; };
+    }
+  } as unknown as Parameters<typeof activate>[0];
+
+  const dispose = activate(legacyApi);
+  dispose();
+
+  assert.equal(disposed, true);
 });

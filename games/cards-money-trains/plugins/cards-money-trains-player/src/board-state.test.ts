@@ -3,7 +3,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import { projectBoardSession } from "./board-state.ts";
+import { activate } from "./index.ts";
 
 test("projects only provided topology, geometry, actions, and team balances", () => {
   const projection = projectBoardSession({
@@ -69,4 +71,79 @@ test("does not invent topology or actions when content is absent", () => {
   assert.deepEqual(projection.edges, []);
   assert.deepEqual(projection.availableActions, []);
   assert.equal(projection.bounds, null);
+});
+
+test("provides only server-published controls without constructing a Phaser scene", () => {
+  const params = { nodeId: "b" };
+  const session = {
+    state: {
+      public: {
+        session: { phase: "construction" },
+        board: {
+          availableActions: [{
+            id: "select-node",
+            label: "Выбрать узел",
+            actionId: "network.node.select",
+            params
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideCardsMoneyTrainsAccessibleBoardActions>[0];
+
+  const actions = provideCardsMoneyTrainsAccessibleBoardActions(session);
+
+  assert.deepEqual(actions, [{
+    id: "select-node",
+    label: "Выбрать узел",
+    actionId: "network.node.select",
+    params: { nodeId: "b" },
+    disabled: false
+  }]);
+  assert.notEqual(actions[0]?.params, params);
+});
+
+test("disables a board control when canonical server availability rejects it", () => {
+  const session = {
+    actionAvailability: [{
+      actionId: "network.node.select",
+      status: "unavailable",
+      reasonCode: "role_not_allowed"
+    }],
+    state: {
+      public: {
+        board: {
+          availableActions: [{
+            id: "select-node",
+            label: "Выбрать узел",
+            actionId: "network.node.select"
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideCardsMoneyTrainsAccessibleBoardActions>[0];
+
+  assert.deepEqual(provideCardsMoneyTrainsAccessibleBoardActions(session), [{
+    id: "select-node",
+    label: "Выбрать узел",
+    description: "Действие недоступно для текущей роли.",
+    actionId: "network.node.select",
+    disabled: true
+  }]);
+});
+
+test("keeps an API 2.0 plugin loadable when an older host lacks the new capability", () => {
+  let disposed = false;
+  const legacyApi = {
+    registerGameConfigData() {},
+    registerGameConfigFactory() {},
+    registerPhaserSceneFactory() {
+      return () => { disposed = true; };
+    }
+  } as unknown as Parameters<typeof activate>[0];
+
+  const dispose = activate(legacyApi);
+  dispose();
+
+  assert.equal(disposed, true);
 });

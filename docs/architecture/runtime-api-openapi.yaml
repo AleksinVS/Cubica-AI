@@ -753,7 +753,7 @@
         "required": ["sessionId"],
         "properties": {
           "sessionId": { "type": "string", "minLength": 1 },
-          "playerId": { "type": "string", "minLength": 1 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "actionId": { "type": "string", "minLength": 1 },
           "payload": true
         },
@@ -805,7 +805,7 @@
         "type": "object",
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
-          "playerId": { "type": "string", "minLength": 1 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" }
         },
         "additionalProperties": true
@@ -827,7 +827,7 @@
         "properties": {
           "sessionId": { "type": "string", "minLength": 1 },
           "expectedStateVersion": { "type": "integer", "minimum": 0 },
-          "playerId": { "type": "string", "minLength": 1 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "actionId": { "type": "string", "minLength": 1 },
           "params": { "$ref": "#/components/schemas/JsonObject" },
           "payload": true
@@ -896,6 +896,14 @@
           "service": { "const": "runtime-api" }
         },
         "additionalProperties": false
+      },
+      "PlayerId": {
+        "description": "Non-empty player identifier that cannot address JavaScript object prototype properties.",
+        "type": "string",
+        "minLength": 1,
+        "not": {
+          "enum": ["__proto__", "constructor", "prototype"]
+        }
       },
       "JsonObject": {
         "type": "object",

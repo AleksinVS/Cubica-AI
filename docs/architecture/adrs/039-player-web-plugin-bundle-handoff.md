@@ -1,6 +1,7 @@
 # ADR-039: Player-web Plugin Bundle Handoff
 
 - **Дата**: 2026-05-29
+- **Актуализировано**: 2026-07-13 — пример и политика версии синхронизированы с текущим API 2.0
 - **Статус**: Accepted; local editor preview and production/published handoff implemented for trusted project-local `player-web` plugins
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Player Web, Runtime API, Game Projects, Plugin Validation
@@ -96,7 +97,7 @@ Published metadata is generated, not hand-written runtime manifest data. The imp
     {
       "pluginId": "antarctica-player",
       "gameId": "antarctica",
-      "apiVersion": "1.0",
+      "apiVersion": "2.0",
       "target": "player-web",
       "scope": "published",
       "contentHash": "64-char-sha256-hex",
@@ -116,7 +117,11 @@ Implementation rules:
 4. Published bundle responses should use `Cache-Control: public, max-age=31536000, immutable`. The metadata that points to bundles should remain revalidated with the game content response.
 5. `player-web` must not import project source files for production plugins. It should use one loader for preview and published bundles, with explicit scope checks.
 6. `PlayerWebPluginBundleReference` has an explicit `scope: "preview" | "published"`. Preview references are `scope: "preview"`; published references are `scope: "published"`.
-7. Supported API versions are exact and explicit for the first slice: `player-web` supports `apiVersion: "1.0"` only. Unsupported versions fail validation before publish and fail closed in the browser if somehow delivered.
+7. Supported API versions are exact and explicit: `player-web` currently supports
+   only `apiVersion: "2.0"`, matching the bundle builder, browser loader and all
+   published game plugins. Unsupported versions fail validation before publish
+   and fail closed in the browser if somehow delivered. The former `1.0` example
+   is historical and is not an accepted runtime version.
 8. npm dependencies remain forbidden for project-local plugins until verified dependency policy exists. The published bundle builder may include only relative plugin files and platform-provided facade imports.
 9. The temporary static local bridge in `apps/player-web/src/plugins/register-games.ts` is removed. Antarctica non-preview mode uses the published bundle reference.
 

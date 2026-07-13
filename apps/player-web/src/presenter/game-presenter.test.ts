@@ -1,17 +1,24 @@
 /**
- * Focused tests for participant attribution at the player-web/runtime boundary.
+ * Focused tests for participant attribution and duplicate-action protection at
+ * the player-web/runtime boundary.
  *
  * Hotseat games use one browser for several local participants, so gameplay
  * actions must follow the active participant from the latest authoritative
  * snapshot instead of keeping the launch identity forever.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
 import type { GameSession } from "@/types/game-state";
-import { resolveRuntimeActorPlayerId } from "./game-presenter";
+import { createDefaultGameConfig, createDefaultGameConfigData } from "./game-config";
+import { GamePresenter, resolveRuntimeActorPlayerId } from "./game-presenter";
+import { ReactViewGateway } from "./react-view-gateway";
 
-const turnSession = (activePlayerId: unknown): GameSession => ({
+const turnSession = (
+  activePlayerId: unknown,
+  players?: Record<string, unknown>
+): GameSession => ({
   sessionId: "session-hotseat",
   gameId: "turn-fixture",
   version: {
@@ -21,11 +28,16 @@ const turnSession = (activePlayerId: unknown): GameSession => ({
   },
   actionAvailability: [],
   state: {
+    ...(players === undefined ? {} : { players }),
     public: {
       turn: { activePlayerId }
     },
     secret: {}
   }
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("resolveRuntimeActorPlayerId", () => {
@@ -38,4 +50,84 @@ describe("resolveRuntimeActorPlayerId", () => {
     expect(resolveRuntimeActorPlayerId(null, "player-web")).toBe("player-web");
     expect(resolveRuntimeActorPlayerId(turnSession(""), "player-web")).toBe("player-web");
   });
+
+  it("preserves a personal participant identity when another player is active", () => {
+    const session = turnSession("p2", {
+      p1: { metrics: { cash: 900 } },
+      p2: { metrics: { cash: 900 } }
+    });
+
+    expect(resolveRuntimeActorPlayerId(session, "p1")).toBe("p1");
+  });
 });
+
+describe("GamePresenter board action serialization", () => {
+  it("sends one request per state version and unlocks after the response", async () => {
+    const content: PlayerFacingContent = {
+      gameId: "neutral-board",
+      version: "1.0.0",
+      name: "Neutral board",
+      description: "Neutral presenter fixture",
+      locale: "ru",
+      playerConfig: { min: 1, max: 1 },
+      actions: [],
+      mockups: []
+    };
+    const initialSession: GameSession = {
+      ...turnSession("p1", { p1: { metrics: {} } }),
+      gameId: content.gameId
+    };
+    let resolveFirstResponse: (response: Response) => void = () => undefined;
+    const firstResponse = new Promise<Response>((resolve) => {
+      resolveFirstResponse = resolve;
+    });
+    const fetchMock = vi.fn()
+      .mockReturnValueOnce(firstResponse)
+      .mockResolvedValueOnce(runtimeResponse(initialSession, 3));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    // This test starts after boot so it can isolate one user gesture without
+    // coupling the serialization invariant to session-creation transport.
+    Reflect.set(presenter, "session", initialSession);
+    Reflect.set(presenter, "booting", false);
+
+    const first = presenter.handleBoardAction("board.move", { target: "b" });
+    const duplicate = presenter.handleBoardAction("board.move", { target: "b" });
+
+    await expect(duplicate).rejects.toThrow("Дождитесь завершения");
+    resolveFirstResponse(runtimeResponse(initialSession, 2));
+    await first;
+    await presenter.handleBoardAction("board.move", { target: "c" });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchRequestVersions(fetchMock)).toEqual([1, 2]);
+  });
+});
+
+function runtimeResponse(session: GameSession, stateVersion: number): Response {
+  return new Response(JSON.stringify({
+    ...session,
+    version: {
+      ...session.version,
+      stateVersion,
+      lastEventSequence: stateVersion
+    }
+  }), {
+    status: 200,
+    headers: { "Content-Type": "application/json" }
+  });
+}
+
+function fetchRequestVersions(fetchMock: ReturnType<typeof vi.fn>): number[] {
+  return fetchMock.mock.calls.map(([, request]) => {
+    const body = JSON.parse(String((request as RequestInit | undefined)?.body ?? "{}")) as {
+      expectedStateVersion?: unknown;
+    };
+    return Number(body.expectedStateVersion);
+  });
+}

@@ -164,6 +164,39 @@ describe("interactive board surface UI contract", () => {
   });
 });
 
+describe("built-in leaf component UI contract", () => {
+  const validateUiManifest = buildValidator("ui-manifest.schema.json");
+  const manifestWithRoot = (root: Record<string, unknown>) => ({
+    meta: { id: "neutral.leaf.web", version: "1.0.0", game_id: "neutral-leaf" },
+    entry_point: "main",
+    screens: {
+      main: {
+        type: "screen",
+        root
+      }
+    }
+  });
+
+  it.each([
+    ["button caption", { type: "buttonComponent", props: {} }],
+    ["rich text body", { type: "richTextComponent", props: {} }],
+    ["image source", { type: "imageComponent", props: {} }],
+    ["metric binding", { type: "gameVariableComponent", props: {} }],
+    ["non-empty metric binding", { type: "gameVariableComponent", props: { metricId: "" } }],
+    ["card content", { type: "cardComponent", props: {} }],
+    ["non-empty card content", { type: "cardComponent", props: { title: "" } }]
+  ])("rejects a built-in leaf without %s", (_label, root) => {
+    expect(validateUiManifest(manifestWithRoot(root))).toBe(false);
+  });
+
+  it("keeps props optional for structural containers", () => {
+    expect(validateUiManifest(manifestWithRoot({
+      type: "areaComponent",
+      children: [{ type: "richTextComponent", props: { html: "Ready" } }]
+    }))).toBe(true);
+  });
+});
+
 describe("game asset registry contract", () => {
   const validateGameAssets = buildValidator("game-assets.schema.json");
   const examplesRoot = join(schemasRoot, "examples");

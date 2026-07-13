@@ -29,6 +29,18 @@ const manifestInput = {
     playersTemplate: { metrics: { cash: 100 } }
   },
   actions: {
+    increment: {
+      handlerType: "manifest-data",
+      deterministic: {
+        effects: [{
+          op: "metric.add",
+          scope: "player",
+          playerId: "{{actor}}",
+          metricId: "cash",
+          delta: 1
+        }]
+      }
+    },
     award: {
       handlerType: "manifest-data",
       deterministic: {
@@ -169,6 +181,25 @@ test("client params cannot supply a missing trusted actor", async () => {
   assert.deepEqual(state, before);
 });
 
+test("reserved object keys cannot impersonate participants or pollute Object.prototype", async () => {
+  const objectPrototype = Object.prototype as Record<string, unknown>;
+  for (const playerId of ["__proto__", "constructor", "prototype"]) {
+    delete objectPrototype.metrics;
+
+    try {
+      const result = await handler(contextFor("increment", initialState(), playerId));
+
+      assert.equal(result.ok, false);
+      assert.match(result.error?.message ?? "", /unknown participant/u);
+      assert.equal(Object.prototype.hasOwnProperty.call(objectPrototype, "metrics"), false);
+    } finally {
+      // Keep this regression test isolated even when it runs against an old,
+      // vulnerable runtime that writes through the inherited __proto__ branch.
+      delete objectPrototype.metrics;
+    }
+  }
+});
+
 test("the removed kind and insufficientFunds transfer contract is rejected", () => {
   const legacy = structuredClone(manifestInput) as any;
   legacy.actions.award.deterministic.effects[0] = {
@@ -193,4 +224,16 @@ test("player tokens and shared-state paths cannot be built from client parameter
   const dynamicPath = structuredClone(manifestInput) as any;
   dynamicPath.actions.moveReserve.deterministic.effects[0].from.path = "/public/balances/{{source}}";
   assert.throws(() => validateGameManifest(dynamicPath), /Schema validation failed/u);
+});
+
+test("manifest player references reject reserved object keys without narrowing normal ids", () => {
+  for (const playerId of ["__proto__", "constructor", "prototype"]) {
+    const unsafe = structuredClone(manifestInput) as any;
+    unsafe.actions.award.deterministic.effects[0].to.playerId = playerId;
+    assert.throws(() => validateGameManifest(unsafe), /Schema validation failed/u);
+  }
+
+  const ordinary = structuredClone(manifestInput) as any;
+  ordinary.actions.award.deterministic.effects[0].to.playerId = "participant-1";
+  assert.doesNotThrow(() => validateGameManifest(ordinary));
 });
