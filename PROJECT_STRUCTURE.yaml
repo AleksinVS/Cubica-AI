@@ -6,19 +6,6 @@
 # Note: 'draft', 'sandbox', '.tmp' and 'node_modules' are excluded.
 # Note: ONLY documented files and directories (via .desc.json or package.json) are shown.
 
-.claude:
-  worktrees:
-    priceless-austin-d165b1: # Корень монорепозитория Cubica
-      .gitignore: file # Правила исключения локальных зависимостей, сборочных и тестовых артефактов из Git.
-      AGENTS.md: file # Правила работы ИИ‑агентов
-      NEXT_STEPS.md: file # Ближайшие инженерные шаги и приоритеты миграции
-      package-lock.json: file # Lockfile корневого npm-workspace
-      package.json: file # Корневой npm-workspace
-      playwright.config.ts: file # Конфигурация Playwright e2e-тестов для browser-level проверки player-web и runtime-api.
-      PROJECT_OVERVIEW.md: file # Общий обзор проекта
-      PROJECT_STRUCTURE.yaml: file # Описание структуры репозитория (этот файл)
-      PROJECT_WORKFLOW_CONFIG.json: file # Конфигурация workflow-инструментов, поддерживаемая как корневой tool entry point
-      README.md: file # Основное описание репозитория
 .github: # GitHub repository automation configuration, including required CI workflows.
   workflows: # GitHub Actions workflows for canonical validation and legacy/stub governance gates.
     ci.yml: file # Required CI workflow for legacy/stub gate, canonical verification, portal launch rule tests and player-web e2e tests.
@@ -67,6 +54,7 @@ docs: # Архитектура, задачи, планирование
       077-serialized-editor-session-mutations.md: file # ADR-077: принятая единая аренда для Save, Restore, Close и GC одной editor-сессии и запрет пользовательского Save без сессии.
       078-canonical-replay-state-fingerprint.md: file # ADR-078: принятый версионированный отпечаток полного серверного состояния для воспроизводимых replay с точным исключением служебных отметок времени.
       079-server-projected-action-availability.md: file # ADR-079: принятая серверная проекция доступности действий из того же guard-вычислителя, который защищает dispatch, без раскрытия внутренних путей состояния.
+      080-declarative-map-first-workspace.md: file # ADR-080: принятый общий декларативный режим, в котором пространственная карта заполняет рабочую область, а статус, действия и методические панели размещаются смысловыми слоями поверх неё.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
       external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.
@@ -226,12 +214,28 @@ services: # Сервисы и инфраструктура
     test: directory... # Focused backend tests that can run without a Strapi database; currently covers pure portal launch-session rule helpers.
   router: directory... # Service boundary for router scaffold. The current canonical runtime path is owned by services/runtime-api until this boundary is reclassified or extracted.
   runtime-api: directory... # Целевой единый deployable backend (модульный монолит) 
+skill-candidates: # Неактивный каталог точных снимков внешних навыков: только референсы и исходный материал для управляемой адаптации, без автоматического обнаружения агентами.
+  agent-skills: # Неактивные кандидаты из репозитория addyosmani/agent-skills.
+    frontend-ui-engineering: directory... # Точный неактивный снимок внешнего навыка frontend-ui-engineering и необходимой ему справки по доступности.
+  anthropic-skills: # Неактивные кандидаты из репозитория anthropics/skills.
+    frontend-design: directory... # Точный неактивный снимок внешнего навыка frontend-design с исходной лицензией.
+  openai-skills: # Неактивные исторические и текущие кандидаты из репозитория openai/skills.
+    frontend-skill: directory... # Исторический неактивный снимок frontend-skill из последнего commit до удаления навыка из upstream.
+  superpowers: # Неактивные кандидаты из репозитория obra/superpowers.
+    brainstorming: directory... # Точный неактивный снимок brainstorming, сохранённый для заимствования отдельных практик без импорта методологии Superpowers.
 skills: # Единый канонический каталог проектных навыков для всех агентов; Codex использует только символические ссылки из .codex/skills/.
   C_cubica: directory... # Явно включаемый пользователем проектный навык автономной разработки Cubica по ADR-068: утверждаемый общий TSK-план, оркестрация субагентов и приемка результата.
   C_external-skill-adapter: directory... # Проектный навык управляемой адаптации внешних навыков по ADR-069 с детерминированными проверками и семантическим решением агента.
   C_low-memory-host-operations: directory... # Проектный навык безопасных последовательных сборок, тестов и восстановления Cubica на общем хосте с ограниченной оперативной памятью.
-  C_ui-compare: directory... # Внутренний навык измеряемого сравнения реализованного интерфейса с визуальным образцом.
-  C_ui-from-mockup: directory... # Внутренний навык разработки интерфейса по изображению-макету с инвентаризацией и измеряемой приемкой.
+  C_ui-compare: # Внутренний навык измеряемого сравнения реализованного интерфейса с визуальным образцом.
+    schemas: directory... # JSON Schema contracts for validated UI inventories and reproducible visual-comparison profiles used by C_ui-compare and C_ui-from-mockup.
+    scripts: directory... # Command-line image, browser, inventory, profile, accessibility, and comparison checks used by the C_ui-compare workflow.
+    tests: directory... # Deterministic regression tests for the C_ui-compare command-line gates, schemas, profiles, adaptive scanning, and browser audit.
+  C_ui-from-mockup: # Внутренний навык разработки интерфейса по изображению-макету с инвентаризацией и измеряемой приемкой.
+    references: directory... # Проектные руководства, загружаемые ui-from-mockup только для соответствующего масштаба, режима или проверки качества.
+    schemas: directory... # JSON Schema временного reference brief, отделяющего наблюдаемое изображение от выводов агента и решений PM.
+    scripts: directory... # Детерминированная проверка reference brief и связанных контрольных сумм до реализации UI.
+    tests: directory... # Регрессионные тесты схемы и смысловых границ reference brief.
   debugging-and-error-recovery: directory... # Адаптированный для Cubica навык системной диагностики и исправления ошибок из agent-skills.
   verification-before-completion: directory... # Адаптированный для Cubica навык доказательной проверки перед заявлениями о завершении из superpowers.
 .gitignore: file # Правила исключения локальных зависимостей, сборочных и тестовых артефактов из Git.
