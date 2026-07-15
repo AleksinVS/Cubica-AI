@@ -42,6 +42,7 @@
 
 ## Next
 
+- [TSK-20260713-project-knowledge-system](docs/tasks/active/TSK-20260713-project-knowledge-system.md) — `planned`: внедрить принятую ADR-082 проектную вики, постоянный граф знаний, FTS5, сразу доступный для явных запросов и сравнительной оценки векторный поиск и минимальную AST-проекцию импортов; режим поиска по умолчанию выбирается при приёмке первой версии по измеримому качеству с FTS как начальным резервом, существующий генератор структуры сохраняется.
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `planned`: кандидат на постоянные сессии, участников, события и WebSocket-доставку по потребности игрового среза.
 - [TSK-20260706-flow-simulation-platform-capabilities](docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md) — `planned`: кандидат на общие возможности симуляций реального времени, если их потребует выбранная игра.
 - [TSK-20260707-player-web-bundle-budget](docs/tasks/active/TSK-20260707-player-web-bundle-budget.md) — `planned`: кандидат на CI-бюджет first-load JavaScript по триггеру игрового среза или приоритету PM.

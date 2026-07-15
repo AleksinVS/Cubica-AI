@@ -16,6 +16,7 @@
 - `ai-agent-safety-remediation.md` — проектные правила исправления review findings по Cubica Surface and AI-driven runtime: approval envelope, Agent Turn acceptance, capability gates, channel action policy and production backend auth по ADR-047.
 - `element-prompt-contract.md` — проектный контракт элементного промта по ADR-048: `_prompt` для authoring-экземпляров, `_promptTemplate` для прототипов, жизненный цикл нормализации и границы с `generation.prompt`.
 - `generative-ui-surface-protocol.md` — проектная архитектура Cubica-owned Generative UI Surface Protocol по ADR-045 и ADR-046: CopilotKit как MVP-адаптер, собственный compatible Agent UI target, Cubica Surface, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
+- `project-knowledge-system.md` — принятая архитектура проектной вики Cubica, смыслового wiki-графа, FTS5, сразу проверяемого векторного поиска и минимальной AST-проекции импортов по ADR-082.
 - `testing-strategy.md` — политика тестирования и целевая архитектура проверок для runtime, player, editor, portal, game content и будущего LLM-слоя.
 - `diagrams/` — визуальные схемы (C4, последовательности, схемы развёртывания). Создаётся по мере появления диаграмм.
 - `openapi/` — спецификации API и совместимые артефакты (JSON/YAML).
