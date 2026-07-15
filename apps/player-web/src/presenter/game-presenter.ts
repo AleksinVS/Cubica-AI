@@ -12,6 +12,7 @@ import {
   resumeSession,
   dispatchAction as dispatchRuntimeAction,
   getGameReadiness,
+  previewTransportRoad as previewRuntimeTransportRoad,
   runAgentTurn as runRuntimeAgentTurn,
   RuntimeClientError
 } from "@/presenter/runtime-client";
@@ -33,6 +34,7 @@ import type { ClientRequest } from "@/presenter/types";
 import type { PlayerRuntimeStatus, PlayerState } from "@/presenter/types";
 import type { CubicaJsonValue, CubicaSurface, CubicaSurfaceAction } from "@cubica/contracts-ai";
 import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
+import type { TransportRoadPreviewResponse } from "@cubica/contracts-session";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
 
@@ -452,6 +454,31 @@ export class GamePresenter {
       this.isPending = false;
       await this.syncView();
     }
+  }
+
+  /**
+   * Calculates a road against the current authoritative snapshot without
+   * starting a gameplay transition.
+   *
+   * Preview state belongs to the interactive view, not to the Presenter. This
+   * method therefore does not set the shared pending flag, replace the session
+   * snapshot or copy preview failures into the persistent player error panel.
+   */
+  async previewTransportRoad(
+    actionId: string,
+    params: Record<string, unknown>
+  ): Promise<TransportRoadPreviewResponse> {
+    if (this.booting || !this.session) {
+      throw new Error("Игровая сессия еще не готова к расчёту дороги.");
+    }
+
+    return previewRuntimeTransportRoad({
+      sessionId: this.session.sessionId,
+      expectedStateVersion: this.session.version.stateVersion,
+      playerId: resolveRuntimeActorPlayerId(this.session, this.config.playerId),
+      actionId,
+      params
+    });
   }
 
   /**

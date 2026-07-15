@@ -77,6 +77,17 @@ const stateCollection = (
   return collection;
 };
 
+/** Read a declared object collection without creating or changing state. */
+const readStateCollection = (
+  state: RuntimeState,
+  model: GameManifestTransportNetworkModel,
+  collectionId: string
+): JsonRecord => {
+  const root = isRecord(state[model.visibility]) ? state[model.visibility] as JsonRecord : {};
+  const objects = isRecord(root.objects) ? root.objects : {};
+  return isRecord(objects[collectionId]) ? objects[collectionId] : {};
+};
+
 const pointFromObject = (object: JsonRecord | undefined): Point => {
   const attributes = isRecord(object?.attributes) ? object.attributes : {};
   const position = isRecord(attributes.position) ? attributes.position : {};
@@ -389,6 +400,83 @@ const initialFacets = (
   return facets;
 };
 
+type ConstructionLifecycle = NonNullable<GameManifestTransportNetworkModel["constructionLifecycle"]>;
+
+/**
+ * Read the manifest-declared turn counter before any payment or graph mutation.
+ * Failing early preserves the composite effect's atomic behavior when authored
+ * state does not match its lifecycle declaration.
+ */
+const constructionTurn = (state: RuntimeState, lifecycle: ConstructionLifecycle): number => {
+  const turn = readPointer(state, lifecycle.turnCounterPath);
+  if (!Number.isSafeInteger(turn) || (turn as number) < 0) {
+    throw new Error(`Transport construction turn at "${lifecycle.turnCounterPath}" must be a non-negative integer`);
+  }
+  return turn as number;
+};
+
+const blockingReasons = (
+  attributes: JsonRecord,
+  lifecycle: ConstructionLifecycle,
+  label: string
+): Array<string> => {
+  const raw = attributes[lifecycle.blockingReasonsAttribute];
+  if (raw === undefined) return [];
+  if (!Array.isArray(raw) || raw.some((reason) => typeof reason !== "string")) {
+    throw new Error(`${label} construction blocking reasons must be an array of strings`);
+  }
+  return raw as Array<string>;
+};
+
+/** Build the declarative lifecycle attributes without discarding unrelated blockers. */
+const pendingConstructionAttributes = (
+  currentAttributes: JsonRecord,
+  lifecycle: ConstructionLifecycle,
+  turn: number
+): JsonRecord => ({
+  [lifecycle.createdTurnAttribute]: turn,
+  [lifecycle.activationTurnAttribute]: turn + lifecycle.activationDelayTurns,
+  [lifecycle.blockingReasonsAttribute]: [
+    ...new Set([
+      ...blockingReasons(currentAttributes, lifecycle, "Transport object"),
+      lifecycle.pendingReason
+    ])
+  ]
+});
+
+/** Ensure a lifecycle facet value is valid for the object's declarative model. */
+const assertDeclaredFacetValue = (
+  objectModels: GameManifestObjectModelMap | undefined,
+  objectType: string,
+  collection: string,
+  facet: string,
+  value: GameManifestObjectFacetValue
+) => {
+  const objectModel = objectModels?.[objectType];
+  if (!objectModel || objectModel.collection !== collection || objectModel.scope !== "session") {
+    throw new Error(`Transport object type "${objectType}" is not declared for collection "${collection}"`);
+  }
+  const definition = objectModel.facets[facet];
+  if (!definition || !definition.values.includes(value)) {
+    throw new Error(`Transport facet "${facet}" does not allow lifecycle state ${String(value)}`);
+  }
+};
+
+const lifecycleFacetOverride = (
+  objectModels: GameManifestObjectModelMap | undefined,
+  objectType: string,
+  collection: string,
+  currentFacets: unknown,
+  facet: string,
+  value: GameManifestObjectFacetValue
+): JsonRecord => {
+  assertDeclaredFacetValue(objectModels, objectType, collection, facet, value);
+  return {
+    ...(isRecord(currentFacets) ? structuredClone(currentFacets) : {}),
+    [facet]: value
+  };
+};
+
 const allocateId = (
   state: RuntimeState,
   model: GameManifestTransportNetworkModel,
@@ -553,12 +641,151 @@ const shortestOpenRoute = (options: {
   return { edgeIds, nodeIds };
 };
 
+type RoadBuildEffect = Extract<GameManifestDeterministicEffect, { op: "transport.road.build" }>;
+
+interface PreparedRoadBuild {
+  fromRef: RuntimeResolvedReference;
+  toRef: RuntimeResolvedReference;
+  from: Point;
+  to: Point;
+  regionSegments: number;
+  cost: number;
+  prepared?: ReturnType<typeof prepareMinimumRegionRoadCandidates>;
+}
+
+/**
+ * Perform every server-owned road precondition and geometry calculation before
+ * payment or graph mutation. Both preview and confirmation use this function,
+ * so a client cannot receive a price derived from rules different from the
+ * rules that authorize the later transaction.
+ */
+const prepareRoadBuild = (options: {
+  state: RuntimeState;
+  effect: RoadBuildEffect;
+  model: GameManifestTransportNetworkModel;
+  nodes: JsonRecord;
+  edges: JsonRecord;
+  resolvedRefs: Record<string, RuntimeResolvedReference>;
+}): PreparedRoadBuild => {
+  const { state, effect, model, nodes, edges, resolvedRefs } = options;
+  const fromRef = requireReference(resolvedRefs, effect.fromNodeParam, model.nodeCollection, effect.networkId);
+  const toRef = requireReference(resolvedRefs, effect.toNodeParam, model.nodeCollection, effect.networkId);
+  if (fromRef.id === toRef.id) throw new Error("A transport road requires two different nodes");
+  const fromNode = isRecord(nodes[fromRef.id]) ? nodes[fromRef.id] as JsonRecord : undefined;
+  const toNode = isRecord(nodes[toRef.id]) ? nodes[toRef.id] as JsonRecord : undefined;
+  assertAllowedFacetState(fromNode, model.nodeStateFacet, model.buildableNodeStates, "node");
+  assertAllowedFacetState(toNode, model.nodeStateFacet, model.buildableNodeStates, "node");
+  const from = pointFromObject(fromNode);
+  const to = pointFromObject(toNode);
+  for (const candidate of Object.values(edges)) {
+    if (!isRecord(candidate)) continue;
+    const endpoints = edgeEndpoints(candidate);
+    if ((endpoints.fromNodeId === fromRef.id && endpoints.toNodeId === toRef.id) ||
+        (endpoints.fromNodeId === toRef.id && endpoints.toNodeId === fromRef.id)) {
+      throw new Error("A transport road already connects the selected nodes");
+    }
+  }
+  const prepared = model.roadPlanning
+    ? prepareMinimumRegionRoadCandidates({
+        model,
+        from,
+        to,
+        excludedRegionIds: excludedRegionIds(state, model.roadPlanning.excludedRegionIdsPath)
+      })
+    : undefined;
+  const regionSegments = prepared
+    ? prepared.candidates[0].regionSequence.length
+    : countRegionSegments(from, to, model);
+  if (regionSegments === 0) {
+    throw new Error("A transport road must contain at least one segment inside a declared region");
+  }
+  return {
+    fromRef,
+    toRef,
+    from,
+    to,
+    regionSegments,
+    cost: regionSegments * model.roadCostPerRegionSegment,
+    prepared
+  };
+};
+
+export interface TransportRoadPreviewPlan {
+  networkId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  polyline: Array<Point>;
+  regionSequence: Array<string>;
+  regionSegments: number;
+  cost: number;
+  candidateCount: number;
+  planning: {
+    mode: "region-segment-minimum";
+    algorithmVersion: string;
+    geometryVersion: string;
+    geometryHash: string;
+    boundaryPolicy: string;
+  };
+}
+
+/**
+ * Calculate a road preview from an immutable session snapshot.
+ *
+ * A tied route is selected by running the same PRNG operation against the
+ * current random tuple without persisting its returned tuple. Confirmation on
+ * the same state version therefore shows the same polyline, while preview
+ * itself consumes no session randomness.
+ */
+export const previewTransportRoadBuild = (options: {
+  state: RuntimeState;
+  effect: RoadBuildEffect;
+  resolvedRefs: Record<string, RuntimeResolvedReference>;
+  networkModels?: GameManifestTransportNetworkModelMap;
+}): TransportRoadPreviewPlan => {
+  const model = options.networkModels?.[options.effect.networkId];
+  if (!model) throw new Error(`Transport network "${options.effect.networkId}" is not declared`);
+  if (!model.roadPlanning) {
+    throw new Error("Transport road preview requires an authoritative road-planning model");
+  }
+  const prepared = prepareRoadBuild({
+    state: options.state,
+    effect: options.effect,
+    model,
+    nodes: readStateCollection(options.state, model, model.nodeCollection),
+    edges: readStateCollection(options.state, model, model.edgeCollection),
+    resolvedRefs: options.resolvedRefs
+  });
+  if (!prepared.prepared) {
+    throw new Error("Transport road preview could not prepare authoritative route candidates");
+  }
+  const selected = prepared.prepared.candidates.length > 1
+    ? chooseSessionValue({ ...sessionRandomState(options.state) }, prepared.prepared.candidates)
+    : { value: prepared.prepared.candidates[0], index: 0 };
+  return {
+    networkId: options.effect.networkId,
+    fromNodeId: prepared.fromRef.id,
+    toNodeId: prepared.toRef.id,
+    polyline: structuredClone(selected.value.points),
+    regionSequence: [...selected.value.regionSequence],
+    regionSegments: prepared.regionSegments,
+    cost: prepared.cost,
+    candidateCount: prepared.prepared.candidates.length,
+    planning: {
+      mode: model.roadPlanning.mode,
+      algorithmVersion: model.roadPlanning.algorithmVersion,
+      geometryVersion: model.roadPlanning.geometryVersion,
+      geometryHash: model.roadPlanning.geometryHash,
+      boundaryPolicy: model.roadPlanning.boundaryPolicy
+    }
+  };
+};
+
 export interface ApplyTransportEffectOptions {
   state: RuntimeState;
   effect: Extract<GameManifestDeterministicEffect, {
     op: "transport.road.build" | "transport.waypoint.build" | "transport.vehicle.move" |
       "transport.vehicle.attach" | "transport.vehicle.detach" | "transport.cargo.load" |
-      "transport.cargo.deliver"
+      "transport.cargo.deliver" | "transport.construction.activateDue"
   }>;
   params: Record<string, unknown>;
   resolvedRefs: Record<string, RuntimeResolvedReference>;
@@ -574,37 +801,78 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
   const nodes = stateCollection(state, model, model.nodeCollection);
   const edges = stateCollection(state, model, model.edgeCollection);
 
-  if (effect.op === "transport.road.build") {
-    const fromRef = requireReference(resolvedRefs, effect.fromNodeParam, model.nodeCollection, effect.networkId);
-    const toRef = requireReference(resolvedRefs, effect.toNodeParam, model.nodeCollection, effect.networkId);
-    if (fromRef.id === toRef.id) throw new Error("A transport road requires two different nodes");
-    const fromNode = isRecord(nodes[fromRef.id]) ? nodes[fromRef.id] as JsonRecord : undefined;
-    const toNode = isRecord(nodes[toRef.id]) ? nodes[toRef.id] as JsonRecord : undefined;
-    assertAllowedFacetState(fromNode, model.nodeStateFacet, model.buildableNodeStates, "node");
-    assertAllowedFacetState(toNode, model.nodeStateFacet, model.buildableNodeStates, "node");
-    const from = pointFromObject(fromNode);
-    const to = pointFromObject(toNode);
-    for (const candidate of Object.values(edges)) {
-      if (!isRecord(candidate)) continue;
-      const endpoints = edgeEndpoints(candidate);
-      if ((endpoints.fromNodeId === fromRef.id && endpoints.toNodeId === toRef.id) ||
-          (endpoints.fromNodeId === toRef.id && endpoints.toNodeId === fromRef.id)) {
-        throw new Error("A transport road already connects the selected nodes");
+  if (effect.op === "transport.construction.activateDue") {
+    const lifecycle = model.constructionLifecycle;
+    if (!lifecycle) {
+      throw new Error(`Transport network "${effect.networkId}" does not declare a construction lifecycle`);
+    }
+    const turn = constructionTurn(state, lifecycle);
+    type DueObject = {
+      id: string;
+      object: JsonRecord;
+      collection: string;
+      facet: string;
+      activeState: GameManifestObjectFacetValue;
+      remainingReasons: Array<string>;
+    };
+    const due: Array<DueObject> = [];
+    const collectDue = (
+      collection: JsonRecord,
+      collectionId: string,
+      facet: string,
+      activeState: GameManifestObjectFacetValue
+    ) => {
+      for (const [id, rawObject] of Object.entries(collection)) {
+        if (!isRecord(rawObject)) continue;
+        const attributes = isRecord(rawObject.attributes) ? rawObject.attributes : {};
+        if (attributes.networkId !== effect.networkId) continue;
+        const activationTurn = attributes[lifecycle.activationTurnAttribute];
+        if (!Number.isSafeInteger(activationTurn) || (activationTurn as number) > turn) continue;
+        const reasons = blockingReasons(attributes, lifecycle, `Transport object "${id}"`);
+        if (!reasons.includes(lifecycle.pendingReason)) continue;
+        const remainingReasons = reasons.filter((reason) => reason !== lifecycle.pendingReason);
+        if (remainingReasons.length === 0) {
+          const objectType = rawObject.objectType;
+          if (typeof objectType !== "string") {
+            throw new Error(`Transport object "${id}" is missing its object type`);
+          }
+          assertDeclaredFacetValue(objectModels, objectType, collectionId, facet, activeState);
+        }
+        due.push({ id, object: rawObject, collection: collectionId, facet, activeState, remainingReasons });
+      }
+    };
+    // Validate every due object before mutating any of them. The action-level
+    // clone is already atomic; this two-pass shape also makes the helper safe
+    // if it is reused in another deterministic context later.
+    collectDue(nodes, model.nodeCollection, model.nodeStateFacet, lifecycle.nodeStates.active);
+    collectDue(edges, model.edgeCollection, model.edgeStateFacet, lifecycle.edgeStates.active);
+
+    const activatedNodeIds: Array<string> = [];
+    const activatedEdgeIds: Array<string> = [];
+    const stillBlockedNodeIds: Array<string> = [];
+    const stillBlockedEdgeIds: Array<string> = [];
+    for (const entry of due) {
+      const attributes = isRecord(entry.object.attributes) ? entry.object.attributes : {};
+      attributes[lifecycle.blockingReasonsAttribute] = entry.remainingReasons;
+      entry.object.attributes = attributes;
+      const isNode = entry.collection === model.nodeCollection;
+      if (entry.remainingReasons.length === 0) {
+        const facets = isRecord(entry.object.facets) ? entry.object.facets : {};
+        facets[entry.facet] = entry.activeState;
+        entry.object.facets = facets;
+        (isNode ? activatedNodeIds : activatedEdgeIds).push(entry.id);
+      } else {
+        (isNode ? stillBlockedNodeIds : stillBlockedEdgeIds).push(entry.id);
       }
     }
-    const prepared = model.roadPlanning
-      ? prepareMinimumRegionRoadCandidates({
-          model,
-          from,
-          to,
-          excludedRegionIds: excludedRegionIds(state, model.roadPlanning.excludedRegionIdsPath)
-        })
-      : undefined;
-    const regionSegments = prepared ? prepared.candidates[0].regionSequence.length : countRegionSegments(from, to, model);
-    if (regionSegments === 0) {
-      throw new Error("A transport road must contain at least one segment inside a declared region");
-    }
-    const cost = regionSegments * model.roadCostPerRegionSegment;
+    return { turn, activatedNodeIds, activatedEdgeIds, stillBlockedNodeIds, stillBlockedEdgeIds };
+  }
+
+  if (effect.op === "transport.road.build") {
+    const preparedRoad = prepareRoadBuild({ state, effect, model, nodes, edges, resolvedRefs });
+    const { fromRef, toRef, from, to, regionSegments, cost, prepared } = preparedRoad;
+    const lifecycle = model.constructionLifecycle;
+    const turn = lifecycle ? constructionTurn(state, lifecycle) : undefined;
     applyPayments(state, effect.payments, cost, params);
     // A unique minimum route is fully deterministic and must not even require
     // PRNG state. Only a genuine tie enters the replay-owned random stream.
@@ -644,11 +912,12 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
         }
       : undefined;
     const edgeId = allocateId(state, model, effect.networkId, "edge", edges);
+    const edgeState = lifecycle ? lifecycle.edgeStates.pending : model.builtEdgeState;
     edges[edgeId] = {
       objectType: model.edgeObjectType,
       facets: initialFacets(objectModels, model.edgeObjectType, model.edgeCollection, {
         facet: model.edgeStateFacet,
-        value: model.builtEdgeState
+        value: edgeState
       }),
       attributes: {
         networkId: effect.networkId,
@@ -657,7 +926,8 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
         geometry,
         constructionCost: cost,
         regionSegments,
-        ...(routePlan ? { routePlan } : {})
+        ...(routePlan ? { routePlan } : {}),
+        ...(lifecycle && turn !== undefined ? pendingConstructionAttributes({}, lifecycle, turn) : {})
       }
     };
     return { edgeId, cost, regionSegments };
@@ -687,6 +957,8 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
       split,
       replacedEdgeId: edgeRef.id
     });
+    const lifecycle = model.constructionLifecycle;
+    const turn = lifecycle ? constructionTurn(state, lifecycle) : undefined;
     applyPayments(state, effect.payments, model.waypointCost, params);
 
     const nodeId = allocateId(state, model, effect.networkId, "node", nodes);
@@ -694,8 +966,17 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
     const secondEdgeId = allocateId(state, model, effect.networkId, "edge", edges);
     nodes[nodeId] = {
       objectType: model.waypointObjectType,
-      facets: initialFacets(objectModels, model.waypointObjectType, model.nodeCollection),
-      attributes: { networkId: effect.networkId, position }
+      facets: initialFacets(
+        objectModels,
+        model.waypointObjectType,
+        model.nodeCollection,
+        lifecycle ? { facet: model.nodeStateFacet, value: lifecycle.nodeStates.pending } : undefined
+      ),
+      attributes: {
+        networkId: effect.networkId,
+        position,
+        ...(lifecycle && turn !== undefined ? pendingConstructionAttributes({}, lifecycle, turn) : {})
+      }
     };
     const originalFacets = isRecord(edge.facets) ? structuredClone(edge.facets) : {};
     const makeSplitEdge = (
@@ -703,21 +984,38 @@ export const applyTransportEffect = (options: ApplyTransportEffectOptions): Reco
       toNodeId: string,
       edgePoints: Array<Point>,
       childRoutePlan?: JsonRecord
-    ) => ({
-      objectType: typeof edge.objectType === "string" ? edge.objectType : model.edgeObjectType,
-      facets: structuredClone(originalFacets),
-      attributes: {
-        ...structuredClone(originalAttributes),
-        networkId: effect.networkId,
-        fromNodeId,
-        toNodeId,
-        geometry: { from: edgePoints[0], to: edgePoints[edgePoints.length - 1], polyline: edgePoints },
-        splitFromEdgeId: edgeRef.id,
-        ...(childRoutePlan
-          ? { routePlan: childRoutePlan, regionSegments: (childRoutePlan.passages as Array<unknown>).length }
-          : {})
-      }
-    });
+    ) => {
+      const objectType = typeof edge.objectType === "string" ? edge.objectType : model.edgeObjectType;
+      return {
+        objectType,
+        // A split child is new construction. With an enabled lifecycle it must
+        // never inherit an open facet from the replaced edge.
+        facets: lifecycle
+          ? lifecycleFacetOverride(
+              objectModels,
+              objectType,
+              model.edgeCollection,
+              originalFacets,
+              model.edgeStateFacet,
+              lifecycle.edgeStates.pending
+            )
+          : structuredClone(originalFacets),
+        attributes: {
+          ...structuredClone(originalAttributes),
+          networkId: effect.networkId,
+          fromNodeId,
+          toNodeId,
+          geometry: { from: edgePoints[0], to: edgePoints[edgePoints.length - 1], polyline: edgePoints },
+          splitFromEdgeId: edgeRef.id,
+          ...(childRoutePlan
+            ? { routePlan: childRoutePlan, regionSegments: (childRoutePlan.passages as Array<unknown>).length }
+            : {}),
+          ...(lifecycle && turn !== undefined
+            ? pendingConstructionAttributes(originalAttributes, lifecycle, turn)
+            : {})
+        }
+      };
+    };
     edges[firstEdgeId] = makeSplitEdge(
       endpoints.fromNodeId,
       nodeId,

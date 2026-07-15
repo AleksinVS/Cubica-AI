@@ -98,6 +98,70 @@ const readReferenceAnnotations = (
   return result;
 };
 
+/**
+ * Validate a bounded subset of action parameters using the action's own JSON
+ * Schema declarations.
+ *
+ * Road preview uses this for endpoint references only: accepting contribution
+ * or other action fields here would blur the boundary between a read-only
+ * estimate and the later authoritative command. Reusing the declared property
+ * schemas also prevents a second, imperative definition of valid references.
+ */
+export const validateActionReferenceParameterSubset = (
+  definition: RuntimeManifestActionDefinition,
+  inputParams: Record<string, unknown> | undefined,
+  parameterNames: ReadonlyArray<string>,
+  options: { requiredVisibility?: "public" | "secret" } = {}
+): Record<string, unknown> => {
+  const uniqueNames = [...new Set(parameterNames)];
+  if (uniqueNames.length !== parameterNames.length || uniqueNames.length === 0) {
+    throw new RequestValidationError("Action preview must declare a non-empty set of distinct reference parameters");
+  }
+  const sourceProperties = isRecord(definition.paramsSchema?.properties)
+    ? definition.paramsSchema.properties
+    : {};
+  const selectedProperties: JsonRecord = {};
+  for (const parameterName of uniqueNames) {
+    if (forbiddenKeys.has(parameterName)) {
+      throw new RequestValidationError("Action preview declares a forbidden reference parameter name");
+    }
+    const propertySchema = sourceProperties[parameterName];
+    const reference = isRecord(propertySchema) && isRecord(propertySchema["x-cubica-ref"])
+      ? propertySchema["x-cubica-ref"]
+      : undefined;
+    if (!reference) {
+      throw new RequestValidationError(
+        `Action parameter "${parameterName}" is not a schema-declared resource reference`
+      );
+    }
+    if (options.requiredVisibility && reference.visibility !== options.requiredVisibility) {
+      throw new RequestValidationError(
+        `Action parameter "${parameterName}" is not declared for ${options.requiredVisibility} preview visibility`
+      );
+    }
+    selectedProperties[parameterName] = propertySchema;
+  }
+
+  const params = inputParams ?? {};
+  for (const key of Object.keys(params)) {
+    if (forbiddenKeys.has(key)) {
+      throw new RequestValidationError("Action preview params contain a forbidden property name");
+    }
+  }
+  const validator = compileValidator({
+    type: "object",
+    additionalProperties: false,
+    properties: selectedProperties,
+    required: uniqueNames
+  });
+  if (!validator(params)) {
+    throw new RequestValidationError(
+      `Action "${definition.actionId}" preview params failed schema validation: ${formatValidationErrors(validator)}`
+    );
+  }
+  return params;
+};
+
 const resolveReferenceRecord = (
   state: RuntimeState,
   annotation: ReferenceAnnotation,
@@ -122,10 +186,15 @@ const resolveReferenceRecord = (
 export const resolveActionReferences = (
   definition: RuntimeManifestActionDefinition,
   params: Record<string, unknown>,
-  state: RuntimeState
+  state: RuntimeState,
+  onlyParameterNames?: ReadonlyArray<string>
 ): Record<string, RuntimeResolvedReference> => {
   const resolved: Record<string, RuntimeResolvedReference> = {};
+  const selectedNames = onlyParameterNames ? new Set(onlyParameterNames) : undefined;
   for (const [paramName, annotation] of readReferenceAnnotations(definition)) {
+    if (selectedNames && !selectedNames.has(paramName)) {
+      continue;
+    }
     const rawId = params[paramName];
     const id = typeof rawId === "string" ? rawId : undefined;
     const resource = id === undefined ? undefined : resolveReferenceRecord(state, annotation, id);

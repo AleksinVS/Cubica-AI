@@ -31,12 +31,22 @@ export type {
 } from "@/lib/game-content-resolvers";
 export type {
   AccessibleBoardAction,
+  AccessibleBoardActionField,
+  AccessibleBoardActionOption,
+  AccessibleBoardTransportRoadPreview,
   AccessibleBoardActionsProvider,
+  InteractiveBoardActionDraft,
+  InteractiveBoardActionDraftValue,
+  InteractiveBoardSpatialPreview,
   InteractiveBoardSceneHandle,
   InteractiveBoardSessionSnapshot,
   PhaserSceneContext,
   PhaserSceneFactory
 } from "@/plugins/phaser-scene-registry";
+export {
+  closestPositionTOnPolyline,
+  type PolylineSelectionPoint
+} from "@/plugins/polyline-selection";
 export type { GameAssetResolver } from "@/lib/game-asset-resolver";
 
 // Generic session-state accessors only. Game-specific readers (team flags,

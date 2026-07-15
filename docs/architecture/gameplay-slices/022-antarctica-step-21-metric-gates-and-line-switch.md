@@ -31,7 +31,9 @@ The next bounded slice covers the transition into board `31..36`, its card-local
 ## Out Of Scope
 
 - the next main-line board `37..42`;
-- a generic rule engine for card gates or branching;
+- additional rule-language features not required by this completed slice;
+  ADR-083 permits and prefers universal branching primitives when a later slice
+  needs them;
 - implicit auto-play of the active line.
 
 ## Related Artifacts

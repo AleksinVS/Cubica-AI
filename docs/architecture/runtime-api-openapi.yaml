@@ -3,7 +3,7 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cubica Runtime API",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
   },
   "x-cubica-contract-status": "current-implemented-contract",
@@ -484,6 +484,42 @@
         }
       }
     },
+    "/action-previews/transport-road": {
+      "post": {
+        "tags": ["RuntimeActions"],
+        "operationId": "previewTransportRoad",
+        "summary": "Calculate a read-only server-owned road route and cost for selected endpoints.",
+        "description": "The preview uses the exact requested session version and simulates any tied-route PRNG choice without persisting the next random state. POST /actions remains authoritative and recalculates the complete transaction.",
+        "x-cubica-scope": "public",
+        "requestBody": {
+          "$ref": "#/components/requestBodies/TransportRoadPreviewRequest"
+        },
+        "responses": {
+          "200": {
+            "description": "Road preview calculated without changing session state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransportRoadPreviewResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
     "/agent-turns": {
       "post": {
         "tags": ["AgentRuntime"],
@@ -633,6 +669,16 @@
           }
         }
       },
+      "TransportRoadPreviewRequest": {
+        "required": true,
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/TransportRoadPreviewRequest"
+            }
+          }
+        }
+      },
       "RestorePreviewSessionRequest": {
         "required": true,
         "content": {
@@ -676,7 +722,7 @@
         }
       },
       "Conflict": {
-        "description": "The session version changed before the action could be applied.",
+        "description": "The session version changed before the requested action or read-only calculation could use it.",
         "content": {
           "application/json": {
             "schema": {
@@ -833,6 +879,78 @@
           "payload": true
         },
         "additionalProperties": true
+      },
+      "TransportRoadPreviewRequest": {
+        "type": "object",
+        "required": ["sessionId", "expectedStateVersion", "actionId", "params"],
+        "properties": {
+          "sessionId": { "type": "string", "minLength": 1 },
+          "expectedStateVersion": { "type": "integer", "minimum": 0 },
+          "playerId": { "$ref": "#/components/schemas/PlayerId" },
+          "actionId": { "type": "string", "minLength": 1 },
+          "params": { "$ref": "#/components/schemas/JsonObject" }
+        },
+        "additionalProperties": false
+      },
+      "TransportRoadPreviewPoint": {
+        "type": "object",
+        "required": ["x", "y"],
+        "properties": {
+          "x": { "type": "number" },
+          "y": { "type": "number" }
+        },
+        "additionalProperties": false
+      },
+      "TransportRoadPreviewResponse": {
+        "type": "object",
+        "required": [
+          "sessionId",
+          "actionId",
+          "usedStateVersion",
+          "networkId",
+          "fromNodeId",
+          "toNodeId",
+          "polyline",
+          "regionSequence",
+          "regionSegments",
+          "cost",
+          "candidateCount",
+          "planning"
+        ],
+        "properties": {
+          "sessionId": { "type": "string", "minLength": 1 },
+          "actionId": { "type": "string", "minLength": 1 },
+          "usedStateVersion": { "type": "integer", "minimum": 0 },
+          "networkId": { "type": "string", "minLength": 1 },
+          "fromNodeId": { "type": "string", "minLength": 1 },
+          "toNodeId": { "type": "string", "minLength": 1 },
+          "polyline": {
+            "type": "array",
+            "minItems": 2,
+            "items": { "$ref": "#/components/schemas/TransportRoadPreviewPoint" }
+          },
+          "regionSequence": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "regionSegments": { "type": "integer", "minimum": 1 },
+          "cost": { "type": "integer", "minimum": 0 },
+          "candidateCount": { "type": "integer", "minimum": 1 },
+          "planning": {
+            "type": "object",
+            "required": ["mode", "algorithmVersion", "geometryVersion", "geometryHash", "boundaryPolicy"],
+            "properties": {
+              "mode": { "const": "region-segment-minimum" },
+              "algorithmVersion": { "type": "string", "minLength": 1 },
+              "geometryVersion": { "type": "string", "minLength": 1 },
+              "geometryHash": { "type": "string", "minLength": 1 },
+              "boundaryPolicy": { "type": "string", "minLength": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
       },
       "ErrorResponse": {
         "type": "object",

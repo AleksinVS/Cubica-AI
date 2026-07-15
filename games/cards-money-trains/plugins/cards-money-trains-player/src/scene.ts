@@ -7,10 +7,13 @@
  */
 
 import type {
+  InteractiveBoardActionDraft,
   InteractiveBoardSceneHandle,
+  InteractiveBoardSpatialPreview,
   PhaserSceneContext,
   PhaserSceneFactory
 } from "@cubica/player-web/plugin-api";
+import { closestPositionTOnPolyline } from "@cubica/player-web/plugin-api";
 
 import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import {
@@ -30,6 +33,12 @@ import {
   type BoardProjection,
   type CanonicalPoint
 } from "./board-state.ts";
+import {
+  ROAD_BUILD_ACTION_ID,
+  WAYPOINT_BUILD_ACTION_ID,
+  selectRoadDraftNode,
+  selectWaypointDraftPosition
+} from "./construction-selection.ts";
 
 // The normative authoring data, source PNG and review annotations all use this
 // exact plane. Keeping the renderer one-to-one prevents a correct imported
@@ -49,6 +58,13 @@ type CameraPointer = {
   readonly isDown: boolean;
 };
 
+/** Pointer coordinates translated through the currently zoomed map camera. */
+type BoardSelectionPointer = CameraPointer & {
+  readonly worldX: number;
+  readonly worldY: number;
+  updateWorldPoint(camera: unknown): unknown;
+};
+
 const edgeColor = (edge: BoardEdgeView) => {
   if (edge.visualState === "blocked") return 0xc94c4c;
   if (edge.visualState === "building") return 0xe0a33a;
@@ -66,6 +82,8 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
 ): InteractiveBoardSceneHandle => {
   const Phaser = context.Phaser;
   let currentSession = context.session;
+  let currentActionDraft: InteractiveBoardActionDraft | null = null;
+  let currentSpatialPreview: InteractiveBoardSpatialPreview | null = null;
   let lastError: string | null = null;
 
   class CardsMoneyTrainsScene extends Phaser.Scene {
@@ -269,6 +287,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       const graphics = this.add.graphics();
       const toScreen = this.coordinateMapper(projection);
       this.drawEdges(graphics, projection, toScreen);
+      this.drawSpatialPreview(graphics, toScreen);
       this.drawNodes(graphics, projection, toScreen);
       this.drawVehicles(projection, toScreen);
       if (projection.nodes.length === 0) {
@@ -318,10 +337,17 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           .filter((item): item is BoardHighlightView => item.targetType === "edge")
           .map((item) => [item.targetId, item])
       );
+      const canSelectWaypoint = projection.availableActions.some((action) =>
+        action.actionId === WAYPOINT_BUILD_ACTION_ID && action.disabled !== true);
+      const selectedEdgeId = currentActionDraft?.actionId === WAYPOINT_BUILD_ACTION_ID
+        && typeof currentActionDraft.params.edgeId === "string"
+        ? currentActionDraft.params.edgeId
+        : null;
       for (const edge of projection.edges) {
         const points = edge.points.map(toScreen);
         const highlight = edgeHighlights.get(edge.id);
-        graphics.lineStyle(highlight ? 10 : 6, edgeColor(edge), 0.95);
+        const selected = selectedEdgeId === edge.id;
+        graphics.lineStyle(selected ? 12 : highlight ? 10 : 6, selected ? 0x1f8f6a : edgeColor(edge), 0.95);
         for (let index = 1; index < points.length; index += 1) {
           const from = points[index - 1];
           const to = points[index];
@@ -331,7 +357,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           // line or hit target, so it is intentionally skipped.
           if (length === 0) continue;
           graphics.lineBetween(from.x, from.y, to.x, to.y);
-          if (!highlight?.actionId || context.isInteractionPending()) continue;
+          if ((!canSelectWaypoint && !highlight?.actionId) || context.isInteractionPending()) continue;
           const hitArea = this.add.zone(
             (from.x + to.x) / 2,
             (from.y + to.y) / 2,
@@ -341,7 +367,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           hitArea.setRotation(Phaser.Math.Angle.Between(from.x, from.y, to.x, to.y));
           hitArea.setInteractive({ useHandCursor: true });
           hitArea.on("pointerdown", (
-            _pointer: unknown,
+            pointer: BoardSelectionPointer,
             _localX: number,
             _localY: number,
             event: { stopPropagation?: () => void } | undefined
@@ -349,7 +375,11 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
             // Adjacent segment zones overlap at a bend. Stop propagation and
             // use the pending guard so one physical click remains one intent.
             event?.stopPropagation?.();
-            this.dispatchHighlight(highlight);
+            if (canSelectWaypoint) {
+              this.selectWaypointDraft(edge, points, pointer);
+            } else if (highlight) {
+              this.dispatchHighlight(highlight);
+            }
           });
         }
       }
@@ -365,15 +395,25 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           .filter((item): item is BoardHighlightView => item.targetType === "node")
           .map((item) => [item.targetId, item])
       );
+      const canSelectRoad = projection.availableActions.some((action) =>
+        action.actionId === ROAD_BUILD_ACTION_ID && action.disabled !== true);
+      const selectedNodeIds = new Set<string>();
+      if (currentActionDraft?.actionId === ROAD_BUILD_ACTION_ID) {
+        const fromNodeId = currentActionDraft.params.fromNodeId;
+        const toNodeId = currentActionDraft.params.toNodeId;
+        if (typeof fromNodeId === "string") selectedNodeIds.add(fromNodeId);
+        if (typeof toNodeId === "string") selectedNodeIds.add(toNodeId);
+      }
       for (const node of projection.nodes) {
         const position = toScreen(node.position);
         const highlight = highlights.get(node.id);
+        const selected = selectedNodeIds.has(node.id);
         graphics.fillStyle(nodeColor(node), 1);
-        graphics.lineStyle(highlight ? 7 : 4, highlight ? 0x2d8f6f : 0x263b46, 1);
+        graphics.lineStyle(selected ? 9 : highlight ? 7 : 4, selected || highlight ? 0x2d8f6f : 0x263b46, 1);
         graphics.fillCircle(position.x, position.y, node.objectType === "transport.waypoint" ? 15 : 23);
         graphics.strokeCircle(position.x, position.y, node.objectType === "transport.waypoint" ? 15 : 23);
 
-        const label = this.add.text(position.x, position.y - 34, node.label, {
+        this.add.text(position.x, position.y - 34, node.label, {
           color: "#17252d",
           backgroundColor: "#fffaf0cc",
           padding: { x: 5, y: 3 },
@@ -381,11 +421,68 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           fontSize: "18px"
         }).setOrigin(0.5, 1);
 
-        if (highlight?.actionId) {
-          label.setInteractive({ useHandCursor: true });
-          label.on("pointerdown", () => this.dispatchHighlight(highlight));
+        if ((canSelectRoad || highlight?.actionId) && !context.isInteractionPending()) {
+          // Selection targets cover the marker itself instead of only its text,
+          // so a station remains practical under zoom and on touch screens.
+          const hitArea = this.add.zone(position.x, position.y, 56, 56);
+          hitArea.setInteractive({ useHandCursor: true });
+          hitArea.on("pointerdown", () => {
+            if (canSelectRoad) {
+              this.publishActionDraft(selectRoadDraftNode(currentActionDraft, node.id));
+            } else if (highlight) {
+              this.dispatchHighlight(highlight);
+            }
+          });
         }
       }
+    }
+
+    /** Paint the server calculation as a temporary overlay, never as a road. */
+    private drawSpatialPreview(
+      graphics: InstanceType<typeof Phaser.GameObjects.Graphics>,
+      toScreen: (point: CanonicalPoint) => CanonicalPoint
+    ) {
+      const points = currentSpatialPreview?.points.map(toScreen) ?? [];
+      if (points.length < 2) return;
+      graphics.lineStyle(14, 0x1c9e85, 0.92);
+      for (let index = 1; index < points.length; index += 1) {
+        const from = points[index - 1];
+        const to = points[index];
+        if (from && to) graphics.lineBetween(from.x, from.y, to.x, to.y);
+      }
+      graphics.fillStyle(0xfff3b0, 1);
+      const first = points[0];
+      const last = points.at(-1);
+      if (first) graphics.fillCircle(first.x, first.y, 13);
+      if (last) graphics.fillCircle(last.x, last.y, 13);
+    }
+
+    /** Project a road click into a draft; cost and legality stay server-owned. */
+    private selectWaypointDraft(
+      edge: BoardEdgeView,
+      screenPoints: readonly CanonicalPoint[],
+      pointer: BoardSelectionPointer
+    ) {
+      pointer.updateWorldPoint(this.cameras.main);
+      // `coordinateMapper` applies one uniform scale, so normalized cumulative
+      // distance is identical in canonical and rendered world coordinates.
+      const positionT = closestPositionTOnPolyline(
+        { x: pointer.worldX, y: pointer.worldY },
+        screenPoints
+      );
+      if (positionT === null) return;
+      this.publishActionDraft(selectWaypointDraftPosition(
+        currentActionDraft,
+        edge.id,
+        positionT
+      ));
+    }
+
+    /** Keep the visual selection local while mirroring it into the DOM form. */
+    private publishActionDraft(draft: InteractiveBoardActionDraft) {
+      currentActionDraft = draft;
+      context.onActionDraftChange(draft);
+      this.renderProjection();
     }
 
     private dispatchHighlight(highlight: BoardHighlightView) {
@@ -439,7 +536,17 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       lastError = null;
       scene.renderProjection();
     },
+    updateActionDraft(draft) {
+      currentActionDraft = draft;
+      scene.renderProjection();
+    },
+    updateSpatialPreview(preview) {
+      currentSpatialPreview = preview;
+      scene.renderProjection();
+    },
     destroy() {
+      currentActionDraft = null;
+      currentSpatialPreview = null;
       lastError = null;
       scene.stopProjection();
       if (scene.sys?.isActive()) {

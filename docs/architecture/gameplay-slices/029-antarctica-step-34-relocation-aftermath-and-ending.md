@@ -23,14 +23,16 @@ This slice ends when the player reaches terminal info block `i21` either through
      - fast-variant `i19_1`,
      - direct loss-line jump to `i34_2`.
    - The chosen info block must be projected through explicit runtime state, not hidden inside transport code or player heuristics.
-3. No generic branch router is introduced.
-   - The slice may extend bounded deterministic metadata with explicit `activeInfoId`, one conditional info variant, and an explicit line-switch target info id.
-   - It must not introduce a generic workflow DSL, content query language, or implicit auto-advance chain.
+3. The implemented slice uses explicit branch metadata.
+   - It stores `activeInfoId`, one conditional info variant, and an explicit line-switch target info id.
+   - This historical implementation choice is not a platform prohibition:
+     ADR-083 requires future missing workflow, query and branch capabilities to
+     be designed as universal, resource-bounded primitives.
 
 ## Out Of Scope
 
 - any new post-`i21` gameplay branch;
-- a generic content-navigation engine;
+- additional content-navigation features not required by this completed slice;
 - retrofitting every earlier Antarctica info step with a full content-addressable state model.
 
 ## Related Artifacts

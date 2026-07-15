@@ -20,5 +20,8 @@ export type {
   SessionResponse,
   SessionSnapshot,
   SessionStateVersion,
-  SessionStorePort
+  SessionStorePort,
+  TransportRoadPreviewPoint,
+  TransportRoadPreviewRequest,
+  TransportRoadPreviewResponse
 } from "@cubica/contracts-session";

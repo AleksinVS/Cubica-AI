@@ -1,5 +1,9 @@
 import type { SessionSnapshot } from "@/lib/game-content-resolvers";
 import type { CubicaAgentTurnResult } from "@cubica/contracts-ai";
+import type {
+  TransportRoadPreviewRequest,
+  TransportRoadPreviewResponse
+} from "@cubica/contracts-session";
 
 export type ActionSnapshot = SessionSnapshot;
 
@@ -147,6 +151,27 @@ export async function dispatchAction(
     throw await readRuntimeError(response, `Action "${actionId}" failed`);
   }
   return parseJson<ActionSnapshot>(response);
+}
+
+/**
+ * Requests a non-authoritative road calculation for one immutable snapshot.
+ *
+ * The preview has its own read-only endpoint instead of sharing the mutating
+ * action path. That separation prevents a route estimate from paying money,
+ * advancing the session version or consuming authoritative randomness.
+ */
+export async function previewTransportRoad(
+  input: TransportRoadPreviewRequest
+): Promise<TransportRoadPreviewResponse> {
+  const response = await fetch("/api/runtime/action-previews/transport-road", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input)
+  });
+  if (!response.ok) {
+    throw await readRuntimeError(response, `Road preview for action "${input.actionId}" failed`);
+  }
+  return parseJson<TransportRoadPreviewResponse>(response);
 }
 
 /**

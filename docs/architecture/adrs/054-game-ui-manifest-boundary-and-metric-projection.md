@@ -4,7 +4,7 @@
 - **Статус**: Accepted
 - **Авторы**: Codex, владелец продукта
 - **Компоненты**: game manifests, UI manifests, player-facing content API, Presenter, `games/*/plugins/*`, manifest schemas, authoring compiler
-- **Связанные решения**: ADR-001, ADR-013, ADR-019, ADR-024, ADR-025, ADR-030, ADR-041, ADR-050, ADR-053
+- **Связанные решения**: ADR-001, ADR-013, ADR-019, ADR-024, ADR-025, ADR-030, ADR-041, ADR-050, ADR-053, ADR-084
 
 ## Оглавление
 
@@ -79,6 +79,12 @@ Presenter owns player-facing projection
 4. UI-компоненты не должны выводить игровой смысл из сырых ключей state вроде `pro`, `rep`, `lid`.
 5. UI-манифест может ссылаться на `metricId`, `cardId`, `collection`, `panelId` and projection paths, но не должен быть единственным местом, где хранится смысл игрового объекта.
 6. Game manifest не должен хранить UI-only commands or panel-open actions; это уже закреплено ADR-053 и распространяется на новые локальные UI interactions.
+7. На пути записи UI manifest публикует точную привязку элемента или жеста к
+   `actionId` и параметрам. Presenter исполняет эту привязку, но не выводит
+   `actionId` из карточки, фазы или иного предметного состояния.
+8. Presenter сохраняет стабильный `commandId` до получения квитанции. Игровые
+   правила, server-side authorization и сборка Mechanics IR не принадлежат
+   Presenter или UI plugin.
 
 ## 5. Граница ответственности
 
@@ -182,6 +188,10 @@ Schema reuse should follow the existing project rule: reusable fragments belong 
 - Game manifest owns game meaning.
 - UI manifest owns channel presentation.
 - Presenter owns renderer-ready projection.
+- UI manifest owns declarative `actionId + parameter bindings`; Presenter не
+  является скрытым каталогом команд.
+- `commandId` принадлежит протоколу доставки логической команды, а не правилам
+  игры или локальному UI state.
 - UI-only labels are allowed in UI manifest.
 - Gameplay labels are not UI-only labels.
 - Metric labels and descriptions are gameplay metadata.

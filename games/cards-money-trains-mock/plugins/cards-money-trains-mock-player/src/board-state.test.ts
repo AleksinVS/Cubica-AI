@@ -5,7 +5,7 @@ import test from "node:test";
 
 import { provideCardsMoneyTrainsAccessibleBoardActions } from "./accessible-actions.ts";
 import { projectBoardSession } from "./board-state.ts";
-import { activate } from "./index.ts";
+import { registerCardsMoneyTrainsPlayer } from "./registration.ts";
 
 test("projects only provided topology, geometry, actions, and team balances", () => {
   const projection = projectBoardSession({
@@ -259,8 +259,47 @@ test("provides controls using the server-projected availability", () => {
     description: "Сначала выберите конечный узел.",
     actionId: "construction.road.build",
     params: { edgeId: "edge-1" },
+    preview: {
+      kind: "transport-road",
+      endpointParameters: { from: "fromNodeId", to: "toNodeId" }
+    },
     disabled: true
   }]);
+});
+
+test("projects free waypoint choices as an accessible parameter form", () => {
+  const session = {
+    state: {
+      public: {
+        session: { phase: "construction" },
+        objects: {
+          networkNodes: {
+            a: { attributes: { label: "Станция A", position: { x: 10, y: 20 } } },
+            b: { attributes: { label: "Станция B", position: { x: 30, y: 40 } } }
+          },
+          networkEdges: {
+            edge1: { attributes: { fromNodeId: "a", toNodeId: "b" } }
+          }
+        },
+        board: {
+          availableActions: [{
+            id: "build-waypoint",
+            label: "Построить полустанок",
+            actionId: "construction.waypoint.build",
+            params: { positionT: 0.5 }
+          }]
+        }
+      }
+    }
+  } as unknown as Parameters<typeof provideCardsMoneyTrainsAccessibleBoardActions>[0];
+
+  const [action] = provideCardsMoneyTrainsAccessibleBoardActions(session);
+  assert.deepEqual(action?.fields?.map((field) => field.name), ["edgeId", "positionT"]);
+  const edge = action?.fields?.[0];
+  assert.equal(edge?.kind, "select");
+  if (edge?.kind === "select") {
+    assert.deepEqual(edge.options, [{ value: "edge1", label: "Станция A — Станция B" }]);
+  }
 });
 
 test("keeps an API 2.0 plugin loadable when an older host lacks the new capability", () => {
@@ -271,9 +310,12 @@ test("keeps an API 2.0 plugin loadable when an older host lacks the new capabili
     registerPhaserSceneFactory() {
       return () => { disposed = true; };
     }
-  } as unknown as Parameters<typeof activate>[0];
+  } as unknown as Parameters<typeof registerCardsMoneyTrainsPlayer>[0];
 
-  const dispose = activate(legacyApi);
+  const sceneFactory = ((() => {
+    throw new Error("Scene is not created during registration.");
+  }) as Parameters<typeof registerCardsMoneyTrainsPlayer>[1]);
+  const dispose = registerCardsMoneyTrainsPlayer(legacyApi, sceneFactory);
   dispose();
 
   assert.equal(disposed, true);

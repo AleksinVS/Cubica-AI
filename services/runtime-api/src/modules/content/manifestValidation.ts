@@ -160,6 +160,7 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
       if (!isRecord(rawEffect) || ![
         "transport.road.build",
         "transport.waypoint.build",
+        "transport.construction.activateDue",
         "transport.vehicle.move",
         "transport.cargo.deliver"
       ].includes(String(rawEffect.op))) continue;
@@ -175,6 +176,8 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
         ? [[rawEffect.fromNodeParam, network.nodeCollection], [rawEffect.toNodeParam, network.nodeCollection]]
         : rawEffect.op === "transport.waypoint.build"
           ? [[rawEffect.edgeParam, network.edgeCollection]]
+          : rawEffect.op === "transport.construction.activateDue"
+            ? []
           : rawEffect.op === "transport.vehicle.move"
             ? [[rawEffect.vehicleParam, movement?.vehicleCollection], [rawEffect.edgeParam, network.edgeCollection]]
             : [[rawEffect.wagonParam, cargoDelivery?.wagonCollection], [rawEffect.cargoParam, cargoDelivery?.cargoCollection]];

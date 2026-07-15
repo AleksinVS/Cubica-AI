@@ -14,6 +14,7 @@ import type {
   PlayerFacingContent,
 } from "@cubica/contracts-manifest";
 import type { GameSession, MetricsSnapshot } from "@/types/game-state";
+import type { TransportRoadPreviewResponse } from "@cubica/contracts-session";
 import { appendClassName } from "@/lib/classname-utils";
 import { resolveAreaCssClass } from "@/lib/layout-helpers";
 import { resolveExpressions } from "@/lib/expression-resolver";
@@ -246,6 +247,7 @@ export function UiComponentNode({
   content,
   session,
   onBoardAction,
+  onBoardRoadPreview,
   assetResolver,
   isPending = false,
   mapFirstPanel,
@@ -274,6 +276,11 @@ export function UiComponentNode({
   session?: GameSession;
   /** Async runtime path whose rejection lets a scene roll back its preview. */
   onBoardAction?: (actionId: string, params?: Record<string, unknown>) => Promise<void>;
+  /** Read-only route calculation; it never confirms or pays for construction. */
+  onBoardRoadPreview?: (
+    actionId: string,
+    params: Record<string, unknown>
+  ) => Promise<TransportRoadPreviewResponse>;
   /** Resolves documented `asset:<id>` image properties without exposing paths. */
   assetResolver?: GameAssetResolver | null;
   /** Shared presenter lock while one server action is in flight. */
@@ -358,6 +365,7 @@ export function UiComponentNode({
                   content={content}
                   session={session}
                   onBoardAction={onBoardAction}
+                  onBoardRoadPreview={onBoardRoadPreview}
                   assetResolver={assetResolver}
                   isPending={isPending}
                 />
@@ -455,6 +463,7 @@ export function UiComponentNode({
           content={content}
           session={session}
           onBoardAction={onBoardAction}
+          onBoardRoadPreview={onBoardRoadPreview}
           assetResolver={assetResolver}
           isPending={isPending}
           mapFirstPanel={panel}
@@ -548,6 +557,7 @@ export function UiComponentNode({
                   content={content}
                   session={session}
                   onBoardAction={onBoardAction}
+                  onBoardRoadPreview={onBoardRoadPreview}
                   assetResolver={assetResolver}
                   isPending={isPending}
                 />
@@ -582,6 +592,7 @@ export function UiComponentNode({
               content={content}
               session={session}
               onBoardAction={onBoardAction}
+              onBoardRoadPreview={onBoardRoadPreview}
               assetResolver={assetResolver}
               isPending={isPending}
             />
@@ -667,6 +678,7 @@ export function UiComponentNode({
           assets={assetResolver}
           manifestProps={component.props as GameUiInteractiveBoardSurfaceProps}
           dispatchAction={onBoardAction}
+          previewTransportRoad={onBoardRoadPreview}
           isPending={isPending}
           layoutMode={layoutMode}
         />

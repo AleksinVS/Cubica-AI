@@ -78,6 +78,13 @@ const expectedOperations = [
     marker: "preview-restore"
   },
   { method: "post", path: "/actions", operationId: "dispatchAction", tag: "RuntimeActions", marker: 'requestUrl.pathname === "/actions"' },
+  {
+    method: "post",
+    path: "/action-previews/transport-road",
+    operationId: "previewTransportRoad",
+    tag: "RuntimeActions",
+    marker: 'requestUrl.pathname === "/action-previews/transport-road"'
+  },
   { method: "post", path: "/agent-turns", operationId: "runAgentTurn", tag: "AgentRuntime", marker: 'requestUrl.pathname === "/agent-turns"' }
 ];
 
@@ -291,7 +298,9 @@ function validateSchemaCoverage(spec) {
     "RestorePreviewSessionRequest",
     "RestorePreviewSessionResponse",
     "SessionResponse",
-    "SessionStateVersion"
+    "SessionStateVersion",
+    "TransportRoadPreviewRequest",
+    "TransportRoadPreviewResponse"
   ];
 
   for (const schemaName of requiredSchemas) {
@@ -325,6 +334,19 @@ function validateActionConcurrencyContract(spec) {
   const conflict = spec.paths?.["/actions"]?.post?.responses?.["409"];
   if (conflict?.$ref !== "#/components/responses/Conflict") {
     fail("POST /actions must document the shared 409 Conflict response");
+  }
+
+  const previewSchema = spec.components.schemas.TransportRoadPreviewRequest;
+  if (!Array.isArray(previewSchema.required) || !previewSchema.required.includes("expectedStateVersion")) {
+    fail("TransportRoadPreviewRequest must require expectedStateVersion");
+  }
+  const previewVersion = previewSchema.properties?.expectedStateVersion;
+  if (previewVersion?.type !== "integer" || previewVersion.minimum !== 0) {
+    fail("TransportRoadPreviewRequest.expectedStateVersion must be an integer with minimum 0");
+  }
+  const previewConflict = spec.paths?.["/action-previews/transport-road"]?.post?.responses?.["409"];
+  if (previewConflict?.$ref !== "#/components/responses/Conflict") {
+    fail("POST /action-previews/transport-road must document the shared 409 Conflict response");
   }
 }
 

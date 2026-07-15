@@ -794,6 +794,68 @@
       ],
       "type": "object"
     },
+    "GameManifestTransportConstructionLifecycleStates": {
+      "additionalProperties": false,
+      "description": "Facet values used while a constructed transport object is pending and after it becomes active.",
+      "properties": {
+        "pending": {
+          "$ref": "#/definitions/GameManifestObjectFacetValue"
+        },
+        "active": {
+          "$ref": "#/definitions/GameManifestObjectFacetValue"
+        }
+      },
+      "required": [
+        "pending",
+        "active"
+      ],
+      "type": "object"
+    },
+    "GameManifestTransportConstructionLifecycle": {
+      "additionalProperties": false,
+      "description": "Opt-in, turn-based activation policy for newly constructed transport nodes and edges.",
+      "properties": {
+        "turnCounterPath": {
+          "pattern": "^/(public|secret)/(?!.*(?:__proto__|constructor|prototype)(?:/|$)).+",
+          "type": "string"
+        },
+        "activationDelayTurns": {
+          "minimum": 1,
+          "type": "integer"
+        },
+        "nodeStates": {
+          "$ref": "#/definitions/GameManifestTransportConstructionLifecycleStates"
+        },
+        "edgeStates": {
+          "$ref": "#/definitions/GameManifestTransportConstructionLifecycleStates"
+        },
+        "createdTurnAttribute": {
+          "$ref": "#/definitions/GameManifestSafeIdentifier"
+        },
+        "activationTurnAttribute": {
+          "$ref": "#/definitions/GameManifestSafeIdentifier"
+        },
+        "blockingReasonsAttribute": {
+          "$ref": "#/definitions/GameManifestSafeIdentifier"
+        },
+        "pendingReason": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "turnCounterPath",
+        "activationDelayTurns",
+        "nodeStates",
+        "edgeStates",
+        "createdTurnAttribute",
+        "activationTurnAttribute",
+        "blockingReasonsAttribute",
+        "pendingReason"
+      ],
+      "type": "object"
+    },
     "GameManifestTransportNetworkModel": {
       "additionalProperties": false,
       "properties": {
@@ -862,6 +924,9 @@
         },
         "roadPlanning": {
           "$ref": "#/definitions/GameManifestTransportRoadPlanning"
+        },
+        "constructionLifecycle": {
+          "$ref": "#/definitions/GameManifestTransportConstructionLifecycle"
         },
         "movement": {
           "$ref": "#/definitions/GameManifestTransportMovementModel"
@@ -1933,6 +1998,27 @@
             "edgeParam",
             "positionParam",
             "payments"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "description": "Activate every due construction object in one declared transport network; replay-safe when repeated.",
+          "properties": {
+            "op": {
+              "const": "transport.construction.activateDue"
+            },
+            "networkId": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "when": {
+              "$ref": "#/definitions/GameManifestDeterministicEffectCondition"
+            }
+          },
+          "required": [
+            "op",
+            "networkId"
           ],
           "type": "object"
         },

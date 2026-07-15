@@ -14,6 +14,54 @@ import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 import type { GameSession } from "@/types/game-state";
 import type { GameAssetResolver } from "@/lib/game-asset-resolver";
 
+/** One safe option for a plugin-declared DOM select control. */
+export interface AccessibleBoardActionOption {
+  readonly value: string;
+  readonly label: string;
+  readonly disabled?: boolean;
+}
+
+/**
+ * One ordinary form field for a multi-step board action.
+ *
+ * The plugin only projects public choices. The host collects values and sends
+ * them as action parameters; runtime still validates the complete command.
+ */
+export type AccessibleBoardActionField =
+  | {
+      readonly name: string;
+      readonly label: string;
+      readonly kind: "select";
+      readonly options: readonly AccessibleBoardActionOption[];
+      readonly required?: boolean;
+      readonly defaultValue?: string;
+    }
+  | {
+      readonly name: string;
+      readonly label: string;
+      readonly kind: "number";
+      readonly required?: boolean;
+      readonly defaultValue?: number;
+      readonly min?: number;
+      readonly max?: number;
+      readonly step?: number;
+    };
+
+/**
+ * One platform-owned read-only calculation requested before an action.
+ *
+ * The contribution names only the action parameters that identify the
+ * transport endpoints. Payment and every other command parameter remain out
+ * of the preview request and are validated only by the later action dispatch.
+ */
+export interface AccessibleBoardTransportRoadPreview {
+  readonly kind: "transport-road";
+  readonly endpointParameters: {
+    readonly from: string;
+    readonly to: string;
+  };
+}
+
 /** One complete board action exposed outside the visual canvas. */
 export interface AccessibleBoardAction {
   readonly id: string;
@@ -21,7 +69,36 @@ export interface AccessibleBoardAction {
   readonly description?: string;
   readonly actionId: string;
   readonly params?: Readonly<Record<string, unknown>>;
+  /** Optional parameter form for choices that cannot be one fixed button. */
+  readonly fields?: readonly AccessibleBoardActionField[];
+  /** Optional server-owned calculation shown before the command is submitted. */
+  readonly preview?: AccessibleBoardTransportRoadPreview;
   readonly disabled?: boolean;
+}
+
+/** A JSON-safe scalar accepted by the temporary board-action draft. */
+export type InteractiveBoardActionDraftValue = string | number | boolean | null;
+
+/**
+ * Temporary user intent shared between the canvas and the ordinary DOM form.
+ *
+ * A draft is deliberately smaller than a runtime command: it carries only an
+ * action id and primitive parameters, is never persisted, and cannot make a
+ * rule decision. The authoritative runtime command is still assembled and
+ * validated only when the user submits the action.
+ */
+export interface InteractiveBoardActionDraft {
+  readonly actionId: string;
+  readonly params: Readonly<Record<string, InteractiveBoardActionDraftValue>>;
+}
+
+/** One transient server-calculated line rendered over the authoritative map. */
+export interface InteractiveBoardSpatialPreview {
+  readonly actionId: string;
+  readonly points: readonly {
+    readonly x: number;
+    readonly y: number;
+  }[];
 }
 
 /** Player-facing session data supplied to both the scene and DOM controls. */
@@ -57,6 +134,8 @@ export interface PhaserSceneContext {
     actionId: string,
     params?: Record<string, unknown>
   ) => Promise<void>;
+  /** Mirrors a scene-owned temporary selection into the host's DOM controls. */
+  readonly onActionDraftChange: (draft: InteractiveBoardActionDraft | null) => void;
 }
 
 /** Scene plus lifecycle callbacks owned by the registering game plugin. */
@@ -65,6 +144,10 @@ export interface InteractiveBoardSceneHandle {
   readonly scene: unknown;
   /** Applies a newer authoritative snapshot without recreating the canvas. */
   updateSession(session: InteractiveBoardSessionSnapshot): void;
+  /** Mirrors a DOM-owned temporary selection into the visual scene. */
+  updateActionDraft?(draft: InteractiveBoardActionDraft | null): void;
+  /** Draws or clears a read-only server calculation without mutating gameplay. */
+  updateSpatialPreview?(preview: InteractiveBoardSpatialPreview | null): void;
   /** Releases plugin-owned listeners and transient scene resources. */
   destroy(): void;
   /** Return the world to the complete, bounded overview. */

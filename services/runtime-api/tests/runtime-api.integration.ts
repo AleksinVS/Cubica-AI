@@ -93,6 +93,20 @@ type ActionResponse = {
   state: SessionState;
 };
 
+type TransportRoadPreviewResponse = {
+  sessionId: string;
+  actionId: string;
+  usedStateVersion: number;
+  networkId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  polyline: Array<{ x: number; y: number }>;
+  regionSequence: Array<string>;
+  regionSegments: number;
+  cost: number;
+  candidateCount: number;
+};
+
 type AgentTurnResponse = {
   sessionId: string;
   version: SessionVersion;
@@ -1228,6 +1242,131 @@ test("POST /actions rejects an exact repeated request with HTTP 409 and no secon
   assert.equal(persisted.response.status, 200);
   assert.deepEqual(persisted.body.version, accepted.body.version);
   assert.deepEqual(persisted.body.state, accepted.body.state);
+});
+
+test("POST /action-previews/transport-road is read-only, schema-bounded and stale-safe", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const previewApi = createRuntimeApiServer({
+    port: 0,
+    sessionStore: store,
+    createSessionRandomSeed: () => "00112233445566778899aabbccddeeff"
+  });
+  await previewApi.start();
+  const previewBaseUrl = `http://127.0.0.1:${previewApi.port}`;
+  const localRequest = async <T>(urlPath: string, body: Record<string, unknown>) => {
+    const response = await fetch(`${previewBaseUrl}${urlPath}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    return { response, body: await readJson<T>(response) };
+  };
+
+  try {
+    const created = await localRequest<SessionResponse>("/sessions", {
+      gameId: "cards-money-trains-mock",
+      playerId: "facilitator"
+    });
+    assert.equal(created.response.status, 201);
+    const sessionId = created.body.sessionId;
+
+    // Enter the construction phase through the trusted test seam. The HTTP
+    // assertions below still exercise real content lookup, action guards,
+    // schema-declared references, planner and response/error mapping.
+    await store.withLockedSession(sessionId, async (current) => {
+      assert.ok(current);
+      const state = structuredClone(current.state) as any;
+      state.public.session.phase = "construction";
+      return {
+        updatedSession: {
+          ...current,
+          state,
+          version: {
+            sessionId,
+            stateVersion: current.version.stateVersion + 1,
+            lastEventSequence: current.version.lastEventSequence + 1
+          },
+          updatedAt: new Date()
+        },
+        result: undefined
+      };
+    });
+    const before = await store.getSession(sessionId);
+    assert.ok(before);
+    const randomBefore = structuredClone((before.state as any).secret.random);
+    const previewRequest = {
+      sessionId,
+      expectedStateVersion: before.version.stateVersion,
+      playerId: "facilitator",
+      actionId: "construction.road.build",
+      params: { fromNodeId: "mock-terminal-a", toNodeId: "mock-terminal-d" }
+    };
+
+    const preview = await localRequest<TransportRoadPreviewResponse>(
+      "/action-previews/transport-road",
+      previewRequest
+    );
+    assert.equal(preview.response.status, 200);
+    assert.equal(preview.body.usedStateVersion, before.version.stateVersion);
+    assert.equal(preview.body.networkId, "main");
+    assert.ok(preview.body.polyline.length >= 2);
+    assert.equal(preview.body.regionSegments, preview.body.regionSequence.length);
+    assert.ok(preview.body.candidateCount >= 1);
+    assert.equal(JSON.stringify(preview.body).includes("randomCounter"), false);
+    const afterPreview = await store.getSession(sessionId);
+    assert.deepEqual(afterPreview?.version, before.version);
+    assert.deepEqual((afterPreview?.state as any).secret.random, randomBefore);
+
+    const unsupportedParam = await localRequest<{ error: string }>(
+      "/action-previews/transport-road",
+      {
+        ...previewRequest,
+        params: { ...previewRequest.params, whiteContribution: preview.body.cost }
+      }
+    );
+    assert.equal(unsupportedParam.response.status, 400);
+    assert.match(unsupportedParam.body.error, /additional properties|schema validation/iu);
+
+    const contributions = [
+      Math.min(10, preview.body.cost),
+      Math.min(10, Math.max(0, preview.body.cost - 10)),
+      Math.min(10, Math.max(0, preview.body.cost - 20)),
+      Math.max(0, preview.body.cost - 30)
+    ];
+    const confirmed = await localRequest<ActionResponse>("/actions", {
+      sessionId,
+      expectedStateVersion: preview.body.usedStateVersion,
+      playerId: "facilitator",
+      actionId: "construction.road.build",
+      params: {
+        fromNodeId: "mock-terminal-a",
+        toNodeId: "mock-terminal-d",
+        whiteContribution: contributions[0],
+        redContribution: contributions[1],
+        purpleContribution: contributions[2],
+        greenContribution: contributions[3]
+      }
+    });
+    assert.equal(confirmed.response.status, 200);
+    const persisted = await store.getSession(sessionId);
+    assert.ok(persisted);
+    const builtEdge = Object.values((persisted.state as any).public.objects.networkEdges)
+      .map((candidate: any) => candidate?.attributes)
+      .find((attributes: any) =>
+        attributes?.fromNodeId === "mock-terminal-a" && attributes?.toNodeId === "mock-terminal-d");
+    assert.ok(builtEdge);
+    assert.deepEqual(builtEdge.geometry.polyline, preview.body.polyline);
+    assert.deepEqual(builtEdge.routePlan.regionSequence, preview.body.regionSequence);
+
+    const stale = await localRequest<{ error: string }>(
+      "/action-previews/transport-road",
+      previewRequest
+    );
+    assert.equal(stale.response.status, 409);
+    assert.match(stale.body.error, /changed after version/iu);
+  } finally {
+    await previewApi.close();
+  }
 });
 
 test("POST /actions routes different Antarctica actions through manifest capability families", async () => {

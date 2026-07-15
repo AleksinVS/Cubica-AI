@@ -715,7 +715,13 @@ const buildTransition = (
   };
 };
 
-const readManifestDeterministicMetadata = (
+/**
+ * Resolve an action's deterministic declaration, including template content
+ * and bounded action-level overrides, without executing any effects.
+ * Read-only planners use this same resolver so template-backed actions cannot
+ * appear different in preview and authoritative dispatch.
+ */
+export const readManifestDeterministicMetadata = (
   context: RuntimeActionContext<RuntimeState>,
   templates?: GameManifestTemplateMap
 ): GameManifestDeterministicActionMetadata | null => {
@@ -1539,6 +1545,7 @@ const applyManifestEffects = (
       }
       case "transport.road.build":
       case "transport.waypoint.build":
+      case "transport.construction.activateDue":
       case "transport.vehicle.move":
       case "transport.vehicle.attach":
       case "transport.vehicle.detach":

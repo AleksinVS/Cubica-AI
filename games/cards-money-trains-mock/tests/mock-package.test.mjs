@@ -134,7 +134,13 @@ test("compiled mock executes the documented operating and construction transcrip
     "mock-region-central",
     "mock-region-east"
   ]);
+  assert.equal(publicState.objects.networkEdges["main:edge:1001"].facets.state, "building");
+  assert.equal(plannedRoad.createdTurn, 1);
+  assert.equal(plannedRoad.activationTurn, 3);
+  assert.deepEqual(plannedRoad.blockingReasons, ["construction-pending"]);
   assert.equal(publicState.objects.networkNodes["main:node:1002"].objectType, "transport.waypoint");
+  assert.equal(publicState.objects.networkNodes["main:node:1002"].facets.availability, "building");
+  assert.equal(publicState.objects.networkEdges["main:edge:1003"].facets.state, "building");
 });
 
 test("closed edge, full terminal, premature delivery and insufficient maintenance fail atomically", async () => {
@@ -291,10 +297,13 @@ test("full mock data declares hidden reproducible decks and accepted reusable ef
   const effects = Object.values(manifest.actions).flatMap((action) => action.deterministic?.effects ?? []);
   for (const expected of [
     "deck.shuffle", "deck.draw", "transport.cargo.load", "transport.vehicle.attach",
-    "transport.vehicle.detach", "transport.cargo.deliver", "ranking.compute"
+    "transport.vehicle.detach", "transport.cargo.deliver",
+    "transport.construction.activateDue", "ranking.compute"
   ]) {
     assert.equal(effects.some((effect) => effect.op === expected), true, `${expected} must be composed by the mock`);
   }
+  assert.equal(manifest.networkModels.main.constructionLifecycle.activationDelayTurns, 2);
+  assert.equal(manifest.networkModels.main.constructionLifecycle.turnCounterPath, "/public/session/turnNumber");
   for (const transfer of effects.filter((effect) => effect.op === "metric.transfer")) {
     assert.equal(typeof transfer.from.scope, "string");
     assert.equal(typeof transfer.to.scope, "string");
@@ -347,6 +356,27 @@ test("complete seven-turn gameplay is replay-stable and finishes only after faci
       assert.ok(current);
       assert.equal(current.state.public.session.phase, step.expected.phase, `phase after step ${step.order}`);
       assert.equal(current.state.public.session.turnNumber, step.expected.turnNumber, `turn after step ${step.order}`);
+      if (step.order === 45) {
+        assert.equal(
+          current.state.public.objects.networkEdges["main:edge:1001"].facets.state,
+          "building",
+          "construction from N must stay closed throughout N+1"
+        );
+        assert.equal(
+          current.state.public.objects.networkNodes["main:node:1002"].facets.availability,
+          "building"
+        );
+        assert.equal(current.state.public.objects.networkEdges["main:edge:1003"].facets.state, "building");
+      }
+      if (step.order === 54) {
+        assert.equal(
+          current.state.public.objects.networkEdges["main:edge:1001"].facets.state,
+          "open",
+          "construction from N must open at the beginning of N+2"
+        );
+        assert.equal(current.state.public.objects.networkNodes["main:node:1002"].facets.availability, "open");
+        assert.equal(current.state.public.objects.networkEdges["main:edge:1003"].facets.state, "open");
+      }
     }
     return current;
   };

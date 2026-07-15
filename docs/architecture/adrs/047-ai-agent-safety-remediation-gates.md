@@ -4,7 +4,9 @@
 - **Статус**: Accepted
 - **Авторы**: Codex
 - **Компоненты**: Editor Web, Runtime API, Player Web, AI Contracts, Cubica Surface, Agent Runtime
-- **Связанные решения**: ADR-025, ADR-040, ADR-043, ADR-044, ADR-045, ADR-046
+- **Связанные решения**: ADR-025, ADR-040, ADR-043, ADR-044, ADR-045, ADR-046, ADR-084
+- **Целевой allowlist уточнён ADR-084:** долговременные изменения разрешаются
+  по опубликованным `actionId`, а не по agent-produced effect kinds или paths
 
 ## Оглавление
 
@@ -46,9 +48,17 @@ Review нашёл четыре класса риска:
 ## 3. Термины
 
 - **Approval envelope** - собственная запись Cubica о подтверждении действия человеком: кто подтвердил, что именно подтвердил, на какой run/tool/action это распространяется и когда истекает.
-- **Capability gate** - runtime-проверка, которая сопоставляет manifest-declared capability с разрешёнными effect kinds, target paths, tool names and surface action kinds.
-- **Accepted Agent Turn** - Agent Turn, у которого `ok: true`, schema validation passed, semantic validation passed, capability gate passed and effects persisted.
-- **Rejected Agent Turn** - Agent Turn, который не прошёл один из gates; он может быть залогирован, но не может менять session state.
+- **Capability gate** - runtime-проверка, которая сопоставляет
+  manifest-declared capability с разрешёнными Game Intents, tool names и
+  surface action kinds. Effect kinds и target paths остаются только
+  переходными legacy-проверками до миграции ADR-084.
+- **Accepted Agent Turn** - Agent Turn, у которого `ok: true` и пройдены schema,
+  semantic и capability checks. Если ход меняет долговременное состояние,
+  разрешённый Game Intent принимается общей транзакцией; до cutover
+  существующие direct effects считаются legacy-формой.
+- **Rejected Agent Turn** - Agent Turn, который не прошёл один из gates; он
+  может быть записан в аудит, но не может отправлять изменяющую команду или
+  менять session state.
 - **Channel action policy** - allowlist action kinds and targets для конкретного renderer/channel, например Web player, editor sidebar, Telegram or Phaser.
 
 ## 4. Решение
@@ -64,13 +74,19 @@ Cubica вводит mandatory remediation gates before production Agent Runtime 
 2. **Failed Agent Turn cannot persist effects.**
    - `ok: false` is a rejected turn.
    - Rejected turns may return narration, diagnostics and audit metadata.
-   - Runtime must not apply `effects`, `availableActions` or primary gameplay `surface` from rejected turns unless a later ADR defines a read-only diagnostic surface policy.
-   - Rejected event log entries must have `effectCount: 0`.
+   - Runtime must not dispatch Game Intent, apply legacy `effects`, publish
+     `availableActions` or primary gameplay `surface` from rejected turns
+     unless a later ADR defines a read-only diagnostic surface policy.
+   - До cutover существующая запись события имеет `effectCount: 0`; целевой
+     аудит также явно фиксирует отсутствие принятого Game Intent/command.
 
 3. **Manifest capabilities become runtime enforcement.**
-   - `agentRuntime.allowedCapabilities` must map to concrete allowed effect kinds, target prefixes, tool names and action kinds.
+   - `agentRuntime.allowedCapabilities` must map to concrete allowed
+     `actionId`, tool names and surface action kinds. Legacy effect kinds and
+     target prefixes are removed at the ADR-084 cutover.
    - Runtime rejects any Agent Turn result outside the declared capability set.
-   - Provider adapters are not accepted until capability gate tests cover accepted and rejected effects.
+   - Provider adapters are not accepted until capability gate tests cover
+     accepted and rejected structured outcomes and Game Intent dispatch.
 
 4. **Surface actions are validated against channel policy.**
    - A Surface component being in catalog is not enough.

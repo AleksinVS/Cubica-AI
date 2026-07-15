@@ -11,6 +11,7 @@ import { RequestValidationError } from "../src/modules/errors.ts";
 import { parseDispatchActionRequest } from "../src/modules/player-api/requestValidation.ts";
 import { InMemorySessionStore } from "../src/modules/session/inMemorySessionStore.ts";
 import { dispatchRuntimeAction } from "../src/modules/runtime/actionDispatcher.ts";
+import { previewRuntimeTransportRoad } from "../src/modules/runtime/transportRoadPreview.ts";
 import {
   canonicalizeRoadPlanningRegions,
   computeRegionRoadPlanningHash,
@@ -556,6 +557,63 @@ const createPlannedRoadFixture = () => {
   return candidate;
 };
 
+/**
+ * Opt-in neutral proof for delayed construction activation. The base fixture
+ * intentionally remains lifecycle-free so its existing assertions continue to
+ * prove backwards compatibility for older manifests.
+ */
+const createConstructionLifecycleFixture = () => {
+  const candidate = structuredClone(neutralManifest) as any;
+  candidate.objectModels["network.waypoint"].facets.status.values.push("building");
+  candidate.networkModels.grid.buildableNodeStates = ["active", "building"];
+  candidate.networkModels.grid.constructionLifecycle = {
+    turnCounterPath: "/public/turnNumber",
+    activationDelayTurns: 2,
+    nodeStates: { pending: "building", active: "active" },
+    edgeStates: { pending: "building", active: "open" },
+    createdTurnAttribute: "createdTurn",
+    activationTurnAttribute: "activationTurn",
+    blockingReasonsAttribute: "blockingReasons",
+    pendingReason: "construction-pending"
+  };
+  candidate.state.public.turnNumber = 3;
+  candidate.actions.advanceConstructionTurn = {
+    handlerType: "manifest-data",
+    allowedSessionRoles: ["facilitator"],
+    deterministic: {
+      effects: [
+        { op: "counter.add", path: "/public/turnNumber", delta: 1 },
+        { op: "transport.construction.activateDue", networkId: "grid" }
+      ]
+    }
+  };
+  candidate.actions.activateDueAgain = {
+    handlerType: "manifest-data",
+    allowedSessionRoles: ["facilitator"],
+    deterministic: {
+      effects: [{ op: "transport.construction.activateDue", networkId: "grid" }]
+    }
+  };
+  candidate.actions.addIndependentBlocker = {
+    handlerType: "manifest-data",
+    allowedSessionRoles: ["facilitator"],
+    deterministic: {
+      effects: [{
+        op: "object.attribute.patch",
+        visibility: "public",
+        collection: "edges",
+        objectId: "grid:edge:3",
+        patches: [{
+          op: "replace",
+          path: "/blockingReasons",
+          value: ["construction-pending", "weather-closed"]
+        }]
+      }]
+    }
+  };
+  return candidate;
+};
+
 const createStoreForManifest = async (rawManifest: unknown) => {
   const plannedManifest = validateGameManifest(rawManifest) as GameManifest;
   const plannedStore = new InMemorySessionStore<Record<string, unknown>>();
@@ -721,6 +779,64 @@ test("schema-declared references build a road and split that dynamic edge with a
   assert.equal((current?.state as any).public.objects.edges["grid:edge:5"].attributes.fromNodeId, "grid:node:2");
 });
 
+test("opt-in construction lifecycle keeps both build orders pending through N+1 and activates due objects at N+2", async () => {
+  const target = await createStoreForManifest(createConstructionLifecycleFixture());
+  const dispatch = async (actionId: string, params?: Record<string, unknown>) => dispatchRuntimeAction({
+    sessionStore: target.store,
+    bundle: target.bundle,
+    input: {
+      sessionId: target.session.sessionId,
+      actionId,
+      ...(params ? { params } : {})
+    }
+  });
+
+  // road -> waypoint: the split children are new construction and therefore
+  // cannot inherit the original road's open/active state.
+  await dispatch("buildRoad", { fromNodeId: "b", toNodeId: "c", contribution: 2 });
+  let state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  assert.equal(state.public.objects.edges["grid:edge:1"].facets.status, "building");
+  assert.deepEqual(state.public.objects.edges["grid:edge:1"].attributes.blockingReasons, ["construction-pending"]);
+  assert.equal(state.public.objects.edges["grid:edge:1"].attributes.createdTurn, 3);
+  assert.equal(state.public.objects.edges["grid:edge:1"].attributes.activationTurn, 5);
+
+  await dispatch("buildWaypoint", { edgeId: "grid:edge:1", positionT: 0.5, contribution: 5 });
+  state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  assert.equal(state.public.objects.nodes["grid:node:2"].facets.status, "building");
+  assert.equal(state.public.objects.edges["grid:edge:3"].facets.status, "building");
+  assert.equal(state.public.objects.edges["grid:edge:4"].facets.status, "building");
+  assert.equal(state.public.objects.edges["grid:edge:3"].attributes.activationTurn, 5);
+
+  // waypoint -> road: a pending waypoint can be declared buildable, while the
+  // road it starts remains independently pending under the same lifecycle.
+  await dispatch("buildRoad", { fromNodeId: "grid:node:2", toNodeId: "a", contribution: 2 });
+  state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  assert.equal(state.public.objects.edges["grid:edge:5"].facets.status, "building");
+  assert.equal(state.public.objects.edges["grid:edge:5"].attributes.activationTurn, 5);
+  await dispatch("addIndependentBlocker");
+
+  await dispatch("advanceConstructionTurn");
+  state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  assert.equal(state.public.turnNumber, 4);
+  assert.equal(state.public.objects.nodes["grid:node:2"].facets.status, "building");
+  assert.equal(state.public.objects.edges["grid:edge:4"].facets.status, "building");
+
+  await dispatch("advanceConstructionTurn");
+  state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  assert.equal(state.public.turnNumber, 5);
+  assert.equal(state.public.objects.nodes["grid:node:2"].facets.status, "active");
+  assert.equal(state.public.objects.edges["grid:edge:4"].facets.status, "open");
+  assert.equal(state.public.objects.edges["grid:edge:5"].facets.status, "open");
+  assert.deepEqual(state.public.objects.edges["grid:edge:4"].attributes.blockingReasons, []);
+  assert.equal(state.public.objects.edges["grid:edge:3"].facets.status, "building");
+  assert.deepEqual(state.public.objects.edges["grid:edge:3"].attributes.blockingReasons, ["weather-closed"]);
+
+  const graphBeforeReplay = structuredClone(state.public.objects);
+  await dispatch("activateDueAgain");
+  state = (await target.store.getSession(target.session.sessionId))?.state as any;
+  assert.deepEqual(state.public.objects, graphBeforeReplay, "replaying activation must not change the graph again");
+});
+
 test("authoritative planner chooses a replay-stable minimum region sequence and stores its exact polyline", async () => {
   const first = await createStoreForManifest(createPlannedRoadFixture());
   const second = await createStoreForManifest(createPlannedRoadFixture());
@@ -755,6 +871,86 @@ test("authoritative planner chooses a replay-stable minimum region sequence and 
   assert.equal(firstEdge.routePlan.tieBreak.randomCounterAfter, 1);
   assert.equal(firstState.secret.random.counter, 1);
   assert.deepEqual(firstState.secret.random, secondState.secret.random);
+});
+
+test("road preview simulates the tied-route choice without consuming PRNG and matches same-version confirmation", async () => {
+  const target = await createStoreForManifest(createPlannedRoadFixture());
+  const before = await target.store.getSession(target.session.sessionId);
+  assert.ok(before);
+  const preview = previewRuntimeTransportRoad({
+    snapshot: before,
+    bundle: target.bundle,
+    input: {
+      sessionId: target.session.sessionId,
+      expectedStateVersion: before.version.stateVersion,
+      actionId: "buildRoad",
+      params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo" }
+    }
+  });
+  const afterPreview = await target.store.getSession(target.session.sessionId);
+  assert.deepEqual(afterPreview?.version, before.version);
+  assert.deepEqual((afterPreview?.state as any).secret.random, (before.state as any).secret.random);
+  assert.equal(preview.usedStateVersion, before.version.stateVersion);
+  assert.equal(preview.candidateCount, 2);
+  assert.equal(preview.cost, 6);
+  assert.equal("seed" in (preview as unknown as Record<string, unknown>), false);
+  assert.equal(JSON.stringify(preview).includes("randomCounter"), false);
+
+  await dispatchRuntimeAction({
+    sessionStore: target.store,
+    bundle: target.bundle,
+    input: {
+      sessionId: target.session.sessionId,
+      expectedStateVersion: preview.usedStateVersion,
+      actionId: "buildRoad",
+      params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo", contribution: preview.cost }
+    }
+  });
+  const confirmed = (await target.store.getSession(target.session.sessionId))?.state as any;
+  const edge = confirmed.public.objects.edges["grid:edge:1"].attributes;
+  assert.deepEqual(edge.geometry.polyline, preview.polyline);
+  assert.deepEqual(edge.routePlan.regionSequence, preview.regionSequence);
+  assert.equal(confirmed.secret.random.counter, 1);
+});
+
+test("public road preview fails closed before resolving a secret network or endpoint reference", async () => {
+  const target = await createStoreForManifest(createPlannedRoadFixture());
+  const snapshot = await target.store.getSession(target.session.sessionId);
+  assert.ok(snapshot);
+  const privateBundle = structuredClone(target.bundle) as any;
+  privateBundle.manifest.networkModels.grid.visibility = "secret";
+  assert.throws(
+    () => previewRuntimeTransportRoad({
+      snapshot,
+      bundle: privateBundle,
+      input: {
+        sessionId: target.session.sessionId,
+        expectedStateVersion: snapshot.version.stateVersion,
+        actionId: "buildRoad",
+        params: { fromNodeId: "plannedFrom", toNodeId: "plannedTo" }
+      }
+    }),
+    /does not expose a public transport-road preview/
+  );
+
+  const privateReferenceBundle = structuredClone(target.bundle) as any;
+  privateReferenceBundle.manifest.actions.buildRoad.paramsSchema.properties.fromNodeId["x-cubica-ref"].visibility = "secret";
+  assert.throws(
+    () => previewRuntimeTransportRoad({
+      snapshot,
+      bundle: privateReferenceBundle,
+      input: {
+        sessionId: target.session.sessionId,
+        expectedStateVersion: snapshot.version.stateVersion,
+        actionId: "buildRoad",
+        // The id deliberately does not exist in secret state. Rejection must
+        // happen from the declaration before resource existence is probed.
+        params: { fromNodeId: "secret-probe", toNodeId: "plannedTo" }
+      }
+    }),
+    /not declared for public preview visibility/
+  );
+  assert.equal((await target.store.getSession(target.session.sessionId))?.version.stateVersion, 0);
 });
 
 test("waypoint splits a planned road by polyline length without replanning its region passages", async () => {
@@ -1264,4 +1460,20 @@ test("manifest literal paths reject prototype-pollution segments", () => {
   const unsafe = structuredClone(neutralManifest) as any;
   unsafe.actions.transfer.deterministic.effects[0].from.path = "/public/balances/constructor/value";
   assert.throws(() => validateGameManifest(unsafe), /Schema validation failed/);
+
+  for (const mutate of [
+    (candidate: any) => {
+      candidate.networkModels.grid.constructionLifecycle.turnCounterPath = "/public/constructor/turn";
+    },
+    (candidate: any) => {
+      candidate.networkModels.grid.constructionLifecycle.createdTurnAttribute = "__proto__";
+    },
+    (candidate: any) => {
+      candidate.networkModels.grid.constructionLifecycle.pendingReason = "";
+    }
+  ]) {
+    const lifecycleUnsafe = createConstructionLifecycleFixture();
+    mutate(lifecycleUnsafe);
+    assert.throws(() => validateGameManifest(lifecycleUnsafe), /Schema validation failed/);
+  }
 });

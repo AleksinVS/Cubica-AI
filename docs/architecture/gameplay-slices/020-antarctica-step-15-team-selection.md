@@ -10,7 +10,10 @@ This record keeps the bounded delivery details that were previously embedded in 
 ## Boundary
 
 `opening.card.18.advance` and `opening.info.i9.advance` reach Antarctica `stepIndex = 15`.
-At this boundary the runtime must support a bounded team-selection mechanic without introducing a generic workflow engine.
+At this boundary the runtime must support team selection through deterministic
+manifest mechanics. ADR-083 later removed the former prohibition on a universal
+workflow/selector language: this implemented slice remains explicit, while any
+future missing primitive must be designed as a neutral reusable operation.
 
 ## Slice Requirements
 
@@ -30,9 +33,9 @@ At this boundary the runtime must support a bounded team-selection mechanic with
 
 ## Out Of Scope
 
-- a generic selector engine;
-- payload-driven selection DSL;
-- reusable multi-stage workflow abstractions beyond the current step-15 boundary.
+- selector, iteration and workflow features not required to reproduce this
+  already implemented step; this delivery boundary does not prohibit their
+  platform implementation under ADR-083.
 
 ## Related Artifacts
 

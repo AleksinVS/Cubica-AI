@@ -562,31 +562,18 @@ const mockIndependentSessionActions = (gameplay) => ([
   {
     id: "mock.construction.open-control-projects",
     _type: "game.Action",
-    _label: "Открыть построенную тестовую дорогу",
-    _semantics: "На следующем ходу переводит известный проект контрольного сценария из строительства в открытую сеть.",
+    _label: "Проверить готовность построенных объектов",
+    _semantics: "Повторяемо активирует все созревшие проекты сети без знания их идентификаторов.",
     handlerType: "manifest-data",
     capabilityFamily: "runtime.server",
     capability: "transport.construction.open",
-    displayName: "MOCK: открыть проект предыдущего хода",
+    displayName: "MOCK: активировать готовые проекты",
     allowedSessionRoles: ["facilitator"],
     deterministic: {
-      guard: {
-        stateConditions: [
-          { path: "/public/session/phase", operator: "==", value: "news" },
-          { path: "/public/session/turnNumber", operator: ">=", value: 4 },
-          { path: "/public/objects/networkEdges/main:edge:1001/facets/state", operator: "==", value: "building" }
-        ]
-      },
+      guard: { stateConditions: [{ path: "/public/session/phase", operator: "==", value: "news" }] },
       effects: [
-        {
-          op: "object.state.set",
-          visibility: "public",
-          collection: "networkEdges",
-          objectId: "main:edge:1001",
-          facet: "state",
-          value: "open"
-        },
-        { op: "log.append", target: "public.log", kind: "construction", summary: "MOCK: дорога прошлого хода открыта для движения" }
+        { op: "transport.construction.activateDue", networkId: "main" },
+        { op: "log.append", target: "public.log", kind: "construction", summary: "MOCK: проверена готовность построенных объектов" }
       ]
     }
   },
@@ -673,6 +660,7 @@ const mockIndependentSessionActions = (gameplay) => ([
       guard: { stateConditions: [{ path: "/public/session/phase", operator: "==", value: "debrief" }] },
       effects: [
         { op: "counter.add", path: "/public/session/turnNumber", delta: 1 },
+        { op: "transport.construction.activateDue", networkId: "main" },
         {
           op: "state.patch",
           patches: [
@@ -1195,6 +1183,7 @@ const build = async () => {
       "transport.vehicle.attach",
       "transport.vehicle.detach",
       "transport.cargo.deliver (shortest-route settlement)",
+      "transport.construction.activateDue",
       "ranking.compute"
     ],
     invariant: "Only schema-validated reusable effects are emitted into the compiled manifest."
@@ -1202,6 +1191,17 @@ const build = async () => {
   // The generated annotation fragment must remain a pure converter output.
   // Operation bindings are mock-package composition, so mutate a clone only.
   game.root.networkModels = structuredClone(network.networkModels);
+  game.root.networkModels.main.buildableNodeStates = ["open", "building"];
+  game.root.networkModels.main.constructionLifecycle = {
+    turnCounterPath: "/public/session/turnNumber",
+    activationDelayTurns: 2,
+    nodeStates: { pending: "building", active: "open" },
+    edgeStates: { pending: "building", active: "open" },
+    createdTurnAttribute: "createdTurn",
+    activationTurnAttribute: "activationTurn",
+    blockingReasonsAttribute: "blockingReasons",
+    pendingReason: "construction-pending"
+  };
   game.root.networkModels.main.movement = {
     vehicleCollection: "locomotives",
     vehicleObjectTypes: ["transport.locomotive"],
@@ -1249,6 +1249,14 @@ const build = async () => {
     settledRouteLengthAttribute: "settledRouteLength"
   };
   game.root.objectTypes = { ...game.root.objectTypes, ...operationObjectTypes };
+  // The optional lifecycle uses a visible but non-interactive waypoint state
+  // until its declared activation turn. The runtime knows only the declarative
+  // facet value, while presentation remains game authoring data.
+  game.root.objectTypes["transport.waypoint"].facets.availability.values.building = {
+    visible: true,
+    interactive: false,
+    view: { visualState: "pending" }
+  };
 
   const publicState = game.root.state.public;
   publicState.session.fixtureId = "development-mock";

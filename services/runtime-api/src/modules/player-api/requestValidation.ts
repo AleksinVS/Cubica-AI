@@ -1,7 +1,8 @@
 import type {
   CreateSessionRequest,
   DispatchActionInput,
-  RestorePreviewSessionRequest
+  RestorePreviewSessionRequest,
+  TransportRoadPreviewRequest
 } from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
 import { RequestValidationError } from "../errors.ts";
@@ -105,6 +106,27 @@ export const parseDispatchActionRequest = (body: unknown): DispatchActionInput =
   }
 
   return body as unknown as DispatchActionInput;
+};
+
+/** Validate the fixed envelope; action-specific endpoint schemas run after content lookup. */
+export const parseTransportRoadPreviewRequest = (body: unknown): TransportRoadPreviewRequest => {
+  assertRecord(body, "POST /action-previews/transport-road body");
+  const allowedKeys = new Set(["sessionId", "expectedStateVersion", "playerId", "actionId", "params"]);
+  const unexpectedKey = Object.keys(body).find((key) => !allowedKeys.has(key));
+  if (unexpectedKey) {
+    throw new RequestValidationError(`Transport road preview contains unsupported field "${unexpectedKey}"`);
+  }
+  assertRequiredString(body.sessionId, "sessionId");
+  assertNonNegativeInteger(body.expectedStateVersion, "expectedStateVersion");
+  assertRequiredString(body.actionId, "actionId");
+  assertOptionalPlayerId(body.playerId, "playerId");
+  assertRecord(body.params, "params");
+  for (const key of Object.keys(body.params)) {
+    if (FORBIDDEN_OBJECT_PROPERTY_NAMES.has(key)) {
+      throw new RequestValidationError(`params contains forbidden property name "${key}"`);
+    }
+  }
+  return body as unknown as TransportRoadPreviewRequest;
 };
 
 export const parseAgentTurnRequest = (body: unknown): AgentTurnRequest => {

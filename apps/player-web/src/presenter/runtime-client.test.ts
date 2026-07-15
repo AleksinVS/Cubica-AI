@@ -3,6 +3,7 @@ import {
   createNewSession,
   dispatchAction,
   getGameReadiness,
+  previewTransportRoad,
   RuntimeClientError
 } from "./runtime-client";
 
@@ -116,6 +117,64 @@ describe("runtime-client", () => {
       name: "RuntimeClientError",
       statusCode: 409,
       message: "Session changed after version 1; reload it before retrying."
+    });
+  });
+
+  it("requests a read-only road preview with only the typed preview input", async () => {
+    const previewResponse = {
+      sessionId: "session-1",
+      actionId: "transport.road.build",
+      usedStateVersion: 4,
+      networkId: "main",
+      fromNodeId: "terminal-east",
+      toNodeId: "terminal-west",
+      polyline: [{ x: 10, y: 20 }, { x: 90, y: 20 }],
+      regionSequence: ["east", "west"],
+      regionSegments: 2,
+      cost: 4,
+      candidateCount: 1,
+      planning: {
+        mode: "region-segment-minimum" as const,
+        algorithmVersion: "1",
+        geometryVersion: "map-v1",
+        geometryHash: "sha256:fixture",
+        boundaryPolicy: "lowest-region-id"
+      }
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify(previewResponse),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(previewTransportRoad({
+      sessionId: "session-1",
+      expectedStateVersion: 4,
+      playerId: "facilitator",
+      actionId: "transport.road.build",
+      params: {
+        fromNodeId: "terminal-east",
+        toNodeId: "terminal-west"
+      }
+    })).resolves.toEqual(previewResponse);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/runtime/action-previews/transport-road",
+      expect.objectContaining({
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      })
+    );
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      sessionId: "session-1",
+      expectedStateVersion: 4,
+      playerId: "facilitator",
+      actionId: "transport.road.build",
+      params: {
+        fromNodeId: "terminal-east",
+        toNodeId: "terminal-west"
+      }
     });
   });
 });

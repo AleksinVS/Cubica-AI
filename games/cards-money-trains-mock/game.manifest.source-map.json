@@ -2805,6 +2805,12 @@
         "pointer": "/root/content/data/integrationReadiness/requiredEffects/6"
       }
     ],
+    "/content/data/integrationReadiness/requiredEffects/7": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/content/data/integrationReadiness/requiredEffects/7"
+      }
+    ],
     "/content/data/integrationReadiness/requiredEffects": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -2961,6 +2967,12 @@
         "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/closed"
       }
     ],
+    "/objectModels/transport.waypoint/facets/availability/values/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/building"
+      }
+    ],
     "/objectModels/transport.waypoint/view": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -2983,6 +2995,12 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/closed"
+      }
+    ],
+    "/objectModels/transport.waypoint/view/facets/availability.building": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/objectTypes/transport.waypoint/facets/availability/values/building"
       }
     ],
     "/objectModels/transport.edge": [
@@ -5427,54 +5445,6 @@
         "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/0/value"
       }
     ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/1"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/1/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/1/path"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/1/operator": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/1/operator"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/1/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/1/value"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/2": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/2"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/2/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/2/path"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/2/operator": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/2/operator"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions/2/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/guard/stateConditions/2/value"
-      }
-    ],
     "/actions/mock.construction.open-control-projects/deterministic/guard/stateConditions": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -5493,34 +5463,10 @@
         "pointer": "/root/logic/actions/7/deterministic/effects/0/op"
       }
     ],
-    "/actions/mock.construction.open-control-projects/deterministic/effects/0/visibility": [
+    "/actions/mock.construction.open-control-projects/deterministic/effects/0/networkId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/effects/0/visibility"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/effects/0/collection": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/effects/0/collection"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/effects/0/objectId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/effects/0/objectId"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/effects/0/facet": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/effects/0/facet"
-      }
-    ],
-    "/actions/mock.construction.open-control-projects/deterministic/effects/0/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/7/deterministic/effects/0/value"
+        "pointer": "/root/logic/actions/7/deterministic/effects/0/networkId"
       }
     ],
     "/actions/mock.construction.open-control-projects/deterministic/effects/1": [
@@ -6429,166 +6375,10 @@
         "pointer": "/root/logic/actions/12/deterministic/effects/1/op"
       }
     ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/0": [
+    "/actions/mock.debrief.next-turn/deterministic/effects/1/networkId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/0"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/0/op": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/0/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/0/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/0/path"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/0/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/0/value"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/1": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/1"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/1/op": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/1/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/1/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/1/path"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/1/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/1/value"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/2": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/2"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/2/op": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/2/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/2/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/2/path"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/2/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/2/value"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/3": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/3"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/3/op": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/3/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/3/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/3/path"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/3/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/3/value"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/4": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/4"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/4/op": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/4/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/4/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/4/path"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/4/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/4/value"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/5": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/5"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/5/op": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/5/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/5/path": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/5/path"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/5/value": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/5/value"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/5/value/firstCardId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/5/value/firstCardId"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches/5/value/secondCardId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches/5/value/secondCardId"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/1/patches": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/1/patches"
+        "pointer": "/root/logic/actions/12/deterministic/effects/1/networkId"
       }
     ],
     "/actions/mock.debrief.next-turn/deterministic/effects/2": [
@@ -6601,24 +6391,6 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/12/deterministic/effects/2/op"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/2/visibility": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/2/visibility"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/2/collection": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/2/collection"
-      }
-    ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/2/objectId": [
-      {
-        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/2/objectId"
       }
     ],
     "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/0": [
@@ -6643,6 +6415,138 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/0/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/1"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/1/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/1/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/1/path": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/1/path"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/1/value": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/1/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/2": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/2"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/2/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/2/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/2/path": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/2/path"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/2/value": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/2/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/3": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/3"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/3/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/3/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/3/path": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/3/path"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/3/value": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/3/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/4": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/4"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/4/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/4/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/4/path": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/4/path"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/4/value": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/4/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/5": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/5"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/5/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/5/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/5/path": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/5/path"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/5/value": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/5/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/5/value/firstCardId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/5/value/firstCardId"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/2/patches/5/value/secondCardId": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/2/patches/5/value/secondCardId"
       }
     ],
     "/actions/mock.debrief.next-turn/deterministic/effects/2/patches": [
@@ -6723,22 +6627,82 @@
         "pointer": "/root/logic/actions/12/deterministic/effects/4/op"
       }
     ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/4/target": [
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/visibility": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/4/target"
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/visibility"
       }
     ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/4/kind": [
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/collection": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/4/kind"
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/collection"
       }
     ],
-    "/actions/mock.debrief.next-turn/deterministic/effects/4/summary": [
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/objectId": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/12/deterministic/effects/4/summary"
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/objectId"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/patches/0": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/patches/0"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/patches/0/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/patches/0/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/patches/0/path": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/patches/0/path"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/patches/0/value": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/patches/0/value"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/4/patches": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/4/patches"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/5": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/5"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/5/op": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/5/op"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/5/target": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/5/target"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/5/kind": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/5/kind"
+      }
+    ],
+    "/actions/mock.debrief.next-turn/deterministic/effects/5/summary": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/12/deterministic/effects/5/summary"
       }
     ],
     "/actions/mock.debrief.next-turn/deterministic/effects": [
@@ -19065,6 +19029,12 @@
         "pointer": "/root/networkModels/main/buildableNodeStates/0"
       }
     ],
+    "/networkModels/main/buildableNodeStates/1": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/buildableNodeStates/1"
+      }
+    ],
     "/networkModels/main/buildableNodeStates": [
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
@@ -19585,6 +19555,84 @@
       {
         "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
         "pointer": "/root/networkModels/main/roadPlanning/navigationGraph/portals"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/turnCounterPath": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/turnCounterPath"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/activationDelayTurns": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/activationDelayTurns"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/nodeStates": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/nodeStates"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/nodeStates/pending": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/nodeStates/pending"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/nodeStates/active": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/nodeStates/active"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/edgeStates": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/edgeStates"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/edgeStates/pending": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/edgeStates/pending"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/edgeStates/active": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/edgeStates/active"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/createdTurnAttribute": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/createdTurnAttribute"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/activationTurnAttribute": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/activationTurnAttribute"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/blockingReasonsAttribute": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/blockingReasonsAttribute"
+      }
+    ],
+    "/networkModels/main/constructionLifecycle/pendingReason": [
+      {
+        "file": "games/cards-money-trains-mock/authoring/game.authoring.json",
+        "pointer": "/root/networkModels/main/constructionLifecycle/pendingReason"
       }
     ],
     "/networkModels/main/movement": [

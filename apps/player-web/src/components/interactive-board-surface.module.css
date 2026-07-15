@@ -119,6 +119,41 @@
   list-style: none;
 }
 
+.actionForm {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid rgb(246 240 223 / 18%);
+  border-radius: 0.55rem;
+  background: rgb(255 255 255 / 4%);
+}
+
+.actionField {
+  display: grid;
+  gap: 0.3rem;
+  color: #e8dfc9;
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.actionField select,
+.actionField input {
+  min-width: 0;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #8f825f;
+  border-radius: 0.35rem;
+  background: #26231c;
+  color: #fff8e7;
+  font: inherit;
+}
+
+.actionField select:focus-visible,
+.actionField input:focus-visible {
+  outline: 3px solid #fff2b8;
+  outline-offset: 2px;
+}
+
 .actionButton {
   width: 100%;
   min-height: 2.75rem;
@@ -141,6 +176,40 @@
 .actionButton:disabled {
   cursor: not-allowed;
   opacity: 0.5;
+}
+
+.previewButton {
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid #73b9aa;
+  border-radius: 0.35rem;
+  background: #183b35;
+  color: #d9fff5;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.previewButton:focus-visible {
+  outline: 3px solid #b9fff0;
+  outline-offset: 3px;
+}
+
+.previewButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.previewResult {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-left: 0.25rem solid #73b9aa;
+  background: rgb(24 59 53 / 72%);
+  color: #d9fff5;
+  font-size: 0.875rem;
+  line-height: 1.45;
 }
 
 .actionDescription,

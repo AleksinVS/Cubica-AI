@@ -164,6 +164,56 @@ export interface DispatchActionResponse<TState = unknown> {
   actionAvailability: Array<SessionActionAvailability>;
 }
 
+/**
+ * Read-only request for the server-owned road planner.
+ *
+ * `params` intentionally contains only the two endpoint references declared by
+ * the selected manifest action. Payment parameters belong to the later
+ * authoritative `POST /actions` command and are never trusted as preview input.
+ */
+export interface TransportRoadPreviewRequest {
+  sessionId: SessionId;
+  expectedStateVersion: number;
+  playerId?: PlayerId;
+  actionId: string;
+  params: Record<string, unknown>;
+}
+
+/** Canonical map-space point returned by a transport-road preview. */
+export interface TransportRoadPreviewPoint {
+  x: number;
+  y: number;
+}
+
+/**
+ * Safe read-only projection of one planned road.
+ *
+ * The response deliberately excludes the session seed and random counters.
+ * `candidateCount` explains whether the confirmed action may choose among
+ * equally priced routes, while `usedStateVersion` identifies the snapshot on
+ * which this non-authoritative calculation was made.
+ */
+export interface TransportRoadPreviewResponse {
+  sessionId: SessionId;
+  actionId: string;
+  usedStateVersion: number;
+  networkId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  polyline: Array<TransportRoadPreviewPoint>;
+  regionSequence: Array<string>;
+  regionSegments: number;
+  cost: number;
+  candidateCount: number;
+  planning: {
+    mode: "region-segment-minimum";
+    algorithmVersion: string;
+    geometryVersion: string;
+    geometryHash: string;
+    boundaryPolicy: string;
+  };
+}
+
 export interface RestorePreviewSessionRequest<TState = unknown> {
   /**
    * Runtime state captured from the same preview session earlier in the

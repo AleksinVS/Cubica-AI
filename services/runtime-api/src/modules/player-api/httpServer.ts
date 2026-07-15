@@ -26,7 +26,8 @@ import {
   parseAgentTurnRequest,
   parseCreateSessionRequest,
   parseDispatchActionRequest,
-  parseRestorePreviewSessionRequest
+  parseRestorePreviewSessionRequest,
+  parseTransportRoadPreviewRequest
 } from "./requestValidation.ts";
 
 type RuntimeState = Record<string, unknown>;
@@ -293,6 +294,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         });
 
         sendJson(response, 200, dispatchResponse);
+        return;
+      }
+
+      if (request.method === "POST" && requestUrl.pathname === "/action-previews/transport-road") {
+        const body = await readJsonBody(request);
+        const preview = await runtimeService.previewTransportRoad({
+          sessionStore: sessionService.getSessionStore(),
+          input: parseTransportRoadPreviewRequest(body)
+        });
+        sendJson(response, 200, preview);
         return;
       }
 

@@ -109,6 +109,83 @@ describe("GamePresenter board action serialization", () => {
   });
 });
 
+describe("GamePresenter road preview", () => {
+  it("uses the current actor and version without changing session or pending state", async () => {
+    const content: PlayerFacingContent = {
+      gameId: "neutral-road-preview",
+      version: "1.0.0",
+      name: "Neutral road preview",
+      description: "Read-only presenter fixture",
+      locale: "ru",
+      playerConfig: { min: 1, max: 2 },
+      actions: [],
+      mockups: []
+    };
+    const initialSession: GameSession = {
+      ...turnSession("p2", { p1: { metrics: {} }, p2: { metrics: {} } }),
+      gameId: content.gameId,
+      version: {
+        sessionId: "session-hotseat",
+        stateVersion: 7,
+        lastEventSequence: 6
+      }
+    };
+    const previewResponse = {
+      sessionId: initialSession.sessionId,
+      actionId: "transport.road.build",
+      usedStateVersion: 7,
+      networkId: "main",
+      fromNodeId: "east",
+      toNodeId: "west",
+      polyline: [{ x: 90, y: 50 }, { x: 10, y: 50 }],
+      regionSequence: ["east", "west"],
+      regionSegments: 2,
+      cost: 4,
+      candidateCount: 1,
+      planning: {
+        mode: "region-segment-minimum" as const,
+        algorithmVersion: "1",
+        geometryVersion: "fixture-v1",
+        geometryHash: "sha256:fixture",
+        boundaryPolicy: "lowest-region-id"
+      }
+    };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(
+      JSON.stringify(previewResponse),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    ));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const presenter = new GamePresenter({
+      gateway: new ReactViewGateway(),
+      content,
+      config: createDefaultGameConfig(createDefaultGameConfigData(content))
+    });
+    Reflect.set(presenter, "session", initialSession);
+    Reflect.set(presenter, "booting", false);
+    const sessionBefore = presenter.sessionSnapshot;
+
+    await expect(presenter.previewTransportRoad("transport.road.build", {
+      fromNodeId: "east",
+      toNodeId: "west"
+    })).resolves.toEqual(previewResponse);
+
+    expect(presenter.sessionSnapshot).toBe(sessionBefore);
+    expect(presenter.playerState.isPending).toBe(false);
+    const request = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(JSON.parse(String(request.body))).toEqual({
+      sessionId: "session-hotseat",
+      expectedStateVersion: 7,
+      playerId: "p2",
+      actionId: "transport.road.build",
+      params: {
+        fromNodeId: "east",
+        toNodeId: "west"
+      }
+    });
+  });
+});
+
 describe("GamePresenter declarative layout", () => {
   it("uses the selected screen map-first layout before routing fallbacks", () => {
     const content: PlayerFacingContent = {

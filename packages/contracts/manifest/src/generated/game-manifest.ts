@@ -105,6 +105,11 @@ export type GameManifestDeterministicEffect =
       when?: GameManifestDeterministicEffectCondition;
     }
   | {
+      op: "transport.construction.activateDue";
+      networkId: string;
+      when?: GameManifestDeterministicEffectCondition;
+    }
+  | {
       op: "transport.vehicle.move";
       networkId: string;
       vehicleParam: string;
@@ -1034,6 +1039,7 @@ export interface GameManifestTransportNetworkModel {
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
   roadPlanning?: GameManifestTransportRoadPlanning;
+  constructionLifecycle?: GameManifestTransportConstructionLifecycle;
   movement?: GameManifestTransportMovementModel;
   cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }
@@ -1097,6 +1103,32 @@ export interface GameManifestTransportRoadPortal {
   regionIds: [string, string];
   from: GameManifestCanonicalPoint;
   to: GameManifestCanonicalPoint;
+}
+/**
+ * Opt-in, turn-based activation policy for newly constructed transport nodes and edges.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportConstructionLifecycle".
+ */
+export interface GameManifestTransportConstructionLifecycle {
+  turnCounterPath: string;
+  activationDelayTurns: number;
+  nodeStates: GameManifestTransportConstructionLifecycleStates;
+  edgeStates: GameManifestTransportConstructionLifecycleStates;
+  createdTurnAttribute: GameManifestSafeIdentifier;
+  activationTurnAttribute: GameManifestSafeIdentifier;
+  blockingReasonsAttribute: GameManifestSafeIdentifier;
+  pendingReason: string;
+}
+/**
+ * Facet values used while a constructed transport object is pending and after it becomes active.
+ *
+ * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
+ * via the `definition` "GameManifestTransportConstructionLifecycleStates".
+ */
+export interface GameManifestTransportConstructionLifecycleStates {
+  pending: GameManifestObjectFacetValue;
+  active: GameManifestObjectFacetValue;
 }
 /**
  * Declarative rules for moving authoritative vehicles through one network edge.

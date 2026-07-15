@@ -6,6 +6,7 @@ import type {
 } from "@cubica/contracts-manifest";
 import type { GameSession, MetricsSnapshot } from "@/types/game-state";
 import type { GameAssetResolver } from "@/lib/game-asset-resolver";
+import type { TransportRoadPreviewResponse } from "@cubica/contracts-session";
 import { UiComponentNode } from "./ui-component-node";
 import { screenRootRuntimePointer } from "./preview-metadata";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
@@ -30,6 +31,7 @@ export function ManifestRenderer({
   content,
   session,
   onBoardAction,
+  onBoardRoadPreview,
   assetResolver,
   isPending = false,
   embeddedOverlay = false,
@@ -60,6 +62,11 @@ export function ManifestRenderer({
   session?: GameSession;
   /** Async runtime action path used by canvas and its DOM alternative. */
   onBoardAction?: (actionId: string, params?: Record<string, unknown>) => Promise<void>;
+  /** Read-only server calculation used before a road-building command. */
+  onBoardRoadPreview?: (
+    actionId: string,
+    params: Record<string, unknown>
+  ) => Promise<TransportRoadPreviewResponse>;
   /** Optional game asset index; `asset:` references fail closed while absent. */
   assetResolver?: GameAssetResolver | null;
   /** Prevents a second command while the previous server transition is pending. */
@@ -90,6 +97,7 @@ export function ManifestRenderer({
         content={content}
         session={session}
         onBoardAction={onBoardAction}
+        onBoardRoadPreview={onBoardRoadPreview}
         assetResolver={assetResolver}
         isPending={isPending}
       />

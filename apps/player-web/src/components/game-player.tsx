@@ -361,6 +361,17 @@ export function GamePlayer({
     await presenter.handleBoardAction(actionId, payload ?? {});
   };
 
+  const handleBoardRoadPreview = (
+    actionId: string,
+    params: Record<string, unknown>
+  ) => {
+    const presenter = presenterRef.current;
+    if (!presenter) {
+      return Promise.reject(new Error("Игровая сессия еще не готова к расчёту дороги."));
+    }
+    return presenter.previewTransportRoad(actionId, params);
+  };
+
   const state = playerState;
   const rootStyle = fullConfig.themeBackgroundImage
     ? ({
@@ -430,6 +441,7 @@ export function GamePlayer({
           content={content}
           session={sessionSnapshot}
           onBoardAction={handleBoardAction}
+          onBoardRoadPreview={handleBoardRoadPreview}
           assetResolver={gameAssets}
           isPending={state.isPending}
         />
@@ -454,6 +466,7 @@ export function GamePlayer({
             content={content}
             session={sessionSnapshot}
             onBoardAction={handleBoardAction}
+            onBoardRoadPreview={handleBoardRoadPreview}
             assetResolver={gameAssets}
             isPending={state.isPending}
           />
@@ -473,6 +486,7 @@ export function GamePlayer({
                 content={content}
                 session={sessionSnapshot}
                 onBoardAction={handleBoardAction}
+                onBoardRoadPreview={handleBoardRoadPreview}
                 assetResolver={gameAssets}
                 isPending={state.isPending}
                 embeddedOverlay

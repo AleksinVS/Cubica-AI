@@ -4,7 +4,7 @@
  * ownership contract without depending on WebGL support in the DOM test host.
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PlayerFacingContent } from "@cubica/contracts-manifest";
 
@@ -175,6 +175,306 @@ describe("InteractiveBoardSurface", () => {
       targetNodeId: "node-b"
     });
     disposeRegistration();
+  });
+
+  it("collects a plugin-declared parameter form before dispatching a board action", async () => {
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
+      id: "build-road",
+      label: "Построить дорогу",
+      actionId: "transport.road.build",
+      params: { fixedContribution: 2 },
+      fields: [
+        {
+          name: "fromNodeId",
+          label: "Начальная станция",
+          kind: "select",
+          required: true,
+          options: [
+            { value: "node-a", label: "Станция А" },
+            { value: "node-b", label: "Станция Б" }
+          ]
+        },
+        {
+          name: "toNodeId",
+          label: "Конечная станция",
+          kind: "select",
+          required: true,
+          options: [
+            { value: "node-b", label: "Станция Б" },
+            { value: "node-c", label: "Станция В" }
+          ]
+        },
+        {
+          name: "variableContribution",
+          label: "Вклад",
+          kind: "number",
+          required: true,
+          min: 0,
+          step: 1,
+          defaultValue: 3
+        }
+      ]
+    }]));
+    const dispatchAction = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText("Начальная станция"), {
+      target: { value: "node-a" }
+    });
+    fireEvent.change(screen.getByLabelText("Конечная станция"), {
+      target: { value: "node-c" }
+    });
+    fireEvent.change(screen.getByLabelText("Вклад"), { target: { value: "4" } });
+    fireEvent.click(screen.getByRole("button", { name: "Построить дорогу" }));
+
+    await waitFor(() => expect(dispatchAction).toHaveBeenCalledWith("transport.road.build", {
+      fixedContribution: 2,
+      fromNodeId: "node-a",
+      toNodeId: "node-c",
+      variableContribution: 4
+    }));
+    disposeProvider();
+  });
+
+  it("synchronizes a canvas draft with the DOM form and clears it on a new state version", async () => {
+    let publishCanvasDraft: ((draft: {
+      actionId: string;
+      params: Readonly<Record<string, string | number | boolean | null>>;
+    } | null) => void) | undefined;
+    const updateActionDraft = vi.fn();
+    const disposeScene = registerPhaserSceneFactory(content.gameId, (context) => {
+      publishCanvasDraft = context.onActionDraftChange;
+      return {
+        scene: new context.Phaser.Scene(),
+        updateSession() {},
+        updateActionDraft,
+        destroy() {}
+      };
+    });
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
+      id: "build-road",
+      label: "Построить дорогу",
+      actionId: "construction.road.build",
+      // These defaults reproduce the temporary mock payload which must not
+      // reappear after the canvas starts a new endpoint pair.
+      params: { fromNodeId: "node-a", toNodeId: "node-b", contribution: 2 },
+      fields: [
+        {
+          name: "fromNodeId",
+          label: "Начальная станция",
+          kind: "select",
+          required: true,
+          options: [
+            { value: "node-a", label: "Станция А" },
+            { value: "node-b", label: "Станция Б" },
+            { value: "node-c", label: "Станция В" }
+          ]
+        },
+        {
+          name: "toNodeId",
+          label: "Конечная станция",
+          kind: "select",
+          required: true,
+          options: [
+            { value: "node-a", label: "Станция А" },
+            { value: "node-b", label: "Станция Б" },
+            { value: "node-c", label: "Станция В" }
+          ]
+        },
+        {
+          name: "contribution",
+          label: "Вклад",
+          kind: "number",
+          required: true,
+          defaultValue: 2
+        }
+      ]
+    }]));
+
+    const view = render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn()}
+      />
+    );
+
+    const fromNode = await screen.findByLabelText("Начальная станция") as HTMLSelectElement;
+    const toNode = screen.getByLabelText("Конечная станция") as HTMLSelectElement;
+    expect(fromNode.value).toBe("node-a");
+    expect(toNode.value).toBe("node-b");
+
+    act(() => publishCanvasDraft?.({
+      actionId: "construction.road.build",
+      params: { fromNodeId: "node-c", toNodeId: null }
+    }));
+    expect(fromNode.value).toBe("node-c");
+    expect(toNode.value).toBe("");
+
+    fireEvent.change(toNode, { target: { value: "node-a" } });
+    expect(updateActionDraft).toHaveBeenLastCalledWith({
+      actionId: "construction.road.build",
+      params: { fromNodeId: "node-c", toNodeId: "node-a" }
+    });
+
+    view.rerender(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(1)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn()}
+      />
+    );
+    await waitFor(() => expect(updateActionDraft).toHaveBeenLastCalledWith(null));
+    expect(fromNode.value).toBe("node-a");
+    expect(toNode.value).toBe("node-b");
+
+    view.unmount();
+    disposeScene();
+    disposeProvider();
+  });
+
+  it("previews only selected road endpoints and invalidates the overlay after an edit", async () => {
+    const updateSpatialPreview = vi.fn();
+    const disposeScene = registerPhaserSceneFactory(content.gameId, (context) => ({
+      scene: new context.Phaser.Scene(),
+      updateSession() {},
+      updateSpatialPreview,
+      destroy() {}
+    }));
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
+      id: "build-road",
+      label: "Построить дорогу",
+      actionId: "construction.road.build",
+      params: { carriersContribution: 2 },
+      preview: {
+        kind: "transport-road",
+        endpointParameters: { from: "fromNodeId", to: "toNodeId" }
+      },
+      fields: [
+        {
+          name: "fromNodeId",
+          label: "Начальная станция",
+          kind: "select",
+          required: true,
+          options: [
+            { value: "node-a", label: "Станция А" },
+            { value: "node-b", label: "Станция Б" }
+          ]
+        },
+        {
+          name: "toNodeId",
+          label: "Конечная станция",
+          kind: "select",
+          required: true,
+          options: [
+            { value: "node-b", label: "Станция Б" },
+            { value: "node-c", label: "Станция В" }
+          ]
+        },
+        {
+          name: "carriersContribution",
+          label: "Вклад перевозчиков",
+          kind: "number",
+          required: true,
+          defaultValue: 2
+        }
+      ]
+    }]));
+    const previewTransportRoad = vi.fn().mockResolvedValue({
+      sessionId: "session-1",
+      actionId: "construction.road.build",
+      usedStateVersion: 0,
+      networkId: "main",
+      fromNodeId: "node-a",
+      toNodeId: "node-c",
+      polyline: [{ x: 10, y: 20 }, { x: 40, y: 30 }, { x: 90, y: 20 }],
+      regionSequence: ["left", "right"],
+      regionSegments: 2,
+      cost: 4,
+      candidateCount: 2,
+      planning: {
+        mode: "region-segment-minimum",
+        algorithmVersion: "1",
+        geometryVersion: "fixture-v1",
+        geometryHash: "sha256:fixture",
+        boundaryPolicy: "lowest-region-id"
+      }
+    });
+    const dispatchAction = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+        previewTransportRoad={previewTransportRoad}
+      />
+    );
+
+    fireEvent.change(await screen.findByLabelText("Начальная станция"), {
+      target: { value: "node-a" }
+    });
+    fireEvent.change(screen.getByLabelText("Конечная станция"), {
+      target: { value: "node-c" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Рассчитать маршрут" }));
+
+    await waitFor(() => expect(previewTransportRoad).toHaveBeenCalledWith(
+      "construction.road.build",
+      { fromNodeId: "node-a", toNodeId: "node-c" }
+    ));
+    expect((await screen.findByRole("status")).textContent).toContain("Стоимость: 4 монет");
+    expect(updateSpatialPreview).toHaveBeenLastCalledWith({
+      actionId: "construction.road.build",
+      points: [{ x: 10, y: 20 }, { x: 40, y: 30 }, { x: 90, y: 20 }]
+    });
+    expect((screen.getByRole("button", { name: "Построить дорогу" }) as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("Конечная станция"), {
+      target: { value: "node-b" }
+    });
+    expect(updateSpatialPreview).toHaveBeenLastCalledWith(null);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect((screen.getByRole("button", { name: "Построить дорогу" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(dispatchAction).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Конечная станция"), {
+      target: { value: "node-c" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Рассчитать маршрут" }));
+    await waitFor(() => expect(previewTransportRoad).toHaveBeenCalledTimes(2));
+    await screen.findByRole("status");
+    fireEvent.click(screen.getByRole("button", { name: "Построить дорогу" }));
+    await waitFor(() => expect(dispatchAction).toHaveBeenCalledWith(
+      "construction.road.build",
+      {
+        carriersContribution: 2,
+        fromNodeId: "node-a",
+        toNodeId: "node-c"
+      }
+    ));
+
+    disposeScene();
+    disposeProvider();
   });
 
   it("shows a diagnostic instead of a blank canvas when no factory is registered", () => {

@@ -429,6 +429,28 @@ export interface GameManifestRankingAssetSource {
   valueAttribute: string;
 }
 
+/** Facet values for an object waiting for construction activation and after activation. */
+export interface GameManifestTransportConstructionLifecycleStates {
+  pending: GameManifestObjectFacetValue;
+  active: GameManifestObjectFacetValue;
+}
+
+/**
+ * Optional turn-based activation policy for newly built transport objects.
+ * Attribute names are declared so the generic runtime never depends on one
+ * game's state vocabulary.
+ */
+export interface GameManifestTransportConstructionLifecycle {
+  turnCounterPath: string;
+  activationDelayTurns: number;
+  nodeStates: GameManifestTransportConstructionLifecycleStates;
+  edgeStates: GameManifestTransportConstructionLifecycleStates;
+  createdTurnAttribute: string;
+  activationTurnAttribute: string;
+  blockingReasonsAttribute: string;
+  pendingReason: string;
+}
+
 /** Declarative binding between generic object collections and one transport graph. */
 export interface GameManifestTransportNetworkModel {
   visibility: GameManifestObjectVisibility;
@@ -446,6 +468,7 @@ export interface GameManifestTransportNetworkModel {
   waypointCost: number;
   regions: Array<GameManifestTransportRegion>;
   roadPlanning?: GameManifestTransportRoadPlanning;
+  constructionLifecycle?: GameManifestTransportConstructionLifecycle;
   movement?: GameManifestTransportMovementModel;
   cargoDelivery?: GameManifestTransportCargoDeliveryModel;
 }
@@ -662,6 +685,10 @@ export type GameManifestDeterministicEffect =
       edgeParam: string;
       positionParam: string;
       payments: Array<GameManifestConstructionPayment>;
+    })
+  | (GameManifestDeterministicEffectBase & {
+      op: "transport.construction.activateDue";
+      networkId: string;
     })
   | (GameManifestDeterministicEffectBase & {
       op: "transport.vehicle.move";
