@@ -74,6 +74,7 @@ docs: # Архитектура, задачи, планирование
     cards-money-trains-platform-design.md: file # Нормативный архитектурный дизайн игры «Карты, деньги, поезда»: границы платформы и игры, состояние, фазы, транспортная сеть, интерфейс, надежность и последовательность поставки.
     element-prompt-contract.md: file # Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.
     generative-ui-surface-protocol.md: file # Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
+    project-knowledge-system.md: file # Принятая архитектура проектной вики Cubica: канон смыслового синтеза, wiki-граф, FTS5 и векторный поиск, проверки качества и производный контекст модулей, символов, вызовов и контрактов.
     runtime-api-openapi.yaml: file # Current OpenAPI 3.1 contract for the implemented services/runtime-api modular monolith HTTP API по ADR-051.
   legacy:
     debt-log.csv: file # Центральный реестр долга (tech debt).
@@ -83,6 +84,7 @@ docs: # Архитектура, задачи, планирование
     authoring-prototype-audit.md: file # Регулярный процесс поиска кандидатов в authoring-прототипы: PR-аудит, недельный LLM-семантический аудит, suppression и promotion backlog.
     authoring-prototype-promotion.md: file # Процесс ручного повышения game-level authoring-прототипа в platform-level prototype по ADR-050 без автоматического platform catalog write.
     editor-prompts.md: file # Правила работы с промтами Game Editor, включая элементные промты ADR-048 и целевую dynamic prompt projection ADR-049.
+    review-policy.md: file # Правила ревью и завершения агентских веток: явное согласование пользователя, слияние в актуальный main, итоговая проверка и безопасная работа через чистую рабочую копию.
   tasks: # Легковесная система задач и планов: текущие рабочие задачи, архив старой иерархии и постоянные артефакты задач.
     active: # Активные рабочие задачи проекта. Каждый TSK-файл объединяет план, критерии приемки, проверки, артефакты и журнал передачи.
       TSK-20260518-contracts-neutrality-cleanup.md: file # План очистки общего contracts layer от game-specific drift без потери Antarctica coverage.
@@ -98,6 +100,7 @@ docs: # Архитектура, задачи, планирование
       TSK-20260706-rail-tycoon-mini-game.md: file # План мини-игры о железнодорожном бизнесе как потребителя общих механик, Phaser-хоста и канала ассетов.
       TSK-20260707-player-web-bundle-budget.md: file # План CI-проверки бюджета JavaScript-бандла player-web как измеримого триггера декомпозиции рендерера.
       TSK-20260711-cards-money-trains-game.md: file # План реализации фасилитируемой бизнес-игры «Карты, деньги, поезда» через последовательные вертикальные срезы и необходимые общие возможности платформы.
+      TSK-20260713-project-knowledge-system.md: file # План внедрения проектной вики Cubica, wiki-графа, FTS5 и векторного поиска, а также производного контекста модулей, символов, вызовов и контрактов.
     archive: # Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.
       README-legacy-task-system.md: file # Старые правила многоуровневой системы задач, сохраненные для исторического контекста.
       TSK-20260518-architecture-repair-and-task-system-migration.md: file # Замененный план восстановления архитектурных проверок и миграции системы задач на ADR-031, сохраненный для истории.

@@ -144,6 +144,13 @@ Agents must always:
     - If a later edit affects behavior that was already checked, rerun the narrowest check that directly covers that behavior. Reuse still-current evidence for unaffected areas.
     - In the handoff, state which checks were run, which were intentionally not run, and what residual risk remains.
 
+15. **Complete agent branches through user-approved integration**
+    - Work committed or pushed only to an agent/feature branch is not yet integrated into the project.
+    - Before merging a completed branch into `main`, the agent MUST summarize the result and checks and obtain explicit user approval. A direct user instruction to merge the branch into `main` is sufficient approval and MUST NOT be requested again.
+    - After approval, the agent MUST update remote refs, merge the completed branch into the latest `main`, resolve conflicts without dropping newer `main` work or approved branch changes, run verification proportional to the integrated change, and push `main` without rewriting history.
+    - Do not perform integration in a dirty working tree that contains unrelated user or agent changes. Use a separate clean worktree and preserve the original tree unchanged.
+    - Do not leave an approved completed branch unmerged unless the user explicitly asks to keep it separate or the repository's protected-branch workflow blocks direct integration; in that case, report the exact remaining merge action.
+
 ---
 
 ## 2.1 Опциональный процесс `$cubica`

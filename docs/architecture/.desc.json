@@ -7,5 +7,6 @@
   "cards-money-trains-platform-design.md": "Нормативный архитектурный дизайн игры «Карты, деньги, поезда»: границы платформы и игры, состояние, фазы, транспортная сеть, интерфейс, надежность и последовательность поставки.",
   "element-prompt-contract.md": "Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.",
   "generative-ui-surface-protocol.md": "Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.",
+  "project-knowledge-system.md": "Принятая архитектура проектной вики Cubica: канон смыслового синтеза, wiki-граф, FTS5 и векторный поиск, проверки качества и производный контекст модулей, символов, вызовов и контрактов.",
   "runtime-api-openapi.yaml": "Current OpenAPI 3.1 contract for the implemented services/runtime-api modular monolith HTTP API по ADR-051."
 }
