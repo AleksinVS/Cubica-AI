@@ -3,16 +3,8 @@
  * Schema → TypeScript generator for manifest contracts (ADR-056).
  *
  * Direction of truth: JSON Schema is the single source of truth for manifest
- * structures (ADR-025). This tool compiles the canonical game-manifest JSON
- * Schema into a committed TypeScript artifact so that any drift between the
- * schema and its TypeScript projection becomes a hard, reviewable diff.
- *
- * The generated artifact is intentionally a derived, drift-checked file — it is
- * NOT hand-edited and NOT (yet) the type surface imported by consumers. The
- * hand-written contract in `packages/contracts/manifest/src/index.ts` remains
- * the consumer surface; migrating consumers onto the generated types is a
- * bounded follow-up (see the task Handoff Log). The purpose here is to make the
- * schema→TS mechanism real and enforced in CI.
+ * structures. This tool compiles the canonical schemas into committed
+ * TypeScript artifacts so schema/type drift becomes a hard, reviewable diff.
  *
  * Usage:
  *   node scripts/manifest-tools/generate-contracts-types.cjs            # write artifact
@@ -33,14 +25,28 @@ const repoRoot = path.resolve(__dirname, "..", "..");
  */
 const JOBS = [
   {
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-intent.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-intent.ts"),
+    rootName: "GameIntentSchemaDefs",
+    validationOnlyAllOfDefinitions: ["GameManifestStringActionParamSchema"]
+  },
+  {
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-manifest.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-manifest.ts"),
-    rootName: "GameManifestSchemaDefs"
+    rootName: "GameManifestSchemaDefs",
+    composeDelegatedContracts: true,
+    validationOnlyAllOfDefinitions: ["GameManifest"]
   },
   {
     schema: path.join(repoRoot, "docs", "architecture", "schemas", "game-assets.schema.json"),
     output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "game-assets.ts"),
     rootName: "GameAssetsSchemaDefs"
+  },
+  {
+    schema: path.join(repoRoot, "docs", "architecture", "schemas", "mechanics-plan.schema.json"),
+    output: path.join(repoRoot, "packages", "contracts", "manifest", "src", "generated", "mechanics-plan.ts"),
+    rootName: "MechanicsPlan",
+    compileRoot: true
   }
 ];
 
@@ -84,6 +90,30 @@ const COMPILE_OPTIONS = {
 };
 
 /**
+ * Remove validation-only conditionals that TypeScript cannot represent.
+ *
+ * json-schema-to-typescript turns an object containing `allOf` into an
+ * intersection with `{[key: string]: unknown}`, even when the canonical schema
+ * is closed with `additionalProperties: false`. The listed conditionals only
+ * narrow runtime values (the AI-mode manifest invariant and the shorter
+ * resource-reference string); deleting them from this in-memory copy preserves
+ * the useful structural TypeScript projection without changing the JSON Schema
+ * that Ajv executes.
+ */
+function normalizeSchemaForTypeGeneration(schema, job) {
+  const normalized = structuredClone(schema);
+  const definitions = normalized.definitions || normalized.$defs || {};
+  for (const definitionName of job.validationOnlyAllOfDefinitions || []) {
+    const definition = definitions[definitionName];
+    if (!definition || !Object.prototype.hasOwnProperty.call(definition, "allOf")) {
+      throw new Error(`Type-generation normalization cannot find ${definitionName}.allOf in ${job.schema}`);
+    }
+    delete definition.allOf;
+  }
+  return normalized;
+}
+
+/**
  * Compile one manifest schema to a TypeScript string.
  *
  * The canonical manifest schema uses a root `$ref` into `definitions`
@@ -94,13 +124,42 @@ const COMPILE_OPTIONS = {
  * 1:1 to the type names, preserving discoverability.
  */
 async function generateOne(job) {
-  const schema = JSON.parse(fs.readFileSync(job.schema, "utf8"));
-  const definitions = schema.definitions || schema.$defs || {};
+  const schema = normalizeSchemaForTypeGeneration(
+    JSON.parse(fs.readFileSync(job.schema, "utf8")),
+    job
+  );
+  if (job.compileRoot) {
+    return compile(schema, job.rootName, COMPILE_OPTIONS);
+  }
+  const definitionsKey = schema.definitions ? "definitions" : "$defs";
+  const definitions = schema[definitionsKey] || {};
   const bundle = {
     $schema: schema.$schema || "http://json-schema.org/draft-07/schema#",
-    definitions
+    [definitionsKey]: definitions
   };
-  return compile(bundle, job.rootName, COMPILE_OPTIONS);
+  const generated = await compile(bundle, job.rootName, COMPILE_OPTIONS);
+  if (!job.composeDelegatedContracts) return generated;
+
+  // The draft-07 manifest envelope delegates both actor-facing Game Intents and
+  // Mechanics IR to independent 2020-12 schemas. Compose their independently
+  // generated types here so GameManifest remains schema-derived end to end.
+  const importLines = [
+    'import type {GameIntentCatalog} from "./game-intent.ts";',
+    'import type {CubicaMechanicsIRV1Alpha1} from "./mechanics-plan.ts";',
+    ""
+  ].join("\n");
+  let composed = generated.replace(BANNER, `${BANNER}${importLines}\n`);
+  for (const [field, typeName] of [
+    ["actions", "GameIntentCatalog"],
+    ["mechanics", "CubicaMechanicsIRV1Alpha1"]
+  ]) {
+    const before = composed;
+    composed = composed.replace(`  ${field}: {};`, `  ${field}: ${typeName};`);
+    if (composed === before) {
+      throw new Error(`Generated GameManifest no longer contains the expected delegated ${field} field`);
+    }
+  }
+  return composed;
 }
 
 async function run() {
@@ -145,4 +204,4 @@ run().catch((error) => {
   process.exit(1);
 });
 
-module.exports = { generateOne, JOBS, COMPILE_OPTIONS };
+module.exports = { generateOne, normalizeSchemaForTypeGeneration, JOBS, COMPILE_OPTIONS };

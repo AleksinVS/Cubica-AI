@@ -1,0 +1,221 @@
+{
+  "apiVersion": "cubica.platform/mechanics-operation-catalog/v1",
+  "operations": {
+    "core.assert": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/assertStep",
+      "inputType": "Declared predicate", "outputType": "Assertion acknowledgement",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["predicate inputs"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Evaluate the closed predicate tree in authored order.", "errorPolicy": "Abort the complete candidate transaction when the predicate is false.",
+      "cost": { "class": "bounded-linear", "formula": "One step plus the bounded predicate tree." }, "errors": ["MECHANICS_ASSERTION_FAILED"],
+      "examples": [{ "op": "core.assert", "errorCode": "RULE_BLOCKED" }], "counterexamples": [{ "reason": "An assertion cannot omit its predicate.", "value": { "op": "core.assert" } }], "conformanceTests": ["mechanics.registry.core.assert"]
+    },
+    "core.entities.select": {
+      "moduleId": "cubica.core", "kind": "query", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/selectEntitiesStep",
+      "inputType": "Typed collection selector", "outputType": "Bounded ordered entity selection",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["declared collection", "selector expressions"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Scan stable entity identifiers in canonical UTF-8 order.", "errorPolicy": "Abort when the declared result cardinality cannot be met.",
+      "cost": { "class": "bounded-linear", "formula": "At most the declared collection capacity." }, "errors": ["MECHANICS_CARDINALITY_MIN", "MECHANICS_CARDINALITY_MAX"],
+      "examples": [{ "op": "core.entities.select", "kind": "query" }], "counterexamples": [{ "reason": "Raw JSON paths are not selectors.", "value": { "op": "core.entities.select", "path": ["public"] } }], "conformanceTests": ["mechanics.registry.core.entities.select"]
+    },
+    "core.collection.id.allocate": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/nextCollectionIdStep",
+      "inputType": "Collection, typed sequence endpoint, and identifier prefix", "outputType": "Allocated identifier and sequence",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["declared collection", "sequence endpoint"], "writes": ["sequence endpoint"], "determinism": "state-deterministic", "orderPolicy": "Advance monotonically until the first collision-free identifier.", "errorPolicy": "Abort on invalid or exhausted sequence state.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded by collection capacity plus one sequence write." }, "errors": ["MECHANICS_SEQUENCE_INVALID", "MECHANICS_SEQUENCE_EXHAUSTED"],
+      "examples": [{ "op": "core.collection.id.allocate", "prefix": "edge" }], "counterexamples": [{ "reason": "The sequence must be a typed StateRef.", "value": { "op": "core.collection.id.allocate", "sequence": "public.next" } }], "conformanceTests": ["mechanics.registry.core.collection.id.allocate"]
+    },
+    "core.sequence.next": {
+      "moduleId": "cubica.core", "kind": "query", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/sequenceNextStep",
+      "inputType": "Bounded unique sequence and current item", "outputType": "Next eligible identifier",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["sequence expressions", "optional exclusion collection field"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Walk cyclically from the current item in authored sequence order.", "errorPolicy": "Abort when the sequence is invalid or has no eligible item.",
+      "cost": { "class": "bounded-linear", "formula": "At most the authored sequence length." }, "errors": ["MECHANICS_SEQUENCE_INVALID", "MECHANICS_SEQUENCE_NO_CANDIDATE"],
+      "examples": [{ "op": "core.sequence.next", "kind": "query" }], "counterexamples": [{ "reason": "An empty sequence has no deterministic successor.", "value": { "op": "core.sequence.next", "items": [] } }], "conformanceTests": ["mechanics.registry.core.sequence.next"]
+    },
+    "core.state.patch": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/statePatchStep",
+      "inputType": "Typed StateRef patches", "outputType": "Patch acknowledgement",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["patch expressions", "increment and append targets"], "writes": ["declared state endpoints"], "determinism": "state-deterministic", "orderPolicy": "Apply patches atomically in authored order.", "errorPolicy": "Abort the transaction on the first incompatible patch.",
+      "cost": { "class": "bounded-linear", "formula": "One bounded write per patch." }, "errors": ["MECHANICS_ENDPOINT_NOT_WRITABLE", "MECHANICS_STATE_TYPE_MISMATCH"],
+      "examples": [{ "op": "core.state.patch", "kind": "command" }], "counterexamples": [{ "reason": "Raw state paths bypass typed endpoints.", "value": { "op": "core.state.patch", "path": ["public", "score"] } }], "conformanceTests": ["mechanics.registry.core.state.patch"]
+    },
+    "core.number.add": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/numberAddStep",
+      "inputType": "Numeric endpoint and numeric delta", "outputType": "Updated number",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["numeric endpoint", "delta expression"], "writes": ["numeric endpoint"], "determinism": "state-deterministic", "orderPolicy": "Perform one checked finite addition.", "errorPolicy": "Abort on a non-numeric or non-finite result.",
+      "cost": { "class": "constant", "formula": "One endpoint read and one endpoint write." }, "errors": ["MECHANICS_NUMBER_REQUIRED", "MECHANICS_ARITHMETIC_INVALID"],
+      "examples": [{ "op": "core.number.add", "kind": "command" }], "counterexamples": [{ "reason": "The target must be a StateRef, not a client player id.", "value": { "op": "core.number.add", "playerId": "p1" } }], "conformanceTests": ["mechanics.registry.core.number.add"]
+    },
+    "core.resource.transfer": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/resourceTransferStep",
+      "inputType": "Bank, StateRef, or entity-field endpoints and non-negative amount", "outputType": "Transferred amount",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["source endpoint", "destination endpoint", "amount expression"], "writes": ["non-bank source", "non-bank destination"], "determinism": "state-deterministic", "orderPolicy": "Debit before credit inside one candidate transaction.", "errorPolicy": "Abort without partial writes when funds are insufficient.",
+      "cost": { "class": "constant", "formula": "At most two reads and two writes." }, "errors": ["MECHANICS_RESOURCE_INSUFFICIENT", "MECHANICS_NONNEGATIVE_REQUIRED"],
+      "examples": [{ "op": "core.resource.transfer", "onInsufficient": "fail" }], "counterexamples": [{ "reason": "Legacy player-metric endpoints are not admitted.", "value": { "op": "core.resource.transfer", "from": { "kind": "player-metric" } } }], "conformanceTests": ["mechanics.registry.core.resource.transfer"]
+    },
+    "core.collection.append": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/collectionAppendStep",
+      "inputType": "Typed list StateRef and item expression", "outputType": "Appended item",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["list endpoint", "item expression"], "writes": ["list endpoint"], "determinism": "state-deterministic", "orderPolicy": "Append exactly once after the existing tail.", "errorPolicy": "Abort when the endpoint is not a typed list.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded by the declared list size." }, "errors": ["MECHANICS_LIST_REQUIRED"],
+      "examples": [{ "op": "core.collection.append", "kind": "command" }], "counterexamples": [{ "reason": "A map endpoint cannot be appended to.", "value": { "op": "core.collection.append", "targetType": "map" } }], "conformanceTests": ["mechanics.registry.core.collection.append"]
+    },
+    "core.entity.create": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/entityCreateStep",
+      "inputType": "Typed entity collection and declared fields", "outputType": "Created entity reference",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["collection identity", "field expressions"], "writes": ["declared collection"], "determinism": "state-deterministic", "orderPolicy": "Create one entity under its evaluated stable identifier.", "errorPolicy": "Abort on duplicate id, capacity, type, or field mismatch.",
+      "cost": { "class": "constant", "formula": "One bounded entity write." }, "errors": ["MECHANICS_ENTITY_ALREADY_EXISTS", "MECHANICS_COLLECTION_CAPACITY"],
+      "examples": [{ "op": "core.entity.create", "visibility": "public" }], "counterexamples": [{ "reason": "Record-map collections are not entity constructors.", "value": { "op": "core.entity.create", "itemShape": "record" } }], "conformanceTests": ["mechanics.registry.core.entity.create"]
+    },
+    "core.entity.facet.set": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/entityFacetSetStep",
+      "inputType": "Entity reference, facet id, and typed value", "outputType": "Updated entity identifier",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["entity reference", "facet expression"], "writes": ["declared entity facet"], "determinism": "state-deterministic", "orderPolicy": "Replace one declared facet.", "errorPolicy": "Abort when entity or facet is unavailable or read-only.",
+      "cost": { "class": "constant", "formula": "One entity lookup and one write." }, "errors": ["MECHANICS_ENTITY_NOT_FOUND", "MECHANICS_FIELD_READ_ONLY"],
+      "examples": [{ "op": "core.entity.facet.set", "kind": "command" }], "counterexamples": [{ "reason": "An attribute id cannot be written as a facet.", "value": { "op": "core.entity.facet.set", "facet": "attributeOnly" } }], "conformanceTests": ["mechanics.registry.core.entity.facet.set"]
+    },
+    "core.entity.attributes.patch": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/entityAttributesPatchStep",
+      "inputType": "Entity reference and bounded attribute patches", "outputType": "Updated entity identifier",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["entity attributes", "patch expressions"], "writes": ["declared entity attributes"], "determinism": "state-deterministic", "orderPolicy": "Apply nested patches in authored order.", "errorPolicy": "Abort on undeclared, read-only, or incompatible attributes.",
+      "cost": { "class": "bounded-linear", "formula": "One bounded write per authored patch." }, "errors": ["MECHANICS_FIELD_REF_UNKNOWN", "MECHANICS_FIELD_READ_ONLY"],
+      "examples": [{ "op": "core.entity.attributes.patch", "kind": "command" }], "counterexamples": [{ "reason": "A patch path must start with a declared attribute field.", "value": { "op": "core.entity.attributes.patch", "path": ["unknown"] } }], "conformanceTests": ["mechanics.registry.core.entity.attributes.patch"]
+    },
+    "core.entities.update": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/entitiesUpdateStep",
+      "inputType": "Prior entity selection and declared field expressions", "outputType": "Updated identifier list",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["prior selection", "per-item expressions"], "writes": ["selected entity fields"], "determinism": "state-deterministic", "orderPolicy": "Update selected identifiers in canonical UTF-8 order.", "errorPolicy": "Abort the complete transaction on any invalid entity or field.",
+      "cost": { "class": "bounded-linear", "formula": "Selection maximum multiplied by authored field count." }, "errors": ["MECHANICS_RESULT_TYPE_MISMATCH", "MECHANICS_FIELD_REF_UNKNOWN"],
+      "examples": [{ "op": "core.entities.update", "kind": "command" }], "counterexamples": [{ "reason": "The selection must be a preceding result.", "value": { "op": "core.entities.update", "stepId": "future" } }], "conformanceTests": ["mechanics.registry.core.entities.update"]
+    },
+    "core.event.emit": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/eventEmitStep",
+      "inputType": "Declared event, summary, and typed payload", "outputType": "Protected event envelope",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["event expressions"], "writes": ["protected event output", "optional declared journal"], "determinism": "state-deterministic", "orderPolicy": "Preserve transaction step order in event and journal output.", "errorPolicy": "Abort when payload or audience violates the event declaration.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded by payload size and one optional journal append." }, "errors": ["MECHANICS_EVENT_REF_UNKNOWN", "MECHANICS_EVENT_SIZE_LIMIT"],
+      "examples": [{ "op": "core.event.emit", "audience": "public" }], "counterexamples": [{ "reason": "An undeclared event type cannot be emitted.", "value": { "op": "core.event.emit", "eventType": "unknown" } }], "conformanceTests": ["mechanics.registry.core.event.emit"]
+    },
+    "core.entities.score": {
+      "moduleId": "cubica.core", "kind": "query", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/entityScoreStep",
+      "inputType": "Record-map entities and bounded related entity sources", "outputType": "Neutral score entries",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["record-map StateRef", "related collections", "declared numeric fields"], "writes": [], "determinism": "state-deterministic", "orderPolicy": "Scan related entities by canonical identifier and retain authored entity order.", "errorPolicy": "Abort on unknown entities, invalid ownership, or unsafe integer aggregation.",
+      "cost": { "class": "bounded-linear", "formula": "Scored entity count multiplied by related collection capacities." }, "errors": ["MECHANICS_SCORE_ENTITIES_INVALID", "MECHANICS_ARITHMETIC_INVALID"],
+      "examples": [{ "op": "core.entities.score", "kind": "query" }], "counterexamples": [{ "reason": "The operation cannot name economic concepts such as coins.", "value": { "op": "ranking.groups.compute", "balanceAttribute": "coins" } }], "conformanceTests": ["mechanics.registry.core.entities.score"]
+    },
+    "core.ranking.stable": {
+      "moduleId": "cubica.core", "kind": "algorithm", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/stableRankingStep",
+      "inputType": "Neutral score result and bounded groups", "outputType": "Stable rankings with ties",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["score result", "group expressions"], "writes": [], "determinism": "pure", "orderPolicy": "Sort by descending score then canonical identifier; equal scores share rank.", "errorPolicy": "Abort on unknown, duplicate, or malformed score entries.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded group membership plus stable sort cost." }, "errors": ["MECHANICS_SCORE_RESULT_INVALID", "MECHANICS_RANKING_ENTITY_UNKNOWN"],
+      "examples": [{ "op": "core.ranking.stable", "kind": "algorithm" }], "counterexamples": [{ "reason": "Ranking does not write game state implicitly.", "value": { "op": "core.ranking.stable", "target": { "endpoint": "ranking" } } }], "conformanceTests": ["mechanics.registry.core.ranking.stable"]
+    },
+    "turn.phase.select": {
+      "moduleId": "cubica.core", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/turnPhaseStep",
+      "inputType": "Declared phase expression", "outputType": "Phase-selection acknowledgement",
+      "confidentiality": { "input": "declared-flow", "output": "public" }, "integrity": "module-checked",
+      "reads": ["phase expression"], "writes": ["platform turn phase"], "determinism": "state-deterministic", "orderPolicy": "Select exactly one declared phase.", "errorPolicy": "Abort on unknown or non-public phase selection.",
+      "cost": { "class": "constant", "formula": "One platform turn-state write." }, "errors": ["MECHANICS_PHASE_UNKNOWN"],
+      "examples": [{ "op": "turn.phase.select", "kind": "command" }], "counterexamples": [{ "reason": "Participant rotation is composed with core.sequence.next, not turn.advance.", "value": { "op": "turn.advance" } }], "conformanceTests": ["mechanics.registry.turn.phase.select"]
+    },
+    "random.dice.roll": {
+      "moduleId": "cubica.random", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/randomRollStep",
+      "inputType": "Bounded dice notation, named stream, and numeric StateRef", "outputType": "Deterministic stream result",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["named random stream counter"], "writes": ["named random stream counter", "target endpoint"], "determinism": "pinned-random-stream", "orderPolicy": "Advance only the named persisted stream.", "errorPolicy": "Abort on invalid dice, stream, or target type.",
+      "cost": { "class": "constant", "formula": "At most 99 bounded dice samples and one target write." }, "errors": ["MECHANICS_RANDOM_STATE_INVALID"],
+      "examples": [{ "op": "random.dice.roll", "dice": "2d6" }], "counterexamples": [{ "reason": "An unnamed global random source is forbidden.", "value": { "op": "random.dice.roll", "dice": "1d6" } }], "conformanceTests": ["mechanics.registry.random.dice.roll"]
+    },
+    "deck.shuffle": {
+      "moduleId": "cubica.deck", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/deckShuffleStep",
+      "inputType": "Source collection, deck id, and named stream", "outputType": "Protected deck state",
+      "confidentiality": { "input": "declared-flow", "output": "server" }, "integrity": "module-checked",
+      "reads": ["source collection", "named random stream counter"], "writes": ["protected deck state", "named random stream counter"], "determinism": "pinned-random-stream", "orderPolicy": "Canonicalize source ids before Fisher-Yates shuffling.", "errorPolicy": "Abort on unknown collection, deck, or stream state.",
+      "cost": { "class": "bounded-linear", "formula": "Source collection capacity." }, "errors": ["MECHANICS_DECK_INVALID", "MECHANICS_RANDOM_STATE_INVALID"],
+      "examples": [{ "op": "deck.shuffle", "kind": "command" }], "counterexamples": [{ "reason": "A deck cannot expose its future order publicly.", "value": { "op": "deck.shuffle", "audience": "public" } }], "conformanceTests": ["mechanics.registry.deck.shuffle"]
+    },
+    "deck.draw": {
+      "moduleId": "cubica.deck", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/deckDrawStep",
+      "inputType": "Deck id, typed target, and empty policy", "outputType": "One disclosed item identifier",
+      "confidentiality": { "input": "server", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["protected deck state"], "writes": ["protected deck state", "target endpoint"], "determinism": "state-deterministic", "orderPolicy": "Draw from the persisted top; reshuffle through the pinned stream only when declared.", "errorPolicy": "Abort or deterministically reshuffle according to onEmpty.",
+      "cost": { "class": "bounded-linear", "formula": "Constant unless bounded discard reshuffle is selected." }, "errors": ["MECHANICS_DECK_EMPTY", "MECHANICS_DECK_INVALID"],
+      "examples": [{ "op": "deck.draw", "onEmpty": "fail" }], "counterexamples": [{ "reason": "An unknown empty policy is not executable.", "value": { "op": "deck.draw", "onEmpty": "ignore" } }], "conformanceTests": ["mechanics.registry.deck.draw"]
+    },
+    "graph.regions.route.plan": {
+      "moduleId": "cubica.graph", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/graphRegionRouteStep",
+      "inputType": "Network id and endpoint node expressions", "outputType": "Pinned route geometry and segment count",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["network geometry", "existing edges", "named graph random stream"], "writes": ["named graph random stream counter"], "determinism": "pinned-random-stream", "orderPolicy": "Use the pinned region planner and deterministic tie stream.", "errorPolicy": "Abort on unknown nodes, blocked route, or planner bounds.",
+      "cost": { "class": "bounded-graph", "formula": "Pinned region planner bounds plus edge collection capacity." }, "errors": ["MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN"],
+      "examples": [{ "op": "graph.regions.route.plan", "kind": "command" }], "counterexamples": [{ "reason": "Payment and lifecycle fields are game composition, not route input.", "value": { "op": "graph.regions.route.plan", "payments": [] } }], "conformanceTests": ["mechanics.registry.graph.regions.route.plan"]
+    },
+    "graph.edge.split": {
+      "moduleId": "cubica.graph", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/graphSplitEdgeStep",
+      "inputType": "Network id, edge id, and normalized position", "outputType": "Created waypoint and replacement edge identifiers",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["edge collection", "network id sequence"], "writes": ["node collection", "edge collection", "network id sequence"], "determinism": "state-deterministic", "orderPolicy": "Replace one edge atomically with one node and two canonically identified edges.", "errorPolicy": "Abort on invalid position, capacity, ownership, or graph invariants.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded collection scans and three entity writes." }, "errors": ["MECHANICS_GRAPH_EDGE_UNKNOWN", "MECHANICS_GRAPH_SPLIT_INVALID"],
+      "examples": [{ "op": "graph.edge.split", "kind": "command" }], "counterexamples": [{ "reason": "Waypoint cost and lifecycle are not graph invariants.", "value": { "op": "graph.edge.split", "waypointCost": 5 } }], "conformanceTests": ["mechanics.registry.graph.edge.split"]
+    },
+    "graph.entity.traverse": {
+      "moduleId": "cubica.graph", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/graphEntityMoveStep",
+      "inputType": "Network, movable entity, and traversed edge", "outputType": "Traversal acknowledgement",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["graph edge", "movement collection", "capacity collection"], "writes": ["entity location", "coupled entity locations"], "determinism": "state-deterministic", "orderPolicy": "Move the primary entity then coupled entities in canonical order.", "errorPolicy": "Abort on disconnected traversal, ownership, or capacity violation.",
+      "cost": { "class": "bounded-linear", "formula": "Movement and capacity collection limits." }, "errors": ["MECHANICS_GRAPH_TRAVERSAL_INVALID", "MECHANICS_GRAPH_CAPACITY_EXCEEDED"],
+      "examples": [{ "op": "graph.entity.traverse", "kind": "command" }], "counterexamples": [{ "reason": "Action-point spending is a separate resource operation.", "value": { "op": "graph.entity.traverse", "actionPointsAttribute": "points" } }], "conformanceTests": ["mechanics.registry.graph.entity.traverse"]
+    },
+    "graph.shortestPath": {
+      "moduleId": "cubica.graph", "kind": "algorithm", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/graphShortestPathStep",
+      "inputType": "Network id and endpoint node expressions", "outputType": "Shortest path and edge distance",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["node collection", "edge collection"], "writes": [], "determinism": "pure", "orderPolicy": "Resolve equal paths by canonical node and edge identifier order.", "errorPolicy": "Abort when no bounded path exists.",
+      "cost": { "class": "bounded-graph", "formula": "Declared node and edge collection capacities." }, "errors": ["MECHANICS_GRAPH_PATH_UNAVAILABLE", "MECHANICS_GRAPH_UNKNOWN"],
+      "examples": [{ "op": "graph.shortestPath", "kind": "algorithm" }], "counterexamples": [{ "reason": "Delivery payout is not a shortest-path responsibility.", "value": { "op": "graph.shortestPath", "payoutAttribute": "tariff" } }], "conformanceTests": ["mechanics.registry.graph.shortestPath"]
+    },
+    "relation.attach": {
+      "moduleId": "cubica.relations", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/relationAttachStep",
+      "inputType": "Network, primary id, and bounded related ids", "outputType": "Attached identifiers",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["relation model", "primary entity", "related entities"], "writes": ["declared relation fields"], "determinism": "state-deterministic", "orderPolicy": "Validate and attach related identifiers in canonical order.", "errorPolicy": "Abort atomically on ownership, co-location, compatibility, or capacity failure.",
+      "cost": { "class": "bounded-linear", "formula": "Related id count plus coupled collection capacity." }, "errors": ["MECHANICS_RELATION_INCOMPATIBLE", "MECHANICS_RELATION_CAPACITY"],
+      "examples": [{ "op": "relation.attach", "kind": "command" }], "counterexamples": [{ "reason": "Resource spending is composed separately.", "value": { "op": "relation.attach", "spend": 1 } }], "conformanceTests": ["mechanics.registry.relation.attach"]
+    },
+    "relation.detach": {
+      "moduleId": "cubica.relations", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/relationDetachStep",
+      "inputType": "Network, primary id, and bounded related ids", "outputType": "Detached identifiers",
+      "confidentiality": { "input": "declared-flow", "output": "joined-input" }, "integrity": "module-checked",
+      "reads": ["relation model", "primary entity", "related entities"], "writes": ["declared relation fields"], "determinism": "state-deterministic", "orderPolicy": "Validate and detach related identifiers in canonical order.", "errorPolicy": "Abort atomically when a requested relation is absent or invalid.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded related id count." }, "errors": ["MECHANICS_RELATION_MISSING", "MECHANICS_RELATION_INVALID"],
+      "examples": [{ "op": "relation.detach", "kind": "command" }], "counterexamples": [{ "reason": "A detach cannot name an empty related set.", "value": { "op": "relation.detach", "related": [] } }], "conformanceTests": ["mechanics.registry.relation.detach"]
+    },
+    "system.schedule.register": {
+      "moduleId": "cubica.system", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/systemScheduleRegisterStep",
+      "inputType": "Published system intent, schema-compatible parameters, and replay-safe trigger", "outputType": "Protected persistent schedule registration",
+      "confidentiality": { "input": "declared-flow", "output": "server" }, "integrity": "module-checked",
+      "reads": ["published system intent catalog", "current authoritative state", "schedule parameter expressions"], "writes": ["protected system schedule ledger"], "determinism": "state-deterministic", "orderPolicy": "Register after the enclosing external transaction commits and evaluate the trigger against later committed state.", "errorPolicy": "Abort publication for external targets, incompatible parameters, actor context, or recursive system scheduling.",
+      "cost": { "class": "bounded-linear", "formula": "Bounded by sixteen scalar parameters and one depth-limited trigger." }, "errors": ["MECHANICS_SCHEDULE_ACTION_INVALID", "MECHANICS_SYSTEM_SCHEDULE_ID_INVALID", "MECHANICS_SYSTEM_SCHEDULE_PARAM_INVALID", "MECHANICS_SYSTEM_CONTEXT_INVALID"],
+      "examples": [{ "op": "system.schedule.register", "actionId": "round.resolve" }], "counterexamples": [{ "reason": "A scheduled intent must be explicitly marked for system invocation.", "value": { "op": "system.schedule.register", "actionId": "player.move" } }], "conformanceTests": ["mechanics.registry.system.schedule.register"]
+    },
+    "system.schedule.cancel": {
+      "moduleId": "cubica.system", "kind": "command", "schemaRef": "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json#/$defs/systemScheduleCancelStep",
+      "inputType": "Protected schedule identifier expression", "outputType": "Protected persistent schedule cancellation",
+      "confidentiality": { "input": "declared-flow", "output": "server" }, "integrity": "module-checked",
+      "reads": ["schedule identifier expression"], "writes": ["protected system schedule ledger"], "determinism": "state-deterministic", "orderPolicy": "Cancel the named pending schedule after the enclosing external transaction commits.", "errorPolicy": "Abort publication for non-string identifiers or recursive system scheduling.",
+      "cost": { "class": "constant", "formula": "One identifier evaluation and one schedule-ledger mutation." }, "errors": ["MECHANICS_SYSTEM_SCHEDULE_ID_INVALID", "MECHANICS_SYSTEM_CONTEXT_INVALID"],
+      "examples": [{ "op": "system.schedule.cancel", "kind": "command" }], "counterexamples": [{ "reason": "System intents cannot recursively mutate the schedule ledger.", "value": { "op": "system.schedule.cancel", "invocation": "system" } }], "conformanceTests": ["mechanics.registry.system.schedule.cancel"]
+    }
+  }
+}

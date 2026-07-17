@@ -136,7 +136,31 @@ function syntheticInput(): BuildEditorEntityProjectionInput {
             steps: [{ id: "s1", _type: "game.Step", _label: "Start", screenId: "intro", actionIds: ["accept"] }]
           }
         ],
-        actions: [{ id: "accept", _type: "game.Action", _label: "Accept" }]
+        actions: [
+          {
+            id: "accept",
+            _type: "game.Action",
+            _label: "Accept",
+            binding: { kind: "mechanics-plan", planRef: "accept" }
+          }
+        ]
+      },
+      mechanics: {
+        plans: {
+          accept: {
+            transaction: {
+              steps: [
+                {
+                  id: "precondition",
+                  kind: "assert",
+                  op: "core.assert",
+                  predicate: { op: "predicate.constant", value: true },
+                  errorCode: "ACTION_PRECONDITION_FAILED"
+                }
+              ]
+            }
+          }
+        }
       }
     }
   };
@@ -208,6 +232,9 @@ describe("updateEditorEntityProjection — targeted patch classes (synthetic)", 
     expect(update.report.rebuiltEntityIds).toContain("game-step:s1");
     const action = update.state.projection.entityById.get("game-action:accept");
     expect(action?.label).toBe("Accept (renamed)");
+    // The plan caption is derived from the stable planRef, not from fields in
+    // the plan object, so refreshing the action must not rewrite that caption.
+    expect(action?.facets.logic?.find((source) => source.role === "mechanics-plan")?.label).toBe("Mechanics plan accept");
   });
 
   it("editing a UI component _label refreshes the pushed view facet on the action", () => {
@@ -422,7 +449,16 @@ describe.each([
           input: nextInput,
           changedPointersByFile: { [document.filePath]: [operation.path] }
         });
-        expect(update.state.projection).toEqual(buildEditorEntityProjection(nextInput));
+        const full = buildEditorEntityProjection(nextInput);
+        const firstDifferentEntityIndex = update.state.projection.entities.findIndex(
+          (entity, index) => JSON.stringify(entity) !== JSON.stringify(full.entities[index])
+        );
+        expect(
+          update.state.projection.entities[firstDifferentEntityIndex],
+          `incremental projection diverged for ${document.filePath} sample ${sample}: ${JSON.stringify(operation)}; ` +
+            `first different entity index=${firstDifferentEntityIndex}`
+        ).toEqual(full.entities[firstDifferentEntityIndex]);
+        expect(update.state.projection).toEqual(full);
         checked += 1;
       }
     }

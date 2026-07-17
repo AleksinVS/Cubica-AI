@@ -12,7 +12,6 @@ import type {
   GameConfigData,
   ResolverFactory
 } from "@cubica/player-web/plugin-api";
-import { createManifestActionAdapter, ManifestAction } from "@cubica/player-web/plugin-api";
 
 import type { AntarcticaGameState } from "./contracts";
 import {
@@ -47,7 +46,6 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
 
   return {
     gameId: data.gameId,
-    playerId: data.playerId,
     storageKey: data.storageKey,
     fallbackMetrics: data.fallbackMetrics,
     topbarScreenKeys,
@@ -160,33 +158,6 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
         hasHintText: resolvedHintText.trim().length > 0,
         fallbackActions
       };
-    },
-
-    createManifestActionAdapter(content, gameState, dispatchAction, onError) {
-      return createManifestActionAdapter({
-        gameContent: resolveAntarcticaContent(content),
-        resolveActionId(command, payload) {
-          if (command === ManifestAction.REQUEST_SERVER && payload.cardId) {
-            const cardId = String(payload.cardId);
-            const card = gameState.boardCards.find((candidate) => candidate.cardId === cardId);
-            if (card) {
-              return card.selectActionId;
-            }
-          }
-          if (command === ManifestAction.ADVANCE && gameState.currentInfo?.advanceActionId) {
-            return gameState.currentInfo.advanceActionId;
-          }
-          if (command === ManifestAction.ADVANCE && payload.advanceActionId) {
-            return String(payload.advanceActionId);
-          }
-          if (command === ManifestAction.REQUEST_SERVER && payload.actionId) {
-            return String(payload.actionId);
-          }
-          return null;
-        },
-        dispatchAction,
-        onError
-      });
     }
   };
 };

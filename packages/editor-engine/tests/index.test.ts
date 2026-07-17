@@ -258,13 +258,46 @@ describe("editor entity projection", () => {
               id: "choice.accept",
               _type: "game.Action",
               _label: "Accept choice",
-              deterministic: {
-                guard: {
-                  objectId: "intro-info"
-                }
+              binding: {
+                kind: "mechanics-plan",
+                planRef: "choice.accept"
               }
             }
           ]
+        },
+        mechanics: {
+          apiVersion: "cubica.dev/mechanics/v1alpha1",
+          budgetProfile: "turn-based-standard-v1",
+          moduleLock: {
+            "cubica.core": {
+              moduleId: "cubica.core",
+              moduleVersion: "1.0.0",
+              artifactHash: "sha256:903e9660e0702a0bffca5465bfb3742f7f8a80b0adae45f93b77637bf2f8770b"
+            }
+          },
+          stateModel: {
+            types: {
+              "core.boolean": { kind: "boolean" }
+            },
+            endpoints: {},
+            collections: {},
+            events: {}
+          },
+          plans: {
+            "choice.accept": {
+              transaction: {
+                steps: [
+                  {
+                    id: "precondition",
+                    kind: "assert",
+                    op: "core.assert",
+                    predicate: { op: "predicate.constant", value: true },
+                    errorCode: "ACTION_PRECONDITION_FAILED"
+                  }
+                ]
+              }
+            }
+          }
         }
       }
     } satisfies JsonValue;
@@ -329,9 +362,18 @@ describe("editor entity projection", () => {
     expect(JSON.stringify(step)).not.toContain("Explain the first decision.");
 
     const action = projection.entityById.get("game-action:choice.accept");
+    expect(action?.facets.logic?.map((source) => `${source.filePath}#${source.pointer}`)).toEqual([
+      "game.authoring.json#/root/logic/actions/0",
+      "game.authoring.json#/root/mechanics/plans/choice.accept"
+    ]);
     expect(action?.facets.view?.map((source) => `${source.filePath}#${source.pointer}`)).toContain(
       "ui/web.authoring.json#/root/screens/0/root"
     );
+    expect(
+      projection.entitiesBySourcePointer
+        .get("game.authoring.json#/root/mechanics/plans/choice.accept")
+        ?.map((entity) => entity.entityId)
+    ).toContain("game-action:choice.accept");
     expect(projection.entitiesBySourcePointer.get("game.authoring.json#/root/logic/actions/0")?.map((entity) => entity.entityId)).toEqual(
       expect.arrayContaining(["game-action:choice.accept", "game-step:main.start"])
     );

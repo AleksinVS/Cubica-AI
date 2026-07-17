@@ -3,7 +3,9 @@ import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 import fs from "fs";
 import path from "path";
+import runtimeCommandClient from "./runtime-command-client.cjs";
 
+const { createBrowserBffSessionClient } = runtimeCommandClient;
 const baseUrlTarget = "http://localhost:3003";
 const baseUrlDraft = "http://localhost:3000";
 const outDir = "/home/abc/projects/Cubica-AI/.tmp/screenshots";
@@ -14,16 +16,6 @@ function readPng(filePath) {
 
 function writePng(filePath, png) {
   fs.writeFileSync(filePath, PNG.sync.write(png));
-}
-
-async function apiPost(path, body) {
-  const res = await fetch(`${baseUrlTarget}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) throw new Error(`API ${path} failed: ${res.status}`);
-  return res.json();
 }
 
 async function captureDraftJournal(browser) {
@@ -54,11 +46,11 @@ async function captureDraftJournal(browser) {
 async function captureTargetJournal(browser) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 
-  const sessionRes = await apiPost("/api/runtime/sessions", { gameId: "antarctica", playerId: "test-diff" });
-  const sessionId = sessionRes.sessionId;
+  await page.goto(baseUrlTarget, { waitUntil: "networkidle" });
+  const runtime = await createBrowserBffSessionClient(page, "antarctica");
+  const sessionId = runtime.sessionId;
   console.log("Target session:", sessionId);
 
-  await page.goto(baseUrlTarget, { waitUntil: "networkidle" });
   await page.evaluate((sid) => {
     localStorage.setItem("cubica-antarctica-session-id", sid);
   }, sessionId);
@@ -71,12 +63,12 @@ async function captureTargetJournal(browser) {
     "opening.info.i4.advance", "opening.info.i5.advance", "opening.info.i6.advance"
   ];
   for (const actionId of introActions) {
-    await apiPost("/api/runtime/actions", { sessionId, playerId: "test-diff", actionId, payload: {} });
+    await runtime.dispatch(actionId);
     await page.waitForTimeout(300);
   }
 
   for (const cardId of ["1", "2", "3"]) {
-    await apiPost("/api/runtime/actions", { sessionId, playerId: "test-diff", actionId: `opening.card.${cardId}`, payload: {} });
+    await runtime.dispatch(`opening.card.${cardId}`);
     await page.waitForTimeout(300);
   }
 

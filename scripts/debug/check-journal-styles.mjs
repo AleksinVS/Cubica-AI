@@ -1,15 +1,11 @@
 import { chromium } from "playwright";
+import runtimeCommandClient from "./runtime-command-client.cjs";
 
-const runtimeUrl = "http://localhost:3001";
+const { createBrowserBffSessionClient } = runtimeCommandClient;
 const playerWebUrl = "http://localhost:3003";
 
-async function createSession() {
-  const createRes = await fetch(`${runtimeUrl}/sessions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ gameId: "antarctica", playerId: "test-player" })
-  });
-  const session = await createRes.json();
+async function createSession(page) {
+  const runtime = await createBrowserBffSessionClient(page, "antarctica");
 
   const infoAdvances = [
     "opening.info.i0.advance", "opening.info.i02.advance", "opening.info.i03.advance",
@@ -17,30 +13,21 @@ async function createSession() {
     "opening.info.i4.advance", "opening.info.i5.advance", "opening.info.i6.advance"
   ];
   for (const actionId of infoAdvances) {
-    await fetch(`${runtimeUrl}/actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.sessionId, playerId: "test-player", actionId, payload: {} })
-    });
+    await runtime.dispatch(actionId);
   }
 
   for (const actionId of ["opening.card.1", "opening.card.2", "opening.card.3"]) {
-    await fetch(`${runtimeUrl}/actions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.sessionId, playerId: "test-player", actionId, payload: {} })
-    });
+    await runtime.dispatch(actionId);
   }
-  return session.sessionId;
+  return runtime.sessionId;
 }
 
 (async () => {
-  const sessionId = await createSession();
-
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 
-  await page.goto(playerWebUrl);
+  await page.goto(playerWebUrl, { waitUntil: "networkidle" });
+  const sessionId = await createSession(page);
   await page.evaluate((sid) => { localStorage.setItem('cubica-antarctica-session-id', sid); }, sessionId);
   await page.reload({ waitUntil: "networkidle" });
   await page.waitForTimeout(3000);

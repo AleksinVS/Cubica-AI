@@ -1,43 +1,46 @@
 /**
- * Модуль sessionEvents описывает базовые типы и интерфейсы
- * для работы с очередью событий мультиплеера в Router.
+ * Модуль sessionEvents описывает базовые типы и интерфейсы будущей очереди
+ * команд мультиплеера в Router.
  *
  * Здесь мы не реализуем реальные вызовы БД или LLM.
  * Цель этого файла — зафиксировать контракт:
- * какие данные хранит событие, как выглядит состояние сессии
+ * какие данные хранит команда, как выглядит состояние сессии
  * и какие операции ожидаются от слоя работы с очередью.
  */
 
 /**
- * SessionId, PlayerId и EventId — строковые идентификаторы сущностей.
+ * Идентификаторы сессии, principal и элемента очереди — строки.
  * В реальной системе это могут быть UUID, но для интерфейсов
  * достаточно строкового типа.
  */
 export type SessionId = string;
-export type PlayerId = string;
-export type EventId = string;
+export type SessionPrincipalId = string;
+export type SessionCommandQueueItemId = string;
 
 /**
- * SessionEventStatus описывает возможные статусы события в очереди.
- * - pending: событие ожидает обработки;
- * - processing: событие взято в обработку;
- * - completed: событие успешно обработано;
- * - failed: событие окончательно завершилось с ошибкой.
+ * SessionCommandQueueStatus описывает возможные статусы команды в очереди.
+ * - pending: команда ожидает обработки;
+ * - processing: команда взята в обработку;
+ * - completed: команда успешно обработана;
+ * - failed: команда окончательно завершилась с ошибкой.
  */
-export type SessionEventStatus = 'pending' | 'processing' | 'completed' | 'failed';
+export type SessionCommandQueueStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 /**
- * SessionEvent описывает единичное событие в очереди session_events.
- * Поля соответствуют расширенной схеме из ADR-011.
+ * SessionCommandQueueItem описывает команду в будущей очереди
+ * `session_command_queue`. Это не подтверждённый игровой факт и не запись
+ * защищённого журнала `session_events`.
  */
-export interface SessionEvent {
-  id: EventId;
+export interface SessionCommandQueueItem {
+  id: SessionCommandQueueItemId;
   sessionId: SessionId;
-  playerId: PlayerId;
+  principalId: SessionPrincipalId;
   sequence: number;
+  commandId: string;
   actionId: string;
-  payload: unknown;
-  status: SessionEventStatus;
+  expectedStateVersion: number;
+  params: Readonly<Record<string, unknown>>;
+  status: SessionCommandQueueStatus;
   attempts: number;
   errorCode?: string;
   createdAt: Date;
@@ -56,36 +59,36 @@ export interface SessionStateVersion {
 }
 
 /**
- * SessionEventQueuePort — это интерфейс (порт) для работы с очередью событий.
+ * SessionCommandQueuePort — это интерфейс (порт) для работы с очередью команд.
  * Конкретная реализация может использовать БД, внешнюю очередь или иной механизм,
  * но должна предоставлять описанные здесь операции.
  */
-export interface SessionEventQueuePort {
+export interface SessionCommandQueuePort {
   /**
-   * Сохранить новое событие в очереди.
+   * Сохранить новую команду в очереди после аутентификации principal.
    * Реализация должна присвоить корректный sequence для данной сессии.
    */
-  enqueue(event: Omit<SessionEvent, 'id' | 'sequence' | 'status' | 'attempts' | 'createdAt'>): Promise<SessionEvent>;
+  enqueue(command: Omit<SessionCommandQueueItem, 'id' | 'sequence' | 'status' | 'attempts' | 'createdAt'>): Promise<SessionCommandQueueItem>;
 
   /**
-   * Найти следующее событие для обработки для указанной сессии
-   * и перевести его в статус processing.
+   * Найти следующую команду для обработки для указанной сессии и перевести её
+   * в статус processing.
    *
    * Если ожидающих событий нет, вернуть null.
    */
-  acquireNextPending(sessionId: SessionId): Promise<SessionEvent | null>;
+  acquireNextPending(sessionId: SessionId): Promise<SessionCommandQueueItem | null>;
 
   /**
-   * Обновить статус события после обработки.
-   * Должно использоваться для перевода события в completed или failed,
+   * Обновить статус команды после обработки.
+   * Должно использоваться для перевода команды в completed или failed,
    * а также для инкремента attempts и установки errorCode.
    */
-  updateStatus(eventId: EventId, status: SessionEventStatus, params?: { attempts?: number; errorCode?: string; processedAt?: Date }): Promise<void>;
+  updateStatus(itemId: SessionCommandQueueItemId, status: SessionCommandQueueStatus, params?: { attempts?: number; errorCode?: string; processedAt?: Date }): Promise<void>;
 }
 
 /**
  * SessionStateRepositoryPort описывает операции над состоянием сессии,
- * связанные с применением событий.
+ * связанные с применением команд.
  */
 export interface SessionStateRepositoryPort {
   /**
@@ -97,15 +100,14 @@ export interface SessionStateRepositoryPort {
 
   /**
    * Применить дельту состояния и обновить версию сессии
-   * в одной транзакции вместе с изменениями по событию.
+   * в одной транзакции вместе с изменениями по команде.
    *
    * delta описывает изменения, которые вернул игровой движок.
    */
-  applyEventDelta(params: {
+  applyCommandDelta(params: {
     sessionId: SessionId;
     expectedVersion: SessionStateVersion;
     delta: unknown;
-    event: SessionEvent;
+    command: SessionCommandQueueItem;
   }): Promise<SessionStateVersion>;
 }
-

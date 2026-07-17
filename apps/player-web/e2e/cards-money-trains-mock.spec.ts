@@ -2,13 +2,14 @@
  * Browser acceptance for the complete Cards Money Trains mock session.
  *
  * One spatially presented action is executed through the keyboard-accessible
- * board control, the long deterministic middle is progressed through the same
+ * board control, the long authoritative middle is progressed through the same
  * player-web Runtime API proxy, and the irreversible finish handshake returns
  * to visible DOM controls. This keeps the test bounded while proving both UI
  * interaction seams use one authoritative persisted session.
  */
 
 import { readFileSync } from "node:fs";
+import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
 
@@ -39,6 +40,15 @@ interface RuntimeSnapshot {
   readonly sessionId: string;
   /** Create/GET include gameId; action responses intentionally omit it. */
   readonly gameId?: string;
+  readonly actionAvailability: ReadonlyArray<{
+    readonly actionId: string;
+    readonly status: "available" | "unavailable" | "parameter-dependent";
+    readonly basisStateVersion: number;
+  }>;
+  readonly receipt?: {
+    readonly status: "applied" | "rejected";
+    readonly rejectionCode?: string;
+  };
   readonly version: {
     readonly stateVersion: number;
   };
@@ -58,13 +68,18 @@ interface RuntimeSnapshot {
   };
 }
 
-test.describe("Cards Money Trains complete mock session", () => {
+test.describe("Cards Money Trains browser lifecycle", () => {
   test.skip(transcript === null, "complete mock transcript is being produced by the game-content slice");
 
-  test("starts by keyboard and completes the facilitator finish handshake in the same session", async ({ page, request }) => {
+  test("starts by keyboard, repeats every phase and completes the finish handshake", async ({ page }) => {
     test.setTimeout(180_000);
     expect(transcript).not.toBeNull();
-    const steps = transcript!.steps;
+    // The exact seven-turn, 88-command seeded transcript is proven by the
+    // Runtime HTTP integration suite. This browser boundary deliberately uses
+    // a normal production-random session, so it repeats every phase for three
+    // turns and then exercises the manual finish without assuming a particular
+    // news or cargo shuffle.
+    const steps = browserLifecycleSteps(transcript!.steps);
     expect(steps[0]?.actionId).toBe("mock.setup.start");
 
     const creation = page.waitForResponse((response) =>
@@ -78,7 +93,10 @@ test.describe("Cards Money Trains complete mock session", () => {
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Карты, деньги, поезда", level: 1 })).toBeVisible();
+    const contextPanelToggle = page.getByRole("button", { name: "Открыть панель «Контекст»" });
+    await contextPanelToggle.click();
     await expect(page.getByText(/MOCK — только разработка/i)).toBeVisible();
+    await page.getByRole("button", { name: "Закрыть панель «Контекст»" }).click();
     const board = page.getByRole("region", { name: BOARD_LABEL });
     await expect(board.getByTestId("interactive-board-canvas-host")).toBeVisible();
 
@@ -95,14 +113,14 @@ test.describe("Cards Money Trains complete mock session", () => {
     expect(firstFinishIndex).toBeGreaterThan(1);
     let snapshot = started.snapshot;
 
-    // Six test turns contain many repetitive facilitator clicks. Progress the
-    // deterministic middle through the same Next.js proxy, preserving the one
+    // Repeated phases contain many facilitator clicks. Progress the
+    // authoritative middle through the same Next.js proxy, preserving the one
     // browser-owned session and checking every returned player projection.
     for (const step of steps.slice(1, firstFinishIndex)) {
-      snapshot = await postAction(request, snapshot, step);
+      snapshot = await postAction(page.request, snapshot, step);
       expectStep(snapshot, step);
     }
-    expect(snapshot.state.public.session.turnNumber).toBeGreaterThan(6);
+    expect(snapshot.state.public.session.turnNumber).toBe(3);
     expect(snapshot.state.public.session.status).toBe("active");
 
     await reloadStoredSession(page, snapshot.sessionId);
@@ -114,7 +132,7 @@ test.describe("Cards Money Trains complete mock session", () => {
     for (const step of steps.slice(firstFinishIndex)) {
       const controlId = finishControlId(step.actionId);
       if (controlId === null) {
-        snapshot = await postAction(request, snapshot, step);
+        snapshot = await postAction(page.request, snapshot, step);
         expectStep(snapshot, step);
         await reloadStoredSession(page, snapshot.sessionId);
         continue;
@@ -154,25 +172,92 @@ function readTranscriptIfReady(): CompleteSessionTranscript | null {
   }
 }
 
+function browserLifecycleSteps(
+  completeSteps: ReadonlyArray<TranscriptStep>
+): ReadonlyArray<TranscriptStep> {
+  const repeatedPhaseSteps = completeSteps.filter((step) =>
+    step.order <= 41 && isBrowserLifecycleStep(step)
+  );
+  const finishSteps = completeSteps
+    .filter((step) => [
+      "mock.debrief.final-reflection",
+      "mock.ranking.compute",
+      "session.finish.request",
+      "session.finish.cancel",
+      "session.finish.confirm"
+    ].includes(step.actionId))
+    .map((step) => ({
+      ...step,
+      expected: {
+        ...step.expected,
+        turnNumber: 3
+      }
+    }));
+  return [...repeatedPhaseSteps, ...finishSteps];
+}
+
+function isBrowserLifecycleStep(step: TranscriptStep): boolean {
+  return step.actionId.startsWith("mock.news.apply.") || new Set([
+    "mock.setup.start",
+    "mock.news.draw",
+    "mock.maintenance.pay",
+    "mock.market.finish",
+    "mock.cargo.draw-offer",
+    "mock.cargo.finish",
+    "mock.operations.finish",
+    "construction.phase.finish",
+    "mock.debrief.next-turn",
+    "mock.debrief.final-reflection",
+    "mock.ranking.compute",
+    "session.finish.request",
+    "session.finish.cancel",
+    "session.finish.confirm"
+  ]).has(step.actionId);
+}
+
 async function postAction(
   request: APIRequestContext,
   current: RuntimeSnapshot,
   step: TranscriptStep
 ): Promise<RuntimeSnapshot> {
+  const actionId = resolveProductionActionId(current, step);
   const response = await request.post("/api/runtime/actions", {
     data: {
       sessionId: current.sessionId,
       expectedStateVersion: current.version.stateVersion,
-      playerId: "player-web",
-      actionId: step.actionId,
-      ...(step.params ? { params: step.params } : {})
+      actionId,
+      commandId: `cli_${randomBytes(16).toString("base64url")}`,
+      params: step.params ?? {}
     }
   });
   const responseText = await response.text();
-  expect(response.status(), `${step.order} ${step.actionId}: ${responseText}`).toBe(200);
+  expect(response.status(), `${step.order} ${actionId}: ${responseText}`).toBe(200);
   const snapshot = JSON.parse(responseText) as RuntimeSnapshot;
+  expect(
+    snapshot.receipt?.status,
+    `${step.order} ${actionId} was rejected: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
+  ).toBe("applied");
   expectNoFutureDecks(snapshot);
   return snapshot;
+}
+
+/**
+ * The checked-in transcript fixes a seed for repeatable rule-level tests, but
+ * a browser production session intentionally uses a cryptographic seed. News
+ * application is therefore selected from Runtime's authoritative availability
+ * projection; all other transcript actions remain exact.
+ */
+function resolveProductionActionId(current: RuntimeSnapshot, step: TranscriptStep): string {
+  if (!step.actionId.startsWith("mock.news.apply.")) return step.actionId;
+
+  const availableNewsActions = current.actionAvailability.filter((entry) =>
+    entry.actionId.startsWith("mock.news.apply.") && entry.status === "available"
+  );
+  expect(
+    availableNewsActions,
+    `${step.order} must expose exactly one applicable news card`
+  ).toHaveLength(1);
+  return availableNewsActions[0]!.actionId;
 }
 
 async function reloadStoredSession(page: Page, sessionId: string): Promise<void> {
@@ -215,6 +300,10 @@ async function clickButtonAndReadSnapshot(page: Page, button: ReturnType<Page["l
 async function readBrowserAction(runtimeRequest: { postDataJSON(): unknown }, runtimeResponse: { status(): number; json(): Promise<unknown> }) {
   expect(runtimeResponse.status()).toBe(200);
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  expect(
+    snapshot.receipt?.status,
+    `${snapshot.receipt?.rejectionCode ?? "unknown action rejection"}`
+  ).toBe("applied");
   expectNoFutureDecks(snapshot);
   return {
     requestBody: runtimeRequest.postDataJSON() as Record<string, unknown>,

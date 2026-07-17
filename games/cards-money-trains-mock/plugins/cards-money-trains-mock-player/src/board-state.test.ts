@@ -176,8 +176,13 @@ test("does not invent topology or actions when content is absent", () => {
 test("disables an authored action when the server projects it as unavailable", () => {
   const projection = projectBoardSession({
     actionAvailability: [
-      { actionId: "news.draw", status: "unavailable", reasonCode: "state_condition_failed" },
-      { actionId: "news.apply", status: "available" }
+      {
+        actionId: "news.draw",
+        status: "unavailable",
+        reasonCode: "state_condition_failed",
+        basisStateVersion: 4
+      },
+      { actionId: "news.apply", status: "available", basisStateVersion: 4 }
     ],
     state: {
       public: {
@@ -235,7 +240,8 @@ test("provides controls using the server-projected availability", () => {
     actionAvailability: [{
       actionId: "construction.road.build",
       status: "unavailable",
-      reasonCode: "state_condition_failed"
+      reasonCode: "state_condition_failed",
+      basisStateVersion: 2
     }],
     state: {
       public: {

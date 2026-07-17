@@ -1,20 +1,28 @@
-import { forwardRuntimeRequest } from "../_shared";
+import { NextResponse, type NextRequest } from "next/server";
+import {
+  forwardAuthenticatedRuntimeRequest,
+  inspectBrowserSessionBody,
+  readBoundedBrowserRuntimeBody
+} from "../_shared";
 
 /**
  * Browser-safe proxy for Agent Turn requests.
  *
- * Player channels must talk to Cubica runtime-api, not directly to model
- * providers. This route keeps the same-origin browser boundary while the
- * runtime-api validates and persists accepted Agent Runtime output.
+ * The browser supplies only an immutable intent envelope. Its runtime bearer
+ * remains in the session-specific HttpOnly cookie and is attached here.
  */
-export async function POST(request: Request) {
-  const body = await request.text();
+export async function POST(request: NextRequest) {
+  const bounded = await readBoundedBrowserRuntimeBody(request);
+  if (!bounded.ok) return bounded.response;
+  const body = bounded.body;
+  const inspected = inspectBrowserSessionBody(body);
+  if (!inspected.ok) {
+    return NextResponse.json({ error: inspected.error }, { status: 400 });
+  }
 
-  return forwardRuntimeRequest("/agent-turns", {
+  return forwardAuthenticatedRuntimeRequest(request, inspected.sessionId, "/agent-turns", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body
   });
 }

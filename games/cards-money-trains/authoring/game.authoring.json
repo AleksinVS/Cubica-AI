@@ -54,7 +54,15 @@
         "mode": "local-facilitator",
         "locale": "ru-RU"
       },
-      "sessionMode": "facilitated"
+      "sessionMode": "facilitated",
+      "runtimeReady": false,
+      "runtimeBlockers": [
+        "news deck",
+        "cargo deck and payouts",
+        "initial transport topology",
+        "canonical node coordinates",
+        "canonical region polygons"
+      ]
     },
     "content": {
       "data": {
@@ -116,16 +124,6 @@
             "registry": "assets/assets.json"
           }
         ],
-        "contentGates": {
-          "runtimeReady": false,
-          "missing": [
-            "news deck",
-            "cargo deck and payouts",
-            "initial transport topology",
-            "canonical node coordinates",
-            "canonical region polygons"
-          ]
-        },
         "constructionActionIntent": {
           "status": "declared-for-fixed-demo-blocked-until-network-content",
           "road": {
@@ -278,7 +276,6 @@
           "_type": "game.Action",
           "_label": "Построить дорогу",
           "_semantics": "Строит прямую дорогу между двумя выбранными существующими узлами и списывает только полную сумму четырех демонстрационных вкладов.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "transport.road.build",
           "displayName": "Подтвердить дорогу",
@@ -343,50 +340,9 @@
               "greenContribution"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/phase",
-                  "operator": "==",
-                  "value": "construction"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "transport.road.build",
-                "networkId": "main",
-                "fromNodeParam": "fromNodeId",
-                "toNodeParam": "toNodeId",
-                "payments": [
-                  {
-                    "balancePath": "/public/teams/white-logistics/coins",
-                    "amount": {
-                      "var": "params.whiteContribution"
-                    }
-                  },
-                  {
-                    "balancePath": "/public/teams/red-logistics/coins",
-                    "amount": {
-                      "var": "params.redContribution"
-                    }
-                  },
-                  {
-                    "balancePath": "/public/teams/purple-guild/coins",
-                    "amount": {
-                      "var": "params.purpleContribution"
-                    }
-                  },
-                  {
-                    "balancePath": "/public/teams/green-guild/coins",
-                    "amount": {
-                      "var": "params.greenContribution"
-                    }
-                  }
-                ]
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "construction.road.build"
           }
         },
         {
@@ -394,7 +350,6 @@
           "_type": "game.Action",
           "_label": "Построить полустанок",
           "_semantics": "Делит выбранную существующую дорогу в указанной внутренней позиции и списывает полную стоимость с четырех демонстрационных команд.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "transport.waypoint.build",
           "displayName": "Подтвердить полустанок",
@@ -449,50 +404,9 @@
               "greenContribution"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/phase",
-                  "operator": "==",
-                  "value": "construction"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "transport.waypoint.build",
-                "networkId": "main",
-                "edgeParam": "edgeId",
-                "positionParam": "positionT",
-                "payments": [
-                  {
-                    "balancePath": "/public/teams/white-logistics/coins",
-                    "amount": {
-                      "var": "params.whiteContribution"
-                    }
-                  },
-                  {
-                    "balancePath": "/public/teams/red-logistics/coins",
-                    "amount": {
-                      "var": "params.redContribution"
-                    }
-                  },
-                  {
-                    "balancePath": "/public/teams/purple-guild/coins",
-                    "amount": {
-                      "var": "params.purpleContribution"
-                    }
-                  },
-                  {
-                    "balancePath": "/public/teams/green-guild/coins",
-                    "amount": {
-                      "var": "params.greenContribution"
-                    }
-                  }
-                ]
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "construction.waypoint.build"
           }
         }
       ],
@@ -502,35 +416,15 @@
           "_type": "game.Action",
           "_label": "Выбрать строительство дороги",
           "_semantics": "Переводит панель в режим выбора двух существующих станций или полустанков, не меняя фазу.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "transport.construction.mode.road",
           "displayName": "Строить дорогу",
           "allowedSessionRoles": [
             "facilitator"
           ],
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/phase",
-                  "operator": "==",
-                  "value": "construction"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/construction/mode",
-                    "value": "road"
-                  }
-                ]
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "construction.mode.road"
           }
         },
         {
@@ -538,35 +432,15 @@
           "_type": "game.Action",
           "_label": "Выбрать строительство полустанка",
           "_semantics": "Переводит панель в режим выбора внутренней точки существующей дороги, не меняя фазу.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "transport.construction.mode.waypoint",
           "displayName": "Строить полустанок",
           "allowedSessionRoles": [
             "facilitator"
           ],
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/phase",
-                  "operator": "==",
-                  "value": "construction"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/construction/mode",
-                    "value": "waypoint"
-                  }
-                ]
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "construction.mode.waypoint"
           }
         },
         {
@@ -574,51 +448,15 @@
           "_type": "game.Action",
           "_label": "Завершить этап строительства",
           "_semantics": "Явно закрывает повторяемый этап строительства; успешный отдельный объект этого не делает.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "turn.phase.finish.construction",
           "displayName": "Завершить строительство",
           "allowedSessionRoles": [
             "facilitator"
           ],
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/phase",
-                  "operator": "==",
-                  "value": "construction"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/construction/mode",
-                    "value": null
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/construction/available",
-                    "value": false
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/session/phase",
-                    "value": "reporting"
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "target": "public.log",
-                "kind": "phase",
-                "summary": "Ведущий завершил этап строительства"
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "construction.phase.finish"
           }
         },
         {
@@ -626,40 +464,15 @@
           "_type": "game.Action",
           "_label": "Запросить завершение игры",
           "_semantics": "Открывает подтверждение, но еще не завершает игру.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "session.finish.request",
           "displayName": "Завершить игру",
           "allowedSessionRoles": [
             "facilitator"
           ],
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/status",
-                  "operator": "!=",
-                  "value": "finished"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/session/finishConfirmationPending",
-                    "value": true
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/session/canRequestFinish",
-                    "value": false
-                  }
-                ]
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "session.finish.request"
           }
         },
         {
@@ -667,40 +480,15 @@
           "_type": "game.Action",
           "_label": "Отменить завершение игры",
           "_semantics": "Закрывает подтверждение и оставляет игру в текущей фазе.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "session.finish.cancel",
           "displayName": "Продолжить игру",
           "allowedSessionRoles": [
             "facilitator"
           ],
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/finishConfirmationPending",
-                  "operator": "==",
-                  "value": true
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/session/finishConfirmationPending",
-                    "value": false
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/session/canRequestFinish",
-                    "value": true
-                  }
-                ]
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "session.finish.cancel"
           }
         },
         {
@@ -708,66 +496,15 @@
           "_type": "game.Action",
           "_label": "Подтвердить завершение игры",
           "_semantics": "Только явное второе действие ведущего переводит сессию в завершенное состояние.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "session.finish.manual",
           "displayName": "Подтвердить завершение",
           "allowedSessionRoles": [
             "facilitator"
           ],
-          "deterministic": {
-            "guard": {
-              "stateConditions": [
-                {
-                  "path": "/public/session/finishConfirmationPending",
-                  "operator": "==",
-                  "value": true
-                },
-                {
-                  "path": "/public/session/status",
-                  "operator": "!=",
-                  "value": "finished"
-                }
-              ]
-            },
-            "effects": [
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/session/status",
-                    "value": "finished"
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/session/phase",
-                    "value": "finished"
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/session/finishConfirmationPending",
-                    "value": false
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/session/canRequestFinish",
-                    "value": false
-                  },
-                  {
-                    "op": "replace",
-                    "path": "/public/construction/mode",
-                    "value": null
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "target": "public.log",
-                "kind": "session",
-                "summary": "Ведущий завершил игру"
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "session.finish.confirm"
           }
         }
       ]
@@ -796,6 +533,11 @@
           "mode": null,
           "available": true,
           "sequence": 0
+        },
+        "transportNetworks": {
+          "main": {
+            "sequence": 0
+          }
         },
         "teamSetupPolicy": {
           "startingCoins": 10,
@@ -849,6 +591,1410 @@
         "log": []
       },
       "secret": {}
+    },
+    "mechanics": {
+      "apiVersion": "cubica.dev/mechanics/v1alpha1",
+      "budgetProfile": "turn-based-standard-v1",
+      "stateModel": {
+        "types": {
+          "core.boolean": {
+            "kind": "boolean"
+          },
+          "core.string": {
+            "kind": "string"
+          },
+          "core.integer": {
+            "kind": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "core.optional-string": {
+            "kind": "option",
+            "itemType": "core.string"
+          },
+          "core.string-set": {
+            "kind": "set",
+            "itemType": "core.string",
+            "maxItems": 4096
+          },
+          "game.transport.node-availability": {
+            "kind": "enum",
+            "values": [
+              "open",
+              "closed",
+              "building"
+            ]
+          },
+          "game.transport.edge-state": {
+            "kind": "enum",
+            "values": [
+              "building",
+              "open",
+              "blocked"
+            ]
+          },
+          "core.bounded-json": {
+            "kind": "json",
+            "maxDepth": 16,
+            "maxNodes": 4096,
+            "maxUtf8Bytes": 262144
+          },
+          "core.event-journal-entry": {
+            "kind": "record",
+            "fields": {
+              "eventType": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "audience": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "summary": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "data": {
+                "typeRef": "core.bounded-json",
+                "optional": true
+              }
+            }
+          },
+          "core.event-journal": {
+            "kind": "list",
+            "itemType": "core.event-journal-entry",
+            "maxItems": 16384
+          },
+          "game.construction.phase.finish.event.3-event-record.1": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.session.finish.confirm.event.3-event-record.2": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "core.player-projection-json": {
+            "kind": "json",
+            "maxDepth": 32,
+            "maxNodes": 32768,
+            "maxUtf8Bytes": 262144
+          }
+        },
+        "endpoints": {
+          "public.session.phase": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session",
+                "phase"
+              ]
+            },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "public.session.turnNumber": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session",
+                "turnNumber"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.transportNetworks.main.sequence": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "transportNetworks",
+                "main",
+                "sequence"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.construction.mode": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "construction",
+                "mode"
+              ]
+            },
+            "valueType": "core.optional-string",
+            "access": "read-write"
+          },
+          "public.construction.available": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "construction",
+                "available"
+              ]
+            },
+            "valueType": "core.boolean",
+            "access": "read-write"
+          },
+          "public.log": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "log"
+              ]
+            },
+            "valueType": "core.event-journal",
+            "access": "read-write"
+          },
+          "public.session.status": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session",
+                "status"
+              ]
+            },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "public.session.finishConfirmationPending": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session",
+                "finishConfirmationPending"
+              ]
+            },
+            "valueType": "core.boolean",
+            "access": "read-write"
+          },
+          "public.session.canRequestFinish": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session",
+                "canRequestFinish"
+              ]
+            },
+            "valueType": "core.boolean",
+            "access": "read-write"
+          },
+          "public.teams.bound.coins": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams",
+                {
+                  "binding": "teamId"
+                },
+                "coins"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.teams.white-logistics.coins": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams",
+                "white-logistics",
+                "coins"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.teams.red-logistics.coins": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams",
+                "red-logistics",
+                "coins"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.teams.purple-guild.coins": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams",
+                "purple-guild",
+                "coins"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.teams.green-guild.coins": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams",
+                "green-guild",
+                "coins"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "projection.public.board": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.construction": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "construction"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.log": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "log"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.objects": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.session": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.teamSetupPolicy": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teamSetupPolicy"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.teams": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.timeline": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "timeline"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.transportNetworks": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "transportNetworks"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          }
+        },
+        "collections": {
+          "networkNodes": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "networkNodes"
+              ]
+            },
+            "capacity": 64,
+            "stableKey": "map-key",
+            "itemTypes": [
+              "transport.terminal",
+              "transport.waypoint"
+            ],
+            "fields": {
+              "availability": {
+                "storage": {
+                  "kind": "facet",
+                  "name": "availability"
+                },
+                "valueType": "game.transport.node-availability",
+                "access": "read-write"
+              },
+              "networkId": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "networkId"
+                },
+                "valueType": "core.string",
+                "access": "read-write"
+              },
+              "position": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "position"
+                },
+                "valueType": "core.bounded-json",
+                "access": "read-write"
+              },
+              "createdTurn": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "createdTurn"
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "activationTurn": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "activationTurn"
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "blockingReasons": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "blockingReasons"
+                },
+                "valueType": "core.string-set",
+                "access": "read-write"
+              }
+            }
+          },
+          "networkEdges": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "networkEdges"
+              ]
+            },
+            "capacity": 64,
+            "stableKey": "map-key",
+            "itemTypes": [
+              "transport.edge"
+            ],
+            "fields": {
+              "state": {
+                "storage": {
+                  "kind": "facet",
+                  "name": "state"
+                },
+                "valueType": "game.transport.edge-state",
+                "access": "read-write"
+              },
+              "networkId": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "networkId"
+                },
+                "valueType": "core.string",
+                "access": "read-write"
+              },
+              "fromNodeId": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "fromNodeId"
+                },
+                "valueType": "core.string",
+                "access": "read-write"
+              },
+              "toNodeId": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "toNodeId"
+                },
+                "valueType": "core.string",
+                "access": "read-write"
+              },
+              "geometry": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "geometry"
+                },
+                "valueType": "core.bounded-json",
+                "access": "read-write"
+              },
+              "constructionCost": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "constructionCost"
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "regionSegments": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "regionSegments"
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "routePlan": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "routePlan"
+                },
+                "valueType": "core.bounded-json",
+                "access": "read-write"
+              },
+              "splitFromEdgeId": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "splitFromEdgeId"
+                },
+                "valueType": "core.string",
+                "access": "read-write"
+              },
+              "createdTurn": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "createdTurn"
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "activationTurn": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "activationTurn"
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "blockingReasons": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "blockingReasons"
+                },
+                "valueType": "core.string-set",
+                "access": "read-write"
+              }
+            }
+          }
+        },
+        "events": {
+          "construction.phase.finish.event.3": {
+            "audienceRef": "public",
+            "payloadType": "game.construction.phase.finish.event.3-event-record.1",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "session.finish.confirm.event.3": {
+            "audienceRef": "public",
+            "payloadType": "game.session.finish.confirm.event.3-event-record.2",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          }
+        }
+      },
+      "macros": {
+        "cmt.construction.road": {
+          "inputs": {
+            "fromNodeId": { "kind": "value-expression" },
+            "toNodeId": { "kind": "value-expression" },
+            "whiteContribution": { "kind": "value-expression" },
+            "redContribution": { "kind": "value-expression" },
+            "purpleContribution": { "kind": "value-expression" },
+            "greenContribution": { "kind": "value-expression" }
+          },
+          "steps": [
+            {
+              "id": "route",
+              "kind": "command",
+              "op": "graph.regions.route.plan",
+              "networkId": "main",
+              "fromNode": { "$macroInput": "fromNodeId" },
+              "toNode": { "$macroInput": "toNodeId" }
+            },
+            {
+              "id": "exact-cost",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "number.add",
+                  "items": [
+                    { "$macroInput": "whiteContribution" },
+                    { "$macroInput": "redContribution" },
+                    { "$macroInput": "purpleContribution" },
+                    { "$macroInput": "greenContribution" }
+                  ]
+                },
+                "right": {
+                  "op": "number.multiply",
+                  "items": [
+                    { "op": "value.result", "stepId": "route", "path": ["regionSegments"] },
+                    { "op": "value.literal", "value": 2 }
+                  ]
+                }
+              },
+              "errorCode": "CONSTRUCTION_COST_MISMATCH"
+            },
+            {
+              "id": "pay-white",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.white-logistics.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "whiteContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "pay-red",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.red-logistics.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "redContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "pay-purple",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.purple-guild.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "purpleContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "pay-green",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.green-guild.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "greenContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "edge-id",
+              "kind": "command",
+              "op": "core.collection.id.allocate",
+              "collection": "networkEdges",
+              "sequence": { "endpoint": "public.transportNetworks.main.sequence" },
+              "prefix": "main:edge"
+            },
+            {
+              "id": "create-edge",
+              "kind": "command",
+              "op": "core.entity.create",
+              "visibility": "public",
+              "collection": "networkEdges",
+              "entityId": { "op": "value.result", "stepId": "edge-id", "path": ["id"] },
+              "objectType": "transport.edge",
+              "facets": {
+                "state": { "op": "value.literal", "value": "building" }
+              },
+              "attributes": {
+                "networkId": { "op": "value.literal", "value": "main" },
+                "fromNodeId": { "op": "value.result", "stepId": "route", "path": ["fromNodeId"] },
+                "toNodeId": { "op": "value.result", "stepId": "route", "path": ["toNodeId"] },
+                "geometry": { "op": "value.result", "stepId": "route", "path": ["geometry"] },
+                "constructionCost": {
+                  "op": "number.multiply",
+                  "items": [
+                    { "op": "value.result", "stepId": "route", "path": ["regionSegments"] },
+                    { "op": "value.literal", "value": 2 }
+                  ]
+                },
+                "regionSegments": { "op": "value.result", "stepId": "route", "path": ["regionSegments"] },
+                "createdTurn": { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } },
+                "activationTurn": {
+                  "op": "number.add",
+                  "items": [
+                    { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } },
+                    { "op": "value.literal", "value": 2 }
+                  ]
+                },
+                "blockingReasons": { "op": "value.literal", "value": ["construction-pending"] }
+              }
+            }
+          ]
+        },
+        "cmt.construction.waypoint": {
+          "inputs": {
+            "edgeId": { "kind": "value-expression" },
+            "positionT": { "kind": "value-expression" },
+            "whiteContribution": { "kind": "value-expression" },
+            "redContribution": { "kind": "value-expression" },
+            "purpleContribution": { "kind": "value-expression" },
+            "greenContribution": { "kind": "value-expression" }
+          },
+          "steps": [
+            {
+              "id": "exact-cost",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.compare",
+                "operator": "eq",
+                "left": {
+                  "op": "number.add",
+                  "items": [
+                    { "$macroInput": "whiteContribution" },
+                    { "$macroInput": "redContribution" },
+                    { "$macroInput": "purpleContribution" },
+                    { "$macroInput": "greenContribution" }
+                  ]
+                },
+                "right": { "op": "value.literal", "value": 5 }
+              },
+              "errorCode": "CONSTRUCTION_COST_MISMATCH"
+            },
+            {
+              "id": "pay-white",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.white-logistics.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "whiteContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "pay-red",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.red-logistics.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "redContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "pay-purple",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.purple-guild.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "purpleContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "pay-green",
+              "kind": "command",
+              "op": "core.resource.transfer",
+              "from": { "kind": "state", "target": { "endpoint": "public.teams.green-guild.coins" } },
+              "to": { "kind": "bank" },
+              "amount": { "$macroInput": "greenContribution" },
+              "onInsufficient": "fail"
+            },
+            {
+              "id": "split",
+              "kind": "command",
+              "op": "graph.edge.split",
+              "networkId": "main",
+              "edge": { "$macroInput": "edgeId" },
+              "position": { "$macroInput": "positionT" }
+            },
+            {
+              "id": "mark-node",
+              "kind": "command",
+              "op": "core.entity.facet.set",
+              "entity": {
+                "collection": "networkNodes",
+                "entityId": { "op": "value.result", "stepId": "split", "path": ["nodeId"] }
+              },
+              "facet": "availability",
+              "value": { "op": "value.literal", "value": "building" }
+            },
+            {
+              "id": "node-lifecycle",
+              "kind": "command",
+              "op": "core.entity.attributes.patch",
+              "entity": {
+                "collection": "networkNodes",
+                "entityId": { "op": "value.result", "stepId": "split", "path": ["nodeId"] }
+              },
+              "patches": [
+                { "operation": "set", "path": ["createdTurn"], "value": { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } } },
+                {
+                  "operation": "set",
+                  "path": ["activationTurn"],
+                  "value": {
+                    "op": "number.add",
+                    "items": [
+                      { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } },
+                      { "op": "value.literal", "value": 2 }
+                    ]
+                  }
+                },
+                { "operation": "set", "path": ["blockingReasons"], "value": { "op": "value.literal", "value": ["construction-pending"] } }
+              ]
+            },
+            {
+              "id": "mark-first-edge",
+              "kind": "command",
+              "op": "core.entity.facet.set",
+              "entity": {
+                "collection": "networkEdges",
+                "entityId": { "op": "value.result", "stepId": "split", "path": ["edgeIds", "0"] }
+              },
+              "facet": "state",
+              "value": { "op": "value.literal", "value": "building" }
+            },
+            {
+              "id": "first-edge-lifecycle",
+              "kind": "command",
+              "op": "core.entity.attributes.patch",
+              "entity": {
+                "collection": "networkEdges",
+                "entityId": { "op": "value.result", "stepId": "split", "path": ["edgeIds", "0"] }
+              },
+              "patches": [
+                { "operation": "set", "path": ["createdTurn"], "value": { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } } },
+                {
+                  "operation": "set",
+                  "path": ["activationTurn"],
+                  "value": {
+                    "op": "number.add",
+                    "items": [
+                      { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } },
+                      { "op": "value.literal", "value": 2 }
+                    ]
+                  }
+                },
+                { "operation": "set", "path": ["blockingReasons"], "value": { "op": "value.literal", "value": ["construction-pending"] } }
+              ]
+            },
+            {
+              "id": "mark-second-edge",
+              "kind": "command",
+              "op": "core.entity.facet.set",
+              "entity": {
+                "collection": "networkEdges",
+                "entityId": { "op": "value.result", "stepId": "split", "path": ["edgeIds", "1"] }
+              },
+              "facet": "state",
+              "value": { "op": "value.literal", "value": "building" }
+            },
+            {
+              "id": "second-edge-lifecycle",
+              "kind": "command",
+              "op": "core.entity.attributes.patch",
+              "entity": {
+                "collection": "networkEdges",
+                "entityId": { "op": "value.result", "stepId": "split", "path": ["edgeIds", "1"] }
+              },
+              "patches": [
+                { "operation": "set", "path": ["createdTurn"], "value": { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } } },
+                {
+                  "operation": "set",
+                  "path": ["activationTurn"],
+                  "value": {
+                    "op": "number.add",
+                    "items": [
+                      { "op": "value.state", "ref": { "endpoint": "public.session.turnNumber" } },
+                      { "op": "value.literal", "value": 2 }
+                    ]
+                  }
+                },
+                { "operation": "set", "path": ["blockingReasons"], "value": { "op": "value.literal", "value": ["construction-pending"] } }
+              ]
+            }
+          ]
+        }
+      },
+      "plans": {
+        "construction.mode.road": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.phase"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": "construction"
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.construction.mode"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "road"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "construction.mode.waypoint": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.phase"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": "construction"
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.construction.mode"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "waypoint"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "construction.phase.finish": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.phase"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": "construction"
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.construction.mode"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": null
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.construction.available"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.phase"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "reporting"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "construction.phase.finish.event.3",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Ведущий завершил этап строительства"
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "phase"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "session.finish.request": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "ne",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.status"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": "finished"
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.finishConfirmationPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.canRequestFinish"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "session.finish.cancel": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.finishConfirmationPending"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": true
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.finishConfirmationPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.canRequestFinish"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": true
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "session.finish.confirm": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.session.finishConfirmationPending"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": true
+                      }
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.session.status"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": "finished"
+                      }
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.status"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "finished"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.phase"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "finished"
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.finishConfirmationPending"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.canRequestFinish"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.construction.mode"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": null
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "session.finish.confirm.event.3",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Ведущий завершил игру"
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "session"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "construction.road.build": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.phase"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": "construction"
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+            {
+              "id": "s002",
+              "kind": "macro",
+              "macro": "cmt.construction.road",
+              "args": {
+                "fromNodeId": { "op": "value.param", "name": "fromNodeId" },
+                "toNodeId": { "op": "value.param", "name": "toNodeId" },
+                "whiteContribution": { "op": "value.param", "name": "whiteContribution" },
+                "redContribution": { "op": "value.param", "name": "redContribution" },
+                "purpleContribution": { "op": "value.param", "name": "purpleContribution" },
+                "greenContribution": { "op": "value.param", "name": "greenContribution" }
+              }
+            }
+            ]
+          }
+        },
+        "construction.waypoint.build": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.compare",
+                  "operator": "eq",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.session.phase"
+                    }
+                  },
+                  "right": {
+                    "op": "value.literal",
+                    "value": "construction"
+                  }
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+            {
+              "id": "s002",
+              "kind": "macro",
+              "macro": "cmt.construction.waypoint",
+              "args": {
+                "edgeId": { "op": "value.param", "name": "edgeId" },
+                "positionT": { "op": "value.param", "name": "positionT" },
+                "whiteContribution": { "op": "value.param", "name": "whiteContribution" },
+                "redContribution": { "op": "value.param", "name": "redContribution" },
+                "purpleContribution": { "op": "value.param", "name": "purpleContribution" },
+                "greenContribution": { "op": "value.param", "name": "greenContribution" }
+              }
+            }
+            ]
+          }
+        }
+      }
+    },
+    "networkModels": {
+      "main": {
+        "visibility": "public",
+        "nodeCollection": "networkNodes",
+        "edgeCollection": "networkEdges",
+        "waypointObjectType": "transport.waypoint",
+        "edgeObjectType": "transport.edge",
+        "nodeStateFacet": "availability",
+        "buildableNodeStates": [
+          "open"
+        ],
+        "edgeStateFacet": "state",
+        "splittableEdgeStates": [
+          "open",
+          "building"
+        ],
+        "builtEdgeState": "building",
+        "sequenceEndpoint": "public.transportNetworks.main.sequence",
+        "regions": [
+          {
+            "id": "canonical-board",
+            "polygon": [
+              {
+                "x": 0,
+                "y": 0
+              },
+              {
+                "x": 5079,
+                "y": 0
+              },
+              {
+                "x": 5079,
+                "y": 3627
+              },
+              {
+                "x": 0,
+                "y": 3627
+              }
+            ]
+          }
+        ]
+      }
     }
   }
 }

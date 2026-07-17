@@ -6,6 +6,11 @@ import type {
 } from "@cubica/contracts-session";
 import type { AgentTurnRequest } from "../ai/agentRuntime.ts";
 import { RequestValidationError } from "../errors.ts";
+import Ajv2020Lib from "ajv/dist/2020.js";
+import type { ValidateFunction } from "ajv";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -15,9 +20,19 @@ const isRecord = (value: unknown): value is JsonRecord =>
 const SAFE_GAME_ID_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
 const SAFE_CONTENT_SOURCE_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9._-]{2,80}$/u;
 // These names are inherited or otherwise special on ordinary JavaScript
-// objects. Accepting one as a player id or client parameter can turn an object
-// lookup into a write outside the intended session-state branch.
+// objects. Accepting one as a client parameter can turn an object lookup into
+// a write outside the intended session-state branch.
 const FORBIDDEN_OBJECT_PROPERTY_NAMES = new Set(["__proto__", "constructor", "prototype"]);
+const Ajv2020 = (Ajv2020Lib as any).default || Ajv2020Lib;
+const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
+const runtimeCommandSchema = JSON.parse(readFileSync(
+  path.join(repositoryRoot, "docs", "architecture", "schemas", "runtime-command.schema.json"),
+  "utf8"
+)) as object;
+// Draft 2020-12 uses a separate Ajv implementation and must not be mixed into
+// older-draft schema instances used by manifest/content validation.
+const runtimeCommandAjv = new Ajv2020({ allErrors: true, strict: true });
+const validateRuntimeCommand = runtimeCommandAjv.compile(runtimeCommandSchema) as ValidateFunction<DispatchActionInput>;
 
 const assertRecord: (value: unknown, path: string) => asserts value is JsonRecord = (value, path) => {
   if (!isRecord(value)) {
@@ -34,13 +49,6 @@ export const assertGameId: (value: unknown, path: string) => asserts value is st
 const assertOptionalString: (value: unknown, path: string) => void = (value, path) => {
   if (value !== undefined && (typeof value !== "string" || !value.trim())) {
     throw new RequestValidationError(`${path} must be a non-empty string`);
-  }
-};
-
-const assertOptionalPlayerId: (value: unknown, path: string) => void = (value, path) => {
-  assertOptionalString(value, path);
-  if (typeof value === "string" && FORBIDDEN_OBJECT_PROPERTY_NAMES.has(value)) {
-    throw new RequestValidationError(`${path} uses forbidden property name "${value}"`);
   }
 };
 
@@ -71,6 +79,11 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
   // is treated the same as a body with no `gameId`.
   assertRecord(body ?? {}, "POST /sessions body");
   const record = (body ?? {}) as JsonRecord;
+  const allowedKeys = new Set(["gameId", "contentSourceId"]);
+  const unexpectedKey = Object.keys(record).find((key) => !allowedKeys.has(key));
+  if (unexpectedKey) {
+    throw new RequestValidationError(`Session creation contains unsupported field "${unexpectedKey}"`);
+  }
 
   // Reject a missing/empty id with a clear "required" message. Any present but
   // malformed id (wrong type, unsafe characters) still falls through to
@@ -79,7 +92,6 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
     throw new RequestValidationError("gameId is required and must be a non-empty string");
   }
   assertGameId(record.gameId, "gameId");
-  assertOptionalPlayerId(record.playerId, "playerId");
   if (record.contentSourceId !== undefined) {
     assertContentSourceId(record.contentSourceId, "contentSourceId");
   }
@@ -88,30 +100,23 @@ export const parseCreateSessionRequest = (body: unknown): CreateSessionRequest =
 };
 
 export const parseDispatchActionRequest = (body: unknown): DispatchActionInput => {
-  assertRecord(body, "POST /actions body");
-  assertRequiredString(body.sessionId, "sessionId");
-  assertNonNegativeInteger(body.expectedStateVersion, "expectedStateVersion");
-  assertRequiredString(body.actionId, "actionId");
-  assertOptionalPlayerId(body.playerId, "playerId");
-  if (body.params !== undefined) {
-    assertRecord(body.params, "params");
-    for (const key of Object.keys(body.params)) {
-      if (FORBIDDEN_OBJECT_PROPERTY_NAMES.has(key)) {
-        throw new RequestValidationError(`params contains forbidden property name "${key}"`);
-      }
-    }
-  }
-  if (body.sessionRole !== undefined || body.role !== undefined) {
-    throw new RequestValidationError("Session role is derived by runtime and cannot be supplied by the client");
-  }
-
-  return body as unknown as DispatchActionInput;
+  return parseRuntimeCommand(body, "POST /actions body");
 };
+
+function parseRuntimeCommand(body: unknown, label: string): DispatchActionInput {
+  if (!validateRuntimeCommand(body)) {
+    const details = (validateRuntimeCommand.errors ?? [])
+      .map((error) => `${error.instancePath || "/"} ${error.message ?? "is invalid"}`)
+      .join("; ");
+    throw new RequestValidationError(`${label} does not match runtime command schema: ${details}`);
+  }
+  return body;
+}
 
 /** Validate the fixed envelope; action-specific endpoint schemas run after content lookup. */
 export const parseTransportRoadPreviewRequest = (body: unknown): TransportRoadPreviewRequest => {
   assertRecord(body, "POST /action-previews/transport-road body");
-  const allowedKeys = new Set(["sessionId", "expectedStateVersion", "playerId", "actionId", "params"]);
+  const allowedKeys = new Set(["sessionId", "expectedStateVersion", "actionId", "params"]);
   const unexpectedKey = Object.keys(body).find((key) => !allowedKeys.has(key));
   if (unexpectedKey) {
     throw new RequestValidationError(`Transport road preview contains unsupported field "${unexpectedKey}"`);
@@ -119,7 +124,6 @@ export const parseTransportRoadPreviewRequest = (body: unknown): TransportRoadPr
   assertRequiredString(body.sessionId, "sessionId");
   assertNonNegativeInteger(body.expectedStateVersion, "expectedStateVersion");
   assertRequiredString(body.actionId, "actionId");
-  assertOptionalPlayerId(body.playerId, "playerId");
   assertRecord(body.params, "params");
   for (const key of Object.keys(body.params)) {
     if (FORBIDDEN_OBJECT_PROPERTY_NAMES.has(key)) {
@@ -130,17 +134,7 @@ export const parseTransportRoadPreviewRequest = (body: unknown): TransportRoadPr
 };
 
 export const parseAgentTurnRequest = (body: unknown): AgentTurnRequest => {
-  assertRecord(body, "POST /agent-turns body");
-  assertRequiredString(body.sessionId, "sessionId");
-  assertOptionalPlayerId(body.playerId, "playerId");
-  assertOptionalString(body.actionId, "actionId");
-
-  return {
-    sessionId: body.sessionId,
-    playerId: typeof body.playerId === "string" ? body.playerId : undefined,
-    actionId: typeof body.actionId === "string" ? body.actionId : undefined,
-    payload: body.payload
-  };
+  return parseRuntimeCommand(body, "POST /agent-turns body");
 };
 
 export const parseRestorePreviewSessionRequest = (

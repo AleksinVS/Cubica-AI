@@ -18,7 +18,6 @@ describe("preview plugin loader", () => {
       export function activate(api) {
         api.registerGameConfigData({
           gameId: "${gameId}",
-          playerId: "preview-player",
           storageKey: "session-plugin-storage",
           fallbackMetrics: [],
           topbarScreenKeys: [],
@@ -42,7 +41,6 @@ describe("preview plugin loader", () => {
     });
     const fallback = {
       gameId,
-      playerId: "fallback",
       storageKey: "fallback-storage",
       fallbackMetrics: [],
       topbarScreenKeys: [],
@@ -87,7 +85,6 @@ describe("preview plugin loader", () => {
       export function activate(api) {
         api.registerGameConfigData({
           gameId: "${gameId}",
-          playerId: "published-player",
           storageKey: "published-plugin-storage",
           fallbackMetrics: [],
           topbarScreenKeys: [],

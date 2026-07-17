@@ -165,60 +165,6 @@
         "pointer": "/root/screens/0/root/children/0/children/0/props/text"
       }
     ],
-    "/screens/S1/root/children/0/children/1": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/type": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/type"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/id": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/id"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/props": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/props"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/props/caption": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/props/caption"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/actions"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/0/children/1/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/telegram.authoring.json",
-        "pointer": "/root/screens/0/root/children/0/children/1/actions/onClick/payload"
-      }
-    ],
     "/screens/S1/root/children/0/children": [
       {
         "file": "games/antarctica/authoring/ui/telegram.authoring.json",

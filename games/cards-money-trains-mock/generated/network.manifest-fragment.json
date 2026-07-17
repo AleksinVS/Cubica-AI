@@ -33,9 +33,7 @@
         "building"
       ],
       "builtEdgeState": "building",
-      "sequencePath": "/public/transportNetworks/main/sequence",
-      "roadCostPerRegionSegment": 2,
-      "waypointCost": 5,
+      "sequenceEndpoint": "public.transportNetworks.main.sequence",
       "regions": [
         {
           "id": "mock-region-central",
@@ -108,7 +106,7 @@
         "geometryHash": "sha256:418915f2cb120b41bf6a7809c6864a3e53706ca0d825df799c7ec3cf8d53d7d0",
         "tieBreak": "session-random",
         "boundaryPolicy": "lowest-region-id",
-        "excludedRegionIdsPath": "/public/transportNetworks/main/excludedRegionIds",
+        "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds",
         "navigationGraph": {
           "portals": [
             {

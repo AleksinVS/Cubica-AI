@@ -1,0 +1,3 @@
+{
+  "description": "Typed, bounded and transactional Mechanics IR executor shared by all manifest-driven games. It resolves state only through the manifest state model and never interprets legacy effect templates."
+}

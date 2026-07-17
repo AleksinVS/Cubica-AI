@@ -13,9 +13,10 @@
  * non-trivial:
  * 1. Builds must run SEQUENTIALLY — parallel `next build` workers get
  *    SIGTERM'd on the 4-core host (proven empirically; a lone build passes).
- * 2. player-web bakes RUNTIME_API_URL into its rewrites at BUILD time
- *    (next.config.ts `rewrites()` is evaluated during `next build`), so the
- *    build must see the same runtime URL the tests will use.
+ * 2. player-web's server-side content loader must use the same Runtime API URL
+ *    as the later production server. Browser Runtime calls themselves stay
+ *    behind explicit authenticated route handlers and never use a catch-all
+ *    rewrite.
  *
  * Usage: npm run test:e2e:prod [-- <playwright args>]
  * Extra args are forwarded to `playwright test`
@@ -26,7 +27,9 @@ import { spawnSync } from "node:child_process";
 const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
 const runtimeUrl = `http://127.0.0.1:${runtimePort}`;
-const playerUrl = `http://127.0.0.1:${playerPort}`;
+// Match Playwright's browser origin. `localhost` preserves production Secure
+// cookie semantics; the actual Next.js listener remains bound to 127.0.0.1.
+const playerUrl = `http://localhost:${playerPort}`;
 
 /** Run a command inheriting stdio; abort the whole run on failure. */
 function run(label, command, args, extraEnv = {}) {
@@ -43,7 +46,7 @@ function run(label, command, args, extraEnv = {}) {
 
 // Sequential builds — never in parallel on this class of host (see header).
 run("build player-web", "npm", ["run", "build", "--workspace", "@cubica/player-web"], {
-  // Baked into player-web rewrites at build time; must match the e2e runtime URL.
+  // Keep server-side content resolution aligned with the later E2E runtime.
   RUNTIME_API_URL: runtimeUrl,
   PLAYER_WEB_URL: playerUrl,
   NEXT_IGNORE_INCORRECT_LOCKFILE: "1"

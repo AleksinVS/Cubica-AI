@@ -150,6 +150,8 @@ export function reindexEditorEntityProjection(base: {
  *   - v1: the original ADR-052 projection (entities + facets + link diagnostics).
  *   - v2: ADR-057 §4.13 lens declarations plus the identity-discipline lenses
  *     `entity-missing-view` / `entity-view-orphan` (Phase 1.3/1.5).
+ *   - v3: published action bindings include their referenced Mechanics IR plan
+ *     as a logic facet, so authors can navigate from intent to implementation.
  *
  * NOTE (Phase 2.1): earlier this comment claimed v2 existed to FORCE a full
  * rebuild on every edit because the identity-discipline diagnostics are
@@ -158,10 +160,10 @@ export function reindexEditorEntityProjection(base: {
  * it takes the incremental fast path only for changes that provably cannot alter
  * identity, links, types, structure, or the game-id set (the inputs those
  * diagnostics depend on), and falls back to a full rebuild for anything else. So
- * the value stays 2 purely as the lens-set version; it is no longer a "disable
- * incremental" flag.
+ * each version records the lens set and invalidates stale warm caches; it is no
+ * longer a "disable incremental" flag.
  */
-export const PROJECTION_LENS_SET_VERSION = 2;
+export const PROJECTION_LENS_SET_VERSION = 3;
 
 /**
  * Declared read dependencies of every projection lens (ADR-057 §4.13).
@@ -181,8 +183,12 @@ export const PROJECTION_LENSES: readonly ProjectionLens[] = [
   { id: "game-root", documentKinds: ["game"], readPointerPrefixes: ["/root"] },
   // Flows, their steps, and the link ids each step declares.
   { id: "game-flow-step", documentKinds: ["game"], readPointerPrefixes: ["/root/logic/flows"] },
-  // Game actions (and nested objectId links resolved against content).
-  { id: "game-action", documentKinds: ["game"], readPointerPrefixes: ["/root/logic/actions"] },
+  // Game actions, their Mechanics IR plan bindings, and nested objectId links.
+  {
+    id: "game-action",
+    documentKinds: ["game"],
+    readPointerPrefixes: ["/root/logic/actions", "/root/mechanics/plans"]
+  },
   // Public metrics map.
   { id: "game-metric", documentKinds: ["game"], readPointerPrefixes: ["/root/state/public/metrics"] },
   // Object-type state models.
@@ -621,15 +627,17 @@ function refreshEntityLabels(entity: EditorEntity, documentJsonByPath: ReadonlyM
 
 /**
  * Recomputes one source pointer's `label` from the current node. Every source
- * label is `resolveEntityTreeLabel(node)` EXCEPT metric sources, whose label is
- * derived from the (structurally stable) metric key and therefore never changes
- * on a value edit — those keep their previous label.
+ * label is `resolveEntityTreeLabel(node)` EXCEPT sources with labels derived
+ * from stable identifiers rather than from the pointed-to object. Metric labels
+ * come from the metric key, and Mechanics-plan labels come from the published
+ * action binding's `planRef`; recomputing either from the object would make the
+ * incremental result diverge from a full rebuild.
  */
 function refreshSourcePointerLabel(
   source: EditorEntitySourcePointer,
   documentJsonByPath: ReadonlyMap<string, JsonValue>
 ): EditorEntitySourcePointer {
-  if (source.role === "metric") {
+  if (source.role === "metric" || source.role === "mechanics-plan") {
     return source;
   }
   const json = documentJsonByPath.get(source.filePath);
@@ -1061,11 +1069,12 @@ function collectGameActionEntities(
   builders: Map<string, MutableEditorEntityBuilder>,
   contentRefsById: ReadonlyMap<string, readonly EditorEntitySourcePointer[]>
 ): void {
-  if (document.json === undefined) {
+  const documentJson = document.json;
+  if (documentJson === undefined) {
     return;
   }
 
-  const actions = readJsonPointer(document.json, "/root/logic/actions");
+  const actions = readJsonPointer(documentJson, "/root/logic/actions");
   if (!Array.isArray(actions)) {
     return;
   }
@@ -1084,6 +1093,34 @@ function collectGameActionEntities(
       primarySource: source
     });
     addEditorEntityFacet(entity, "logic", source);
+
+    // A published action and its typed transaction are two facets of the same
+    // author-facing entity. Linking them here makes the relationship navigable
+    // without copying the plan or teaching the editor any operation semantics.
+    const binding = action.binding;
+    const planRef = isPlainJsonObject(binding) && binding.kind === "mechanics-plan"
+      ? readStringProperty(binding, "planRef")
+      : undefined;
+    if (planRef !== undefined) {
+      const planPointer = appendPointerSegment("/root/mechanics/plans", planRef);
+      const plan = readJsonPointer(documentJson, planPointer);
+      if (isPlainJsonObject(plan)) {
+        addEditorEntityFacet(
+          entity,
+          "logic",
+          createProjectionSourcePointer(document, planPointer, "mechanics-plan", `Mechanics plan ${planRef}`)
+        );
+      } else {
+        entity.diagnostics.push(
+          createProjectionDiagnostic(
+            "warning",
+            "unresolved-mechanics-plan",
+            source,
+            `Action ${source.label ?? pointer} references missing Mechanics IR plan ${planRef}.`
+          )
+        );
+      }
+    }
 
     for (const objectId of collectNestedLinkIds(action, ["objectId"])) {
       const contentRefs = contentRefsById.get(objectId) ?? [];

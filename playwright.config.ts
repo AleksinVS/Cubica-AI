@@ -18,8 +18,7 @@ import path from "node:path";
  *   No compilation happens while tests run, so the interactive loop only
  *   costs render + HTTP. Builds MUST be done beforehand and sequentially —
  *   use `npm run test:e2e:prod` (scripts/dev/run-e2e-prod.mjs), which builds
- *   player-web and editor-web one at a time with the correct build-time envs
- *   (player-web bakes RUNTIME_API_URL into its rewrites at build time).
+ *   player-web and editor-web one at a time before starting the services.
  *
  * Low-resource mode (E2E_LOW_RESOURCE=1): disables trace/video/screenshot
  * capture. Playwright records trace and video during EVERY run and only
@@ -38,7 +37,10 @@ const runtimePort = Number(process.env.E2E_RUNTIME_PORT ?? 3201);
 const playerPort = Number(process.env.E2E_PLAYER_PORT ?? 3200);
 const editorPort = Number(process.env.E2E_EDITOR_PORT ?? 3202);
 const runtimeUrl = `http://127.0.0.1:${runtimePort}`;
-const playerUrl = `http://127.0.0.1:${playerPort}`;
+// Browsers treat localhost as a potentially trustworthy local origin. Using
+// that canonical name keeps production Secure cookies enabled in E2E while
+// still binding the owned server process to the IPv4 loopback interface.
+const playerUrl = `http://localhost:${playerPort}`;
 const editorUrl = `http://127.0.0.1:${editorPort}`;
 const editorProjectRoot = playerOnly
   ? ""

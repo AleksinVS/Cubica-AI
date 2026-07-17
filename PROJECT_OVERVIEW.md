@@ -27,7 +27,7 @@
 ### Текущий канонический срез
 - `games/antarctica/game.manifest.json` - источник истины для исполнимой логики `Antarctica`.
 - `games/simple-choice/` - минимальная вторая игра для проверки game-agnostic runtime/player path без custom web plugin.
-- `games/ai-driven-choice/` - минимальная AI-driven fixture-игра для проверки Agent Runtime readiness, opt-in mock adapter, `POST /agent-turns`, Web `CubicaSurface` rendering, deterministic fallback behavior and replay/eval/audit contract gates.
+- `games/ai-driven-choice/` - минимальная AI-driven fixture-игра для проверки готовности Agent Runtime, явно включаемого mock-адаптера, `POST /agent-turns`, Web `CubicaSurface`, выбора доступного Game Intent и replay/eval/audit-проверок.
 - `games/antarctica/design/mockups/` - источник истины для UI-намерения и экранных макетов.
 - `services/runtime-api/` - канонический backend runtime в формате модульного монолита.
 - ADR-051 применяет API First уже к текущему модульному монолиту: реализованный HTTP API `runtime-api` имеет current OpenAPI-контракт, а Router/Game Engine/Game Repository specs остаются future extraction references до физического выделения сервисов.
@@ -37,7 +37,7 @@
 - `docs/architecture/agent-ui-foundation.md` и ADR-043 - источник истины для UI ИИ-агентов на CopilotKit/AG-UI; baseline внедрён в `apps/editor-web` как выключенная по умолчанию оболочка помощника, app-local маршрут `/api/copilotkit`, встроенный локальный AG-UI backend, ограниченная проекция контекста и frontend tools поверх `EditorChangeSet`; этот слой обслуживает редактор и будущих помощников платформы, но не владеет runtime/game state.
 - `docs/architecture/agent-ui-portability-and-risk-controls.md` и ADR-044 - источник истины для переносимости Agent UI: CopilotKit и AG-UI остаются заменяемыми адаптерами, production LLM backend подключается через шлюз и инструменты Cubica, а прямые записи в манифесты, runtime state, portal data или рабочие копии редактора запрещены.
 - `docs/architecture/generative-ui-surface-protocol.md` и ADR-045 - источник истины для Cubica-owned Generative UI direction: CopilotKit является MVP-адаптером первого этапа, целевой слой - собственный совместимый Cubica Agent UI, а декларативные UI-поверхности описываются через Cubica Surface contracts (собственные контракты Cubica для ограниченных UI-поверхностей) вместо сохранения CopilotKit/AG-UI/A2UI (декларативная JSONL-спецификация UI-поверхностей) state как предметного состояния.
-- `docs/architecture/ai-agent-safety-remediation.md` и ADR-047 - accepted remediation source для review findings миграции: human approval работает через Cubica approval envelope, rejected Agent Turn не применяет effects, `allowedCapabilities` является runtime gate, а channel projections fail closed для unsupported actions.
+- `docs/architecture/ai-agent-safety-remediation.md` и ADR-047 - принятое решение по безопасности ИИ: подтверждение человека работает через конверт одобрения Cubica, отклонённый ход агента не запускает Game Intent и не меняет состояние, `allowedCapabilities` является исполняемым ограничением, а проекция канала закрывается с ошибкой для неподдерживаемых действий.
 - `docs/architecture/element-prompt-contract.md` и ADR-048 - accepted source для элементного промта: первый срез реализовал `_prompt` для authoring-экземпляров, `_promptTemplate` для прототипов, compiler stripping и editor schema readiness; `generation.prompt` остается промтом визуальной генерации для design artifacts. Механизм синхронизации промта и структуры манифеста вынесен в следующий этап.
 - ADR-050 - accepted source для извлечения, регулярного аудита и повышения authoring-прототипов: повторяющиеся game/UI authoring-элементы сначала выносятся в локальные game-level prototypes, проверенные локальные прототипы могут вручную повышаться до platform-level catalog, PR-аудит остается быстрым deterministic scan, недельный аудит запускается через scheduled CI и добавляет LLM-семантический поиск кандидатов, editor surface показывает пропущенные weekly audits, а AI-assisted designer только предлагает `EditorChangeSet` и не применяет изменения напрямую.
 - ADR-052 - accepted source для project-level editor entities: первый срез реализовал in-memory `EditorEntityProjection`, который связывает logic/content/view/state/design/plugin source pointers across authoring files без persisted `editor.entities.json`. Future hints sidecar допустим только для невосстановимых editor-only подсказок и не является source of truth.
@@ -45,7 +45,7 @@
 - `apps/editor-web` уже потребляет helper `CubicaSurface` для tool progress, diagnostics, diff summary and approved editor-tool actions while CopilotKit remains the MVP shell.
 - ADR-046 - источник истины для AI-driven game runtime mode: игра может объявить ИИ-агента обязательной частью runtime, а ход игры, состояние шага и UI-поверхность возвращаются агентом через валидируемые Cubica-контракты.
 - `draft/cubica-portal-nextjs/` - текущий draft портала для следующего test VPS launch; он управляет будущими покупками/ссылками/игровыми сессиями, но не является source of truth для runtime-логики.
-- `draft/Antarctica/GameFull.html` - текущий factual extraction source для сценария и механики `Antarctica` на время миграции; это состояние миграции, а не новое архитектурное решение; анализировать его нужно через scripts и targeted extraction, а не читать целиком как основной документ.
+- `draft/Antarctica/GameFull.html` - исходный материал для сверки сценария и содержания `Antarctica`, но не источник истины для исполнимой логики и не архитектурное решение; анализировать его нужно через целевые скрипты извлечения, а не читать целиком как основной документ.
 - `draft/antarctica-nextjs-player/`, `apps/portal-nextjs/` и `services/portal-backend/` - draft-артефакты и прототипы, не целевая архитектура.
 
 ### Основные сценарии использования
@@ -75,7 +75,7 @@
 - **Trunk-based development** — короткие feature-ветки, обязательные проверки и ревью, единая ветка `main`.
 - **MVP + LLM-first** — текущий canonical slice использует deterministic runtime и JSON‑manifest source of truth, но целевая платформа поддерживает два класса игр: deterministic games без обязательного agent backend и AI-driven games по ADR-046, где Agent Runtime является объявленной частью игрового исполнения.
 - **Agent UI foundation** — пользовательские ИИ-помощники на первом MVP-этапе строятся через CopilotKit и AG-UI, но все долговременные изменения проходят через контракты Cubica, JSON Schema validation, Presenter/runtime boundaries и аудит. ADR-044 требует, чтобы CopilotKit/AG-UI не попадали в предметные пакеты, а ADR-045 задаёт целевой путь к собственному совместимому Cubica Agent UI и Cubica Surface Protocol.
-- **AI Agent safety gates** — ADR-047 remediation реализован для MVP: подтверждение человека не доверяется model arguments, failed Agent Turn не меняет session state, manifest capabilities исполняются как allowlist, а каждый delivery channel получает только поддержанные actions.
+- **AI Agent safety gates** — защита ИИ реализована для MVP: подтверждение человека не берётся из аргументов модели, неуспешный ход агента не меняет состояние сессии, разрешения манифеста исполняются как белый список, а каждый канал получает только поддержанные действия.
 - **Декларативная пространственная компоновка** — игры с большим полем явно выбирают общий режим `map-first`; карта является основой экрана, а панели остаются доступными web-компонентами поверх неё без игровых исключений в рендерере.
 
 ## 3. Логическая архитектура
@@ -148,18 +148,19 @@ API First применяется на обоих уровнях: current `servic
     команд отдельно проверяется `expectedStateVersion`, а отложенное системное
     срабатывание проверяет свой trigger на текущем состоянии под блокировкой
     сессии. `moduleLock` раздельно закрепляет модуль, его точную версию, hash
-    содержимого и версии алгоритмов. После миграции всех игр
-    `deterministic.effects[]`, 29 вариантов, старый executor, доверенный
-    клиентский `playerId`, двойные `params/payload` и client command maps
-    удаляются без постоянного adapter.
+    содержимого и версии алгоритмов. Все опубликованные игры переведены на этот
+    контракт: `deterministic.effects[]`, 29 вариантов старых эффектов, прежний
+    исполнитель, доверенный клиентский `playerId`, двойные `params/payload` и
+    клиентские таблицы переименования действий удалены без постоянного
+    адаптера совместимости.
   - **Прежняя Three-Tier Logic Model (ADR-029)** описывает фактически
     реализованный переходный слой templates + JsonLogic + script actions, но не
-    целевую форму новых механик. Authoring-макросы будут раскрываться до
-    публикации, JsonLogic переводится в типизированный JSON AST, а произвольные
-    scripts не входят в обычную доверенную транзакцию. Подробное руководство
+    целевую форму новых механик. Authoring-макросы раскрываются до публикации,
+    выражения механик представлены типизированным JSON AST, а произвольные
+    скрипты не входят в обычную доверенную транзакцию. Подробное руководство
     [`docs/architecture/GAME_AUTHORING_GUIDE.md`](docs/architecture/GAME_AUTHORING_GUIDE.md)
-    должно быть обновлено вместе с миграцией исполняемого контракта.
-  - **Gameplay Object State Model (ADR-041)**: игровые объекты (карточки, ресурсы, персонажи, клетки, задачи) получают authoring-first модель состояния. Authoring-манифест описывает типы объектов и фасеты состояния, runtime state хранит object instances, а Presenter строит player-facing projection для UI. Фактически `simple-choice` пока доказывает старые object effects/guards; по ADR-084 модель расширяется visibility, capacity и stable key и мигрирует в typed query/command без постоянного legacy fallback.
+    описывает действующий контракт.
+  - **Gameplay Object State Model (ADR-041)**: игровые объекты (карточки, ресурсы, персонажи, клетки, задачи) получают authoring-first модель состояния. Authoring-манифест описывает типы объектов и фасеты состояния, runtime state хранит экземпляры объектов, а Presenter строит безопасную проекцию для UI. `simple-choice` подтверждает этот путь через типизированные запросы и команды Mechanics IR без старых object effects или постоянного резервного исполнителя.
   - **Semantic Prototype Authoring Layer (ADR-030, Draft)**: целевой authoring-слой для game/UI manifests должен стать обязательным редактируемым источником для новых и изменяемых манифестов; runtime/player продолжают получать generated JSON, валидный по runtime JSON Schema.
   - **Authoring prototype extraction and promotion (ADR-050, Accepted)**: локальные прототипы игры являются первым уровнем дедупликации authoring-структур; платформенные прототипы появляются только через ручное повышение после проверки универсальности, версии, примеров и validation gates. Регулярный аудит разделен на быстрый deterministic PR scan и недельный LLM-семантический поиск смысловых кандидатов, который запускается по расписанию в CI, не применяет изменения и не заменяет deterministic gates; редактор должен предупреждать о пропущенном, просроченном или частичном weekly audit.
   - **Структура манифеста может различаться у разных игр**.
@@ -335,7 +336,7 @@ Git-репозитории его проекта, а публичный runtime 
 - Канонический content bundle `games/antarctica/` с `game.manifest.json`, `ui.manifest.json` и design mockups.
 - Минимальный content bundle `games/simple-choice/`, который подтверждает запуск второй игры через generic `runtime-api` и `player-web` без custom plugin.
 - Минимальный AI-driven content bundle `games/ai-driven-choice/`, который подтверждает manifest-declared Agent Runtime dependency, readiness failure без mock adapter и Agent Turn execution при явном local mock opt-in.
-- Канонический backend runtime `services/runtime-api/` с bounded validation, capability routing и deterministic handlers.
+- Канонический backend runtime `services/runtime-api/` со строгой схемной проверкой, маршрутизацией Game Intent, атомарным исполнением типизированного Mechanics IR и долговечными квитанциями команд.
 - ADR-051 и `TSK-20260613-runtime-api-openapi-contract` реализовали baseline current OpenAPI-контракта для `runtime-api` на этапе модульного монолита.
 - Канонический web player `apps/player-web/`, работающий от `runtime-api`, `games/*` и `packages/contracts/*`; для сложных игр он использует plugin, для простых - default config builder.
 - `draft/cubica-portal-nextjs/` как текущий вариант портала для анализа, доработки и тестового запуска `Antarctica` через launch links.

@@ -529,7 +529,7 @@ export function InteractiveBoardSurface({
                       ) : null}
                       {action.preview?.kind === "transport-road" && hasCurrentPreview && roadPreview ? (
                         <p className={styles.previewResult} role="status">
-                          Стоимость: {roadPreview.response.cost} монет. Сегментов по областям: {roadPreview.response.regionSegments}.
+                          Сегментов по областям: {roadPreview.response.regionSegments}.
                           {roadPreview.response.candidateCount > 1
                             ? ` Равноценных маршрутов: ${roadPreview.response.candidateCount}; выбран один воспроизводимый вариант.`
                             : " Маршрут однозначен."}

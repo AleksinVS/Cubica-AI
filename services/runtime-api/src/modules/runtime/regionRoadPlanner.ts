@@ -8,6 +8,7 @@
  * price and is therefore worse than rejecting the action.
  */
 import { createHash } from "node:crypto";
+import { isDeepStrictEqual } from "node:util";
 import type {
   GameManifestCanonicalPoint,
   GameManifestTransportNetworkModel,
@@ -19,6 +20,16 @@ import type {
 export const REGION_ROAD_PLANNING_MODE = "region-segment-minimum" as const;
 export const REGION_ROAD_PLANNING_ALGORITHM = "region-segment-minimum-v1" as const;
 export const REGION_ROAD_BOUNDARY_POLICY = "lowest-region-id" as const;
+
+/**
+ * Stable internal stream owned by one declared transport network.
+ *
+ * Both preview and authoritative execution use this helper. Keeping the name
+ * derivation beside the route algorithm prevents a UI preview and the later
+ * command from silently resolving an exact tie through different streams.
+ */
+export const regionRoadRandomStreamId = (networkId: string): string =>
+  `graph.${networkId}.road-planning`;
 
 const EPSILON = 1e-9;
 const MAX_REGIONS = 512;
@@ -58,6 +69,37 @@ export interface CompiledRegionRoadPlanning {
   regionsById: Map<string, Region>;
   portalsByPair: Map<string, Array<Portal>>;
 }
+
+/**
+ * Deterministic resource hook used by the Mechanics executor.
+ *
+ * The planner keeps geometry-specific hard ceilings as a final defence, while
+ * this hook makes its work visible to the transaction-wide algorithm budget.
+ */
+export interface RegionRoadPlannerWorkMeter {
+  charge(units: number): void;
+}
+
+const chargePlannerWork = (meter: RegionRoadPlannerWorkMeter | undefined, units: number): void => {
+  if (units > 0) meter?.charge(units);
+};
+
+/** Conservatively price immutable geometry validation before doing the work. */
+const estimateCompilationWork = (model: GameManifestTransportNetworkModel): number => {
+  const vertexCounts = model.regions.map((region) => region.polygon.length);
+  const selfComparisons = vertexCounts.reduce((sum, count) => sum + count * Math.max(0, count - 1) / 2, 0);
+  let crossComparisons = 0;
+  for (let left = 0; left < vertexCounts.length; left += 1) {
+    for (let right = left + 1; right < vertexCounts.length; right += 1) {
+      crossComparisons += vertexCounts[left] * vertexCounts[right];
+    }
+  }
+  // Cross-region geometry is visited by overlap validation, shared-boundary
+  // derivation and bounded interior probes. Charging the conservative upper
+  // bound is stable and prevents unmetered work without wall-clock semantics.
+  return model.regions.length + vertexCounts.reduce((sum, count) => sum + count, 0) +
+    selfComparisons + crossComparisons * 8 + (model.roadPlanning?.navigationGraph.portals.length ?? 0);
+};
 
 const finitePoint = (raw: Point, label: string): Point => {
   if (!raw || typeof raw.x !== "number" || !Number.isFinite(raw.x) ||
@@ -263,7 +305,10 @@ export const canonicalizeRoadPlanningRegions = (
     }
     polygon = [...polygon.slice(firstIndex), ...polygon.slice(0, firstIndex)];
     assertSimplePolygon(polygon, rawRegion.id);
-    return { id: rawRegion.id, polygon };
+    // The length check above proves the schema-generated non-empty tuple.
+    // Array transforms cannot preserve that fact in TypeScript's inference, so
+    // restore the precise schema-derived type only at this validated boundary.
+    return { id: rawRegion.id, polygon: polygon as Region["polygon"] };
   });
   const sorted = regions.sort((left, right) => codepointCompare(left.id, right.id));
   assertDisjointRegionInteriors(sorted);
@@ -381,11 +426,15 @@ export const computeRegionRoadPlanningHash = (options: {
   regions: ReadonlyArray<Region>;
   portals: ReadonlyArray<Portal>;
 }): string => {
+  // Hash the planner's canonical semantic objects, not the incidental key
+  // insertion order of a manifest after a JSONB or immutable-bundle round trip.
+  // Arrays retain their meaningful canonical order; object property order does
+  // not become part of the game's geometry identity.
   const source = JSON.stringify({
     algorithmVersion: options.algorithmVersion,
     boundaryPolicy: options.boundaryPolicy,
-    regions: options.regions,
-    portals: options.portals
+    regions: canonicalizeRoadPlanningRegions(options.regions),
+    portals: canonicalizeDeclaredPortals(options.portals)
   });
   return `sha256:${createHash("sha256").update(source).digest("hex")}`;
 };
@@ -401,15 +450,12 @@ export const compileRegionRoadPlanning = (
       planning.tieBreak !== "session-random" || planning.boundaryPolicy !== REGION_ROAD_BOUNDARY_POLICY) {
     throw new Error("Transport network declares an unsupported road-planning contract");
   }
-  if (planning.excludedRegionIdsPath && !planning.excludedRegionIdsPath.startsWith(`/${model.visibility}/`)) {
-    throw new Error("Road-planning excluded regions path must use the network visibility branch");
-  }
   const regions = canonicalizeRoadPlanningRegions(model.regions);
   const portals = canonicalizeDeclaredPortals(planning.navigationGraph.portals);
   // Planned content is required to be compiler-canonical. Silently normalising
   // at runtime would make the advertised package hash ambiguous.
-  if (JSON.stringify(model.regions) !== JSON.stringify(regions) ||
-      JSON.stringify(planning.navigationGraph.portals) !== JSON.stringify(portals)) {
+  if (!isDeepStrictEqual(model.regions, regions) ||
+      !isDeepStrictEqual(planning.navigationGraph.portals, portals)) {
     throw new Error("Road-planning regions and portals must use compiler-canonical ordering");
   }
   const regionIds = new Set(regions.map((region) => region.id));
@@ -490,7 +536,8 @@ const shortestInsidePath = (
   from: Point,
   to: Point,
   region: Region,
-  forbiddenSharedBoundaries: ReadonlyArray<Pick<Portal, "from" | "to">>
+  forbiddenSharedBoundaries: ReadonlyArray<Pick<Portal, "from" | "to">>,
+  workMeter?: RegionRoadPlannerWorkMeter
 ): Array<Point> => {
   if (pointNearlyEquals(from, to)) return [{ ...from }];
   const nodes = [from, to, ...region.polygon].filter((point, index, all) =>
@@ -499,6 +546,10 @@ const shortestInsidePath = (
   if (estimatedWork > MAX_VISIBILITY_WORK) {
     throw new Error(`Road route through region "${region.id}" exceeds bounded v1 visibility work`);
   }
+  // Include the visibility graph and the bounded shortest-path scan. The
+  // estimate is charged before either loop, so a transaction budget rejects
+  // the route without first performing the expensive work.
+  chargePlannerWork(workMeter, estimatedWork + nodes.length * nodes.length);
   const adjacency: Array<Array<{ index: number; length: number }>> = nodes.map(() => []);
   for (let left = 0; left < nodes.length; left += 1) {
     for (let right = left + 1; right < nodes.length; right += 1) {
@@ -570,7 +621,9 @@ const enumerateMinimumSequences = (options: {
   from: Point;
   to: Point;
   excluded: Set<string>;
+  workMeter?: RegionRoadPlannerWorkMeter;
 }): Array<Array<string>> => {
+  chargePlannerWork(options.workMeter, options.compiled.regions.length + options.compiled.portals.length);
   const available = options.compiled.regions.filter((region) => !options.excluded.has(region.id));
   const directBoundaryOwner = options.compiled.portals
     .filter((portal) => pointOnSegment(options.from, portal.from, portal.to) &&
@@ -603,7 +656,9 @@ const enumerateMinimumSequences = (options: {
   for (let cursor = 0; cursor < queue.length; cursor += 1) {
     const current = queue[cursor];
     const nextDistance = (distanceByRegion.get(current) as number) + 1;
-    for (const next of [...(adjacency.get(current) ?? [])].sort(codepointCompare)) {
+    const neighbours = [...(adjacency.get(current) ?? [])].sort(codepointCompare);
+    chargePlannerWork(options.workMeter, neighbours.length);
+    for (const next of neighbours) {
       const known = distanceByRegion.get(next);
       if (known === undefined) {
         distanceByRegion.set(next, nextDistance);
@@ -619,6 +674,7 @@ const enumerateMinimumSequences = (options: {
   const minimum = Math.min(...reachableEnds.map((regionId) => distanceByRegion.get(regionId) as number));
   const sequences: Array<Array<string>> = [];
   const collect = (regionId: string, suffix: Array<string>) => {
+    chargePlannerWork(options.workMeter, 1);
     if (sequences.length >= MAX_ROUTE_CANDIDATES) {
       throw new Error(`Road planning exceeds ${MAX_ROUTE_CANDIDATES} equal minimum route candidates`);
     }
@@ -643,7 +699,8 @@ const buildCandidateForPortals = (
   sequence: Array<string>,
   from: Point,
   to: Point,
-  selectedPortals: Array<Portal>
+  selectedPortals: Array<Portal>,
+  workMeter?: RegionRoadPlannerWorkMeter
 ): RegionRoadCandidate => {
   const transitionPoints = selectedPortals.map((portal) => interpolate(portal.from, portal.to, 0.5));
   const points: Array<Point> = [];
@@ -655,7 +712,7 @@ const buildCandidateForPortals = (
     const exit = index === sequence.length - 1 ? to : transitionPoints[index];
     const forbiddenSharedBoundaries = compiled.portals.filter((portal) =>
       portal.regionIds[1] === region.id).map((portal) => ({ from: portal.from, to: portal.to }));
-    const localPath = shortestInsidePath(entry, exit, region, forbiddenSharedBoundaries);
+    const localPath = shortestInsidePath(entry, exit, region, forbiddenSharedBoundaries, workMeter);
     const startIndex = points.length === 0 ? 0 : points.length - 1;
     if (points.length === 0) points.push(...localPath);
     else points.push(...localPath.slice(1));
@@ -679,7 +736,8 @@ const buildCandidate = (
   compiled: CompiledRegionRoadPlanning,
   sequence: Array<string>,
   from: Point,
-  to: Point
+  to: Point,
+  workMeter?: RegionRoadPlannerWorkMeter
 ): RegionRoadCandidate => {
   const portalOptions: Array<Array<Portal>> = [];
   let combinationCount = 1;
@@ -705,7 +763,7 @@ const buildCandidate = (
   const candidates: Array<RegionRoadCandidate> = [];
   for (const portals of combinations) {
     try {
-      candidates.push(buildCandidateForPortals(compiled, sequence, from, to, portals));
+      candidates.push(buildCandidateForPortals(compiled, sequence, from, to, portals, workMeter));
     } catch (error) {
       if (!(error instanceof InvalidRegionRoadCandidateError)) throw error;
     }
@@ -731,10 +789,12 @@ export const prepareMinimumRegionRoadCandidates = (options: {
   from: Point;
   to: Point;
   excludedRegionIds?: ReadonlyArray<string>;
+  workMeter?: RegionRoadPlannerWorkMeter;
 }): { compiled: CompiledRegionRoadPlanning; candidates: Array<RegionRoadCandidate> } => {
   const from = finitePoint(options.from, "Road origin");
   const to = finitePoint(options.to, "Road destination");
   if (pointNearlyEquals(from, to)) throw new Error("Road endpoints must have different positions");
+  chargePlannerWork(options.workMeter, estimateCompilationWork(options.model));
   const compiled = compileRegionRoadPlanning(options.model);
   const excluded = new Set(options.excludedRegionIds ?? []);
   for (const regionId of excluded) {
@@ -742,15 +802,19 @@ export const prepareMinimumRegionRoadCandidates = (options: {
       throw new Error(`Excluded road-planning region "${String(regionId)}" is not declared`);
     }
   }
-  const sequences = enumerateMinimumSequences({ compiled, from, to, excluded });
+  const sequences = enumerateMinimumSequences({ compiled, from, to, excluded, workMeter: options.workMeter });
   const candidates: Array<RegionRoadCandidate> = [];
   for (const sequence of sequences) {
     try {
-      candidates.push(buildCandidate(compiled, sequence, from, to));
+      candidates.push(buildCandidate(compiled, sequence, from, to, options.workMeter));
     } catch (error) {
       if (!(error instanceof InvalidRegionRoadCandidateError)) throw error;
     }
   }
   if (candidates.length === 0) throw new Error("No geometrically valid minimum-region road exists");
+  chargePlannerWork(
+    options.workMeter,
+    candidates.reduce((sum, candidate) => sum + candidate.points.length + candidate.regionSequence.length, 0)
+  );
   return { compiled, candidates };
 };

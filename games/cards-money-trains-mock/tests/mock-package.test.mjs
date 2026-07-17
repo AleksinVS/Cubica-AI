@@ -13,6 +13,7 @@ import {
   getPublishedPlayerWebPluginBundleSource,
   loadPlayerFacingContent
 } from "../../../services/runtime-api/src/modules/content/contentService.ts";
+import { createImmutableBundleContent } from "../../../services/runtime-api/src/modules/content/immutableBundle.ts";
 import { dispatchRuntimeAction } from "../../../services/runtime-api/src/modules/runtime/actionDispatcher.ts";
 import { createCanonicalReplayFingerprint } from "../../../services/runtime-api/src/modules/runtime/replayFingerprint.ts";
 import { InMemorySessionStore } from "../../../services/runtime-api/src/modules/session/inMemorySessionStore.ts";
@@ -24,6 +25,183 @@ import {
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const readJson = async (relativePath) => JSON.parse(await readFile(path.join(packageRoot, relativePath), "utf8"));
+const sha256Pattern = /^sha256:[0-9a-f]{64}$/u;
+const testCredentialSha256 = "a".repeat(64);
+// Gameplay transcript tests exercise the published rules, not HTTP admission.
+// Passing the explicit port keeps the production dispatcher dependency honest
+// while rate/quota behavior remains covered by command-admission.test.ts.
+const testAdmissionController = {
+  async assertNewCommandAdmitted() {}
+};
+let nextCommandSequence = 1;
+
+const createTestCommandId = () => {
+  const bytes = Buffer.alloc(16);
+  bytes.writeUInt32BE(nextCommandSequence, 12);
+  nextCommandSequence += 1;
+  return `cli_${bytes.toString("base64url")}`;
+};
+
+/** Creates a fully authenticated session over the same immutable bundle runtime will replay. */
+const createFacilitatorSession = async (manifest, initialState = structuredClone(manifest.state)) => {
+  const immutableBundle = createImmutableBundleContent(manifest.meta.id, manifest);
+  const store = new InMemorySessionStore();
+  const created = await store.createSession({
+    gameId: manifest.meta.id,
+    sessionRole: "facilitator",
+    initialState,
+    immutableBundle,
+    principal: {
+      principalId: "mock-test-facilitator",
+      kind: "local-controller",
+      role: "facilitator",
+      actorScope: { kind: "all-session-actors" },
+      credentialSha256: testCredentialSha256
+    }
+  });
+  return { store, session: created.session };
+};
+
+/** Dispatches one logical test command with a fresh idempotency identity. */
+const dispatchTestAction = async ({ store, sessionId, actionId, params = {} }) => {
+  const current = await store.getSession(sessionId);
+  return dispatchRuntimeAction({
+    sessionStore: store,
+    credentialSha256: testCredentialSha256,
+    admissionController: testAdmissionController,
+    input: {
+      sessionId,
+      actionId,
+      commandId: createTestCommandId(),
+      expectedStateVersion: current.version.stateVersion,
+      params
+    }
+  });
+};
+
+/**
+ * Gameplay rule failures are durable terminal command outcomes, not transport
+ * exceptions. Verify both the rejected receipt and the safe public diagnostic
+ * while the surrounding assertions prove that state stayed unchanged.
+ */
+const assertRejectedAction = async (dispatch, messagePattern) => {
+  const outcome = await dispatch;
+  assert.equal(outcome.result.ok, false);
+  assert.equal(outcome.receipt.status, "rejected");
+  assert.match(
+    `${outcome.result.error?.code ?? ""} ${outcome.result.error?.message ?? ""}`,
+    messagePattern
+  );
+};
+
+/**
+ * Returns the complete published operation vocabulary used by this game.
+ *
+ * Keeping the assertion at the operation boundary prevents a domain-specific
+ * train command from slipping into the platform language unnoticed.
+ */
+const collectMechanicsOperations = (mechanics) => [...new Set(
+  Object.values(mechanics.plans).flatMap((plan) =>
+    plan.transaction.steps.map((step) => step.op)
+  )
+)].sort();
+
+/** Recursively collects typed state and collection references from one plan. */
+const collectPlanReferences = (value, references = { endpoints: new Set(), collections: new Set() }) => {
+  if (Array.isArray(value)) {
+    for (const item of value) collectPlanReferences(item, references);
+    return references;
+  }
+  if (!value || typeof value !== "object") return references;
+  if (typeof value.endpoint === "string") references.endpoints.add(value.endpoint);
+  if (typeof value.collection === "string") references.collections.add(value.collection);
+  for (const child of Object.values(value)) collectPlanReferences(child, references);
+  return references;
+};
+
+/**
+ * Verifies compiler-owned identity and all Mechanics IR references shared by
+ * every action. The hashes make a receipt name the exact immutable rule used.
+ */
+const assertPublishedMechanicsContract = (manifest) => {
+  assert.equal(manifest.mechanics.apiVersion, "cubica.dev/mechanics/v1alpha1");
+  assert.equal(Object.keys(manifest.actions).length, Object.keys(manifest.mechanics.plans).length);
+
+  for (const [actionId, action] of Object.entries(manifest.actions)) {
+    assert.deepEqual(action.binding, { kind: "mechanics-plan", planRef: actionId });
+    assert.match(action.definitionHash, sha256Pattern, `${actionId} must have a compiler-owned definition hash`);
+    assert.match(
+      manifest.mechanics.plans[actionId].planHash,
+      sha256Pattern,
+      `${actionId} must address an immutable Mechanics plan`
+    );
+  }
+
+  const operationModules = {
+    "core.assert": "cubica.core",
+    "core.collection.id.allocate": "cubica.core",
+    "core.entities.score": "cubica.core",
+    "core.entities.select": "cubica.core",
+    "core.entities.update": "cubica.core",
+    "core.entity.attributes.patch": "cubica.core",
+    "core.entity.create": "cubica.core",
+    "core.entity.facet.set": "cubica.core",
+    "core.event.emit": "cubica.core",
+    "core.number.add": "cubica.core",
+    "core.ranking.stable": "cubica.core",
+    "core.resource.transfer": "cubica.core",
+    "core.state.patch": "cubica.core",
+    "deck.draw": "cubica.deck",
+    "deck.shuffle": "cubica.deck",
+    "graph.edge.split": "cubica.graph",
+    "graph.entity.traverse": "cubica.graph",
+    "graph.regions.route.plan": "cubica.graph",
+    "graph.shortestPath": "cubica.graph",
+    "relation.attach": "cubica.relations",
+    "relation.detach": "cubica.relations"
+  };
+  assert.deepEqual(collectMechanicsOperations(manifest.mechanics), Object.keys(operationModules).sort());
+  assert.deepEqual(
+    Object.keys(manifest.mechanics.moduleLock),
+    ["cubica.core", "cubica.random", "cubica.deck", "cubica.graph", "cubica.relations"],
+    "the compiler must publish the exact dependency-closed module lock"
+  );
+  for (const moduleId of Object.keys(manifest.mechanics.moduleLock)) {
+    const lock = manifest.mechanics.moduleLock[moduleId];
+    assert.equal(lock.moduleId, moduleId);
+    assert.match(lock.moduleVersion, /^(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/u);
+    assert.match(lock.artifactHash, sha256Pattern);
+  }
+
+  const references = collectPlanReferences(manifest.mechanics.plans);
+  for (const endpoint of references.endpoints) {
+    assert.ok(manifest.mechanics.stateModel.endpoints[endpoint], `undeclared state endpoint: ${endpoint}`);
+  }
+  for (const collection of references.collections) {
+    assert.ok(manifest.mechanics.stateModel.collections[collection], `undeclared collection: ${collection}`);
+  }
+
+  const rankingEndpoint = manifest.mechanics.stateModel.endpoints["public.ranking"];
+  assert.equal(
+    manifest.mechanics.stateModel.types[rankingEndpoint.valueType].kind,
+    "record",
+    "the neutral ranking composition must target a typed record"
+  );
+  const rankingResultType = manifest.mechanics.stateModel.types[rankingEndpoint.valueType];
+  const groupMapType = manifest.mechanics.stateModel.types[rankingResultType.fields.groups.typeRef];
+  const groupType = manifest.mechanics.stateModel.types[groupMapType.valueType];
+  const standingListType = manifest.mechanics.stateModel.types[groupType.fields.standings.typeRef];
+  const standingType = manifest.mechanics.stateModel.types[standingListType.itemType];
+  assert.deepEqual(Object.keys(standingType.fields).sort(), [
+    "baseValue",
+    "entityId",
+    "rank",
+    "relatedItems",
+    "relatedValue",
+    "score"
+  ]);
+  assert.deepEqual(manifest.state.public.ranking, { groups: {} });
+};
 
 test("mock annotation validates and reproduces the committed manifest fragment", async () => {
   const annotationPath = path.join(packageRoot, "annotations", "map-annotation.mock.json");
@@ -85,24 +263,22 @@ test("semantic validation rejects dangling references, out-of-bounds points and 
 test("compiled mock executes the documented operating and construction transcript", async () => {
   const manifest = validateGameManifest(await readJson("game.manifest.json"));
   const transcript = await readJson("fixtures/control-transcript.json");
-  const store = new InMemorySessionStore();
-  const session = await store.createSession({
-    gameId: manifest.meta.id,
-    sessionRole: "facilitator",
-    initialState: structuredClone(manifest.state)
-  });
-  const bundle = { gameId: manifest.meta.id, manifest };
+  const { store, session } = await createFacilitatorSession(manifest);
 
   for (const step of transcript.steps) {
-    await dispatchRuntimeAction({
-      sessionStore: store,
-      bundle,
-      input: {
-        sessionId: session.sessionId,
-        actionId: step.actionId,
-        ...(step.params ? { params: step.params } : {})
-      }
+    const outcome = await dispatchTestAction({
+      store,
+      sessionId: session.sessionId,
+      actionId: step.actionId,
+      params: step.params ?? {}
     });
+    assert.equal(outcome.result.ok, true, `control step ${step.order} must be applied`);
+    assert.equal(outcome.receipt.status, "applied", `control step ${step.order} must have an applied receipt`);
+    if (step.order === 16) {
+      const afterDelivery = await store.getSession(session.sessionId);
+      assert.equal(afterDelivery.state.public.teams["white-logistics"].coins, 9);
+      assert.equal(afterDelivery.state.public.teams["purple-guild"].coins, 11);
+    }
   }
 
   const current = await store.getSession(session.sessionId);
@@ -145,28 +321,21 @@ test("compiled mock executes the documented operating and construction transcrip
 
 test("closed edge, full terminal, premature delivery and insufficient maintenance fail atomically", async () => {
   const manifest = validateGameManifest(await readJson("game.manifest.json"));
-  const bundle = { gameId: manifest.meta.id, manifest };
   const createSession = async (mutate) => {
     const state = structuredClone(manifest.state);
     mutate?.(state);
-    const store = new InMemorySessionStore();
-    const session = await store.createSession({
-      gameId: manifest.meta.id,
-      sessionRole: "facilitator",
-      initialState: state
-    });
-    return { store, session };
+    return createFacilitatorSession(manifest, state);
   };
 
   const underfunded = await createSession((state) => {
     state.public.session.phase = "maintenance";
     state.public.teams["white-logistics"].coins = 1;
   });
-  await assert.rejects(
-    dispatchRuntimeAction({
-      sessionStore: underfunded.store,
-      bundle,
-      input: { sessionId: underfunded.session.sessionId, actionId: "mock.maintenance.pay" }
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: underfunded.store,
+      sessionId: underfunded.session.sessionId,
+      actionId: "mock.maintenance.pay"
     }),
     /negative|insufficient/i
   );
@@ -181,15 +350,12 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
     state.public.session.phase = "operations";
     state.public.objects.networkEdges["mock-edge-b-c"].facets.state = "blocked";
   });
-  await assert.rejects(
-    dispatchRuntimeAction({
-      sessionStore: closed.store,
-      bundle,
-      input: {
-        sessionId: closed.session.sessionId,
-        actionId: "mock.locomotive.move",
-        params: { vehicleId: "mock-locomotive-purple-1", edgeId: "mock-edge-b-c" }
-      }
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: closed.store,
+      sessionId: closed.session.sessionId,
+      actionId: "mock.locomotive.move",
+      params: { vehicleId: "mock-locomotive-purple-1", edgeId: "mock-edge-b-c" }
     }),
     /not in an allowed state|unavailable for movement/i
   );
@@ -201,15 +367,12 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   const full = await createSession((state) => {
     state.public.session.phase = "operations";
   });
-  await assert.rejects(
-    dispatchRuntimeAction({
-      sessionStore: full.store,
-      bundle,
-      input: {
-        sessionId: full.session.sessionId,
-        actionId: "mock.locomotive.move",
-        params: { vehicleId: "mock-locomotive-purple-1", edgeId: "mock-edge-b-c" }
-      }
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: full.store,
+      sessionId: full.session.sessionId,
+      actionId: "mock.locomotive.move",
+      params: { vehicleId: "mock-locomotive-purple-1", edgeId: "mock-edge-b-c" }
     }),
     /capacity/i
   );
@@ -220,17 +383,14 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   const premature = await createSession((state) => {
     state.public.session.phase = "operations";
   });
-  await assert.rejects(
-    dispatchRuntimeAction({
-      sessionStore: premature.store,
-      bundle,
-      input: {
-        sessionId: premature.session.sessionId,
-        actionId: "mock.cargo.deliver",
-        params: { wagonId: "mock-wagon-white-1", cargoId: "mock-cargo-b-c" }
-      }
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: premature.store,
+      sessionId: premature.session.sessionId,
+      actionId: "mock.cargo.deliver",
+      params: { wagonId: "mock-wagon-white-1", cargoId: "mock-cargo-b-c" }
     }),
-    /not reached its destination/i
+    /CARGO_DELIVERY_INVALID|assertion/i
   );
   current = await premature.store.getSession(premature.session.sessionId);
   assert.equal(current.version.stateVersion, 0);
@@ -241,15 +401,12 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   const incompatible = await createSession((state) => {
     state.public.session.phase = "operations";
   });
-  await assert.rejects(
-    dispatchRuntimeAction({
-      sessionStore: incompatible.store,
-      bundle,
-      input: {
-        sessionId: incompatible.session.sessionId,
-        actionId: "mock.operations.attach.incompatible",
-        params: { vehicleId: "mock-locomotive-purple-1", wagonId: "mock-wagon-red-1" }
-      }
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: incompatible.store,
+      sessionId: incompatible.session.sessionId,
+      actionId: "mock.operations.attach.incompatible",
+      params: { vehicleId: "mock-locomotive-purple-1", wagonId: "mock-wagon-red-1" }
     }),
     /incompatible/i
   );
@@ -261,11 +418,11 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
     state.public.session.phase = "market";
     state.public.teams["green-guild"].coins = 9;
   });
-  await assert.rejects(
-    dispatchRuntimeAction({
-      sessionStore: marketCredit.store,
-      bundle,
-      input: { sessionId: marketCredit.session.sessionId, actionId: "mock.market.buy.green-locomotive" }
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: marketCredit.store,
+      sessionId: marketCredit.session.sessionId,
+      actionId: "mock.market.buy.green-locomotive"
     }),
     /negative|insufficient/i
   );
@@ -278,9 +435,10 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
   );
 });
 
-test("full mock data declares hidden reproducible decks and accepted reusable effects", async () => {
+test("full mock data declares hidden decks and an immutable, fully typed Mechanics program", async () => {
   const manifest = validateGameManifest(await readJson("game.manifest.json"));
   const gameplay = await readJson("fixtures/mock-gameplay-data.json");
+  const mechanicsSource = await readJson("authoring/mechanics.source.json");
   const textContent = await readJson("fixtures/mock-text-content.json");
   assert.deepEqual(gameplay.phaseOrder, [
     "setup", "news", "maintenance", "market", "cargo",
@@ -293,24 +451,197 @@ test("full mock data declares hidden reproducible decks and accepted reusable ef
   assert.equal(Object.keys(manifest.state.public.objects.cargoCards).length, textContent.cargoCards.length);
   assert.deepEqual(manifest.content.data.mockGameplay.roles, textContent.roles);
   assert.equal(manifest.content.data.mockGameplay.newsCards[0].title, textContent.newsCards[0].title);
+  assert.equal(manifest.config.runtimeReady, true);
+  assert.equal(Object.hasOwn(manifest.config, "runtimeBlockers"), false);
+  assert.equal(Object.hasOwn(manifest.content.data, "contentGates"), false);
 
-  const effects = Object.values(manifest.actions).flatMap((action) => action.deterministic?.effects ?? []);
-  for (const expected of [
-    "deck.shuffle", "deck.draw", "transport.cargo.load", "transport.vehicle.attach",
-    "transport.vehicle.detach", "transport.cargo.deliver",
-    "transport.construction.activateDue", "ranking.compute"
+  assertPublishedMechanicsContract(manifest);
+  assert.equal(Object.hasOwn(mechanicsSource.mechanics, "moduleLock"), false);
+  assert.equal(
+    Object.hasOwn(manifest.mechanics.stateModel.endpoints, "public.objects.wagons"),
+    false,
+    "the collection is the typed source of truth; a concrete snapshot endpoint must not narrow later writes"
+  );
+  for (const fieldId of ["cargoId", "attachedVehicleId"]) {
+    assert.equal(manifest.mechanics.stateModel.collections.wagons.fields[fieldId].valueType, "core.optional-string");
+  }
+  assert.deepEqual(manifest.mechanics.stateModel.types["core.optional-string"], {
+    kind: "option",
+    itemType: "core.string"
+  });
+  assert.deepEqual(mechanicsSource.mechanics.macros["cmt.cargo.deliver"].inputs.tariffPerEdge, {
+    kind: "value-expression"
+  });
+  const cargoDeliveryInvocations = Object.values(mechanicsSource.mechanics.plans).flatMap((plan) =>
+    plan.transaction.steps.filter((step) => step.macro === "cmt.cargo.deliver")
+  );
+  assert.equal(cargoDeliveryInvocations.length, 2);
+  for (const invocation of cargoDeliveryInvocations) {
+    assert.deepEqual(invocation.args.tariffPerEdge, { op: "value.literal", value: 2 });
+  }
+  assert.deepEqual(Object.keys(mechanicsSource.mechanics.macros).sort(), [
+    "cmt.cargo.deliver",
+    "cmt.cargo.load",
+    "cmt.construction.road",
+    "cmt.construction.waypoint",
+    "cmt.graph.traverse-with-action",
+    "cmt.ranking.compute",
+    "cmt.relation.attach-with-action",
+    "cmt.relation.detach-with-action"
+  ]);
+  assert.equal(Object.hasOwn(manifest.mechanics, "macros"), false, "authoring macros must never reach runtime IR");
+
+  const serializedMechanics = JSON.stringify(manifest.mechanics);
+  for (const legacyTerm of [
+    "graph.asset.traverse",
+    "graph.regions.edge.insert",
+    "inventory.item.load",
+    "inventory.item.deliver",
+    "ranking.groups.compute"
   ]) {
-    assert.equal(effects.some((effect) => effect.op === expected), true, `${expected} must be composed by the mock`);
+    assert.equal(serializedMechanics.includes(legacyTerm), false, `published Mechanics must not contain ${legacyTerm}`);
   }
-  assert.equal(manifest.networkModels.main.constructionLifecycle.activationDelayTurns, 2);
-  assert.equal(manifest.networkModels.main.constructionLifecycle.turnCounterPath, "/public/session/turnNumber");
-  for (const transfer of effects.filter((effect) => effect.op === "metric.transfer")) {
-    assert.equal(typeof transfer.from.scope, "string");
-    assert.equal(typeof transfer.to.scope, "string");
+  for (const removedField of [
+    "cargoDelivery",
+    "roadCostPerRegionSegment",
+    "waypointCost",
+    "constructionLifecycle"
+  ]) {
+    assert.equal(Object.hasOwn(manifest.networkModels.main, removedField), false, `graph model must not contain ${removedField}`);
+  }
+  assert.equal(Object.hasOwn(manifest.networkModels.main.movement, "actionPointsAttribute"), false);
+
+  const planOps = (planId) => manifest.mechanics.plans[planId].transaction.steps.map((step) => step.op);
+  assert.deepEqual(planOps("mock.cargo.load.white"), [
+    "core.assert",
+    "core.assert",
+    "core.entity.attributes.patch",
+    "core.entity.facet.set",
+    "core.number.add",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("mock.cargo.deliver"), [
+    "core.assert",
+    "core.assert",
+    "graph.shortestPath",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "core.entity.attributes.patch",
+    "core.entity.facet.set",
+    "core.entity.attributes.patch",
+    "core.number.add",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("mock.locomotive.move"), [
+    "core.assert",
+    "core.assert",
+    "graph.entity.traverse",
+    "core.entity.attributes.patch",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("mock.operations.attach.white"), [
+    "core.assert",
+    "core.assert",
+    "relation.attach",
+    "core.entity.attributes.patch",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("mock.operations.detach.white"), [
+    "core.assert",
+    "core.assert",
+    "relation.detach",
+    "core.entity.attributes.patch",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("mock.ranking.compute"), [
+    "core.assert",
+    "core.entities.score",
+    "core.ranking.stable",
+    "core.state.patch",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("construction.road.build"), [
+    "core.assert",
+    "graph.regions.route.plan",
+    "core.assert",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "core.collection.id.allocate",
+    "core.entity.create"
+  ]);
+  assert.deepEqual(planOps("construction.waypoint.build"), [
+    "core.assert",
+    "core.assert",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "core.resource.transfer",
+    "graph.edge.split",
+    "core.entity.facet.set",
+    "core.entity.attributes.patch",
+    "core.entity.facet.set",
+    "core.entity.attributes.patch",
+    "core.entity.facet.set",
+    "core.entity.attributes.patch"
+  ]);
+  const transfers = Object.values(manifest.mechanics.plans).flatMap((plan) =>
+    plan.transaction.steps.filter((step) => step.op === "core.resource.transfer")
+  );
+  for (const transfer of transfers) {
+    assert.equal(typeof transfer.from.kind, "string");
+    assert.equal(typeof transfer.to.kind, "string");
     assert.equal(transfer.onInsufficient, "fail");
-    assert.equal("kind" in transfer.from || "kind" in transfer.to, false);
-    assert.equal("insufficientFunds" in transfer, false);
   }
+
+  // Construction activation is ordinary bounded selection plus bulk update;
+  // no train-specific platform command or hard-coded constructed object exists.
+  const activationSteps = manifest.mechanics.plans["mock.construction.open-control-projects"].transaction.steps;
+  assert.deepEqual(activationSteps.map((step) => step.op), [
+    "core.assert",
+    "core.entities.select",
+    "core.entities.update",
+    "core.entities.select",
+    "core.entities.update",
+    "core.entities.select",
+    "core.entities.update",
+    "core.entities.select",
+    "core.entities.update",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(
+    activationSteps.filter((step) => step.op === "core.entities.select").map((step) => step.selector.collection),
+    ["networkNodes", "networkNodes", "networkEdges", "networkEdges"]
+  );
+  assert.equal(
+    activationSteps.filter((step) => step.op === "core.entities.update").every((step) => step.selection.op === "value.result"),
+    true
+  );
+
+  // The next-turn plan resets every currently active locomotive, including
+  // locomotives bought after the game started, through one data-driven query.
+  const nextTurnSteps = manifest.mechanics.plans["mock.debrief.next-turn"].transaction.steps;
+  const activeLocomotives = nextTurnSteps.find((step) => step.id === "s013-active-assets");
+  const resetLocomotives = nextTurnSteps.find((step) => step.id === "s014-reset-assets");
+  assert.deepEqual(activeLocomotives, {
+    id: "s013-active-assets",
+    kind: "query",
+    op: "core.entities.select",
+    selector: {
+      collection: "locomotives",
+      objectTypes: ["transport.locomotive"],
+      facets: { availability: { op: "value.literal", value: "active" } },
+      cardinality: { min: 0, max: 64 }
+    }
+  });
+  assert.deepEqual(resetLocomotives, {
+    id: "s014-reset-assets",
+    kind: "command",
+    op: "core.entities.update",
+    selection: { op: "value.result", stepId: "s013-active-assets" },
+    attributeValues: { actionPoints: { op: "value.literal", value: 5 } }
+  });
 
   for (const collection of ["locomotives", "wagons"]) {
     for (const vehicle of Object.values(manifest.state.public.objects[collection])) {
@@ -333,25 +664,31 @@ test("complete seven-turn gameplay is replay-stable and finishes only after faci
   assert.equal(transcript.rejectionProbes.length, 7);
 
   const replay = async () => {
-    const store = new InMemorySessionStore();
-    const session = await store.createSession({
-      gameId: manifest.meta.id,
-      sessionRole: "facilitator",
-      initialState: structuredClone(manifest.state)
-    });
-    const bundle = { gameId: manifest.meta.id, manifest };
+    const { store, session } = await createFacilitatorSession(manifest);
     let current = session;
     for (const step of transcript.steps) {
-      await dispatchRuntimeAction({
-        sessionStore: store,
-        bundle,
-        input: {
-          sessionId: session.sessionId,
-          expectedStateVersion: current.version.stateVersion,
-          actionId: step.actionId,
-          ...(step.params ? { params: step.params } : {})
-        }
+      const outcome = await dispatchTestAction({
+        store,
+        sessionId: session.sessionId,
+        actionId: step.actionId,
+        params: step.params ?? {}
       });
+      assert.equal(
+        outcome.result.ok,
+        true,
+        `replay step ${step.order} must be applied: ${JSON.stringify({
+          result: outcome.result,
+          receipt: outcome.receipt
+        })}`
+      );
+      assert.equal(
+        outcome.receipt.status,
+        "applied",
+        `replay step ${step.order} must have an applied receipt: ${JSON.stringify({
+          result: outcome.result,
+          receipt: outcome.receipt
+        })}`
+      );
       current = await store.getSession(session.sessionId);
       assert.ok(current);
       assert.equal(current.state.public.session.phase, step.expected.phase, `phase after step ${step.order}`);
@@ -428,9 +765,9 @@ test("published repository loads mock UI, immutable plugin and registered WebP m
   assert.deepEqual(delivery.bytes, normativeMap);
 });
 
-test("normative manifest remains separately addressed and contains no mock marker", async () => {
+test("normative manifest remains separately addressed and keeps its platform network model", async () => {
   const normative = JSON.parse(await readFile(path.join(packageRoot, "..", "cards-money-trains", "game.manifest.json"), "utf8"));
   assert.equal(normative.meta.id, "cards-money-trains");
   assert.equal(normative.content.data.mockNotice, undefined);
-  assert.equal(normative.networkModels, undefined);
+  assert.ok(normative.networkModels.main);
 });

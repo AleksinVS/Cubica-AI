@@ -23,7 +23,6 @@ import {
   readCanAdvance as readCanAdvanceGeneric,
   readPublicState,
   readScreenId,
-  readSecretState,
   readStepIndex,
   resolveGameContent
 } from "@cubica/player-web/plugin-api";
@@ -42,9 +41,9 @@ type CardObjectState = {
  * Antarctica-specific state-shape types (moved out of the generic player-web
  * lib per ADR-055 §5).
  *
- * The platform stores these buckets inside the opaque public/secret session
- * state but must not know their shape. The plugin owns the shapes and casts the
- * generic accessor results (readPublicState/readSecretState) to them below.
+ * The platform stores this game-owned data inside opaque public session state
+ * but must not know its shape. The plugin owns the shape and casts the generic
+ * readPublicState accessor result below.
  */
 type TeamFlagState = {
   selected?: boolean;
@@ -63,14 +62,10 @@ type AntarcticaPublicState = {
   objects?: {
     cards?: Record<string, CardObjectState>;
   };
-  teamSelection?: TeamSelectionState;
-};
-
-/** Antarctica view over the generic secret session state. */
-type AntarcticaSecretState = {
   opening?: {
     selectedCardId?: string;
   };
+  teamSelection?: TeamSelectionState;
 };
 
 /**
@@ -435,10 +430,14 @@ export function readCanAdvance(session: SessionSnapshot | null): boolean {
 }
 
 /**
- * Reads the Antarctica selected go-card id (`secret.opening.selectedCardId`).
+ * Reads the Antarctica selected go-card id (`public.opening.selectedCardId`).
+ *
+ * The selected card drives visible UI, so it is public game state. Keeping it
+ * outside `secret` also lets the runtime omit the whole secret branch from
+ * every player-facing snapshot.
  */
 export function readSelectedCardId(session: SessionSnapshot | null): string | null {
-  return (readSecretState(session) as AntarcticaSecretState | undefined)?.opening?.selectedCardId ?? null;
+  return readAntarcticaPublicState(session)?.opening?.selectedCardId ?? null;
 }
 
 export { getFallbackActionEntries };

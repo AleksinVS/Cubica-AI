@@ -91,11 +91,9 @@ docs: # Архитектура, задачи, планирование
       TSK-20260518-session-persistence-hardening.md: file # План production-ready session persistence вместо runtime-only in-memory store.
       TSK-20260520-project-review-remediation.md: file # Планово-исполнительская задача по исправлению находок ревью проекта от 2026-05-20.
       TSK-20260705-agent-controlled-players.md: file # План ИИ-игроков как агентских мест с валидируемыми действиями и безопасным резервным поведением.
-      TSK-20260705-board-game-platform-capabilities.md: file # План общих возможностей пошаговых настольных игр с нейтральной фикстурой dice-track.
       TSK-20260705-monopoly-classic-game.md: file # План экономической настольной игры после готовности общих механик, мультиплеера и ИИ-мест.
       TSK-20260705-multiplayer-runtime-realization.md: file # План сетевого мультиплеера: постоянные сессии, участники, очередь событий и WebSocket-доставка.
       TSK-20260706-conveyor-mini-game.md: file # План фикстурной игры «Мини-конвейер» для доказательства общего канала клиентской симуляции.
-      TSK-20260706-flow-simulation-platform-capabilities.md: file # План общих возможностей для игр-симуляций реального времени, включая параметры действий и Phaser-сцены.
       TSK-20260706-game-asset-channel.md: file # План декларативного реестра, безопасной проверки и доставки игровых ресурсов.
       TSK-20260706-rail-tycoon-mini-game.md: file # План мини-игры о железнодорожном бизнесе как потребителя общих механик, Phaser-хоста и канала ассетов.
       TSK-20260707-player-web-bundle-budget.md: file # План CI-проверки бюджета JavaScript-бандла player-web как измеримого триггера декомпозиции рендерера.
@@ -140,6 +138,8 @@ docs: # Архитектура, задачи, планирование
       TSK-20260630-review-remediation-correctness.md: file # Исполнительный план P0-исправлений корректности из полного ревью 2026-06-27: undo вставки в массив, залипающий screenKey, 400 на сессии без gameId, честная readiness, тесты контрактов.
       TSK-20260630-runtime-guard-reconciliation.md: file # Исполнительный план согласования legacy semantic guards с дженерик-guard-ами ADR-041 и очистки платформенной схемы от game-specific guard-форм.
       TSK-20260704-editor-preview-first-ux-implementation.md: file # Завершенная задача TSK-20260704-editor-preview-first-ux-implementation, сохраненная с исходной историей исполнения.
+      TSK-20260705-board-game-platform-capabilities.md: file # Заменённый ADR-084 исторический план общих возможностей пошаговых игр на старом effects-контуре.
+      TSK-20260706-flow-simulation-platform-capabilities.md: file # Заменённый ADR-084 исторический план runtime-эффектов для игр-симуляций; действующие параметры и Phaser-контракт сохранены.
       TSK-20260707-editor-concept-surfaces.md: file # Завершённые Web viewport orientation и структурный Telegram viewer из channel-specific UI manifest с production E2E.
       TSK-20260708-editor-apply-ux-and-localization.md: file # Завершенная задача TSK-20260708-editor-apply-ux-and-localization, сохраненная с исходной историей исполнения.
       TSK-20260710-autonomous-agent-workflow.md: file # Утвержденный план перехода от старых wf-ролей к автономному процессу ADR-068 с корневыми и дочерними TSK.

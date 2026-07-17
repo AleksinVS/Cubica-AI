@@ -47,7 +47,7 @@ describe("preview message adapter", () => {
       isPlayerPreviewSessionSnapshotMessage({
         source: "cubica-player-web",
         type: "previewSessionSnapshot",
-        version: 1,
+        version: 2,
         sessionId: "session-1",
         gameId: "example",
         sessionVersion: {
@@ -58,7 +58,7 @@ describe("preview message adapter", () => {
         state: { public: { timeline: { stepIndex: 2 } } },
         action: {
           actionId: "advance",
-          payload: { source: "test" },
+          params: { source: "test" },
           timestamp: "2026-06-01T00:00:00.000Z"
         }
       })
@@ -68,7 +68,7 @@ describe("preview message adapter", () => {
       isPlayerPreviewSessionSnapshotMessage({
         source: "cubica-player-web",
         type: "previewSessionSnapshot",
-        version: 1,
+        version: 2,
         sessionId: "session-1",
         sessionVersion: {
           sessionId: "session-1",

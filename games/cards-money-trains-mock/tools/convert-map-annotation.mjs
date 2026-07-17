@@ -4,8 +4,8 @@
  *
  * Validation, cross-reference checks, geometry and SVG rendering live in the
  * shared module. This file owns only the game's accepted transport settings
- * and its command-line entry point. Keeping costs here prevents the common
- * image intake tool from silently inventing game rules.
+ * and its command-line entry point. Construction prices remain in the game
+ * rules and Mechanics plans rather than leaking into the graph model.
  */
 
 import path from "node:path";
@@ -37,14 +37,12 @@ const transportManifestOptions = Object.freeze({
   edgeStateFacet: "state",
   splittableEdgeStates: ["open", "building"],
   builtEdgeState: "building",
-  sequencePath: "/public/transportNetworks/main/sequence",
-  roadCostPerRegionSegment: 2,
-  waypointCost: 5,
+  sequenceEndpoint: "public.transportNetworks.main.sequence",
   // The synthetic rectangles are intentionally exact enough to exercise the
   // general server planner before author-confirmed country contours arrive.
   roadPlanning: {
     geometryVersion: "mock-regions-v1",
-    excludedRegionIdsPath: "/public/transportNetworks/main/excludedRegionIds"
+    excludedRegionIdsEndpoint: "public.transportNetworks.main.excludedRegionIds"
   },
   initialSequence: 1000,
   allowedAnnotationStatuses: ["mock"]

@@ -253,8 +253,8 @@ const createRoadPlanningContract = (regions, options) => {
     geometryHash: `sha256:${geometryHash}`,
     tieBreak: "session-random",
     boundaryPolicy,
-    ...(options.excludedRegionIdsPath
-      ? { excludedRegionIdsPath: options.excludedRegionIdsPath }
+    ...(options.excludedRegionIdsEndpoint
+      ? { excludedRegionIdsEndpoint: options.excludedRegionIdsEndpoint }
       : {}),
     navigationGraph: { portals }
   };
@@ -420,9 +420,7 @@ const requiredManifestOptionNames = [
   "nodeStateFacet",
   "edgeStateFacet",
   "builtEdgeState",
-  "sequencePath",
-  "roadCostPerRegionSegment",
-  "waypointCost",
+  "sequenceEndpoint",
   "initialSequence",
   "allowedAnnotationStatuses"
 ];
@@ -447,10 +445,10 @@ const assertTransportManifestOptions = (options) => {
         options.roadPlanning.geometryVersion.length === 0) {
       fail("roadPlanning.geometryVersion is required when automatic planning is enabled");
     }
-    if (options.roadPlanning.excludedRegionIdsPath !== undefined &&
-        (typeof options.roadPlanning.excludedRegionIdsPath !== "string" ||
-          !options.roadPlanning.excludedRegionIdsPath.startsWith(`/${options.visibility}/`))) {
-      fail("roadPlanning.excludedRegionIdsPath must use the network visibility branch");
+    if (options.roadPlanning.excludedRegionIdsEndpoint !== undefined &&
+        (typeof options.roadPlanning.excludedRegionIdsEndpoint !== "string" ||
+          options.roadPlanning.excludedRegionIdsEndpoint.length === 0)) {
+      fail("roadPlanning.excludedRegionIdsEndpoint must be a non-empty Mechanics endpoint id");
     }
   }
 };
@@ -529,9 +527,7 @@ export const createTransportManifestFragment = (annotation, options) => {
         edgeStateFacet: options.edgeStateFacet,
         splittableEdgeStates: [...options.splittableEdgeStates],
         builtEdgeState: options.builtEdgeState,
-        sequencePath: options.sequencePath,
-        roadCostPerRegionSegment: options.roadCostPerRegionSegment,
-        waypointCost: options.waypointCost,
+        sequenceEndpoint: options.sequenceEndpoint,
         // Annotation polygons repeat the first point for human review. Runtime
         // uses a canonical implicit closure so equivalent tracing choices have
         // one hash and replay identity.

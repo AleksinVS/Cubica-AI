@@ -35,13 +35,11 @@
   "executionMode": "ai-driven",
   "agentRuntime": {
     "agentId": "scenario-agent",
+    "initialActionId": "agent.request-choice",
     "runtimeId": "mock",
     "required": true,
     "allowedCapabilities": [
-      "advanceStep"
-    ],
-    "allowedTools": [
-      "agent.nextTurn"
+      "selectPublishedIntent"
     ],
     "surfaceCatalog": [
       "cubica.choiceList"
@@ -63,7 +61,7 @@
           "id": "continue",
           "title": "Continue through agent",
           "summary": "Ask the scenario agent to produce the next validated UI surface.",
-          "actionId": "agent.continue"
+          "actionId": "agent.request-choice"
         }
       ]
     }
@@ -97,5 +95,306 @@
     },
     "secret": {}
   },
-  "actions": {}
+  "actions": {
+    "agent.request-choice": {
+      "displayName": "Ask the scenario agent",
+      "binding": {
+        "kind": "mechanics-plan",
+        "planRef": "agent.request-choice"
+      },
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "invocation": "external",
+      "definitionHash": "sha256:4bd84f79f8c2c8e37925ea839b0b7f0170f81afdb98621b9cb33f1cf78dfb1af"
+    },
+    "agent.choice.resolve": {
+      "displayName": "Resolve the agent choice",
+      "binding": {
+        "kind": "mechanics-plan",
+        "planRef": "agent.choice.resolve"
+      },
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "invocation": "external",
+      "definitionHash": "sha256:e0fbee8a10e8c465ed3b016d889eb2351867203aa118a756ce8dec5304c11f82"
+    }
+  },
+  "mechanics": {
+    "apiVersion": "cubica.dev/mechanics/v1alpha1",
+    "budgetProfile": "turn-based-standard-v1",
+    "moduleLock": {
+      "cubica.core": {
+        "moduleId": "cubica.core",
+        "moduleVersion": "1.0.0",
+        "artifactHash": "sha256:52ec636b147d905245539002f5a2063e334f6374e911764f75a3cf5e1bc111e7"
+      }
+    },
+    "stateModel": {
+      "types": {
+        "core.string": {
+          "kind": "string"
+        },
+        "core.integer": {
+          "kind": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "core.bounded-json": {
+          "kind": "json",
+          "maxDepth": 16,
+          "maxNodes": 4096,
+          "maxUtf8Bytes": 262144
+        },
+        "core.event-journal-entry": {
+          "kind": "record",
+          "fields": {
+            "eventType": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "audience": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "summary": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "data": {
+              "typeRef": "core.bounded-json",
+              "optional": true
+            }
+          }
+        },
+        "core.event-journal": {
+          "kind": "list",
+          "itemType": "core.event-journal-entry",
+          "maxItems": 16384
+        },
+        "agent.choice-resolved-event": {
+          "kind": "record",
+          "fields": {
+            "kind": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "source": {
+              "typeRef": "core.string",
+              "optional": false
+            }
+          }
+        },
+        "core.player-projection-json": {
+          "kind": "json",
+          "maxDepth": 32,
+          "maxNodes": 32768,
+          "maxUtf8Bytes": 262144
+        }
+      },
+      "endpoints": {
+        "public.metrics.turns": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "metrics",
+              "turns"
+            ]
+          },
+          "valueType": "core.integer",
+          "access": "read-write"
+        },
+        "public.choice.outcome": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "choice",
+              "outcome"
+            ]
+          },
+          "valueType": "core.string",
+          "access": "read-write"
+        },
+        "public.log": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "log"
+            ]
+          },
+          "valueType": "core.event-journal",
+          "access": "read-write"
+        },
+        "projection.public.choice": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "choice"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.flags": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "flags"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.log": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "log"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.metrics": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "metrics"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.timeline": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.ui": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "ui"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        }
+      },
+      "collections": {},
+      "events": {
+        "agent.choice.resolved": {
+          "audienceRef": "public",
+          "payloadType": "agent.choice-resolved-event",
+          "journalEndpoint": {
+            "endpoint": "public.log"
+          }
+        }
+      }
+    },
+    "plans": {
+      "agent.request-choice": {
+        "planHash": "sha256:a4caa058657a49bd24322e20f852400573c3085e7ec243a938f359df8c3a6164",
+        "transaction": {
+          "steps": [
+            {
+              "id": "verifyAgentEntry",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.constant",
+                "value": true
+              },
+              "errorCode": "AGENT_ENTRY_INVALID"
+            }
+          ]
+        }
+      },
+      "agent.choice.resolve": {
+        "planHash": "sha256:8af928ed20fe9ad7e7aaaeca00d2daa94bb6cb4bc4c9f35703db4b6e1dba97a9",
+        "transaction": {
+          "steps": [
+            {
+              "id": "incrementTurn",
+              "kind": "command",
+              "op": "core.number.add",
+              "target": {
+                "endpoint": "public.metrics.turns"
+              },
+              "delta": {
+                "op": "value.literal",
+                "value": 1
+              }
+            },
+            {
+              "id": "recordOutcome",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.choice.outcome"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "accepted"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "emitResolution",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "agent.choice.resolved",
+              "summary": {
+                "op": "value.literal",
+                "value": "The scenario agent selected a published Game Intent."
+              },
+              "audience": "public",
+              "data": {
+                "kind": {
+                  "op": "value.literal",
+                  "value": "agent-turn"
+                },
+                "source": {
+                  "op": "value.literal",
+                  "value": "mock"
+                }
+              },
+              "auditMetrics": true
+            }
+          ]
+        }
+      }
+    }
+  }
 }

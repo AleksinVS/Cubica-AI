@@ -167,96 +167,716 @@
   },
   "actions": {
     "choice.accept": {
-      "handlerType": "manifest-data",
       "capabilityFamily": "runtime.server",
       "capability": "simple-choice.choice.accept",
       "displayName": "Accept the choice",
-      "deterministic": {
-        "guard": {
-          "timeline": {
-            "line": "main",
-            "stepIndex": 0,
-            "canAdvance": false
-          },
-          "object": {
-            "visibility": "public",
-            "collection": "choices",
-            "objectId": "accept",
-            "objectType": "choice.card",
-            "facets": {
-              "face": "front",
-              "availability": "available"
+      "binding": {
+        "kind": "mechanics-plan",
+        "planRef": "choice.accept"
+      },
+      "paramsSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {},
+        "required": []
+      },
+      "invocation": "external",
+      "definitionHash": "sha256:3ff7766aa52b59ff67503d86ddfed5117b33a3cc7f6bfac35c489d4eaef6fa48"
+    }
+  },
+  "mechanics": {
+    "apiVersion": "cubica.dev/mechanics/v1alpha1",
+    "budgetProfile": "turn-based-standard-v1",
+    "moduleLock": {
+      "cubica.core": {
+        "moduleId": "cubica.core",
+        "moduleVersion": "1.0.0",
+        "artifactHash": "sha256:52ec636b147d905245539002f5a2063e334f6374e911764f75a3cf5e1bc111e7"
+      }
+    },
+    "stateModel": {
+      "types": {
+        "core.boolean": {
+          "kind": "boolean"
+        },
+        "core.string": {
+          "kind": "string"
+        },
+        "core.integer": {
+          "kind": "integer",
+          "minimum": -9007199254740991,
+          "maximum": 9007199254740991
+        },
+        "core.optional-string": {
+          "kind": "option",
+          "itemType": "core.string"
+        },
+        "core.string-set": {
+          "kind": "set",
+          "itemType": "core.string",
+          "maxItems": 4096
+        },
+        "core.bounded-json": {
+          "kind": "json",
+          "maxDepth": 16,
+          "maxNodes": 4096,
+          "maxUtf8Bytes": 262144
+        },
+        "core.event-journal-entry": {
+          "kind": "record",
+          "fields": {
+            "eventType": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "audience": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "summary": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "data": {
+              "typeRef": "core.bounded-json",
+              "optional": true
             }
           }
         },
-        "effects": [
-          {
-            "op": "metric.add",
-            "metricId": "score",
-            "delta": 1
-          },
-          {
-            "op": "object.state.set",
-            "visibility": "public",
-            "collection": "choices",
-            "objectId": "accept",
-            "facet": "face",
-            "value": "back"
-          },
-          {
-            "op": "object.attribute.patch",
-            "visibility": "public",
-            "collection": "choices",
-            "objectId": "accept",
-            "patches": [
-              {
-                "op": "replace",
-                "path": "/selectedAtStep",
-                "value": 0
-              }
-            ]
-          },
-          {
-            "op": "object.create",
-            "visibility": "public",
-            "collection": "resources",
-            "objectId": "supply-1",
-            "objectType": "resource.supply",
-            "facets": {
-              "availability": "available"
+        "core.event-journal": {
+          "kind": "list",
+          "itemType": "core.event-journal-entry",
+          "maxItems": 16384
+        },
+        "game.choices-face-enum.1": {
+          "kind": "enum",
+          "values": [
+            "front",
+            "back"
+          ]
+        },
+        "game.choices-availability-enum.2": {
+          "kind": "enum",
+          "values": [
+            "available",
+            "locked",
+            "hidden"
+          ]
+        },
+        "game.resources-availability-enum.3": {
+          "kind": "enum",
+          "values": [
+            "available",
+            "spent"
+          ]
+        },
+        "game.choice.accept.event.8-event-record.4": {
+          "kind": "record",
+          "fields": {
+            "kind": {
+              "typeRef": "core.string",
+              "optional": false
             },
-            "attributes": {
-              "id": "supply-1",
-              "title": "Supply token",
-              "amount": 1
+            "entityType": {
+              "typeRef": "core.string",
+              "optional": false
+            },
+            "displayMode": {
+              "typeRef": "core.string",
+              "optional": false
             }
-          },
-          {
-            "op": "timeline.set",
-            "canAdvance": false,
-            "stepIndex": 1,
-            "screenId": "result",
-            "activeInfoId": "result"
-          },
-          {
-            "op": "state.patch",
-            "patches": [
-              {
-                "op": "replace",
-                "path": "/public/choice/outcome",
-                "value": "accepted"
-              }
+          }
+        },
+        "core.player-projection-json": {
+          "kind": "json",
+          "maxDepth": 32,
+          "maxNodes": 32768,
+          "maxUtf8Bytes": 262144
+        }
+      },
+      "endpoints": {
+        "public.timeline.line": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "line"
             ]
           },
-          {
-            "op": "log.append",
-            "kind": "choice-resolution",
-            "entityType": "choice",
-            "displayMode": "summary",
-            "summary": "The player chose the clear path.",
-            "auditMetrics": true
+          "valueType": "core.string",
+          "access": "read-write"
+        },
+        "public.timeline.stepIndex": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "stepIndex"
+            ]
+          },
+          "valueType": "core.integer",
+          "access": "read-write"
+        },
+        "public.timeline.canAdvance": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "canAdvance"
+            ]
+          },
+          "valueType": "core.boolean",
+          "access": "read-write"
+        },
+        "public.metrics.score": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "metrics",
+              "score"
+            ]
+          },
+          "valueType": "core.integer",
+          "access": "read-write"
+        },
+        "public.timeline.step_index": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "step_index"
+            ]
+          },
+          "valueType": "core.integer",
+          "access": "read-write"
+        },
+        "public.timeline.screenId": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "screenId"
+            ]
+          },
+          "valueType": "core.string",
+          "access": "read-write"
+        },
+        "public.timeline.screen_id": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "screen_id"
+            ]
+          },
+          "valueType": "core.string",
+          "access": "read-write"
+        },
+        "public.timeline.activeInfoId": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline",
+              "activeInfoId"
+            ]
+          },
+          "valueType": "core.optional-string",
+          "access": "read-write"
+        },
+        "public.choice.outcome": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "choice",
+              "outcome"
+            ]
+          },
+          "valueType": "core.string",
+          "access": "read-write"
+        },
+        "public.log": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "log"
+            ]
+          },
+          "valueType": "core.event-journal",
+          "access": "read-write"
+        },
+        "projection.public.choice": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "choice"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.flags": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "flags"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.log": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "log"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.metrics": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "metrics"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.objects": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "objects"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.timeline": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "timeline"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        },
+        "projection.public.ui": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "ui"
+            ]
+          },
+          "valueType": "core.player-projection-json",
+          "access": "read-only",
+          "usage": "projection-only"
+        }
+      },
+      "collections": {
+        "choices": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "objects",
+              "choices"
+            ]
+          },
+          "capacity": 64,
+          "stableKey": "map-key",
+          "itemTypes": [
+            "choice.card"
+          ],
+          "fields": {
+            "face": {
+              "storage": {
+                "kind": "facet",
+                "name": "face"
+              },
+              "valueType": "game.choices-face-enum.1",
+              "access": "read-write"
+            },
+            "availability": {
+              "storage": {
+                "kind": "facet",
+                "name": "availability"
+              },
+              "valueType": "game.choices-availability-enum.2",
+              "access": "read-write"
+            },
+            "selectedAtStep": {
+              "storage": {
+                "kind": "attribute",
+                "name": "selectedAtStep"
+              },
+              "valueType": "core.integer",
+              "access": "read-write"
+            }
           }
-        ]
+        },
+        "resources": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "objects",
+              "resources"
+            ]
+          },
+          "capacity": 64,
+          "stableKey": "map-key",
+          "itemTypes": [
+            "resource.supply"
+          ],
+          "fields": {
+            "availability": {
+              "storage": {
+                "kind": "facet",
+                "name": "availability"
+              },
+              "valueType": "game.resources-availability-enum.3",
+              "access": "read-write"
+            },
+            "id": {
+              "storage": {
+                "kind": "attribute",
+                "name": "id"
+              },
+              "valueType": "core.string",
+              "access": "read-write"
+            },
+            "title": {
+              "storage": {
+                "kind": "attribute",
+                "name": "title"
+              },
+              "valueType": "core.string",
+              "access": "read-write"
+            },
+            "amount": {
+              "storage": {
+                "kind": "attribute",
+                "name": "amount"
+              },
+              "valueType": "core.integer",
+              "access": "read-write"
+            }
+          }
+        }
+      },
+      "events": {
+        "choice.accept.event.8": {
+          "audienceRef": "public",
+          "payloadType": "game.choice.accept.event.8-event-record.4",
+          "journalEndpoint": {
+            "endpoint": "public.log"
+          }
+        }
+      }
+    },
+    "plans": {
+      "choice.accept": {
+        "planHash": "sha256:f0263afc39312876051cf1bb7765bc5e939297d06fa583a48088e43db04b1ac5",
+        "transaction": {
+          "steps": [
+            {
+              "id": "s001-precondition",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.timeline.line"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "main"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.timeline.stepIndex"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": 0
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.timeline.canAdvance"
+                      }
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": false
+                    }
+                  },
+                  {
+                    "op": "predicate.entity.matches",
+                    "entity": {
+                      "collection": "choices",
+                      "entityId": {
+                        "op": "value.literal",
+                        "value": "accept"
+                      }
+                    },
+                    "objectType": "choice.card",
+                    "facets": {
+                      "face": {
+                        "op": "value.literal",
+                        "value": "front"
+                      },
+                      "availability": {
+                        "op": "value.literal",
+                        "value": "available"
+                      }
+                    }
+                  }
+                ]
+              },
+              "errorCode": "ACTION_PRECONDITION_FAILED"
+            },
+            {
+              "id": "s002",
+              "kind": "command",
+              "op": "core.number.add",
+              "target": {
+                "endpoint": "public.metrics.score"
+              },
+              "delta": {
+                "op": "value.literal",
+                "value": 1
+              }
+            },
+            {
+              "id": "s003",
+              "kind": "command",
+              "op": "core.entity.facet.set",
+              "entity": {
+                "collection": "choices",
+                "entityId": {
+                  "op": "value.literal",
+                  "value": "accept"
+                }
+              },
+              "facet": "face",
+              "value": {
+                "op": "value.literal",
+                "value": "back"
+              }
+            },
+            {
+              "id": "s004",
+              "kind": "command",
+              "op": "core.entity.attributes.patch",
+              "entity": {
+                "collection": "choices",
+                "entityId": {
+                  "op": "value.literal",
+                  "value": "accept"
+                }
+              },
+              "patches": [
+                {
+                  "operation": "set",
+                  "path": [
+                    "selectedAtStep"
+                  ],
+                  "value": {
+                    "op": "value.literal",
+                    "value": 0
+                  }
+                }
+              ]
+            },
+            {
+              "id": "s005",
+              "kind": "command",
+              "op": "core.entity.create",
+              "visibility": "public",
+              "collection": "resources",
+              "entityId": {
+                "op": "value.literal",
+                "value": "supply-1"
+              },
+              "objectType": "resource.supply",
+              "facets": {
+                "availability": {
+                  "op": "value.literal",
+                  "value": "available"
+                }
+              },
+              "attributes": {
+                "id": {
+                  "op": "value.literal",
+                  "value": "supply-1"
+                },
+                "title": {
+                  "op": "value.literal",
+                  "value": "Supply token"
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 1
+                }
+              }
+            },
+            {
+              "id": "s006",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.timeline.canAdvance"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": false
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.timeline.stepIndex"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": 1
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.timeline.step_index"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": 1
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.timeline.screenId"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "result"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.timeline.screen_id"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "result"
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.timeline.activeInfoId"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "result"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "s007",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.choice.outcome"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": "accepted"
+                  }
+                }
+              ]
+            },
+            {
+              "id": "s008",
+              "kind": "command",
+              "op": "core.event.emit",
+              "eventType": "choice.accept.event.8",
+              "summary": {
+                "op": "value.literal",
+                "value": "The player chose the clear path."
+              },
+              "audience": "public",
+              "data": {
+                "kind": {
+                  "op": "value.literal",
+                  "value": "choice-resolution"
+                },
+                "entityType": {
+                  "op": "value.literal",
+                  "value": "choice"
+                },
+                "displayMode": {
+                  "op": "value.literal",
+                  "value": "summary"
+                }
+              },
+              "auditMetrics": true
+            }
+          ]
+        }
       }
     }
   }

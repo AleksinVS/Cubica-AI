@@ -261,7 +261,7 @@
                         "id": "facilitator.log-entry",
                         "type": "richTextComponent",
                         "props": {
-                          "html": "<p><strong>{{logEntry.kind}}</strong> · {{logEntry.summary}}</p>"
+                          "html": "<p><strong>{{logEntry.data.kind}}</strong> · {{logEntry.summary}}</p>"
                         }
                       }
                     ]

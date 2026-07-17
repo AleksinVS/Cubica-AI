@@ -177,6 +177,12 @@
         "pointer": "/root/agentRuntime/agentId"
       }
     ],
+    "/agentRuntime/initialActionId": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/agentRuntime/initialActionId"
+      }
+    ],
     "/agentRuntime/runtimeId": [
       {
         "file": "games/ai-driven-choice/authoring/game.authoring.json",
@@ -199,18 +205,6 @@
       {
         "file": "games/ai-driven-choice/authoring/game.authoring.json",
         "pointer": "/root/agentRuntime/allowedCapabilities"
-      }
-    ],
-    "/agentRuntime/allowedTools/0": [
-      {
-        "file": "games/ai-driven-choice/authoring/game.authoring.json",
-        "pointer": "/root/agentRuntime/allowedTools/0"
-      }
-    ],
-    "/agentRuntime/allowedTools": [
-      {
-        "file": "games/ai-driven-choice/authoring/game.authoring.json",
-        "pointer": "/root/agentRuntime/allowedTools"
       }
     ],
     "/agentRuntime/surfaceCatalog/0": [
@@ -447,10 +441,1300 @@
         "pointer": "/root/state/secret"
       }
     ],
+    "/actions/agent.request-choice": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/agent.request-choice/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/id"
+      }
+    ],
+    "/actions/agent.request-choice/displayName": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/displayName"
+      }
+    ],
+    "/actions/agent.request-choice/binding": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/binding"
+      }
+    ],
+    "/actions/agent.request-choice/binding/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/binding/kind"
+      }
+    ],
+    "/actions/agent.request-choice/binding/planRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0/binding/planRef"
+      }
+    ],
+    "/actions/agent.choice.resolve": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1"
+      }
+    ],
+    "/actions/agent.choice.resolve/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/id"
+      }
+    ],
+    "/actions/agent.choice.resolve/displayName": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/displayName"
+      }
+    ],
+    "/actions/agent.choice.resolve/binding": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/binding"
+      }
+    ],
+    "/actions/agent.choice.resolve/binding/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/binding/kind"
+      }
+    ],
+    "/actions/agent.choice.resolve/binding/planRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1/binding/planRef"
+      }
+    ],
     "/actions": [
       {
         "file": "games/ai-driven-choice/authoring/game.authoring.json",
         "pointer": "/root/logic/actions"
+      }
+    ],
+    "/mechanics": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/apiVersion": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/apiVersion"
+      }
+    ],
+    "/mechanics/budgetProfile": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/budgetProfile"
+      }
+    ],
+    "/mechanics/stateModel": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel"
+      }
+    ],
+    "/mechanics/stateModel/types": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer/minimum": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer/minimum"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer/maximum": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer/maximum"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/maxDepth": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/maxDepth"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/maxNodes": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/maxNodes"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/maxUtf8Bytes": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/maxUtf8Bytes"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/eventType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/eventType"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/typeRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/optional": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/audience": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/audience"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/audience/typeRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/audience/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/audience/optional": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/audience/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/summary": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/summary"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/summary/typeRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/summary/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/summary/optional": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/summary/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/data": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/data"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/data/typeRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/data/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/data/optional": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/data/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal/itemType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal/itemType"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal/maxItems": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal/maxItems"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields/kind/typeRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields/kind/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields/kind/optional": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields/kind/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields/source": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields/source"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields/source/typeRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields/source/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/agent.choice-resolved-event/fields/source/optional": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/agent.choice-resolved-event/fields/source/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/maxDepth": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/maxDepth"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/maxNodes": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/maxNodes"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/maxUtf8Bytes": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/maxUtf8Bytes"
+      }
+    ],
+    "/mechanics/stateModel/endpoints": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/storage/segments/1": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.turns/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.turns/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/1": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/usage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/usage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/usage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/usage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/usage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage/root": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage/segments/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage/segments": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/valueType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/access": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/usage": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/usage"
+      }
+    ],
+    "/mechanics/stateModel/collections": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections"
+      }
+    ],
+    "/mechanics/stateModel/events": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events"
+      }
+    ],
+    "/mechanics/stateModel/events/agent.choice.resolved": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/agent.choice.resolved"
+      }
+    ],
+    "/mechanics/stateModel/events/agent.choice.resolved/audienceRef": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/agent.choice.resolved/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/events/agent.choice.resolved/payloadType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/agent.choice.resolved/payloadType"
+      }
+    ],
+    "/mechanics/stateModel/events/agent.choice.resolved/journalEndpoint": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/agent.choice.resolved/journalEndpoint"
+      }
+    ],
+    "/mechanics/stateModel/events/agent.choice.resolved/journalEndpoint/endpoint": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/agent.choice.resolved/journalEndpoint/endpoint"
+      }
+    ],
+    "/mechanics/plans": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction"
+      }
+    ],
+    "/mechanics/moduleLock": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core/moduleId": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core/moduleVersion": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core/artifactHash": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/predicate": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/predicate/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/predicate/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/transaction/steps/0/errorCode": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.request-choice/planHash": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.request-choice"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/target": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/target/endpoint": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/delta": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/delta/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/0/delta/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0/operation": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0/target": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0/target/endpoint": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0/value/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/1/patches/0/value/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/id": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/eventType": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/summary": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/summary/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/summary/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/audience": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data/kind": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data/kind/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data/kind/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data/source": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data/source/op": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/data/source/value": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/transaction/steps/2/auditMetrics": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/agent.choice.resolve/planHash": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/agent.choice.resolve"
+      }
+    ],
+    "/actions/agent.request-choice/paramsSchema": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/agent.request-choice/invocation": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/agent.request-choice/definitionHash": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/agent.choice.resolve/paramsSchema": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1"
+      }
+    ],
+    "/actions/agent.choice.resolve/invocation": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1"
+      }
+    ],
+    "/actions/agent.choice.resolve/definitionHash": [
+      {
+        "file": "games/ai-driven-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/1"
       }
     ]
   }

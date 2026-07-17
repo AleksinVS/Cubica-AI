@@ -30,6 +30,8 @@
     "verify:agent-ui-boundaries": "node scripts/ci/validate-agent-ui-boundaries.js",
     "verify:prototype-audit-status": "node scripts/ci/validate-prototype-audit-status.js",
     "compile:manifests": "node scripts/manifest-tools/compile-authoring-manifests.cjs",
+    "sync:mechanics-locks": "node scripts/manifest-tools/sync-mechanics-module-locks.cjs",
+    "verify:mechanics-locks": "node scripts/manifest-tools/sync-mechanics-module-locks.cjs --check",
     "audit:prototype-candidates": "node scripts/manifest-tools/audit-prototype-candidates.cjs",
     "audit:prototype-candidates:weekly": "node scripts/manifest-tools/audit-prototype-candidates.cjs --mode weekly --scope all --format markdown --output .tmp/prototype-audit/weekly-report.md --status-output .tmp/prototype-audit/status.json",
     "build:player-web-plugin-bundles": "node scripts/manifest-tools/build-player-web-plugin-bundles.cjs",

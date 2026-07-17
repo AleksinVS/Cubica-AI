@@ -11,7 +11,6 @@ import type {
 
 import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
-import { createManifestActionAdapter as createGenericManifestActionAdapter } from "@/lib/manifest-action-adapter";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
 /**
@@ -42,9 +41,6 @@ export interface FallbackMetricSpec {
 export interface GameConfigData {
   /** Идентификатор игры в runtime-api */
   gameId: string;
-
-  /** Идентификатор игрока для runtime-api */
-  playerId: string;
 
   /** Ключ localStorage для сохранения sessionId */
   storageKey: string;
@@ -118,17 +114,6 @@ export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePl
   resolveGameState: (content: PlayerFacingContent, session: GameSession | null) => TGameState;
 
   /**
-   * Создаёт адаптер для UI-команд манифеста.
-   * Вызывается View при получении onClick из ManifestRenderer.
-   */
-  createManifestActionAdapter: (
-    content: PlayerFacingContent,
-    gameState: TGameState,
-    dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void,
-    onError: (message: string) => void
-  ) => (command: string, payload: Record<string, unknown>) => void;
-
-  /**
    * Опциональный builder для fallback-экранов.
    * Вызывается SafeModeRenderer, когда манифест не описывает экран.
    * Плагин может предоставить кастомный builder для генерации
@@ -173,9 +158,6 @@ export interface GameConfig<TGameState = GameState, TUiContent = GamePlayerUiCon
   /** Идентификатор игры в runtime-api */
   gameId: string;
 
-  /** Идентификатор игрока для runtime-api */
-  playerId: string;
-
   /** Ключ localStorage для сохранения sessionId */
   storageKey: string;
 
@@ -219,7 +201,6 @@ export function metricSpecsToFallbackMetrics(specs: Array<MetricConfigSpec>): Ar
   }));
 }
 
-const DEFAULT_PLAYER_ID = "player-web";
 const SAFE_STORAGE_ID = /[^a-zA-Z0-9_-]+/g;
 
 const toMetricBackgroundImages = (
@@ -267,6 +248,24 @@ const collectTopbarScreenKeys = (
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * View projection rules may shape presentation, but they must not derive a
+ * gameplay command from mutable object state. The explicit allowlist keeps a
+ * removed command-derivation field out of production code even while an older
+ * generated contract may still expose it during the repository-wide cutover.
+ */
+type PlayerObjectViewRule = Pick<
+  GameManifestObjectViewRule,
+  | "fields"
+  | "interactive"
+  | "selectLabelFrom"
+  | "summaryFrom"
+  | "textFrom"
+  | "titleFrom"
+  | "visible"
+  | "visualState"
+>;
 
 const splitJsonPointer = (path: string): Array<string> =>
   path.startsWith("/")
@@ -318,7 +317,7 @@ const defaultObjectFacets = (model: GameManifestObjectModel | undefined): Record
 const applyObjectViewRule = (
   view: Record<string, unknown>,
   source: Record<string, unknown>,
-  rule: GameManifestObjectViewRule
+  rule: PlayerObjectViewRule
 ) => {
   if (rule.visible !== undefined) {
     view.visible = rule.visible;
@@ -334,7 +333,6 @@ const applyObjectViewRule = (
     ["title", rule.titleFrom],
     ["summary", rule.summaryFrom],
     ["text", rule.textFrom],
-    ["actionId", rule.actionIdFrom],
     ["selectLabel", rule.selectLabelFrom],
   ];
 
@@ -349,6 +347,13 @@ const applyObjectViewRule = (
   }
 
   for (const [targetField, sourceField] of Object.entries(rule.fields ?? {})) {
+    // `fields` remains available for game-specific presentation data, but it
+    // must not act as a second spelling of the removed action-derivation route.
+    // Command identity comes only from trusted published content or explicit
+    // validated UI action payloads, never from mutable session attributes.
+    if (targetField === "actionId") {
+      continue;
+    }
     const value = readProjectedSource(source, sourceField);
     if (value !== undefined) {
       view[targetField] = value;
@@ -433,7 +438,7 @@ const projectObjectViews = (
         summary: source.summary,
         text: source.text,
         backText: source.backText,
-        actionId: source.actionId ?? source.selectActionId,
+        actionId: source.actionId,
         selectLabel: source.selectLabel,
         chips: source.chips,
         visualState: "default"
@@ -465,8 +470,7 @@ const projectObjectViews = (
  */
 export function createDefaultGameConfigData(
   content: PlayerFacingContent,
-  uiContent: GamePlayerUiContent | undefined = content.ui,
-  options: { playerId?: string } = {}
+  uiContent: GamePlayerUiContent | undefined = content.ui
 ): GameConfigData {
   const fallbackMetrics = uiContent?.metricSpecs
     ? metricSpecsToFallbackMetrics(uiContent.metricSpecs)
@@ -475,7 +479,6 @@ export function createDefaultGameConfigData(
 
   return {
     gameId: content.gameId,
-    playerId: options.playerId ?? DEFAULT_PLAYER_ID,
     storageKey: `cubica-${safeGameId}-session-id`,
     fallbackMetrics,
     topbarScreenKeys: collectTopbarScreenKeys(uiContent),
@@ -493,7 +496,6 @@ export function createDefaultGameConfigData(
 export function createDefaultGameConfig(data: GameConfigData): GameConfig {
   return {
     gameId: data.gameId,
-    playerId: data.playerId,
     storageKey: data.storageKey,
     fallbackMetrics: data.fallbackMetrics,
     topbarScreenKeys: new Set(data.topbarScreenKeys),
@@ -520,14 +522,6 @@ export function createDefaultGameConfig(data: GameConfigData): GameConfig {
         objectViews: projectObjectViews(content.objectModels, contentData, publicState),
         actions: content.actions,
       };
-    },
-
-    createManifestActionAdapter(_content, _gameState, dispatchAction, onError) {
-      return createGenericManifestActionAdapter({
-        gameContent: null,
-        dispatchAction,
-        onError,
-      });
     },
   };
 }

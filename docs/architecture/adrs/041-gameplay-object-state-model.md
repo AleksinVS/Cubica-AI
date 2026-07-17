@@ -4,7 +4,14 @@
 - **Статус**: Accepted
 - **Авторы**: Codex
 - **Компоненты**: `games/*`, `docs/architecture/schemas`, `packages/contracts/manifest`, `services/runtime-api`, `apps/player-web`, `packages/editor-engine`
-- **Связанные решения**: ADR-024, ADR-025, ADR-029, ADR-030, ADR-040
+- **Связанные решения**: ADR-024, ADR-025, ADR-029, ADR-030, ADR-040, ADR-083, ADR-084
+
+> [!IMPORTANT]
+> Поправка ADR-084: принятая фасетная модель объектов и Presenter-проекция
+> сохраняются, но описанные ниже object effects, object guards, JsonLogic и
+> transitions больше не являются исполнимым контрактом. Их семантика
+> переносится в типизированные selectors/query/assert/command узлы Mechanics
+> IR. Старый executor удалён и не может использоваться как резервный путь.
 
 ## Оглавление
 

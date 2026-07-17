@@ -75,7 +75,10 @@
 
 ### Runtime API
 
-- Unit-тесты покрывают deterministic handlers, JsonLogic, шаблоны действий и pure validation helpers.
+- Unit-тесты покрывают semantic checker, типизированные Mechanics IR операции,
+  чистые алгоритмические модули, input admission и pure validation helpers.
+  Ограниченный JsonLogic проверяется отдельно только как player-facing
+  computed-metric projection; серверного JsonLogic/effects executor нет.
 - Integration-тесты покрывают HTTP boundary: health/readiness, создание сессии, dispatch action, player-facing content, ошибки запроса.
 - Для каждого нового runtime capability нужна минимум одна game-agnostic фикстура, не привязанная к `Antarctica`.
 - Ручные TypeScript-проверки структуры манифеста не должны заменять JSON Schema + Ajv.

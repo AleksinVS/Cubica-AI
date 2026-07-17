@@ -51,7 +51,46 @@ function buildFixtureProjection(): EditorEntityProjection {
             ]
           }
         ],
-        actions: [{ id: "choice.accept", _type: "game.Action", _label: "Accept choice" }]
+        actions: [
+          {
+            id: "choice.accept",
+            _type: "game.Action",
+            _label: "Accept choice",
+            binding: { kind: "mechanics-plan", planRef: "choice.accept" }
+          }
+        ]
+      },
+      mechanics: {
+        apiVersion: "cubica.dev/mechanics/v1alpha1",
+        budgetProfile: "turn-based-standard-v1",
+        moduleLock: {
+          "cubica.core": {
+            moduleId: "cubica.core",
+            moduleVersion: "1.0.0",
+            artifactHash: "sha256:903e9660e0702a0bffca5465bfb3742f7f8a80b0adae45f93b77637bf2f8770b"
+          }
+        },
+        stateModel: {
+          types: { "core.boolean": { kind: "boolean" } },
+          endpoints: {},
+          collections: {},
+          events: {}
+        },
+        plans: {
+          "choice.accept": {
+            transaction: {
+              steps: [
+                {
+                  id: "precondition",
+                  kind: "assert",
+                  op: "core.assert",
+                  predicate: { op: "predicate.constant", value: true },
+                  errorCode: "ACTION_PRECONDITION_FAILED"
+                }
+              ]
+            }
+          }
+        }
       }
     }
   } satisfies JsonValue;
@@ -194,6 +233,17 @@ describe("collectAffectedEntities", () => {
     expect(affected.has("game-flow:main")).toBe(true);
     expect(affected.has("game-step:main.start")).toBe(true);
     expect(affected.has("game-action:choice.accept")).toBe(false);
+  });
+
+  it("invalidates a published action when its referenced Mechanics IR plan changes", () => {
+    const projection = buildFixtureProjection();
+    const affected = collectAffectedEntities(projection, {
+      "game.authoring.json": ["/root/mechanics/plans/choice.accept/transaction/steps/0"]
+    });
+
+    expect(affected.has("game-action:choice.accept")).toBe(true);
+    expect(affected.has("game-step:main.start")).toBe(false);
+    expect(affected.has("metric:score")).toBe(false);
   });
 
   it("propagates cross-file changes through recorded source pointers only", () => {

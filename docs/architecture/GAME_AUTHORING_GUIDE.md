@@ -1,372 +1,438 @@
-# Game Authoring Guide
+# Руководство автора игровой логики
 
-This guide explains how to author game logic in Cubica manifests using the **Three-Tier Logic Model** (Ladder of Power) defined in [ADR-029](adrs/029-three-tier-logic-model-ladder-of-power.md).
+Это руководство объясняет, как описывать исполнимые правила игры через цепочку
+**Game Intent → Cubica Mechanics IR**. **Game Intent (игровое намерение)** —
+понятная игроку команда с устойчивым `actionId`; **Mechanics IR
+(промежуточное представление механик)** — типизированный JSON-план, который
+сервер проверяет и выполняет одной транзакцией.
 
-## Table of Contents
+Автор описывает, _что_ разрешено сделать с игровым состоянием. Клиент,
+Presenter (слой подготовки интерфейсных данных) и игровой ИИ не составляют
+планы механик и не выбирают внутренние операции.
 
-- [Overview](#overview)
-- [Tier 1: Action Templates](#tier-1-action-templates)
-  - [Defining Templates](#defining-templates)
-  - [Referencing Templates from Actions](#referencing-templates-from-actions)
-  - [Parameter Substitution](#parameter-substitution)
-  - [Action-Specific Overrides](#action-specific-overrides)
-  - [Guard Evaluation](#guard-evaluation)
-  - [State Effects](#state-effects)
-- [Tier 2: JsonLogic Expressions](#tier-2-jsonlogic-expressions)
-  - [Guard Conditions](#guard-conditions)
-  - [Computed Metric Changes](#computed-metric-changes)
-- [Tier 3: Declarative Effects](#tier-3-declarative-effects)
-- [Gameplay Object State](#gameplay-object-state)
-- [Manifest Schema Reference](#manifest-schema-reference)
+## Оглавление
 
----
+- [1. Модель авторинга](#1-модель-авторинга)
+- [2. Источники истины](#2-источники-истины)
+- [3. Связь Game Intent с планом](#3-связь-game-intent-с-планом)
+- [4. Корень Mechanics IR](#4-корень-mechanics-ir)
+- [5. Типизированная модель состояния](#5-типизированная-модель-состояния)
+- [6. Выражения и предикаты](#6-выражения-и-предикаты)
+- [7. Транзакционные планы](#7-транзакционные-планы)
+- [8. Универсальные операции](#8-универсальные-операции)
+- [9. События и журнал](#9-события-и-журнал)
+- [10. Параметры и граница доверия](#10-параметры-и-граница-доверия)
+- [11. Компиляция и диагностика](#11-компиляция-и-диагностика)
+- [12. Где размещать новую механику](#12-где-размещать-новую-механику)
+- [13. Что больше не использовать](#13-что-больше-не-использовать)
+- [14. Справочные материалы](#14-справочные-материалы)
 
-## Overview
+## 1. Модель авторинга
 
-The Three-Tier Logic Model organizes game logic by complexity:
+Исполнимая команда проходит четыре границы:
 
-| Tier | Mechanism | Use Case | Coverage |
-|------|-----------|----------|----------|
-| **Tier 1** | Action Templates | Reusable deterministic patterns with per-action parameters | ~80% of actions |
-| **Tier 2** | JsonLogic | Declarative conditional expressions for guards and computed values | ~15% of actions |
-| **Tier 3** | Declarative Effects | Schema-validated UI/runtime effects for interactions that are not covered by templates alone | ~5% of actions |
+1. Автор объявляет действие с `actionId`, ограниченной схемой параметров и
+   ссылкой `binding.planRef` на план механик.
+2. Компилятор проверяет authoring-документ, Mechanics IR и связи между ними,
+   вычисляет хеши определений и выпускает неизменяемый runtime-манифест.
+3. Presenter показывает только доступные конкретному участнику действия и
+   отправляет выбранный `actionId` с параметрами.
+4. Сервер заново проверяет личность, роль, версию состояния, параметры и план,
+   затем либо фиксирует все изменения, события и квитанцию команды, либо не
+   фиксирует ничего.
 
-Each tier is strictly more powerful than the previous one. Prefer the lowest tier that satisfies your requirements.
+Правила доступны клиенту только как намерения. Внутренние `op`, пути хранения,
+закрытые условия и планы IR не являются клиентским API.
 
----
+## 2. Источники истины
 
-## Tier 1: Action Templates
+Структуру данных задают декларативные схемы, а не вручную написанные проверки
+TypeScript:
 
-Templates define reusable deterministic action structure. Actions reference a template and provide action-specific values via `params` and `overrides`.
+- [`game-authoring-v2.schema.json`](schemas/game-authoring-v2.schema.json) —
+  редактируемый authoring-документ;
+- [`game-manifest.schema.json`](schemas/game-manifest.schema.json) —
+  опубликованный runtime-манифест и действие;
+- [`mechanics-plan.schema.json`](schemas/mechanics-plan.schema.json) — полный
+  контракт Mechanics IR в диалекте JSON Schema 2020-12;
+- сгенерированные типы в `packages/contracts/manifest` — производный результат,
+  который нельзя изменять вместо схем.
 
-### Defining Templates
+Поле `$schema` фиксирует диалект каждой схемы. Основная оболочка манифеста пока
+использует свой исторический диалект, а вложенный объект `mechanics` всегда
+проверяется отдельной строгой схемой 2020-12. Такая граница исключает
+неоднозначное толкование ключевых слов валидатором.
 
-Templates live in the `templates` section of the manifest (sibling to `actions`):
+Authoring-файл является редактируемым источником. Опубликованные
+`game.manifest.json`, карта связи с исходником и сгенерированные типы
+пересобираются и не редактируются вручную.
+
+## 3. Связь Game Intent с планом
+
+В authoring действие находится в `root.logic.actions`. Его предметное имя и
+интерфейсные метаданные отделены от исполняемого плана:
 
 ```json
 {
-  "templates": {
-    "opening-card-resolution": {
-      "deterministic": {
-        "guard": {
-          "timeline": {
-            "line": "main",
-            "stepIndex": "{{stepIndex}}",
-            "canAdvance": false
-          }
+  "id": "choice.accept",
+  "_type": "game.Action",
+  "displayName": "Принять решение",
+  "allowedSessionRoles": ["player"],
+  "paramsSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {},
+    "required": []
+  },
+  "binding": {
+    "kind": "mechanics-plan",
+    "planRef": "choice.accept"
+  }
+}
+```
+
+Правила связи:
+
+- `id` — канонический Game Intent; отдельный `intentId` не нужен;
+- `paramsSchema` разрешает только действительно необходимые значения и всегда
+  закрывает лишние поля через `additionalProperties: false`;
+- `binding.planRef` указывает на заранее опубликованный план, а не на имя
+  обработчика и не на клиентский код;
+- один и тот же `actionId` используется в игровом манифесте, UI-манифесте,
+  каталоге доступных действий и runtime-команде;
+- `definitionHash` и `planHash` добавляет компилятор. Автор не придумывает их
+  вручную.
+
+UI-манифест связывает тот же `actionId` с кнопкой, полем карты или формой.
+Интерфейс решает, _как собрать ввод_, но не решает, законно ли действие и как
+оно меняет игру.
+
+## 4. Корень Mechanics IR
+
+Authoring хранит Mechanics IR в `root.mechanics`:
+
+```json
+{
+  "apiVersion": "cubica.dev/mechanics/v1alpha1",
+  "budgetProfile": "turn-based-standard-v1",
+  "moduleLock": {
+    "cubica.core": {
+      "moduleId": "cubica.core",
+      "moduleVersion": "1.0.0",
+      "artifactHash": "sha256:..."
+    }
+  },
+  "stateModel": {
+    "types": {},
+    "endpoints": {},
+    "collections": {},
+    "events": {}
+  },
+  "plans": {}
+}
+```
+
+- `apiVersion` выбирает точную версию языка.
+- `budgetProfile` выбирает платформенный профиль ограничений. Игра не может
+  повысить лимиты произвольными числами.
+- `moduleLock` закрепляет точные версии и хеши модулей и, где нужно, версии
+  алгоритмов. Диапазоны версий и незакреплённые модули запрещены.
+- `stateModel` объявляет все типы и доступные механикам данные.
+- `plans` хранит планы по устойчивым идентификаторам.
+
+Не копируйте `artifactHash` из документации. Используйте зарегистрированные
+дескрипторы платформы и существующие authoring-файлы: checker отклонит хеш,
+который не соответствует содержимому модуля.
+
+## 5. Типизированная модель состояния
+
+`stateModel` не дублирует начальное состояние. Он описывает договор чтения и
+записи поверх него.
+
+### Типы
+
+`types` объявляет ограниченные boolean, string, integer, decimal, enum, option,
+record, list, set и map. Record явно перечисляет поля, а коллекции имеют
+максимальную ёмкость. Деньги и другие точные величины должны использовать
+целые числа или объявленный decimal, но не двоичную плавающую точку.
+
+### Конечные точки состояния
+
+`endpoints` даёт устойчивое типизированное имя конкретному значению:
+
+```json
+{
+  "public.metrics.score": {
+    "audienceRef": "public",
+    "storage": {
+      "root": "public",
+      "segments": ["metrics", "score"]
+    },
+    "valueType": "core.integer",
+    "access": "read-write"
+  }
+}
+```
+
+План обращается к `endpoint`, а не принимает произвольный JSON Pointer от
+клиента. `audienceRef` задаёт аудиторию: `public`, `actor` или `server`.
+Корень хранения обязан ей соответствовать.
+
+### Коллекции
+
+`collections` объявляет местоположение, аудиторию, ёмкость, стабильный ключ и
+типизированные поля игровых сущностей. Любая выборка имеет явную
+`cardinality`, а сортировка завершается стабильным идентификатором. Поэтому
+результат не зависит от порядка JSON, базы данных или локали сервера.
+
+### События
+
+`events` объявляет тип полезной нагрузки и аудиторию. Необязательный
+`journalEndpoint` создаёт публичную или ролевую проекцию события в состоянии;
+защищённая долговечная запись события сохраняется сервером отдельно.
+
+## 6. Выражения и предикаты
+
+Выражение возвращает значение, но само ничего не изменяет. Это закрытое JSON
+AST (дерево выражения в JSON), а не строка программы:
+
+```json
+{
+  "op": "value.state",
+  "ref": { "endpoint": "public.metrics.score" }
+}
+```
+
+Основные источники значения:
+
+- `value.literal` — константа authoring;
+- `value.param` — проверенный параметр действия;
+- `value.actor` — участник, разрешённый сервером;
+- `value.state` — объявленная конечная точка;
+- `value.result` — результат предыдущего шага;
+- `value.item` — поле текущей сущности в ограниченной выборке;
+- типизированная арифметика и `value.coalesce`.
+
+Предикат — выражение, возвращающее истину или ложь. Он используется в
+`core.assert`, `when` и селекторах:
+
+```json
+{
+  "op": "predicate.compare",
+  "operator": "gte",
+  "left": {
+    "op": "value.state",
+    "ref": { "endpoint": "public.metrics.score" }
+  },
+  "right": { "op": "value.literal", "value": 1 }
+}
+```
+
+Предикаты можно объединять через объявленные `all`, `any` и `not`. Checker
+проверяет типы ссылок, направление `ResultRef`, доступность данных и
+распространение закрытости. Выражение не читает сеть, файлы, системные часы или
+переменные окружения и не запускает пользовательскую функцию.
+
+## 7. Транзакционные планы
+
+План содержит упорядоченный `transaction.steps`. В authoring хеш отсутствует;
+компилятор добавляет `planHash` в опубликованную форму. Хеш охватывает не
+только шаги, но и версию языка, бюджет, lock модулей, `stateModel`,
+`objectModels` и `networkModels`: изменение модели, через которую графовая или
+инвентарная операция понимает нейтральный шаг, всегда меняет идентичность
+плана.
+
+```json
+{
+  "choice.accept": {
+    "transaction": {
+      "steps": [
+        {
+          "id": "precondition",
+          "kind": "assert",
+          "op": "core.assert",
+          "predicate": {
+            "op": "predicate.compare",
+            "operator": "eq",
+            "left": {
+              "op": "value.state",
+              "ref": { "endpoint": "public.timeline.phase" }
+            },
+            "right": { "op": "value.literal", "value": "choice" }
+          },
+          "errorCode": "ACTION_PRECONDITION_FAILED"
         },
-        "effects": [
-          { "op": "timeline.set", "canAdvance": false },
-          {
-            "op": "flag.set",
-            "path": "/public/flags/cards/{{cardId}}",
-            "values": { "selected": true, "resolved": true }
-          },
-          {
-            "op": "log.append",
-            "kind": "opening-card-resolution",
-            "stageId": "stage_intro",
-            "cardId": "{{cardId}}",
-            "summary": "{{summary}}"
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-A template defines only the `deterministic` block. Action-level metadata (`handlerType`, `capabilityFamily`, `tags`, etc.) stays on each action.
-
-### Referencing Templates from Actions
-
-Actions reference templates via `templateId`:
-
-```json
-{
-  "actions": {
-    "opening.card.1": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-resolution",
-      "capabilityFamily": "game.card.resolve",
-      "capability": "game.card.resolve",
-      "displayName": "Select card 1",
-      "description": "First card in the opening",
-      "tags": ["antarctica", "opening", "legacy-card", "deterministic"],
-      "params": {
-        "cardId": "1",
-        "stepIndex": 9,
-        "summary": "Card 1 description"
-      }
-    }
-  }
-}
-```
-
-### Parameter Substitution
-
-Parameters are substituted into template strings using `{{paramName}}` syntax:
-
-- **Full-value substitution**: `"{{cardId}}"` — replaces the entire string with the parameter value
-- **Inline substitution**: `"Card {{cardId}} selected"` — embeds the parameter within a string
-- **Nested paths**: Parameters can be used inside nested objects and arrays
-
-```json
-"params": {
-  "cardId": "1",
-  "stepIndex": 9,
-  "nextStepIndex": 10,
-  "summary": "Description of the action"
-}
-```
-
-### Action-Specific Overrides
-
-When an action needs fields not in the template, use `overrides.deterministic`:
-
-```json
-{
-  "actions": {
-    "opening.card.3": {
-      "handlerType": "manifest-data",
-      "templateId": "opening-card-resolution",
-      "capabilityFamily": "game.card.resolve",
-      "capability": "game.card.resolve",
-      "params": {
-        "cardId": "3",
-        "stepIndex": 9,
-        "summary": "Card 3 description"
-      },
-      "overrides": {
-        "deterministic": {
-          "guard": {
-            "opening": { "selectedCardIdAbsent": true }
-          },
-          "effects": [
-            { "op": "metric.add", "metricId": "pro", "delta": 5 },
-            { "op": "metric.add", "metricId": "rep", "delta": -2 }
-          ]
+        {
+          "id": "award",
+          "kind": "command",
+          "op": "core.number.add",
+          "target": { "endpoint": "public.metrics.score" },
+          "delta": { "op": "value.literal", "value": 1 }
         }
-      }
-    }
-  }
-}
-```
-
-**Merge behavior**: Action `overrides.deterministic` is deep-merged on top of the resolved template:
-- `guard` is deep-merged, so action fields override individual guard keys.
-- `effects[]` is concatenated in order: template effects first, then action-specific effects.
-- When a journal entry must include metric snapshots, put `metric.add` effects before `log.append` and set `auditMetrics: true` on `log.append`.
-
-### Guard Evaluation
-
-Guards are preconditions that must pass for an action to execute. The runtime evaluates these guard types:
-
-| Guard Key | Description | Example |
-|-----------|-------------|---------|
-| `timeline` | Timeline state checks | `{ "line": "main", "stepIndex": 9, "canAdvance": false }` |
-| `board` | Board card resolution count | `{ "cardIds": ["1","2","3"], "resolvedCountAtLeast": 2 }` |
-| `card` | Individual card state | `{ "id": "1", "selected": false, "resolved": false }` |
-| `opening` | Selected card ID checks | `{ "selectedCardIdAbsent": true }` or `{ "selectedCardIdEquals": "3" }` |
-| `team` | Team member selection state | `{ "memberId": "fedya", "selected": false }` |
-| `teamSelection` | Team pick count | `{ "pickCountLessThan": 5 }` or `{ "pickCountEquals": 5 }` |
-| `stateConditions` | Generic path-based state checks | `[{ "path": "public/flags/cards/1/selected", "operator": "==", "value": true }]` |
-| `jsonLogic` | Tier 2 JsonLogic expression | See [Tier 2](#tier-2-jsonlogic-expressions) |
-
-All guard types in a single guard object must pass (logical AND).
-
-### State Effects
-
-State changes are expressed only through `effects[]`. The runtime validates every operation against the JSON Schema before applying it.
-
-| Effect | Description |
-|-------|-------------|
-| `timeline.set` | Set timeline fields such as `stepIndex`, `stageId`, `screenId`, `activeInfoId`, `canAdvance` |
-| `state.patch` | Apply small JSON Patch-like changes under `/public` or `/secret` |
-| `flag.set` | Update a named flags object, for example `/public/flags/cards/1` |
-| `counter.add` | Add a number to a counter |
-| `collection.append` | Append an item to an array |
-| `metric.add` | Add to a numeric metric |
-| `log.append` | Append a runtime journal entry |
-| `object.create` | Create a dynamic gameplay object during a session |
-| `object.state.set` | Set one state facet on a gameplay object |
-| `object.attribute.patch` | Patch mutable object attributes |
-
-`object.*` effects are implemented for session-scoped object state. `scope: "player"` is reserved for a future per-player slice and is intentionally rejected by the current runtime manifest schema.
-
----
-
-## Tier 2: JsonLogic Expressions
-
-For conditions that can't be expressed with hardcoded guard keys, use [JsonLogic](https://jsonlogic.com/) expressions.
-
-### Guard Conditions
-
-Add a `jsonLogic` field to the guard:
-
-```json
-{
-  "guard": {
-    "timeline": { "line": "main", "stepIndex": 23, "canAdvance": false },
-    "jsonLogic": {
-      "and": [
-        { ">": [{ "var": "public.metrics.pro" }, 25] },
-        { "<": [{ "var": "public.metrics.time" }, 50] }
       ]
     }
   }
 }
 ```
 
-The `var` operator accesses the runtime state using dot-delimited paths (e.g., `public.metrics.pro`).
+Шаги выполняются по порядку над **candidate state** — пробной копией состояния.
+Следующий шаг видит предыдущие изменения. Если предусловие, тип, ограничение
+стоимости или команда завершается ошибкой, откатываются состояние, случайность,
+события и версия сессии. Частичный успех массовой операции запрещён.
 
-### Computed Metric Changes
+`kind` объясняет роль шага:
 
-`metric.add` values can be JsonLogic expressions:
+- `assert` — проверяемое предусловие со стабильным кодом ошибки;
+- `query` — чистая ограниченная выборка;
+- `command` — изменение состояния, событие или расход случайности;
+- `algorithm` — чистое версионированное вычисление общего назначения.
+
+`step.id` уникален в плане. Ссылка на результат может смотреть только на уже
+выполненный шаг.
+
+## 8. Универсальные операции
+
+Выбирайте операцию по её проверяемым гарантиям, а не по предметному названию
+игры. Текущие модули дают следующие группы:
+
+| Модуль | Назначение |
+|---|---|
+| `cubica.core` | предусловия, выбор сущностей, patch объявленного состояния, числа, ресурсы, коллекции, сущности, события, ход и фаза |
+| `cubica.random` | воспроизводимый бросок через именованный поток случайности |
+| `cubica.deck` | воспроизводимое перемешивание и взятие карт |
+| `cubica.graph` | общие операции над графом областей, рёбрами и перемещением объектов |
+| `cubica.relations` | присоединение и отсоединение типизированных отношений |
+| `cubica.inventory` | загрузка и доставка предметов между хранилищами |
+| `cubica.ranking` | каноническое вычисление группового рейтинга |
+
+Например, правило «восстановить ресурс всем активным объектам» выражается как
+`core.entities.select` по фактической коллекции и `core.entities.update` по
+результату. Платформенная операция с названием конкретной дороги, компании или
+игры для этого не нужна.
+
+Полный и актуальный список вариантов находится в `oneOf` определения `step` в
+[`mechanics-plan.schema.json`](schemas/mechanics-plan.schema.json). Реестр
+точных версий и операций модулей находится в
+`scripts/manifest-tools/mechanics-modules.cjs`.
+
+## 9. События и журнал
+
+Сначала объявите событие в `stateModel.events`, затем используйте
+`core.event.emit`. Поля `data` должны совпадать с объявленным record-типом:
 
 ```json
 {
-  "effects": [
-    {
-      "op": "metric.add",
-      "metricId": "score",
-      "delta": {
-        "*": [{ "var": "public.metrics.pro" }, 2]
-      }
-    }
-  ]
-}
-```
-
-This computes `score += pro * 2` dynamically based on the current state.
-
-### Available Operators
-
-Standard JsonLogic operators are available: `var`, `if`, `==`, `!=`, `>`, `<`, `>=`, `<=`, `and`, `or`, `not`, `+`, `-`, `*`, `/`, `%`, `in`, `cat`, `substr`, `log`, `merge`, `map`, `filter`, `reduce`, `all`, `none`, `some`.
-
----
-
-## Tier 3: Declarative Effects
-
-Declarative effects are explicit JSON operations that the runtime validates and applies. They are used for small game-runtime commands that should not become arbitrary JavaScript:
-
-```json
-{
-  "actions": {
-    "recordFacilitatorNote": {
-      "handlerType": "manifest-data",
-      "capabilityFamily": "log",
-      "capability": "log.append",
-      "deterministic": {
-        "effects": [
-          {
-            "op": "log.append",
-            "kind": "facilitator-note",
-            "summary": "Команда зафиксировала риск в обсуждении",
-            "data": { "riskLevel": "medium" }
-          }
-        ]
-      }
-    }
+  "id": "record-choice",
+  "kind": "command",
+  "op": "core.event.emit",
+  "eventType": "choice.accepted",
+  "summary": { "op": "value.literal", "value": "Решение принято" },
+  "audience": "public",
+  "data": {
+    "choiceId": { "op": "value.param", "name": "choiceId" }
   }
 }
 ```
 
-Effects are **capability triggers**, not sandboxed user scripts. They signal the runtime to perform a specific allowed operation, for example append a game log entry, update a timeline field, change a metric, or apply an object-state change. Local UI-only commands such as opening a hint panel should live in the UI manifest and Presenter state, not in the logical game manifest. Full runtime plugins are a separate architecture topic and must not be introduced by adding ad hoc `handlerType: "script"` actions.
+Событие входит в ту же транзакцию, что и состояние. Публичный журнал — удобная
+проекция для интерфейса, а не замена защищённой последовательности событий.
+Не помещайте закрытые значения в публичные `summary` или `data`.
 
----
+## 10. Параметры и граница доверия
 
-## Gameplay Object State
+Параметр действия — недоверенное значение даже после проверки JSON Schema.
 
-Gameplay object state is the authoritative state of a game object inside session state.
-It is not frontend-local state.
+- Клиент не передаёт `playerId` как доказательство личности. Пользователь
+  устанавливается аутентификацией, а игровой участник разрешается сервером.
+- Клиент не выбирает `op`, `moduleId`, `planRef`, путь хранения или структуру
+  выражения.
+- Ссылки на игровые объекты ограничиваются `x-cubica-ref`, видимостью,
+  коллекцией, допустимыми типами и текущим состоянием.
+- `expectedStateVersion` защищает разные команды от гонки; `commandId`
+  обеспечивает точный повтор одной и той же логической команды.
+- Доступность для интерфейса не заменяет серверную авторизацию и предусловия
+  плана.
 
-Authoring manifests should describe object types and state facets through `objectTypes`.
-The compiler emits runtime `objectModels`.
+Игровой ИИ работает по той же границе: он выбирает один опубликованный Game
+Intent из доступного ему каталога и передаёт параметры. Он не возвращает
+`effects`, patch состояния или произвольный Mechanics IR.
 
-Example authoring shape:
+## 11. Компиляция и диагностика
 
-```json
-{
-  "objectTypes": {
-    "card.basic": {
-      "collection": "cards",
-      "idField": "cardId",
-      "scope": "session",
-      "facets": {
-        "face": {
-          "initial": "front",
-          "values": {
-            "front": { "view": { "summaryFrom": "summary" } },
-            "back": { "view": { "summaryFrom": "backText", "visualState": "resolved" } }
-          }
-        },
-        "availability": {
-          "initial": "available",
-          "values": {
-            "available": { "visible": true, "interactive": true },
-            "locked": { "visible": true, "interactive": false }
-          }
-        }
-      }
-    }
-  }
-}
-```
+Обычный цикл автора:
 
-Use object effects for object state changes:
+1. Изменить `games/<game>/authoring/game.authoring.json` и при необходимости
+   UI-authoring.
+2. Объявить типы, конечные точки, коллекции и события до добавления плана.
+3. Добавить или изменить план и связать действие через `binding.planRef`.
+4. Скомпилировать все манифесты: `npm run compile:manifests`.
+5. Проверить authoring и воспроизводимость: `npm run verify:manifest-authoring`.
+6. Если менялась JSON Schema, пересоздать производные типы командой
+   `npm run generate:contracts` и проверить schema parity.
 
-```json
-{
-  "effects": [
-    {
-      "op": "object.state.set",
-      "visibility": "public",
-      "collection": "cards",
-      "objectId": "{{cardId}}",
-      "facet": "face",
-      "value": "back"
-    }
-  ]
-}
-```
+Компилятор выполняет несколько разных проверок:
 
-Use `object.create` for dynamic resources:
+- JSON Schema authoring-оболочки;
+- строгую JSON Schema 2020-12 для `mechanics`;
+- существование plan refs, типов, конечных точек, коллекций, событий и модулей;
+- совместимость типов, аудиторий, прав чтения/записи и результатов шагов;
+- статическую стоимость сканирования, результатов, выражений и записей;
+- точность `moduleLock`;
+- хеши опубликованных планов и действий.
 
-```json
-{
-  "op": "object.create",
-  "visibility": "public",
-  "collection": "resources",
-  "objectId": "fuel-1",
-  "objectType": "resource.supply",
-  "facets": { "availability": "available" },
-  "attributes": { "title": "Emergency fuel", "amount": 3 }
-}
-```
+Диагностика должна вести к authoring-источнику через указатель экземпляра,
+идентификатор шага и карту связи с исходником. Не исправляйте ошибку ручной
+правкой скомпилированного манифеста: следующая сборка её перезапишет.
 
-State is separate from logic:
+Authoring-инструмент может предоставлять удобную предметную форму или макрос,
+но обязан полностью раскрыть её до проверки и публикации. Runtime не раскрывает
+шаблоны и не выполняет строковую подстановку.
 
-- object state definitions list valid facets and values;
-- `guard.object` checks object type, facets and attributes before an action runs;
-- guards and JsonLogic read object state;
-- effects change object state;
-- Presenter builds UI-ready object views;
-- React components render projected props and do not decide gameplay rules.
+## 12. Где размещать новую механику
 
-See [ADR-041](adrs/041-gameplay-object-state-model.md) for the accepted architecture.
+Перед добавлением новой возможности определите её уровень:
 
----
+1. **Содержимое игры** — идентификаторы, числа, тексты, конкретные типы и
+   правила композиции остаются в authoring этой игры.
+2. **Authoring-макрос** — повторяемая предметная запись может раскрыться в уже
+   существующие универсальные операции на этапе сборки.
+3. **Общая функция или модуль** — нейтральная операция для класса игр получает
+   JSON Schema, типы, модель стоимости, точную версию и нейтральную тестовую
+   фикстуру.
+4. **Изолированное расширение игры** — исполняемый код допустим, только если
+   правило нельзя разумно выразить предыдущими уровнями. Он принадлежит пакету
+   одной игры, получает ограниченную проекцию данных и не имеет прямого доступа
+   к хранилищу, сети, файловой системе или процессу платформы.
 
-## Manifest Schema Reference
+Нельзя добавлять проверку `gameId` или предметный `if/else` в общий runtime.
+Если правило выражается выбором, фильтрацией, сортировкой, вычислением,
+изменением коллекции, графа, отношения, события или времени, расширяйте общий
+декларативный словарь нейтральной операцией.
 
-The full JSON Schema is at [`docs/architecture/schemas/game-manifest.schema.json`](schemas/game-manifest.schema.json).
+## 13. Что больше не использовать
 
-Key schema types:
-- `GameManifest` — root manifest structure
-- `GameManifestActionDefinition` — action definition with optional `templateId` and `overrides`
-- `GameManifestTemplateDefinition` — template definition (like action but `handlerType` not required)
-- `GameManifestDeterministicGuard` — guard conditions (timeline, board, card, opening, team, teamSelection, stateConditions, jsonLogic)
-- `GameManifestDeterministicActionMetadata` — full deterministic action metadata
-- `JsonLogicExpression` — recursive JsonLogic operator expression
-- `objectModels` — compiled runtime object-state model emitted from authoring `objectTypes`
+Следующие конструкции относятся к удалённому контуру и не являются способом
+создать новую механику:
+
+- `deterministic.effects[]` и старые предметные effect-обработчики;
+- runtime-`templates`, `templateId`, `overrides` и подстановка `{{...}}`;
+- JsonLogic как исполняемый язык правил или изменений состояния;
+- `handlerType: "script"`, произвольный JavaScript или общий `eval`;
+- ручной `commandMap` или запасное имя действия в Presenter;
+- прямые agent effects/patches;
+- клиентские JSON Pointer, JSONPath, `op`, `planRef` и module selection.
+
+Для старого игрового пакета сначала перенесите действие в `stateModel`,
+`plans` и `action.binding`, затем удалите старую форму. Постоянный адаптер двух
+языков не предусмотрен.
+
+## 14. Справочные материалы
+
+- [Game Intent → Cubica Mechanics IR](runtime-mechanics-language.md) — полная
+  семантика языка, транзакций, безопасности и расширений.
+- [Модель состояния игровых объектов](adrs/041-gameplay-object-state-model.md) —
+  граница состояния сущности и его представления.
+- [Типизированный транзакционный Mechanics IR](adrs/084-typed-transactional-mechanics-ir.md) —
+  принятое архитектурное решение и отвергнутые альтернативы.
+- [Схема runtime-команды](schemas/runtime-command.schema.json) — внешний
+  контракт `actionId`, `params`, `commandId` и версии состояния.

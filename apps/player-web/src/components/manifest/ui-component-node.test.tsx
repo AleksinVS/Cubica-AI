@@ -128,7 +128,8 @@ describe("UiComponentNode declarative action binding (ADR-055)", () => {
           actionAvailability: [{
             actionId: "requestServer",
             status: "unavailable",
-            reasonCode: "state_condition_failed"
+            reasonCode: "state_condition_failed",
+            basisStateVersion: 1
           }]
         }}
       />

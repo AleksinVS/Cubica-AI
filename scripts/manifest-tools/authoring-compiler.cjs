@@ -24,6 +24,18 @@ const {
   writeCacheEntry,
   createCompileTelemetry
 } = require("./compile-cache.cjs");
+const { mechanicsSha256 } = require("./mechanics-canonicalize.cjs");
+const {
+  checkMechanicsBundle,
+  MechanicsSemanticError,
+  turnSessionInitializationForManifest
+} = require("./mechanics-checker.cjs");
+const {
+  validateMacroInput,
+  validateMechanicsAuthoringSchema
+} = require("./mechanics-authoring-validator.cjs");
+const { recommendedModuleLockForOperations } = require("./mechanics-modules.cjs");
+const { validateGameIntentSchema, validateMechanicsSchema } = require("./mechanics-validator.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
@@ -40,6 +52,18 @@ const COMPILER_SCHEMA_FILES = [
   "manifest-source-map.schema.json",
   "game-manifest.schema.json",
   "ui-manifest.schema.json"
+];
+const MECHANICS_COMPILER_INPUT_FILES = [
+  path.join(schemasRoot, "mechanics-authoring.schema.json"),
+  path.join(schemasRoot, "game-intent.schema.json"),
+  path.join(schemasRoot, "mechanics-operation-catalog.json"),
+  path.join(schemasRoot, "mechanics-operation-catalog.schema.json"),
+  path.join(schemasRoot, "mechanics-plan.schema.json"),
+  path.join(__dirname, "mechanics-authoring-validator.cjs"),
+  path.join(__dirname, "mechanics-canonicalize.cjs"),
+  path.join(__dirname, "mechanics-checker.cjs"),
+  path.join(__dirname, "mechanics-modules.cjs"),
+  path.join(__dirname, "mechanics-validator.cjs")
 ];
 
 // Directory for level-3 compile cache entries. Under `.tmp/` (outside Git);
@@ -60,6 +84,9 @@ const AUTHORING_KEYS = new Set([
   "_channel"
 ]);
 const MAX_EXTENDS_DEPTH = 5;
+// Non-enumerable compiler context: pending actions type-check plans but are
+// deliberately absent from runtime JSON, source maps, hashes, and caches.
+const PARAMETER_ACTIONS = Symbol("cubica.pending-parameter-actions");
 
 class CompileError extends Error {
   constructor(message, filePath, pointer) {
@@ -147,7 +174,10 @@ let cachedSchemasHash;
 function getSchemasHash() {
   if (cachedSchemasHash === undefined) {
     cachedSchemasHash = hashText(
-      COMPILER_SCHEMA_FILES.map((file) => fs.readFileSync(path.join(schemasRoot, file), "utf8")).join("\0")
+      [
+        ...COMPILER_SCHEMA_FILES.map((file) => path.join(schemasRoot, file)),
+        ...MECHANICS_COMPILER_INPUT_FILES
+      ].map((file) => fs.readFileSync(file, "utf8")).join("\0")
     );
   }
   return cachedSchemasHash;
@@ -213,18 +243,10 @@ function assertNoMergeOperatorConflicts(node, filePath, pointer) {
 
 function isDeclarativeExpressionPointer(pointer) {
   const segments = pointer.split("/").filter(Boolean);
-  if (segments.includes("jsonLogic") || segments.includes("expression")) {
-    return true;
-  }
-
-  // Deterministic numeric effect fields are also JsonLogic expression slots.
-  // Without this bounded exception an operator such as `+` is mistaken for
-  // authoring prototype merge syntax before the compiled runtime schema can
-  // validate it. Limit the exception to effects so ordinary authoring objects
-  // keep the conflict protection above.
-  const effectsIndex = segments.lastIndexOf("effects");
-  const effectField = effectsIndex >= 0 ? segments[effectsIndex + 2] : undefined;
-  return effectField === "value" || effectField === "delta" || effectField === "amount";
+  // Computed, read-only player metrics still use a declarative expression
+  // object whose operators may begin with '+' or '-'. Gameplay mutations no
+  // longer pass through the removed effect-array compatibility exception.
+  return segments.includes("jsonLogic") || segments.includes("expression");
 }
 
 function mergeObjects(parentValue, childValue) {
@@ -275,7 +297,7 @@ function createCompilerContext(sourceFile, authoring) {
  * then asks "does this pointer exist in the authoring file?". The old readPointer
  * re-walked the entire path from the document root for every such question, so a
  * node at depth d cost O(d) per child — super-linear across a deep, wide manifest
- * (antarctica: 141 actions with nested effects). Here each pointer is resolved
+ * (large games may contain hundreds of actions). Here each pointer is resolved
  * from its already-cached parent in O(1) and stored, so the whole traversal is
  * linear in the number of distinct pointers queried. Semantics are identical to
  * the previous readPointer: descending requires an object/array with an own
@@ -463,11 +485,66 @@ function compileAuthoringDocument(job, authoring, ajv) {
     throw new CompileError(`Authoring schema validation failed: ${formatErrors(validate.errors)}`, job.sourceFile, "");
   }
 
+  // Mechanics is intentionally not validated by the draft-07 manifest
+  // registry. Validate its untouched source before generic prototype lowering
+  // so authoring-only keys cannot be stripped before the closed 2020-12
+  // contract sees them.
+  if (job.kind === "game" && authoring._schemaVersion === "2.0") {
+    assertMechanicsAuthoringContract(authoring.root.mechanics, job.sourceFile);
+  }
+
   const compiledRoot = compileNode(authoring.root, createCompilerContext(job.sourceFile, authoring), "/root");
   const compiled = authoring._schemaVersion === "2.0"
     ? compileAuthoringV2(job, compiledRoot)
     : compiledRoot;
   assertNoAuthoringKeys(compiled.value, job.outputFile);
+
+  // Mechanics uses JSON Schema 2020-12 and therefore must never be registered
+  // in the draft-07 Ajv instance above. Structural validation runs first;
+  // cross-reference/type/cost checks run only on a schema-valid tree.
+  if (job.kind === "game" && authoring._schemaVersion === "2.0") {
+    const mechanicsValidation = validateMechanicsSchema(compiled.value.mechanics);
+    if (!mechanicsValidation.valid) {
+      const first = mechanicsValidation.errors[0];
+      throw new CompileError(
+        `Mechanics schema validation failed: ${mechanicsValidation.errors
+          .map((error) => `${error.pointer || "/"} ${error.message}`)
+          .join("; ")}`,
+        job.sourceFile,
+        `/root/mechanics${first?.pointer || ""}`
+      );
+    }
+    try {
+      checkMechanicsBundle(compiled.value.mechanics, {
+        actions: compiled.value.actions,
+        parameterActions: compiled.value[PARAMETER_ACTIONS] || {},
+        initialState: compiled.value.state,
+        // A game author declares a reusable player template. Concrete
+        // participant ids and the strict public turn structure are
+        // materialized by runtime when the session is created.
+        turnSessionInitialization: turnSessionInitializationForManifest(compiled.value),
+        objectModels: compiled.value.objectModels,
+        networkModels: compiled.value.networkModels
+      });
+    } catch (error) {
+      if (error instanceof MechanicsSemanticError) {
+        throw new CompileError(`Mechanics semantic validation failed: ${error.code}: ${error.message}`, job.sourceFile, `/root${error.pointer}`);
+      }
+      throw error;
+    }
+  }
+
+  const runtimeValidation = validateRuntimeManifest(job, compiled.value, ajv);
+  if (!runtimeValidation.valid) {
+    const first = runtimeValidation.errors[0];
+    throw new CompileError(
+      `Compiled runtime manifest is invalid: ${runtimeValidation.errors
+        .map((error) => `${error.pointer || "/"} ${error.message}`)
+        .join("; ")}`,
+      job.sourceFile,
+      `/root${first?.pointer || ""}`
+    );
+  }
 
   const sourceMap = {
     version: 1,
@@ -924,9 +1001,441 @@ function appendGameLogicRuntimeFields(manifest, mappings, compiledRoot, sourceFi
     addRuntimeMapping(mappings, "/actions", compiledRoot, sourceFile, "/root/logic/actions");
   }
 
-  if (Object.prototype.hasOwnProperty.call(logic, "templates")) {
-    manifest.templates = logic.templates;
-    copySubtreeMappings(mappings, compiledRoot, sourceFile, "/root/logic/templates", "/templates");
+}
+
+function isMacroInvocation(value) {
+  return hasPlainObject(value) && value.kind === "macro";
+}
+
+function isMacroPlaceholder(value) {
+  return hasPlainObject(value) &&
+    Object.keys(value).length === 1 &&
+    typeof value.$macroInput === "string";
+}
+
+/** Collect reserved placeholders together with their exact authoring pointer. */
+function collectMacroPlaceholders(value, pointer, result = []) {
+  if (isMacroPlaceholder(value)) {
+    result.push({ name: value.$macroInput, pointer });
+    return result;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((child, index) => collectMacroPlaceholders(child, joinPointer(pointer, index), result));
+  } else if (hasPlainObject(value)) {
+    for (const [key, child] of Object.entries(value)) {
+      collectMacroPlaceholders(child, joinPointer(pointer, key), result);
+    }
+  }
+  return result;
+}
+
+/**
+ * Validate definition-wide relationships that JSON Schema cannot express:
+ * input use, unique local ids, known macro references and an acyclic call graph.
+ */
+function checkMacroDefinitions(macros, sourceFile) {
+  const graph = new Map();
+  for (const [macroName, definition] of Object.entries(macros)) {
+    const macroPointer = joinPointer("/root/mechanics/macros", macroName);
+    const inputNames = new Set(Object.keys(definition.inputs));
+    const usedInputs = new Set();
+    const localIds = new Set();
+    const calls = [];
+    definition.steps.forEach((step, index) => {
+      const stepPointer = joinPointer(joinPointer(macroPointer, "steps"), index);
+      if (localIds.has(step.id)) {
+        throw new CompileError(`Macro "${macroName}" has duplicate local step id "${step.id}"`, sourceFile, joinPointer(stepPointer, "id"));
+      }
+      localIds.add(step.id);
+      for (const placeholder of collectMacroPlaceholders(step, stepPointer)) {
+        if (!inputNames.has(placeholder.name)) {
+          throw new CompileError(
+            `Macro "${macroName}" references unknown input "${placeholder.name}"`,
+            sourceFile,
+            placeholder.pointer
+          );
+        }
+        usedInputs.add(placeholder.name);
+      }
+      if (isMacroInvocation(step)) {
+        if (!Object.prototype.hasOwnProperty.call(macros, step.macro)) {
+          throw new CompileError(`Macro "${macroName}" calls unknown macro "${step.macro}"`, sourceFile, joinPointer(stepPointer, "macro"));
+        }
+        calls.push(step.macro);
+      }
+    });
+    for (const inputName of inputNames) {
+      if (!usedInputs.has(inputName)) {
+        throw new CompileError(
+          `Macro "${macroName}" declares unused input "${inputName}"`,
+          sourceFile,
+          joinPointer(joinPointer(macroPointer, "inputs"), inputName)
+        );
+      }
+    }
+    graph.set(macroName, calls);
+  }
+
+  const visited = new Set();
+  const visiting = new Set();
+  function visit(macroName, stack) {
+    if (visiting.has(macroName)) {
+      throw new CompileError(
+        `Recursive Mechanics macro call: ${[...stack, macroName].join(" -> ")}`,
+        sourceFile,
+        joinPointer("/root/mechanics/macros", macroName)
+      );
+    }
+    if (visited.has(macroName)) return;
+    visiting.add(macroName);
+    for (const dependency of graph.get(macroName) || []) visit(dependency, [...stack, macroName]);
+    visiting.delete(macroName);
+    visited.add(macroName);
+  }
+  for (const macroName of Object.keys(macros)) visit(macroName, []);
+}
+
+function assertNoInvocationPlaceholders(args, sourceFile, pointer) {
+  const placeholders = collectMacroPlaceholders(args, pointer);
+  if (placeholders.length > 0) {
+    throw new CompileError(
+      "A $macroInput placeholder is allowed only inside a macro template",
+      sourceFile,
+      placeholders[0].pointer
+    );
+  }
+}
+
+function validateMacroInvocationArgs(invocation, definition, sourceFile, pointer) {
+  const declarations = definition.inputs;
+  for (const name of Object.keys(declarations)) {
+    if (!Object.prototype.hasOwnProperty.call(invocation.args, name)) {
+      throw new CompileError(`Macro "${invocation.macro}" is missing argument "${name}"`, sourceFile, joinPointer(pointer, "args"));
+    }
+  }
+  for (const [name, value] of Object.entries(invocation.args)) {
+    const declaration = declarations[name];
+    const argumentPointer = joinPointer(joinPointer(pointer, "args"), name);
+    if (!declaration) {
+      throw new CompileError(`Macro "${invocation.macro}" received unknown argument "${name}"`, sourceFile, argumentPointer);
+    }
+    const validation = validateMacroInput(declaration.kind, value);
+    if (!validation.valid) {
+      throw new CompileError(
+        `Macro "${invocation.macro}" argument "${name}" is not a valid ${declaration.kind}: ${validation.errors
+          .map((error) => `${error.pointer || "/"} ${error.message}`)
+          .join("; ")}`,
+        sourceFile,
+        argumentPointer
+      );
+    }
+  }
+}
+
+function rewriteLocalResultId(stepId, localIds, prefix) {
+  if (localIds.has(stepId)) return `${prefix}.${stepId}`;
+  // A nested macro has no synthetic result of its own, but its expanded step
+  // ids are addressable as `nestedInvocation.templateStep`.
+  for (const localId of localIds) {
+    if (stepId.startsWith(`${localId}.`)) return `${prefix}.${stepId}`;
+  }
+  return stepId;
+}
+
+/** Substitute structured JSON without reinterpreting placeholders inside args. */
+function instantiateMacroValue(value, args, localIds, prefix) {
+  if (isMacroPlaceholder(value)) return clone(args[value.$macroInput]);
+  if (Array.isArray(value)) return value.map((child) => instantiateMacroValue(child, args, localIds, prefix));
+  if (!hasPlainObject(value)) return value;
+  const result = {};
+  for (const [key, child] of Object.entries(value)) {
+    if (key === "stepId" && value.op === "value.result" && typeof child === "string") {
+      result[key] = rewriteLocalResultId(child, localIds, prefix);
+    } else {
+      result[key] = instantiateMacroValue(child, args, localIds, prefix);
+    }
+  }
+  return result;
+}
+
+function expandMacroInvocation(invocation, options) {
+  const { macros, sourceFile, pointer, invocationOrigin, prefix, expansionBudget } = options;
+  const definition = macros[invocation.macro];
+  if (!definition) {
+    throw new CompileError(`Unknown Mechanics macro "${invocation.macro}"`, sourceFile, joinPointer(pointer, "macro"));
+  }
+  validateMacroInvocationArgs(invocation, definition, sourceFile, pointer);
+  const localIds = new Set(definition.steps.map((step) => step.id));
+  const expanded = [];
+  definition.steps.forEach((templateStep, index) => {
+    const templatePointer = joinPointer(
+      joinPointer(joinPointer("/root/mechanics/macros", invocation.macro), "steps"),
+      index
+    );
+    const instantiated = instantiateMacroValue(templateStep, invocation.args, localIds, prefix);
+    if (isMacroInvocation(instantiated)) {
+      const nestedPrefix = `${prefix}.${instantiated.id}`;
+      expanded.push(...expandMacroInvocation(instantiated, {
+        macros,
+        sourceFile,
+        pointer: templatePointer,
+        invocationOrigin,
+        prefix: nestedPrefix,
+        expansionBudget
+      }));
+      return;
+    }
+    expansionBudget.count += 1;
+    if (expansionBudget.count > expansionBudget.max) {
+      throw new CompileError(
+        `Lowered plan "${expansionBudget.planId}" exceeds ${expansionBudget.max} steps`,
+        sourceFile,
+        templatePointer
+      );
+    }
+    instantiated.id = `${prefix}.${templateStep.id}`;
+    expanded.push({
+      step: instantiated,
+      sourcePointers: [invocationOrigin, templatePointer]
+    });
+  });
+  return expanded;
+}
+
+/**
+ * Lower authoring-only macros into final runtime steps and derive the exact
+ * dependency-closed module lock from those final operations.
+ */
+function lowerMechanicsAuthoring(source, sourceFile) {
+  assertMechanicsAuthoringContract(source, sourceFile);
+
+  const macros = source.macros || {};
+  checkMacroDefinitions(macros, sourceFile);
+  const plans = {};
+  const origins = {};
+  const operations = [];
+  for (const [planId, plan] of Object.entries(source.plans)) {
+    const sourceSteps = plan.transaction.steps;
+    const lowered = [];
+    const expansionBudget = { count: 0, max: 512, planId };
+    sourceSteps.forEach((step, index) => {
+      const pointer = joinPointer(
+        joinPointer(joinPointer(joinPointer("/root/mechanics/plans", planId), "transaction"), "steps"),
+        index
+      );
+      if (isMacroInvocation(step)) {
+        assertNoInvocationPlaceholders(step.args, sourceFile, joinPointer(pointer, "args"));
+        lowered.push(...expandMacroInvocation(step, {
+          macros,
+          sourceFile,
+          pointer,
+          invocationOrigin: pointer,
+          prefix: step.id,
+          expansionBudget
+        }));
+      } else {
+        expansionBudget.count += 1;
+        lowered.push({ step: clone(step), sourcePointers: [pointer] });
+      }
+    });
+    if (lowered.length > 512) {
+      throw new CompileError(`Lowered plan "${planId}" exceeds 512 steps`, sourceFile, joinPointer("/root/mechanics/plans", planId));
+    }
+    const seen = new Set();
+    lowered.forEach(({ step, sourcePointers }) => {
+      if (seen.has(step.id)) {
+        throw new CompileError(`Lowered plan "${planId}" has duplicate step id "${step.id}"`, sourceFile, joinPointer(sourcePointers[0], "id"));
+      }
+      seen.add(step.id);
+      operations.push(step.op);
+    });
+    plans[planId] = { transaction: { steps: lowered.map((entry) => entry.step) } };
+    origins[planId] = lowered.map((entry) => entry.sourcePointers);
+  }
+
+  let moduleLock;
+  try {
+    moduleLock = recommendedModuleLockForOperations(operations);
+  } catch (error) {
+    throw new CompileError(error.message, sourceFile, "/root/mechanics/plans");
+  }
+  return {
+    mechanics: {
+      apiVersion: source.apiVersion,
+      budgetProfile: source.budgetProfile,
+      moduleLock,
+      stateModel: source.stateModel,
+      plans
+    },
+    origins
+  };
+}
+
+function deleteMappingSubtree(mappings, prefix) {
+  for (const pointer of Object.keys(mappings)) {
+    if (pointer === prefix || pointer.startsWith(`${prefix}/`)) delete mappings[pointer];
+  }
+}
+
+function mapGeneratedSubtree(mappings, pointer, value, sources) {
+  mappings[pointer] = uniqueSources(sources);
+  if (Array.isArray(value)) {
+    value.forEach((child, index) => mapGeneratedSubtree(mappings, joinPointer(pointer, index), child, sources));
+  } else if (hasPlainObject(value)) {
+    for (const [key, child] of Object.entries(value)) {
+      mapGeneratedSubtree(mappings, joinPointer(pointer, key), child, sources);
+    }
+  }
+}
+
+function assertMechanicsAuthoringContract(source, sourceFile) {
+  const schemaValidation = validateMechanicsAuthoringSchema(source);
+  if (!schemaValidation.valid) {
+    const first = schemaValidation.errors[0];
+    throw new CompileError(
+      `Mechanics authoring schema validation failed: ${schemaValidation.errors
+        .map((error) => `${error.pointer || "/"} ${error.message}`)
+        .join("; ")}`,
+      sourceFile,
+      `/root/mechanics${first?.pointer || ""}`
+    );
+  }
+}
+
+/**
+ * Publish the authoring Mechanics tree as immutable runtime IR.
+ *
+ * Authors provide transactions, while the compiler owns every hash. A plan
+ * hash includes its pinned language, budget, module and state-model context so
+ * the same steps cannot be replayed under different platform semantics.
+ */
+function publishMechanics(manifest, mappings, compiledRoot, sourceFile) {
+  const authoringSource = ensureObject(manifest.mechanics, sourceFile, "/root/mechanics", "game v2 root.mechanics");
+  const lowered = lowerMechanicsAuthoring(authoringSource, sourceFile);
+  const source = lowered.mechanics;
+  deleteMappingSubtree(mappings, "/mechanics/macros");
+  deleteMappingSubtree(mappings, "/mechanics/moduleLock");
+  const mechanicsSources = sourceFor(compiledRoot, sourceFile, "/root/mechanics");
+  mapGeneratedSubtree(mappings, "/mechanics/moduleLock", source.moduleLock, mechanicsSources);
+  const plans = ensureObject(source.plans, sourceFile, "/root/mechanics/plans", "game v2 mechanics.plans");
+  const publishedPlans = {};
+  for (const [planId, rawPlan] of Object.entries(plans)) {
+    const sourcePointer = joinPointer("/root/mechanics/plans", planId);
+    const plan = ensureObject(rawPlan, sourceFile, sourcePointer, `mechanics plan "${planId}"`);
+    if (Object.prototype.hasOwnProperty.call(plan, "planHash")) {
+      throw new CompileError("planHash is compiler-owned and must not appear in authoring", sourceFile, joinPointer(sourcePointer, "planHash"));
+    }
+    const transaction = ensureObject(plan.transaction, sourceFile, joinPointer(sourcePointer, "transaction"), `mechanics plan "${planId}" transaction`);
+    const stepsPointer = joinPointer(
+      joinPointer(joinPointer("/mechanics/plans", planId), "transaction"),
+      "steps"
+    );
+    deleteMappingSubtree(mappings, stepsPointer);
+    mappings[stepsPointer] = sourceFor(
+      compiledRoot,
+      sourceFile,
+      joinPointer(joinPointer(sourcePointer, "transaction"), "steps")
+    );
+    transaction.steps.forEach((step, index) => {
+      const sources = uniqueSources(lowered.origins[planId][index].flatMap((pointer) =>
+        sourceFor(compiledRoot, sourceFile, pointer)));
+      mapGeneratedSubtree(mappings, joinPointer(stepsPointer, index), step, sources);
+    });
+    const planContext = {
+      apiVersion: source.apiVersion,
+      budgetProfile: source.budgetProfile,
+      moduleLock: source.moduleLock,
+      stateModel: source.stateModel,
+      // Domain operations such as graph edits interpret their generic steps
+      // through these published models. Pinning both maps prevents an
+      // otherwise byte-identical plan from changing meaning after a model
+      // declaration changes.
+      objectModels: manifest.objectModels || {},
+      networkModels: manifest.networkModels || {},
+      planId,
+      transaction
+    };
+    publishedPlans[planId] = {
+      planHash: mechanicsSha256(planContext),
+      transaction
+    };
+    mappings[joinPointer(joinPointer("/mechanics/plans", planId), "planHash")] = sourceFor(
+      compiledRoot,
+      sourceFile,
+      sourcePointer
+    );
+  }
+  manifest.mechanics = { ...source, plans: publishedPlans };
+
+  const actions = ensureObject(manifest.actions, sourceFile, "/root/logic/actions", "compiled game actions");
+  for (const [actionId, actionValue] of Object.entries(actions)) {
+    const action = ensureObject(actionValue, sourceFile, joinPointer("/actions", actionId), `action "${actionId}"`);
+    if (Object.prototype.hasOwnProperty.call(action, "definitionHash")) {
+      throw new CompileError("definitionHash is compiler-owned and must not appear in authoring", sourceFile, joinPointer(joinPointer("/actions", actionId), "definitionHash"));
+    }
+    const planRef = hasPlainObject(action.binding) ? action.binding.planRef : undefined;
+    const referencedPlan = typeof planRef === "string" ? publishedPlans[planRef] : undefined;
+    if (!referencedPlan) {
+      throw new CompileError(
+        `Action "${actionId}" references unknown mechanics plan "${String(planRef)}"`,
+        sourceFile,
+        joinPointer(joinPointer("/actions", actionId), "binding")
+      );
+    }
+    if (!Object.prototype.hasOwnProperty.call(action, "paramsSchema")) {
+      // A canonical command always contains `params`. Materializing the
+      // closed empty schema keeps JSON Schema—not an imperative runtime
+      // convention—as the published source of truth for parameter shape.
+      action.paramsSchema = {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+        required: []
+      };
+      mappings[joinPointer(joinPointer("/actions", actionId), "paramsSchema")] =
+        mappings[joinPointer("/actions", actionId)] || sourceFor(compiledRoot, sourceFile, "/root/logic/actions");
+    }
+    if (!Object.prototype.hasOwnProperty.call(action, "invocation")) {
+      // Invocation is part of the immutable definition identity. Normalize
+      // before definitionHash so an omitted authoring default cannot become a
+      // transport- or consumer-specific fallback.
+      action.invocation = "external";
+      mappings[joinPointer(joinPointer("/actions", actionId), "invocation")] =
+        mappings[joinPointer("/actions", actionId)] || sourceFor(compiledRoot, sourceFile, "/root/logic/actions");
+    }
+    action.definitionHash = mechanicsSha256({
+      apiVersion: source.apiVersion,
+      actionId,
+      definition: action,
+      planHash: referencedPlan.planHash
+    });
+    mappings[joinPointer(joinPointer("/actions", actionId), "definitionHash")] =
+      mappings[joinPointer("/actions", actionId)] || sourceFor(compiledRoot, sourceFile, "/root/logic/actions");
+  }
+}
+
+/**
+ * Prove that an AI-enabled game starts through the same published Game Intent
+ * contract as every later player or model-selected action. This is a semantic
+ * reference check, not a second shape validator: JSON Schema remains the SSOT
+ * for the field and its non-empty string constraint.
+ */
+function assertAgentRuntimeInitialAction(manifest, sourceFile) {
+  if (manifest.agentRuntime === undefined) return;
+  const agentRuntime = ensureObject(
+    manifest.agentRuntime,
+    sourceFile,
+    "/root/agentRuntime",
+    "game v2 root.agentRuntime"
+  );
+  const actionId = agentRuntime.initialActionId;
+  const actions = hasPlainObject(manifest.actions) ? manifest.actions : {};
+  if (typeof actionId !== "string" || !Object.prototype.hasOwnProperty.call(actions, actionId)) {
+    throw new CompileError(
+      `agentRuntime.initialActionId references unknown published action "${String(actionId)}"`,
+      sourceFile,
+      "/root/agentRuntime/initialActionId"
+    );
   }
 }
 
@@ -949,7 +1458,79 @@ function compileGameAuthoringV2(job, compiledRoot) {
     }
   }
 
+  publishMechanics(manifest, mappings, compiledRoot, sourceFile);
+  const parameterActions = compilePendingParameterActions(logic.pendingActions, sourceFile);
+  Object.defineProperty(manifest, PARAMETER_ACTIONS, {
+    value: parameterActions,
+    enumerable: false,
+    configurable: false,
+    writable: false
+  });
+  assertPublishedGameIntentContract(manifest.actions, sourceFile);
+  assertAgentRuntimeInitialAction(manifest, sourceFile);
+
   return { value: manifest, mappings };
+}
+
+/**
+ * Convert unpublished action entities into checker-only parameter contexts.
+ * The 2020-12 Game Intent contract validates their complete public shape with
+ * a compiler placeholder hash, while the non-enumerable carrier above proves
+ * they cannot leak into the generated manifest.
+ */
+function compilePendingParameterActions(value, sourceFile) {
+  if (value === undefined) return {};
+  const actions = {};
+  const items = ensureArray(value, sourceFile, "/root/logic/pendingActions", "game v2 root.logic.pendingActions");
+  for (const [index, rawAction] of items.entries()) {
+    const pointer = joinPointer("/root/logic/pendingActions", index);
+    const action = ensureObject(rawAction, sourceFile, pointer, "pending game action");
+    if (typeof action.id !== "string" || action.id.length === 0) {
+      throw new CompileError("pending action requires a non-empty id", sourceFile, joinPointer(pointer, "id"));
+    }
+    if (Object.prototype.hasOwnProperty.call(actions, action.id)) {
+      throw new CompileError(`Duplicate pending action id "${action.id}"`, sourceFile, joinPointer(pointer, "id"));
+    }
+    const { id, ...definition } = action;
+    const normalized = {
+      ...definition,
+      invocation: definition.invocation || "external",
+      paramsSchema: definition.paramsSchema || {
+        type: "object",
+        additionalProperties: false,
+        properties: {},
+        required: []
+      }
+    };
+    const validation = validateGameIntentSchema({
+      [id]: { ...normalized, definitionHash: `sha256:${"0".repeat(64)}` }
+    });
+    if (!validation.valid) {
+      throw new CompileError(
+        `Pending Game Intent validation failed: ${validation.errors
+          .map((error) => `${error.pointer || "/"} ${error.message}`)
+          .join("; ")}`,
+        sourceFile,
+        pointer
+      );
+    }
+    actions[id] = normalized;
+  }
+  return actions;
+}
+
+/** Validate the compiler-owned action catalog in its isolated 2020-12 registry. */
+function assertPublishedGameIntentContract(actions, sourceFile) {
+  const validation = validateGameIntentSchema(actions);
+  if (validation.valid) return;
+  const first = validation.errors[0];
+  throw new CompileError(
+    `Published Game Intent validation failed: ${validation.errors
+      .map((error) => `${error.pointer || "/"} ${error.message}`)
+      .join("; ")}`,
+    sourceFile,
+    `/root/actions${first?.pointer || ""}`
+  );
 }
 
 function appendUiScreensRuntimeField(manifest, mappings, compiledRoot, sourceFile, screensValue) {
@@ -1334,6 +1915,7 @@ module.exports = {
   CompileError,
   buildAjv,
   getSharedAjv,
+  lowerMechanicsAuthoring,
   compileAuthoringFile,
   compileAuthoringText,
   compileAuthoringTextCached,
@@ -1345,6 +1927,7 @@ module.exports = {
   formatErrors,
   normalizeRuntimePointers,
   parseArgs,
+  publishMechanics,
   relativePath,
   resolveConcurrency,
   run,

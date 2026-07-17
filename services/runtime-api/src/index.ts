@@ -15,7 +15,7 @@ export * from "./modules/player-api/httpServer.ts";
 export const runtimeApiModules: RuntimeApiModuleDescriptor[] = [
   { id: "player-api", description: "External client-facing session and action endpoints." },
   { id: "session", description: "Session lifecycle, locks, sequencing and recovery." },
-  { id: "runtime", description: "Deterministic game execution and effect assembly." },
+  { id: "runtime", description: "Deterministic Game Intent execution through typed transactional mechanics plans." },
   { id: "content", description: "Manifest bundle loading, validation and version resolution." },
   { id: "ai", description: "Optional AI capabilities, prompt orchestration and normalization." },
   { id: "telemetry", description: "Structured logs, traces, metrics and audit trail." },

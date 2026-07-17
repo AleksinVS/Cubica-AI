@@ -400,13 +400,14 @@ describe("InteractiveBoardSurface", () => {
       sessionId: "session-1",
       actionId: "construction.road.build",
       usedStateVersion: 0,
+      paramsFingerprint: `sha256:${"1".repeat(64)}`,
+      definitionHash: `sha256:${"2".repeat(64)}`,
       networkId: "main",
       fromNodeId: "node-a",
       toNodeId: "node-c",
       polyline: [{ x: 10, y: 20 }, { x: 40, y: 30 }, { x: 90, y: 20 }],
       regionSequence: ["left", "right"],
       regionSegments: 2,
-      cost: 4,
       candidateCount: 2,
       planning: {
         mode: "region-segment-minimum",
@@ -442,7 +443,9 @@ describe("InteractiveBoardSurface", () => {
       "construction.road.build",
       { fromNodeId: "node-a", toNodeId: "node-c" }
     ));
-    expect((await screen.findByRole("status")).textContent).toContain("Стоимость: 4 монет");
+    const previewStatus = (await screen.findByRole("status")).textContent ?? "";
+    expect(previewStatus).toContain("Сегментов по областям: 2");
+    expect(previewStatus).not.toMatch(/стоимост|монет/iu);
     expect(updateSpatialPreview).toHaveBeenLastCalledWith({
       actionId: "construction.road.build",
       points: [{ x: 10, y: 20 }, { x: 40, y: 30 }, { x: 90, y: 20 }]

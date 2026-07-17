@@ -803,30 +803,6 @@
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
       }
     ],
-    "/screens/S1/root/children/1/children/0/children/0/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/0/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/0/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/0/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
-      }
-    ],
     "/screens/S1/root/children/1/children/0/children/0/id": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -863,30 +839,6 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/1/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/1/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/1/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/1/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
       }
     ],
     "/screens/S1/root/children/1/children/0/children/1/id": [
@@ -927,30 +879,6 @@
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
       }
     ],
-    "/screens/S1/root/children/1/children/0/children/2/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/2/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/2/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/2/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
-      }
-    ],
     "/screens/S1/root/children/1/children/0/children/2/id": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -987,30 +915,6 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/3/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/3/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/3/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/3/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
       }
     ],
     "/screens/S1/root/children/1/children/0/children/3/id": [
@@ -1051,30 +955,6 @@
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
       }
     ],
-    "/screens/S1/root/children/1/children/0/children/4/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/4/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/4/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/4/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
-      }
-    ],
     "/screens/S1/root/children/1/children/0/children/4/id": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -1111,30 +991,6 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/5/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/5/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/5/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1/root/children/1/children/0/children/5/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
       }
     ],
     "/screens/S1/root/children/1/children/0/children/5/id": [
@@ -2329,10 +2185,10 @@
         "pointer": "/_definitions/ui.AntarcticaBoardChoiceCard/actions/onClick/payload"
       }
     ],
-    "/screens/board-topbar/root/children/1/children/1/children/0/actions/onClick/payload/cardId": [
+    "/screens/board-topbar/root/children/1/children/1/children/0/actions/onClick/payload/actionId": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaBoardChoiceCard/actions/onClick/payload/cardId"
+        "pointer": "/_definitions/ui.AntarcticaBoardChoiceCard/actions/onClick/payload/actionId"
       }
     ],
     "/screens/board-topbar/root/children/1/children/1/children/0/id": [
@@ -3615,6 +3471,12 @@
         "pointer": "/root/screens/2/root/children/1/children/1/children/1/actions/onClick/payload"
       }
     ],
+    "/screens/info-topbar/root/children/1/children/1/children/1/actions/onClick/payload/actionId": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/root/screens/2/root/children/1/children/1/children/1/actions/onClick/payload/actionId"
+      }
+    ],
     "/screens/info-topbar/root/children/1/children/1/children/2": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4347,30 +4209,6 @@
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
       }
     ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/0/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/0/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/0/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/0/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
-      }
-    ],
     "/screens/S1_LEFT/root/children/1/children/0/children/0/id": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4407,30 +4245,6 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/1/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/1/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/1/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/1/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
       }
     ],
     "/screens/S1_LEFT/root/children/1/children/0/children/1/id": [
@@ -4471,30 +4285,6 @@
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
       }
     ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/2/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/2/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/2/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/2/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
-      }
-    ],
     "/screens/S1_LEFT/root/children/1/children/0/children/2/id": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4531,30 +4321,6 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/3/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/3/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/3/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/3/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
       }
     ],
     "/screens/S1_LEFT/root/children/1/children/0/children/3/id": [
@@ -4595,30 +4361,6 @@
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
       }
     ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/4/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/4/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/4/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/4/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
-      }
-    ],
     "/screens/S1_LEFT/root/children/1/children/0/children/4/id": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
@@ -4655,30 +4397,6 @@
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",
         "pointer": "/_definitions/ui.AntarcticaRequestServerCard/type"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/5/actions": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/5/actions/onClick": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/5/actions/onClick/command": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/command"
-      }
-    ],
-    "/screens/S1_LEFT/root/children/1/children/0/children/5/actions/onClick/payload": [
-      {
-        "file": "games/antarctica/authoring/ui/web.authoring.json",
-        "pointer": "/_definitions/ui.AntarcticaRequestServerCard/actions/onClick/payload"
       }
     ],
     "/screens/S1_LEFT/root/children/1/children/0/children/5/id": [

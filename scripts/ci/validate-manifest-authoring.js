@@ -12,8 +12,13 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { createHash } = require("node:crypto");
 const { execFileSync } = require("node:child_process");
-const Ajv = require("ajv");
+const AjvLib = require("ajv");
+const addFormatsLib = require("ajv-formats");
 const { compileAuthoringFile, validateRuntimeManifest } = require("../manifest-tools/authoring-compiler.cjs");
+const { validateGameIntentSchema } = require("../manifest-tools/mechanics-validator.cjs");
+
+const Ajv = AjvLib.default || AjvLib;
+const addFormats = addFormatsLib.default || addFormatsLib;
 
 const repoRoot = path.resolve(__dirname, "..", "..");
 const schemasRoot = path.join(repoRoot, "docs", "architecture", "schemas");
@@ -98,7 +103,10 @@ function collectFiles(root, predicate) {
 }
 
 function buildAjv() {
-  const ajv = new Ajv({ allErrors: true, strict: false });
+  // This registry remains draft-07 only. Mechanics IR is checked by the
+  // compiler's independent Ajv2020 instance before a runtime manifest exists.
+  const ajv = new Ajv({ allErrors: true, strict: true, allowUnionTypes: true, strictRequired: false });
+  addFormats(ajv);
   for (const schemaFile of [
     "manifest-authoring-common.schema.json",
     "game-authoring.schema.json",
@@ -269,8 +277,17 @@ function validateGeneratedOutputs(ajv) {
       ? "https://cubica.platform/schemas/game-manifest.schema.json"
       : "https://cubica.platform/schemas/ui-manifest.v1.json";
     validateJsonFile(ajv, schemaId, file.manifest);
+    const runtimeManifest = JSON.parse(fs.readFileSync(file.manifest, "utf8"));
+    if (file.kind === "game") {
+      const intentValidation = validateGameIntentSchema(runtimeManifest.actions);
+      if (!intentValidation.valid) {
+        fail(`${relative(file.manifest)} has an invalid published Game Intent catalog: ${intentValidation.errors
+          .map((error) => `${error.pointer || "/"} ${error.message}`)
+          .join("; ")}`);
+      }
+    }
     validateJsonFile(ajv, "https://cubica.platform/schemas/manifest-source-map.v1.json", file.sourceMap);
-    scanForAuthoringKeys(JSON.parse(fs.readFileSync(file.manifest, "utf8")), file.manifest);
+    scanForAuthoringKeys(runtimeManifest, file.manifest);
   }
 }
 

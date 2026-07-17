@@ -1,16 +1,17 @@
 # GSR-036: «Карты, деньги, поезда» — первый срез универсального языка механик
 
-- **Дата:** 2026-07-14
-- **Статус:** Accepted design; implementation pending
-- **Предусловие:** W1 version/schema foundation из активной задачи, включая
-  `bundleHash`, typed module/artifact/algorithm locks и command transaction;
-  production dispatch дополнительно требует W0 trust boundary с principal из
-  аутентификации, server-resolved actor и без доверенного клиентского `playerId`
+- **Дата:** 2026-07-14; реализация обновлена и проверена 2026-07-17
+- **Статус:** Implemented and verified
+- **Предусловие:** выполнены W0 trust boundary и W1 version/schema foundation:
+  principal приходит из аутентификации, actor разрешается сервером, клиентский
+  `playerId` не считается доверенным, session закрепляет `bundleHash`, а
+  transaction использует точные module/artifact/algorithm locks и command
+  receipt
 - **Архитектура:** ADR-041, ADR-058, ADR-072, ADR-078, ADR-079, ADR-083, ADR-084
 - **Связанные срезы:** GSR-032, GSR-035
 
-Запись фиксирует первый ограниченный игровой сценарий Cubica Mechanics IR. Он
-целиком переносит действие ведущего «Начать следующий ход», внутри которого
+Запись фиксирует первый реализованный ограниченный игровой сценарий Cubica
+Mechanics IR. Он целиком переносит действие ведущего «Начать следующий ход», внутри которого
 одновременно заменяет предметную активацию созревшего строительства и ошибочное
 перечисление стартовых локомотивов при восстановлении ресурса.
 
@@ -28,6 +29,7 @@
 - [Общая платформенная возможность](#общая-платформенная-возможность)
 - [Содержимое только этой игры](#содержимое-только-этой-игры)
 - [Нейтральное доказательство](#нейтральное-доказательство)
+- [Доказательства реализации](#доказательства-реализации)
 - [Критерии приёмки](#критерии-приёмки)
 - [Вне среза](#вне-среза)
 
@@ -50,9 +52,11 @@
    `transport.construction.activateDue`, больше не участвуют в этом сценарии
    даже как runtime fallback.
 
-Срез доказывает минимальную полную транзакцию `assert/add/set/select/update/event`,
-а не изолированные фрагменты query/update. Он не является полной миграцией
-остального каталога stored effects.
+Срез доказывает минимальную полную транзакцию
+`assert/add/patch/select/update/event`, а не изолированные фрагменты
+query/update. Первоначально он не включал полную миграцию остального каталога;
+последующий общий переход выполнил и эту работу, не расширяя предметную границу
+приёмки GSR-036.
 
 ## Исходное состояние
 
@@ -123,16 +127,16 @@ budget или ошибки типа откатывают действие цел
 
 ## Общая платформенная возможность
 
-Срез добавляет только нейтральные элементы ADR-084:
+Срез использует только нейтральные элементы принятого языка:
 
 - state model коллекции с item type, visibility, capacity и stable key;
 - чистые typed item/context/value expressions;
 - `core.assert` для проверяемого предусловия;
-- typed `core.add` и `core.set` для скалярных и составных значений;
-- `core.select` с predicate, canonical order и cardinality;
+- `core.number.add` и `core.state.patch` для скалярных и составных значений;
+- `core.entities.select` с predicate, canonical order и cardinality;
 - typed `EntitySet<T>` result и ссылка на предыдущий шаг;
-- `core.update` для facet/attribute/set changes без partial success;
-- `core.event.append` для типизированного игрового журнала;
+- `core.entities.update` для facet/attribute/set changes без partial success;
+- `core.event.emit` для типизированного события и проекции игрового журнала;
 - структурный `sequence`, не являющийся предметной операцией;
 - candidate-state transaction с одним commit или полным rollback;
 - static cost и runtime scan/operator/memory/output budget;
@@ -175,6 +179,30 @@ record, журнал, две bounded collections, несколько типов,
 - запрет secret/control-flow → public;
 - одинаковый результат replay после PostgreSQL round-trip.
 
+## Доказательства реализации
+
+- `games/cards-money-trains-mock/authoring/mechanics.source.json` хранит
+  воспроизводимый исходник Mechanics IR для генератора mock-пакета.
+- Действие `mock.debrief.next-turn` связано с одноимённым планом через
+  `binding.planRef`; план содержит assert фазы, увеличение хода, сбросы,
+  выборки созревших nodes/edges, снятие только
+  `construction-pending`, открытие объектов, выбор фактически активных
+  локомотивов, массовое восстановление `actionPoints` и событие журнала.
+- `mechanics-plan.schema.json`, реестр модулей, строгий валидатор и
+  семантический checker проверяют структуру, ссылки, типы, locks и статический
+  budget до публикации.
+- Общий executor в `services/runtime-api/src/modules/mechanics/` выполняет план
+  над candidate state и передаёт state, квитанцию, объявленные события и
+  ограниченный защищённый аудит шагов/стоимости в одну транзакцию session
+  store; публичная квитанция этот аудит не раскрывает.
+- Старые production-обработчики deterministic effects, колод, рейтинга и
+  предметного transport switch удалены; mock builder больше не создаёт старые
+  effects.
+- Контрактные фикстуры mock-пакета и нейтральный тест Mechanics executor
+  переведены на новую форму. Сфокусированные проверки компилятора и блокировок,
+  полный серверный сценарий, браузерные срезы и канонический межсистемный контур
+  прошли; точные команды и результаты зафиксированы в активной задаче.
+
 ## Критерии приёмки
 
 - полное действие следующего хода использует один опубликованный IR-план без
@@ -193,14 +221,18 @@ record, журнал, две bounded collections, несколько типов,
   воспроизводимо пересобирают runtime manifest и карту связи generated-шагов с
   authoring-исходником;
 - старое определение effects для `mock.debrief.next-turn`,
-  `transport.construction.activateDue` и его handler branch удаляются после
-  сравнительной проверки старого и нового исполнителя, а не остаются fallback;
+  `transport.construction.activateDue` и его handler branch удалено и не
+  осталось production fallback;
 - production dispatch получает principal из аутентификации, разрешает actor на
   сервере, отклоняет доверенный `playerId` из тела, сохраняет внешний
   `commandId` до квитанции и атомарно записывает state с внутренней command
-  receipt.
+  receipt и защищённым Mechanics-аудитом.
 
 ## Вне среза
+
+Перечисленные ниже возможности не входят в критерии GSR-036. Часть из них уже
+перенесена общей миграцией, но это не превращает первый доказательный сценарий
+в неограниченный срез:
 
 - полная миграция Antarctica, Estate Race и остальных CMT effects;
 - ranking/group/aggregate;

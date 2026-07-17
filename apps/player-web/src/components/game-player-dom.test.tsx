@@ -1,6 +1,7 @@
 import { ANTARCTICA_GAME_CONFIG_DATA } from "@cubica/antarctica-player-plugin/config-data";
 import { activate as activateAntarcticaPlayer } from "@cubica/antarctica-player-plugin";
 import { createDefaultGameConfigData } from "@/presenter/game-config";
+import { loadPendingRuntimeCommand } from "@/presenter/command-outbox";
 import { playerPluginApi } from "@/plugins/player-plugin-api";
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import React from "react";
@@ -92,6 +93,7 @@ const aiDrivenContent: PlayerFacingContent = {
   locale: "en-US",
   executionMode: "ai-driven",
   agentRuntime: {
+    ...({ initialActionId: "agent.continue" } as { initialActionId: string }),
     agentId: "scenario-agent",
     runtimeId: "mock",
     required: true,
@@ -182,37 +184,37 @@ const mockS1Ui: GamePlayerUiContent = {
                     type: "cardComponent",
                     id: "card-1",
                     props: { text: "Тестовая карточка 1" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "1" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.1", cardId: "1" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-2",
                     props: { text: "Тестовая карточка 2" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "2" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.2", cardId: "2" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-3",
                     props: { text: "Тестовая карточка 3" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "3" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.3", cardId: "3" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-4",
                     props: { text: "Тестовая карточка 4" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "4" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.4", cardId: "4" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-5",
                     props: { text: "Тестовая карточка 5" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "5" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.5", cardId: "5" } } }
                   },
                   {
                     type: "cardComponent",
                     id: "card-6",
                     props: { text: "Тестовая карточка 6" },
-                    actions: { onClick: { command: "requestServer", payload: { cardId: "6" } } }
+                    actions: { onClick: { command: "requestServer", payload: { actionId: "opening.card.6", cardId: "6" } } }
                   }
                 ]
               },
@@ -507,8 +509,9 @@ describe("GamePlayer S1 DOM Rendering", () => {
                   choices: [{ id: "continue", label: "Continue" }]
                 },
                 actions: [{
-                  id: "agent.continue",
+                  id: "continue-button",
                   kind: "agentTurn",
+                  target: "agent.continue",
                   label: "Continue",
                   payload: { choiceId: "continue" },
                   sideEffectPolicy: "system-approved"
@@ -698,6 +701,24 @@ describe("GamePlayer S1 DOM Rendering", () => {
   });
 
   it("renders 6 cards and handles click with payload", async () => {
+    const fetchMock = global.fetch as ReturnType<typeof vi.fn>;
+    fetchMock.mockImplementation((url: string, options?: RequestInit) => {
+      if (url === "/api/runtime/actions") {
+        const body = JSON.parse(String(options?.body));
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            ...mockSession,
+            state: {
+              ...mockSession.state,
+              public: { ...mockSession.state.public, lastAction: body.actionId }
+            }
+          })
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
+    });
+
     render(
       <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
         runtimeApiUrl="http://localhost:8080" 
@@ -715,35 +736,21 @@ describe("GamePlayer S1 DOM Rendering", () => {
     const selectButtons = screen.getAllByRole("button", { name: /Выбрать/i });
     expect(selectButtons.length).toBe(6);
 
-    // Mock the action dispatch fetch to check payload
-    // Note: With mockContent (empty antarctica), boardCards is empty,
-    // so the S1 action routing falls back to "requestServer"
-    (global.fetch as any).mockImplementation((url: string, options: any) => {
-      if (url === "/api/runtime/actions") {
-        const body = JSON.parse(options.body);
-        // When boardCards is empty, falls back to requestServer
-        if (body.actionId === "requestServer") {
-          return Promise.resolve({
-            ok: true,
-            json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: "requestServer" } } })
-          });
-        }
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ ...mockSession, state: { ...mockSession.state, public: { ...mockSession.state.public, lastAction: body.actionId } } })
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve(mockSession) });
+    // Wait for asynchronous session creation before isolating the click request.
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith("/api/runtime/sessions", expect.anything());
     });
+    fetchMock.mockClear();
 
     fireEvent.click(selectButtons[2]); // Card 3
 
     await waitFor(() => {
-      // With empty boardCards, should fallback to requestServer
-      expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.objectContaining({
-        body: expect.stringContaining('"actionId":"requestServer"')
+      expect(fetchMock).toHaveBeenCalledWith("/api/runtime/actions", expect.objectContaining({
+        body: expect.stringContaining('"actionId":"opening.card.3"')
       }));
     });
+    const actionRequest = fetchMock.mock.calls.find(([url]) => url === "/api/runtime/actions");
+    expect(JSON.parse(String(actionRequest?.[1]?.body)).params).toEqual({ cardId: "3" });
   });
 
   it("renders bottom control buttons and handles clicks", async () => {
@@ -854,7 +861,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
       export function activate(api) {
         api.registerGameConfigData({
           gameId: "${gameId}",
-          playerId: "plugin-player",
           storageKey: "async-plugin-session-id",
           fallbackMetrics: [],
           topbarScreenKeys: [],
@@ -880,9 +886,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
                   advanceLabel: "Continue"
                 }
               };
-            },
-            createManifestActionAdapter(_content, _gameState, dispatchAction) {
-              return (_command, payload) => dispatchAction(String(payload.advanceActionId ?? "noop"), payload);
             }
           };
         });
@@ -959,7 +962,6 @@ describe("GamePlayer S1 DOM Rendering", () => {
       <GamePlayer
         config={{
           gameId,
-          playerId: "fallback-player",
           storageKey: "fallback-session-id",
           fallbackMetrics: [],
           topbarScreenKeys: ["S1"],
@@ -1734,8 +1736,12 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
 
       if (url === "/api/runtime/actions") {
         const body = JSON.parse(options.body);
-        expect(body.actionId).toBe("requestServer");
-        expect(body.payload).toEqual({ actionId: "opening.info.i17.advance" });
+        // The UI command is only a local binding. Runtime receives the exact
+        // published Game Intent with flat parameters, while actor identity
+        // comes from the authenticated session rather than request JSON.
+        expect(body.actionId).toBe("opening.info.i17.advance");
+        expect(body.params).toEqual({});
+        expect(body).not.toHaveProperty("playerId");
         return Promise.resolve({
           ok: true,
           json: () => Promise.resolve(sessionAtI17)
@@ -1763,6 +1769,13 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
+    });
+
+    // Observing the POST is not the same as observing its completion. Wait for
+    // the successful response to clear the durable outbox so this component
+    // cannot leak an unfinished recovery command into the next DOM test.
+    await waitFor(() => {
+      expect(loadPendingRuntimeCommand(sessionAtI17.sessionId)).toBeNull();
     });
   });
 

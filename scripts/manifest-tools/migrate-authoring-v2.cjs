@@ -265,7 +265,7 @@ function migrateGameManifest(gameId) {
   };
 
   for (const [key, value] of Object.entries(manifest)) {
-    if (key === "actions" || key === "templates") {
+    if (key === "actions") {
       continue;
     }
     root[key] = key === "content" ? annotateGameContent(value, "content") : clone(value);
@@ -287,19 +287,6 @@ function migrateGameManifest(gameId) {
       ...clone(action)
     }))
   };
-  if (manifest.templates) {
-    logic.templates = Object.fromEntries(
-      Object.entries(manifest.templates).map(([templateId, template]) => [
-        templateId,
-        semanticEnvelope(
-          "game.ActionTemplate",
-          titleFromId(templateId, "Шаблон действия"),
-          `Переиспользуемый шаблон действия ${templateId}.`,
-          clone(template)
-        )
-      ])
-    );
-  }
   root.logic = logic;
 
   return {

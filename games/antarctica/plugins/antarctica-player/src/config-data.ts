@@ -10,7 +10,6 @@ import type { FallbackMetricSpec, GameConfigData } from "@cubica/player-web/plug
 
 export const ANTARCTICA_GAME_CONFIG_DATA: GameConfigData = {
   gameId: "antarctica",
-  playerId: "player-web",
   storageKey: "cubica-antarctica-session-id",
   themeBackgroundImage: "/images/arctic-background.png",
 

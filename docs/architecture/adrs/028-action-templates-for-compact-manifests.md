@@ -1,8 +1,14 @@
 # ADR-028: Action Templates for Compact Manifests
 
 **Date:** 2026-05-13
-**Status:** Proposed
+**Status:** Superseded by ADR-084
 **Authors:** Senior SE (Gemini CLI)
+
+> Это историческое решение не является действующим контрактом исполнения.
+> Runtime-шаблоны, `{{...}}`-подстановки и `deterministic.effects[]` удалены при
+> переходе на Game Intent → типизированный Mechanics IR. Повторное
+> использование в authoring допускается только как build-time макрос, который
+> полностью раскрывается и проверяется до публикации.
 
 ## Context
 

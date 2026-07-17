@@ -50,5 +50,7 @@
   "TSK-20260710-review-findings-remediation.md": "Завершенное исправление трех находок ревью: изоляция оформления Antarctica, честный межигровой тест и единый минимум Node.js.",
   "TSK-20260707-editor-concept-surfaces.md": "Завершённые Web viewport orientation и структурный Telegram viewer из channel-specific UI manifest с production E2E.",
   "TSK-20260710-editor-author-version-history.md": "Завершённая долговечная история авторских версий, безопасный Restore и сериализация editor-сессий по ADR-075/077.",
-  "TSK-20260711-shared-project-skill-catalog-migration.md": "Завершенная миграция проектных навыков в единый каталог skills с мостами обнаружения Codex и проверкой отсутствия копий."
+  "TSK-20260711-shared-project-skill-catalog-migration.md": "Завершенная миграция проектных навыков в единый каталог skills с мостами обнаружения Codex и проверкой отсутствия копий.",
+  "TSK-20260705-board-game-platform-capabilities.md": "Заменённый ADR-084 исторический план общих возможностей пошаговых игр на старом effects-контуре.",
+  "TSK-20260706-flow-simulation-platform-capabilities.md": "Заменённый ADR-084 исторический план runtime-эффектов для игр-симуляций; действующие параметры и Phaser-контракт сохранены."
 }

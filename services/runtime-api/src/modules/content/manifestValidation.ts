@@ -2,6 +2,7 @@ import AjvLib from "ajv";
 import addFormatsLib from "ajv-formats";
 import ajvErrorsLib from "ajv-errors";
 import fs from "fs";
+import { createRequire } from "node:module";
 import path from "path";
 import { fileURLToPath } from "url";
 import type { GameManifest, GameManifestTransportNetworkModel } from "@cubica/contracts-manifest";
@@ -11,6 +12,32 @@ import { compileRegionRoadPlanning } from "../runtime/regionRoadPlanner.ts";
 const Ajv = (AjvLib as any).default || AjvLib;
 const addFormats = (addFormatsLib as any).default || addFormatsLib;
 const ajvErrors = (ajvErrorsLib as any).default || ajvErrorsLib;
+const require = createRequire(import.meta.url);
+const { validateGameIntentSchema, validateMechanicsSchema } = require("../../../../../scripts/manifest-tools/mechanics-validator.cjs") as {
+  validateGameIntentSchema: (value: unknown) => { valid: boolean; errors: Array<{ pointer: string; message: string }> };
+  validateMechanicsSchema: (value: unknown) => { valid: boolean; errors: Array<{ pointer: string; message: string }> };
+};
+const {
+  checkMechanicsBundle,
+  turnSessionInitializationForManifest
+} = require("../../../../../scripts/manifest-tools/mechanics-checker.cjs") as {
+  checkMechanicsBundle: (value: unknown, options: {
+    actions: unknown;
+    initialState: unknown;
+    turnSessionInitialization?: {
+      minimumPlayers: unknown;
+      maximumPlayers: unknown;
+      phases: unknown[];
+    };
+    objectModels: unknown;
+    networkModels: unknown;
+  }) => unknown;
+  turnSessionInitializationForManifest: (manifest: unknown) => {
+    minimumPlayers: unknown;
+    maximumPlayers: unknown;
+    phases: unknown[];
+  } | undefined;
+};
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,8 +59,8 @@ const gameManifestSchema = JSON.parse(schemaSource);
 //  - strictRequired: false — game-manifest.schema.json uses standard declarative
 //    idioms where a `required` keyword sits in a subschema that does not itself
 //    list the property in `properties`: "at least one of" via
-//    `anyOf: [{required:[a]}, {required:[b]}, ...]` (timeline.set effect) and
-//    "must be absent" via `not: {required:["card"]}` (legacy guard removal). The
+//    `anyOf: [{required:[a]}, {required:[b]}, ...]` and "must be absent" via
+//    `not: {required:["card"]}`. The
 //    property is defined at the parent level (or intentionally forbidden), so it
 //    cannot be re-listed locally. strictRequired is only an authoring lint; the
 //    `required` constraint is still fully enforced, so data validation is NOT
@@ -89,9 +116,7 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
     for (const [configField, collectionField, objectTypesField] of [
       ["movement", "vehicleCollection", "vehicleObjectTypes"],
       ["movement", "capacityCollection", "capacityObjectTypes"],
-      ["movement", "coupledCollection", "coupledObjectTypes"],
-      ["cargoDelivery", "wagonCollection", "wagonObjectTypes"],
-      ["cargoDelivery", "cargoCollection", "cargoObjectTypes"]
+      ["movement", "coupledCollection", "coupledObjectTypes"]
     ] as const) {
       const config = isRecord(network[configField]) ? network[configField] as JsonRecord : undefined;
       if (!config) continue;
@@ -122,17 +147,12 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
       if (typeof ref.network === "string") {
         const network = isRecord(networkModels[ref.network]) ? networkModels[ref.network] as JsonRecord : undefined;
         const movement = network && isRecord(network.movement) ? network.movement as JsonRecord : undefined;
-        const cargoDelivery = network && isRecord(network.cargoDelivery)
-          ? network.cargoDelivery as JsonRecord
-          : undefined;
         const networkCollections = new Set([
           network?.nodeCollection,
           network?.edgeCollection,
           movement?.vehicleCollection,
           movement?.capacityCollection,
-          movement?.coupledCollection,
-          cargoDelivery?.wagonCollection,
-          cargoDelivery?.cargoCollection
+          movement?.coupledCollection
         ].filter((value): value is string => typeof value === "string"));
         if (!network || ref.visibility !== network.visibility || !networkCollections.has(String(ref.collection))) {
           throw new ManifestValidationError(
@@ -154,47 +174,6 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
       }
     }
 
-    const deterministic = isRecord(rawAction.deterministic) ? rawAction.deterministic : {};
-    const effects = Array.isArray(deterministic.effects) ? deterministic.effects : [];
-    for (const rawEffect of effects) {
-      if (!isRecord(rawEffect) || ![
-        "transport.road.build",
-        "transport.waypoint.build",
-        "transport.construction.activateDue",
-        "transport.vehicle.move",
-        "transport.cargo.deliver"
-      ].includes(String(rawEffect.op))) continue;
-      const network = typeof rawEffect.networkId === "string" && isRecord(networkModels[rawEffect.networkId])
-        ? networkModels[rawEffect.networkId] as JsonRecord
-        : undefined;
-      if (!network) {
-        throw new ManifestValidationError(`Action "${actionId}" references an unknown transport network`);
-      }
-      const movement = isRecord(network.movement) ? network.movement as JsonRecord : undefined;
-      const cargoDelivery = isRecord(network.cargoDelivery) ? network.cargoDelivery as JsonRecord : undefined;
-      const referenceParams = rawEffect.op === "transport.road.build"
-        ? [[rawEffect.fromNodeParam, network.nodeCollection], [rawEffect.toNodeParam, network.nodeCollection]]
-        : rawEffect.op === "transport.waypoint.build"
-          ? [[rawEffect.edgeParam, network.edgeCollection]]
-          : rawEffect.op === "transport.construction.activateDue"
-            ? []
-          : rawEffect.op === "transport.vehicle.move"
-            ? [[rawEffect.vehicleParam, movement?.vehicleCollection], [rawEffect.edgeParam, network.edgeCollection]]
-            : [[rawEffect.wagonParam, cargoDelivery?.wagonCollection], [rawEffect.cargoParam, cargoDelivery?.cargoCollection]];
-      for (const [rawParamName, expectedCollection] of referenceParams) {
-        const property = typeof rawParamName === "string" && isRecord(properties[rawParamName])
-          ? properties[rawParamName] as JsonRecord
-          : undefined;
-        const ref = property && isRecord(property["x-cubica-ref"])
-          ? property["x-cubica-ref"] as JsonRecord
-          : undefined;
-        if (!ref || ref.network !== rawEffect.networkId || ref.collection !== expectedCollection) {
-          throw new ManifestValidationError(
-            `Action "${actionId}" transport effect must use a matching x-cubica-ref parameter`
-          );
-        }
-      }
-    }
   }
 };
 
@@ -207,29 +186,38 @@ export function validateGameManifest(manifest: unknown): GameManifest {
     throw new ManifestValidationError(`Schema validation failed: ${errors}`);
   }
 
-  // Intentional imperative companion check (bounded exception, LEGACY-0016):
-  // "an action's templateId must equal a key of the manifest `templates` object"
-  // is a cross-key existence constraint. JSON Schema has no clean, standard way
-  // to assert that a string value matches a *key* of a sibling object, so this
-  // stays as an imperative check next to (not instead of) schema validation.
-  // It never re-implements schema shape checks, so ADR-025 (schema as SSOT) holds.
-  //
-  // Cross-validate templateId references: every action referencing a template
-  // must point to a template that actually exists in the manifest.
   const m = manifest as Record<string, unknown>;
-  if (m.templates && typeof m.templates === "object" && m.actions && typeof m.actions === "object") {
-    const templates = m.templates as Record<string, unknown>;
-    const actions = m.actions as Record<string, unknown>;
-    for (const [actionId, action] of Object.entries(actions)) {
-      if (action && typeof action === "object" && !Array.isArray(action)) {
-        const templateId = (action as Record<string, unknown>).templateId;
-        if (typeof templateId === "string" && !(templateId in templates)) {
-          throw new ManifestValidationError(
-            `Action "${actionId}" references non-existent template "${templateId}"`
-          );
-        }
-      }
-    }
+  const gameIntentValidation = validateGameIntentSchema(m.actions);
+  if (!gameIntentValidation.valid) {
+    throw new ManifestValidationError(
+      `Game Intent schema validation failed: ${gameIntentValidation.errors
+        .map((error) => `${error.pointer || "/"} ${error.message}`)
+        .join("; ")}`
+    );
+  }
+  const mechanicsValidation = validateMechanicsSchema(m.mechanics);
+  if (!mechanicsValidation.valid) {
+    throw new ManifestValidationError(
+      `Mechanics schema validation failed: ${mechanicsValidation.errors
+        .map((error) => `${error.pointer || "/"} ${error.message}`)
+        .join("; ")}`
+    );
+  }
+  try {
+    checkMechanicsBundle(m.mechanics, {
+      actions: m.actions,
+      initialState: m.state,
+      // Keep runtime loading in exact parity with authoring compilation:
+      // concrete participants and strict public turn fields do not exist in
+      // the reusable template and are materialized before session persistence.
+      turnSessionInitialization: turnSessionInitializationForManifest(m),
+      objectModels: m.objectModels ?? {},
+      networkModels: m.networkModels ?? {}
+    });
+  } catch (error) {
+    throw new ManifestValidationError(
+      `Mechanics semantic validation failed: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   validateSemanticReferences(m);

@@ -87,10 +87,28 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async getSession() {
       return null;
     }
+    async authenticateSession() {
+      return null;
+    }
+    async getImmutableBundle() {
+      return null;
+    }
+    async getSessionEvents() {
+      return [];
+    }
+    async listPendingSystemSchedules() {
+      return [];
+    }
     async updateSession(session: unknown) {
       return session as never;
     }
     async withLockedSession() {
+      return undefined as never;
+    }
+    async withCommandTransaction() {
+      return undefined as never;
+    }
+    async withSystemCommandTransaction() {
       return undefined as never;
     }
     async checkReadiness() {}

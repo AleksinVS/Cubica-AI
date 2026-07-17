@@ -140,7 +140,7 @@ describe("editor web adapter", () => {
 
   it("edits properties through reverseProjectIntent operations", () => {
     const viewModel = createEditorViewModel(JSON.stringify(embeddedAuthoringSample));
-    const pointer = "/_definitions/game.EditorPrototypeManifest/meta";
+    const pointer = "/root/meta";
     const properties = selectProperties(viewModel.snapshot, pointer);
     const nameProperty = properties.find((property) => property.label === "name");
 
@@ -198,7 +198,7 @@ describe("editor web adapter", () => {
             "game.PromptedActionPrototype": {
               _semantics: "Reusable prototype that proves prompt templates are valid in game authoring.",
               _promptTemplate: {
-                raw: "Describe the player choice, state effects and methodology.",
+                raw: "Describe the player choice, state changes and methodology.",
                 language: "en",
                 appliesTo: "game.PromptedActionPrototype"
               }
@@ -229,9 +229,46 @@ describe("editor web adapter", () => {
                     language: "en",
                     updatedAt: "2026-06-12T00:00:00Z"
                   },
-                  handlerType: "manifest-data"
+                  binding: {
+                    kind: "mechanics-plan",
+                    planRef: "choice.accept"
+                  }
                 }
               ]
+            },
+            mechanics: {
+              apiVersion: "cubica.dev/mechanics/v1alpha1",
+              budgetProfile: "turn-based-standard-v1",
+              moduleLock: {
+                "cubica.core": {
+                  moduleId: "cubica.core",
+                  moduleVersion: "1.0.0",
+                  artifactHash: "sha256:903e9660e0702a0bffca5465bfb3742f7f8a80b0adae45f93b77637bf2f8770b"
+                }
+              },
+              stateModel: {
+                types: {
+                  "core.boolean": { kind: "boolean" }
+                },
+                endpoints: {},
+                collections: {},
+                events: {}
+              },
+              plans: {
+                "choice.accept": {
+                  transaction: {
+                    steps: [
+                      {
+                        id: "precondition",
+                        kind: "assert",
+                        op: "core.assert",
+                        predicate: { op: "predicate.constant", value: true },
+                        errorCode: "ACTION_PRECONDITION_FAILED"
+                      }
+                    ]
+                  }
+                }
+              }
             },
             state: {
               public: {}

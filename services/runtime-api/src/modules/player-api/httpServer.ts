@@ -8,7 +8,16 @@ import { HttpError } from "../errors.ts";
 import { AgentTurnService } from "../ai/agentRuntime.ts";
 import { SessionService } from "../session/session.service.ts";
 import { createSessionStoreFromEnvironment } from "../session/sessionStoreFactory.ts";
+import {
+  hashSessionCredential,
+  requireBearerCredential
+} from "../session/sessionAuthentication.ts";
 import { RuntimeService } from "../runtime/runtime.service.ts";
+import {
+  BoundedInMemoryCommandAdmissionController,
+  CommandAdmissionRejectedError,
+  type CommandAdmissionController
+} from "../runtime/commandAdmission.ts";
 import {
   clearPlayerFacingContentCache,
   contentService,
@@ -40,6 +49,8 @@ export interface RuntimeApiServerOptions {
   createSessionRandomSeed?: () => string;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile">;
+  /** Shared command/Agent-Turn admission boundary for this runtime process. */
+  commandAdmissionController?: CommandAdmissionController;
 }
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../../../../");
@@ -50,6 +61,11 @@ const editorWorktreesRoots = parseEditorPreviewWorktreesRoots(
   process.env.EDITOR_PREVIEW_WORKTREES_ROOTS,
   defaultEditorWorktreesRoot
 );
+// This cap applies before JSON parsing, authentication and Mechanics budgets.
+// It is intentionally generous enough for editor preview snapshots while
+// preventing an unauthenticated request from growing process memory without a
+// bound. Narrow action-specific schemas impose much smaller semantic limits.
+const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
 
 const sendJson = (response: ServerResponse, statusCode: number, payload: unknown) => {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
@@ -58,9 +74,19 @@ const sendJson = (response: ServerResponse, statusCode: number, payload: unknown
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
+  let byteLength = 0;
+  const declaredLength = readDeclaredContentLength(request);
+  if (declaredLength !== undefined && declaredLength > MAX_JSON_BODY_BYTES) {
+    throw new HttpError(413, `Request body exceeds the ${MAX_JSON_BODY_BYTES}-byte limit`);
+  }
 
   for await (const chunk of request) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    byteLength += buffer.byteLength;
+    if (byteLength > MAX_JSON_BODY_BYTES) {
+      throw new HttpError(413, `Request body exceeds the ${MAX_JSON_BODY_BYTES}-byte limit`);
+    }
+    chunks.push(buffer);
   }
 
   if (!chunks.length) {
@@ -75,16 +101,33 @@ const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   }
 };
 
+function readDeclaredContentLength(request: IncomingMessage): number | undefined {
+  const raw = request.headers["content-length"];
+  if (raw === undefined) return undefined;
+  if (!/^\d+$/u.test(raw)) {
+    throw new HttpError(400, "Content-Length must be a non-negative integer");
+  }
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value)) {
+    throw new HttpError(413, `Request body exceeds the ${MAX_JSON_BODY_BYTES}-byte limit`);
+  }
+  return value;
+}
+
 export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const port = options.port ?? Number(process.env.PORT ?? 3001);
   const assetContentService = options.assetContentService ?? contentService;
   const sessionStore = options.sessionStore ?? createSessionStoreFromEnvironment();
+  const commandAdmissionController = options.commandAdmissionController ??
+    new BoundedInMemoryCommandAdmissionController();
   const sessionService = new SessionService({
     sessionStore,
     createSessionRandomSeed: options.createSessionRandomSeed
   });
-  const runtimeService = new RuntimeService();
-  const agentTurnService = new AgentTurnService();
+  // Both mutation endpoints must share counters; constructing separate
+  // controllers would let Agent Turns bypass the general command budget.
+  const runtimeService = new RuntimeService(commandAdmissionController);
+  const agentTurnService = new AgentTurnService(commandAdmissionController);
   let activePort = port;
   let closed = false;
 
@@ -249,8 +292,10 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       if (previewRestoreMatch) {
         const [, encodedSessionId] = previewRestoreMatch;
         const body = await readJsonBody(request);
+        const accessToken = requireBearerCredential(request.headers);
         const snapshot = await sessionService.restorePreviewSession(
           decodeURIComponent(encodedSessionId),
+          accessToken,
           parseRestorePreviewSessionRequest(body)
         );
         sendJson(response, 200, snapshot);
@@ -259,12 +304,10 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
 
       if (request.method === "GET" && requestUrl.pathname.startsWith("/sessions/")) {
         const sessionId = requestUrl.pathname.slice("/sessions/".length);
-        const snapshot = await sessionService.getSession(sessionId);
-
-        if (!snapshot) {
-          sendJson(response, 404, { error: `Session "${sessionId}" was not found` });
-          return;
-        }
+        const snapshot = await sessionService.getSession(
+          sessionId,
+          requireBearerCredential(request.headers)
+        );
 
         sendJson(response, 200, snapshot);
         return;
@@ -274,23 +317,10 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const body = await readJsonBody(request);
         const requestBody = parseDispatchActionRequest(body);
 
-        const sessionSnapshot = await sessionService.getSession(requestBody.sessionId);
-        if (!sessionSnapshot) {
-          throw new HttpError(404, `Session "${requestBody.sessionId}" was not found`);
-        }
-
         const { response: dispatchResponse } = await runtimeService.dispatch({
           sessionStore: sessionService.getSessionStore(),
-          gameId: sessionSnapshot.gameId,
-          contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
-          input: {
-            sessionId: requestBody.sessionId,
-            expectedStateVersion: requestBody.expectedStateVersion,
-            playerId: requestBody.playerId,
-            actionId: requestBody.actionId,
-            params: requestBody.params,
-            payload: requestBody.payload
-          }
+          accessToken: requireBearerCredential(request.headers),
+          input: requestBody
         });
 
         sendJson(response, 200, dispatchResponse);
@@ -301,6 +331,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const body = await readJsonBody(request);
         const preview = await runtimeService.previewTransportRoad({
           sessionStore: sessionService.getSessionStore(),
+          accessToken: requireBearerCredential(request.headers),
           input: parseTransportRoadPreviewRequest(body)
         });
         sendJson(response, 200, preview);
@@ -312,7 +343,7 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const requestBody = parseAgentTurnRequest(body);
         const agentTurnResponse = await agentTurnService.runTurn({
           sessionStore: sessionService.getSessionStore(),
-          contentSourceId: await sessionService.getContentSourceId(requestBody.sessionId),
+          credentialSha256: hashSessionCredential(requireBearerCredential(request.headers)),
           request: requestBody
         });
 
@@ -323,7 +354,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
       sendJson(response, 404, { error: "Not found" });
     } catch (error) {
       if (error instanceof HttpError) {
-        sendJson(response, error.statusCode, { error: error.message });
+        if (error.statusCode === 401) {
+          response.setHeader("WWW-Authenticate", 'Bearer realm="cubica-session"');
+        }
+        if (error instanceof CommandAdmissionRejectedError) {
+          response.setHeader("Retry-After", String(error.retryAfterSeconds));
+        }
+        sendJson(response, error.statusCode, {
+          error: error.message,
+          ...(error.code === undefined ? {} : { code: error.code })
+        });
         return;
       }
 

@@ -5,6 +5,14 @@
 - **Author**: AI Agent (по заказу владельца проекта)
 - **Context**: Realtime simulation game class / player-web delivery channel / plugin architecture
 
+> [!IMPORTANT]
+> Поправка ADR-084: граница «клиентское реальное время — серверные раунды» и
+> Phaser-канал сохраняются. Описанные ниже `random.seed`, guards и effects —
+> историческая исполнительная форма: зерно выдаёт закреплённый модуль
+> случайности, параметры проверяются входным допуском и типизированными
+> Mechanics assertions, а состояние меняют Mechanics commands. Старый
+> effects/JsonLogic executor не восстанавливается.
+
 ## 1. Контекст
 
 Cubica готовит первый класс игр «симулятор потока» (real-time flow simulation —
@@ -164,7 +172,7 @@ Phaser.js (2D-движок canvas/WebGL-игр для браузера) давн
   policy), ADR-040 (политика расширения runtime-api), ADR-054 (граница манифестов),
   ADR-055 (чистота рендерера), ADR-058 (PRNG-модуль, metric.set), ADR-061
   (параметры действий).
-- `docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md` —
+- `docs/tasks/archive/TSK-20260706-flow-simulation-platform-capabilities.md` —
   исполнительная программа платформенных возможностей.
 - `docs/tasks/active/TSK-20260706-conveyor-mini-game.md` — исполнительная
   программа фикстурной игры «Мини-конвейер».

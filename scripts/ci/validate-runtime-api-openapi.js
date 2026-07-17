@@ -156,6 +156,23 @@ function resolveJsonPointer(root, pointer) {
   return current;
 }
 
+function resolveSchemaReference(spec, reference) {
+  if (reference.startsWith("#/")) {
+    return resolveJsonPointer(spec, reference);
+  }
+  const [relativeFile, fragment] = reference.split("#", 2);
+  const absolutePath = path.resolve(path.dirname(openApiPath), relativeFile);
+  let external;
+  try {
+    external = JSON.parse(fs.readFileSync(absolutePath, "utf8"));
+  } catch (error) {
+    fail(`Unable to read external OpenAPI schema ${reference}: ${error.message}`);
+  }
+  return fragment === undefined || fragment === ""
+    ? external
+    : resolveJsonPointer(external, `#${fragment}`);
+}
+
 function pathParameters(pathTemplate) {
   return [...pathTemplate.matchAll(/\{([^}]+)\}/gu)].map((match) => match[1]);
 }
@@ -254,7 +271,7 @@ function validateOperations(spec) {
 
 function validateRefs(spec) {
   for (const ref of collectRefs(spec)) {
-    if (resolveJsonPointer(spec, ref) === undefined) {
+    if (resolveSchemaReference(spec, ref) === undefined) {
       fail(`Unresolved OpenAPI reference: ${ref}`);
     }
   }
@@ -289,11 +306,13 @@ function validateSchemaCoverage(spec) {
     "ContentReloadRequest",
     "ContentReloadResponse",
     "CreateSessionRequest",
+    "CreatedSessionResponse",
     "DispatchActionRequest",
     "ErrorResponse",
     "GameReadinessResponse",
     "HealthResponse",
     "PlayerFacingContent",
+    "PublicCommandReceipt",
     "ReadinessResponse",
     "RestorePreviewSessionRequest",
     "RestorePreviewSessionResponse",
@@ -323,7 +342,10 @@ function validateSchemaCoverage(spec) {
  * its conflict response were accidentally removed.
  */
 function validateActionConcurrencyContract(spec) {
-  const schema = spec.components.schemas.DispatchActionRequest;
+  const requestSchemaOrRef = spec.components.schemas.DispatchActionRequest;
+  const schema = typeof requestSchemaOrRef?.$ref === "string"
+    ? resolveSchemaReference(spec, requestSchemaOrRef.$ref)
+    : requestSchemaOrRef;
   if (!Array.isArray(schema.required) || !schema.required.includes("expectedStateVersion")) {
     fail("DispatchActionRequest must require expectedStateVersion");
   }
@@ -331,9 +353,28 @@ function validateActionConcurrencyContract(spec) {
   if (version?.type !== "integer" || version.minimum !== 0) {
     fail("DispatchActionRequest.expectedStateVersion must be an integer with minimum 0");
   }
+  for (const requiredField of ["sessionId", "actionId", "commandId", "params"]) {
+    if (!schema.required.includes(requiredField)) {
+      fail(`DispatchActionRequest must require ${requiredField}`);
+    }
+  }
+  if (schema.additionalProperties !== false) {
+    fail("DispatchActionRequest must be a closed transport envelope");
+  }
+  if (schema.properties?.commandId?.pattern !== "^cli_[A-Za-z0-9_-]{22}$") {
+    fail("DispatchActionRequest.commandId must use the external cli_ profile");
+  }
+  if (schema.properties?.playerId !== undefined || schema.properties?.payload !== undefined) {
+    fail("DispatchActionRequest must not expose trusted playerId or legacy payload");
+  }
   const conflict = spec.paths?.["/actions"]?.post?.responses?.["409"];
   if (conflict?.$ref !== "#/components/responses/Conflict") {
     fail("POST /actions must document the shared 409 Conflict response");
+  }
+
+  const agentConflict = spec.paths?.["/agent-turns"]?.post?.responses?.["409"];
+  if (agentConflict?.$ref !== "#/components/responses/Conflict") {
+    fail("POST /agent-turns must document the shared 409 Conflict response");
   }
 
   const previewSchema = spec.components.schemas.TransportRoadPreviewRequest;
@@ -350,6 +391,64 @@ function validateActionConcurrencyContract(spec) {
   }
 }
 
+/** Locks small but security-relevant response and editor-preview shapes. */
+function validatePreciseRuntimeShapes(spec) {
+  const planHash = spec.components.schemas.PublicCommandReceipt?.properties?.planHash;
+  if (planHash?.pattern !== "^sha256:[a-f0-9]{64}$") {
+    fail("PublicCommandReceipt.planHash must use the sha256:<64 lowercase hex> profile");
+  }
+
+  const bundle = spec.components.schemas.LocalPlayerWebPluginBundle;
+  const required = new Set(Array.isArray(bundle?.required) ? bundle.required : []);
+  for (const field of ["gameId", "pluginId", "apiVersion", "target", "contentHash", "filePath"]) {
+    if (!required.has(field)) {
+      fail(`LocalPlayerWebPluginBundle must require ${field}`);
+    }
+  }
+  if (required.has("scope")) {
+    fail("LocalPlayerWebPluginBundle.scope must remain optional because the parser defaults it to preview");
+  }
+  if (bundle?.properties?.scope?.const !== "preview") {
+    fail("LocalPlayerWebPluginBundle.scope must allow only preview");
+  }
+  if (bundle?.properties?.apiVersion?.minLength !== 1 || bundle?.properties?.filePath?.minLength !== 1) {
+    fail("LocalPlayerWebPluginBundle apiVersion and filePath must be non-empty strings");
+  }
+  if (bundle?.properties?.file !== undefined) {
+    fail("LocalPlayerWebPluginBundle must use parser field filePath, not legacy file");
+  }
+}
+
+function validateSessionTrustContract(spec) {
+  if (spec.components?.securitySchemes?.SessionBearer?.scheme !== "bearer") {
+    fail("OpenAPI must declare the SessionBearer HTTP security scheme");
+  }
+  for (const [pathTemplate, method] of [
+    ["/sessions/{sessionId}", "get"],
+    ["/sessions/{sessionId}/preview-restore", "post"],
+    ["/actions", "post"],
+    ["/action-previews/transport-road", "post"],
+    ["/agent-turns", "post"]
+  ]) {
+    const operation = spec.paths?.[pathTemplate]?.[method];
+    if (!Array.isArray(operation?.security) || operation.security[0]?.SessionBearer === undefined) {
+      fail(`${method.toUpperCase()} ${pathTemplate} must require SessionBearer authentication`);
+    }
+    if (operation.responses?.["401"]?.$ref !== "#/components/responses/Unauthorized") {
+      fail(`${method.toUpperCase()} ${pathTemplate} must document 401 Unauthorized`);
+    }
+  }
+
+  const create = spec.components.schemas.CreateSessionRequest;
+  if (create.properties?.playerId !== undefined || create.additionalProperties !== false) {
+    fail("CreateSessionRequest must not accept client-selected playerId or unknown fields");
+  }
+  const preview = spec.components.schemas.TransportRoadPreviewRequest;
+  if (preview.properties?.playerId !== undefined) {
+    fail("Protected preview requests must not accept client-selected playerId");
+  }
+}
+
 try {
   const spec = parseOpenApi();
   validateSpecShape(spec);
@@ -359,6 +458,8 @@ try {
   validateHistoricalSpecs();
   validateSchemaCoverage(spec);
   validateActionConcurrencyContract(spec);
+  validateSessionTrustContract(spec);
+  validatePreciseRuntimeShapes(spec);
   console.log("validate-runtime-api-openapi: OK");
 } catch (error) {
   console.error("validate-runtime-api-openapi: failed");

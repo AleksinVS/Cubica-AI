@@ -11,7 +11,7 @@
 Ты — агент-оркестратор реализации платформенного трека настольных игр в
 репозитории Cubica-AI. Трек состоит из трёх задач (в порядке владения):
 
-- A. `docs/tasks/active/TSK-20260705-board-game-platform-capabilities.md` — пакет возможностей (ADR-058);
+- A. `docs/tasks/archive/TSK-20260705-board-game-platform-capabilities.md` — исторический пакет возможностей (ADR-058), заменённый ADR-084;
 - B. `docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md` — сетевой мультиплеер (ADR-059);
 - C. `docs/tasks/active/TSK-20260705-agent-controlled-players.md` — ИИ-оппоненты (ADR-060).
 

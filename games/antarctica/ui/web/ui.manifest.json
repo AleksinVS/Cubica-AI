@@ -152,12 +152,6 @@
                 "children": [
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-1",
                     "props": {
                       "text": "Антарктика — это огромный мир, скрытый под толщей льда. Мы живем здесь тысячелетиями, но мир меняется."
@@ -165,12 +159,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-2",
                     "props": {
                       "text": "Наши предки оставили нам легенды об устойчивости айсберга, но Федор заметил неладное. Трещина растет."
@@ -178,12 +166,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-3",
                     "props": {
                       "text": "Совет пингвинов пока спорит, но время уходит. Нужно действовать быстро, пока лед не тронулся."
@@ -191,12 +173,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-4",
                     "props": {
                       "text": "Мы можем попытаться укрепить наш дом, но Профессор считает, что это лишь отсрочит неизбежное."
@@ -204,12 +180,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-5",
                     "props": {
                       "text": "Слухи о чайках и новых землях кажутся сказкой, но что если это наш единственный шанс на спасение?"
@@ -217,12 +187,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-6",
                     "props": {
                       "text": "Каждый пингвин должен сделать выбор. Остаться и верить в чудо, или отправиться в неизвестность."
@@ -452,7 +416,7 @@
                       "onClick": {
                         "command": "requestServer",
                         "payload": {
-                          "cardId": "{{card.cardId}}"
+                          "actionId": "{{card.selectActionId}}"
                         }
                       }
                     },
@@ -701,7 +665,9 @@
                     "actions": {
                       "onClick": {
                         "command": "advance",
-                        "payload": {}
+                        "payload": {
+                          "actionId": "{{currentInfo.advanceActionId}}"
+                        }
                       }
                     }
                   },
@@ -859,12 +825,6 @@
                 "children": [
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-1",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
@@ -872,12 +832,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-2",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
@@ -885,12 +839,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-3",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
@@ -898,12 +846,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-4",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
@@ -911,12 +853,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-5",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
@@ -924,12 +860,6 @@
                   },
                   {
                     "type": "cardComponent",
-                    "actions": {
-                      "onClick": {
-                        "command": "requestServer",
-                        "payload": {}
-                      }
-                    },
                     "id": "card-6",
                     "props": {
                       "text": "Антарктика - это огромный мир из воды, льда и снега, настолько огромный, что никто из его обитателей, кроме, пожалуй, китов, не представляет его размеров. Кроме гигантского материка,"
@@ -1128,7 +1058,7 @@
                                   {
                                     "type": "richTextComponent",
                                     "props": {
-                                      "html": "{{entry.backText}}",
+                                      "html": "{{entry.data.backText}}",
                                       "cssClass": "journal-entry-text"
                                     }
                                   }

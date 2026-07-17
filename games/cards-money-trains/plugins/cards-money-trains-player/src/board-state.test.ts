@@ -211,7 +211,8 @@ test("disables a board control when canonical server availability rejects it", (
     actionAvailability: [{
       actionId: "network.node.select",
       status: "unavailable",
-      reasonCode: "role_not_allowed"
+      reasonCode: "role_not_allowed",
+      basisStateVersion: 3
     }],
     state: {
       public: {

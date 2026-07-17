@@ -3,17 +3,16 @@
  *
  * Agent Runtime is the server-side boundary that executes one AI agent turn.
  * This module keeps that boundary explicit: the agent receives a validated
- * `CubicaAgentTurnInput`, returns a validated `CubicaAgentTurnResult`, and the
- * runtime applies only a small allowlisted set of state effects before writing
- * the next session snapshot.
+ * `CubicaAgentTurnInput` and may return only one published Game Intent. The
+ * selected intent then runs through the same Mechanics IR candidate executor
+ * as a human action, inside the existing command transaction.
  */
 import {
   defaultCubicaSurfaceChannelActionPolicies,
   defaultCubicaSurfaceCatalog,
-  validateAgentTurnCapabilities,
   validateAgentTurnInput,
   validateAgentTurnResult,
-  type CubicaAgentStateEffect,
+  type CubicaPublishedGameIntent,
   type CubicaAgentTurnInput,
   type CubicaAgentTurnResult,
   type CubicaJsonValue
@@ -24,14 +23,53 @@ import type {
   GameManifestExecutionMode
 } from "@cubica/contracts-manifest";
 import type {
+  DispatchActionInput,
+  PublicSessionCommandReceipt,
   SessionActionAvailability,
+  SessionEventRecord,
+  SessionPrincipal,
   SessionRecord,
   SessionStorePort
 } from "@cubica/contracts-session";
-import { contentService } from "../content/contentService.ts";
-import { HttpError, NotFoundError, RequestValidationError } from "../errors.ts";
+import {
+  loadImmutableGameBundle,
+  loadImmutableGameBundleForReceipt,
+  type GameBundle
+} from "../content/manifestLoader.ts";
+import { HttpError, RequestValidationError } from "../errors.ts";
 import { projectSessionActionAvailability } from "../runtime/actionAvailability.ts";
-import { projectPlayerSessionState } from "../session/playerSessionProjection.ts";
+import {
+  BoundedInMemoryCommandAdmissionController,
+  type CommandAdmissionController
+} from "../runtime/commandAdmission.ts";
+import {
+  executePublishedGameIntentCandidate,
+  materializeSystemScheduleMutations,
+  validatePublishedGameIntentEntryAdmission
+} from "../runtime/actionDispatcher.ts";
+import { processPendingSystemSchedules } from "../runtime/systemScheduler.ts";
+import { listManifestActionDefinitions } from "../runtime/manifestActions.ts";
+import {
+  buildPlayerSessionProjection,
+  projectPlayerSessionState
+} from "../session/playerSessionProjection.ts";
+import {
+  createActionDefinitionHash,
+  createAppliedCommandReceipt,
+  createDurableCommandResult,
+  createExternalCommandFingerprint,
+  createRejectedCommandReceipt,
+  requireDurableCommandResult
+} from "../session/commandIdentity.ts";
+import {
+  resolveSessionActor,
+  resolveSessionViewerActor
+} from "../session/sessionAuthentication.ts";
+import {
+  CommandIdReusedError,
+  SessionStoreUnavailableError,
+  SessionVersionConflictError
+} from "../session/sessionStoreErrors.ts";
 import {
   buildAgentRuntimeUnavailableMessage,
   checkAgentRuntimeReadiness,
@@ -40,17 +78,13 @@ import {
 
 type RuntimeState = Record<string, unknown>;
 type JsonRecord = Record<string, CubicaJsonValue>;
+const SELECT_PUBLISHED_INTENT_CAPABILITY = "selectPublishedIntent";
 
-export interface AgentTurnRequest {
-  readonly sessionId: string;
-  readonly playerId?: string;
-  readonly actionId?: string;
-  readonly payload?: unknown;
-}
+export type AgentTurnRequest = DispatchActionInput;
 
 export interface AgentTurnServiceInput {
   readonly sessionStore: SessionStorePort<RuntimeState>;
-  readonly contentSourceId?: string;
+  readonly credentialSha256: string;
   readonly request: AgentTurnRequest;
 }
 
@@ -60,26 +94,109 @@ export interface AgentTurnServiceResponse {
   readonly state: RuntimeState;
   readonly actionAvailability: ReadonlyArray<SessionActionAvailability>;
   readonly agentTurn: CubicaAgentTurnResult;
+  readonly receipt: PublicSessionCommandReceipt;
+}
+
+interface AgentTurnTransactionOutcome {
+  readonly committedState: boolean;
+  readonly response: AgentTurnServiceResponse;
+  /** Protected context used only to re-project a post-scheduler snapshot. */
+  readonly refreshContext?: {
+    readonly bundle: GameBundle;
+    readonly principal: SessionPrincipal;
+  };
 }
 
 /**
- * Runs one Agent Turn and persists accepted state effects.
+ * Runs one Agent Turn and commits its selected published intent atomically.
  */
 export class AgentTurnService {
+  private readonly admissionController: CommandAdmissionController;
+
+  constructor(
+    admissionController: CommandAdmissionController = new BoundedInMemoryCommandAdmissionController()
+  ) {
+    this.admissionController = admissionController;
+  }
+
   async runTurn(input: AgentTurnServiceInput): Promise<AgentTurnServiceResponse> {
-    return input.sessionStore.withLockedSession(input.request.sessionId, async (current) => {
-    if (current === null) {
-      throw new NotFoundError(`Session "${input.request.sessionId}" was not found`);
+    const transaction = await input.sessionStore.withCommandTransaction<AgentTurnTransactionOutcome>({
+      sessionId: input.request.sessionId,
+      credentialSha256: input.credentialSha256,
+      commandId: input.request.commandId
+    }, async ({ currentSession: current, principal, bundle: storedBundle, existingReceipt }) => {
+    const bundle = existingReceipt === undefined
+      ? loadImmutableGameBundle(storedBundle)
+      : loadImmutableGameBundleForReceipt(storedBundle);
+    const manifest = bundle.manifest;
+    const triggerDefinition = existingReceipt === undefined
+      ? manifest.actions[input.request.actionId]
+      : undefined;
+    const definitionHash = existingReceipt?.definitionHash ?? createActionDefinitionHash({
+      action: triggerDefinition ?? null,
+      agentRuntime: manifest.agentRuntime ?? null
+    });
+    const agentTurnPlanHash = createActionDefinitionHash({
+      actionId: input.request.actionId,
+      runtimeId: manifest.agentRuntime?.runtimeId ?? null,
+      execution: "agent-turn"
+    });
+    const fingerprint = createExternalCommandFingerprint({
+      command: input.request,
+      bundleHash: current.bundleHash,
+      definitionHash
+    });
+    if (existingReceipt !== undefined) {
+      if (existingReceipt.fingerprint !== fingerprint) {
+        throw new CommandIdReusedError(input.request.commandId);
+      }
+      const agentTurn = requireStoredAgentTurn(existingReceipt.result);
+      const viewerActorId = resolveSessionViewerActor(current, principal);
+      return {
+        result: {
+          committedState: false,
+          response: {
+            sessionId: current.sessionId,
+            version: current.version,
+            state: projectActorState(current.state, bundle, viewerActorId),
+            actionAvailability: projectSessionActionAvailability(current, bundle, {
+              ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
+              sessionRole: principal.role
+            }),
+            agentTurn,
+            receipt: existingReceipt.publicReceipt
+          }
+        }
+      };
     }
 
-    const bundle = await contentService.getBundle(current.gameId, current.contentSourceId);
-    const manifest = bundle.manifest;
+    const actorId = resolveSessionActor(current, principal);
+    const viewerActorId = resolveSessionViewerActor(current, principal);
+    const sessionRole = principal.role;
+    if (current.version.stateVersion !== input.request.expectedStateVersion) {
+      throw new SessionVersionConflictError(current.sessionId, input.request.expectedStateVersion);
+    }
     const executionMode = manifest.executionMode ?? "deterministic";
     if (executionMode === "deterministic") {
       throw new RequestValidationError("Agent turns are available only for hybrid or AI-driven games.");
     }
 
     const agentRuntime = requireAgentRuntimeConfig(manifest.agentRuntime, current.gameId);
+    if (input.request.actionId !== agentRuntime.initialActionId || triggerDefinition === undefined) {
+      throw new RequestValidationError(
+        `Action "${input.request.actionId}" is not the published Agent Turn entry intent for this game.`
+      );
+    }
+    validatePublishedGameIntentEntryAdmission({
+      bundle,
+      state: current.state,
+      sessionId: current.sessionId,
+      actionId: input.request.actionId,
+      params: input.request.params,
+      ...(actorId === undefined ? {} : { actorPlayerId: actorId }),
+      sessionRole,
+      now: new Date()
+    });
     const readiness = checkAgentRuntimeReadiness(agentRuntime);
     if (readiness.status !== "ok") {
       throw new HttpError(503, buildAgentRuntimeUnavailableMessage(current.gameId, readiness));
@@ -89,62 +206,307 @@ export class AgentTurnService {
       request: input.request,
       current,
       manifest,
+      bundle,
       agentRuntime,
-      executionMode
+      executionMode,
+      actorId,
+      sessionRole
     });
     const inputValidation = validateAgentTurnInput(turnInput);
     if (!inputValidation.ok) {
       throw new HttpError(500, `Runtime built invalid Agent Turn input: ${formatDiagnostics(inputValidation.diagnostics)}`);
     }
 
+    await this.admissionController.assertNewCommandAdmitted({
+      sessionId: current.sessionId,
+      principalId: principal.principalId,
+      commandId: input.request.commandId,
+      kind: "agent-turn",
+      // The current mock adapter has one bounded call. A real provider adapter
+      // can replace this with a reviewed pre-call estimate through this seam.
+      costUnits: 1
+    });
     const agentTurn = await runConfiguredAgentRuntime(turnInput, agentRuntime);
     const resultValidation = validateAgentTurnResult(agentTurn, {
       catalog: defaultCubicaSurfaceCatalog,
       targetChannel: "web",
-      channelActionPolicy: defaultCubicaSurfaceChannelActionPolicies.webPlayerPrimaryGameplay
+      channelActionPolicy: defaultCubicaSurfaceChannelActionPolicies.webPlayerPrimaryGameplay,
+      availableIntents: turnInput.availableIntents,
+      agentTurnEntryActionId: agentRuntime.initialActionId
     });
     if (!resultValidation.ok) {
       throw new HttpError(502, `Agent Runtime returned invalid Agent Turn result: ${formatDiagnostics(resultValidation.diagnostics)}`);
     }
 
-    const capabilityDiagnostics = validateAgentTurnCapabilities(agentTurn, agentRuntime.allowedCapabilities);
-    if (capabilityDiagnostics.length > 0) {
-      throw new HttpError(502, `Agent Runtime exceeded manifest allowedCapabilities: ${formatDiagnostics(capabilityDiagnostics)}`);
-    }
-
     assertSurfaceCatalogAllowed(agentTurn, agentRuntime);
 
     if (agentTurn.ok !== true) {
+      const receipt = createRejectedCommandReceipt({
+        command: input.request,
+        principal,
+        ...(actorId === undefined ? {} : { actorId }),
+        current,
+        fingerprint,
+        definitionHash,
+        planHash: agentTurnPlanHash,
+        rejectionCode: "AGENT_TURN_REJECTED",
+        commandKind: "agent-turn",
+        durableResult: createDurableCommandResult("agent-turn", agentTurn)
+      });
       return {
+        receipt,
         result: {
-          sessionId: current.sessionId,
-          version: current.version,
-          state: projectPlayerSessionState(current.state),
-          actionAvailability: projectSessionActionAvailability(current, bundle),
-          agentTurn
+          committedState: false,
+          response: {
+            sessionId: current.sessionId,
+            version: current.version,
+            state: projectActorState(current.state, bundle, viewerActorId),
+            actionAvailability: projectSessionActionAvailability(current, bundle, {
+              ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
+              sessionRole
+            }),
+            agentTurn,
+            receipt: receipt.publicReceipt
+          }
         }
       };
     }
 
-    const nextState = applyAgentEffects(current.state, agentTurn.effects ?? []);
+    const selectedIntent = agentTurn.selectedIntent;
+    if (selectedIntent === undefined) {
+      // Schema/semantic validation above already enforces this. This branch is
+      // retained as a defensive type boundary before authoritative execution.
+      throw new HttpError(502, "Agent Runtime did not select a published Game Intent.");
+    }
+    let executed: Awaited<ReturnType<typeof executePublishedGameIntentCandidate>>;
+    try {
+      executed = await executePublishedGameIntentCandidate({
+        bundle,
+        state: current.state,
+        sessionId: current.sessionId,
+        actionId: selectedIntent.actionId,
+        params: selectedIntent.params,
+        ...(actorId === undefined ? {} : { actorPlayerId: actorId }),
+        sessionRole,
+        now: new Date()
+      });
+    } catch (error) {
+      if (!(error instanceof RequestValidationError)) {
+        throw error;
+      }
+
+      // The provider has already produced a schema-valid selected intent. A
+      // live reference, role, or action-parameter rejection is therefore a
+      // terminal result of this logical Agent Turn—not permission to call the
+      // non-deterministic provider again on an exact transport retry.
+      const selectedDefinition = manifest.actions[selectedIntent.actionId];
+      const selectedPlan = selectedDefinition === undefined
+        ? undefined
+        : manifest.mechanics.plans[selectedDefinition.binding.planRef];
+      const receipt = createRejectedCommandReceipt({
+        command: input.request,
+        principal,
+        ...(actorId === undefined ? {} : { actorId }),
+        current,
+        fingerprint,
+        definitionHash,
+        ...(selectedPlan === undefined ? {} : { planHash: selectedPlan.planHash }),
+        rejectionCode: "AGENT_SELECTED_INTENT_INVALID",
+        commandKind: "agent-turn",
+        durableResult: createDurableCommandResult("agent-turn", agentTurn),
+        selectedActionId: selectedIntent.actionId
+      });
+      return {
+        receipt,
+        result: {
+          committedState: false,
+          response: {
+            sessionId: current.sessionId,
+            version: current.version,
+            state: projectActorState(current.state, bundle, viewerActorId),
+            actionAvailability: projectSessionActionAvailability(current, bundle, {
+              ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
+              sessionRole
+            }),
+            agentTurn,
+            receipt: receipt.publicReceipt
+          }
+        }
+      };
+    }
+    if (!executed.result.ok || executed.candidateState === undefined) {
+      const receipt = createRejectedCommandReceipt({
+        command: input.request,
+        principal,
+        ...(actorId === undefined ? {} : { actorId }),
+        current,
+        fingerprint,
+        definitionHash,
+        planHash: executed.planHash,
+        rejectionCode: executed.result.error?.code ?? "AGENT_SELECTED_INTENT_REJECTED",
+        commandKind: "agent-turn",
+        durableResult: createDurableCommandResult("agent-turn", agentTurn),
+        selectedActionId: selectedIntent.actionId
+      });
+      return {
+        receipt,
+        result: {
+          committedState: false,
+          response: {
+            sessionId: current.sessionId,
+            version: current.version,
+            state: projectActorState(current.state, bundle, viewerActorId),
+            actionAvailability: projectSessionActionAvailability(current, bundle, {
+              ...(viewerActorId === undefined ? {} : { actorPlayerId: viewerActorId }),
+              sessionRole
+            }),
+            agentTurn,
+            receipt: receipt.publicReceipt
+          }
+        }
+      };
+    }
+
+    const eventRefs = executed.events.map((_, index) =>
+      `${current.sessionId}:${current.version.lastEventSequence + index + 1}`
+    );
     const nextSnapshot: SessionRecord<RuntimeState> = {
       ...current,
-      state: nextState,
-      version: createNextVersion(current),
+      state: executed.candidateState,
+      version: {
+        sessionId: current.sessionId,
+        stateVersion: current.version.stateVersion + 1,
+        lastEventSequence: current.version.lastEventSequence + executed.events.length
+      },
       updatedAt: new Date()
     };
+    const receipt = createAppliedCommandReceipt({
+      command: input.request,
+      principal,
+      ...(actorId === undefined ? {} : { actorId }),
+      before: current,
+      after: nextSnapshot,
+      fingerprint,
+      definitionHash,
+      planHash: executed.planHash,
+      eventRefs,
+      ...(executed.result.mechanicsAudit === undefined
+        ? {}
+        : { mechanicsAudit: executed.result.mechanicsAudit }),
+      commandKind: "agent-turn",
+      durableResult: createDurableCommandResult("agent-turn", agentTurn),
+      selectedActionId: selectedIntent.actionId
+    });
+    const events: SessionEventRecord[] = executed.events.map((event, index) => ({
+      eventId: eventRefs[index],
+      sessionId: current.sessionId,
+      sequence: current.version.lastEventSequence + index + 1,
+      receiptId: receipt.receiptId,
+      commandId: input.request.commandId,
+      // Gameplay events describe the selected intent that actually changed
+      // state. The trigger remains explicit in the receipt audit.
+      actionId: selectedIntent.actionId,
+      principalId: principal.principalId,
+      ...(actorId === undefined ? {} : { actorId }),
+      audience: event.audience,
+      eventType: event.eventType,
+      summary: structuredClone(event.summary),
+      data: structuredClone(event.data),
+      createdAt: nextSnapshot.updatedAt
+    }));
+    const nextViewerActorId = resolveSessionViewerActor(nextSnapshot, principal);
+    const scheduleMutations = materializeSystemScheduleMutations({
+      mutations: executed.result.systemScheduleMutations ?? [],
+      bundle,
+      sessionId: current.sessionId,
+      bundleHash: current.bundleHash,
+      now: nextSnapshot.updatedAt
+    });
 
     return {
       updatedSession: nextSnapshot,
+      receipt,
+      events,
+      ...(scheduleMutations.length === 0 ? {} : { scheduleMutations }),
       result: {
-        sessionId: nextSnapshot.sessionId,
-        version: nextSnapshot.version,
-        state: projectPlayerSessionState(nextSnapshot.state),
-        actionAvailability: projectSessionActionAvailability(nextSnapshot, bundle),
-        agentTurn
+        committedState: true,
+        refreshContext: { bundle, principal },
+        response: {
+          sessionId: nextSnapshot.sessionId,
+          version: nextSnapshot.version,
+          state: projectActorState(nextSnapshot.state, bundle, nextViewerActorId),
+          actionAvailability: projectSessionActionAvailability(nextSnapshot, bundle, {
+            ...(nextViewerActorId === undefined ? {} : { actorPlayerId: nextViewerActorId }),
+            sessionRole
+          }),
+          agentTurn,
+          receipt: receipt.publicReceipt
+        }
       }
     };
     });
+
+    if (!transaction) throw new SessionStoreUnavailableError();
+    if (transaction.committedState) {
+      try {
+        // Agent-selected intents share the same post-commit scheduler boundary
+        // as human commands. The pass is deliberately outside the external
+        // command transaction so a scheduler fault cannot roll back or mask an
+        // Agent Turn that already has a durable receipt.
+        await processPendingSystemSchedules(input.sessionStore, input.request.sessionId);
+      } catch (error) {
+        console.error(
+          `[system-scheduler] bounded pass failed after Agent Turn for session ${input.request.sessionId}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+
+      try {
+        // Reload even after a failed bounded pass: an earlier schedule may
+        // already have committed. The active actor is resolved again so a
+        // system-driven turn advance cannot expose the previous hot-seat
+        // participant's actor-scoped state.
+        const latest = await input.sessionStore.getSession(input.request.sessionId);
+        const refreshContext = transaction.refreshContext;
+        if (latest !== null && refreshContext !== undefined) {
+          const latestViewerActorId = resolveSessionViewerActor(latest, refreshContext.principal);
+          return {
+            ...transaction.response,
+            version: latest.version,
+            state: projectActorState(latest.state, refreshContext.bundle, latestViewerActorId),
+            actionAvailability: projectSessionActionAvailability(latest, refreshContext.bundle, {
+              ...(latestViewerActorId === undefined ? {} : { actorPlayerId: latestViewerActorId }),
+              sessionRole: refreshContext.principal.role
+            })
+          };
+        }
+      } catch (error) {
+        console.error(
+          `[system-scheduler] current Agent Turn snapshot reload failed for session ${input.request.sessionId}:`,
+          error instanceof Error ? error.message : String(error)
+        );
+      }
+    }
+    return transaction.response;
+  }
+}
+
+function requireStoredAgentTurn(value: unknown): CubicaAgentTurnResult {
+  try {
+    const stored = requireDurableCommandResult(value, "agent-turn").value;
+    if (
+      typeof stored !== "object" || stored === null || Array.isArray(stored) ||
+      typeof (stored as { ok?: unknown }).ok !== "boolean"
+    ) {
+      throw new Error("invalid stored Agent Turn result");
+    }
+    // The result was fully validated before it entered the receipt. Exact
+    // retry reads that pinned format, not today's catalog or provider policy;
+    // otherwise a compatible platform upgrade could make an applied command
+    // impossible to replay without risking a second model invocation.
+    return structuredClone(stored) as CubicaAgentTurnResult;
+  } catch {
+    throw new SessionStoreUnavailableError();
   }
 }
 
@@ -155,6 +517,11 @@ function requireAgentRuntimeConfig(
   if (agentRuntime?.required !== true) {
     throw new RequestValidationError(`Game "${gameId}" does not declare a required Agent Runtime.`);
   }
+  if (!agentRuntime.allowedCapabilities.includes(SELECT_PUBLISHED_INTENT_CAPABILITY)) {
+    throw new RequestValidationError(
+      `Game "${gameId}" does not allow Agent Runtime to select a published Game Intent.`
+    );
+  }
   return agentRuntime;
 }
 
@@ -162,41 +529,54 @@ function buildAgentTurnInput(input: {
   readonly request: AgentTurnRequest;
   readonly current: SessionRecord<RuntimeState>;
   readonly manifest: GameManifest;
+  readonly bundle: GameBundle;
   readonly agentRuntime: GameManifestAgentRuntimeConfig;
   readonly executionMode: Exclude<GameManifestExecutionMode, "deterministic">;
+  readonly actorId?: string;
+  readonly sessionRole: "player" | "facilitator" | "assistant" | "observer";
 }): CubicaAgentTurnInput {
   const { current, manifest, agentRuntime, request } = input;
-  const publicState = stateSectionToJsonRecord(current.state.public, "state.public");
-  const secretState = agentRuntime.contextExposurePolicy?.secretState === "role-scoped"
-    ? stateSectionToJsonRecord(current.state.secret, "state.secret")
-    : undefined;
-  const triggerPayload = optionalJsonValue(request.payload, "payload");
-  const trigger = request.actionId === undefined
-    ? {
-        kind: "systemEvent" as const,
-        eventType: "agent.turn",
-        ...(triggerPayload === undefined ? {} : { payload: triggerPayload })
-      }
-    : {
-        kind: "playerAction" as const,
-        actionId: request.actionId,
-        ...(triggerPayload === undefined ? {} : { payload: triggerPayload })
-      };
+  const playerProjection = buildPlayerSessionProjection({
+    state: current.state,
+    stateModel: input.bundle.manifest.mechanics.stateModel,
+    ...(input.actorId === undefined ? {} : { actorPlayerId: input.actorId })
+  });
+  const publicState = buildAgentPublicStateScope(playerProjection.publicAudienceState);
+  const actorState = input.actorId === undefined
+    ? undefined
+    : buildAgentActorStateScope(playerProjection.actorAudienceState, input.actorId);
+  const triggerPayload = optionalJsonValue(request.params, "params");
+  const trigger = {
+    kind: "playerAction" as const,
+    actionId: request.actionId,
+    ...(triggerPayload === undefined ? {} : { payload: triggerPayload })
+  };
+  const availableIntents = buildAvailableGameIntents(
+    current,
+    input.bundle,
+    agentRuntime.initialActionId,
+    input.actorId,
+    input.sessionRole
+  );
 
   return {
     schemaVersion: "1.0.0",
     turnId: createId("turn"),
     sessionId: current.sessionId,
     gameId: current.gameId,
-    ...(request.playerId === undefined ? {} : { playerId: request.playerId }),
+    ...(input.actorId === undefined ? {} : { playerId: input.actorId }),
     agentId: agentRuntime.agentId,
     executionMode: input.executionMode,
     trigger,
-    stateScope: secretState === undefined
-      ? { public: publicState }
-      : { public: publicState, secret: secretState },
-    manifestProjection: buildManifestProjection(manifest, agentRuntime, input.executionMode),
-    allowedCapabilities: agentRuntime.allowedCapabilities,
+    // The model receives the same state-model projection as a human viewer:
+    // public symbols plus, when present, this actor's isolated branch. The
+    // server-only `secret` channel remains empty under the current policy.
+    stateScope: {
+      public: publicState,
+      ...(actorState === undefined ? {} : { actor: actorState })
+    },
+    manifestProjection: buildManifestProjection(manifest, agentRuntime, input.executionMode, availableIntents),
+    availableIntents,
     surfaceCatalog: agentRuntime.surfaceCatalog,
     correlationId: createId("correlation")
   };
@@ -205,22 +585,54 @@ function buildAgentTurnInput(input: {
 function buildManifestProjection(
   manifest: GameManifest,
   agentRuntime: GameManifestAgentRuntimeConfig,
-  executionMode: Exclude<GameManifestExecutionMode, "deterministic">
+  executionMode: Exclude<GameManifestExecutionMode, "deterministic">,
+  availableIntents: readonly CubicaPublishedGameIntent[]
 ): JsonRecord {
   return {
     gameId: manifest.meta.id,
     version: manifest.meta.version,
     name: manifest.meta.name,
     executionMode,
-    allowedCapabilities: agentRuntime.allowedCapabilities,
     surfaceCatalog: agentRuntime.surfaceCatalog,
-    actions: Object.entries(manifest.actions).map(([actionId, definition]) => ({
-      actionId,
-      displayName: definition.displayName ?? actionId,
-      capabilityFamily: definition.capabilityFamily ?? null,
-      capability: definition.capability ?? null
-    }))
+    actions: toJsonValue(availableIntents, "manifestProjection.actions")
   };
+}
+
+/**
+ * Projects the trusted action catalog into the exact choices an agent may
+ * make for this actor and snapshot. The Agent Turn entry action is excluded so
+ * a selected intent can never recursively start another Agent Turn.
+ */
+function buildAvailableGameIntents(
+  current: SessionRecord<RuntimeState>,
+  bundle: GameBundle,
+  initialActionId: string,
+  actorPlayerId: string | undefined,
+  sessionRole: "player" | "facilitator" | "assistant" | "observer"
+): CubicaPublishedGameIntent[] {
+  const availability = new Map(
+    projectSessionActionAvailability(current, bundle, {
+      ...(actorPlayerId === undefined ? {} : { actorPlayerId }),
+      sessionRole
+    }).map((item) => [item.actionId, item.status])
+  );
+
+  return listManifestActionDefinitions(bundle)
+    .filter((definition) => definition.invocation === "external")
+    .filter((definition) => definition.actionId !== initialActionId)
+    .filter((definition) => availability.get(definition.actionId) !== "unavailable")
+    .map((definition) => {
+      const displayName = definition.raw.displayName;
+      return {
+        actionId: definition.actionId,
+        label: typeof displayName === "string" && displayName.trim() !== ""
+          ? displayName
+          : definition.actionId,
+        ...(definition.paramsSchema === undefined
+          ? {}
+          : { paramsSchema: toJsonRecord(definition.paramsSchema, `actions.${definition.actionId}.paramsSchema`) })
+      };
+    });
 }
 
 async function runConfiguredAgentRuntime(
@@ -239,14 +651,26 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
   const narration = input.trigger.actionId === undefined
     ? "Agent Runtime prepared the next AI-driven turn."
     : `Agent Runtime accepted player action "${input.trigger.actionId}".`;
-  const availableActions = [
-    {
-      actionId: "agent.continue",
-      label: "Continue",
-      kind: "agentTurn" as const,
-      sideEffectPolicy: "system-approved" as const
-    }
-  ];
+  const selectedIntent = input.availableIntents[0];
+  const initialActionId = input.trigger.actionId;
+  if (selectedIntent === undefined || initialActionId === undefined) {
+    return {
+      schemaVersion: "1.0.0",
+      turnId: input.turnId,
+      agentId: input.agentId,
+      ok: false,
+      narration: "No published Game Intent is available for this Agent Turn.",
+      audit: {
+        source: "mock",
+        createdAt: new Date().toISOString(),
+        runId: createId("mock-run")
+      },
+      error: {
+        code: "no_available_intent",
+        message: "Agent Runtime received no entry action or actor-scoped Game Intent."
+      }
+    };
+  }
 
   return {
     schemaVersion: "1.0.0",
@@ -254,20 +678,10 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
     agentId: input.agentId,
     ok: true,
     narration,
-    effects: [
-      {
-        kind: "appendLog",
-        target: "public.log",
-        data: {
-          kind: "agent-turn",
-          summary: narration,
-          turnId: input.turnId,
-          source: "mock",
-          actionId: input.trigger.actionId ?? null
-        }
-      }
-    ],
-    availableActions,
+    selectedIntent: {
+      actionId: selectedIntent.actionId,
+      params: {}
+    },
     surface: canRenderChoiceList
       ? {
           schemaVersion: "1.0.0",
@@ -292,10 +706,10 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
             },
             actions: [
               {
-                id: "agent.continue",
+                id: "agent.request-next-choice",
                 kind: "agentTurn",
                 label: "Continue",
-                target: "agent.nextTurn",
+                target: initialActionId,
                 payload: {
                   choiceId: "continue"
                 },
@@ -310,76 +724,6 @@ function runMockAgentRuntime(input: CubicaAgentTurnInput): CubicaAgentTurnResult
       createdAt: new Date().toISOString(),
       runId: createId("mock-run")
     }
-  };
-}
-
-function applyAgentEffects(state: RuntimeState, effects: readonly CubicaAgentStateEffect[]): RuntimeState {
-  const nextState = structuredClone(state);
-  const publicState = ensureMutableRecord(nextState, "public");
-
-  for (const effect of effects) {
-    switch (effect.kind) {
-      case "appendLog":
-        applyAppendLogEffect(publicState, effect);
-        break;
-      case "setMetric":
-        applySetMetricEffect(publicState, effect);
-        break;
-      case "setFlag":
-        applySetFlagEffect(publicState, effect);
-        break;
-      case "replaceStep":
-        applyReplaceStepEffect(publicState, effect);
-        break;
-      case "grantCapability":
-      case "custom":
-        throw new HttpError(502, `Agent effect kind "${effect.kind}" is not supported by runtime-api yet.`);
-      default:
-        assertNever(effect.kind);
-    }
-  }
-
-  return nextState;
-}
-
-function applyAppendLogEffect(publicState: Record<string, unknown>, effect: CubicaAgentStateEffect): void {
-  if (effect.target !== "public.log") {
-    throw new HttpError(502, `appendLog effect target must be "public.log", received "${effect.target}".`);
-  }
-  const log = Array.isArray(publicState.log) ? publicState.log : [];
-  publicState.log = log;
-  log.push(effect.data ?? {});
-}
-
-function applySetMetricEffect(publicState: Record<string, unknown>, effect: CubicaAgentStateEffect): void {
-  const metricId = parseLeafTarget(effect.target, "public.metrics");
-  if (typeof effect.value !== "number") {
-    throw new HttpError(502, `setMetric effect for "${metricId}" must provide a numeric value.`);
-  }
-  const metrics = ensureMutableRecord(publicState, "metrics");
-  metrics[metricId] = effect.value;
-}
-
-function applySetFlagEffect(publicState: Record<string, unknown>, effect: CubicaAgentStateEffect): void {
-  const flagPath = parseNestedTarget(effect.target, "public.flags");
-  if (typeof effect.value !== "boolean") {
-    throw new HttpError(502, `setFlag effect for "${flagPath.join(".")}" must provide a boolean value.`);
-  }
-  const flags = ensureMutableRecord(publicState, "flags");
-  setNestedValue(flags, flagPath, effect.value);
-}
-
-function applyReplaceStepEffect(publicState: Record<string, unknown>, effect: CubicaAgentStateEffect): void {
-  if (effect.target !== "public.timeline") {
-    throw new HttpError(502, `replaceStep effect target must be "public.timeline", received "${effect.target}".`);
-  }
-  if (!isUnknownRecord(effect.value)) {
-    throw new HttpError(502, "replaceStep effect must provide an object value.");
-  }
-  const timeline = isUnknownRecord(publicState.timeline) ? publicState.timeline : {};
-  publicState.timeline = {
-    ...timeline,
-    ...effect.value
   };
 }
 
@@ -402,6 +746,53 @@ function flattenSurfaceComponents(
   component: NonNullable<CubicaAgentTurnResult["surface"]>["root"]
 ): Array<NonNullable<CubicaAgentTurnResult["surface"]>["root"]> {
   return [component, ...(component.children ?? []).flatMap((child) => flattenSurfaceComponents(child))];
+}
+
+/**
+ * Keep the established direct `state.public` shape while namespacing public
+ * values physically stored per player under `stateScope.public.players`.
+ */
+function buildAgentPublicStateScope(state: RuntimeState): JsonRecord {
+  const scope = stateSectionToJsonRecord(state.public, "playerView.public");
+  if (isUnknownRecord(state.players) && Object.keys(state.players).length > 0) {
+    addScopeProperty(scope, "players", toJsonValue(state.players, "playerView.public.players"));
+  }
+  return scope;
+}
+
+/** Build the actor channel from actor-labelled values, independent of storage root. */
+function buildAgentActorStateScope(state: RuntimeState, actorPlayerId: string): JsonRecord | undefined {
+  const scope = stateSectionToJsonRecord(state.public, "playerView.actor.public");
+  const players = isUnknownRecord(state.players) ? state.players : {};
+  const ownPlayerState = players[actorPlayerId];
+  if (isUnknownRecord(ownPlayerState)) {
+    for (const [key, value] of Object.entries(toJsonRecord(ownPlayerState, "playerView.actor.players.actor"))) {
+      addScopeProperty(scope, key, value);
+    }
+  }
+  return Object.keys(scope).length === 0 ? undefined : scope;
+}
+
+function addScopeProperty(scope: JsonRecord, key: string, value: CubicaJsonValue): void {
+  if (Object.prototype.hasOwnProperty.call(scope, key)) {
+    // Two physical roots cannot silently collapse into one model field. A
+    // manifest with this ambiguity must be corrected before an Agent Turn.
+    throw new HttpError(500, `Player projection has conflicting Agent Turn field "${key}".`);
+  }
+  scope[key] = value;
+}
+
+/** Apply the pinned state-model visibility policy for HTTP and model views. */
+function projectActorState(
+  state: RuntimeState,
+  bundle: GameBundle,
+  actorPlayerId: string | undefined
+): RuntimeState {
+  return projectPlayerSessionState({
+    state,
+    stateModel: bundle.manifest.mechanics.stateModel,
+    ...(actorPlayerId === undefined ? {} : { actorPlayerId })
+  });
 }
 
 function stateSectionToJsonRecord(value: unknown, pathLabel: string): JsonRecord {
@@ -446,58 +837,8 @@ function toJsonValue(value: unknown, pathLabel: string): CubicaJsonValue {
   throw new RequestValidationError(`${pathLabel} must be JSON-compatible.`);
 }
 
-function ensureMutableRecord(parent: Record<string, unknown>, key: string): Record<string, unknown> {
-  const value = parent[key];
-  if (isUnknownRecord(value)) {
-    return value;
-  }
-  const nextValue: Record<string, unknown> = {};
-  parent[key] = nextValue;
-  return nextValue;
-}
-
-function parseLeafTarget(target: string, prefix: string): string {
-  const parts = parseNestedTarget(target, prefix);
-  if (parts.length !== 1) {
-    throw new HttpError(502, `Effect target "${target}" must name a single ${prefix} entry.`);
-  }
-  return parts[0];
-}
-
-function parseNestedTarget(target: string, prefix: string): string[] {
-  const fullPrefix = `${prefix}.`;
-  if (!target.startsWith(fullPrefix)) {
-    throw new HttpError(502, `Effect target "${target}" must start with "${fullPrefix}".`);
-  }
-  const parts = target.slice(fullPrefix.length).split(".");
-  if (parts.some((part) => !/^[a-zA-Z0-9_-]+$/u.test(part))) {
-    throw new HttpError(502, `Effect target "${target}" contains an unsafe path segment.`);
-  }
-  return parts;
-}
-
-function setNestedValue(target: Record<string, unknown>, pathParts: readonly string[], value: unknown): void {
-  const [head, ...tail] = pathParts;
-  if (head === undefined) {
-    throw new HttpError(502, "Effect target path must not be empty.");
-  }
-  if (tail.length === 0) {
-    target[head] = value;
-    return;
-  }
-  setNestedValue(ensureMutableRecord(target, head), tail, value);
-}
-
 function isUnknownRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function createNextVersion(current: SessionRecord<RuntimeState>): SessionRecord<RuntimeState>["version"] {
-  return {
-    sessionId: current.sessionId,
-    stateVersion: current.version.stateVersion + 1,
-    lastEventSequence: current.version.lastEventSequence + 1
-  };
 }
 
 function createId(prefix: string): string {
@@ -506,8 +847,4 @@ function createId(prefix: string): string {
 
 function formatDiagnostics(diagnostics: readonly { readonly pointer: string; readonly message: string }[]): string {
   return diagnostics.map((diagnostic) => `${diagnostic.pointer} ${diagnostic.message}`).join("; ");
-}
-
-function assertNever(value: never): never {
-  throw new HttpError(500, `Unsupported Agent effect kind: ${String(value)}`);
 }

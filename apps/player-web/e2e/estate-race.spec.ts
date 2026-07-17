@@ -15,16 +15,21 @@ import {
   type APIRequestContext,
   type Page
 } from "@playwright/test";
+import { randomBytes } from "node:crypto";
 
 const GAME_ID = "estate-race";
 const STORAGE_KEY = "cubica-estate-race-session-id";
 const FIELD_LABEL = "Игровое поле Estate Race";
-const MAX_PURCHASE_SESSION_ATTEMPTS = 20;
+const MAX_PURCHASE_PROGRESS_ACTIONS = 180;
 const MAX_PROGRESS_ACTIONS = 180;
 const BOARD_PLUGIN_READY_TIMEOUT_MS = 30_000;
 
 type RuntimeSnapshot = {
   sessionId: string;
+  receipt?: {
+    status: "applied" | "rejected";
+    rejectionCode?: string;
+  };
   version: {
     stateVersion: number;
   };
@@ -62,7 +67,7 @@ type BrowserActionResult = {
 };
 
 test.describe("Estate Race GSR-034", () => {
-  test("renders two-player board and completes first purchase and p2-to-p1 rent", async ({ page, request }) => {
+  test("renders two-player board and completes first purchase and p2-to-p1 rent", async ({ page }) => {
     // The acceptance path includes a cold two-service startup plus a bounded
     // search of up to MAX_PROGRESS_ACTIONS authoritative requests. The former
     // 90-second total deadline could expire after the target rent state had
@@ -86,33 +91,22 @@ test.describe("Estate Race GSR-034", () => {
     await expect(board(page).getByRole("button", { name: "Бросить кости" }))
       .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
 
-    // A production session has a fresh secret seed. Start a fresh session until
-    // p1's first legal roll reaches an estate, then perform the purchase through
-    // the same accessible board button a keyboard user receives.
-    let afterRoll: RuntimeSnapshot | null = null;
-    for (let attempt = 0; attempt < MAX_PURCHASE_SESSION_ATTEMPTS; attempt += 1) {
-      const snapshot = attempt === 0
-        ? (await clickBoardAction(page, "Бросить кости")).snapshot
-        : await rollFreshApiSession(request);
-      if (snapshot.state.public.turn.phase === "acquire") {
-        afterRoll = snapshot;
-        break;
-      }
-    }
-    expect(afterRoll, "p1 should reach a purchasable estate within the bounded fresh-session search").not.toBeNull();
-
-    // Avoid reloading the entire Phaser/Next.js development stack for every
-    // random candidate. Once the public API finds a normal production session
-    // with a purchasable landing, open that exact authoritative snapshot once
-    // and continue all acceptance actions through visible browser controls.
-    if (afterRoll!.sessionId !== browserSession.sessionId) {
-      await openBrowserSession(page, afterRoll!.sessionId);
-      await expect(board(page).getByRole("button", { name: "Купить участок" }))
-        .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
-    }
+    // Keep one browser-created session and its HttpOnly credential throughout
+    // the acceptance path. Production dice remain random; when the first roll
+    // is not a purchase, authoritative public actions progress the same session
+    // until p1 reaches an unowned estate.
+    const afterFirstRoll = (await clickBoardAction(page, "Бросить кости")).snapshot;
+    const purchaseOpportunity = afterFirstRoll.state.public.turn.activePlayerId === "p1"
+      && afterFirstRoll.state.public.turn.phase === "acquire"
+      ? afterFirstRoll
+      : await progressToFirstPlayerPurchaseOpportunity(page.request, afterFirstRoll);
+    await openBrowserSession(page, purchaseOpportunity.sessionId);
+    await expect(board(page).getByRole("button", { name: "Купить участок" }))
+      .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
 
     const purchase = await clickBoardAction(page, "Купить участок");
-    expect(purchase.requestBody.playerId).toBe("p1");
+    expect(purchase.requestBody).not.toHaveProperty("playerId");
+    expect(purchase.requestBody.commandId).toMatch(/^cli_[A-Za-z0-9_-]{22}$/u);
     expect(purchase.requestBody.params).toEqual(expect.objectContaining({ cellId: expect.any(String) }));
 
     const ownedCell = Object.values(purchase.snapshot.state.public.objects.boardCells)
@@ -121,26 +115,20 @@ test.describe("Estate Race GSR-034", () => {
     expect(purchase.snapshot.state.players.p1.metrics.cash).toBeLessThan(900);
 
     const finishPurchaseTurn = await clickBoardAction(page, "Завершить ход");
-    expect(finishPurchaseTurn.requestBody.playerId).toBe("p1");
+    expect(finishPurchaseTurn.requestBody).not.toHaveProperty("playerId");
     expect(finishPurchaseTurn.snapshot.state.public.turn.activePlayerId).toBe("p2");
 
     // Progress valid turns through the same player-web Runtime API proxy until
     // p2 is required to pay p1. This keeps random state and all rule decisions
     // server-owned while avoiding dozens of visually identical browser clicks.
-    const beforeRent = await progressToSecondPlayerRent(request, finishPurchaseTurn.snapshot);
+    const beforeRent = await progressToSecondPlayerRent(page.request, finishPurchaseTurn.snapshot);
     const landedIndex = beforeRent.state.players.p2.metrics.position;
     const landedCell = Object.values(beforeRent.state.public.objects.boardCells)
       .find((cell) => cell.attributes.index === landedIndex);
     expect(landedCell?.attributes.ownerPlayerId).toBe("p1");
     expect(landedCell?.attributes.rent).toEqual(expect.any(Number));
 
-    const restoredSession = page.waitForResponse((response) =>
-      response.url().includes(`/api/runtime/sessions/${beforeRent.sessionId}`)
-      && response.request().method() === "GET"
-    );
-    await page.reload();
-    expectPlayerSnapshotHasNoPlatformSecrets(await (await restoredSession).json() as RuntimeSnapshot);
-    await expect(page.locator(".loading-state")).toHaveCount(0);
+    await openBrowserSession(page, beforeRent.sessionId);
     await expect(page.getByText(/активен p2 · этап rent/i)).toBeVisible();
     await expect(board(page).getByRole("button", { name: "Оплатить ренту" }))
       .toBeVisible({ timeout: BOARD_PLUGIN_READY_TIMEOUT_MS });
@@ -150,9 +138,9 @@ test.describe("Estate Race GSR-034", () => {
     const rent = landedCell?.attributes.rent as number;
     const rentPayment = await clickBoardAction(page, "Оплатить ренту");
 
-    // This assertion is the hotseat seam: after p1 finished, the same browser
-    // must attribute the next UI action to authoritative active participant p2.
-    expect(rentPayment.requestBody.playerId).toBe("p2");
+    // This is the hotseat seam: the browser never claims actor p2. Runtime
+    // resolves it from the authenticated controller and authoritative turn.
+    expect(rentPayment.requestBody).not.toHaveProperty("playerId");
     expect(rentPayment.snapshot.state.players.p1.metrics.cash).toBe(p1CashBefore + rent);
     expect(rentPayment.snapshot.state.players.p2.metrics.cash).toBe(p2CashBefore - rent);
     expect(rentPayment.snapshot.state.public.turn.phase).toBe("finish");
@@ -175,18 +163,16 @@ async function openBrowserSession(page: Page, sessionId: string): Promise<void> 
     && response.request().method() === "GET"
   );
   await page.reload();
-  expectPlayerSnapshotHasNoPlatformSecrets(await (await restoredSession).json() as RuntimeSnapshot);
+  const response = await restoredSession;
+  const responseText = await response.text();
+  expect(
+    response.status(),
+    `restoring runtime session ${sessionId} returned: ${responseText}`
+  ).toBe(200);
+  const snapshot = JSON.parse(responseText) as RuntimeSnapshot;
+  expect(snapshot.sessionId, `restored response must describe session ${sessionId}`).toBe(sessionId);
+  expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
   await expect(page.locator(".loading-state")).toHaveCount(0);
-}
-
-async function rollFreshApiSession(request: APIRequestContext): Promise<RuntimeSnapshot> {
-  const response = await request.post("/api/runtime/sessions", {
-    data: { gameId: GAME_ID, playerId: "p1" }
-  });
-  expect(response.status()).toBe(201);
-  const fresh = await response.json() as RuntimeSnapshot;
-  expectPlayerSnapshotHasNoPlatformSecrets(fresh);
-  return postRuntimeAction(request, fresh.sessionId, fresh.version.stateVersion, "p1", "turn.roll");
 }
 
 async function clickBoardAction(page: Page, label: string): Promise<BrowserActionResult> {
@@ -202,12 +188,47 @@ async function clickBoardAction(page: Page, label: string): Promise<BrowserActio
   expect(runtimeResponse.status()).toBe(200);
 
   const snapshot = await runtimeResponse.json() as RuntimeSnapshot;
+  expect(
+    snapshot.receipt?.status,
+    `${label} was rejected: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
+  ).toBe("applied");
   expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
 
   return {
     requestBody: runtimeRequest.postDataJSON() as Record<string, unknown>,
     snapshot
   };
+}
+
+async function progressToFirstPlayerPurchaseOpportunity(
+  request: APIRequestContext,
+  initial: RuntimeSnapshot
+): Promise<RuntimeSnapshot> {
+  let snapshot = initial;
+
+  for (let index = 0; index < MAX_PURCHASE_PROGRESS_ACTIONS; index += 1) {
+    const turn = snapshot.state.public.turn;
+    if (turn.activePlayerId === "p1" && turn.phase === "acquire") {
+      return snapshot;
+    }
+
+    const availableAction = snapshot.state.public.board.availableActions[0];
+    expect(
+      availableAction,
+      `turn ${turn.turnNumber} (${turn.activePlayerId}/${turn.phase}) needs an action`
+    ).toBeDefined();
+    snapshot = await postRuntimeAction(
+      request,
+      snapshot.sessionId,
+      snapshot.version.stateVersion,
+      availableAction.actionId,
+      availableAction.params
+    );
+  }
+
+  throw new Error(
+    `p1 did not reach a purchasable estate within ${MAX_PURCHASE_PROGRESS_ACTIONS} valid runtime actions`
+  );
 }
 
 async function progressToSecondPlayerRent(
@@ -228,7 +249,6 @@ async function progressToSecondPlayerRent(
       request,
       snapshot.sessionId,
       snapshot.version.stateVersion,
-      turn.activePlayerId,
       availableAction.actionId,
       availableAction.params
     );
@@ -241,22 +261,24 @@ async function postRuntimeAction(
   request: APIRequestContext,
   sessionId: string,
   expectedStateVersion: number,
-  playerId: string,
   actionId: string,
   params?: Record<string, unknown>
 ): Promise<RuntimeSnapshot> {
-  const hasParams = params !== undefined && Object.keys(params).length > 0;
   const response = await request.post("/api/runtime/actions", {
     data: {
       sessionId,
       expectedStateVersion,
-      playerId,
       actionId,
-      ...(hasParams ? { params, payload: params } : { payload: {} })
+      commandId: `cli_${randomBytes(16).toString("base64url")}`,
+      params: params ?? {}
     }
   });
   expect(response.status()).toBe(200);
   const snapshot = await response.json() as RuntimeSnapshot;
+  expect(
+    snapshot.receipt?.status,
+    `${actionId} was rejected: ${snapshot.receipt?.rejectionCode ?? "unknown reason"}`
+  ).toBe("applied");
   expectPlayerSnapshotHasNoPlatformSecrets(snapshot);
   return snapshot;
 }

@@ -5,7 +5,7 @@
  * prototype/definition, and builds an extraction proposal plus the JSON Patch
  * ChangeSet that would apply it. The comparison is structural: variant fields
  * (ids, labels, prompts, coordinates) are ignored while stable discriminators
- * (kind, type, handler, ...) keep their literal values. Extraction is never
+ * (kind, type, component, ...) keep their literal values. Extraction is never
  * applied here — the proposal only records the mandatory validation gates so
  * editor-web or CI can run schema/compiler/runtime-diff checks before apply.
  */
@@ -31,7 +31,7 @@ import type {
  *
  * The comparison is structural: variant fields such as ids, labels, prompts and
  * text are ignored by key name, while stable discriminator fields such as
- * `kind`, `type`, `handler` and `templateId` keep their literal values. The
+ * `kind`, `type` and `component` keep their literal values. The
  * result is only a candidate list; applying extraction still requires an
  * explicit proposal and dry-run.
  */
@@ -325,14 +325,11 @@ const stablePrototypeLiteralKeys = new Set([
   "_type",
   "channel",
   "component",
-  "effect",
-  "handler",
   "kind",
   "layout",
   "method",
   "mode",
   "scope",
-  "templateId",
   "type",
   "variant"
 ]);

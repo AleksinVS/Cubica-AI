@@ -744,6 +744,7 @@ export type EditorEntityProjectionDiagnosticCode =
   | "stale-source-hash"
   | "unresolved-source-pointer"
   | "unresolved-action-link"
+  | "unresolved-mechanics-plan"
   | "unresolved-view-link"
   | "ambiguous-view-link"
   | "hidden-technical-field"

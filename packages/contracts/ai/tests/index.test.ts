@@ -11,20 +11,17 @@ import {
   buildAcceptedAgentTurnEventLogEntry,
   buildCubicaAgentApprovalEnvelope,
   buildRejectedAgentTurnEventLogEntry,
-  defaultCubicaAgentCapabilityPolicy,
   defaultCubicaSurfaceChannelActionPolicies,
   defaultCubicaSurfaceCatalog,
   projectSurfaceForPhaser,
   projectSurfaceForTelegram,
   surfaceContributionToCatalogComponent,
   validateAgentApprovalEnvelope,
-  validateAgentCapabilityPolicy,
   validateAgentEvaluationFixture,
   validateAgentReplayTranscript,
   validateAgentRuntimeOperationPolicy,
   validateAgentTurnEventLogEntry,
   validateAgentTurnInput,
-  validateAgentTurnCapabilities,
   validateAgentTurnResult,
   validateCubicaSurface,
   validateExecutionModeConfig,
@@ -64,7 +61,7 @@ const validSurface: CubicaSurface = {
         id: "choose-ask",
         kind: "agentTurn",
         label: "Ask",
-        target: "agent.next",
+        target: "agent.request-choice",
         payload: { choiceId: "ask" },
         sideEffectPolicy: "human-approved",
         requiresApproval: true
@@ -89,12 +86,24 @@ const validAgentTurnInput: CubicaAgentTurnInput = {
   stateScope: {
     public: {
       step: "intro"
+    },
+    actor: {
+      handSize: 2
     }
   },
   manifestProjection: {
     title: "AI-driven choice"
   },
-  allowedCapabilities: ["advanceStep", "setMetric"],
+  availableIntents: [
+    {
+      actionId: "agent.choice.resolve",
+      label: "Resolve agent choice",
+      paramsSchema: {
+        type: "object",
+        additionalProperties: false
+      }
+    }
+  ],
   surfaceCatalog: defaultCubicaSurfaceCatalog.map((component) => component.kind),
   correlationId: "correlation-1"
 };
@@ -105,21 +114,10 @@ const validAgentTurnResult: CubicaAgentTurnResult = {
   agentId: "scenario-agent",
   ok: true,
   narration: "The team waits for your decision.",
-  effects: [
-    {
-      kind: "setFlag",
-      target: "public.flags.askedTeam",
-      value: true
-    }
-  ],
-  availableActions: [
-    {
-      actionId: "continue",
-      label: "Continue",
-      kind: "agentTurn",
-      sideEffectPolicy: "human-approved"
-    }
-  ],
+  selectedIntent: {
+    actionId: "agent.choice.resolve",
+    params: {}
+  },
   surface: validSurface,
   audit: {
     source: "mock",
@@ -480,8 +478,7 @@ describe("Cubica approval and policy contracts", () => {
     );
   });
 
-  it("validates default capability and channel action policies", () => {
-    expect(validateAgentCapabilityPolicy(defaultCubicaAgentCapabilityPolicy).ok).toBe(true);
+  it("validates the default channel action policy", () => {
     expect(validateSurfaceChannelActionPolicy(defaultCubicaSurfaceChannelActionPolicies.webPlayerPrimaryGameplay).ok).toBe(true);
   });
 
@@ -509,6 +506,33 @@ describe("Agent Turn validation", () => {
 
     expect(result.ok).toBe(true);
     expect(result.value?.turnId).toBe("turn-1");
+  });
+
+  it("accepts a distinct actor-scoped channel without enabling secret state", () => {
+    const result = validateAgentTurnInput({
+      ...validAgentTurnInput,
+      stateScope: {
+        public: { round: 4 },
+        actor: { hand: ["visible-to-this-actor"] }
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.value?.stateScope.actor).toEqual({ hand: ["visible-to-this-actor"] });
+    expect(result.value?.stateScope.secret).toBeUndefined();
+  });
+
+  it("rejects duplicate published intents in one actor-scoped input", () => {
+    const intent = validAgentTurnInput.availableIntents[0]!;
+    const result = validateAgentTurnInput({
+      ...validAgentTurnInput,
+      availableIntents: [intent, intent]
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "duplicateAvailableIntent" })
+    );
   });
 
   it("rejects reserved object property names as player ids", () => {
@@ -543,27 +567,17 @@ describe("Agent Turn validation", () => {
     expect(result.value?.surface?.surfaceId).toBe(validSurface.surfaceId);
   });
 
-  it("rejects direct state patch payloads and forbidden secret state targets", () => {
+  it("rejects legacy direct effects because an agent may only select an intent", () => {
     const result = validateAgentTurnResult({
       ...validAgentTurnResult,
-      effects: [
-        {
-          kind: "custom",
-          target: "secret.answer",
-          data: {
-            jsonPatch: [{ op: "replace", path: "/secret/answer", value: "unsafe" }]
-          }
-        }
-      ]
+      effects: [{ kind: "setFlag", target: "secret.answer", value: true }]
     });
 
     expect(result.ok).toBe(false);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
-      expect.arrayContaining(["forbiddenDirectStateMutation", "forbiddenStatePath"])
-    );
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("schema.additionalProperties");
   });
 
-  it("rejects a failed Agent Turn that tries to carry effects, actions or Surface", () => {
+  it("rejects a failed Agent Turn that tries to carry a selected intent or Surface", () => {
     const result = validateAgentTurnResult({
       ...validAgentTurnResult,
       ok: false,
@@ -575,43 +589,60 @@ describe("Agent Turn validation", () => {
 
     expect(result.ok).toBe(false);
     expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
-      expect.arrayContaining(["rejectedTurnHasEffects", "rejectedTurnHasAvailableActions", "rejectedTurnHasSurface"])
+      expect.arrayContaining(["rejectedTurnHasSelectedIntent", "rejectedTurnHasSurface"])
     );
   });
 
-  it("enforces declared Agent Runtime capabilities before persistence", () => {
-    const accepted = validateAgentTurnCapabilities(
-      {
-        ...validAgentTurnResult,
-        effects: [
-          {
-            kind: "setMetric",
-            target: "public.metrics.focus",
-            value: 4
-          }
-        ]
-      },
-      ["setMetric"]
-    );
-    const rejected = validateAgentTurnCapabilities(
-      {
-        ...validAgentTurnResult,
-        effects: [
-          {
-            kind: "setFlag",
-            target: "public.flags.askedTeam",
-            value: true
-          }
-        ]
-      },
-      ["setMetric"]
-    );
+  it("accepts only an intent published for the current actor and snapshot", () => {
+    const accepted = validateAgentTurnResult(validAgentTurnResult, {
+      availableIntents: validAgentTurnInput.availableIntents
+    });
+    const rejected = validateAgentTurnResult({
+      ...validAgentTurnResult,
+      selectedIntent: { actionId: "agent.invented", params: {} }
+    }, {
+      availableIntents: validAgentTurnInput.availableIntents
+    });
 
-    expect(accepted).toEqual([]);
-    expect(rejected).toContainEqual(
-      expect.objectContaining({
-        code: "capabilityEffectNotAllowed"
-      })
+    expect(accepted.ok).toBe(true);
+    expect(rejected.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "selectedIntentNotAvailable" })
+    );
+  });
+
+  it("binds Surface actions to the exact trusted Agent Turn entry and available intents", () => {
+    const surface = {
+      ...validSurface,
+      root: {
+        ...validSurface.root,
+        actions: [
+          {
+            id: "wrong-agent-entry",
+            kind: "agentTurn" as const,
+            label: "Ask again",
+            target: "agent.invented-entry",
+            payload: {},
+            sideEffectPolicy: "system-approved" as const
+          },
+          {
+            id: "wrong-runtime-intent",
+            kind: "runtimeAction" as const,
+            label: "Run invented action",
+            target: "agent.invented-intent",
+            payload: {},
+            sideEffectPolicy: "system-approved" as const
+          }
+        ]
+      }
+    };
+    const result = validateAgentTurnResult({ ...validAgentTurnResult, surface }, {
+      availableIntents: validAgentTurnInput.availableIntents,
+      agentTurnEntryActionId: "agent.request-choice"
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(
+      expect.arrayContaining(["agentTurnTargetMismatch", "surfaceIntentNotAvailable"])
     );
   });
 });
@@ -723,7 +754,7 @@ describe("Agent Turn replay, evaluation and audit contracts", () => {
     expect(validateAgentTurnEventLogEntry(accepted).ok).toBe(true);
     expect(validateAgentTurnEventLogEntry(rejected).ok).toBe(true);
     expect(rejected.status).toBe("rejected");
-    expect(rejected.effectCount).toBe(0);
+    expect(rejected.selectedActionId).toBeUndefined();
   });
 
   it("validates replay transcripts with explicit redaction policy", () => {
@@ -761,7 +792,7 @@ describe("Agent Turn replay, evaluation and audit contracts", () => {
       expected: {
         ok: true,
         allowedSurfaceKinds: ["cubica.choiceList", "cubica.text"],
-        requiredEffectKinds: ["setFlag"],
+        requiredActionId: "agent.choice.resolve",
         forbiddenDiagnosticCodes: ["unknownComponent", "forbiddenDirectStateMutation"],
         maxErrorSeverity: "error"
       },
@@ -880,13 +911,33 @@ describe("Execution mode validation", () => {
     );
   });
 
+  it("requires AI-driven configuration to allow published Game Intent selection", () => {
+    const result = validateExecutionModeConfig({
+      executionMode: "ai-driven",
+      agentRuntime: {
+        agentId: "scenario-agent",
+        initialActionId: "agent.request-choice",
+        required: true,
+        allowedCapabilities: ["legacyDirectEffect"],
+        surfaceCatalog: ["cubica.choiceList"],
+        failurePolicy: "pause"
+      }
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({ code: "publishedIntentSelectionNotAllowed" })
+    );
+  });
+
   it("rejects deterministic games that require Agent Runtime", () => {
     const result = validateExecutionModeConfig({
       executionMode: "deterministic",
       agentRuntime: {
         agentId: "scenario-agent",
+        initialActionId: "agent.request-choice",
         required: true,
-        allowedCapabilities: ["advanceStep"],
+        allowedCapabilities: ["selectPublishedIntent"],
         surfaceCatalog: ["cubica.choiceList"],
         failurePolicy: "pause"
       }

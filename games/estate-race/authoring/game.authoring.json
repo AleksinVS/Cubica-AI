@@ -393,652 +393,15 @@
           "_type": "game.Action",
           "_label": "Бросить кости",
           "_semantics": "Игровое действие turn.roll.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "turn.roll",
           "displayName": "Бросить кости",
           "allowedSessionRoles": [
             "player"
           ],
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "roll"
-              }
-            },
-            "effects": [
-              {
-                "op": "random.roll",
-                "dice": "2d6",
-                "storePath": "/public/board/lastRoll"
-              },
-              {
-                "op": "metric.set",
-                "scope": "player",
-                "playerId": "{{actor}}",
-                "metricId": "position",
-                "value": {
-                  "%": [
-                    {
-                      "+": [
-                        {
-                          "var": "actor.metrics.position"
-                        },
-                        {
-                          "var": "public.board.lastRoll.total"
-                        }
-                      ]
-                    },
-                    12
-                  ]
-                }
-              },
-              {
-                "op": "metric.add",
-                "scope": "player",
-                "playerId": "{{actor}}",
-                "metricId": "cash",
-                "delta": 80,
-                "when": {
-                  "jsonLogic": {
-                    "<": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      {
-                        "var": "public.board.lastRoll.total"
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "acquire",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          2
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          2
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "buy-cell-02",
-                        "label": "Купить участок",
-                        "description": "Липовая аллея · 120",
-                        "actionId": "property.buy.cell-02",
-                        "params": {
-                          "cellId": "cell-02"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "rent",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          2
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          2
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "rent-cell-02",
-                        "label": "Оплатить ренту",
-                        "description": "Липовая аллея · 18",
-                        "actionId": "property.rent.cell-02",
-                        "params": {
-                          "cellId": "cell-02"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "acquire",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          5
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          5
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "buy-cell-05",
-                        "label": "Купить участок",
-                        "description": "Медная улица · 160",
-                        "actionId": "property.buy.cell-05",
-                        "params": {
-                          "cellId": "cell-05"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "rent",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          5
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          5
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "rent-cell-05",
-                        "label": "Оплатить ренту",
-                        "description": "Медная улица · 24",
-                        "actionId": "property.rent.cell-05",
-                        "params": {
-                          "cellId": "cell-05"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "acquire",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          8
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          8
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "buy-cell-08",
-                        "label": "Купить участок",
-                        "description": "Тихая набережная · 200",
-                        "actionId": "property.buy.cell-08",
-                        "params": {
-                          "cellId": "cell-08"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "rent",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          8
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          8
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "rent-cell-08",
-                        "label": "Оплатить ренту",
-                        "description": "Тихая набережная · 30",
-                        "actionId": "property.rent.cell-08",
-                        "params": {
-                          "cellId": "cell-08"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "acquire",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          11
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          11
-                        ]
-                      },
-                      {
-                        "!": {
-                          "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                        }
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "buy-cell-11",
-                        "label": "Купить участок",
-                        "description": "Оранжерейный проезд · 240",
-                        "actionId": "property.buy.cell-11",
-                        "params": {
-                          "cellId": "cell-11"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "rent",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          11
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                }
-              },
-              {
-                "op": "state.patch",
-                "when": {
-                  "jsonLogic": {
-                    "and": [
-                      {
-                        "==": [
-                          {
-                            "var": "actor.metrics.position"
-                          },
-                          11
-                        ]
-                      },
-                      {
-                        "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                      },
-                      {
-                        "!=": [
-                          {
-                            "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                          },
-                          {
-                            "var": "params.actor"
-                          }
-                        ]
-                      }
-                    ]
-                  }
-                },
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "rent-cell-11",
-                        "label": "Оплатить ренту",
-                        "description": "Оранжерейный проезд · 36",
-                        "actionId": "property.rent.cell-11",
-                        "params": {
-                          "cellId": "cell-11"
-                        }
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "movement",
-                "summary": "Активный участник бросил кости и переместил фишку."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "turn.roll"
           }
         },
         {
@@ -1046,7 +409,6 @@
           "_type": "game.Action",
           "_label": "Купить Липовую аллею",
           "_semantics": "Игровое действие property.buy.cell-02.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.buy",
           "displayName": "Купить Липовую аллею",
@@ -1077,83 +439,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "acquire"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      2
-                    ]
-                  },
-                  {
-                    "!": {
-                      "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                    }
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "bank"
-                },
-                "amount": 120,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "object.attribute.patch",
-                "visibility": "public",
-                "collection": "boardCells",
-                "objectId": "{{cellId}}",
-                "patches": [
-                  {
-                    "op": "add",
-                    "path": "/ownerPlayerId",
-                    "value": "{{actor}}"
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "purchase",
-                "summary": "Участник приобрёл Липовую аллею."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.buy.cell-02"
           }
         },
         {
@@ -1161,7 +449,6 @@
           "_type": "game.Action",
           "_label": "Купить Медную улицу",
           "_semantics": "Игровое действие property.buy.cell-05.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.buy",
           "displayName": "Купить Медную улицу",
@@ -1192,83 +479,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "acquire"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      5
-                    ]
-                  },
-                  {
-                    "!": {
-                      "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                    }
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "bank"
-                },
-                "amount": 160,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "object.attribute.patch",
-                "visibility": "public",
-                "collection": "boardCells",
-                "objectId": "{{cellId}}",
-                "patches": [
-                  {
-                    "op": "add",
-                    "path": "/ownerPlayerId",
-                    "value": "{{actor}}"
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "purchase",
-                "summary": "Участник приобрёл Медную улицу."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.buy.cell-05"
           }
         },
         {
@@ -1276,7 +489,6 @@
           "_type": "game.Action",
           "_label": "Купить Тихую набережную",
           "_semantics": "Игровое действие property.buy.cell-08.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.buy",
           "displayName": "Купить Тихую набережную",
@@ -1307,83 +519,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "acquire"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      8
-                    ]
-                  },
-                  {
-                    "!": {
-                      "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                    }
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "bank"
-                },
-                "amount": 200,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "object.attribute.patch",
-                "visibility": "public",
-                "collection": "boardCells",
-                "objectId": "{{cellId}}",
-                "patches": [
-                  {
-                    "op": "add",
-                    "path": "/ownerPlayerId",
-                    "value": "{{actor}}"
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "purchase",
-                "summary": "Участник приобрёл Тихую набережную."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.buy.cell-08"
           }
         },
         {
@@ -1391,7 +529,6 @@
           "_type": "game.Action",
           "_label": "Купить Оранжерейный проезд",
           "_semantics": "Игровое действие property.buy.cell-11.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.buy",
           "displayName": "Купить Оранжерейный проезд",
@@ -1422,83 +559,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "acquire"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      11
-                    ]
-                  },
-                  {
-                    "!": {
-                      "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                    }
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "bank"
-                },
-                "amount": 240,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "object.attribute.patch",
-                "visibility": "public",
-                "collection": "boardCells",
-                "objectId": "{{cellId}}",
-                "patches": [
-                  {
-                    "op": "add",
-                    "path": "/ownerPlayerId",
-                    "value": "{{actor}}"
-                  }
-                ]
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "purchase",
-                "summary": "Участник приобрёл Оранжерейный проезд."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.buy.cell-11"
           }
         },
         {
@@ -1506,7 +569,6 @@
           "_type": "game.Action",
           "_label": "Оплатить ренту за Липовую аллею",
           "_semantics": "Игровое действие property.rent.cell-02.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.pay-rent",
           "displayName": "Оплатить ренту за Липовую аллею",
@@ -1537,82 +599,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "rent"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      2
-                    ]
-                  },
-                  {
-                    "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                  },
-                  {
-                    "!=": [
-                      {
-                        "var": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
-                      },
-                      {
-                        "var": "params.actor"
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "player",
-                  "playerId": {
-                    "fromPath": "/public/objects/boardCells/cell-02/attributes/ownerPlayerId"
-                  },
-                  "metricId": "cash"
-                },
-                "amount": 18,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "rent",
-                "summary": "Рента за Липовую аллею переведена владельцу."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.rent.cell-02"
           }
         },
         {
@@ -1620,7 +609,6 @@
           "_type": "game.Action",
           "_label": "Оплатить ренту за Медную улицу",
           "_semantics": "Игровое действие property.rent.cell-05.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.pay-rent",
           "displayName": "Оплатить ренту за Медную улицу",
@@ -1651,82 +639,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "rent"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      5
-                    ]
-                  },
-                  {
-                    "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                  },
-                  {
-                    "!=": [
-                      {
-                        "var": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
-                      },
-                      {
-                        "var": "params.actor"
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "player",
-                  "playerId": {
-                    "fromPath": "/public/objects/boardCells/cell-05/attributes/ownerPlayerId"
-                  },
-                  "metricId": "cash"
-                },
-                "amount": 24,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "rent",
-                "summary": "Рента за Медную улицу переведена владельцу."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.rent.cell-05"
           }
         },
         {
@@ -1734,7 +649,6 @@
           "_type": "game.Action",
           "_label": "Оплатить ренту за Тихую набережную",
           "_semantics": "Игровое действие property.rent.cell-08.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.pay-rent",
           "displayName": "Оплатить ренту за Тихую набережную",
@@ -1765,82 +679,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "rent"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      8
-                    ]
-                  },
-                  {
-                    "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                  },
-                  {
-                    "!=": [
-                      {
-                        "var": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
-                      },
-                      {
-                        "var": "params.actor"
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "player",
-                  "playerId": {
-                    "fromPath": "/public/objects/boardCells/cell-08/attributes/ownerPlayerId"
-                  },
-                  "metricId": "cash"
-                },
-                "amount": 30,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "rent",
-                "summary": "Рента за Тихую набережную переведена владельцу."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.rent.cell-08"
           }
         },
         {
@@ -1848,7 +689,6 @@
           "_type": "game.Action",
           "_label": "Оплатить ренту за Оранжерейный проезд",
           "_semantics": "Игровое действие property.rent.cell-11.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "property.pay-rent",
           "displayName": "Оплатить ренту за Оранжерейный проезд",
@@ -1879,82 +719,9 @@
               "cellId"
             ]
           },
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "rent"
-              },
-              "jsonLogic": {
-                "and": [
-                  {
-                    "==": [
-                      {
-                        "var": "actor.metrics.position"
-                      },
-                      11
-                    ]
-                  },
-                  {
-                    "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                  },
-                  {
-                    "!=": [
-                      {
-                        "var": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
-                      },
-                      {
-                        "var": "params.actor"
-                      }
-                    ]
-                  }
-                ]
-              }
-            },
-            "effects": [
-              {
-                "op": "metric.transfer",
-                "from": {
-                  "scope": "player",
-                  "playerId": "{{actor}}",
-                  "metricId": "cash"
-                },
-                "to": {
-                  "scope": "player",
-                  "playerId": {
-                    "fromPath": "/public/objects/boardCells/cell-11/attributes/ownerPlayerId"
-                  },
-                  "metricId": "cash"
-                },
-                "amount": 36,
-                "onInsufficient": "fail"
-              },
-              {
-                "op": "turn.phase.set",
-                "phase": "finish"
-              },
-              {
-                "op": "state.patch",
-                "patches": [
-                  {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "finish",
-                        "label": "Завершить ход",
-                        "actionId": "turn.finish"
-                      }
-                    ]
-                  }
-                ]
-              },
-              {
-                "op": "log.append",
-                "kind": "rent",
-                "summary": "Рента за Оранжерейный проезд переведена владельцу."
-              }
-            ]
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "property.rent.cell-11"
           }
         },
         {
@@ -1962,49 +729,3069 @@
           "_type": "game.Action",
           "_label": "Завершить ход",
           "_semantics": "Игровое действие turn.finish.",
-          "handlerType": "manifest-data",
           "capabilityFamily": "runtime.server",
           "capability": "turn.finish",
           "displayName": "Завершить ход",
           "allowedSessionRoles": [
             "player"
           ],
-          "deterministic": {
-            "guard": {
-              "turn": {
-                "actorIsActive": true,
-                "phase": "finish"
+          "binding": {
+            "kind": "mechanics-plan",
+            "planRef": "turn.finish"
+          }
+        }
+      ]
+    },
+    "mechanics": {
+      "apiVersion": "cubica.dev/mechanics/v1alpha1",
+      "budgetProfile": "turn-based-standard-v1",
+      "stateModel": {
+        "types": {
+          "core.boolean": {
+            "kind": "boolean"
+          },
+          "core.string": {
+            "kind": "string"
+          },
+          "game.participant-order": {
+            "kind": "list",
+            "itemType": "core.string",
+            "maxItems": 64
+          },
+          "game.turn-phase": {
+            "kind": "enum",
+            "values": [
+              "roll",
+              "acquire",
+              "rent",
+              "finish"
+            ]
+          },
+          "core.integer": {
+            "kind": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "core.optional-string": {
+            "kind": "option",
+            "itemType": "core.string"
+          },
+          "core.string-set": {
+            "kind": "set",
+            "itemType": "core.string",
+            "maxItems": 4096
+          },
+          "core.bounded-json": {
+            "kind": "json",
+            "maxDepth": 16,
+            "maxNodes": 4096,
+            "maxUtf8Bytes": 262144
+          },
+          "core.event-journal-entry": {
+            "kind": "record",
+            "fields": {
+              "eventType": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "audience": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "summary": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "data": {
+                "typeRef": "core.bounded-json",
+                "optional": true
               }
+            }
+          },
+          "core.event-journal": {
+            "kind": "list",
+            "itemType": "core.event-journal-entry",
+            "maxItems": 16384
+          },
+          "game.turn.roll.event.23-event-record.1": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.buy.cell-02.event.6-event-record.2": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.buy.cell-05.event.6-event-record.3": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.buy.cell-08.event.6-event-record.4": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.buy.cell-11.event.6-event-record.5": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.rent.cell-02.event.5-event-record.6": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.rent.cell-05.event.5-event-record.7": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.rent.cell-08.event.5-event-record.8": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.property.rent.cell-11.event.5-event-record.9": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.turn.finish.event.4-event-record.10": {
+            "kind": "record",
+            "fields": {
+              "kind": {
+                "typeRef": "core.string",
+                "optional": false
+              }
+            }
+          },
+          "game.public-board-lastRoll-values-list.12": {
+            "kind": "list",
+            "itemType": "core.integer",
+            "maxItems": 64
+          },
+          "game.public-board-lastRoll-record.11": {
+            "kind": "record",
+            "fields": {
+              "values": {
+                "typeRef": "game.public-board-lastRoll-values-list.12",
+                "optional": false
+              },
+              "total": {
+                "typeRef": "core.integer",
+                "optional": false
+              },
+              "isDouble": {
+                "typeRef": "core.boolean",
+                "optional": false
+              }
+            }
+          },
+          "game.public-board-lastRoll-option": {
+            "kind": "option",
+            "itemType": "game.public-board-lastRoll-record.11"
+          },
+          "core.optional-integer": {
+            "kind": "option",
+            "itemType": "core.integer"
+          },
+          "game.public-board-action-params-record.15": {
+            "kind": "record",
+            "fields": {
+              "cellId": {
+                "typeRef": "core.string",
+                "optional": true
+              }
+            }
+          },
+          "game.public-board-availableActions-item-record.13": {
+            "kind": "record",
+            "fields": {
+              "id": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "label": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "actionId": {
+                "typeRef": "core.string",
+                "optional": false
+              },
+              "description": {
+                "typeRef": "core.string",
+                "optional": true
+              },
+              "params": {
+                "typeRef": "game.public-board-action-params-record.15",
+                "optional": true
+              }
+            }
+          },
+          "game.public-board-availableActions-list.14": {
+            "kind": "list",
+            "itemType": "game.public-board-availableActions-item-record.13",
+            "maxItems": 64
+          },
+          "core.player-projection-json": {
+            "kind": "json",
+            "maxDepth": 32,
+            "maxNodes": 32768,
+            "maxUtf8Bytes": 262144
+          }
+        },
+        "endpoints": {
+          "public.board.lastRoll": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board",
+                "lastRoll"
+              ]
             },
-            "effects": [
+            "valueType": "game.public-board-lastRoll-option",
+            "access": "read-write"
+          },
+          "actor.metrics.position": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": [
+                {
+                  "context": "actor"
+                },
+                "metrics",
+                "position"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.board.lastRoll.total": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board",
+                "lastRoll",
+                "total"
+              ]
+            },
+            "valueType": "core.optional-integer",
+            "access": "read-write"
+          },
+          "participant.metrics.cash": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "players",
+              "segments": [
+                {
+                  "binding": "participantId"
+                },
+                "metrics",
+                "cash"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.turn.order": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "turn",
+                "order"
+              ]
+            },
+            "valueType": "game.participant-order",
+            "access": "read-only"
+          },
+          "public.turn.activePlayerId": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "turn",
+                "activePlayerId"
+              ]
+            },
+            "valueType": "core.string",
+            "access": "read-write"
+          },
+          "public.turn.turnNumber": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "turn",
+                "turnNumber"
+              ]
+            },
+            "valueType": "core.integer",
+            "access": "read-write"
+          },
+          "public.turn.phase": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "turn",
+                "phase"
+              ]
+            },
+            "valueType": "game.turn-phase",
+            "access": "read-write"
+          },
+          "public.board.availableActions": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board",
+                "availableActions"
+              ]
+            },
+            "valueType": "game.public-board-availableActions-list.14",
+            "access": "read-write"
+          },
+          "public.objects.boardCells.cell-02.attributes.ownerPlayerId": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "boardCells",
+                "cell-02",
+                "attributes",
+                "ownerPlayerId"
+              ]
+            },
+            "valueType": "core.optional-string",
+            "access": "read-write"
+          },
+          "public.objects.boardCells.cell-05.attributes.ownerPlayerId": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "boardCells",
+                "cell-05",
+                "attributes",
+                "ownerPlayerId"
+              ]
+            },
+            "valueType": "core.optional-string",
+            "access": "read-write"
+          },
+          "public.objects.boardCells.cell-08.attributes.ownerPlayerId": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "boardCells",
+                "cell-08",
+                "attributes",
+                "ownerPlayerId"
+              ]
+            },
+            "valueType": "core.optional-string",
+            "access": "read-write"
+          },
+          "public.objects.boardCells.cell-11.attributes.ownerPlayerId": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "boardCells",
+                "cell-11",
+                "attributes",
+                "ownerPlayerId"
+              ]
+            },
+            "valueType": "core.optional-string",
+            "access": "read-write"
+          },
+          "public.log": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "log"
+              ]
+            },
+            "valueType": "core.event-journal",
+            "access": "read-write"
+          },
+          "projection.public.board": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "board"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.log": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "log"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.objects": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.timeline": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "timeline"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.turn": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "turn"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          },
+          "projection.public.ui": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "ui"
+              ]
+            },
+            "valueType": "core.player-projection-json",
+            "access": "read-only",
+            "usage": "projection-only"
+          }
+        },
+        "collections": {
+          "boardCells": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "objects",
+                "boardCells"
+              ]
+            },
+            "capacity": 96,
+            "stableKey": "map-key",
+            "itemTypes": [
+              "estate.cell"
+            ],
+            "fields": {
+              "category": {
+                "storage": {
+                  "kind": "facet",
+                  "name": "category"
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "id": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "id"
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "index": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "index"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "label": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "label"
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "shortLabel": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "shortLabel"
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "x": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "x"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "y": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "y"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "width": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "width"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "height": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "height"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "kind": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "kind"
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "price": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "price"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "rent": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "rent"
+                },
+                "valueType": "core.integer",
+                "access": "read-only"
+              },
+              "ownerPlayerId": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "ownerPlayerId"
+                },
+                "valueType": "core.string",
+                "access": "read-write"
+              }
+            }
+          }
+        },
+        "events": {
+          "turn.roll.event.23": {
+            "audienceRef": "public",
+            "payloadType": "game.turn.roll.event.23-event-record.1",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.buy.cell-02.event.6": {
+            "audienceRef": "public",
+            "payloadType": "game.property.buy.cell-02.event.6-event-record.2",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.buy.cell-05.event.6": {
+            "audienceRef": "public",
+            "payloadType": "game.property.buy.cell-05.event.6-event-record.3",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.buy.cell-08.event.6": {
+            "audienceRef": "public",
+            "payloadType": "game.property.buy.cell-08.event.6-event-record.4",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.buy.cell-11.event.6": {
+            "audienceRef": "public",
+            "payloadType": "game.property.buy.cell-11.event.6-event-record.5",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.rent.cell-02.event.5": {
+            "audienceRef": "public",
+            "payloadType": "game.property.rent.cell-02.event.5-event-record.6",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.rent.cell-05.event.5": {
+            "audienceRef": "public",
+            "payloadType": "game.property.rent.cell-05.event.5-event-record.7",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.rent.cell-08.event.5": {
+            "audienceRef": "public",
+            "payloadType": "game.property.rent.cell-08.event.5-event-record.8",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "property.rent.cell-11.event.5": {
+            "audienceRef": "public",
+            "payloadType": "game.property.rent.cell-11.event.5-event-record.9",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          },
+          "turn.finish.event.4": {
+            "audienceRef": "public",
+            "payloadType": "game.turn.finish.event.4-event-record.10",
+            "journalEndpoint": {
+              "endpoint": "public.log"
+            }
+          }
+        }
+      },
+      "plans": {
+        "turn.roll": {
+          "transaction": {
+            "steps": [
               {
-                "op": "turn.next"
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "roll"
+                      }
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
               },
               {
-                "op": "state.patch",
+                "id": "s002",
+                "kind": "command",
+                "op": "random.dice.roll",
+                "dice": "2d6",
+                "stream": "session.main",
+                "target": {
+                  "endpoint": "public.board.lastRoll"
+                }
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.state.patch",
                 "patches": [
                   {
-                    "op": "replace",
-                    "path": "/public/board/availableActions",
-                    "value": [
-                      {
-                        "id": "roll",
-                        "label": "Бросить кости",
-                        "actionId": "turn.roll"
-                      }
-                    ]
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "actor.metrics.position"
+                    },
+                    "value": {
+                      "op": "number.modulo",
+                      "items": [
+                        {
+                          "op": "number.add",
+                          "items": [
+                            {
+                              "op": "value.state",
+                              "ref": {
+                                "endpoint": "actor.metrics.position"
+                              }
+                            },
+                            {
+                              "op": "value.state",
+                              "ref": {
+                                "endpoint": "public.board.lastRoll.total"
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "op": "value.literal",
+                          "value": 12
+                        }
+                      ]
+                    }
                   }
                 ]
               },
               {
-                "op": "log.append",
-                "kind": "turn",
-                "summary": "Ход передан следующему участнику."
+                "id": "s004",
+                "kind": "command",
+                "op": "core.number.add",
+                "target": {
+                  "endpoint": "participant.metrics.cash",
+                  "bindings": {
+                    "participantId": {
+                      "op": "value.actor"
+                    }
+                  }
+                },
+                "delta": {
+                  "op": "value.literal",
+                  "value": 80
+                },
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "lt",
+                  "left": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "actor.metrics.position"
+                    }
+                  },
+                  "right": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.board.lastRoll.total"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s006",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s007",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "acquire"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 2
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s008",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "buy-cell-02",
+                          "label": "Купить участок",
+                          "description": "Липовая аллея · 120",
+                          "actionId": "property.buy.cell-02",
+                          "params": {
+                            "cellId": "cell-02"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 2
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s009",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "rent"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 2
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s010",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "rent-cell-02",
+                          "label": "Оплатить ренту",
+                          "description": "Липовая аллея · 18",
+                          "actionId": "property.rent.cell-02",
+                          "params": {
+                            "cellId": "cell-02"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 2
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s011",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "acquire"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 5
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s012",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "buy-cell-05",
+                          "label": "Купить участок",
+                          "description": "Медная улица · 160",
+                          "actionId": "property.buy.cell-05",
+                          "params": {
+                            "cellId": "cell-05"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 5
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s013",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "rent"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 5
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s014",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "rent-cell-05",
+                          "label": "Оплатить ренту",
+                          "description": "Медная улица · 24",
+                          "actionId": "property.rent.cell-05",
+                          "params": {
+                            "cellId": "cell-05"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 5
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s015",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "acquire"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 8
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s016",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "buy-cell-08",
+                          "label": "Купить участок",
+                          "description": "Тихая набережная · 200",
+                          "actionId": "property.buy.cell-08",
+                          "params": {
+                            "cellId": "cell-08"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 8
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s017",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "rent"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 8
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s018",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "rent-cell-08",
+                          "label": "Оплатить ренту",
+                          "description": "Тихая набережная · 30",
+                          "actionId": "property.rent.cell-08",
+                          "params": {
+                            "cellId": "cell-08"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 8
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s019",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "acquire"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 11
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s020",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "buy-cell-11",
+                          "label": "Купить участок",
+                          "description": "Оранжерейный проезд · 240",
+                          "actionId": "property.buy.cell-11",
+                          "params": {
+                            "cellId": "cell-11"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 11
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": false
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s021",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "rent"
+                },
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 11
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s022",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "rent-cell-11",
+                          "label": "Оплатить ренту",
+                          "description": "Оранжерейный проезд · 36",
+                          "actionId": "property.rent.cell-11",
+                          "params": {
+                            "cellId": "cell-11"
+                          }
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "actor.metrics.position"
+                        }
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": 11
+                      }
+                    },
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "ne",
+                      "left": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      },
+                      "right": {
+                        "op": "value.actor"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s023",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "turn.roll.event.23",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Активный участник бросил кости и переместил фишку."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "movement"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.buy.cell-02": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "acquire"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 2
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": false
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "bank"
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 120
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.entity.attributes.patch",
+                "entity": {
+                  "collection": "boardCells",
+                  "entityId": {
+                    "op": "value.param",
+                    "name": "cellId"
+                  }
+                },
+                "patches": [
+                  {
+                    "operation": "set",
+                    "path": [
+                      "ownerPlayerId"
+                    ],
+                    "value": {
+                      "op": "value.actor"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s006",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.buy.cell-02.event.6",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник приобрёл Липовую аллею."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "purchase"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.buy.cell-05": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "acquire"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 5
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": false
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "bank"
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 160
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.entity.attributes.patch",
+                "entity": {
+                  "collection": "boardCells",
+                  "entityId": {
+                    "op": "value.param",
+                    "name": "cellId"
+                  }
+                },
+                "patches": [
+                  {
+                    "operation": "set",
+                    "path": [
+                      "ownerPlayerId"
+                    ],
+                    "value": {
+                      "op": "value.actor"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s006",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.buy.cell-05.event.6",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник приобрёл Медную улицу."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "purchase"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.buy.cell-08": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "acquire"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 8
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": false
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "bank"
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 200
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.entity.attributes.patch",
+                "entity": {
+                  "collection": "boardCells",
+                  "entityId": {
+                    "op": "value.param",
+                    "name": "cellId"
+                  }
+                },
+                "patches": [
+                  {
+                    "operation": "set",
+                    "path": [
+                      "ownerPlayerId"
+                    ],
+                    "value": {
+                      "op": "value.actor"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s006",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.buy.cell-08.event.6",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник приобрёл Тихую набережную."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "purchase"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.buy.cell-11": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "acquire"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 11
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": false
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "bank"
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 240
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "core.entity.attributes.patch",
+                "entity": {
+                  "collection": "boardCells",
+                  "entityId": {
+                    "op": "value.param",
+                    "name": "cellId"
+                  }
+                },
+                "patches": [
+                  {
+                    "operation": "set",
+                    "path": [
+                      "ownerPlayerId"
+                    ],
+                    "value": {
+                      "op": "value.actor"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s006",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.buy.cell-11.event.6",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Участник приобрёл Оранжерейный проезд."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "purchase"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.rent.cell-02": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "rent"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 2
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": true
+                        },
+                        {
+                          "op": "predicate.compare",
+                          "operator": "ne",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                            }
+                          },
+                          "right": {
+                        "op": "value.actor"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-02.attributes.ownerPlayerId"
+                        }
+                      }
+                    }
+                  }
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 18
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.rent.cell-02.event.5",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Рента за Липовую аллею переведена владельцу."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "rent"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.rent.cell-05": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "rent"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 5
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": true
+                        },
+                        {
+                          "op": "predicate.compare",
+                          "operator": "ne",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                            }
+                          },
+                          "right": {
+                        "op": "value.actor"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-05.attributes.ownerPlayerId"
+                        }
+                      }
+                    }
+                  }
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 24
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.rent.cell-05.event.5",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Рента за Медную улицу переведена владельцу."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "rent"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.rent.cell-08": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "rent"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 8
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": true
+                        },
+                        {
+                          "op": "predicate.compare",
+                          "operator": "ne",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                            }
+                          },
+                          "right": {
+                        "op": "value.actor"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-08.attributes.ownerPlayerId"
+                        }
+                      }
+                    }
+                  }
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 30
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.rent.cell-08.event.5",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Рента за Тихую набережную переведена владельцу."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "rent"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "property.rent.cell-11": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "rent"
+                      }
+                    },
+                    {
+                      "op": "predicate.all",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "actor.metrics.position"
+                            }
+                          },
+                          "right": {
+                            "op": "value.literal",
+                            "value": 11
+                          }
+                        },
+                        {
+                          "op": "predicate.exists",
+                          "value": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                            }
+                          },
+                          "exists": true
+                        },
+                        {
+                          "op": "predicate.compare",
+                          "operator": "ne",
+                          "left": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                            }
+                          },
+                          "right": {
+                        "op": "value.actor"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002",
+                "kind": "command",
+                "op": "core.resource.transfer",
+                "from": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.actor"
+                      }
+                    }
+                  }
+                },
+                "to": {
+                  "kind": "state",
+                  "target": {
+                    "endpoint": "participant.metrics.cash",
+                    "bindings": {
+                      "participantId": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.objects.boardCells.cell-11.attributes.ownerPlayerId"
+                        }
+                      }
+                    }
+                  }
+                },
+                "amount": {
+                  "op": "value.literal",
+                  "value": 36
+                },
+                "onInsufficient": "fail"
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "turn.phase.select",
+                "phase": {
+                  "op": "value.literal",
+                  "value": "finish"
+                }
+              },
+              {
+                "id": "s004",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "finish",
+                          "label": "Завершить ход",
+                          "actionId": "turn.finish"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "property.rent.cell-11.event.5",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Рента за Оранжерейный проезд переведена владельцу."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "rent"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "turn.finish": {
+          "transaction": {
+            "steps": [
+              {
+                "id": "s001-precondition",
+                "kind": "assert",
+                "op": "core.assert",
+                "predicate": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.actor.active"
+                    },
+                    {
+                      "op": "predicate.turn.phase",
+                      "phase": {
+                        "op": "value.literal",
+                        "value": "finish"
+                      }
+                    }
+                  ]
+                },
+                "errorCode": "ACTION_PRECONDITION_FAILED"
+              },
+              {
+                "id": "s002-next-participant",
+                "kind": "query",
+                "op": "core.sequence.next",
+                "items": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.turn.order"
+                  }
+                },
+                "current": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.turn.activePlayerId"
+                  }
+                }
+              },
+              {
+                "id": "s003-turn-state",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.turn.activePlayerId"
+                    },
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "s002-next-participant"
+                    }
+                  },
+                  {
+                    "operation": "increment",
+                    "target": {
+                      "endpoint": "public.turn.turnNumber"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": 1
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.turn.phase"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": "roll"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s004-actions",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.board.availableActions"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": [
+                        {
+                          "id": "roll",
+                          "label": "Бросить кости",
+                          "actionId": "turn.roll"
+                        }
+                      ]
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "s005-event",
+                "kind": "command",
+                "op": "core.event.emit",
+                "eventType": "turn.finish.event.4",
+                "summary": {
+                  "op": "value.literal",
+                  "value": "Ход передан следующему участнику."
+                },
+                "audience": "public",
+                "data": {
+                  "kind": {
+                    "op": "value.literal",
+                    "value": "turn"
+                  }
+                }
               }
             ]
           }
         }
-      ]
+      }
     }
   }
 }

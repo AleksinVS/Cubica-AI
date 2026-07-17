@@ -32,8 +32,7 @@
 
 ## Now
 
-- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: общий schema-first режим `map-first`, полнооконная авторская WebP-карта, свободный выбор строительства и серверный расчёт маршрута реализованы. Аудит и все семь замечаний повторного ревью языка механик закрыты: весь `deterministic.effects[]` (693 stored / 967 expanded steps) подлежит миграции и удалению; ADR-084 сохраняет `actionId` как Game Intent, не доверяет клиентскому `playerId`, разделяет principal/actor и случайный client / детерминированный system `commandId`, принимает typed transactional Mechanics IR и разрешает изолированный игровой код только при недостаточности общих механизмов. Ближайший технический пакет — W0 trust boundary (аутентифицированный principal, server-resolved actor, actor-scoped actions, published Presenter bindings, bounded params, удаление `playerId`) и W1 immutable `bundleHash` + JSON Schema 2020-12 + typed module/artifact/algorithm locks + command receipt transaction; системные срабатывания без client version обязаны проверять schedule/trigger под session lock. Затем GSR-036 целиком переносит `mock.debrief.next-turn`, а не только due-активацию и reset стартовых локомотивов. Нормативное содержимое параллельно ждёт подтверждения реальных контуров, грузов, новостей и стран.
-- [TSK-20260705-board-game-platform-capabilities](docs/tasks/active/TSK-20260705-board-game-platform-capabilities.md) — `in_progress`: участники, воспроизводимый бросок, ход, движение, проекция и минимальная экономика для GSR-034 реализованы; остальной пакет не реализуется заранее.
+- [TSK-20260711-cards-money-trains-game](docs/tasks/active/TSK-20260711-cards-money-trains-game.md) — `in_progress`: общий schema-first режим `map-first`, полнооконная авторская WebP-карта, свободный выбор строительства и серверный расчёт маршрута реализованы. Платформенный блок механик также переведён целиком: все опубликованные игры используют Game Intent → типизированный транзакционный Mechanics IR; старые `deterministic.effects[]` (693 сохранённых / 967 развёрнутых шагов), исполнитель и адаптеры удалены. Граница доверия получает principal из аутентификации и определяет actor на сервере; команды имеют ограниченные параметры, версию состояния и долговечную идемпотентную квитанцию; сессия закрепляет неизменяемый пакет правил и точные версии модулей, их содержимого и алгоритмов. GSR-036 доказывает полный `mock.debrief.next-turn`, включая активацию созревших объектов и обновление ресурсов фактической коллекции. Следующие продуктовые шаги относятся к нормативному содержанию игры: подтверждению реальных контуров, грузов, новостей и стран.
 - [TSK-20260518-session-persistence-hardening](docs/tasks/active/TSK-20260518-session-persistence-hardening.md) — `review`: PostgreSQL-хранилище, блокировка одновременных ходов, проверка готовности и восстановление после рестарта реализованы и проверены на PostgreSQL 17.
 - [TSK-20260705-monopoly-classic-game](docs/tasks/active/TSK-20260705-monopoly-classic-game.md) — `in_progress`: первый локальный срез Estate Race завершён и прошёл браузерную приёмку; полная классическая игра не завершена и продолжится последовательными GSR.
 - [TSK-20260706-game-asset-channel](docs/tasks/active/TSK-20260706-game-asset-channel.md) — `review`: реестр, проверки, контент-адресуемая раздача и player/Phaser resolver реализованы первым игровым срезом; миграция LEGACY-0023 остается отдельной.
@@ -43,7 +42,6 @@
 ## Next
 
 - [TSK-20260705-multiplayer-runtime-realization](docs/tasks/active/TSK-20260705-multiplayer-runtime-realization.md) — `planned`: кандидат на постоянные сессии, участников, события и WebSocket-доставку по потребности игрового среза.
-- [TSK-20260706-flow-simulation-platform-capabilities](docs/tasks/active/TSK-20260706-flow-simulation-platform-capabilities.md) — `planned`: кандидат на общие возможности симуляций реального времени, если их потребует выбранная игра.
 - [TSK-20260707-player-web-bundle-budget](docs/tasks/active/TSK-20260707-player-web-bundle-budget.md) — `planned`: кандидат на CI-бюджет first-load JavaScript по триггеру игрового среза или приоритету PM.
 - [TSK-20260518-contracts-neutrality-cleanup](docs/tasks/active/TSK-20260518-contracts-neutrality-cleanup.md) — `planned`: убрать игровые детали из общих контрактов.
 - [TSK-20260518-runtime-repository-boundary-and-readiness](docs/tasks/active/TSK-20260518-runtime-repository-boundary-and-readiness.md) — `planned`: укрепить границу репозитория контента и readiness.
@@ -58,8 +56,8 @@
 ## Blocked
 
 - [TSK-20260705-agent-controlled-players](docs/tasks/active/TSK-20260705-agent-controlled-players.md) — `blocked`: ожидает turn-flow платформы.
-- [TSK-20260706-conveyor-mini-game](docs/tasks/active/TSK-20260706-conveyor-mini-game.md) — `blocked`: ожидает платформенные фазы flow-simulation и общие эффекты метрик.
-- [TSK-20260706-rail-tycoon-mini-game](docs/tasks/active/TSK-20260706-rail-tycoon-mini-game.md) — `blocked`: ожидает PRNG, общие эффекты, Phaser-host и канал ассетов.
+- [TSK-20260706-conveyor-mini-game](docs/tasks/active/TSK-20260706-conveyor-mini-game.md) — `blocked`: универсальный язык операций уже доступен; требуется заново выбрать ограниченный вертикальный срез фаз и проверить его продуктовые правила.
+- [TSK-20260706-rail-tycoon-mini-game](docs/tasks/active/TSK-20260706-rail-tycoon-mini-game.md) — `blocked`: PRNG и общие операции уже доступны; остаётся возобновить игровой срез, согласовать его содержимое и завершить проверку интерфейса/ассетов.
 
 ## Canonical Context
 

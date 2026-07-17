@@ -36,6 +36,7 @@ import {
   type GameAssetResolver
 } from "@/lib/game-asset-resolver";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
+import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -297,7 +298,7 @@ export function GamePlayer({
     ) {
       setLastCompletedPreviewAction({
         actionId,
-        payload: payload ?? {},
+        params: payload ?? {},
         timestamp
       });
     }
@@ -311,12 +312,12 @@ export function GamePlayer({
       return;
     }
 
-    const adapter = presenter.createManifestActionAdapter(
-      (actionId, actionPayload) => handleAction(actionId, actionPayload),
-      (message) => {
+    const adapter = createManifestActionAdapter({
+      dispatchAction: (actionId, actionParams) => handleAction(actionId, actionParams),
+      onError: (message) => {
         console.error(message);
       }
-    );
+    });
     adapter(command, payload);
   };
 

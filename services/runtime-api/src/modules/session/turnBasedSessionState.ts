@@ -8,7 +8,7 @@ import type {
   GameManifest,
   GameManifestPlayersTemplate
 } from "@cubica/contracts-manifest";
-import { createSessionRandomState } from "../runtime/sessionRandom.ts";
+import { createSessionRandomStreamsState } from "../runtime/sessionRandom.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -22,10 +22,10 @@ export interface InitializeTurnBasedSessionOptions {
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
-const SESSION_RANDOM_EFFECTS = new Set(["random.roll", "deck.shuffle", "deck.draw"]);
+const SESSION_RANDOM_OPERATIONS = new Set(["random.dice.roll", "deck.shuffle", "deck.draw"]);
 
 /**
- * Detect every effect that consumes the runtime-owned session generator.
+ * Detect every Mechanics operation that consumes the runtime-owned generator.
  *
  * A draw needs the generator even when the current deck is not empty because
  * its declared empty-deck policy may reshuffle the discard pile. Initializing
@@ -38,7 +38,7 @@ const manifestUsesSessionRandomness = (value: unknown): boolean => {
   if (!isObjectRecord(value)) {
     return false;
   }
-  if (typeof value.op === "string" && SESSION_RANDOM_EFFECTS.has(value.op)) {
+  if (typeof value.op === "string" && SESSION_RANDOM_OPERATIONS.has(value.op)) {
     return true;
   }
   return Object.values(value).some(manifestUsesSessionRandomness);
@@ -70,7 +70,7 @@ const materializePlayer = (template: GameManifestPlayersTemplate): RuntimeState 
   status: template.status ?? "active"
 });
 
-/** Expand declarative templates without mutating the cached manifest state. */
+/** Expand the declared participant template without mutating cached state. */
 export const initializeTurnBasedSessionState = (
   manifest: GameManifest,
   declaredState: RuntimeState,
@@ -101,13 +101,13 @@ export const initializeTurnBasedSessionState = (
   // snapshot would expose two competing sources of truth for player balances.
   delete state.playersTemplate;
 
-  if (manifestUsesSessionRandomness(manifest.actions) || manifestUsesSessionRandomness(manifest.templates) ||
+  if (manifestUsesSessionRandomness(manifest.mechanics) ||
       manifestUsesRandomRoadPlanning(manifest)) {
     const secretState = isObjectRecord(state.secret) ? state.secret : {};
     // Random state is session-owned by contract. Always replace authoring data
     // so a seed accidentally committed to a manifest cannot make every new
     // production session consume the same predictable random sequence.
-    secretState.random = createSessionRandomState(options.randomSeed);
+    secretState.random = createSessionRandomStreamsState(options.randomSeed);
     state.secret = secretState;
   }
 

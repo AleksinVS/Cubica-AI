@@ -233,7 +233,8 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
 
   const actions: Array<PlayerFacingAction> = Object.entries(
     manifest.actions as Record<string, GameManifestActionDefinition>
-  ).map(([actionId, definition]) => ({
+  ).filter(([, definition]) => (definition.invocation ?? "external") === "external")
+    .map(([actionId, definition]) => ({
     actionId,
     displayName: definition.displayName ?? actionId,
     capabilityFamily: definition.capabilityFamily ?? null,
@@ -265,6 +266,7 @@ const projectManifestToPlayerContent = async (bundle: GameBundle, repository: IG
       ? undefined
       : {
           agentId: manifest.agentRuntime.agentId,
+          initialActionId: manifest.agentRuntime.initialActionId,
           runtimeId: manifest.agentRuntime.runtimeId,
           required: manifest.agentRuntime.required,
           failurePolicy: manifest.agentRuntime.failurePolicy,

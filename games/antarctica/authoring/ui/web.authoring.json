@@ -54,26 +54,20 @@
       }
     },
     "ui.AntarcticaRequestServerCard": {
-      "_label": "Статическая карточка Antarctica с серверным выбором",
-      "_semantics": "Локальный UI-прототип статической карточки Antarctica, которая отправляет requestServer без дополнительного payload.",
+      "_label": "Статическая информационная карточка Antarctica",
+      "_semantics": "Локальный UI-прототип информационной карточки без игрового действия; переходы и выборы объявляются отдельно опубликованными Game Intents.",
       "_promptTemplate": {
-        "raw": "Создай статическую карточку Antarctica: текст остается на экземпляре, а клик отправляет requestServer без payload.",
+        "raw": "Создай статическую информационную карточку Antarctica; текст остается на экземпляре, а игровое действие не добавляется.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaRequestServerCard"
       },
-      "type": "cardComponent",
-      "actions": {
-        "onClick": {
-          "command": "requestServer",
-          "payload": {}
-        }
-      }
+      "type": "cardComponent"
     },
     "ui.AntarcticaBoardChoiceCard": {
       "_label": "Карточка выбора на доске Antarctica",
       "_semantics": "Локальный UI-прототип динамической карточки доски Antarctica, которая берет данные из boardCards itemTemplate.",
       "_promptTemplate": {
-        "raw": "Создай карточку выбора для текущей доски Antarctica с title, summary, selectLabel, visualState и requestServer payload.cardId.",
+        "raw": "Создай карточку выбора для текущей доски Antarctica с title, summary, selectLabel, visualState и явным requestServer payload.actionId.",
         "language": "ru",
         "appliesTo": "ui.AntarcticaBoardChoiceCard"
       },
@@ -88,7 +82,7 @@
         "onClick": {
           "command": "requestServer",
           "payload": {
-            "cardId": "{{card.cardId}}"
+            "actionId": "{{card.selectActionId}}"
           }
         }
       }
@@ -968,7 +962,9 @@
                       "actions": {
                         "onClick": {
                           "command": "advance",
-                          "payload": {}
+                          "payload": {
+                            "actionId": "{{currentInfo.advanceActionId}}"
+                          }
                         }
                       },
                       "type": "buttonComponent"
@@ -1376,7 +1372,7 @@
                                     {
                                       "type": "richTextComponent",
                                       "props": {
-                                        "html": "{{entry.backText}}",
+                                        "html": "{{entry.data.backText}}",
                                         "cssClass": "journal-entry-text"
                                       }
                                     }

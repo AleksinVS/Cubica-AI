@@ -1,9 +1,16 @@
-/** Tests for manifest-template expansion into authoritative session state. */
+/** Neutral tests for manifest-declared turn and random runtime state. */
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import { test } from "node:test";
-import type { GameManifest } from "@cubica/contracts-manifest";
+import type { CubicaMechanicsIRV1Alpha1, GameManifest, Step } from "@cubica/contracts-manifest";
 
 import { initializeTurnBasedSessionState } from "../src/modules/session/turnBasedSessionState.ts";
+
+const require = createRequire(import.meta.url);
+const { recommendedModuleLock } = require("../../../scripts/manifest-tools/mechanics-modules.cjs") as {
+  recommendedModuleLock: (moduleIds: Array<string>) => CubicaMechanicsIRV1Alpha1["moduleLock"];
+};
+const HASH = `sha256:${"0".repeat(64)}`;
 
 const createManifest = (): GameManifest => ({
   meta: {
@@ -30,9 +37,51 @@ const createManifest = (): GameManifest => ({
   },
   actions: {
     "turn.roll": {
-      handlerType: "manifest-data",
-      deterministic: {
-        effects: [{ op: "random.roll", dice: "2d6", storePath: "/public/turn/lastRoll" }]
+      invocation: "external",
+      definitionHash: HASH,
+      binding: { kind: "mechanics-plan", planRef: "turn.roll" }
+    }
+  },
+  mechanics: {
+    apiVersion: "cubica.dev/mechanics/v1alpha1",
+    budgetProfile: "turn-based-standard-v1",
+    moduleLock: recommendedModuleLock(["cubica.random"]),
+    stateModel: {
+      types: {
+        "core.string": { kind: "string" },
+        "fixture.roll": {
+          kind: "record",
+          fields: {
+            dice: { typeRef: "core.string", optional: false },
+            rolls: { typeRef: "core.string", optional: false },
+            total: { typeRef: "core.string", optional: false }
+          }
+        }
+      },
+      endpoints: {
+        lastRoll: {
+          audienceRef: "public",
+          storage: { root: "public", segments: ["turn", "lastRoll"] },
+          valueType: "fixture.roll",
+          access: "read-write"
+        }
+      },
+      collections: {},
+      events: {}
+    },
+    plans: {
+      "turn.roll": {
+        planHash: HASH,
+        transaction: {
+          steps: [{
+            id: "roll",
+            kind: "command",
+            op: "random.dice.roll",
+            dice: "2d6",
+            stream: "turn",
+            target: { endpoint: "lastRoll" }
+          }]
+        }
       }
     }
   }
@@ -61,9 +110,9 @@ test("participant template expands into isolated p1..pN state and an initial tur
     turnNumber: 1
   });
   assert.deepEqual((state.secret as Record<string, unknown>).random, {
-    alg: "xoshiro128ss-v1",
+    alg: "xoshiro128ss-streams-v1",
     seed: "0123456789abcdeffedcba9876543210",
-    counter: 0
+    counters: {}
   });
 
   const players = state.players as Record<string, Record<string, any>>;
@@ -80,16 +129,41 @@ test("participant count outside manifest bounds is rejected", () => {
 });
 
 test("deck-only manifests receive the runtime-owned replay seed", () => {
-  for (const effect of [
-    { op: "deck.shuffle" as const, deckId: "events", source: "collection:eventCards" },
+  for (const step of [
     {
+      id: "shuffle",
+      kind: "command",
+      op: "deck.shuffle" as const,
+      deckId: "events",
+      sourceCollection: "eventCards",
+      stream: "events"
+    },
+    {
+      id: "draw",
+      kind: "command",
       op: "deck.draw" as const,
       deckId: "events",
-      storePath: "/public/drawnCardId",
+      target: { endpoint: "drawnCardId" },
       onEmpty: "reshuffle-discard" as const
     }
-  ]) {
+  ] satisfies Array<Step>) {
     const manifest = createManifest();
+    manifest.mechanics.moduleLock = recommendedModuleLock(["cubica.deck"]);
+    manifest.mechanics.stateModel.types["fixture.cardId"] = { kind: "string" };
+    manifest.mechanics.stateModel.endpoints.drawnCardId = {
+      audienceRef: "public",
+      storage: { root: "public", segments: ["drawnCardId"] },
+      valueType: "fixture.cardId",
+      access: "read-write"
+    };
+    manifest.mechanics.stateModel.collections.eventCards = {
+      audienceRef: "public",
+      storage: { root: "public", segments: ["objects", "eventCards"] },
+      capacity: 32,
+      stableKey: "map-key",
+      itemTypes: ["fixture.card"],
+      fields: {}
+    };
     manifest.state.secret = {
       random: {
         alg: "xoshiro128ss-v1",
@@ -99,8 +173,15 @@ test("deck-only manifests receive the runtime-owned replay seed", () => {
     };
     manifest.actions = {
       "deck.action": {
-        handlerType: "manifest-data",
-        deterministic: { effects: [effect] }
+        invocation: "external",
+        definitionHash: HASH,
+        binding: { kind: "mechanics-plan", planRef: "deck.action" }
+      }
+    };
+    manifest.mechanics.plans = {
+      "deck.action": {
+        planHash: HASH,
+        transaction: { steps: [step] }
       }
     };
 
@@ -111,9 +192,9 @@ test("deck-only manifests receive the runtime-owned replay seed", () => {
     );
 
     assert.deepEqual((state.secret as Record<string, unknown>).random, {
-      alg: "xoshiro128ss-v1",
+      alg: "xoshiro128ss-streams-v1",
       seed: "0123456789abcdeffedcba9876543210",
-      counter: 0
+      counters: {}
     });
   }
 });
@@ -126,6 +207,21 @@ test("random-tie road planning receives runtime-owned replay state before its fi
     grid: { roadPlanning: { tieBreak: "session-random" } }
   };
   manifest.actions = {};
+  manifest.mechanics.plans = {
+    noop: {
+      planHash: HASH,
+      transaction: {
+        steps: [{
+          id: "noop",
+          kind: "assert",
+          op: "core.assert",
+          predicate: { op: "predicate.constant", value: true },
+          errorCode: "FIXTURE_PRECONDITION_FAILED"
+        }]
+      }
+    }
+  };
+  manifest.mechanics.moduleLock = recommendedModuleLock(["cubica.core"]);
   manifest.state.secret = {};
 
   const state = initializeTurnBasedSessionState(
@@ -135,8 +231,8 @@ test("random-tie road planning receives runtime-owned replay state before its fi
   );
 
   assert.deepEqual((state.secret as Record<string, unknown>).random, {
-    alg: "xoshiro128ss-v1",
+    alg: "xoshiro128ss-streams-v1",
     seed: "0123456789abcdeffedcba9876543210",
-    counter: 0
+    counters: {}
   });
 });

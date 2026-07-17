@@ -389,6 +389,8 @@ export type CubicaAgentFailurePolicy = "pause" | "retry" | "deterministicFallbac
 
 export interface CubicaAgentRuntimeManifestConfig {
   readonly agentId: string;
+  /** Published action that is the only valid Agent Turn transport entry. */
+  readonly initialActionId: string;
   readonly runtimeId?: string;
   readonly required: boolean;
   readonly allowedCapabilities: readonly string[];
@@ -454,57 +456,36 @@ export interface CubicaAgentTurnInput {
   readonly executionMode: Exclude<CubicaGameExecutionMode, "deterministic">;
   readonly trigger: CubicaAgentTurnTrigger;
   readonly stateScope: {
+    /** State-model symbols visible to every participant. */
     readonly public: Record<string, CubicaJsonValue>;
+    /** State-model symbols visible only to the authenticated current actor. */
+    readonly actor?: Record<string, CubicaJsonValue>;
+    /** Explicit privileged channel; ordinary player/agent policy omits it. */
     readonly secret?: Record<string, CubicaJsonValue>;
   };
   readonly manifestProjection: Record<string, CubicaJsonValue>;
-  readonly allowedCapabilities: readonly string[];
+  /**
+   * Actor-scoped Game Intents the model may choose for this exact snapshot.
+   *
+   * A Game Intent is an action in the language of the concrete game. Keeping
+   * this list in the trusted input prevents a model from inventing action IDs
+   * or selecting an action that is unavailable to the current actor.
+   */
+  readonly availableIntents: readonly CubicaPublishedGameIntent[];
   readonly surfaceCatalog: readonly string[];
   readonly correlationId?: string;
 }
 
-export type CubicaAgentEffectKind =
-  | "setFlag"
-  | "setMetric"
-  | "appendLog"
-  | "replaceStep"
-  | "grantCapability"
-  | "custom";
-
-export interface CubicaAgentStateEffect {
-  readonly kind: CubicaAgentEffectKind;
-  readonly target: string;
-  readonly value?: CubicaJsonValue;
-  readonly data?: Record<string, CubicaJsonValue>;
-}
-
-export interface CubicaAgentAvailableAction {
+export interface CubicaPublishedGameIntent {
   readonly actionId: string;
   readonly label: string;
-  readonly kind: "agentTurn" | "runtimeAction" | "facilitatorAction";
-  readonly payloadSchema?: Record<string, CubicaJsonValue>;
-  readonly sideEffectPolicy: CubicaAgentSideEffectPolicy;
+  readonly paramsSchema?: Record<string, CubicaJsonValue>;
 }
 
-export interface CubicaAgentCapabilityRule {
-  readonly capability: string;
-  readonly effectKinds: readonly CubicaAgentEffectKind[];
-  readonly targetPathPrefixes: readonly string[];
-  readonly availableActionKinds?: readonly CubicaAgentAvailableAction["kind"][];
-  readonly surfaceActionKinds?: readonly CubicaSurfaceActionKind[];
-}
-
-/**
- * Capability policy.
- *
- * This turns manifest `allowedCapabilities` from documentation into an
- * executable allowlist: each declared capability maps to concrete effect kinds,
- * target state paths and action kinds that runtime may accept.
- */
-export interface CubicaAgentCapabilityPolicy {
-  readonly schemaVersion: "1.0.0";
-  readonly policyId: string;
-  readonly rules: readonly CubicaAgentCapabilityRule[];
+/** One published, parameterized Game Intent selected by an Agent Runtime. */
+export interface CubicaAgentSelectedIntent {
+  readonly actionId: string;
+  readonly params: Record<string, CubicaJsonValue>;
 }
 
 export interface CubicaSurfaceChannelActionPolicy {
@@ -543,8 +524,7 @@ export interface CubicaAgentTurnResult {
   readonly agentId: string;
   readonly ok: boolean;
   readonly narration?: string;
-  readonly effects?: readonly CubicaAgentStateEffect[];
-  readonly availableActions?: readonly CubicaAgentAvailableAction[];
+  readonly selectedIntent?: CubicaAgentSelectedIntent;
   readonly surface?: CubicaSurface;
   readonly diagnostics?: readonly CubicaContractDiagnostic[];
   readonly audit: CubicaAgentTurnAuditMetadata;
@@ -566,7 +546,7 @@ export interface CubicaAgentTurnEventLogEntry {
   readonly status: CubicaAgentTurnEventStatus;
   readonly recordedAt: string;
   readonly trigger: CubicaAgentTurnTrigger;
-  readonly effectCount: number;
+  readonly selectedActionId?: string;
   readonly surfaceId?: string;
   readonly rejectionReason?: {
     readonly code: string;
@@ -600,7 +580,7 @@ export interface CubicaAgentEvaluationFixture {
   readonly expected: {
     readonly ok?: boolean;
     readonly allowedSurfaceKinds?: readonly string[];
-    readonly requiredEffectKinds?: readonly CubicaAgentEffectKind[];
+    readonly requiredActionId?: string;
     readonly forbiddenDiagnosticCodes?: readonly string[];
     readonly maxErrorSeverity?: CubicaContractDiagnosticSeverity;
   };
@@ -623,7 +603,10 @@ export interface CubicaSurfaceValidationOptions {
 }
 
 export interface CubicaAgentTurnValidationOptions extends CubicaSurfaceValidationOptions {
-  readonly forbiddenStatePathPrefixes?: readonly string[];
+  /** Trusted actor-scoped intents used to reject invented model output. */
+  readonly availableIntents?: readonly CubicaPublishedGameIntent[];
+  /** Exact published entry intent that a model-authored Agent Turn UI may call. */
+  readonly agentTurnEntryActionId?: string;
 }
 
 export const CUBICA_SURFACE_SCHEMA_ID = "https://cubica.ai/schemas/ai/cubica-surface.schema.json";
@@ -644,8 +627,6 @@ export const CUBICA_AGENT_RUNTIME_OPERATION_POLICY_SCHEMA_ID =
   "https://cubica.ai/schemas/ai/agent-runtime-operation-policy.schema.json";
 export const CUBICA_AGENT_APPROVAL_ENVELOPE_SCHEMA_ID =
   "https://cubica.ai/schemas/ai/agent-approval-envelope.schema.json";
-export const CUBICA_AGENT_CAPABILITY_POLICY_SCHEMA_ID =
-  "https://cubica.ai/schemas/ai/agent-capability-policy.schema.json";
 export const CUBICA_SURFACE_CHANNEL_ACTION_POLICY_SCHEMA_ID =
   "https://cubica.ai/schemas/ai/surface-channel-action-policy.schema.json";
 
@@ -723,41 +704,6 @@ export const defaultCubicaSurfaceCatalog = [
     allowedActionKinds: ["noop", "agentTurn"]
   }
 ] as const satisfies CubicaSurfaceCatalog;
-
-export const defaultCubicaAgentCapabilityPolicy = {
-  schemaVersion: "1.0.0",
-  policyId: "cubica-platform-agent-capabilities-v1",
-  rules: [
-    {
-      capability: "advanceStep",
-      effectKinds: ["replaceStep", "appendLog"],
-      targetPathPrefixes: ["public.step", "public.currentStep", "public.timeline", "public.log"],
-      availableActionKinds: ["agentTurn", "runtimeAction"],
-      surfaceActionKinds: ["agentTurn", "runtimeAction", "noop"]
-    },
-    {
-      capability: "setMetric",
-      effectKinds: ["setMetric", "appendLog"],
-      targetPathPrefixes: ["public.metrics", "public.log"],
-      availableActionKinds: ["agentTurn", "runtimeAction"],
-      surfaceActionKinds: ["agentTurn", "runtimeAction", "noop"]
-    },
-    {
-      capability: "setFlag",
-      effectKinds: ["setFlag", "appendLog"],
-      targetPathPrefixes: ["public.flags", "public.log"],
-      availableActionKinds: ["agentTurn", "runtimeAction"],
-      surfaceActionKinds: ["agentTurn", "runtimeAction", "noop"]
-    },
-    {
-      capability: "appendLog",
-      effectKinds: ["appendLog"],
-      targetPathPrefixes: ["public.log"],
-      availableActionKinds: ["agentTurn", "runtimeAction"],
-      surfaceActionKinds: ["agentTurn", "runtimeAction", "noop"]
-    }
-  ]
-} as const satisfies CubicaAgentCapabilityPolicy;
 
 export const defaultCubicaSurfaceChannelActionPolicies = {
   webPlayerPrimaryGameplay: {
@@ -913,7 +859,7 @@ export const agentTurnInputSchema = {
     "trigger",
     "stateScope",
     "manifestProjection",
-    "allowedCapabilities",
+    "availableIntents",
     "surfaceCatalog"
   ],
   properties: {
@@ -948,6 +894,10 @@ export const agentTurnInputSchema = {
           type: "object",
           additionalProperties: { $ref: "#/definitions/JsonValue" }
         },
+        actor: {
+          type: "object",
+          additionalProperties: { $ref: "#/definitions/JsonValue" }
+        },
         secret: {
           type: "object",
           additionalProperties: { $ref: "#/definitions/JsonValue" }
@@ -958,9 +908,21 @@ export const agentTurnInputSchema = {
       type: "object",
       additionalProperties: { $ref: "#/definitions/JsonValue" }
     },
-    allowedCapabilities: {
+    availableIntents: {
       type: "array",
-      items: { type: "string", minLength: 1 }
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["actionId", "label"],
+        properties: {
+          actionId: { type: "string", minLength: 1 },
+          label: { type: "string", minLength: 1 },
+          paramsSchema: {
+            type: "object",
+            additionalProperties: { $ref: "#/definitions/JsonValue" }
+          }
+        }
+      }
     },
     surfaceCatalog: {
       type: "array",
@@ -986,38 +948,15 @@ export const agentTurnResultSchema = {
     agentId: { type: "string", minLength: 1 },
     ok: { type: "boolean" },
     narration: { type: "string" },
-    effects: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["kind", "target"],
-        properties: {
-          kind: { enum: ["setFlag", "setMetric", "appendLog", "replaceStep", "grantCapability", "custom"] },
-          target: { type: "string", minLength: 1 },
-          value: { $ref: "#/definitions/JsonValue" },
-          data: {
-            type: "object",
-            additionalProperties: { $ref: "#/definitions/JsonValue" }
-          }
-        }
-      }
-    },
-    availableActions: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["actionId", "label", "kind", "sideEffectPolicy"],
-        properties: {
-          actionId: { type: "string", minLength: 1 },
-          label: { type: "string", minLength: 1 },
-          kind: { enum: ["agentTurn", "runtimeAction", "facilitatorAction"] },
-          payloadSchema: {
-            type: "object",
-            additionalProperties: { $ref: "#/definitions/JsonValue" }
-          },
-          sideEffectPolicy: { enum: ["read-only", "human-approved", "system-approved"] }
+    selectedIntent: {
+      type: "object",
+      additionalProperties: false,
+      required: ["actionId", "params"],
+      properties: {
+        actionId: { type: "string", minLength: 1 },
+        params: {
+          type: "object",
+          additionalProperties: { $ref: "#/definitions/JsonValue" }
         }
       }
     },
@@ -1066,9 +1005,10 @@ export const executionModeConfigSchema = {
     agentRuntime: {
       type: "object",
       additionalProperties: false,
-      required: ["agentId", "required", "allowedCapabilities", "surfaceCatalog", "failurePolicy"],
+      required: ["agentId", "initialActionId", "required", "allowedCapabilities", "surfaceCatalog", "failurePolicy"],
       properties: {
         agentId: { type: "string", minLength: 1 },
+        initialActionId: { type: "string", minLength: 1 },
         runtimeId: { type: "string" },
         required: { type: "boolean" },
         allowedCapabilities: {
@@ -1195,49 +1135,6 @@ export const agentApprovalEnvelopeSchema = {
   },
   definitions: {
     JsonValue: jsonValueDefinition
-  }
-} as const;
-
-export const agentCapabilityPolicySchema = {
-  $id: CUBICA_AGENT_CAPABILITY_POLICY_SCHEMA_ID,
-  $schema: "http://json-schema.org/draft-07/schema#",
-  title: "CubicaAgentCapabilityPolicy",
-  type: "object",
-  additionalProperties: false,
-  required: ["schemaVersion", "policyId", "rules"],
-  properties: {
-    schemaVersion: { const: "1.0.0" },
-    policyId: { type: "string", minLength: 1 },
-    rules: {
-      type: "array",
-      minItems: 1,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: ["capability", "effectKinds", "targetPathPrefixes"],
-        properties: {
-          capability: { type: "string", minLength: 1 },
-          effectKinds: {
-            type: "array",
-            minItems: 1,
-            items: { enum: ["setFlag", "setMetric", "appendLog", "replaceStep", "grantCapability", "custom"] }
-          },
-          targetPathPrefixes: {
-            type: "array",
-            minItems: 1,
-            items: { type: "string", minLength: 1 }
-          },
-          availableActionKinds: {
-            type: "array",
-            items: { enum: ["agentTurn", "runtimeAction", "facilitatorAction"] }
-          },
-          surfaceActionKinds: {
-            type: "array",
-            items: { enum: ["noop", "agentTurn", "runtimeAction", "editorTool", "portalCommand", "openUrl"] }
-          }
-        }
-      }
-    }
   }
 } as const;
 
@@ -1409,7 +1306,6 @@ export const agentTurnEventLogEntrySchema = {
     "status",
     "recordedAt",
     "trigger",
-    "effectCount",
     "audit"
   ],
   properties: {
@@ -1432,7 +1328,7 @@ export const agentTurnEventLogEntrySchema = {
         payload: { $ref: "#/definitions/JsonValue" }
       }
     },
-    effectCount: { type: "integer", minimum: 0 },
+    selectedActionId: { type: "string", minLength: 1 },
     surfaceId: { type: "string" },
     rejectionReason: {
       type: "object",
@@ -1522,10 +1418,7 @@ export const agentEvaluationFixtureSchema = {
           type: "array",
           items: { type: "string", minLength: 1 }
         },
-        requiredEffectKinds: {
-          type: "array",
-          items: { enum: ["setFlag", "setMetric", "appendLog", "replaceStep", "grantCapability", "custom"] }
-        },
+        requiredActionId: { type: "string", minLength: 1 },
         forbiddenDiagnosticCodes: {
           type: "array",
           items: { type: "string", minLength: 1 }
@@ -1564,8 +1457,6 @@ const forbiddenDirectStateMutationKeys = new Set([
   "mergePatch"
 ]);
 
-const forbiddenAgentEffectKinds = new Set(["jsonPatch", "mergePatch", "directStatePatch", "sessionPatch", "rawState"]);
-
 let validatorsCache:
   | {
       readonly surface: ValidateFunction;
@@ -1579,7 +1470,6 @@ let validatorsCache:
       readonly a2uiLikeEvent: ValidateFunction;
       readonly runtimeOperationPolicy: ValidateFunction;
       readonly approvalEnvelope: ValidateFunction;
-      readonly capabilityPolicy: ValidateFunction;
       readonly surfaceChannelActionPolicy: ValidateFunction;
     }
   | undefined;
@@ -1617,11 +1507,13 @@ export function validateCubicaSurface(
 export function validateAgentTurnInput(input: unknown): CubicaValidationResult<CubicaAgentTurnInput> {
   const validate = getCompiledValidators().turnInput;
   const valid = validate(input);
-  const diagnostics = valid ? [] : mapAjvErrors(validate.errors);
+  const schemaDiagnostics = valid ? [] : mapAjvErrors(validate.errors);
+  const semanticDiagnostics = valid ? validateAgentTurnInputSemantics(input as CubicaAgentTurnInput) : [];
+  const diagnostics = [...schemaDiagnostics, ...semanticDiagnostics];
 
   return {
-    ok: valid,
-    value: valid ? (input as CubicaAgentTurnInput) : undefined,
+    ok: diagnostics.length === 0,
+    value: diagnostics.length === 0 ? (input as CubicaAgentTurnInput) : undefined,
     diagnostics
   };
 }
@@ -1850,28 +1742,6 @@ export function buildCubicaAgentApprovalEnvelope(
   };
 }
 
-export function validateAgentCapabilityPolicy(
-  input: unknown
-): CubicaValidationResult<CubicaAgentCapabilityPolicy> {
-  const validate = getCompiledValidators().capabilityPolicy;
-  const valid = validate(input);
-  const schemaDiagnostics = valid ? [] : mapAjvErrors(validate.errors);
-
-  if (!valid) {
-    return { ok: false, diagnostics: schemaDiagnostics };
-  }
-
-  const policy = input as CubicaAgentCapabilityPolicy;
-  const semanticDiagnostics = validateAgentCapabilityPolicySemantics(policy);
-  const diagnostics = [...schemaDiagnostics, ...semanticDiagnostics];
-
-  return {
-    ok: diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
-    value: policy,
-    diagnostics
-  };
-}
-
 export function validateSurfaceChannelActionPolicy(
   input: unknown
 ): CubicaValidationResult<CubicaSurfaceChannelActionPolicy> {
@@ -1892,65 +1762,6 @@ export function validateSurfaceChannelActionPolicy(
     value: policy,
     diagnostics
   };
-}
-
-export function validateAgentTurnCapabilities(
-  result: CubicaAgentTurnResult,
-  allowedCapabilities: readonly string[],
-  policy: CubicaAgentCapabilityPolicy = defaultCubicaAgentCapabilityPolicy
-): readonly CubicaContractDiagnostic[] {
-  const policyValidation = validateAgentCapabilityPolicy(policy);
-  if (!policyValidation.ok) {
-    return policyValidation.diagnostics.map((diagnostic) => ({
-      ...diagnostic,
-      pointer: `/capabilityPolicy${diagnostic.pointer === "/" ? "" : diagnostic.pointer}`
-    }));
-  }
-
-  const rules = policy.rules.filter((rule) => allowedCapabilities.includes(rule.capability));
-  const diagnostics: CubicaContractDiagnostic[] = [];
-
-  for (const [effectIndex, effect] of (result.effects ?? []).entries()) {
-    if (!rules.some((rule) => capabilityRuleAllowsEffect(rule, effect))) {
-      diagnostics.push(
-        makeDiagnostic(
-          "capabilityEffectNotAllowed",
-          `/effects/${effectIndex}`,
-          `Agent effect ${effect.kind} on ${effect.target} is outside declared allowedCapabilities`
-        )
-      );
-    }
-  }
-
-  for (const [actionIndex, action] of (result.availableActions ?? []).entries()) {
-    if (!rules.some((rule) => rule.availableActionKinds?.includes(action.kind) === true)) {
-      diagnostics.push(
-        makeDiagnostic(
-          "capabilityAvailableActionNotAllowed",
-          `/availableActions/${actionIndex}`,
-          `Available action kind ${action.kind} is outside declared allowedCapabilities`
-        )
-      );
-    }
-  }
-
-  if (result.surface !== undefined) {
-    walkSurfaceComponents(result.surface.root, "/surface/root", (component, pointer) => {
-      for (const [actionIndex, action] of (component.actions ?? []).entries()) {
-        if (!rules.some((rule) => rule.surfaceActionKinds?.includes(action.kind) === true)) {
-          diagnostics.push(
-            makeDiagnostic(
-              "capabilitySurfaceActionNotAllowed",
-              `${pointer}/actions/${actionIndex}`,
-              `Surface action kind ${action.kind} is outside declared allowedCapabilities`
-            )
-          );
-        }
-      }
-    });
-  }
-
-  return diagnostics;
 }
 
 export function adaptA2uiLikeEventsToCubicaSurface(
@@ -2038,7 +1849,9 @@ export function buildAcceptedAgentTurnEventLogEntry(args: {
     status: "accepted",
     recordedAt: args.recordedAt,
     trigger: args.input.trigger,
-    effectCount: args.result.effects?.length ?? 0,
+    ...(args.result.selectedIntent === undefined
+      ? {}
+      : { selectedActionId: args.result.selectedIntent.actionId }),
     surfaceId: args.result.surface?.surfaceId,
     audit: args.result.audit,
     correlationId: args.input.correlationId
@@ -2063,7 +1876,6 @@ export function buildRejectedAgentTurnEventLogEntry(args: {
     status: "rejected",
     recordedAt: args.recordedAt,
     trigger: args.input.trigger,
-    effectCount: 0,
     rejectionReason: args.reason,
     rejectedDiagnostics: args.diagnostics,
     audit: args.audit,
@@ -2206,7 +2018,6 @@ function getCompiledValidators() {
   ajv.addSchema(agentTurnEventLogEntrySchema as AnySchema, CUBICA_AGENT_TURN_EVENT_LOG_ENTRY_SCHEMA_ID);
   ajv.addSchema(a2uiLikeEventSchema as AnySchema, CUBICA_A2UI_LIKE_EVENT_SCHEMA_ID);
   ajv.addSchema(agentApprovalEnvelopeSchema as AnySchema, CUBICA_AGENT_APPROVAL_ENVELOPE_SCHEMA_ID);
-  ajv.addSchema(agentCapabilityPolicySchema as AnySchema, CUBICA_AGENT_CAPABILITY_POLICY_SCHEMA_ID);
   ajv.addSchema(surfaceChannelActionPolicySchema as AnySchema, CUBICA_SURFACE_CHANNEL_ACTION_POLICY_SCHEMA_ID);
 
   validatorsCache = {
@@ -2225,9 +2036,6 @@ function getCompiledValidators() {
     approvalEnvelope:
       ajv.getSchema(CUBICA_AGENT_APPROVAL_ENVELOPE_SCHEMA_ID) ??
       ajv.compile(agentApprovalEnvelopeSchema as AnySchema),
-    capabilityPolicy:
-      ajv.getSchema(CUBICA_AGENT_CAPABILITY_POLICY_SCHEMA_ID) ??
-      ajv.compile(agentCapabilityPolicySchema as AnySchema),
     surfaceChannelActionPolicy:
       ajv.getSchema(CUBICA_SURFACE_CHANNEL_ACTION_POLICY_SCHEMA_ID) ??
       ajv.compile(surfaceChannelActionPolicySchema as AnySchema)
@@ -2390,27 +2198,14 @@ function validateAgentTurnSemantics(
   options: CubicaAgentTurnValidationOptions
 ): CubicaContractDiagnostic[] {
   const diagnostics: CubicaContractDiagnostic[] = [];
-  const forbiddenStatePathPrefixes = options.forbiddenStatePathPrefixes ?? ["secret", "/secret", "state.secret", "/state/secret"];
-
-  collectForbiddenKeyDiagnostics(result, "", diagnostics);
 
   if (result.ok === false) {
-    if ((result.effects?.length ?? 0) > 0) {
+    if (result.selectedIntent !== undefined) {
       diagnostics.push(
         makeDiagnostic(
-          "rejectedTurnHasEffects",
-          "/effects",
-          "Rejected Agent Turn results must not include persisted effects"
-        )
-      );
-    }
-
-    if ((result.availableActions?.length ?? 0) > 0) {
-      diagnostics.push(
-        makeDiagnostic(
-          "rejectedTurnHasAvailableActions",
-          "/availableActions",
-          "Rejected Agent Turn results must not expose executable gameplay actions"
+          "rejectedTurnHasSelectedIntent",
+          "/selectedIntent",
+          "Rejected Agent Turn results must not select a gameplay intent"
         )
       );
     }
@@ -2424,18 +2219,86 @@ function validateAgentTurnSemantics(
         )
       );
     }
+  } else if (result.selectedIntent === undefined) {
+    diagnostics.push(
+      makeDiagnostic(
+        "acceptedTurnMissingSelectedIntent",
+        "/selectedIntent",
+        "Accepted Agent Turn results must select exactly one published Game Intent"
+      )
+    );
   }
 
-  for (const [effectIndex, effect] of (result.effects ?? []).entries()) {
-    const pointer = `/effects/${effectIndex}`;
-
-    if (forbiddenAgentEffectKinds.has(effect.kind)) {
-      diagnostics.push(makeDiagnostic("forbiddenAgentEffectKind", pointer, `Agent effect kind is forbidden: ${effect.kind}`));
+  if (result.selectedIntent !== undefined && options.availableIntents !== undefined) {
+    const published = options.availableIntents.some(
+      (intent) => intent.actionId === result.selectedIntent?.actionId
+    );
+    if (!published) {
+      diagnostics.push(
+        makeDiagnostic(
+          "selectedIntentNotAvailable",
+          "/selectedIntent/actionId",
+          `Agent selected an unpublished or unavailable Game Intent: ${result.selectedIntent.actionId}`
+        )
+      );
     }
+  }
 
-    if (forbiddenStatePathPrefixes.some((prefix) => effect.target === prefix || effect.target.startsWith(`${prefix}.`) || effect.target.startsWith(`${prefix}/`))) {
-      diagnostics.push(makeDiagnostic("forbiddenStatePath", `${pointer}/target`, `Agent effect targets forbidden state path: ${effect.target}`));
+  if (result.surface !== undefined) {
+    const availableIntentIds = options.availableIntents === undefined
+      ? undefined
+      : new Set(options.availableIntents.map((intent) => intent.actionId));
+    walkSurfaceComponents(result.surface.root, "/surface/root", (component, pointer) => {
+      for (const [actionIndex, action] of (component.actions ?? []).entries()) {
+        const targetPointer = `${pointer}/actions/${actionIndex}/target`;
+        if (
+          action.kind === "agentTurn" &&
+          options.agentTurnEntryActionId !== undefined &&
+          action.target !== options.agentTurnEntryActionId
+        ) {
+          diagnostics.push(
+            makeDiagnostic(
+              "agentTurnTargetMismatch",
+              targetPointer,
+              `Agent Turn Surface action must target ${options.agentTurnEntryActionId}`
+            )
+          );
+        }
+        if (
+          action.kind === "runtimeAction" &&
+          availableIntentIds !== undefined &&
+          (action.target === undefined || !availableIntentIds.has(action.target))
+        ) {
+          diagnostics.push(
+            makeDiagnostic(
+              "surfaceIntentNotAvailable",
+              targetPointer,
+              `Runtime Surface action targets an unpublished or unavailable Game Intent: ${action.target ?? "missing"}`
+            )
+          );
+        }
+      }
+    });
+  }
+
+  return diagnostics;
+}
+
+function validateAgentTurnInputSemantics(input: CubicaAgentTurnInput): CubicaContractDiagnostic[] {
+  const diagnostics: CubicaContractDiagnostic[] = [];
+  const seen = new Set<string>();
+
+  for (const [index, intent] of input.availableIntents.entries()) {
+    if (seen.has(intent.actionId)) {
+      diagnostics.push(
+        makeDiagnostic(
+          "duplicateAvailableIntent",
+          `/availableIntents/${index}/actionId`,
+          `Agent Turn input publishes Game Intent ${intent.actionId} more than once`
+        )
+      );
     }
+    seen.add(intent.actionId);
   }
 
   return diagnostics;
@@ -2460,6 +2323,20 @@ function validateExecutionModeSemantics(config: CubicaExecutionModeConfig): Cubi
         "agentRuntimeNotRequired",
         "/agentRuntime/required",
         `${config.executionMode} games must declare Agent Runtime as required`
+      )
+    );
+  }
+
+  if (
+    (config.executionMode === "ai-driven" || config.executionMode === "hybrid") &&
+    config.agentRuntime?.required === true &&
+    !config.agentRuntime.allowedCapabilities.includes("selectPublishedIntent")
+  ) {
+    diagnostics.push(
+      makeDiagnostic(
+        "publishedIntentSelectionNotAllowed",
+        "/agentRuntime/allowedCapabilities",
+        "AI-driven Agent Runtime must allow selection of actor-scoped published Game Intents"
       )
     );
   }
@@ -2521,26 +2398,6 @@ function validateAgentApprovalEnvelopeSemantics(
   return diagnostics;
 }
 
-function validateAgentCapabilityPolicySemantics(policy: CubicaAgentCapabilityPolicy): CubicaContractDiagnostic[] {
-  const diagnostics: CubicaContractDiagnostic[] = [];
-  const seenCapabilities = new Set<string>();
-
-  for (const [ruleIndex, rule] of policy.rules.entries()) {
-    if (seenCapabilities.has(rule.capability)) {
-      diagnostics.push(
-        makeDiagnostic(
-          "duplicateCapabilityRule",
-          `/rules/${ruleIndex}/capability`,
-          `Capability policy declares duplicate rule for ${rule.capability}`
-        )
-      );
-    }
-    seenCapabilities.add(rule.capability);
-  }
-
-  return diagnostics;
-}
-
 function validateSurfaceChannelActionPolicySemantics(
   policy: CubicaSurfaceChannelActionPolicy
 ): CubicaContractDiagnostic[] {
@@ -2560,10 +2417,6 @@ function validateSurfaceChannelActionPolicySemantics(
   }
 
   return diagnostics;
-}
-
-function capabilityRuleAllowsEffect(rule: CubicaAgentCapabilityRule, effect: CubicaAgentStateEffect): boolean {
-  return rule.effectKinds.includes(effect.kind) && rule.targetPathPrefixes.some((prefix) => pathMatchesPrefix(effect.target, prefix));
 }
 
 function validateSurfaceComponentContributionSemantics(
@@ -2645,6 +2498,16 @@ function validateSurfaceComponentContributionSemantics(
 function validateAgentTurnEventLogEntrySemantics(entry: CubicaAgentTurnEventLogEntry): CubicaContractDiagnostic[] {
   const diagnostics: CubicaContractDiagnostic[] = [];
 
+  if (entry.status === "accepted" && entry.selectedActionId === undefined) {
+    diagnostics.push(
+      makeDiagnostic(
+        "acceptedTurnMissingSelectedIntent",
+        "/selectedActionId",
+        "Accepted Agent Turn event log entries must record the selected gameplay intent"
+      )
+    );
+  }
+
   if (entry.status === "accepted" && entry.rejectionReason !== undefined) {
     diagnostics.push(
       makeDiagnostic(
@@ -2675,12 +2538,12 @@ function validateAgentTurnEventLogEntrySemantics(entry: CubicaAgentTurnEventLogE
     );
   }
 
-  if (entry.status === "rejected" && entry.effectCount !== 0) {
+  if (entry.status === "rejected" && entry.selectedActionId !== undefined) {
     diagnostics.push(
       makeDiagnostic(
-        "rejectedTurnHasEffects",
-        "/effectCount",
-        "Rejected Agent Turn event log entries must not record accepted effects"
+        "rejectedTurnHasSelectedIntent",
+        "/selectedActionId",
+        "Rejected Agent Turn event log entries must not record a selected gameplay intent"
       )
     );
   }
@@ -2724,10 +2587,6 @@ function getCatalogSupport(
   catalog: CubicaSurfaceCatalog = defaultCubicaSurfaceCatalog
 ): CubicaSurfaceChannelSupport | undefined {
   return toCatalogMap(catalog).get(componentKind)?.channelSupport[channel];
-}
-
-function pathMatchesPrefix(path: string, prefix: string): boolean {
-  return path === prefix || path.startsWith(`${prefix}.`) || path.startsWith(`${prefix}/`);
 }
 
 function componentToTelegramText(component: CubicaSurfaceComponent): string | undefined {

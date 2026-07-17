@@ -5,8 +5,8 @@
 - **Авторы**: Codex
 - **Компоненты**: Runtime API, Player Web, Game Manifests, Agent Runtime, AI Contracts, Cubica Surface, Portal, Session State
 - **Связанные решения**: ADR-001, ADR-003, ADR-004, ADR-025, ADR-029, ADR-040, ADR-043, ADR-044, ADR-045, ADR-084
-- **Целевой изменяющий контракт уточнён ADR-084:** прямые agent effects и
-  patches являются legacy; долговременное изменение проходит через
+- **Изменяющий контракт заменён ADR-084:** прямые agent effects и patches
+  удалены; долговременное изменение проходит через
   schema-validated outcome → опубликованный Game Intent → Mechanics IR
 
 ## Оглавление
@@ -30,13 +30,13 @@
 
 ## 2. Контекст
 
-Текущий canonical slice исполняет `Antarctica` and `simple-choice` детерминированно: manifest actions, deterministic handlers, session state and player-facing content projection. Это остаётся важным baseline, потому он даёт проверяемость, воспроизводимость и запуск без LLM-инфраструктуры.
+Текущий canonical slice исполняет `Antarctica` и `simple-choice` воспроизводимо: опубликованные Game Intents проходят через типизированный Mechanics IR, состояние сессии и безопасную player-facing projection. Это остаётся важным baseline, потому что он даёт проверяемость, воспроизводимость и запуск без LLM-инфраструктуры.
 
 При этом целевая LLM-first архитектура проекта уже предполагала, что LLM может выступать игровым движком. ADR-045 добавил Cubica Surface как внутренний декларативный контракт для UI-поверхностей, которые могут генерироваться агентом. Нужно явно связать эти идеи с runtime: некоторые игры должны иметь право объявить agent runtime обязательной частью игрового исполнения.
 
 ## 3. Термины
 
-- **Deterministic game** - игра, где состояние меняется только через манифест, deterministic handlers and runtime API без обязательного обращения к ИИ-агенту.
+- **Deterministic game** - игра, где состояние меняется только через опубликованные Game Intents, Mechanics IR и Runtime API без обязательного обращения к ИИ-агенту.
 - **AI-driven game** - игра, где ИИ-агент является обязательной частью runtime: он получает контекст сессии, принимает или предлагает ход, возвращает состояние, UI-поверхность and available actions.
 - **Hybrid game** - игра, где часть хода исполняется deterministic-механиками, а часть шагов явно делегируется агенту.
 - **Agent Runtime** - backend-граница, которая исполняет agent turn: вызывает модель или локального агента, применяет политики, вызывает разрешённые инструменты and возвращает структурированный результат.
@@ -102,7 +102,7 @@ Cubica вводит AI-driven game runtime mode как first-class platform capa
    agent-selected IR, effect kinds and state paths are forbidden.
 7. Deterministic games and deterministic paths must keep working without Agent Runtime.
 8. AI-driven games must declare failure policy before publish or launch.
-9. `state.secret` exposure to agents must be role-scoped and manifest/policy controlled.
+9. Текущий безопасный профиль Agent Runtime передаёт player-facing public state и фиксированную проекцию `/meta` + `/actions`, но не передаёт `state.secret`. Расширение профиля требует одновременно schema-first контракта, role-scoped projector и тестов отсутствия утечек; одно новое значение enum без проектора запрещено.
 10. Replay/audit metadata is mandatory for production AI-driven sessions.
 
 ## 6. Границы по слоям
@@ -126,7 +126,7 @@ Runtime API owns:
 - session state and event log;
 - agent-turn orchestration boundary;
 - validation of agent outputs;
-- persistence of accepted effects;
+- атомарная фиксация выбранного Game Intent, его Mechanics-событий и квитанции;
 - readiness status for required Agent Runtime.
 
 Runtime API does not own:
@@ -202,7 +202,7 @@ Positive:
 
 Costs and risks:
 
-- Runtime contracts become more complex because they must represent agent turns and validated agent effects.
+- Runtime contracts become more complex because they must represent agent turns and schema-validated Game Intent selection.
 - Launch readiness must include Agent Runtime configuration for AI-driven games.
 - AI-driven sessions need stronger observability, cost controls, rate limits and failure handling.
 - Authoring tools must help designers choose execution mode and failure policy.

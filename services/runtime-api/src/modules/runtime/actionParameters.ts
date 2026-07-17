@@ -3,7 +3,8 @@
  * resource references. JSON Schema owns the accepted shape; the imperative
  * reference lookup only enforces live-state invariants JSON Schema cannot see.
  */
-import AjvLib, { type ValidateFunction } from "ajv";
+import Ajv2020Lib from "ajv/dist/2020.js";
+import type { ValidateFunction } from "ajv";
 import type {
   RuntimeManifestActionDefinition,
   RuntimeResolvedReference
@@ -17,9 +18,12 @@ type AjvConstructor = new (options?: Record<string, unknown>) => {
   addKeyword: (definition: Record<string, unknown>) => void;
   compile: (schema: unknown) => ValidateFunction;
 };
-const Ajv = (AjvLib as unknown as { default?: AjvConstructor }).default ??
-  (AjvLib as unknown as AjvConstructor);
-const ajv = new Ajv({ allErrors: true, strict: true, strictRequired: false });
+const Ajv2020 = (Ajv2020Lib as unknown as { default?: AjvConstructor }).default ??
+  (Ajv2020Lib as unknown as AjvConstructor);
+// Parameter schemas are part of the Game Intent 2020-12 contract. Keeping a
+// dedicated strict validator prevents accidental mixing with draft-07 manifest
+// schemas and rejects every undeclared schema keyword at compilation time.
+const ajv = new Ajv2020({ allErrors: true, strict: true });
 // `x-cubica-ref` is a schema annotation. Ajv validates its schema when the
 // manifest loads; live object existence is checked below against session state.
 ajv.addKeyword({ keyword: "x-cubica-ref", schemaType: "object", valid: true });
@@ -52,10 +56,15 @@ export const validateActionParameters = (
 ): Record<string, unknown> => {
   const schema = definition.paramsSchema;
   if (!schema) {
-    if (inputParams !== undefined) {
+    const params = inputParams ?? {};
+    // The public command envelope always carries `params`. For older or
+    // hand-built definitions that omit paramsSchema, absence means the same
+    // strict empty-object schema the compiler now materializes—not that any
+    // caller-supplied field is accepted.
+    if (Object.keys(params).length > 0) {
       throw new RequestValidationError(`Action "${definition.actionId}" does not accept params`);
     }
-    return {};
+    return params;
   }
 
   const params = inputParams ?? {};

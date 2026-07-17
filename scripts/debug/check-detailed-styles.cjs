@@ -1,37 +1,26 @@
 const { chromium } = require("playwright");
+const { createBrowserBffSessionClient } = require("./runtime-command-client.cjs");
 
-const runtimeUrl = "http://localhost:3001";
 const draftUrl = "http://localhost:3000/?fixture=journal";
 const targetUrl = "http://localhost:3003";
 
-async function createSession() {
-  const createRes = await fetch(`${runtimeUrl}/sessions`, {
-    method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ gameId: "antarctica", playerId: "test-player" })
-  });
-  const session = await createRes.json();
+async function createSession(page) {
+  const runtime = await createBrowserBffSessionClient(page, "antarctica");
   const infoAdvances = [
     "opening.info.i0.advance", "opening.info.i02.advance", "opening.info.i03.advance",
     "opening.info.i1.advance", "opening.info.i2.advance", "opening.info.i3.advance",
     "opening.info.i4.advance", "opening.info.i5.advance", "opening.info.i6.advance"
   ];
   for (const actionId of infoAdvances) {
-    await fetch(`${runtimeUrl}/actions`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.sessionId, playerId: "test-player", actionId, payload: {} })
-    });
+    await runtime.dispatch(actionId);
   }
   for (const actionId of ["opening.card.1", "opening.card.2"]) {
-    await fetch(`${runtimeUrl}/actions`, {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: session.sessionId, playerId: "test-player", actionId, payload: {} })
-    });
+    await runtime.dispatch(actionId);
   }
-  return session.sessionId;
+  return runtime.sessionId;
 }
 
 (async () => {
-  const sessionId = await createSession();
   const browser = await chromium.launch({ headless: true });
 
   const draftPage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
@@ -39,7 +28,8 @@ async function createSession() {
   await draftPage.waitForTimeout(3000);
 
   const targetPage = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  await targetPage.goto(targetUrl);
+  await targetPage.goto(targetUrl, { waitUntil: "networkidle" });
+  const sessionId = await createSession(targetPage);
   await targetPage.evaluate((sid) => { localStorage.setItem('cubica-antarctica-session-id', sid); }, sessionId);
   await targetPage.reload({ waitUntil: "networkidle" });
   await targetPage.waitForTimeout(3000);

@@ -53,7 +53,6 @@ const stableLiteralKeys = new Set([
   "method",
   "mode",
   "scope",
-  "templateId",
   "type",
   "variant"
 ]);

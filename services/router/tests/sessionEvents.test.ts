@@ -9,64 +9,66 @@
  */
 
 import {
-  SessionEvent,
-  SessionEventQueuePort,
-  SessionEventStatus,
+  SessionCommandQueueItem,
+  SessionCommandQueuePort,
+  SessionCommandQueueStatus,
   SessionId,
-  PlayerId,
+  SessionPrincipalId,
   SessionStateRepositoryPort,
   SessionStateVersion,
 } from '../src/sessionEvents';
 
-function createDummyEvent(sessionId: SessionId, playerId: PlayerId): SessionEvent {
+function createDummyCommand(sessionId: SessionId, principalId: SessionPrincipalId): SessionCommandQueueItem {
   const now = new Date();
-  const status: SessionEventStatus = 'pending';
+  const status: SessionCommandQueueStatus = 'pending';
 
   return {
-    id: 'event-1',
+    id: 'command-item-1',
     sessionId,
-    playerId,
+    principalId,
     sequence: 1,
+    commandId: 'cli_0000000000000000000001',
     actionId: 'test_action',
-    payload: { value: 42 },
+    expectedStateVersion: 0,
+    params: { value: 42 },
     status,
     attempts: 0,
     createdAt: now,
   };
 }
 
-class InMemoryQueue implements SessionEventQueuePort {
-  private events: SessionEvent[] = [];
+class InMemoryQueue implements SessionCommandQueuePort {
+  private commands: SessionCommandQueueItem[] = [];
 
-  async enqueue(eventInput: Omit<SessionEvent, 'id' | 'sequence' | 'status' | 'attempts' | 'createdAt'>): Promise<SessionEvent> {
-    const sequence = this.events.length + 1;
+  async enqueue(commandInput: Omit<SessionCommandQueueItem, 'id' | 'sequence' | 'status' | 'attempts' | 'createdAt'>): Promise<SessionCommandQueueItem> {
+    const sequence = this.commands.length + 1;
     const createdAt = new Date();
-    const event: SessionEvent = {
-      id: `event-${sequence}`,
+    const command: SessionCommandQueueItem = {
+      id: `command-item-${sequence}`,
       sequence,
       status: 'pending',
       attempts: 0,
       createdAt,
-      ...eventInput,
+      ...commandInput,
     };
-    this.events.push(event);
-    return event;
+    this.commands.push(command);
+    return command;
   }
 
-  async acquireNextPending(sessionId: SessionId): Promise<SessionEvent | null> {
-    const event = this.events.find((e) => e.sessionId === sessionId && e.status === 'pending');
-    if (!event) {
+  async acquireNextPending(sessionId: SessionId): Promise<SessionCommandQueueItem | null> {
+    const command = this.commands.find((item) => item.sessionId === sessionId && item.status === 'pending');
+    if (!command) {
       return null;
     }
-    event.status = 'processing';
-    return event;
+    command.status = 'processing';
+    return command;
   }
 
-  async updateStatus(eventId: string, status: SessionEventStatus): Promise<void> {
-    const event = this.events.find((e) => e.id === eventId);
-    if (event) {
-      event.status = status;
-      event.processedAt = new Date();
+  async updateStatus(itemId: string, status: SessionCommandQueueStatus): Promise<void> {
+    const command = this.commands.find((item) => item.id === itemId);
+    if (command) {
+      command.status = status;
+      command.processedAt = new Date();
     }
   }
 }
@@ -87,17 +89,17 @@ class InMemorySessionStateRepository implements SessionStateRepositoryPort {
     return this.state.get(sessionId)!;
   }
 
-  async applyEventDelta(params: {
+  async applyCommandDelta(params: {
     sessionId: SessionId;
     expectedVersion: SessionStateVersion;
     delta: unknown;
-    event: SessionEvent;
+    command: SessionCommandQueueItem;
   }): Promise<SessionStateVersion> {
     const current = await this.getState(params.sessionId);
     const nextVersion: SessionStateVersion = {
       sessionId: params.sessionId,
       stateVersion: current.version.stateVersion + 1,
-      lastEventSequence: params.event.sequence,
+      lastEventSequence: params.command.sequence,
     };
     this.state.set(params.sessionId, { state: params.delta, version: nextVersion });
     return nextVersion;
@@ -110,13 +112,15 @@ async function smokeTest() {
   const repository = new InMemorySessionStateRepository();
 
   const sessionId: SessionId = 'session-1';
-  const playerId: PlayerId = 'player-1';
+  const principalId: SessionPrincipalId = 'principal-1';
 
   const enqueued = await queue.enqueue({
     sessionId,
-    playerId,
+    principalId,
+    commandId: 'cli_0000000000000000000001',
     actionId: 'test_action',
-    payload: { value: 42 },
+    expectedStateVersion: 0,
+    params: { value: 42 },
   });
 
   const next = await queue.acquireNextPending(sessionId);
@@ -125,11 +129,11 @@ async function smokeTest() {
   }
 
   const currentState = await repository.getState(sessionId);
-  const nextVersion = await repository.applyEventDelta({
+  const nextVersion = await repository.applyCommandDelta({
     sessionId,
     expectedVersion: currentState.version,
     delta: { applied: true },
-    event: next,
+    command: next,
   });
 
   if (nextVersion.stateVersion !== 1 || nextVersion.lastEventSequence !== next.sequence) {
@@ -143,4 +147,3 @@ smokeTest().catch((error) => {
   // eslint-disable-next-line no-console
   console.error('SessionEvents smoke test failed', error);
 });
-

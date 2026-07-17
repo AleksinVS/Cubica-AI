@@ -11,6 +11,10 @@
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
+const {
+  MODULE_REGISTRY,
+  OPERATION_MODULES
+} = require("../manifest-tools/mechanics-modules.cjs");
 
 const REPO_ROOT = path.resolve(__dirname, "../..");
 const DEFAULT_LEGACY_PATH = path.join(REPO_ROOT, "draft/Antarctica/GameFull.html");
@@ -30,6 +34,15 @@ const INTENTIONAL_MANIFEST_EXTRAS = new Map([
   ["cards:23", ["3902"]],
   ["info:35", ["i19_1"]]
 ]);
+const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/u;
+const ANTARCTICA_MECHANICS_OPERATIONS = [
+  "core.assert",
+  "core.collection.append",
+  "core.entity.facet.set",
+  "core.event.emit",
+  "core.number.add",
+  "core.state.patch"
+];
 
 function parseArgs(argv) {
   const options = {
@@ -325,20 +338,51 @@ function indexByStep(items) {
   return index;
 }
 
-function readActionProvenanceStep(action) {
-  const provenance = action?.deterministic?.provenance;
-  if (!Array.isArray(provenance)) return null;
-  const first = provenance.find((entry) => typeof entry?.stepIndex === "number");
-  return first ? first.stepIndex : null;
+/**
+ * Reads the timeline precondition from an immutable Mechanics plan.
+ *
+ * The previous payload carried separate source metadata. Mechanics IR makes the
+ * actual executable precondition the authoritative source, so parity cannot
+ * diverge from the rule that runtime enforces.
+ */
+function readPlanTimelineStepIndex(plan) {
+  const assertion = plan?.transaction?.steps?.find((step) => step?.op === "core.assert");
+  return findComparedTimelineStep(assertion?.predicate);
+}
+
+function findComparedTimelineStep(predicate) {
+  if (!predicate || typeof predicate !== "object") return null;
+  if (
+    predicate.op === "predicate.compare" &&
+    predicate.operator === "eq" &&
+    predicate.left?.op === "value.state" &&
+    predicate.left?.ref?.endpoint === "public.timeline.stepIndex" &&
+    predicate.right?.op === "value.literal" &&
+    typeof predicate.right?.value === "number"
+  ) {
+    return predicate.right.value;
+  }
+  if (Array.isArray(predicate.items)) {
+    for (const item of predicate.items) {
+      const found = findComparedTimelineStep(item);
+      if (found !== null) return found;
+    }
+  }
+  return predicate.item ? findComparedTimelineStep(predicate.item) : null;
 }
 
 function buildManifestProjection(manifest) {
-  const antarctica = manifest.content?.antarctica ?? {};
-  const boards = toArray(antarctica.boards);
-  const infos = toArray(antarctica.infos);
-  const cards = toArray(antarctica.cards);
-  const teamSelections = toArray(antarctica.teamSelections);
+  // Compiled game-owned content lives under the generic `content.data`
+  // boundary. The parity tool must read the same published projection as the
+  // player plugin; looking for a game-named wrapper would silently compare the
+  // legacy prototype with empty arrays after authoring compilation.
+  const gameContent = manifest.content?.data ?? {};
+  const boards = toArray(gameContent.boards);
+  const infos = toArray(gameContent.infos);
+  const cards = toArray(gameContent.cards);
+  const teamSelections = toArray(gameContent.teamSelections);
   const actions = manifest.actions ?? {};
+  const mechanics = manifest.mechanics ?? {};
 
   return {
     initialMetrics: manifest.state?.public?.metrics ?? {},
@@ -347,6 +391,7 @@ function buildManifestProjection(manifest) {
     cards,
     teamSelections,
     actions,
+    mechanics,
     indexes: {
       boardsByStep: indexByStep(boards),
       infosByStep: indexByStep(infos),
@@ -414,12 +459,120 @@ function compareInitialMetrics(legacyMetrics, manifestMetrics) {
   }));
 }
 
+function collectPlanContractReferences(value, references, pointer = "") {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => collectPlanContractReferences(item, references, `${pointer}/${index}`));
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+  if (typeof value.endpoint === "string") {
+    references.endpoints.set(value.endpoint, pointer);
+  }
+  if (typeof value.collection === "string") {
+    references.collections.set(value.collection, pointer);
+  }
+  if (typeof value.eventType === "string") {
+    references.events.set(value.eventType, pointer);
+  }
+  for (const [key, child] of Object.entries(value)) {
+    collectPlanContractReferences(child, references, `${pointer}/${key}`);
+  }
+}
+
+function inspectMechanicsContract(manifestProjection) {
+  const mechanics = manifestProjection.mechanics;
+  const plans = mechanics.plans ?? {};
+  const stateModel = mechanics.stateModel ?? {};
+  const bindingIssues = [];
+  const identityIssues = [];
+  const moduleLockIssues = [];
+  const stateModelIssues = [];
+  const operationIds = new Set();
+  const references = {
+    endpoints: new Map(),
+    collections: new Map(),
+    events: new Map()
+  };
+
+  if (mechanics.apiVersion !== "cubica.dev/mechanics/v1alpha1") {
+    identityIssues.push({ field: "apiVersion", actual: mechanics.apiVersion ?? null });
+  }
+
+  for (const [actionId, action] of Object.entries(manifestProjection.actions)) {
+    if (action?.binding?.kind !== "mechanics-plan" || action.binding.planRef !== actionId || !plans[actionId]) {
+      bindingIssues.push({ actionId, binding: action?.binding ?? null });
+      continue;
+    }
+    if (!SHA256_PATTERN.test(action.definitionHash ?? "")) {
+      identityIssues.push({ actionId, field: "definitionHash" });
+    }
+    if (!SHA256_PATTERN.test(plans[actionId].planHash ?? "")) {
+      identityIssues.push({ actionId, field: "planHash" });
+    }
+  }
+
+  for (const [planId, plan] of Object.entries(plans)) {
+    collectPlanContractReferences(plan, references, `/mechanics/plans/${planId}`);
+    for (const step of plan?.transaction?.steps ?? []) {
+      operationIds.add(step.op);
+      const moduleId = OPERATION_MODULES.get(step.op);
+      const descriptor = moduleId ? MODULE_REGISTRY.get(moduleId) : null;
+      const lock = moduleId ? mechanics.moduleLock?.[moduleId] : null;
+      if (!descriptor || !lock) {
+        moduleLockIssues.push({ planId, stepId: step.id, operation: step.op, reason: "operation is not locked" });
+        continue;
+      }
+      if (
+        lock.moduleId !== descriptor.moduleId ||
+        lock.moduleVersion !== descriptor.moduleVersion ||
+        lock.artifactHash !== descriptor.artifactHash ||
+        JSON.stringify(lock.algorithmVersions ?? {}) !== JSON.stringify(descriptor.algorithmVersions)
+      ) {
+        moduleLockIssues.push({ planId, stepId: step.id, operation: step.op, reason: "lock identity mismatch" });
+      }
+    }
+  }
+
+  for (const planId of Object.keys(plans)) {
+    if (!manifestProjection.actions[planId]) {
+      bindingIssues.push({ planId, reason: "plan has no exactly matching published action" });
+    }
+  }
+
+  for (const [endpoint, pointer] of references.endpoints) {
+    if (!stateModel.endpoints?.[endpoint]) stateModelIssues.push({ kind: "endpoint", id: endpoint, pointer });
+  }
+  for (const [collection, pointer] of references.collections) {
+    if (!stateModel.collections?.[collection]) stateModelIssues.push({ kind: "collection", id: collection, pointer });
+  }
+  for (const [eventType, pointer] of references.events) {
+    if (!stateModel.events?.[eventType]) stateModelIssues.push({ kind: "event", id: eventType, pointer });
+  }
+
+  const sortedOperationIds = [...operationIds].sort();
+  if (JSON.stringify(sortedOperationIds) !== JSON.stringify(ANTARCTICA_MECHANICS_OPERATIONS)) {
+    moduleLockIssues.push({
+      reason: "unexpected Antarctica operation vocabulary",
+      expected: ANTARCTICA_MECHANICS_OPERATIONS,
+      actual: sortedOperationIds
+    });
+  }
+
+  return {
+    apiVersion: mechanics.apiVersion ?? null,
+    operationIds: sortedOperationIds,
+    bindingIssues,
+    identityIssues,
+    moduleLockIssues,
+    stateModelIssues
+  };
+}
+
 function inspectManifestActions(manifestProjection) {
   const actionIds = Object.keys(manifestProjection.actions);
-  const missingDeterministic = actionIds.filter((id) => !manifestProjection.actions[id].deterministic);
   const missingSelectActions = [];
   const missingAdvanceActions = [];
-  const boardStepProvenanceMismatches = [];
+  const boardStepPlanMismatches = [];
 
   for (const card of manifestProjection.cards) {
     if (card.selectActionId && !manifestProjection.actions[card.selectActionId]) {
@@ -434,14 +587,17 @@ function inspectManifestActions(manifestProjection) {
     for (const cardId of board.cardIds ?? []) {
       const card = manifestProjection.cards.find((entry) => String(entry.cardId) === String(cardId));
       const action = card?.selectActionId ? manifestProjection.actions[card.selectActionId] : null;
-      const provenanceStepIndex = readActionProvenanceStep(action);
-      if (typeof provenanceStepIndex === "number" && provenanceStepIndex !== board.stepIndex) {
-        boardStepProvenanceMismatches.push({
+      const plan = action?.binding?.planRef
+        ? manifestProjection.mechanics.plans?.[action.binding.planRef]
+        : null;
+      const planStepIndex = readPlanTimelineStepIndex(plan);
+      if (typeof planStepIndex === "number" && planStepIndex !== board.stepIndex) {
+        boardStepPlanMismatches.push({
           boardId: board.id,
           boardStepIndex: board.stepIndex,
           cardId: String(cardId),
           selectActionId: card?.selectActionId ?? null,
-          provenanceStepIndex
+          planStepIndex
         });
       }
     }
@@ -449,10 +605,10 @@ function inspectManifestActions(manifestProjection) {
 
   return {
     actionCount: actionIds.length,
-    missingDeterministic,
     missingSelectActions,
     missingAdvanceActions,
-    boardStepProvenanceMismatches
+    boardStepPlanMismatches,
+    mechanics: inspectMechanicsContract(manifestProjection)
   };
 }
 
@@ -462,7 +618,11 @@ function buildSummary(report) {
   const actionIssues =
     report.comparisons.actions.missingSelectActions.length +
     report.comparisons.actions.missingAdvanceActions.length +
-    report.comparisons.actions.boardStepProvenanceMismatches.length;
+    report.comparisons.actions.boardStepPlanMismatches.length +
+    report.comparisons.actions.mechanics.bindingIssues.length +
+    report.comparisons.actions.mechanics.identityIssues.length +
+    report.comparisons.actions.mechanics.moduleLockIssues.length +
+    report.comparisons.actions.mechanics.stateModelIssues.length;
 
   return {
     legacyBlockCount: report.legacy.mainLineBlocks.length,
@@ -480,18 +640,18 @@ function buildSummary(report) {
 function findFinalTail(comparisons, actionComparison) {
   const step34 = comparisons.timeline.find((entry) => entry.kind === "cards" && entry.stepIndex === 34);
   const step36 = comparisons.timeline.find((entry) => entry.kind === "cards" && entry.stepIndex === 36);
-  const provenanceMismatchIds = new Set(
-    actionComparison.boardStepProvenanceMismatches.map((entry) => String(entry.cardId))
+  const planMismatchIds = new Set(
+    actionComparison.boardStepPlanMismatches.map((entry) => String(entry.cardId))
   );
 
   return {
     status:
-      step34?.status === "mismatch" || step36?.status === "mismatch" || provenanceMismatchIds.has("69") || provenanceMismatchIds.has("70")
+      step34?.status === "mismatch" || step36?.status === "mismatch" || planMismatchIds.has("69") || planMismatchIds.has("70")
         ? "mismatch"
         : "match",
     step34,
     step36,
-    boardStepProvenanceMismatches: actionComparison.boardStepProvenanceMismatches.filter((entry) =>
+    boardStepPlanMismatches: actionComparison.boardStepPlanMismatches.filter((entry) =>
       ["67", "68", "69", "70"].includes(String(entry.cardId))
     ),
     note:
@@ -534,10 +694,11 @@ function renderMarkdown(report) {
       (entry) =>
         `- step ${entry.stepIndex} ${entry.kind}: legacy [${entry.legacyIds.join(", ")}], manifest [${entry.manifestIds.join(", ")}]`
     );
-  const provenanceLines = report.comparisons.actions.boardStepProvenanceMismatches.map(
+  const planStepLines = report.comparisons.actions.boardStepPlanMismatches.map(
     (entry) =>
-      `- card ${entry.cardId}: board ${entry.boardId} step ${entry.boardStepIndex}, action provenance step ${entry.provenanceStepIndex}`
+      `- card ${entry.cardId}: board ${entry.boardId} step ${entry.boardStepIndex}, Mechanics plan requires step ${entry.planStepIndex}`
   );
+  const mechanics = report.comparisons.actions.mechanics;
 
   return [
     "# Antarctica Manifest Parity Report",
@@ -553,15 +714,23 @@ function renderMarkdown(report) {
     `- Timeline mismatches: ${report.summary.timelineMismatchCount}`,
     `- Metric mismatches: ${report.summary.metricMismatchCount}`,
     `- Action issues: ${report.summary.actionIssueCount}`,
+    `- Mechanics operations: ${mechanics.operationIds.join(", ")}`,
     `- Final tail status: ${report.summary.finalTailStatus.status}`,
     "",
     "## Timeline Mismatches",
     "",
     ...(mismatchLines.length ? mismatchLines : ["- None"]),
     "",
-    "## Board Step Provenance Mismatches",
+    "## Board and Mechanics Plan Step Mismatches",
     "",
-    ...(provenanceLines.length ? provenanceLines : ["- None"]),
+    ...(planStepLines.length ? planStepLines : ["- None"]),
+    "",
+    "## Mechanics Contract Issues",
+    "",
+    `- Binding issues: ${mechanics.bindingIssues.length}`,
+    `- Hash identity issues: ${mechanics.identityIssues.length}`,
+    `- Module lock issues: ${mechanics.moduleLockIssues.length}`,
+    `- State model reference issues: ${mechanics.stateModelIssues.length}`,
     "",
     "## Final Tail Finding",
     "",

@@ -29,20 +29,7 @@
                 "type": "helperComponent",
                 "id": "telegram-intro",
                 "props": {
-                  "text": "Telegram UI manifest (MVP): кнопки диспатчат команды, метрики читаются из game.state.public.metrics.*."
-                }
-              },
-              {
-                "type": "buttonComponent",
-                "id": "telegram-request",
-                "props": {
-                  "caption": "Действие: requestServer"
-                },
-                "actions": {
-                  "onClick": {
-                    "command": "requestServer",
-                    "payload": {}
-                  }
+                  "text": "Telegram UI manifest (MVP): метрики читаются из game.state.public.metrics.*; игровые кнопки добавляются только с опубликованными Game Intents."
                 }
               }
             ]

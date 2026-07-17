@@ -33,6 +33,44 @@ export class SessionStoreUnavailableError extends HttpError {
 }
 
 /**
+ * Generic snapshot writes must not fabricate or skip protected event ids.
+ *
+ * Only `withCommandTransaction` owns the event ledger and may advance its
+ * cursor together with the exact committed event rows. Editor restore and
+ * other trusted snapshot updates can advance `stateVersion`, but preserve the
+ * ledger cursor verbatim.
+ */
+export function assertProtectedEventSequenceUnchanged<TState>(
+  current: SessionRecord<TState>,
+  updated: SessionRecord<TState>
+): void {
+  if (updated.version.lastEventSequence !== current.version.lastEventSequence) {
+    throw new SessionStoreUnavailableError();
+  }
+}
+
+/** Missing or invalid session credential; callers must not infer membership. */
+export class SessionAuthenticationError extends HttpError {
+  constructor() {
+    super(401, "A valid Bearer credential is required for this session.", "SESSION_AUTHENTICATION_REQUIRED");
+  }
+}
+
+/** The authenticated principal is not permitted to perform the requested operation. */
+export class SessionAuthorizationError extends HttpError {
+  constructor() {
+    super(403, "The authenticated session principal is not allowed to perform this operation.", "SESSION_FORBIDDEN");
+  }
+}
+
+/** One command identity cannot be rebound to different command contents. */
+export class CommandIdReusedError extends HttpError {
+  constructor(commandId: string) {
+    super(409, `Command "${commandId}" was already accepted with different contents.`, "COMMAND_ID_REUSED");
+  }
+}
+
+/**
  * A durable snapshot version always advances exactly once.
  *
  * Rewinding gameplay is represented by older state/event content in a new

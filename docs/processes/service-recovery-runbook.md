@@ -48,8 +48,10 @@
    RUNTIME_API_URL=http://127.0.0.1:3001 \
      npm run build --workspace @cubica/player-web
    ```
-   `RUNTIME_API_URL` запекается в rewrites на этапе сборки — задайте тот же URL,
-   что будет у runtime-api в проде.
+   Передавайте тот же `RUNTIME_API_URL`, что будет у runtime-api в проде:
+   серверная загрузка игрового содержимого использует этот адрес. Браузерные
+   runtime-запросы проходят только через явные защищённые обработчики
+   `player-web`; общего прокси-пути для `/api/runtime/*` нет.
 3. Для рабочего запуска `runtime-api` доступна PostgreSQL, заданы
    `SESSION_STORE=postgresql` и `DATABASE_URL`, а миграция сессий применена:
    ```bash
@@ -177,8 +179,9 @@ npm run ops:supervise >> /var/log/cubica/supervisor.log 2>&1
 | `DATABASE_URL` | строка подключения PostgreSQL | обязательна для `postgresql` |
 
 `player-web` получает `RUNTIME_API_URL=http://127.0.0.1:<RUNTIME_API_PORT>`
-автоматически. Тот же URL должен использоваться при сборке `player-web` (см.
-Предусловия), иначе rewrites будут указывать не туда.
+автоматически. Тот же URL следует использовать при сборке `player-web` (см.
+Предусловия), чтобы серверная загрузка содержимого и рабочий запуск обращались
+к одному runtime-api.
 
 ## Проверка состояния
 

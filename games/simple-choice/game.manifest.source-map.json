@@ -639,12 +639,6 @@
         "pointer": "/root/logic/actions/0/id"
       }
     ],
-    "/actions/choice.accept/handlerType": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/handlerType"
-      }
-    ],
     "/actions/choice.accept/capabilityFamily": [
       {
         "file": "games/simple-choice/authoring/game.authoring.json",
@@ -663,418 +657,3094 @@
         "pointer": "/root/logic/actions/0/displayName"
       }
     ],
-    "/actions/choice.accept/deterministic": [
+    "/actions/choice.accept/binding": [
       {
         "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic"
+        "pointer": "/root/logic/actions/0/binding"
       }
     ],
-    "/actions/choice.accept/deterministic/guard": [
+    "/actions/choice.accept/binding/kind": [
       {
         "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard"
+        "pointer": "/root/logic/actions/0/binding/kind"
       }
     ],
-    "/actions/choice.accept/deterministic/guard/timeline": [
+    "/actions/choice.accept/binding/planRef": [
       {
         "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/timeline"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/timeline/line": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/timeline/line"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/timeline/stepIndex": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/timeline/stepIndex"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/timeline/canAdvance": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/timeline/canAdvance"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/visibility": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/visibility"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/collection": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/collection"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/objectId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/objectId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/objectType": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/objectType"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/facets": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/facets"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/facets/face": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/facets/face"
-      }
-    ],
-    "/actions/choice.accept/deterministic/guard/object/facets/availability": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/guard/object/facets/availability"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/0": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/0"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/0/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/0/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/0/metricId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/0/metricId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/0/delta": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/0/delta"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1/visibility": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1/visibility"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1/collection": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1/collection"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1/objectId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1/objectId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1/facet": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1/facet"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/1/value": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/1/value"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/visibility": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/visibility"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/collection": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/collection"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/objectId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/objectId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/patches/0": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/patches/0"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/patches/0/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/patches/0/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/patches/0/path": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/patches/0/path"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/patches/0/value": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/patches/0/value"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/2/patches": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/2/patches"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/visibility": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/visibility"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/collection": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/collection"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/objectId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/objectId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/objectType": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/objectType"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/facets": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/facets"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/facets/availability": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/facets/availability"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/attributes": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/attributes"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/attributes/id": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/attributes/id"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/attributes/title": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/attributes/title"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/3/attributes/amount": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/3/attributes/amount"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/4": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/4"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/4/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/4/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/4/canAdvance": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/4/canAdvance"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/4/stepIndex": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/4/stepIndex"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/4/screenId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/4/screenId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/4/activeInfoId": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/4/activeInfoId"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5/patches/0": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5/patches/0"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5/patches/0/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5/patches/0/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5/patches/0/path": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5/patches/0/path"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5/patches/0/value": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5/patches/0/value"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/5/patches": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/5/patches"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6/op": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6/op"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6/kind": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6/kind"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6/entityType": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6/entityType"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6/displayMode": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6/displayMode"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6/summary": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6/summary"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects/6/auditMetrics": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects/6/auditMetrics"
-      }
-    ],
-    "/actions/choice.accept/deterministic/effects": [
-      {
-        "file": "games/simple-choice/authoring/game.authoring.json",
-        "pointer": "/root/logic/actions/0/deterministic/effects"
+        "pointer": "/root/logic/actions/0/binding/planRef"
       }
     ],
     "/actions": [
       {
         "file": "games/simple-choice/authoring/game.authoring.json",
         "pointer": "/root/logic/actions"
+      }
+    ],
+    "/mechanics": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/apiVersion": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/apiVersion"
+      }
+    ],
+    "/mechanics/budgetProfile": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/budgetProfile"
+      }
+    ],
+    "/mechanics/stateModel": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel"
+      }
+    ],
+    "/mechanics/stateModel/types": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types"
+      }
+    ],
+    "/mechanics/stateModel/types/core.boolean": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.boolean"
+      }
+    ],
+    "/mechanics/stateModel/types/core.boolean/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.boolean/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer/minimum": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer/minimum"
+      }
+    ],
+    "/mechanics/stateModel/types/core.integer/maximum": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.integer/maximum"
+      }
+    ],
+    "/mechanics/stateModel/types/core.optional-string": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.optional-string"
+      }
+    ],
+    "/mechanics/stateModel/types/core.optional-string/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.optional-string/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.optional-string/itemType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.optional-string/itemType"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string-set": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string-set"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string-set/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string-set/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string-set/itemType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string-set/itemType"
+      }
+    ],
+    "/mechanics/stateModel/types/core.string-set/maxItems": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.string-set/maxItems"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/maxDepth": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/maxDepth"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/maxNodes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/maxNodes"
+      }
+    ],
+    "/mechanics/stateModel/types/core.bounded-json/maxUtf8Bytes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.bounded-json/maxUtf8Bytes"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/eventType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/eventType"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/eventType/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/audience": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/audience"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/audience/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/audience/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/audience/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/audience/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/summary": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/summary"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/summary/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/summary/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/summary/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/summary/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/data": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/data"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/data/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/data/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal-entry/fields/data/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal-entry/fields/data/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal/itemType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal/itemType"
+      }
+    ],
+    "/mechanics/stateModel/types/core.event-journal/maxItems": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.event-journal/maxItems"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-face-enum.1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-face-enum.1"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-face-enum.1/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-face-enum.1/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-face-enum.1/values/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-face-enum.1/values/0"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-face-enum.1/values/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-face-enum.1/values/1"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-face-enum.1/values": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-face-enum.1/values"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-availability-enum.2": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-availability-enum.2"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-availability-enum.2/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-availability-enum.2/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-availability-enum.2/values/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-availability-enum.2/values/0"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-availability-enum.2/values/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-availability-enum.2/values/1"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-availability-enum.2/values/2": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-availability-enum.2/values/2"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choices-availability-enum.2/values": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choices-availability-enum.2/values"
+      }
+    ],
+    "/mechanics/stateModel/types/game.resources-availability-enum.3": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.resources-availability-enum.3"
+      }
+    ],
+    "/mechanics/stateModel/types/game.resources-availability-enum.3/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.resources-availability-enum.3/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/game.resources-availability-enum.3/values/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.resources-availability-enum.3/values/0"
+      }
+    ],
+    "/mechanics/stateModel/types/game.resources-availability-enum.3/values/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.resources-availability-enum.3/values/1"
+      }
+    ],
+    "/mechanics/stateModel/types/game.resources-availability-enum.3/values": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.resources-availability-enum.3/values"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/kind/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/kind/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/kind/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/kind/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/entityType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/entityType"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/entityType/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/entityType/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/entityType/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/entityType/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/displayMode": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/displayMode"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/displayMode/typeRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/displayMode/typeRef"
+      }
+    ],
+    "/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/displayMode/optional": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/game.choice.accept.event.8-event-record.4/fields/displayMode/optional"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/kind"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/maxDepth": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/maxDepth"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/maxNodes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/maxNodes"
+      }
+    ],
+    "/mechanics/stateModel/types/core.player-projection-json/maxUtf8Bytes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/types/core.player-projection-json/maxUtf8Bytes"
+      }
+    ],
+    "/mechanics/stateModel/endpoints": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.line/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.line/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.stepIndex/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.stepIndex/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.canAdvance/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.canAdvance/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.metrics.score/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.metrics.score/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.step_index/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.step_index/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screenId/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screenId/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.screen_id/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.screen_id/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.timeline.activeInfoId/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.timeline.activeInfoId/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.choice.outcome/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.choice.outcome/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/public.log/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/public.log/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.choice/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.choice/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.flags/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.flags/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.log/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.log/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.metrics/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.metrics/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.objects/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.objects/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.timeline/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.timeline/usage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/valueType"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/access"
+      }
+    ],
+    "/mechanics/stateModel/endpoints/projection.public.ui/usage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/endpoints/projection.public.ui/usage"
+      }
+    ],
+    "/mechanics/stateModel/collections": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/capacity": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/capacity"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/stableKey": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/stableKey"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/itemTypes/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/itemTypes/0"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/itemTypes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/itemTypes"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/face": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/face"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/face/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/face/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/face/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/face/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/face/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/face/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/face/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/face/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/face/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/face/access"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/availability": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/availability"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/availability/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/availability/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/availability/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/availability/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/availability/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/availability/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/availability/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/availability/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/availability/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/availability/access"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/selectedAtStep": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/selectedAtStep"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/selectedAtStep/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/selectedAtStep/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/selectedAtStep/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/selectedAtStep/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/selectedAtStep/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/selectedAtStep/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/selectedAtStep/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/selectedAtStep/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/choices/fields/selectedAtStep/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/choices/fields/selectedAtStep/access"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/storage/root": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/storage/root"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/storage/segments/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/storage/segments/0"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/storage/segments/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/storage/segments/1"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/storage/segments": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/storage/segments"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/capacity": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/capacity"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/stableKey": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/stableKey"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/itemTypes/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/itemTypes/0"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/itemTypes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/itemTypes"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/availability": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/availability"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/availability/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/availability/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/availability/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/availability/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/availability/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/availability/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/availability/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/availability/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/availability/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/availability/access"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/id"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/id/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/id/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/id/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/id/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/id/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/id/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/id/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/id/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/id/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/id/access"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/title": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/title"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/title/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/title/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/title/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/title/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/title/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/title/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/title/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/title/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/title/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/title/access"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/amount": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/amount"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/amount/storage": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/amount/storage"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/amount/storage/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/amount/storage/kind"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/amount/storage/name": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/amount/storage/name"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/amount/valueType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/amount/valueType"
+      }
+    ],
+    "/mechanics/stateModel/collections/resources/fields/amount/access": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/collections/resources/fields/amount/access"
+      }
+    ],
+    "/mechanics/stateModel/events": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events"
+      }
+    ],
+    "/mechanics/stateModel/events/choice.accept.event.8": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/choice.accept.event.8"
+      }
+    ],
+    "/mechanics/stateModel/events/choice.accept.event.8/audienceRef": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/choice.accept.event.8/audienceRef"
+      }
+    ],
+    "/mechanics/stateModel/events/choice.accept.event.8/payloadType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/choice.accept.event.8/payloadType"
+      }
+    ],
+    "/mechanics/stateModel/events/choice.accept.event.8/journalEndpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/choice.accept.event.8/journalEndpoint"
+      }
+    ],
+    "/mechanics/stateModel/events/choice.accept.event.8/journalEndpoint/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/stateModel/events/choice.accept.event.8/journalEndpoint/endpoint"
+      }
+    ],
+    "/mechanics/plans": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans"
+      }
+    ],
+    "/mechanics/plans/choice.accept": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction"
+      }
+    ],
+    "/mechanics/moduleLock": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core/moduleId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core/moduleVersion": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/moduleLock/cubica.core/artifactHash": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/operator": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/left": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/left/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/left/ref": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/left/ref/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/right": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/right/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/0/right/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/operator": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/left": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/left/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/left/ref": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/left/ref/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/right": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/right/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/1/right/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/operator": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/left": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/left/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/left/ref": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/left/ref/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/right": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/right/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/2/right/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/entity": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/entity/collection": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/entity/entityId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/entity/entityId/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/entity/entityId/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/objectType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets/face": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets/face/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets/face/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets/availability": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets/availability/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/predicate/items/3/facets/availability/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/0/errorCode": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/0"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/delta": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/delta/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/1/delta/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/1"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/entity": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/entity/collection": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/entity/entityId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/entity/entityId/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/entity/entityId/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/facet": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/2/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/2"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/entity": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/entity/collection": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/entity/entityId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/entity/entityId/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/entity/entityId/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0/path": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0/path/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/3/patches/0/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/3"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/visibility": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/collection": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/entityId": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/entityId/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/entityId/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/objectType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/facets": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/facets/availability": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/facets/availability/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/facets/availability/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/id/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/id/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/title": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/title/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/title/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/amount": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/amount/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/4/attributes/amount/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/4"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/0/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/1/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/2/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/3/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/4/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/5/patches/5/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/5"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0/operation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0/target": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0/target/endpoint": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0/value/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/6/patches/0/value/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/6"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/id": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/eventType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/summary": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/summary/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/summary/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/audience": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/kind": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/kind/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/kind/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/entityType": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/entityType/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/entityType/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/displayMode": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/displayMode/op": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/data/displayMode/value": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/transaction/steps/7/auditMetrics": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept/transaction/steps/7"
+      }
+    ],
+    "/mechanics/plans/choice.accept/planHash": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/mechanics/plans/choice.accept"
+      }
+    ],
+    "/actions/choice.accept/paramsSchema": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/choice.accept/invocation": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
+      }
+    ],
+    "/actions/choice.accept/definitionHash": [
+      {
+        "file": "games/simple-choice/authoring/game.authoring.json",
+        "pointer": "/root/logic/actions/0"
       }
     ]
   }

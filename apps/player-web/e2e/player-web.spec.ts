@@ -49,15 +49,14 @@ test.describe("player-web e2e", () => {
   test("uses portal launch binding and stores a launch-scoped session id", async ({ page, request }) => {
     const sessionResponse = await request.post("/api/runtime/sessions", {
       data: {
-        gameId: "antarctica",
-        playerId: "player-web"
+        gameId: "antarctica"
       }
     });
     expect(sessionResponse.status()).toBe(201);
     const runtimeSession = await sessionResponse.json();
 
     let bindingPayload: Record<string, unknown> | null = null;
-    await page.route("**/api/launch-sessions/resolve/e2e-token/1/runtime-binding", async (route) => {
+    await page.route("**/api/portal/runtime-session", async (route) => {
       bindingPayload = route.request().postDataJSON() as Record<string, unknown>;
       await route.fulfill({
         status: 200,
@@ -77,8 +76,7 @@ test.describe("player-web e2e", () => {
 
     expect(bindingPayload).not.toBeNull();
     const postedBindingPayload = bindingPayload as unknown as Record<string, unknown>;
-    expect(postedBindingPayload.playerId).toBe("player-web");
-    expect(typeof postedBindingPayload.deviceToken).toBe("string");
+    expect(postedBindingPayload).toEqual({ token: "e2e-token", counter: "1" });
 
     const scopedSessionId = await page.evaluate((key) => window.localStorage.getItem(key), `${storageKey}:launch:e2e-token:1`);
     expect(scopedSessionId).toBe(runtimeSession.sessionId);

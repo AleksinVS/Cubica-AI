@@ -1,4 +1,3 @@
-import { applyJsonMergePatch } from "@cubica/view-protocol";
 import type { ViewCommand } from "@cubica/view-protocol";
 import type { PlayerFacingContent, GamePlayerUiContent } from "@cubica/contracts-manifest";
 import { ManifestAction } from "@cubica/contracts-manifest";
@@ -14,7 +13,8 @@ import {
   getGameReadiness,
   previewTransportRoad as previewRuntimeTransportRoad,
   runAgentTurn as runRuntimeAgentTurn,
-  RuntimeClientError
+  RuntimeClientError,
+  shouldRetainPendingRuntimeCommand
 } from "@/presenter/runtime-client";
 import {
   projectMetricViewsFromContent,
@@ -35,44 +35,20 @@ import type { PlayerRuntimeStatus, PlayerState } from "@/presenter/types";
 import type { CubicaJsonValue, CubicaSurface, CubicaSurfaceAction } from "@cubica/contracts-ai";
 import type { GameManifestAgentFailurePolicy } from "@cubica/contracts-manifest";
 import type { TransportRoadPreviewResponse } from "@cubica/contracts-session";
+import {
+  clearPendingRuntimeCommand,
+  createRuntimeActionEnvelope,
+  createRuntimeAgentTurnEnvelope,
+  loadPendingRuntimeCommand,
+  pendingCommandMatchesAction,
+  pendingCommandMatchesAgentTurn,
+  savePendingRuntimeCommand,
+  type PendingRuntimeCommand,
+  type RuntimeActionEnvelope,
+  type RuntimeAgentTurnEnvelope
+} from "@/presenter/command-outbox";
 
 export type { ClientRequest, PlayerState } from "@/presenter/types";
-
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
-
-/**
- * Resolves the participant attributed to the next local gameplay action.
- *
- * A hotseat session (several people sharing one browser) publishes the current
- * participant in `public.turn.activePlayerId`. Its shared launch identity is
- * absent from `state.players`, so the server-confirmed active participant wins.
- * A personal/network launch keeps its configured identity when that identity is
- * an authoritative player key, preventing the browser from impersonating the
- * active opponent. Games without a turn model also keep the configured id.
- */
-export function resolveRuntimeActorPlayerId(
-  session: GameSession | null,
-  configuredPlayerId: string
-): string {
-  const state = session?.state;
-  const players = isRecord(state) ? state.players : undefined;
-  const publicState = isRecord(state) ? state.public : undefined;
-  const turn = isRecord(publicState) ? publicState.turn : undefined;
-  const activePlayerId = isRecord(turn) ? turn.activePlayerId : undefined;
-
-  // A configured identity that exists in the authoritative participant map is
-  // a personal/network player and must never impersonate the active opponent.
-  // Hotseat launches use a host identity that is absent from this map, so only
-  // those sessions intentionally follow the currently active participant.
-  if (isRecord(players) && Object.hasOwn(players, configuredPlayerId)) {
-    return configuredPlayerId;
-  }
-
-  return typeof activePlayerId === "string" && activePlayerId.trim() !== ""
-    ? activePlayerId
-    : configuredPlayerId;
-}
 
 /**
  * Generic Presenter для игрового Web-плеера.
@@ -80,12 +56,14 @@ export function resolveRuntimeActorPlayerId(
  * Отвечает за:
  *  • boot сессии (создание / восстановление);
  *  • dispatch действий в runtime-api;
- *  • применение JSON Merge Patch к состоянию;
+ *  • полную замену локального снимка серверным снимком;
  *  • генерацию ViewCommand для React View.
  *
- * Не содержит game-specific хардкодов: gameId, playerId, storageKey,
+ * Не содержит game-specific хардкодов: gameId, storageKey,
  * правила маршрутизации экранов, fallback-метрики и разрешение content
- * передаются через {@link GameConfig} извне.
+ * передаются через {@link GameConfig} извне. Идентичность игрока намеренно
+ * не входит в клиентский config: runtime определяет субъект по защищённой
+ * сессионной cookie (нечитаемому браузерным кодом файлу идентификации).
  */
 export class GamePresenter {
   private gateway: ReactViewGateway;
@@ -239,7 +217,7 @@ export class GamePresenter {
       const portalLaunchContext = readPortalLaunchContext();
 
       if (portalLaunchContext) {
-        const data = await bindPortalLaunchSession(portalLaunchContext, this.config.playerId);
+        const data = await bindPortalLaunchSession(portalLaunchContext);
         this.launchContext = portalLaunchContext;
         this.session = { ...data, gameId: data.gameId || this.config.gameId };
         if (typeof window !== "undefined") {
@@ -249,7 +227,7 @@ export class GamePresenter {
           );
         }
         this.clearError();
-        await this.ensureAiDrivenSurface();
+        await this.recoverPendingCommandOrEnsureAiSurface();
         return;
       }
 
@@ -264,11 +242,15 @@ export class GamePresenter {
           this.session = { ...data, gameId: this.config.gameId };
           this.agentSurface = null;
           this.clearError();
-          await this.ensureAiDrivenSurface();
+          await this.recoverPendingCommandOrEnsureAiSurface();
         } catch (error) {
-          if (!(error instanceof RuntimeClientError) || error.statusCode !== 404) {
+          if (!(error instanceof RuntimeClientError) || (error.statusCode !== 401 && error.statusCode !== 404)) {
             throw error;
           }
+          // The stored id outlived either its server record or its HttpOnly
+          // credential. A command tied to that inaccessible session can never
+          // be recovered and must not block the fresh local session.
+          clearPendingRuntimeCommand(storedSessionId);
           const data = await this.createSession();
           this.session = { ...data, gameId: this.config.gameId };
           if (typeof window !== "undefined") {
@@ -276,7 +258,7 @@ export class GamePresenter {
           }
           this.agentSurface = null;
           this.clearError();
-          await this.ensureAiDrivenSurface();
+          await this.recoverPendingCommandOrEnsureAiSurface();
         }
       } else {
         const data = await this.createSession();
@@ -286,7 +268,7 @@ export class GamePresenter {
         }
         this.agentSurface = null;
         this.clearError();
-        await this.ensureAiDrivenSurface();
+        await this.recoverPendingCommandOrEnsureAiSurface();
       }
     } catch (err) {
       this.captureError(err, "Failed to initialize player");
@@ -321,7 +303,7 @@ export class GamePresenter {
         return;
       }
       const data = this.launchContext
-        ? await bindPortalLaunchSession(this.launchContext, this.config.playerId)
+        ? await bindPortalLaunchSession(this.launchContext)
         : await this.createSession();
       this.session = { ...data, gameId: data.gameId || this.config.gameId };
       if (typeof window !== "undefined") {
@@ -331,7 +313,7 @@ export class GamePresenter {
         window.localStorage.setItem(storageKey, data.sessionId);
       }
       this.clearError();
-      await this.ensureAiDrivenSurface();
+      await this.recoverPendingCommandOrEnsureAiSurface();
     } catch (err) {
       this.captureError(err, "Failed to reset player");
     } finally {
@@ -379,21 +361,11 @@ export class GamePresenter {
         return;
       }
 
-      const next = await dispatchRuntimeAction(
-        this.session.sessionId,
-        resolveRuntimeActorPlayerId(this.session, this.config.playerId),
-        request.type,
-        this.session.version.stateVersion,
-        request.payload ?? {}
-      );
+      const next = await this.dispatchGameIntent(request.type, request.payload ?? {});
 
-      // Merge snapshot: объединяем текущее состояние с новым delta
-      const merged = applyJsonMergePatch(
-        this.session as unknown as import("@cubica/view-protocol").JsonValue,
-        next as unknown as import("@cubica/view-protocol").JsonValue
-      ) as unknown as GameSession;
-
-      this.session = merged;
+      // Runtime responses are authoritative complete snapshots. Treating them
+      // as JSON Merge Patch could preserve deleted or secret-stale local keys.
+      this.session = { ...next, gameId: this.config.gameId };
       this.agentSurface = null;
       this.clearError();
     } catch (err) {
@@ -431,17 +403,8 @@ export class GamePresenter {
     await this.syncView();
 
     try {
-      const next = await dispatchRuntimeAction(
-        this.session.sessionId,
-        resolveRuntimeActorPlayerId(this.session, this.config.playerId),
-        actionId,
-        this.session.version.stateVersion,
-        payload
-      );
-      this.session = applyJsonMergePatch(
-        this.session as unknown as import("@cubica/view-protocol").JsonValue,
-        next as unknown as import("@cubica/view-protocol").JsonValue
-      ) as unknown as GameSession;
+      const next = await this.dispatchGameIntent(actionId, payload);
+      this.session = { ...next, gameId: this.config.gameId };
       this.agentSurface = null;
       this.clearError();
     } catch (error) {
@@ -475,7 +438,6 @@ export class GamePresenter {
     return previewRuntimeTransportRoad({
       sessionId: this.session.sessionId,
       expectedStateVersion: this.session.version.stateVersion,
-      playerId: resolveRuntimeActorPlayerId(this.session, this.config.playerId),
       actionId,
       params
     });
@@ -485,8 +447,8 @@ export class GamePresenter {
    * Handles a command emitted by a validated `CubicaSurface`.
    *
    * A surface action is only player intent. The Presenter routes it through
-   * runtime-api, where Agent Runtime output and state effects are validated
-   * before the next snapshot is accepted.
+   * runtime-api, where the selected published Game Intent and its mechanics
+   * transaction are validated before the next snapshot is accepted.
    */
   async handleSurfaceAction(action: CubicaSurfaceAction): Promise<void> {
     if (this.booting || this.isPending || !this.session) {
@@ -509,16 +471,17 @@ export class GamePresenter {
 
     try {
       if (action.kind === "agentTurn") {
-        await this.runAgentTurn(action.id, action.payload);
+        const actionId = action.target;
+        if (typeof actionId !== "string" || actionId.trim() === "") {
+          throw new Error(`Surface Agent Turn "${action.id}" has no published actionId target.`);
+        }
+        await this.runAgentTurn(actionId, surfacePayloadToRecord(action.payload));
       } else {
-        const actionId = action.target ?? action.id;
-        const next = await dispatchRuntimeAction(
-          this.session.sessionId,
-          resolveRuntimeActorPlayerId(this.session, this.config.playerId),
-          actionId,
-          this.session.version.stateVersion,
-          surfacePayloadToRecord(action.payload)
-        );
+        const actionId = action.target;
+        if (typeof actionId !== "string" || actionId.trim() === "") {
+          throw new Error(`Surface runtime action "${action.id}" has no published actionId target.`);
+        }
+        const next = await this.dispatchGameIntent(actionId, surfacePayloadToRecord(action.payload));
         this.session = { ...next, gameId: this.config.gameId };
         this.agentSurface = null;
       }
@@ -530,18 +493,6 @@ export class GamePresenter {
       this.isPending = false;
       await this.syncView();
     }
-  }
-
-  /**
-   * Создаёт адаптер для UI-команд манифеста.
-   * Делегирует game-specific логику в GameConfig.
-   */
-  createManifestActionAdapter(
-    dispatchAction: (actionId: string, payload?: Record<string, unknown>) => void,
-    onError: (message: string) => void
-  ): (command: string, payload: Record<string, unknown>) => void {
-    const gameState = this.config.resolveGameState(this.content, this.session);
-    return this.config.createManifestActionAdapter(this.content, gameState, dispatchAction, onError);
   }
 
   /**
@@ -620,9 +571,37 @@ export class GamePresenter {
   private createSession(): Promise<GameSession> {
     return createNewSessionWithOptions({
       gameId: this.config.gameId,
-      playerId: this.config.playerId,
       contentSourceId: this.contentSourceId
     }) as Promise<GameSession>;
+  }
+
+  /**
+   * Retries a command that may have reached runtime before a reload.
+   *
+   * Recovery always sends the stored envelope unchanged. If no command is
+   * pending, AI-driven games can safely request their initial surface.
+   */
+  private async recoverPendingCommandOrEnsureAiSurface(): Promise<void> {
+    if (this.session === null) return;
+    const pending = loadPendingRuntimeCommand(this.session.sessionId);
+    if (pending === null) {
+      await this.ensureAiDrivenSurface();
+      return;
+    }
+
+    try {
+      await this.retryPendingCommand(pending);
+      this.clearError();
+    } catch (error) {
+      if (!shouldRetainPendingRuntimeCommand(error)) {
+        clearPendingRuntimeCommand(pending.envelope.sessionId);
+      }
+      // Unknown transport failures and explicit transient HTTP responses keep
+      // the outbox: runtime may already have committed the command, so any
+      // retry must retain the original identity and envelope.
+      this.error = error instanceof Error ? error.message : "Pending gameplay command could not be recovered.";
+      this.errorStatus = error instanceof RuntimeClientError ? error.statusCode : null;
+    }
   }
 
   private async ensureAiDrivenSurface(): Promise<void> {
@@ -635,14 +614,114 @@ export class GamePresenter {
     if (this.deterministicFallbackActive) {
       return;
     }
-    await this.runAgentTurn(undefined, {});
+    const initialActionId = (this.content.agentRuntime as { readonly initialActionId?: unknown }).initialActionId;
+    if (typeof initialActionId !== "string" || initialActionId.trim() === "") {
+      throw new Error("AI-driven game does not publish an initial Agent Turn actionId.");
+    }
+    await this.runAgentTurn(initialActionId, {});
   }
 
-  private async runAgentTurn(actionId: string | undefined, payload: unknown): Promise<void> {
+  private async runAgentTurn(
+    actionId: string,
+    params: Record<string, unknown>
+  ): Promise<void> {
     if (this.session === null) {
       return;
     }
-    const next = await runRuntimeAgentTurn(this.session.sessionId, this.config.playerId, actionId, payload);
+    const pending = loadPendingRuntimeCommand(this.session.sessionId);
+    let envelope: RuntimeAgentTurnEnvelope;
+    if (pending !== null) {
+      if (!pendingCommandMatchesAgentTurn(pending, actionId, params)) {
+        throw new Error("A different gameplay command is still awaiting a confirmed result.");
+      }
+      envelope = pending.envelope;
+    } else {
+      envelope = createRuntimeAgentTurnEnvelope({
+        sessionId: this.session.sessionId,
+        actionId,
+        expectedStateVersion: this.session.version.stateVersion,
+        params
+      });
+      savePendingRuntimeCommand({ endpoint: "agent-turn", envelope });
+    }
+
+    const next = await this.sendAgentTurnEnvelope(envelope);
+    this.applyAgentTurnSnapshot(next);
+  }
+
+  private async dispatchGameIntent(
+    actionId: string,
+    params: Record<string, unknown>
+  ): Promise<Awaited<ReturnType<typeof dispatchRuntimeAction>>> {
+    if (this.session === null) {
+      throw new Error("Игровая сессия еще не готова к действию.");
+    }
+
+    const pending = loadPendingRuntimeCommand(this.session.sessionId);
+    let envelope: RuntimeActionEnvelope;
+    if (pending !== null) {
+      if (!pendingCommandMatchesAction(pending, actionId, params)) {
+        throw new Error("A different gameplay command is still awaiting a confirmed result.");
+      }
+      envelope = pending.envelope;
+    } else {
+      envelope = createRuntimeActionEnvelope({
+        sessionId: this.session.sessionId,
+        actionId,
+        expectedStateVersion: this.session.version.stateVersion,
+        params
+      });
+      savePendingRuntimeCommand({ endpoint: "action", envelope });
+    }
+
+    try {
+      const snapshot = await dispatchRuntimeAction(envelope);
+      clearPendingRuntimeCommand(envelope.sessionId);
+      return snapshot;
+    } catch (error) {
+      if (!shouldRetainPendingRuntimeCommand(error)) {
+        clearPendingRuntimeCommand(envelope.sessionId);
+      }
+      throw error;
+    }
+  }
+
+  private async sendAgentTurnEnvelope(
+    envelope: RuntimeAgentTurnEnvelope
+  ): Promise<Awaited<ReturnType<typeof runRuntimeAgentTurn>>> {
+    try {
+      const snapshot = await runRuntimeAgentTurn(envelope);
+      clearPendingRuntimeCommand(envelope.sessionId);
+      return snapshot;
+    } catch (error) {
+      if (!shouldRetainPendingRuntimeCommand(error)) {
+        clearPendingRuntimeCommand(envelope.sessionId);
+      }
+      throw error;
+    }
+  }
+
+  private async retryPendingCommand(pending: PendingRuntimeCommand): Promise<void> {
+    if (pending.endpoint === "action") {
+      const next = await dispatchRuntimeAction(pending.envelope).catch((error: unknown) => {
+        if (!shouldRetainPendingRuntimeCommand(error)) {
+          clearPendingRuntimeCommand(pending.envelope.sessionId);
+        }
+        throw error;
+      });
+      clearPendingRuntimeCommand(pending.envelope.sessionId);
+      this.session = { ...next, gameId: this.config.gameId };
+      this.agentSurface = null;
+      return;
+    }
+
+    const next = await this.sendAgentTurnEnvelope(pending.envelope);
+    this.applyAgentTurnSnapshot(next);
+  }
+
+  private applyAgentTurnSnapshot(
+    next: Awaited<ReturnType<typeof runRuntimeAgentTurn>>
+  ): void {
     this.session = {
       sessionId: next.sessionId,
       gameId: this.config.gameId,
@@ -670,6 +749,11 @@ export class GamePresenter {
     if (!(error instanceof RuntimeClientError) || error.statusCode !== 409 || this.session === null) {
       return;
     }
+
+    // Runtime checks an existing receipt before returning 409. Therefore a
+    // conflict certifies that this logical command was not admitted and its
+    // stale envelope must not block the replacement intent.
+    clearPendingRuntimeCommand(this.session.sessionId);
 
     try {
       const refreshed = await resumeSession(this.session.sessionId);

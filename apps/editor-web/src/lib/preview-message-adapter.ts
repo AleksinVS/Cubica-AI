@@ -47,14 +47,16 @@ export interface PlayerPreviewEntitiesMessage {
 export interface PlayerPreviewSessionSnapshotMessage {
   readonly source: "cubica-player-web";
   readonly type: "previewSessionSnapshot";
-  readonly version: 1;
+  /** Version 2 removes the obsolete action `payload` alias in favour of `params`. */
+  readonly version: 2;
   readonly sessionId: string;
   readonly gameId?: string;
   readonly sessionVersion: PreviewSessionStateVersion;
   readonly state: Record<string, unknown>;
   readonly action?: {
     readonly actionId: string;
-    readonly payload?: Record<string, unknown>;
+    /** Canonical bounded parameters submitted with the published Game Intent. */
+    readonly params?: Record<string, unknown>;
     readonly timestamp: string;
   };
 }
@@ -82,7 +84,7 @@ export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is 
     return false;
   }
 
-  if (value.version !== 1 || typeof value.sessionId !== "string" || !isPlainRecord(value.state)) {
+  if (value.version !== 2 || typeof value.sessionId !== "string" || !isPlainRecord(value.state)) {
     return false;
   }
 
@@ -94,7 +96,7 @@ export function isPlayerPreviewSessionSnapshotMessage(value: unknown): value is 
     if (!isPlainRecord(value.action) || typeof value.action.actionId !== "string" || typeof value.action.timestamp !== "string") {
       return false;
     }
-    if (value.action.payload !== undefined && !isPlainRecord(value.action.payload)) {
+    if (value.action.params !== undefined && !isPlainRecord(value.action.params)) {
       return false;
     }
   }

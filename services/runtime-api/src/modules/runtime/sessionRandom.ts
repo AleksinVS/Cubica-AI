@@ -1,18 +1,36 @@
 /**
  * Replay-stable pseudo-random numbers for deterministic game sessions.
  *
- * The session stores only the algorithm id, a 128-bit seed and the number of
- * consumed 32-bit values. Rebuilding the internal words from that tuple makes
- * a saved snapshot sufficient for exact replay and avoids hidden process state.
+ * `SessionRandomState` is the low-level state of one xoshiro128** generator.
+ * Runtime snapshots persist `SessionRandomStreamsState`: one cryptographic
+ * master seed plus a counter per named stream. A stream seed is derived only
+ * from the master seed and its stable id, so consuming one mechanic's stream
+ * cannot perturb dice, decks or route tie-breaking owned by another mechanic.
  */
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
+import { createRequire } from "node:module";
+
+const require = createRequire(import.meta.url);
+const mechanicsLimits = require("../../../../../scripts/manifest-tools/mechanics-modules.cjs") as {
+  MAX_SESSION_RANDOM_STREAMS: number;
+};
 
 export const SESSION_RANDOM_ALGORITHM = "xoshiro128ss-v1" as const;
+export const SESSION_RANDOM_STREAMS_ALGORITHM = "xoshiro128ss-streams-v1" as const;
+/** Shared publication/runtime capacity of the persisted named-stream map. */
+export const MAX_SESSION_RANDOM_STREAMS = mechanicsLimits.MAX_SESSION_RANDOM_STREAMS;
 
 export interface SessionRandomState {
   alg: typeof SESSION_RANDOM_ALGORITHM;
   seed: string;
   counter: number;
+}
+
+/** Persisted root for independently advancing, replay-stable named streams. */
+export interface SessionRandomStreamsState {
+  alg: typeof SESSION_RANDOM_STREAMS_ALGORITHM;
+  seed: string;
+  counters: Record<string, number>;
 }
 
 export interface DiceRollResult {
@@ -29,6 +47,9 @@ interface ParsedDice {
 const UINT32_RANGE = 0x1_0000_0000;
 const SEED_PATTERN = /^[0-9a-f]{32}$/u;
 const DICE_PATTERN = /^([1-9][0-9]?)d([1-9][0-9]{0,3})$/u;
+const STREAM_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
+const FORBIDDEN_RECORD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+const STREAM_DERIVATION_DOMAIN = Buffer.from("cubica.random-stream/v1", "utf8");
 
 const rotateLeft = (value: number, shift: number): number =>
   ((value << shift) | (value >>> (32 - shift))) >>> 0;
@@ -86,6 +107,63 @@ const assertRandomState = (state: SessionRandomState) => {
   }
 };
 
+/** Validate one static stream id before it is used as a persisted map key. */
+export const assertSessionRandomStreamId = (streamId: string): void => {
+  if (!STREAM_ID_PATTERN.test(streamId) || FORBIDDEN_RECORD_KEYS.has(streamId)) {
+    throw new Error(`Session random stream id "${streamId}" is invalid`);
+  }
+};
+
+/** Fail closed when a snapshot carries malformed or unsupported stream state. */
+const assertRandomStreamsState = (state: SessionRandomStreamsState): void => {
+  if (state.alg !== SESSION_RANDOM_STREAMS_ALGORITHM) {
+    throw new Error(`Unsupported session random streams algorithm "${String(state.alg)}"`);
+  }
+  parseSeed(state.seed);
+  if (typeof state.counters !== "object" || state.counters === null || Array.isArray(state.counters)) {
+    throw new Error("Session random stream counters must be an object");
+  }
+  const counters = Object.entries(state.counters);
+  if (counters.length > MAX_SESSION_RANDOM_STREAMS) {
+    throw new Error(`Session random state exceeds the ${MAX_SESSION_RANDOM_STREAMS} stream limit`);
+  }
+  for (const [streamId, counter] of counters) {
+    assertSessionRandomStreamId(streamId);
+    if (!Number.isSafeInteger(counter) || counter < 0) {
+      throw new Error(`Session random stream "${streamId}" counter must be a non-negative safe integer`);
+    }
+  }
+};
+
+/**
+ * Add an unambiguous length-prefixed field to the derivation hash.
+ *
+ * Explicit buffers avoid environment-dependent string encodings. Length
+ * framing prevents two differently split fields from producing the same hash
+ * input, while the fixed domain keeps this derivation separate from every
+ * other SHA-256 use in the platform.
+ */
+const updateFramedHash = (
+  hash: ReturnType<typeof createHash>,
+  bytes: Uint8Array
+): void => {
+  const length = Buffer.allocUnsafe(4);
+  length.writeUInt32BE(bytes.byteLength, 0);
+  hash.update(length);
+  hash.update(bytes);
+};
+
+/** Derive the private 128-bit xoshiro seed for exactly one named stream. */
+const deriveSessionRandomStreamSeed = (masterSeed: string, streamId: string): string => {
+  parseSeed(masterSeed);
+  assertSessionRandomStreamId(streamId);
+  const hash = createHash("sha256");
+  updateFramedHash(hash, STREAM_DERIVATION_DOMAIN);
+  updateFramedHash(hash, Buffer.from(masterSeed, "hex"));
+  updateFramedHash(hash, Buffer.from(streamId, "utf8"));
+  return hash.digest("hex").slice(0, 32);
+};
+
 /**
  * Rebuild the deterministic generator at the persisted counter and expose one
  * unbiased integer sampler. Keeping this logic shared prevents dice and deck
@@ -124,6 +202,64 @@ export const createSessionRandomState = (seed = randomBytes(16).toString("hex"))
     alg: SESSION_RANDOM_ALGORITHM,
     seed,
     counter: 0
+  };
+};
+
+/** Create the persisted root used by all named random consumers in a session. */
+export const createSessionRandomStreamsState = (
+  seed = randomBytes(16).toString("hex")
+): SessionRandomStreamsState => {
+  parseSeed(seed);
+  return {
+    alg: SESSION_RANDOM_STREAMS_ALGORITHM,
+    seed,
+    counters: {}
+  };
+};
+
+/** Reconstruct one low-level generator without mutating the persisted root. */
+export const readSessionRandomStream = (
+  state: SessionRandomStreamsState,
+  streamId: string
+): SessionRandomState => {
+  assertRandomStreamsState(state);
+  assertSessionRandomStreamId(streamId);
+  const counter = Object.prototype.hasOwnProperty.call(state.counters, streamId)
+    ? state.counters[streamId]
+    : 0;
+  if (!Number.isSafeInteger(counter) || counter < 0) {
+    throw new Error(`Session random stream "${streamId}" counter must be a non-negative safe integer`);
+  }
+  return {
+    alg: SESSION_RANDOM_ALGORITHM,
+    seed: deriveSessionRandomStreamSeed(state.seed, streamId),
+    counter
+  };
+};
+
+/**
+ * Persist the next counter for one stream and leave every other stream intact.
+ * The derived seed is verified as well as the counter so callers cannot write
+ * a generator from another stream into this stream's replay history.
+ */
+export const writeSessionRandomStream = (
+  state: SessionRandomStreamsState,
+  streamId: string,
+  random: SessionRandomState
+): SessionRandomStreamsState => {
+  const current = readSessionRandomStream(state, streamId);
+  assertRandomState(random);
+  if (random.seed !== current.seed || random.counter < current.counter) {
+    throw new Error(`Session random stream "${streamId}" cannot accept unrelated or rewound state`);
+  }
+  if (!Object.prototype.hasOwnProperty.call(state.counters, streamId) &&
+      Object.keys(state.counters).length >= MAX_SESSION_RANDOM_STREAMS) {
+    throw new Error(`Session random state exceeds the ${MAX_SESSION_RANDOM_STREAMS} stream limit`);
+  }
+  return {
+    alg: state.alg,
+    seed: state.seed,
+    counters: { ...state.counters, [streamId]: random.counter }
   };
 };
 

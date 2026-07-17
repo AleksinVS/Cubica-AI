@@ -34,8 +34,18 @@ interface SessionSnapshot {
   readonly actionAvailability: ReadonlyArray<{
     readonly actionId: string;
     readonly status: "available" | "unavailable" | "parameter-dependent";
+    readonly basisStateVersion: number;
     readonly reasonCode?: string;
   }>;
+  readonly receipt?: {
+    readonly commandId: string;
+    readonly status: "applied" | "rejected";
+    readonly rejectionCode?: string;
+  };
+}
+
+interface CreatedSessionSnapshot extends SessionSnapshot {
+  readonly credential: string;
 }
 
 interface TranscriptStep {
@@ -97,15 +107,27 @@ const transcriptPath = path.join(
   "fixtures",
   "complete-session-transcript.json"
 );
-const migrationPath = path.join(repoRoot, "services", "runtime-api", "migrations", "001_game_sessions.up.sql");
+const gameplayFixturePath = path.join(
+  repoRoot,
+  "games",
+  "cards-money-trains-mock",
+  "fixtures",
+  "mock-gameplay-data.json"
+);
+const migrationPaths = [
+  path.join(repoRoot, "services", "runtime-api", "migrations", "001_game_sessions.up.sql"),
+  path.join(repoRoot, "services", "runtime-api", "migrations", "002_authenticated_command_ledger.up.sql")
+];
 const databaseUrl = process.env.TEST_POSTGRES_DATABASE_URL;
 // The production API never accepts a seed from the player. This test-only
 // server seam locks the fixture's transcript while exercising the same public
-// HTTP requests and runtime effects as a real session.
-const CONTROL_SEED = "39d334ef7701ec6e16d2cc2dab7b1a41";
+// HTTP requests and durable Mechanics events as a real session.
+const CONTROL_SEED = await readControlSeed();
 const transcript = await readTranscriptIfReady();
+const credentialsBySessionId = new Map<string, string>();
+let commandSequence = 0;
 
-test("ordinary game id conducts the complete mock session and rejects every exact duplicate", {
+test("ordinary game id conducts the complete mock session and idempotently replays every exact retry", {
   skip: transcript === null ? "complete mock transcript is being produced by the game-content slice" : false
 }, async () => {
   assert.ok(transcript);
@@ -217,6 +239,19 @@ async function readTranscriptIfReady(): Promise<CompleteSessionTranscript | null
   }
 }
 
+/** Keep the HTTP acceptance run on the same named-stream root as game authoring. */
+async function readControlSeed(): Promise<string> {
+  const parsed = JSON.parse(await readFile(gameplayFixturePath, "utf8")) as {
+    decks?: { controlSeed?: unknown };
+  };
+  const seed = parsed.decks?.controlSeed;
+  if (typeof seed !== "string") {
+    assert.fail("mock gameplay fixture must declare a control seed");
+  }
+  assert.match(seed, /^[0-9a-f]{32}$/u, "mock control seed must be 128-bit lowercase hex");
+  return seed;
+}
+
 async function startApi(sessionStore: SessionStorePort<RuntimeState>): Promise<RunningApi> {
   const server = createRuntimeApiServer({
     port: 0,
@@ -241,18 +276,21 @@ async function startPersistentApi(connectionString: string): Promise<RunningApi>
 
 async function createSession(baseUrl: string, gameId: string): Promise<SessionSnapshot> {
   const response = await postJson(baseUrl, "/sessions", {
-    gameId,
-    playerId: "facilitator-acceptance"
+    gameId
   });
   assert.equal(response.status, 201, JSON.stringify(response.body));
-  const snapshot = response.body as SessionSnapshot;
+  const snapshot = response.body as CreatedSessionSnapshot;
   assert.equal(snapshot.gameId, gameId);
+  assert.equal(typeof snapshot.credential, "string");
+  credentialsBySessionId.set(snapshot.sessionId, snapshot.credential);
   assertProjectionAndBalances(snapshot);
   return snapshot;
 }
 
 async function getSession(baseUrl: string, sessionId: string): Promise<SessionSnapshot> {
-  const response = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionId)}`);
+  const response = await fetch(`${baseUrl}/sessions/${encodeURIComponent(sessionId)}`, {
+    headers: { Authorization: `Bearer ${requireCredential(sessionId)}` }
+  });
   const body = await readJson(response);
   assert.equal(response.status, 200, JSON.stringify(body));
   const snapshot = body as SessionSnapshot;
@@ -268,24 +306,19 @@ async function dispatchAction(
   const requestBody = {
     sessionId: previous.sessionId,
     expectedStateVersion: previous.version.stateVersion,
-    playerId: "facilitator-acceptance",
     actionId: step.actionId,
-    ...(step.params ? { params: step.params } : {}),
-    // An untrusted caller may send extra data, but only the manifest action and
-    // persisted server snapshot are authoritative. The test verifies this
-    // attempted phase/funds overwrite never appears in the committed state.
-    state: {
-      public: {
-        session: { phase: "finished" },
-        teams: { forged: { coins: 1_000_000 } }
-      }
-    }
+    commandId: nextCommandId(),
+    params: step.params ?? {}
   };
-  const response = await postJson(baseUrl, "/actions", requestBody);
+  const response = await postJson(baseUrl, "/actions", requestBody, previous.sessionId);
   assert.equal(response.status, 200, `step ${step.order} ${step.actionId}: ${JSON.stringify(response.body)}`);
   const snapshot = response.body as SessionSnapshot;
+  assert.equal(
+    snapshot.receipt?.status,
+    "applied",
+    `step ${step.order} did not return an applied receipt: ${JSON.stringify(response.body)}`
+  );
   assert.equal(snapshot.version.stateVersion, previous.version.stateVersion + 1);
-  assert.equal(readRecord(readRecord(snapshot.state, "public"), "teams").forged, undefined);
   assertProjectionAndBalances(snapshot);
 
   // A fresh GET must return exactly the committed response. This detects a UI
@@ -293,16 +326,17 @@ async function dispatchAction(
   const restored = await getSession(baseUrl, snapshot.sessionId);
   assertCommittedSnapshot(restored, snapshot, `step ${step.order} was not persisted exactly`);
 
-  // Repeat the exact request with the now-stale precondition. Because this
-  // runs after all 88 successful steps, the proof covers money, cards,
-  // movement, construction and finalization without special game branches.
-  const repeated = await postJson(baseUrl, "/actions", requestBody);
-  assert.equal(repeated.status, 409, `step ${step.order} duplicate was not rejected`);
-  assert.match(String(readRecordValue(repeated.body, "duplicate error").error), /changed after version/iu);
+  // Repeat the exact immutable envelope after the version has advanced. The
+  // durable ledger must return the same receipt without executing the rule a
+  // second time. Across the full transcript this covers every mechanics pack.
+  const repeated = await postJson(baseUrl, "/actions", requestBody, previous.sessionId);
+  assert.equal(repeated.status, 200, `step ${step.order} exact retry did not return its receipt`);
+  const repeatedSnapshot = repeated.body as SessionSnapshot;
+  assert.deepEqual(repeatedSnapshot.receipt, snapshot.receipt, `step ${step.order} retry changed its receipt`);
   assertCommittedSnapshot(
     await getSession(baseUrl, snapshot.sessionId),
     restored,
-    `step ${step.order} duplicate changed the stored snapshot`
+    `step ${step.order} exact retry changed the stored snapshot`
   );
   return snapshot;
 }
@@ -355,11 +389,14 @@ async function assertCurrentNewsCannotBeDrawnTwice(
   const response = await postJson(baseUrl, "/actions", {
     sessionId: snapshot.sessionId,
     expectedStateVersion: snapshot.version.stateVersion,
-    playerId: "facilitator-acceptance",
-    actionId: "mock.news.draw"
-  });
-  assert.equal(response.status, 400, JSON.stringify(response.body));
-  assert.match(String(readRecordValue(response.body, "repeat draw error").error), /not available in the current session state/iu);
+    actionId: "mock.news.draw",
+    commandId: nextCommandId(),
+    params: {}
+  }, snapshot.sessionId);
+  assert.equal(response.status, 200, JSON.stringify(response.body));
+  const rejected = response.body as SessionSnapshot;
+  assert.equal(rejected.receipt?.status, "rejected");
+  assert.equal(typeof rejected.receipt.rejectionCode, "string");
   assert.deepEqual(
     await getSession(baseUrl, snapshot.sessionId),
     before,
@@ -385,14 +422,14 @@ async function runRejectionProbes(
     const response = await postJson(baseUrl, "/actions", {
       sessionId: snapshot.sessionId,
       expectedStateVersion: snapshot.version.stateVersion,
-      playerId: "facilitator-acceptance",
       actionId: probe.actionId,
-      ...(probe.params ? { params: probe.params } : {})
-    });
-    assert.ok(response.status >= 400 && response.status < 500, `${probe.id}: ${JSON.stringify(response.body)}`);
-    const error = readRecordValue(response.body, `${probe.id} error response`).error;
-    assert.equal(typeof error, "string", `${probe.id} must return a public error message`);
-    assert.match(error as string, new RegExp(probe.expectedError, "iu"), `${probe.id} returned an unexpected error`);
+      commandId: nextCommandId(),
+      params: probe.params ?? {}
+    }, snapshot.sessionId);
+    assert.equal(response.status, 200, `${probe.id}: ${JSON.stringify(response.body)}`);
+    const rejected = response.body as SessionSnapshot;
+    assert.equal(rejected.receipt?.status, "rejected", `${probe.id} must return a rejected receipt`);
+    assert.equal(typeof rejected.receipt.rejectionCode, "string", `${probe.id} must expose a stable rejection code`);
 
     // Rejected actions must be exactly atomic: not only business fields, but
     // also the concurrency and event cursors remain byte-for-byte equivalent.
@@ -527,13 +564,27 @@ function readRecordValue(value: unknown, label: string): Record<string, unknown>
   return value as Record<string, unknown>;
 }
 
-async function postJson(baseUrl: string, pathname: string, body: unknown) {
+async function postJson(baseUrl: string, pathname: string, body: unknown, sessionId?: string) {
   const response = await fetch(`${baseUrl}${pathname}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(sessionId === undefined ? {} : { Authorization: `Bearer ${requireCredential(sessionId)}` })
+    },
     body: JSON.stringify(body)
   });
   return { status: response.status, body: await readJson(response) };
+}
+
+function requireCredential(sessionId: string): string {
+  const credential = credentialsBySessionId.get(sessionId);
+  assert.ok(credential, `missing client credential for session ${sessionId}`);
+  return credential;
+}
+
+function nextCommandId(): string {
+  commandSequence += 1;
+  return `cli_${commandSequence.toString(36).padStart(22, "0")}`;
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -545,7 +596,9 @@ async function applySessionMigration(connectionString: string): Promise<void> {
   const pool = new Pool({ connectionString, max: 1 });
   pool.on("error", () => undefined);
   try {
-    await pool.query(await readFile(migrationPath, "utf8"));
+    for (const migrationPath of migrationPaths) {
+      await pool.query(await readFile(migrationPath, "utf8"));
+    }
   } finally {
     await pool.end();
   }

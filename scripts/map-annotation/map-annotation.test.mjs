@@ -30,12 +30,10 @@ const neutralManifestOptions = Object.freeze({
   edgeStateFacet: "state",
   splittableEdgeStates: ["open", "building"],
   builtEdgeState: "building",
-  sequencePath: "/public/transportNetworks/neutral/sequence",
-  roadCostPerRegionSegment: 1,
-  waypointCost: 1,
+  sequenceEndpoint: "public.transportNetworks.neutral.sequence",
   roadPlanning: {
     geometryVersion: "neutral-regions-v1",
-    excludedRegionIdsPath: "/public/transportNetworks/neutral/excludedRegionIds"
+    excludedRegionIdsEndpoint: "public.transportNetworks.neutral.excludedRegionIds"
   },
   initialSequence: 10,
   allowedAnnotationStatuses: ["mock"]
@@ -49,7 +47,8 @@ test("strict neutral annotation validates and creates a configured fragment", as
   );
   const fragment = createTransportManifestFragment(annotation, neutralManifestOptions);
 
-  assert.equal(fragment.networkModels.neutral.roadCostPerRegionSegment, 1);
+  assert.equal(Object.hasOwn(fragment.networkModels.neutral, "roadCostPerRegionSegment"), false);
+  assert.equal(Object.hasOwn(fragment.networkModels.neutral, "waypointCost"), false);
   assert.equal(fragment.state.public.transportNetworks.neutral.sequence, 10);
   assert.equal(
     fragment.state.public.objects.networkNodes["neutral-node-west"].objectType,

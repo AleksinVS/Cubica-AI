@@ -855,7 +855,7 @@ describe("session resilience: stale session fallback", () => {
     const postResponse = await fetch(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId: "antarctica", playerId: "player-web" }),
+      body: JSON.stringify({ gameId: "antarctica" }),
     });
 
     expect(postResponse.ok).toBe(true);
@@ -892,7 +892,7 @@ describe("session resilience: stale session fallback", () => {
     const postResponse = await fetch(base, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId: "antarctica", playerId: "player-web" }),
+      body: JSON.stringify({ gameId: "antarctica" }),
     });
 
     expect(postResponse.ok).toBe(true);
@@ -946,7 +946,7 @@ describe("session resilience: reset/new game", () => {
     const response = await fetch("/api/runtime/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId: "antarctica", playerId: "player-web" }),
+      body: JSON.stringify({ gameId: "antarctica" }),
     });
 
     expect(response.ok).toBe(true);
@@ -973,7 +973,7 @@ describe("session resilience: reset/new game", () => {
     const response = await fetch("/api/runtime/sessions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ gameId: "antarctica", playerId: "player-web" }),
+      body: JSON.stringify({ gameId: "antarctica" }),
     });
 
     expect(response.ok).toBe(true);

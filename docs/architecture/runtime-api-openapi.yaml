@@ -3,13 +3,14 @@
   "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
   "info": {
     "title": "Cubica Runtime API",
-    "version": "0.4.0",
+    "version": "0.5.3",
     "description": "Current API First contract for the `services/runtime-api` modular monolith. This file uses the JSON-compatible YAML profile so it remains a valid `.yaml` OpenAPI document while the repository can validate it with built-in Node.js JSON parsing and no extra parser dependency."
   },
   "x-cubica-contract-status": "current-implemented-contract",
   "x-cubica-yaml-profile": "json-compatible-yaml",
   "x-cubica-architecture-source": "docs/architecture/adrs/051-api-first-contract-for-modular-monolith.md",
   "x-cubica-action-availability-source": "docs/architecture/adrs/079-server-projected-action-availability.md",
+  "x-cubica-command-admission-source": "docs/architecture/adrs/084-typed-transactional-mechanics-ir.md",
   "externalDocs": {
     "description": "ADR-051: API First Contract For Modular Monolith",
     "url": "./adrs/051-api-first-contract-for-modular-monolith.md"
@@ -39,7 +40,7 @@
     },
     {
       "name": "RuntimeActions",
-      "description": "Deterministic runtime action dispatch."
+      "description": "Authenticated dispatch of published Game Intents through pinned transactional Mechanics plans."
     },
     {
       "name": "AgentRuntime",
@@ -123,6 +124,9 @@
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
           },
           "500": {
             "$ref": "#/components/responses/InternalError"
@@ -366,17 +370,20 @@
         },
         "responses": {
           "201": {
-            "description": "Runtime session was created.",
+            "description": "Runtime session was created. The one-time credential is intended for immediate BFF handoff and is not returned by later reads.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SessionResponse"
+                  "$ref": "#/components/schemas/CreatedSessionResponse"
                 }
               }
             }
           },
           "400": {
             "$ref": "#/components/responses/BadRequest"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
           },
           "503": {
             "$ref": "#/components/responses/Unavailable"
@@ -390,6 +397,7 @@
         "operationId": "getSession",
         "summary": "Read a runtime session snapshot.",
         "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
         "parameters": [
           {
             "$ref": "#/components/parameters/SessionId"
@@ -406,8 +414,8 @@
               }
             }
           },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
           }
         }
       }
@@ -418,6 +426,7 @@
         "operationId": "restorePreviewSession",
         "summary": "Restore an editor-preview runtime session snapshot.",
         "x-cubica-scope": "editor-preview",
+        "security": [{ "SessionBearer": [] }],
         "parameters": [
           {
             "$ref": "#/components/parameters/SessionId"
@@ -440,11 +449,23 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
           "403": {
             "$ref": "#/components/responses/Forbidden"
           },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "423": {
+            "$ref": "#/components/responses/Locked"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
           }
         }
       }
@@ -453,8 +474,9 @@
       "post": {
         "tags": ["RuntimeActions"],
         "operationId": "dispatchAction",
-        "summary": "Dispatch a deterministic runtime action.",
+        "summary": "Dispatch one published Game Intent as an atomic Mechanics transaction.",
         "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
         "requestBody": {
           "$ref": "#/components/requestBodies/DispatchActionRequest"
         },
@@ -472,14 +494,29 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "423": {
+            "$ref": "#/components/responses/Locked"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          },
           "500": {
             "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
           }
         }
       }
@@ -488,9 +525,10 @@
       "post": {
         "tags": ["RuntimeActions"],
         "operationId": "previewTransportRoad",
-        "summary": "Calculate a read-only server-owned road route and cost for selected endpoints.",
+        "summary": "Calculate a read-only server-owned road route for selected endpoints.",
         "description": "The preview uses the exact requested session version and simulates any tied-route PRNG choice without persisting the next random state. POST /actions remains authoritative and recalculates the complete transaction.",
         "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
         "requestBody": {
           "$ref": "#/components/requestBodies/TransportRoadPreviewRequest"
         },
@@ -508,14 +546,23 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
           "500": {
             "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
           }
         }
       }
@@ -526,6 +573,7 @@
         "operationId": "runAgentTurn",
         "summary": "Run one AI-driven or hybrid Agent Turn.",
         "x-cubica-scope": "public",
+        "security": [{ "SessionBearer": [] }],
         "requestBody": {
           "$ref": "#/components/requestBodies/AgentTurnRequest"
         },
@@ -543,11 +591,29 @@
           "400": {
             "$ref": "#/components/responses/BadRequest"
           },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "413": {
+            "$ref": "#/components/responses/PayloadTooLarge"
+          },
+          "423": {
+            "$ref": "#/components/responses/Locked"
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
           },
           "502": {
             "$ref": "#/components/responses/BadGateway"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
           },
           "503": {
             "$ref": "#/components/responses/Unavailable"
@@ -557,6 +623,14 @@
     }
   },
   "components": {
+    "securitySchemes": {
+      "SessionBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque 32-byte session credential",
+        "description": "Credential returned exactly once by POST /sessions. Runtime stores only its SHA-256 digest."
+      }
+    },
     "parameters": {
       "AssetExtension": {
         "name": "extension",
@@ -650,7 +724,7 @@
         }
       },
       "CreateSessionRequest": {
-        "required": false,
+        "required": true,
         "content": {
           "application/json": {
             "schema": {
@@ -722,7 +796,7 @@
         }
       },
       "Conflict": {
-        "description": "The session version changed before the requested action or read-only calculation could use it.",
+        "description": "The session version changed, or an existing commandId was reused with different command contents.",
         "content": {
           "application/json": {
             "schema": {
@@ -751,8 +825,60 @@
           }
         }
       },
+      "Locked": {
+        "description": "Another transaction currently owns the session write lock; the caller may retry the same command identity.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "PayloadTooLarge": {
+        "description": "The request body exceeds the bounded runtime input size.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "TooManyRequests": {
+        "description": "The authenticated principal/session exceeded the new-command rate limit or Agent Turn cost quota. Exact retries of an existing command receipt do not consume this budget.",
+        "headers": {
+          "Retry-After": {
+            "description": "Minimum number of whole seconds before this admission window can accept another new command.",
+            "required": true,
+            "schema": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
       "Unavailable": {
         "description": "Required runtime dependency is unavailable.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "A valid session Bearer credential is required.",
+        "headers": {
+          "WWW-Authenticate": {
+            "schema": { "type": "string" }
+          }
+        },
         "content": {
           "application/json": {
             "schema": {
@@ -765,23 +891,29 @@
     "schemas": {
       "ActionResponse": {
         "type": "object",
-        "required": ["sessionId", "version", "state", "actionAvailability"],
+        "required": ["sessionId", "version", "state", "actionAvailability", "receipt"],
         "properties": {
           "sessionId": { "type": "string" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
-          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" }
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "receipt": { "$ref": "#/components/schemas/PublicCommandReceipt" }
         },
         "additionalProperties": false
       },
       "SessionActionAvailability": {
         "type": "object",
-        "required": ["actionId", "status"],
+        "required": ["actionId", "status", "basisStateVersion"],
         "properties": {
           "actionId": { "type": "string", "minLength": 1 },
           "status": {
             "type": "string",
             "enum": ["available", "unavailable", "parameter-dependent"]
+          },
+          "basisStateVersion": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Authoritative state version used to calculate this dynamic availability entry."
           },
           "reasonCode": {
             "type": "string",
@@ -795,25 +927,18 @@
         "items": { "$ref": "#/components/schemas/SessionActionAvailability" }
       },
       "AgentTurnRequest": {
-        "type": "object",
-        "required": ["sessionId"],
-        "properties": {
-          "sessionId": { "type": "string", "minLength": 1 },
-          "playerId": { "$ref": "#/components/schemas/PlayerId" },
-          "actionId": { "type": "string", "minLength": 1 },
-          "payload": true
-        },
-        "additionalProperties": true
+        "$ref": "./schemas/runtime-command.schema.json"
       },
       "AgentTurnResponse": {
         "type": "object",
-        "required": ["sessionId", "version", "state", "actionAvailability", "agentTurn"],
+        "required": ["sessionId", "version", "state", "actionAvailability", "agentTurn", "receipt"],
         "properties": {
           "sessionId": { "type": "string" },
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
-          "agentTurn": { "$ref": "#/components/schemas/JsonObject" }
+          "agentTurn": { "$ref": "#/components/schemas/JsonObject" },
+          "receipt": { "$ref": "#/components/schemas/PublicCommandReceipt" }
         },
         "additionalProperties": false
       },
@@ -849,12 +974,12 @@
       },
       "CreateSessionRequest": {
         "type": "object",
+        "required": ["gameId"],
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
-          "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "contentSourceId": { "$ref": "#/components/schemas/ContentSourceId" }
         },
-        "additionalProperties": true
+        "additionalProperties": false
       },
       "DependencyCheckResult": {
         "type": "object",
@@ -868,17 +993,7 @@
         "additionalProperties": true
       },
       "DispatchActionRequest": {
-        "type": "object",
-        "required": ["sessionId", "expectedStateVersion", "actionId"],
-        "properties": {
-          "sessionId": { "type": "string", "minLength": 1 },
-          "expectedStateVersion": { "type": "integer", "minimum": 0 },
-          "playerId": { "$ref": "#/components/schemas/PlayerId" },
-          "actionId": { "type": "string", "minLength": 1 },
-          "params": { "$ref": "#/components/schemas/JsonObject" },
-          "payload": true
-        },
-        "additionalProperties": true
+        "$ref": "./schemas/runtime-command.schema.json"
       },
       "TransportRoadPreviewRequest": {
         "type": "object",
@@ -886,7 +1001,6 @@
         "properties": {
           "sessionId": { "type": "string", "minLength": 1 },
           "expectedStateVersion": { "type": "integer", "minimum": 0 },
-          "playerId": { "$ref": "#/components/schemas/PlayerId" },
           "actionId": { "type": "string", "minLength": 1 },
           "params": { "$ref": "#/components/schemas/JsonObject" }
         },
@@ -907,13 +1021,14 @@
           "sessionId",
           "actionId",
           "usedStateVersion",
+          "paramsFingerprint",
+          "definitionHash",
           "networkId",
           "fromNodeId",
           "toNodeId",
           "polyline",
           "regionSequence",
           "regionSegments",
-          "cost",
           "candidateCount",
           "planning"
         ],
@@ -921,6 +1036,14 @@
           "sessionId": { "type": "string", "minLength": 1 },
           "actionId": { "type": "string", "minLength": 1 },
           "usedStateVersion": { "type": "integer", "minimum": 0 },
+          "paramsFingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "definitionHash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
           "networkId": { "type": "string", "minLength": 1 },
           "fromNodeId": { "type": "string", "minLength": 1 },
           "toNodeId": { "type": "string", "minLength": 1 },
@@ -935,7 +1058,6 @@
             "items": { "type": "string", "minLength": 1 }
           },
           "regionSegments": { "type": "integer", "minimum": 1 },
-          "cost": { "type": "integer", "minimum": 0 },
           "candidateCount": { "type": "integer", "minimum": 1 },
           "planning": {
             "type": "object",
@@ -956,7 +1078,8 @@
         "type": "object",
         "required": ["error"],
         "properties": {
-          "error": { "type": "string" }
+          "error": { "type": "string" },
+          "code": { "type": "string" }
         },
         "additionalProperties": false
       },
@@ -1029,13 +1152,15 @@
       },
       "LocalPlayerWebPluginBundle": {
         "type": "object",
-        "required": ["gameId", "pluginId", "target", "contentHash", "file"],
+        "required": ["gameId", "pluginId", "apiVersion", "target", "contentHash", "filePath"],
         "properties": {
           "gameId": { "$ref": "#/components/schemas/GameId" },
           "pluginId": { "type": "string", "minLength": 1 },
+          "apiVersion": { "type": "string", "minLength": 1 },
           "target": { "const": "player-web" },
+          "scope": { "const": "preview" },
           "contentHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
-          "file": { "type": "string", "minLength": 1 }
+          "filePath": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
       },
@@ -1092,19 +1217,17 @@
         "additionalProperties": true
       },
       "RestorePreviewSessionResponse": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/SessionResponse"
-          },
-          {
-            "type": "object",
-            "required": ["restored"],
-            "properties": {
-              "restored": { "const": true }
-            },
-            "additionalProperties": true
-          }
-        ]
+        "type": "object",
+        "required": ["sessionId", "gameId", "version", "state", "actionAvailability", "restored"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "version": { "$ref": "#/components/schemas/SessionStateVersion" },
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "restored": { "const": true }
+        },
+        "additionalProperties": false
       },
       "SessionResponse": {
         "type": "object",
@@ -1115,6 +1238,47 @@
           "version": { "$ref": "#/components/schemas/SessionStateVersion" },
           "state": { "$ref": "#/components/schemas/JsonObject" },
           "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" }
+        },
+        "additionalProperties": false
+      },
+      "CreatedSessionResponse": {
+        "type": "object",
+        "required": ["sessionId", "gameId", "version", "state", "actionAvailability", "credential"],
+        "properties": {
+          "sessionId": { "type": "string" },
+          "gameId": { "$ref": "#/components/schemas/GameId" },
+          "version": { "$ref": "#/components/schemas/SessionStateVersion" },
+          "state": { "$ref": "#/components/schemas/JsonObject" },
+          "actionAvailability": { "$ref": "#/components/schemas/SessionActionAvailabilityList" },
+          "credential": {
+            "type": "string",
+            "pattern": "^ses_[A-Za-z0-9_-]{43}$"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PublicCommandReceipt": {
+        "type": "object",
+        "required": [
+          "commandId",
+          "actionId",
+          "status",
+          "stateVersionBefore",
+          "stateVersionAfter",
+          "eventRefs"
+        ],
+        "properties": {
+          "commandId": { "type": "string", "pattern": "^cli_[A-Za-z0-9_-]{22}$" },
+          "actionId": { "type": "string", "minLength": 1 },
+          "status": { "enum": ["applied", "rejected"] },
+          "stateVersionBefore": { "type": "integer", "minimum": 0 },
+          "stateVersionAfter": { "type": "integer", "minimum": 0 },
+          "eventRefs": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "planHash": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" },
+          "rejectionCode": { "type": "string", "minLength": 1 }
         },
         "additionalProperties": false
       },

@@ -363,7 +363,7 @@ not_required_except_routing_architecture_gate
 | W3 Transport | узлы, связи, движение, вместимость, состояния и кратчайшее расстояние | runtime handlers, neutral fixture | W0 graph contract | параллельно W2/W4 после схемы |
 | W4 Spatial surface | asset resolver, общий Phaser-host, `interactiveBoardSurface`, DOM-альтернатива и lifecycle | `apps/player-web`, plugin API | W0 UI/plugin contract | реализован как основа; параллельно W2/W3 |
 | W4B Map-first workspace | UI schema/contract, общий полнооконный renderer, семантические слои, камера и перевод двух CMT UI-манифестов | UI schemas/contracts, `apps/player-web`, CMT authoring/plugin | W4 + Accepted ADR-080 | независимо от игрового маршрута и импорта колод; один владелец схемы |
-| WU Universal mechanics | Стадия A: доказательный аудит и Accepted Game Intent → Cubica Mechanics IR; стадия B: W0 principal/actor/action/Presenter trust boundary с удалением доверенного клиентского `playerId`, W1 immutable `bundleHash`, typed `moduleLock`, раздельные client/system `commandId` и command-receipt foundation, static core catalog, IR kernel, миграция всех игр и финальное удаление `deterministic.effects` без постоянного adapter | manifest/authoring schemas, session/receipt storage, runtime, Presenter, editor, operation discovery, neutral fixture, все deterministic-игры и CMT mock builder | ADR-083 + ADR-084; перед cutover обязательны immutable bundle, exact module/artifact/algorithm locks и durable command receipt | W0 trust hardening можно вести отдельно; system dispatch без client version обязан проверять schedule/trigger под session lock; game runtime code разрешён только через изолированное game-scoped extension; старый interpreter допустим только как тестовый сравнительный эталон, production переключается lockstep |
+| WU Universal mechanics | Game Intent → Cubica Mechanics IR, W0 principal/actor trust boundary, W1 immutable bundle и command ledger, общий executor, миграция всех игр и удаление production-контура `deterministic.effects` реализованы и прошли финальную межсистемную проверку | manifest/authoring schemas, session/receipt/event storage, runtime, Presenter, editor, operation discovery, neutral fixture, все игры и CMT mock builder | ADR-083 + ADR-084; immutable bundle, exact module/artifact/algorithm locks и durable command receipt включены в cutover | System dispatch без client version проверяет trigger под session lock; исполняемый код игры допускается только в изолированном game-scoped extension; старого production fallback нет |
 | WM Complete mock session | полный цикл фаз, рынок, колоды, грузовые операции, тариф, методика, финал, replay и browser-приемка GSR-035 | `games/cards-money-trains-mock`, необходимые нейтральные platform handlers и тесты | W1–W4 + постоянное хранение | частями после фиксации соответствующей схемы; интеграционный транскрипт последовательно |
 | W5 Author content intake | извлечённая сеть, контуры, грузы, новости, страны и обычная стартовая сессия | `games/cards-money-trains`, import tools, content reports | W1–W4 + полученные файлы | геометрию и текстовые данные можно разбирать параллельно |
 | W6 Operating turn | GSR-031 | пакет игры + deck/economy handlers | W5 + закрытые правила первого хода | после W5 |
@@ -384,10 +384,11 @@ not_required_except_routing_architecture_gate
 |---|---|---|
 | Анализ источников | updated | Основные файлы получены; большинство правил закрыто. В `R-07` остаётся судьба техники/грузов исключённой команды, в `R-09` — конкретный выбор и срок изъятия техники. |
 | Архитектурный дизайн | implemented-verified | ADR-081 реализован schema-first планировщиком; нейтральное доказательство, mock-подключение и совместимость старых прямых связей проверены. |
-| Аудит универсального языка механик | designed-approved-for-implementation | Стадия A и все замечания повторных ревью закрыты: 29 schema variants, 27 используемых ops, 693 stored / 967 expanded runtime steps и 695 editable effects. ADR-084 сохраняет `actionId` как Game Intent, не доверяет клиентскому `playerId`, разделяет principal/actor и client/system command profiles, вводит typed transactional IR и typed module locks, допускает безопасное изолированное game extension и требует полного удаления старой формы. Публичные JSON Schema/runtime/game manifests ещё не менялись; следующий пакет — W0/W1 и полный GSR-036. |
+| Универсальный язык механик | implemented-verified | JSON Schema 2020-12 Mechanics IR, typed `stateModel`, exact `moduleLock`, semantic checker, executor, authenticated command contract, immutable bundle, command/event ledger и exact retry реализованы. Пять deterministic-игр и AI-driven выбор мигрированы; Presenter и editor работают с `action.binding` и `params`; старые schema variants, interpreter и прямые agent effects удалены. Исторический аудит 29 variants / 693 stored / 967 expanded / 695 editable сохранён как доказательство объёма; сфокусированные, межсистемные и браузерные проверки зелёные. |
+| GSR-036 | implemented-verified | `mock.debrief.next-turn` выполняет фазовый guard, увеличение хода, все сбросы, due activation, динамический reset ресурса и событие одной Mechanics-транзакцией. Исходник генератора, опубликованная привязка, нейтральный executor test и mock contract fixtures перенесены; старого handler fallback нет; полный канонический контур прошёл. |
 | Продуктовая и содержательная спецификация | content-intake | Сеть извлечена в защищённый `review-draft`; AI откалиброван, 981 линия ожидает смысловой классификации. Получить четыре подтверждения автора, собрать контуры, затем импортировать 174 грузовые строки, 34 новости и описания стран. |
 | Матрица требований | done | Обновлять статусы по мере реализации и фактических проверок. |
-| GSR-035 | implemented-with-findings | Runtime mock-цикл, два PostgreSQL-рестарта, защита всех 88 действий и канонический отпечаток реализованы. Полная интерфейсная приёмка открыта; `LEGACY-0057` фиксирует оставшийся дефект ходового ресурса купленного локомотива. |
+| GSR-035 | implemented-with-findings | Runtime mock-цикл, два PostgreSQL-рестарта, защита всех 88 действий и канонический отпечаток реализованы. Дефект ходового ресурса купленного локомотива закрыт динамической выборкой GSR-036; полная интерфейсная приёмка фаз остаётся открытой. |
 | GSR-030 | superseded | Автор исключил демонстрационные грузы и контрольный ход; запись сохраняется как история mock-сценария. |
 | GSR-031 | proposed-content-intake | Подтвердить извлечённую начальную сеть, импортировать грузы и новости; реализовать подтверждённые обязательные платежи, закрытия и порядок локомотивов; до нормативной приёмки закрыть остатки `R-07` и `R-09`. |
 | GSR-032 | implemented-mock-content-gate | На нейтральных и тестовых областях реализованы свободный выбор узлов/дороги, серверный preview, атомарное строительство, два порядка road/waypoint и открытие в начале `N+2`. Для нормативной приёмки нужны подтверждённые реальные области и один авторский контрольный сценарий. |
@@ -400,14 +401,14 @@ not_required_except_routing_architecture_gate
 | ADR-081 | implemented-verified-mock | Серверный планировщик, канонические области и переходы, контрольный хеш, ломаная дороги, воспроизводимое равенство и совместимое отображение проверены нейтральными и mock-тестами. Реальные области остаются содержательным gate. |
 | Канал ассетов | implemented | Карта зарегистрирована, оптимизирована и доставляется по id; автор и правообладатель подтвердили использование, изменение формата и публикацию. |
 | Пакет игры | implemented-mock-with-findings | Отдельный test-only пакет проходит 88 серверных действий, все фазы, рынок, грузы, транспорт, оба порядка строительства и ручной финал. Дорога и полустанок выбираются свободно на карте или в DOM-форме; проекция разных методических пауз остаётся открытой. Нормативный контент не подменён. |
-| Реализация | reviewed-with-findings | Серверный mock-сценарий принят, дефект порядка строительства закрыт общим жизненным циклом. Пользовательская приёмка всех фаз и `LEGACY-0057` ещё открыты; после их закрытия нужен полный ручной путь через UI. |
+| Реализация | reviewed-with-findings | Серверный mock-сценарий принят, дефект порядка строительства закрыт общим жизненным циклом, а ресурс купленного локомотива — динамической Mechanics-выборкой. Открыты пользовательская приёмка всех фаз и полный ручной путь через UI. |
 | Динамический экран ведущего | partial | ADR-079 реализовал серверную доступность, понятные причины и блокировку повторного ввода; строительство теперь имеет свободный выбор и проверяемый preview. В `LEGACY-0058` остаются выбор грузов и техники и полный UI-проход остальных фаз. |
 | Карта как основа интерфейса | implemented-awaiting-product-acceptance | Canvas совпадает с рабочей областью на трёх контрольных размерах, реальная карта является основой, панели закрываются и не резервируют колонки. `LEGACY-0062` остаётся active до визуальной приёмки PM. |
 | Методика на экране | open-finding | `LEGACY-0059`: выбирать разные паузы по состоянию и показывать ведущему импортированные вопросы, цели и инструкции. |
 | Возврат к сессии | deferred-debt | `LEGACY-0060`: PostgreSQL сохраняет партию, но после потери localStorage нужен безопасный способ повторного подключения ведущего. |
 | Полноценный журнал ходов | deferred-debt | `LEGACY-0053`: поверх фактических событий нужен отдельный понятный игровой лог и проверяемая выгрузка; текущий mock-срез этим не блокируется. |
 | ИИ-разбор и учебная рефлексия | deferred-architecture | `LEGACY-0054`: сначала согласовать входной контракт, версии модели/промпта, приватность, аудит, отказоустойчивость и контроль ведущего. Производная не меняет счет или состояние и явно отделяет факты от интерпретаций. |
-| Закрепление версии игры за сессией | deferred-architecture | `LEGACY-0055`: сейчас сессия хранит только `gameId`/`contentSourceId`; до отдельного ADR пробную партию нельзя продолжать после изменения игрового пакета. |
+| Закрепление версии игры за сессией | implemented-verified | Сессия закрепляет неизменяемый `bundleHash`; хранилище сохраняет канонический пакет, точные версии и хеши модулей, а квитанция — `definitionHash` и `planHash`. Продолжение по молча изменившимся правилам исключено; `LEGACY-0055` закрыт. |
 
 ## Acceptance
 
@@ -583,6 +584,18 @@ git diff --check
   ломаную и цену, не передаёт оплату и не изменяет случайность; подтверждение
   на той же версии использует тот же путь. `LEGACY-0056` закрыт. Реальные
   контуры остаются содержательным, а не архитектурным ограничением.
+- 2026-07-15: выполнен общий cutover Game Intent → Cubica Mechanics IR.
+  Отдельная JSON Schema 2020-12, типизированный `stateModel`, точные
+  `moduleLock`, semantic checker, executor и command/event ledger подключены к
+  runtime; публичная команда больше не доверяет `playerId`, использует один
+  `params`, `commandId` и `expectedStateVersion`. Antarctica, Estate Race,
+  Simple Choice, оба пакета «Карты, деньги, поезда» и AI-driven выбор
+  перенесены; Presenter, editor preview, compiler и mock builder синхронизированы.
+  Старые effect schema/types/handlers, runtime templates, JsonLogic executor и
+  прямые agent state effects удалены. `mock.debrief.next-turn` реализует весь
+  GSR-036 одной транзакцией и закрывает дефект ресурса купленного локомотива.
+  На момент этой записи реализация была завершена, а полный канонический прогон
+  ещё не был выполнен; итоговая приёмка добавлена в Handoff Log за 2026-07-17.
 
 ## Handoff Log
 
@@ -961,3 +974,63 @@ git diff --check
   последнего разрешителя сортировки.
 - Artifacts: синхронизированы ADR, обзор архитектуры, руководство по Mechanics
   IR, аудит, план, `NEXT_STEPS.md` и реестры legacy.
+
+### 2026-07-15 — Codex, реализация универсального языка механик
+
+- Scope: полный cutover Game Intent → Cubica Mechanics IR для публичного
+  контракта, runtime, Presenter, editor и всех игровых пакетов репозитория.
+- Platform: добавлены JSON Schema 2020-12 Mechanics IR, state model, exact
+  module registry, schema/semantic validation, общий transactional executor,
+  immutable bundle identity и durable command/event ledger.
+- Games: Antarctica, Estate Race, Simple Choice, оба CMT-пакета переведены на
+  `action.binding` и опубликованные plans; AI-driven игра выбирает один
+  доступный Game Intent вместо возврата прямых state effects.
+- GSR-036: `mock.debrief.next-turn` выбирает фактически активные локомотивы и
+  созревшие объекты из candidate state, поэтому купленный active-локомотив
+  получает ресурс без перечисления ID, а строительная причина снимается
+  атомарно с остальными сбросами и событием.
+- Legacy boundary: старые schema variants, template/JsonLogic executor,
+  deterministic handlers, предметные runtime branches, двойной
+  `params/payload` и прямые agent patches удалены из production-пути.
+- Documentation: руководство автора, описание языка и GSR-036 синхронизированы
+  с реализацией. В этом документационном потоке тесты намеренно не запускались;
+  окончательные команды и результаты межсистемной проверки должен добавить
+  основной исполнитель после её завершения.
+
+### 2026-07-17 — Codex, финальная приёмка полной миграции Mechanics
+
+- Outcome: полный переход всех игр и платформенных потребителей с прежних
+  `deterministic.effects` на Game Intent → Cubica Mechanics IR завершён.
+  Production fallback, предметные ветки старого исполнителя и двойная форма
+  параметров отсутствуют; закрытые разрывы `LEGACY-0055`, `LEGACY-0063`,
+  `LEGACY-0064` и `LEGACY-0065` имеют статус `removed`.
+- Authoring and locks: 15/15 сфокусированных тестов компилятора и границы
+  compiler-owned `moduleLock` прошли; 13/13 опубликованных манифестов актуальны;
+  `verify:manifest-authoring` проверил 13 рабочих заданий и два эталонных
+  authoring-примера.
+- Game evidence: все authoring-задания шести игр компилируются воспроизводимо;
+  CMT mock проходит 10/10 пакетных проверок и точный 88-командный
+  семиходовой серверный replay, Estate Race — 8/8, модуль поля — 14/14.
+- Cross-system evidence: `verify:canonical` прошёл все 17 этапов за 6 минут
+  13 секунд. В том числе: contracts-manifest 55/55, contracts-ai 38/38,
+  game-assets 18/18, runtime 160 passed / 2 предусмотренно skipped / 0 failed
+  из 162, player-web 208/208 и production build.
+- Browser evidence: единый production-прогон Player Web прошёл 2/2 сценария
+  одним worker. CMT на реальной серверной случайности провёл три полных цикла
+  фаз, сохранил секрет будущих карт и завершился через запрос/отмену/
+  подтверждение; Estate Race прошёл видимые бросок, покупку и оплату аренды
+  после восстановления той же сессии. Точный seeded 88-командный CMT replay
+  остаётся серверной интеграцией, чтобы тестовый seed не попадал в production.
+- Editor evidence: до финального канонического прогона editor-engine прошёл
+  192/192 теста, editor-web — проверку типов и production build на 24 страницах;
+  последующие изменения не затрагивали editor-код.
+- Operations: ресурсоёмкие проверки запускались последовательно после
+  low-memory preflight; нехватки памяти и оставшихся процессов прогона нет.
+  Существующие пользовательские сервисы не останавливались.
+- Not rerun: browser E2E и editor-проверки не повторялись после финальных правок
+  одной контрактной тестовой фикстуры и документации, поскольку исполняемый
+  runtime/player/editor-код после их зелёного прогона не менялся.
+- Remaining product scope: платформа мигрирована полностью. Открыты не
+  миграционные разрывы, а нормативный контент «Карт, денег, поездов», полный
+  ручной проход всех фаз интерфейса, методические экраны и визуальная приёмка
+  карты; они сохраняют собственные статусы и не возвращают старый runtime.

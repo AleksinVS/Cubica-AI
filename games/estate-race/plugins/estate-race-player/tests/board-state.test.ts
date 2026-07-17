@@ -115,7 +115,8 @@ test("disables a board control when canonical server availability rejects it", (
     actionAvailability: [{
       actionId: "property.buy.cell-02",
       status: "unavailable",
-      reasonCode: "state_condition_failed"
+      reasonCode: "state_condition_failed",
+      basisStateVersion: 5
     }],
     state: {
       public: {

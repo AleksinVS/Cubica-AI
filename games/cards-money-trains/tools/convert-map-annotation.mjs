@@ -3,9 +3,9 @@
  * Game-local command for the shared map-annotation intake pipeline.
  *
  * The shared module validates coordinates, references and review status. This
- * adapter owns only accepted Cards, Money, Trains settings such as object
- * types and construction costs, so the generic importer never invents game
- * rules from pixels.
+ * adapter owns only accepted Cards, Money, Trains graph settings such as
+ * object types. Construction prices stay in game rules and Mechanics plans,
+ * so the generic importer never invents economic rules from pixels.
  */
 
 import path from "node:path";
@@ -33,14 +33,12 @@ const transportManifestOptions = Object.freeze({
   edgeStateFacet: "state",
   splittableEdgeStates: ["open", "building"],
   builtEdgeState: "building",
-  sequencePath: "/public/transportNetworks/main/sequence",
-  roadCostPerRegionSegment: 2,
-  waypointCost: 5,
+  sequenceEndpoint: "public.transportNetworks.main.sequence",
   // This block becomes runtime content only after the authoring annotation is
   // explicitly promoted to author-confirmed; review-draft geometry is rejected.
   roadPlanning: {
     geometryVersion: "guinea-regions-v1",
-    excludedRegionIdsPath: "/public/transportNetworks/main/excludedRegionIds"
+    excludedRegionIdsEndpoint: "public.transportNetworks.main.excludedRegionIds"
   },
   initialSequence: 1000,
   allowedAnnotationStatuses: ["author-confirmed"]

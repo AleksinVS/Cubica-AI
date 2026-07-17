@@ -1,6 +1,6 @@
 import type { PlayerFacingContent, PlayerFacingMockup } from "@cubica/contracts-manifest";
 
-import type { CreateSessionResponse, DispatchActionResponse } from "@cubica/contracts-session";
+import type { DispatchActionResponse, GetSessionResponse } from "@cubica/contracts-session";
 
 export type { PlayerFacingMockup as GameMockup };
 
@@ -22,7 +22,8 @@ export interface ActionEntry {
   capability: string | null;
 }
 
-export type SessionSnapshot = CreateSessionResponse<Record<string, unknown>>;
+/** Browser-safe snapshot after the BFF has removed the one-time credential. */
+export type SessionSnapshot = GetSessionResponse<Record<string, unknown>>;
 export type ActionSnapshot = DispatchActionResponse<Record<string, unknown>>;
 
 /**

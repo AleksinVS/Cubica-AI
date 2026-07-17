@@ -1,36 +1,86 @@
-export interface RuntimeStateDelta<TState = unknown> {
-  state?: TState;
-  mergePatch?: Record<string, unknown>;
-  jsonPatch?: Array<Record<string, unknown>>;
-}
-
 export interface RuntimeActionError {
   code: string;
   message: string;
 }
 
-export interface RuntimeActionEffect {
-  kind: string;
-  target?: string;
-  value?: unknown;
-  data?: Record<string, unknown>;
+/** Protected event emitted by one successful Mechanics transaction. */
+export interface RuntimeActionEvent {
+  eventType: string;
+  audience: "public" | "actor" | "server";
+  summary: unknown;
+  data: Record<string, unknown>;
 }
+
+/** One bounded, protected trace entry produced by the Mechanics executor. */
+export interface RuntimeMechanicsAuditStep {
+  stepId: string;
+  operation: string;
+  result?: unknown;
+}
+
+/** Deterministic resource counters charged while one Mechanics plan executes. */
+export interface RuntimeMechanicsCost {
+  steps: number;
+  expressionNodes: number;
+  /** Deterministic work units consumed by registered bounded algorithms. */
+  algorithmWork: number;
+  scannedEntities: number;
+  resultEntities: number;
+  writes: number;
+  events: number;
+  intermediateBytes: number;
+  eventBytes: number;
+  auditBytes: number;
+}
+
+/**
+ * Versioned protected execution audit.
+ *
+ * Delivery clients must not receive this object. The command owner persists it
+ * inside the internal receipt in the same transaction as state and events.
+ */
+export interface RuntimeMechanicsAudit {
+  formatVersion: "1.0.0";
+  steps: ReadonlyArray<RuntimeMechanicsAuditStep>;
+  cost: RuntimeMechanicsCost;
+}
+
+/** Protected scheduler mutation produced by Mechanics, never sent to clients. */
+export type RuntimeSystemScheduleMutation =
+  | {
+      kind: "register";
+      scheduleId: string;
+      actionId: string;
+      params: Record<string, string | number | boolean>;
+      trigger: unknown;
+      falsePolicy: "defer" | "skip";
+      maxOccurrences: number;
+    }
+  | { kind: "cancel"; scheduleId: string };
 
 export interface RuntimeActionResult<TState = unknown> {
   ok: boolean;
-  delta?: RuntimeStateDelta<TState>;
-  effects?: Array<RuntimeActionEffect>;
+  /** Complete transaction-local candidate; the dispatcher commits it atomically. */
+  candidateState?: TState;
+  events?: Array<RuntimeActionEvent>;
+  /** Protected executor trace for the durable internal receipt, never public API. */
+  mechanicsAudit?: RuntimeMechanicsAudit;
+  /** Protected schedule mutations committed only by the command owner. */
+  systemScheduleMutations?: ReadonlyArray<RuntimeSystemScheduleMutation>;
   error?: RuntimeActionError;
 }
 
 export interface RuntimeManifestActionDefinition {
   actionId: string;
-  handlerType: string;
+  definitionHash: string;
+  binding: {
+    kind: "mechanics-plan";
+    planRef: string;
+  };
+  invocation: "external" | "system";
   capabilityFamily?: string;
   capability?: string;
   functionName?: string;
-  templateId?: string;
-  params?: Record<string, unknown>;
   paramsSchema?: Record<string, unknown>;
   allowedSessionRoles?: Array<"player" | "facilitator" | "assistant" | "observer">;
   raw: Record<string, unknown>;
@@ -50,7 +100,6 @@ export interface RuntimeActionContext<TState = unknown> {
   sessionId: string;
   gameId: string;
   actionId: string;
-  payload?: unknown;
   params?: Record<string, unknown>;
   /** Participant attributed to this action by the current delivery mode. */
   actorPlayerId?: string;
@@ -69,35 +118,4 @@ export interface RuntimeActionRegistry<TState = unknown> {
   get(actionId: string): RuntimeActionHandler<TState> | undefined;
   has(actionId: string): boolean;
   list(): Array<string>;
-}
-
-/**
- * Bounded effect descriptor used in RuntimeActionResult.
- * Covers the current runtime effect surface for deterministic action dispatch.
- */
-export interface RuntimeEffect {
-  kind: string;
-  target?: string;
-  value?: unknown;
-  data?: Record<string, unknown>;
-}
-
-/**
- * Bounded runtime dispatch input.
- * Covers the internal runtime-api dispatch path (not the HTTP layer).
- */
-export interface RuntimeDispatchOptions {
-  sessionId: string;
-  playerId?: string;
-  actionId: string;
-  payload?: unknown;
-}
-
-/**
- * Bounded runtime dispatch result including the applied effect.
- * Used internally by runtime-api for effect projection and logging.
- */
-export interface RuntimeDispatchResult<TState = unknown> {
-  result: RuntimeActionResult<TState>;
-  appliedEffect?: RuntimeEffect;
 }

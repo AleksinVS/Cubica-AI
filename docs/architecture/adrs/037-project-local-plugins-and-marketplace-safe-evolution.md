@@ -4,7 +4,16 @@
 - **Статус**: Accepted
 - **Авторы**: Codex
 - **Компоненты**: Game Projects, Editor Web, Player Web, Runtime API, Plugin Validation, Marketplace
-- **Связанные решения**: ADR-019, ADR-026, ADR-027, ADR-030, ADR-036, ADR-039, ADR-040
+- **Связанные решения**: ADR-019, ADR-026, ADR-027, ADR-030, ADR-036, ADR-039, ADR-040, ADR-084
+
+> [!IMPORTANT]
+> Поправка ADR-084: упоминания JSON Patch, JsonLogic, manifest action handlers
+> и custom transition functions ниже описывают историческую границу выбора.
+> Действующая проверка сначала определяет, выражается ли механика через Game
+> Intent, типизированный Mechanics IR и закреплённый общий модуль. Если нет,
+> исполняемый код допускается только как безопасное изолированное расширение в
+> границе конкретной игры; удалённый effects/JsonLogic executor не является
+> альтернативой.
 
 ## Оглавление
 

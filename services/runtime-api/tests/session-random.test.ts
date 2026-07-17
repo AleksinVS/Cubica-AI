@@ -3,9 +3,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import {
+  createSessionRandomStreamsState,
   createSessionRandomState,
+  readSessionRandomStream,
   rollSessionDice,
-  SESSION_RANDOM_ALGORITHM
+  SESSION_RANDOM_ALGORITHM,
+  SESSION_RANDOM_STREAMS_ALGORITHM,
+  writeSessionRandomStream
 } from "../src/modules/runtime/sessionRandom.ts";
 
 const FIXED_SEED = "0123456789abcdeffedcba9876543210";
@@ -49,5 +53,32 @@ test("invalid dice notation and persisted state fail explicitly", () => {
   assert.throws(
     () => rollSessionDice({ alg: SESSION_RANDOM_ALGORITHM, seed: FIXED_SEED, counter: -1 }, "2d6"),
     /counter/u
+  );
+});
+
+test("named streams derive independently and persist only their own counters", () => {
+  const root = createSessionRandomStreamsState(FIXED_SEED);
+  const newsBefore = readSessionRandomStream(root, "deck.news");
+  const cargoBefore = readSessionRandomStream(root, "deck.cargo");
+  const consumedNews = rollSessionDice(newsBefore, "3d10").random;
+  const afterNews = writeSessionRandomStream(root, "deck.news", consumedNews);
+
+  assert.equal(afterNews.alg, SESSION_RANDOM_STREAMS_ALGORITHM);
+  assert.notEqual(newsBefore.seed, cargoBefore.seed, "domain-separated stream ids need distinct generator seeds");
+  assert.deepEqual(
+    readSessionRandomStream(afterNews, "deck.cargo"),
+    cargoBefore,
+    "consuming one stream must not move another stream's replay position"
+  );
+  assert.equal(afterNews.counters["deck.news"], consumedNews.counter);
+  assert.equal(afterNews.counters["deck.cargo"], undefined);
+});
+
+test("named streams reject unsafe keys and cross-stream generator state", () => {
+  const root = createSessionRandomStreamsState(FIXED_SEED);
+  assert.throws(() => readSessionRandomStream(root, "__proto__"), /stream id/u);
+  assert.throws(
+    () => writeSessionRandomStream(root, "deck.news", readSessionRandomStream(root, "deck.cargo")),
+    /unrelated or rewound/u
   );
 });

@@ -8,6 +8,7 @@ type RuntimeState = {
 
 type ActionResponse = {
   state?: RuntimeState;
+  receipt?: { status?: string; actionId?: string };
 };
 
 type SessionResponse = {
@@ -59,39 +60,41 @@ const main = async () => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ gameId: "antarctica", playerId: "smoke" })
+      body: JSON.stringify({ gameId: "antarctica" })
     });
 
     assert(sessionResponse.status === 201, `Expected 201 from POST /sessions, got ${sessionResponse.status}`);
     const sessionBody = (await sessionResponse.json()) as {
       sessionId?: string;
       version?: { stateVersion?: number };
+      credential?: string;
     };
     assert(typeof sessionBody.sessionId === "string", "POST /sessions did not return sessionId");
+    assert(typeof sessionBody.credential === "string", "POST /sessions did not return the one-time credential");
     assert(sessionBody.version?.stateVersion === 0, "POST /sessions did not return initial stateVersion 0");
     const expectedStateVersion = sessionBody.version?.stateVersion ?? 0;
 
     const actionResponse = await fetch(`${baseUrl}/actions`, {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${sessionBody.credential}`,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
         sessionId: sessionBody.sessionId,
         expectedStateVersion,
         actionId: "opening.info.i0.advance",
-        payload: { source: "smoke" }
+        commandId: "cli_0000000000000000000001",
+        params: {}
       })
     });
 
     assert(actionResponse.status === 200, `Expected 200 from POST /actions, got ${actionResponse.status}`);
     const actionBody = (await actionResponse.json()) as ActionResponse;
     assert(actionBody.state && typeof actionBody.state === "object", "POST /actions did not return state");
-
-    const runtime = actionBody.state?.runtime;
     assert(
-      runtime?.lastActionId === "opening.info.i0.advance",
-      "Deterministic runtime state did not record the manifest action"
+      actionBody.receipt?.status === "applied" && actionBody.receipt.actionId === "opening.info.i0.advance",
+      "POST /actions did not return an applied receipt for the published Game Intent"
     );
 
     const timeline = actionBody.state?.public?.timeline as { stepIndex?: number } | undefined;
@@ -99,15 +102,12 @@ const main = async () => {
 
     // Read the session back so the smoke proves the transition was persisted,
     // not merely returned optimistically by the action endpoint.
-    const persistedResponse = await fetch(`${baseUrl}/sessions/${sessionBody.sessionId}`);
+    const persistedResponse = await fetch(`${baseUrl}/sessions/${sessionBody.sessionId}`, {
+      headers: { "Authorization": `Bearer ${sessionBody.credential}` }
+    });
     assert(persistedResponse.status === 200, `Expected 200 from GET /sessions/:id, got ${persistedResponse.status}`);
     const persistedBody = (await persistedResponse.json()) as SessionResponse;
-    const persistedRuntime = persistedBody.state?.runtime;
     const persistedTimeline = persistedBody.state?.public?.timeline as { stepIndex?: number } | undefined;
-    assert(
-      persistedRuntime?.lastActionId === "opening.info.i0.advance",
-      "Persisted session did not retain the manifest action"
-    );
     assert(persistedTimeline?.stepIndex === 1, "Persisted session did not retain the timeline transition");
 
     // eslint-disable-next-line no-console

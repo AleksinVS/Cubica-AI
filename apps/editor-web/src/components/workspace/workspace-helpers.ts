@@ -269,7 +269,7 @@ export function upsertRuntimeSnapshotInTrace(
           ? undefined
           : {
               actionId: action.actionId,
-              payload: action.payload ?? {},
+              params: action.params ?? {},
               timestamp: action.timestamp
             }
       } as unknown as JsonValue

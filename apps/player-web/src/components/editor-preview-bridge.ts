@@ -45,7 +45,7 @@ export interface EditorPreviewSessionSnapshot {
 
 export interface EditorPreviewCompletedAction {
   readonly actionId: string;
-  readonly payload?: Record<string, unknown>;
+  readonly params?: Record<string, unknown>;
   readonly timestamp: string;
 }
 
@@ -80,7 +80,7 @@ export function useEditorPreviewBridge(rootRef: RefObject<HTMLElement>, options:
           {
             source: "cubica-player-web",
             type: "previewSessionSnapshot",
-            version: 1,
+            version: 2,
             sessionId: options.sessionSnapshot.sessionId,
             gameId: options.sessionSnapshot.gameId,
             sessionVersion: options.sessionSnapshot.version,

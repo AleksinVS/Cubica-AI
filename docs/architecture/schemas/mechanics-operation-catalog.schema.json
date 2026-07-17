@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.platform/schemas/mechanics-operation-catalog.v1.json",
+  "title": "Cubica Mechanics Operation Catalog v1",
+  "description": "Closed machine-readable admission metadata for every executable Mechanics IR operation.",
+  "type": "object",
+  "required": ["apiVersion", "operations"],
+  "properties": {
+    "apiVersion": { "const": "cubica.platform/mechanics-operation-catalog/v1" },
+    "operations": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 256,
+      "propertyNames": { "$ref": "#/$defs/operationId" },
+      "additionalProperties": { "$ref": "#/$defs/operation" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "operationId": {
+      "type": "string",
+      "pattern": "^[a-z][A-Za-z0-9]*(?:\\.[A-Za-z][A-Za-z0-9]*)+$"
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^(?!(?:__proto__|constructor|prototype)$)[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "nonEmptyString": { "type": "string", "minLength": 1, "maxLength": 512 },
+    "operation": {
+      "type": "object",
+      "required": [
+        "moduleId",
+        "kind",
+        "schemaRef",
+        "inputType",
+        "outputType",
+        "confidentiality",
+        "integrity",
+        "reads",
+        "writes",
+        "determinism",
+        "orderPolicy",
+        "errorPolicy",
+        "cost",
+        "errors",
+        "examples",
+        "counterexamples",
+        "conformanceTests"
+      ],
+      "properties": {
+        "moduleId": { "$ref": "#/$defs/identifier" },
+        "kind": { "enum": ["query", "command", "algorithm"] },
+        "schemaRef": {
+          "type": "string",
+          "pattern": "^https://cubica\\.platform/schemas/mechanics-plan\\.v1alpha1\\.json#/\\$defs/[A-Za-z][A-Za-z0-9]+$"
+        },
+        "inputType": { "$ref": "#/$defs/nonEmptyString" },
+        "outputType": { "$ref": "#/$defs/nonEmptyString" },
+        "confidentiality": {
+          "type": "object",
+          "required": ["input", "output"],
+          "properties": {
+            "input": { "enum": ["declared-flow", "public", "actor", "server"] },
+            "output": { "enum": ["joined-input", "public", "actor", "server"] }
+          },
+          "additionalProperties": false
+        },
+        "integrity": {
+          "enum": ["manifest", "server-authenticated", "module-checked", "untrusted-input"]
+        },
+        "reads": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "writes": {
+          "type": "array",
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "determinism": {
+          "enum": ["pure", "state-deterministic", "pinned-random-stream"]
+        },
+        "orderPolicy": { "$ref": "#/$defs/nonEmptyString" },
+        "errorPolicy": { "$ref": "#/$defs/nonEmptyString" },
+        "cost": {
+          "type": "object",
+          "required": ["class", "formula"],
+          "properties": {
+            "class": { "enum": ["constant", "bounded-linear", "bounded-graph"] },
+            "formula": { "$ref": "#/$defs/nonEmptyString" }
+          },
+          "additionalProperties": false
+        },
+        "errors": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        },
+        "examples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "type": "object" }
+        },
+        "counterexamples": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["reason", "value"],
+            "properties": {
+              "reason": { "$ref": "#/$defs/nonEmptyString" },
+              "value": { "type": "object" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "conformanceTests": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/identifier" }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
