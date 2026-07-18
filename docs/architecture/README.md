@@ -18,6 +18,7 @@
 - `generative-ui-surface-protocol.md` — проектная архитектура Cubica-owned Generative UI Surface Protocol по ADR-045 и ADR-046: CopilotKit как MVP-адаптер, собственный compatible Agent UI target, Cubica Surface, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
 - `runtime-mechanics-language.md` — целевая цепочка Game Intent → Cubica Mechanics IR по ADR-083/084: `actionId` и `commandId`, разделённые definition/availability projections, mechanics capability packs, чистые query/assert/algorithm, изменяющие command, structural control nodes, изолированные игровые extensions, command receipts и полный переход со старого `deterministic.effects[]` без постоянного adapter.
 - `project-knowledge-system.md` — принятая архитектура проектной вики Cubica, смыслового wiki-графа, FTS5, сразу проверяемого векторного поиска и производного контекста модулей, символов, вызовов и контрактов по ADR-082.
+- `product-context-system.md` — отдельный черновой трек продуктовой памяти и ситуативной осведомлённости пользовательских агентов: границы с инженерной вики, авторский и публичный домены, PostgreSQL/FTS/векторный поиск, приватность и встраивание в платформу по Draft ADR-088.
 - `testing-strategy.md` — политика тестирования и целевая архитектура проверок для runtime, player, editor, portal, game content и будущего LLM-слоя.
 - `diagrams/` — визуальные схемы (C4, последовательности, схемы развёртывания). Создаётся по мере появления диаграмм.
 - `openapi/` — спецификации API и совместимые артефакты (JSON/YAML).
