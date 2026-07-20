@@ -330,7 +330,37 @@ export function resolveCurrentTeamSelectionScene(
 }
 
 /**
+ * Maps a card's orthogonal state facets (ADR-041) to a single presentation
+ * `visualState` for the renderer (the ADR-094 flip signal).
+ *
+ * A resolved card shows its back (flip). Precedence: `resolved` wins over
+ * `selected`, which wins over `locked`; otherwise the card is in its default
+ * (front) state. This mirrors, for this plugin's board-card projection, the
+ * generic object-model view rule `resolution.resolved -> visualState: "resolved"`.
+ */
+function resolveCardVisualState(cardState?: CardObjectState): string {
+  const facets = cardState?.facets;
+  if (!facets) {
+    return "default";
+  }
+  if (facets.resolution === "resolved") {
+    return "resolved";
+  }
+  if (facets.selection === "selected") {
+    return "selected";
+  }
+  if (facets.availability === "locked") {
+    return "locked";
+  }
+  return "default";
+}
+
+/**
  * Resolves visible cards for the current board by card ids and session object state.
+ *
+ * Each visible card carries a `visualState` projected from its state facets so the
+ * renderer can flip a resolved card to its back face (ADR-094). The card content
+ * already includes the `backText` (the outcome) that the back face shows.
  */
 export function resolveBoardCards(
   gameContent: GamePlayerContent | null,
@@ -358,7 +388,11 @@ export function resolveBoardCards(
       }
 
       return contentAvailable !== false;
-    });
+    })
+    .map((card) => ({
+      ...card,
+      visualState: resolveCardVisualState(cardObjects?.[card.cardId])
+    }));
 }
 
 function isCardJournalEntry(entry: NormalizedJournalEntry): boolean {

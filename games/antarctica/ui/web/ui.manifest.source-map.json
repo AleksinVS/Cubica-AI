@@ -2167,6 +2167,12 @@
         "pointer": "/_definitions/ui.AntarcticaBoardChoiceCard/props/summary"
       }
     ],
+    "/screens/board-topbar/root/children/1/children/1/children/0/props/backText": [
+      {
+        "file": "games/antarctica/authoring/ui/web.authoring.json",
+        "pointer": "/_definitions/ui.AntarcticaBoardChoiceCard/props/backText"
+      }
+    ],
     "/screens/board-topbar/root/children/1/children/1/children/0/props/selectLabel": [
       {
         "file": "games/antarctica/authoring/ui/web.authoring.json",

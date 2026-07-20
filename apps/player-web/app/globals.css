@@ -1402,66 +1402,13 @@ button.button-helper-arrow:focus-visible {
   align-items: stretch;
 }
 
-.topbar-screen-shell .topbar-cards-container .game-card {
+/* Antarctica board-card styling (surface, min-heights, action button) was moved
+   out of platform globals into the game theme
+   (games/antarctica/assets/styles/antarctica.css) per ADR-091 / debt LEGACY-0076:
+   it targets the antarctica-authored `topbar-cards-container` class and is game
+   styling, not platform layout. Only the generic container grid above stays here. */
+.topbar-screen-shell .topbar-cards-container > * {
   min-height: 234px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 1em;
-  border-radius: 0;
-  background: rgba(162, 217, 247, 0.5);
-  border: none;
-  box-shadow: none;
-  font-weight: bold;
-  color: #fff;
-  line-height: 1.4;
-  position: relative;
-}
-
-.topbar-screen-shell .topbar-cards-container .game-card:nth-child(n + 4):nth-child(-n + 6) {
-  min-height: 253px;
-}
-
-/* Action button inside topbar cards - visible, properly sized */
-
-.topbar-screen-shell .topbar-cards-container .game-card button.action-button {
-  position: static;
-  opacity: 1;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  pointer-events: auto;
-  padding: 0.5em 1em;
-  background: rgba(157, 227, 255, 0.15);
-  border: 1px solid rgba(157, 227, 255, 0.3);
-  border-radius: 6px;
-  color: #fff;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  margin-top: auto;
-  align-self: flex-start;
-  transition: all 160ms ease;
-}
-
-.topbar-screen-shell .topbar-cards-container .game-card button.action-button:hover {
-  background: rgba(157, 227, 255, 0.25);
-  border-color: rgba(157, 227, 255, 0.5);
-  transform: translateY(-1px);
-}
-
-.topbar-screen-shell .topbar-cards-container .game-card button.action-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.topbar-screen-shell .topbar-cards-container > *,
-.topbar-screen-shell .topbar-cards-container .game-card {
-  min-height: 234px;
-}
-
-.topbar-screen-shell .topbar-cards-container .game-card:nth-child(n + 4):nth-child(-n + 6) {
-  min-height: 253px;
 }
 
 .topbar-screen-shell .button-container,

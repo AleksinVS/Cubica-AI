@@ -5180,7 +5180,11 @@
             "initial": "idle",
             "values": {
               "idle": {},
-              "resolved": {}
+              "resolved": {
+                "view": {
+                  "visualState": "resolved"
+                }
+              }
             }
           },
           "availability": {

@@ -569,15 +569,82 @@
    These ensure visual fidelity with the reference UI.
    =========================================================================== */
 
-/* Card flip animation */
+/* Card flip animation.
+   The card front/back flip mechanism now lives in the platform card component's
+   scoped CSS module (apps/player-web/.../card-component.module.css) and is driven
+   declaratively by the card's `visualState` (ADR-094). The old draft-migrated
+   `.default-game-card` / `.flipped` classes matched nothing in the current
+   renderer and have been removed. */
 
-.default-game-card {
-  transition: transform 0.5s ease-in-out;
+/* ===========================================================================
+   Antarctica board cards (topbar layout).
+
+   Moved here from platform `globals.css` per ADR-091 / debt LEGACY-0076: these
+   rules target the antarctica-authored `topbar-cards-container` class and are
+   game styling, not platform layout. Only the generic container grid and the
+   `> *` child min-height stay in globals.
+
+   The card SURFACE (blue fill, padding) lives on the rotating faces for flip
+   cards so the WHOLE card turns (ADR-094); the article becomes a transparent
+   flip frame. Non-flip board cards (no faces) keep the surface on the article.
+   Because the competing globals rule is gone, no `!important`/high-specificity
+   hack is needed — the flip and non-flip surfaces are split cleanly by
+   `:has(.game-card-front)` vs `:not(:has(.game-card-front))`.
+   =========================================================================== */
+
+/* Card box: sizing + column layout (all board cards). */
+.topbar-screen-shell .topbar-cards-container .game-card {
+  min-height: 234px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
 }
 
-.flipped {
-  transform: rotateY(180deg);
+.topbar-screen-shell .topbar-cards-container .game-card:nth-child(n + 4):nth-child(-n + 6) {
+  min-height: 253px;
 }
+
+/* Non-flip board cards keep the surface on the article. */
+.topbar-screen-shell .topbar-cards-container .game-card:not(:has(.game-card-front)) {
+  padding: 1em;
+  border-radius: 0;
+  background: rgba(162, 217, 247, 0.5);
+  border: none;
+  box-shadow: none;
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.4;
+}
+
+/* Flip cards: the article is a transparent flip frame; the surface is on the faces
+   so the whole card turns. If a browser lacks `:has()`, this rule is skipped and the
+   card keeps its default box — a graceful, non-broken fallback.
+   `!important` + this specificity are required to beat the antarctica board-card
+   surface rules still in globals.css (`.topbar-screen-shell .cards-container >
+   .game-card`, `!important`) until they are fully migrated here (debt LEGACY-0076). */
+.topbar-screen-shell .cards-container > .game-card:has(.game-card-front),
+.topbar-screen-shell .topbar-cards-container .game-card:has(.game-card-front) {
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+.game-card-front,
+.game-card-back {
+  padding: 1em;
+  background: rgba(162, 217, 247, 0.5);
+  font-weight: bold;
+  color: #fff;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+/* NB: the per-card "Выбрать" action button is intentionally hidden on the board
+   (the whole card is the click target). That hiding is still governed by the
+   antarctica board-card rules that remain in platform globals.css
+   (`.topbar-screen-shell .cards-container > .game-card .action-button { display:none }`,
+   debt LEGACY-0076); once those rules are fully migrated here the button styling
+   moves with them. */
 
 /* Journal cards container (used by draft layout) */
 
