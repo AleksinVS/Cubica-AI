@@ -275,9 +275,21 @@ describe("built-in leaf component UI contract", () => {
     ["metric binding", { type: "gameVariableComponent", props: {} }],
     ["non-empty metric binding", { type: "gameVariableComponent", props: { metricId: "" } }],
     ["card content", { type: "cardComponent", props: {} }],
-    ["non-empty card content", { type: "cardComponent", props: { title: "" } }]
+    ["non-empty card content", { type: "cardComponent", props: { title: "" } }],
+    ["non-empty card back content", { type: "cardComponent", props: { backText: "" } }]
   ])("rejects a built-in leaf without %s", (_label, root) => {
     expect(validateUiManifest(manifestWithRoot(root))).toBe(false);
+  });
+
+  it("accepts the public two-sided card contract", () => {
+    expect(validateUiManifest(manifestWithRoot({
+      type: "cardComponent",
+      props: {
+        title: "Neutral option",
+        backText: "Neutral result",
+        visualState: "resolved"
+      }
+    }))).toBe(true);
   });
 
   it("keeps props optional for structural containers", () => {
