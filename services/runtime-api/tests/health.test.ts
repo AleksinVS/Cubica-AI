@@ -90,6 +90,12 @@ test("deriveSessionStoreMode reflects an alternate store class name", () => {
     async authenticateSession() {
       return null;
     }
+    async archiveSession() {
+      return null;
+    }
+    async readArchivedSession() {
+      return null;
+    }
     async getImmutableBundle() {
       return null;
     }

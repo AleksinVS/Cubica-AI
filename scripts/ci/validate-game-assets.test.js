@@ -6,8 +6,9 @@ const path = require("node:path");
 const { afterEach, test } = require("node:test");
 
 const {
-  MAX_FILE_BYTES,
+  ADVISORY_FILE_BYTES,
   buildValidator,
+  validateCssSource,
   validateGameAssetDirectory,
   validateSvg
 } = require("./validate-game-assets.js");
@@ -60,13 +61,15 @@ test("reports duplicate ids, game id mismatch, missing files and orphans", () =>
   assert.match(issues, /orphan file/u);
 });
 
-test("enforces the per-file byte limit", () => {
-  const created = fixture({ file: "large.png", content: Buffer.alloc(MAX_FILE_BYTES + 1) });
-  const issues = validateGameAssetDirectory(created.gameDir, buildValidator()).issues.join("\n");
-  assert.match(issues, /file size/u);
+test("reports the per-file size as a non-gating advisory warning", () => {
+  const created = fixture({ file: "large.png", content: Buffer.alloc(ADVISORY_FILE_BYTES + 1) });
+  const result = validateGameAssetDirectory(created.gameDir, buildValidator());
+  // Size is advisory (ADR-063 amendment): it warns but never fails the build.
+  assert.deepEqual(result.issues, []);
+  assert.match(result.warnings.join("\n"), /file size/u);
 });
 
-test("enforces the distinct total game byte limit", () => {
+test("reports the distinct total game size as a non-gating advisory warning", () => {
   const created = fixture({ file: "asset-0.png", content: Buffer.alloc(500 * 1024) });
   const assets = [];
   for (let index = 0; index < 9; index += 1) {
@@ -78,9 +81,75 @@ test("enforces the distinct total game byte limit", () => {
     gameId: path.basename(created.gameDir),
     assets
   }));
-  const issues = validateGameAssetDirectory(created.gameDir, buildValidator()).issues.join("\n");
-  assert.match(issues, /total registered size/u);
+  const result = validateGameAssetDirectory(created.gameDir, buildValidator());
+  assert.deepEqual(result.issues, []);
+  assert.match(result.warnings.join("\n"), /total registered size/u);
 });
+
+test("accepts a game CSS stylesheet asset that references images by token", () => {
+  const created = fixture();
+  const cssBody = ".board { background-image: url(asset:board-guinea); color: #fff; }";
+  fs.mkdirSync(path.join(created.assetsDir, "styles"), { recursive: true });
+  fs.writeFileSync(path.join(created.assetsDir, "styles", "game.css"), cssBody);
+  fs.writeFileSync(path.join(created.assetsDir, "assets.json"), JSON.stringify({
+    gameId: path.basename(created.gameDir),
+    assets: created.registry.assets,
+    stylesheets: [
+      { id: "game-styles", file: "styles/game.css", kind: "css", origin: { type: "authored-in-repo" } }
+    ]
+  }));
+  assert.deepEqual(validateGameAssetDirectory(created.gameDir, buildValidator()).issues, []);
+});
+
+test("rejects a game CSS stylesheet that bakes in an image path instead of a token", () => {
+  const created = fixture();
+  const cssBody = '.board { background-image: url("/images/arctic-background.png"); }';
+  fs.mkdirSync(path.join(created.assetsDir, "styles"), { recursive: true });
+  fs.writeFileSync(path.join(created.assetsDir, "styles", "game.css"), cssBody);
+  fs.writeFileSync(path.join(created.assetsDir, "assets.json"), JSON.stringify({
+    gameId: path.basename(created.gameDir),
+    assets: created.registry.assets,
+    stylesheets: [
+      { id: "game-styles", file: "styles/game.css", kind: "css", origin: { type: "authored-in-repo" } }
+    ]
+  }));
+  const issues = validateGameAssetDirectory(created.gameDir, buildValidator()).issues.join("\n");
+  assert.match(issues, /must reference a game asset by token/u);
+});
+
+test("rejects a stylesheet id that collides with an image id", () => {
+  const created = fixture();
+  fs.mkdirSync(path.join(created.assetsDir, "styles"), { recursive: true });
+  fs.writeFileSync(path.join(created.assetsDir, "styles", "game.css"), ".board { color: #fff; }");
+  fs.writeFileSync(path.join(created.assetsDir, "assets.json"), JSON.stringify({
+    gameId: path.basename(created.gameDir),
+    assets: created.registry.assets,
+    stylesheets: [
+      { id: "board", file: "styles/game.css", kind: "css", origin: { type: "authored-in-repo" } }
+    ]
+  }));
+  const issues = validateGameAssetDirectory(created.gameDir, buildValidator()).issues.join("\n");
+  assert.match(issues, /duplicate asset id/u);
+});
+
+for (const [name, css, expected] of [
+  ["asset token", ".a{background:url(asset:board-guinea)}", null],
+  ["data uri", ".a{background:url(data:image/png;base64,AAAA)}", null],
+  ["internal fragment", ".a{clip-path:url(#clip)}", null],
+  ["css var", ".a{background:url(var(--bg))}", null],
+  ["absolute path", '.a{background:url("/images/x.png")}', /by token/u],
+  ["relative path", ".a{background:url(./x.png)}", /by token/u],
+  ["remote url", ".a{background:url(https://example.com/x.png)}", /by token/u]
+]) {
+  test(`CSS url() rule: ${name}`, () => {
+    const issues = validateCssSource(css, "fixture.css");
+    if (expected === null) {
+      assert.deepEqual(issues, []);
+    } else {
+      assert.match(issues.join("\n"), expected);
+    }
+  });
+}
 
 for (const unsafeFile of ["../secret.svg", "/absolute.svg"]) {
   test(`rejects unsafe registry traversal path: ${unsafeFile}`, () => {

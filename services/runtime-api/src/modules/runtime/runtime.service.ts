@@ -1,3 +1,4 @@
+import { performance } from "node:perf_hooks";
 import type {
   DispatchActionInput,
   DispatchActionResponse,
@@ -39,6 +40,29 @@ export interface RuntimeServiceDispatchOptions {
 export interface RuntimeServiceDispatchResult {
   response: DispatchActionResponse<RuntimeState>;
   result: RuntimeActionResult<RuntimeState>;
+  /**
+   * Internal observability only. The HTTP adapter converts these bounded
+   * aggregate durations into `Server-Timing`; the JSON response deliberately
+   * receives only `response`, so no runtime identifiers or implementation
+   * details cross the public contract.
+   */
+  timings: RuntimeServiceDispatchTimings;
+}
+
+/**
+ * Coarse action latency buckets. They intentionally contain durations only:
+ * no session/action ids, parameters, SQL, object counts or secret state.
+ *
+ * Scheduler and reload are absent when the external action did not commit, so
+ * the post-commit scheduler pass was not attempted.
+ */
+export interface RuntimeServiceDispatchTimings {
+  dispatchMs: number;
+  schedulerMs?: number;
+  reloadMs?: number;
+  projectionMs: number;
+  actionAvailabilityMs: number;
+  totalMs: number;
 }
 
 export interface RuntimeServiceTransportRoadPreviewOptions {
@@ -57,69 +81,106 @@ export class RuntimeService {
   }
 
   async dispatch(options: RuntimeServiceDispatchOptions): Promise<RuntimeServiceDispatchResult> {
+    const totalStartedAt = performance.now();
     const credentialSha256 = hashSessionCredential(options.accessToken);
+    const dispatchStartedAt = performance.now();
     const { snapshot, result, receipt, bundle, actorPlayerId, sessionRole, committedState } = await dispatchRuntimeAction({
       sessionStore: options.sessionStore,
       credentialSha256,
       input: options.input,
       admissionController: this.admissionController
     });
+    const dispatchMs = elapsedMilliseconds(dispatchStartedAt);
     let responseSnapshot = snapshot;
     let responseActorPlayerId = actorPlayerId;
     let responseSessionRole = sessionRole;
+    let schedulerMs: number | undefined;
+    let reloadMs: number | undefined;
     if (committedState) {
+      const schedulerStartedAt = performance.now();
+      // A failed pass may have committed an earlier schedule before a later
+      // failure, so it must still reload. Only an explicit zero-attempt result
+      // proves that the just-committed external snapshot is already current.
+      let reloadAfterScheduler = true;
       try {
         // This is a distinct post-commit pass. A scheduler failure must not
         // turn an already committed external command into a transport error.
-        await processPendingSystemSchedules(options.sessionStore, snapshot.sessionId);
+        const schedulerResult = await processPendingSystemSchedules(
+          options.sessionStore,
+          snapshot.sessionId
+        );
+        reloadAfterScheduler = schedulerResult.attempted > 0;
       } catch (error) {
         console.error(
           `[system-scheduler] bounded pass failed for session ${snapshot.sessionId}:`,
           error instanceof Error ? error.message : String(error)
         );
+      } finally {
+        schedulerMs = elapsedMilliseconds(schedulerStartedAt);
       }
 
-      try {
-        // Earlier schedules may already have committed before a later one in
-        // the bounded pass failed. Reload independently of the pass outcome,
-        // then resolve the viewer again because a system intent may have
-        // switched the active hot-seat actor.
-        const [latestSnapshot, latestPrincipal] = await Promise.all([
-          options.sessionStore.getSession(snapshot.sessionId),
-          options.sessionStore.authenticateSession({
-            sessionId: snapshot.sessionId,
-            credentialSha256
-          })
-        ]);
-        if (latestSnapshot !== null && latestPrincipal !== null) {
-          responseSnapshot = latestSnapshot;
-          responseActorPlayerId = resolveSessionViewerActor(latestSnapshot, latestPrincipal);
-          responseSessionRole = latestPrincipal.role;
+      if (reloadAfterScheduler) {
+        const reloadStartedAt = performance.now();
+        try {
+          // Earlier schedules may already have committed before a later one in
+          // the bounded pass failed. Reload independently of the pass outcome,
+          // then resolve the viewer again because a system intent may have
+          // switched the active hot-seat actor.
+          const [latestSnapshot, latestPrincipal] = await Promise.all([
+            options.sessionStore.getSession(snapshot.sessionId),
+            options.sessionStore.authenticateSession({
+              sessionId: snapshot.sessionId,
+              credentialSha256
+            })
+          ]);
+          if (latestSnapshot !== null && latestPrincipal !== null) {
+            responseSnapshot = latestSnapshot;
+            responseActorPlayerId = resolveSessionViewerActor(latestSnapshot, latestPrincipal);
+            responseSessionRole = latestPrincipal.role;
+          }
+        } catch (error) {
+          console.error(
+            `[system-scheduler] current snapshot reload failed for session ${snapshot.sessionId}:`,
+            error instanceof Error ? error.message : String(error)
+          );
+        } finally {
+          reloadMs = elapsedMilliseconds(reloadStartedAt);
         }
-      } catch (error) {
-        console.error(
-          `[system-scheduler] current snapshot reload failed for session ${snapshot.sessionId}:`,
-          error instanceof Error ? error.message : String(error)
-        );
       }
     }
+
+    const projectionStartedAt = performance.now();
+    const projectedState = projectPlayerSessionState({
+      state: responseSnapshot.state,
+      stateModel: bundle.manifest.mechanics.stateModel,
+      ...(responseActorPlayerId === undefined ? {} : { actorPlayerId: responseActorPlayerId })
+    });
+    const projectionMs = elapsedMilliseconds(projectionStartedAt);
+
+    const actionAvailabilityStartedAt = performance.now();
+    const actionAvailability = projectSessionActionAvailability(responseSnapshot, bundle, {
+      ...(responseActorPlayerId === undefined ? {} : { actorPlayerId: responseActorPlayerId }),
+      sessionRole: responseSessionRole
+    });
+    const actionAvailabilityMs = elapsedMilliseconds(actionAvailabilityStartedAt);
 
     return {
       response: {
         sessionId: responseSnapshot.sessionId,
         version: responseSnapshot.version,
-        state: projectPlayerSessionState({
-          state: responseSnapshot.state,
-          stateModel: bundle.manifest.mechanics.stateModel,
-          ...(responseActorPlayerId === undefined ? {} : { actorPlayerId: responseActorPlayerId })
-        }),
-        actionAvailability: projectSessionActionAvailability(responseSnapshot, bundle, {
-          ...(responseActorPlayerId === undefined ? {} : { actorPlayerId: responseActorPlayerId }),
-          sessionRole: responseSessionRole
-        }),
+        state: projectedState,
+        actionAvailability,
         receipt
       },
-      result
+      result,
+      timings: {
+        dispatchMs,
+        ...(schedulerMs === undefined ? {} : { schedulerMs }),
+        ...(reloadMs === undefined ? {} : { reloadMs }),
+        projectionMs,
+        actionAvailabilityMs,
+        totalMs: elapsedMilliseconds(totalStartedAt)
+      }
     };
   }
 
@@ -158,4 +219,14 @@ export class RuntimeService {
       input: options.input
     });
   }
+}
+
+/**
+ * Convert a monotonic clock delta to the only shape accepted by downstream
+ * observability. A clock anomaly must never produce NaN, infinity or a
+ * negative `Server-Timing` duration.
+ */
+function elapsedMilliseconds(startedAt: number): number {
+  const duration = performance.now() - startedAt;
+  return Number.isFinite(duration) && duration >= 0 ? duration : 0;
 }

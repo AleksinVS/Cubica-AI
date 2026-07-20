@@ -15,7 +15,10 @@ export interface GameAssetIndex {
   readonly gameId: string;
   readonly assets: Readonly<Record<string, {
     readonly url: string;
-    readonly kind: "image";
+    // Images (ADR-063) and game-owned stylesheets (ADR-091) share one asset-id
+    // namespace resolved by asset:<id>. The resolver only reads `url`, so the
+    // additional `css` kind is purely informational for consumers that care.
+    readonly kind: "image" | "css";
   }>>;
 }
 
@@ -63,9 +66,16 @@ export function loadGameAssetResolver(input: {
     return cached;
   }
 
-  const pending = fetch(
-    new URL(`/game-assets/${encodeURIComponent(input.gameId)}/index.json`, input.runtimeApiUrl)
-  )
+  // The index URL is passed to fetch as a plain string and the call is made
+  // inside a promise chain: a missing index — or a fetch that throws
+  // synchronously — must fail closed to an empty resolver, never crash the
+  // player shell from inside a React effect.
+  const indexUrl = new URL(
+    `/game-assets/${encodeURIComponent(input.gameId)}/index.json`,
+    input.runtimeApiUrl
+  ).toString();
+  const pending = Promise.resolve()
+    .then(() => fetch(indexUrl))
     .then(async (response) => {
       if (!response.ok) {
         return createEmptyGameAssetResolver();
@@ -98,6 +108,34 @@ export function resolveGameAssetReference(
     warn(`Game asset reference "${value}" is not present in the game asset index.`);
     return undefined;
   }
+}
+
+/**
+ * Builds the `--game-background-image` CSS custom property from a game
+ * plugin's declared theme background (`GameConfigData.themeBackgroundImage`).
+ *
+ * TSK-20260719 R4b: generalizes the same `asset:<id>` contract already used
+ * for UI-manifest image properties (see `resolveGameAssetReference` above) to
+ * this one config-level image reference, so a game plugin can opt into the
+ * content-addressable asset channel (ADR-063) instead of a baked-in path.
+ * Kept here (not in game-player.tsx) so the CSS-variable construction stays a
+ * pure, framework-agnostic function that is directly unit-testable without
+ * rendering a React tree.
+ *
+ * Returns `undefined` when there is no configured background, or when an
+ * `asset:` reference cannot be resolved yet (fail closed — never a broken
+ * `url()`); shared layouts already treat a missing custom property as "no
+ * image" via their `var(--game-background-image, none)` fallback.
+ */
+export function resolveThemeBackgroundStyle(
+  themeBackgroundImage: string | undefined,
+  resolver: GameAssetResolver | null | undefined,
+  warn: (message: string) => void = defaultAssetWarning
+): Readonly<Record<string, string>> | undefined {
+  const resolvedUrl = resolveGameAssetReference(themeBackgroundImage, resolver, warn);
+  return resolvedUrl === undefined
+    ? undefined
+    : { "--game-background-image": `url(${JSON.stringify(resolvedUrl)})` };
 }
 
 /** True when a UI projection needs the optional asset index request. */

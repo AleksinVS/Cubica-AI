@@ -25,7 +25,8 @@ import {
   assertSafeArtifactPaths,
   buildVectorMapReview,
   createReviewOverlay,
-  extractBoundaryCandidates
+  extractBoundaryCandidates,
+  groupBoundaryCandidatesByStrokeStyle
 } from "./extract-vector-map-review.mjs";
 
 const testFile = fileURLToPath(import.meta.url);
@@ -59,9 +60,38 @@ test("real vector review extraction is deterministic, calibrated, and non-publis
   assert.ok(artifact.boundaryCandidates.every((candidate) =>
     candidate.regionId === null && candidate.countryId === null));
 
+  const styleGroups = groupBoundaryCandidatesByStrokeStyle(artifact.boundaryCandidates);
+  assert.equal(styleGroups.length, 18);
+  assert.deepEqual(
+    styleGroups.map((group) => group.candidates.length),
+    [117, 27, 86, 92, 107, 25, 26, 68, 51, 229, 1, 1, 5, 6, 137, 1, 1, 1]
+  );
+  assert.equal(
+    styleGroups.reduce((total, group) => total + group.candidates.length, 0),
+    artifact.summary.boundaryCandidateCount
+  );
+  assert.equal(new Set(styleGroups.map((group) => group.id)).size, styleGroups.length);
+  assert.ok(styleGroups.every((group) => /^boundary-style-[a-f0-9]{16}$/.test(group.id)));
+
   const backgroundHref = path.relative(path.dirname(overlayPath), backgroundPath).split(path.sep).join("/");
   const regeneratedOverlay = createReviewOverlay(artifact, { backgroundHref });
   assert.equal(regeneratedOverlay, await readFile(overlayPath, "utf8"));
+  assert.match(regeneratedOverlay, /role="img" aria-labelledby="title description"/);
+  assert.match(regeneratedOverlay, /<desc id="description">/);
+  assert.match(
+    regeneratedOverlay,
+    /Исходные стили линий · 18 групп · 981 кандидатов/
+  );
+  assert.equal(
+    [...regeneratedOverlay.matchAll(
+      /<g id="boundary-style-[a-f0-9]{16}" data-style-order="[0-9]{2}" data-candidate-count="[0-9]+"/g
+    )].length,
+    styleGroups.length
+  );
+  assert.equal(
+    [...regeneratedOverlay.matchAll(/data-candidate-id="boundary-candidate-[0-9]{4}"/g)].length,
+    artifact.summary.boundaryCandidateCount
+  );
   assert.throws(
     () => createReviewOverlay(committedArtifact, { backgroundHref }),
     /immutable schema-validated artifact/
@@ -74,6 +104,33 @@ test("real vector review extraction is deterministic, calibrated, and non-publis
     () => createReviewOverlay(artifact, { backgroundHref: "/tmp/map.png" }),
     /relative and must not be a URI/
   );
+});
+
+test("stroke-style grouping uses every exact source attribute and stable ordering", () => {
+  const baseStyle = {
+    cmyk: [0.1, 0.2, 0.3, 0.4],
+    width: 1.25,
+    lineCap: 0,
+    lineJoin: 1
+  };
+  const candidates = [
+    { id: "candidate-cmyk", strokeStyle: { ...baseStyle, cmyk: [0.1, 0.2, 0.3, 0.5] } },
+    { id: "candidate-width", strokeStyle: { ...baseStyle, width: 1.5 } },
+    { id: "candidate-cap", strokeStyle: { ...baseStyle, lineCap: 1 } },
+    { id: "candidate-join", strokeStyle: { ...baseStyle, lineJoin: 2 } },
+    { id: "candidate-base-a", strokeStyle: baseStyle },
+    { id: "candidate-base-b", strokeStyle: { ...baseStyle, cmyk: [...baseStyle.cmyk] } }
+  ];
+
+  const grouped = groupBoundaryCandidatesByStrokeStyle(candidates);
+  const regrouped = groupBoundaryCandidatesByStrokeStyle([...candidates].reverse());
+
+  assert.equal(grouped.length, 5);
+  assert.deepEqual(
+    grouped.map((group) => group.candidates.length).sort((left, right) => left - right),
+    [1, 1, 1, 1, 2]
+  );
+  assert.deepEqual(grouped.map((group) => group.id), regrouped.map((group) => group.id));
 });
 
 test("derived artifact paths cannot overwrite protected inputs or each other", async () => {

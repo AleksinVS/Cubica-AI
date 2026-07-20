@@ -2,8 +2,9 @@
  * Projects manifest actions into safe availability data for delivery clients.
  *
  * This module never changes session state and never returns technical guard
- * details. It evaluates the same immutable Mechanics plan on a candidate clone,
- * preventing UI/runtime rule drift without exposing assertion internals.
+ * details. It evaluates assertion-only projections through the protected
+ * read-only Mechanics evaluator, preventing UI/runtime rule drift without
+ * cloning the complete state once per action or exposing assertion internals.
  */
 
 import type {
@@ -12,13 +13,37 @@ import type {
 } from "@cubica/contracts-session";
 import type { CubicaMechanicsIRV1Alpha1, Plan, Predicate } from "@cubica/contracts-manifest";
 import type { GameBundle } from "../content/manifestLoader.ts";
-import { executeMechanicsTransaction, MechanicsExecutionError } from "../mechanics/index.ts";
+import {
+  evaluateReadOnlyMechanicsPredicates,
+  type MechanicsReadOnlyPredicateOutcome
+} from "../mechanics/index.ts";
 import { listManifestActionDefinitions } from "./manifestActions.ts";
 
 type RuntimeState = Record<string, unknown>;
+type ManifestActionDefinition = ReturnType<typeof listManifestActionDefinitions>[number];
+
+/**
+ * Immutable preparation derived only from one admitted game bundle.
+ *
+ * Availability still evaluates state, actor context and role for every
+ * snapshot. This metadata merely avoids re-reading the same action catalog,
+ * resolving the same plan references and rebuilding the same safe public
+ * predicates while the immutable bundle remains alive.
+ */
+interface ActionAvailabilityMetadata {
+  definition: ManifestActionDefinition;
+  plan: Plan | null;
+  publicPredicate: Predicate | null;
+  predicatePreparationFailed: boolean;
+}
+
+const actionAvailabilityMetadataCache = new WeakMap<
+  GameBundle,
+  ReadonlyArray<Readonly<ActionAvailabilityMetadata>>
+>();
 
 const hasMissingRequiredParameters = (
-  definition: ReturnType<typeof listManifestActionDefinitions>[number]
+  definition: ManifestActionDefinition
 ): boolean => {
   const required = Array.isArray(definition.paramsSchema?.required)
     ? definition.paramsSchema.required.filter((name): name is string => typeof name === "string")
@@ -118,18 +143,17 @@ const storageNeedsCommandParameter = (
   isRecord(segment) && "binding" in segment && typeof segment.binding === "string") ?? false;
 
 /**
- * Evaluate only the leading, visible assertion prefix of a published plan.
- * The temporary plan can contain no command or algorithm step, so availability
- * cannot mutate candidate state, advance a random stream, or execute a costly
- * domain operation merely to decide whether a button should be offered.
+ * Combine only the leading, visible assertion prefix of a published plan.
+ *
+ * Returning data instead of evaluating here lets the caller submit all safe
+ * predicates to one read-only Mechanics batch. Commands and random operations
+ * remain unreachable because this function never returns any step after the
+ * first non-assertion.
  */
-const evaluateVisibleStateAssertions = (
-  snapshot: SessionRecord<RuntimeState>,
+const visibleStatePredicate = (
   bundle: GameBundle,
-  plan: Plan,
-  actorPlayerId: string | undefined,
-  sessionRole: "player" | "facilitator" | "assistant" | "observer"
-): "passed" | "rejected" => {
+  plan: Plan
+): Predicate | null => {
   const firstCommandIndex = plan.transaction.steps.findIndex((step) => step.op !== "core.assert");
   const assertionPrefix = plan.transaction.steps
     .slice(0, firstCommandIndex === -1 ? plan.transaction.steps.length : firstCommandIndex)
@@ -137,8 +161,8 @@ const evaluateVisibleStateAssertions = (
       step.op === "core.assert");
 
   const [firstAssertion, ...remainingAssertions] = assertionPrefix;
-  if (!firstAssertion) return "passed";
-  const predicate: Predicate = remainingAssertions.length === 0
+  if (!firstAssertion) return null;
+  return remainingAssertions.length === 0
     ? projectVisiblePredicateBound(firstAssertion.predicate, bundle.manifest.mechanics, "upper")
     : {
         op: "predicate.all",
@@ -148,38 +172,55 @@ const evaluateVisibleStateAssertions = (
             projectVisiblePredicateBound(step.predicate, bundle.manifest.mechanics, "upper"))
         ]
       };
-  const availabilityPlan: Plan = {
-    planHash: plan.planHash,
-    transaction: {
-      steps: [{
-        id: "availability.precondition",
-        kind: "assert",
-        op: "core.assert",
-        predicate,
-        errorCode: "AVAILABILITY_STATE_CONDITION_FAILED"
-      }]
-    }
-  };
+};
 
-  try {
-    executeMechanicsTransaction({
-      mechanics: bundle.manifest.mechanics,
-      plan: availabilityPlan,
-      state: snapshot.state,
-      actorContext: { actorPlayerId, sessionRole },
-      networkModels: bundle.manifest.networkModels,
-      objectModels: bundle.manifest.objectModels,
-      turnPhases: bundle.manifest.config.turnModel?.phases
+/**
+ * Prepare bundle-derived data once without caching any session-dependent
+ * decision. A WeakMap lets garbage collection release the entry together with
+ * its bundle and prevents equal-looking but distinct historic bundles from
+ * sharing metadata accidentally.
+ */
+const listActionAvailabilityMetadata = (
+  bundle: GameBundle
+): ReadonlyArray<Readonly<ActionAvailabilityMetadata>> => {
+  const cached = actionAvailabilityMetadataCache.get(bundle);
+  if (cached) return cached;
+
+  const metadata = listManifestActionDefinitions(bundle)
+    .filter((definition) => definition.invocation === "external")
+    .map((definition): Readonly<ActionAvailabilityMetadata> => {
+      const plan = bundle.manifest.mechanics.plans[definition.binding.planRef] ?? null;
+      if (!plan) {
+        return Object.freeze({
+          definition,
+          plan,
+          publicPredicate: null,
+          predicatePreparationFailed: false
+        });
+      }
+
+      try {
+        return Object.freeze({
+          definition,
+          plan,
+          publicPredicate: visibleStatePredicate(bundle, plan),
+          predicatePreparationFailed: false
+        });
+      } catch {
+        // Keep malformed-plan failure local to this action. Shared Mechanics
+        // preparation below still runs for every role-admitted real plan.
+        return Object.freeze({
+          definition,
+          plan,
+          publicPredicate: null,
+          predicatePreparationFailed: true
+        });
+      }
     });
-    return "passed";
-  } catch (error) {
-    if (error instanceof MechanicsExecutionError &&
-        error.stepId === "availability.precondition" &&
-        error.code === "AVAILABILITY_STATE_CONDITION_FAILED") {
-      return "rejected";
-    }
-    throw error;
-  }
+
+  const immutableMetadata = Object.freeze(metadata);
+  actionAvailabilityMetadataCache.set(bundle, immutableMetadata);
+  return immutableMetadata;
 };
 
 /** Build the complete action projection for one authoritative session snapshot. */
@@ -190,10 +231,58 @@ export function projectSessionActionAvailability(
 ): Array<SessionActionAvailability> {
   const { sessionRole, actorPlayerId } = viewer;
   const basisStateVersion = snapshot.version.stateVersion;
+  const metadata = listActionAvailabilityMetadata(bundle);
+  const predicates: Array<Predicate> = [];
+  const predicateIndexByAction = new Map<string, number>();
+  let needsSharedMechanicsPreparation = false;
 
-  return listManifestActionDefinitions(bundle)
-    .filter((definition) => definition.invocation === "external")
-    .map((definition) => {
+  // Select cached predicates only for actions that survive the role gate.
+  // Role admission and every state-dependent evaluation remain per request.
+  for (const entry of metadata) {
+    const { definition, plan, publicPredicate, predicatePreparationFailed } = entry;
+    if (definition.allowedSessionRoles && !definition.allowedSessionRoles.includes(sessionRole)) {
+      continue;
+    }
+    if (!plan) continue;
+    needsSharedMechanicsPreparation = true;
+    if (!predicatePreparationFailed && publicPredicate) {
+      predicateIndexByAction.set(definition.actionId, predicates.length);
+      predicates.push(publicPredicate);
+    }
+  }
+
+  let predicateOutcomes: Array<MechanicsReadOnlyPredicateOutcome> = [];
+  let sharedMechanicsPreparationFailed = false;
+  if (needsSharedMechanicsPreparation) {
+    try {
+      // A plan without a leading visible assertion must still cross the same
+      // module-lock, budget and typed-state boundary as guarded actions. The
+      // constant sentinel performs no rule check; it only forces that shared
+      // preparation to run when there are no actual public predicates.
+      const predicatesToEvaluate: Array<Predicate> = predicates.length > 0
+        ? predicates
+        : [{ op: "predicate.constant", value: true }];
+      predicateOutcomes = evaluateReadOnlyMechanicsPredicates({
+        mechanics: bundle.manifest.mechanics,
+        predicates: predicatesToEvaluate,
+        state: snapshot.state,
+        actorContext: { actorPlayerId, sessionRole },
+        networkModels: bundle.manifest.networkModels,
+        objectModels: bundle.manifest.objectModels,
+        turnPhases: bundle.manifest.config.turnModel?.phases
+      });
+      if (predicates.length === 0 && predicateOutcomes[0]?.status !== "passed") {
+        sharedMechanicsPreparationFailed = true;
+      }
+    } catch {
+      // Module-lock, state-model or resource-boundary corruption affects the
+      // shared preparation. Every role-admitted action with a real plan fails
+      // closed, including plans without a leading visible assertion.
+      sharedMechanicsPreparationFailed = true;
+    }
+  }
+
+  return metadata.map(({ definition, plan, predicatePreparationFailed }) => {
     if (definition.allowedSessionRoles && !definition.allowedSessionRoles.includes(sessionRole)) {
       return {
         actionId: definition.actionId,
@@ -202,8 +291,6 @@ export function projectSessionActionAvailability(
         basisStateVersion
       };
     }
-
-    const plan = bundle.manifest.mechanics.plans[definition.binding.planRef];
     if (!plan) {
       return {
         actionId: definition.actionId,
@@ -212,8 +299,34 @@ export function projectSessionActionAvailability(
         basisStateVersion
       };
     }
-    try {
-      if (evaluateVisibleStateAssertions(snapshot, bundle, plan, actorPlayerId, sessionRole) === "rejected") {
+    if (predicatePreparationFailed) {
+      return {
+        actionId: definition.actionId,
+        status: "unavailable",
+        reasonCode: "runtime_unsupported",
+        basisStateVersion
+      };
+    }
+    if (sharedMechanicsPreparationFailed) {
+      return {
+        actionId: definition.actionId,
+        status: "unavailable",
+        reasonCode: "runtime_unsupported",
+        basisStateVersion
+      };
+    }
+    const predicateIndex = predicateIndexByAction.get(definition.actionId);
+    if (predicateIndex !== undefined) {
+      const outcome = predicateOutcomes[predicateIndex];
+      if (!outcome || outcome.status === "error") {
+        return {
+          actionId: definition.actionId,
+          status: "unavailable",
+          reasonCode: "runtime_unsupported",
+          basisStateVersion
+        };
+      }
+      if (outcome.status === "rejected") {
         return {
           actionId: definition.actionId,
           status: "unavailable",
@@ -221,15 +334,6 @@ export function projectSessionActionAvailability(
           basisStateVersion
         };
       }
-    } catch (error) {
-      // A malformed assertion or incompatible immutable bundle fails closed
-      // without returning its internal diagnostic to an untrusted client.
-      return {
-        actionId: definition.actionId,
-        status: "unavailable",
-        reasonCode: "runtime_unsupported",
-        basisStateVersion
-      };
     }
 
     if (hasMissingRequiredParameters(definition)) {
@@ -241,7 +345,7 @@ export function projectSessionActionAvailability(
       };
     }
     return { actionId: definition.actionId, status: "available", basisStateVersion };
-    });
+  });
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>

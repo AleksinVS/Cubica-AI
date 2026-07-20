@@ -48,3 +48,10 @@ The schema is designed to be extensible.
 *   **Implementation Cost**: Requires developing and maintaining custom Renderers (Parsers) for each client platform (Web/React, Telegram).
 *   **Learning Curve**: Game developers (and prompt engineers) need to learn the specific JSON dialect.
 
+## Актуализация 2026-07-17
+
+Решение остаётся действующей основой UI-манифеста. Наследники и смежные
+контуры: ADR-055 (чистота рендерера и декларативная привязка действий),
+ADR-066 (ядро рендерера + жанровые UI capability packs — развитие идеи
+«семантических виджетов»), ADR-045/046 (Cubica Surface — отдельный контур
+агентных UI-поверхностей, не замена канальных UI-манифестов).

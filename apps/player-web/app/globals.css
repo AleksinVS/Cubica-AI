@@ -153,7 +153,6 @@ select {
   height: auto;
 }
 
-.fallback-renderer.game-renderer:has(.info-screen-shell),
 .fallback-renderer.game-renderer:has(.topbar-screen-shell) {
   width: 100%;
   height: auto;
@@ -436,6 +435,25 @@ select {
   outline: none;
 }
 
+/*
+ * Keyboard-focus indicator for the illustrated helper buttons and nav arrows.
+ * Their pill/icon art removes native button chrome, which also removed the
+ * focus outline; keyboard users need a visible ring. Focus-only, so pixel
+ * comparisons of resting screens are unaffected.
+ */
+
+/*
+ * !important is required: the per-screen button rules below reset all button
+ * chrome with "outline: none" (the leftsidebar block even with !important),
+ * which would silently swallow this ring.
+ */
+
+button.button-helper:focus-visible,
+button.button-helper-arrow:focus-visible {
+  outline: 2px solid rgba(157, 227, 255, 0.9) !important;
+  outline-offset: 2px !important;
+}
+
 .action-button[aria-disabled="true"] {
   opacity: 0.65;
   cursor: progress;
@@ -535,6 +553,7 @@ select {
    =========================================================================== */
 
 /* S1 renderer root - horizontal layout with sidebar, main area, and decor illustration */
+
 .game-renderer {
   display: flex;
   flex-direction: row;
@@ -552,19 +571,13 @@ select {
   transition: width 0.4s ease, height 0.4s ease;
 }
 
-/* Expand renderer for info screens per leftsidebar-infocard mockup (1920x1080) */
-.game-renderer:has(.info-screen-shell) {
-  width: 1920px;
-  height: 1080px;
-}
-
-.game-renderer:has(.topbar-screen-shell),
-.game-renderer:has(.journal-screen) {
+.game-renderer:has(.topbar-screen-shell) {
   width: 1920px;
   height: 1080px;
 }
 
 /* S1 screen container */
+
 .game-screen {
   display: flex;
   flex-direction: row;
@@ -578,10 +591,17 @@ select {
 
 .topbar-screen-shell {
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(15, 76, 117, 0.16) 0%, rgba(6, 24, 38, 0.28) 100%);
+  /*
+   * No background shorthand here. A gradient formerly declared on this line
+   * was dead weight: the full-viewport rules further down re-set
+   * "background-image" to the game artwork, so the gradient never rendered.
+   * The screen's only dimming layer is the ".additional-background" column
+   * (rgba(34,46,80,.5)), matching the reference styling of this genre shell.
+   */
 }
 
 /* Left sidebar game variables container - 260px wide per mockup S1, 400px for info */
+
 .game-variables-container {
   display: flex;
   flex-direction: column;
@@ -598,105 +618,8 @@ select {
   transition: width 0.4s ease;
 }
 
-.info-screen-shell:not(.topbar-screen-shell) .game-variables-container {
-  width: 400px;
-  background: #0f4c75; /* Design token: sidebar_bg for infocard */
-}
-
-.topbar-variables-container {
-  flex-direction: row;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 14px;
-  width: 100%;
-  height: 120px;
-  padding: 20px 28px;
-  background: linear-gradient(180deg, rgba(15, 76, 117, 0.98) 0%, rgba(12, 67, 105, 0.98) 100%);
-  border-right: none;
-  border-bottom: 1px solid rgba(170, 227, 255, 0.18);
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-/* Main content area (cards + bottom controls) - 970px wide (40 gap + 900 content + 30 gap) */
-.main-content-area {
-  display: flex;
-  flex-direction: column;
-  width: 970px;
-  height: 100%;
-  padding-left: 40px; /* Gap between sidebar and cards */
-  padding-right: 30px; /* Gap between cards and illustration */
-  box-sizing: border-box;
-  z-index: 2;
-  position: relative;
-  transition: width 0.4s ease;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .main-content-area {
-  width: 100%;
-  background: #1b262c; /* Design token: main_bg for infocard */
-  padding-left: 60px;
-  padding-right: 60px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.topbar-main-content {
-  width: 100%;
-  flex: 1;
-  padding: 17px 40px 40px;
-  background: linear-gradient(180deg, rgba(27, 38, 44, 0.92) 0%, rgba(17, 28, 35, 0.96) 100%);
-}
-
-/* Info content in topbar mode - centered event card per topsidebar-infocard.design.json */
-.topbar-screen-shell .info-content {
-  width: 100%;
-  min-height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 20px 0;
-}
-
-.topbar-screen-shell .info-event-card {
-  width: 100%;
-  max-width: 1200px;
-  min-height: 680px;
-  background: linear-gradient(180deg, rgba(16, 60, 93, 0.95) 0%, rgba(12, 47, 74, 0.98) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(184, 225, 250, 0.15);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.topbar-screen-shell .info-event-illustration {
-  min-height: 320px;
-  background:
-    linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
-    var(--game-background-image, none);
-  background-size: cover;
-  background-position: center;
-}
-
-.topbar-screen-shell .info-event-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1.5rem 2rem;
-}
-
-.topbar-screen-shell .info-bottom-controls {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 1rem 2rem 2rem;
-}
-
 /* S1 area - generic class for manifest areas */
+
 .game-area {
   display: flex;
 }
@@ -709,6 +632,7 @@ select {
  * these semantic classes in its UI manifest so the generic player can give the
  * spatial field priority without learning a game id or any gameplay rules.
  */
+
 .game-screen.board-game-shell {
   display: grid;
   grid-template-areas:
@@ -856,6 +780,7 @@ select {
 }
 
 /* Cards container (3x2 grid with gap 24) - target 900px width, 650px height */
+
 .cards-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -880,175 +805,8 @@ select {
   align-self: center;
 }
 
-/* Bottom controls container - below cards, 100px height */
-.bottom-controls-container {
-  display: flex;
-  flex-direction: row;
-  gap: 24px;
-  width: 900px;
-  height: 100px; /* Design mockup height: 100 */
-  align-items: center;
-  box-sizing: border-box;
-  padding-bottom: 12px;
-}
-
-.topbar-board-header {
-  width: 100%;
-  max-width: 1400px;
-  align-self: center;
-  margin-bottom: 28px;
-}
-
-.topbar-board-title {
-  width: 100%;
-}
-
-.topbar-board-title .game-card,
-.topbar-board-header > .game-card {
-  padding: 24px 28px;
-  border-radius: 18px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.05) 100%);
-  border: 1px solid rgba(184, 225, 250, 0.22);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-}
-
-.topbar-board-title .game-card:hover,
-.topbar-board-header > .game-card:hover {
-  transform: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.06) 100%);
-  border-color: rgba(184, 225, 250, 0.28);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
-}
-
-.topbar-board-title .game-card-text,
-.topbar-board-header > .game-card .game-card-text {
-  font-size: 1.2rem;
-  font-weight: 600;
-  color: #f3fbff;
-}
-
-.info-event-illustration {
-  position: relative;
-  height: 480px;
-  border-bottom: 1px solid rgba(184, 225, 250, 0.18);
-  background:
-    linear-gradient(180deg, rgba(24, 99, 148, 0.12) 0%, rgba(7, 28, 47, 0.22) 100%),
-    var(--game-background-image, none);
-  background-size: cover;
-  background-position: center;
-  overflow: hidden;
-}
-
-.info-screen-shell .info-event-illustration {
-  height: 520px;
-}
-
-.info-event-text {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  padding: 34px 40px;
-  background: linear-gradient(180deg, rgba(16, 60, 93, 0.98) 0%, rgba(12, 47, 74, 0.98) 100%);
-}
-
-.info-bottom-controls {
-  width: 1400px;
-  padding-bottom: 40px;
-}
-
-/* ===========================================================================
-   Info screen card overrides
-   Info screens (i17..i21) use cardComponent for title/body text, but they
-   should NOT have s1-card blue gradient styling — they are plain text content.
-   Override s1-card styling specifically for info-event-text context.
-   =========================================================================== */
-
-/* Override card styling for info title and body text - no blue gradient, just text */
-.info-screen-shell .info-event-text .game-card {
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding: 0 !important;
-  transform: none !important;
-  transition: none !important;
-  gap: 12px;
-}
-
-.info-screen-shell .info-event-text .game-card:hover {
-  background: transparent !important;
-  border: none !important;
-  transform: none !important;
-  box-shadow: none !important;
-}
-
-/* Info title styling - bold, larger text */
-.info-screen-shell .info-event-text .game-card .game-card-text {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.4;
-  color: #ffffff;
-}
-
-/* Info body styling - regular body text */
-.info-event-text .game-card .game-card-text {
-  font-size: 1.05rem;
-  font-weight: 400;
-  line-height: 1.6;
-  color: #e6f2fa;
-}
-
-/* Info illustration area - enhanced background per leftsidebar-infocard mockup */
-.info-event-illustration {
-  background:
-    linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
-    var(--game-background-image, none);
-  background-size: cover;
-  background-position: center;
-}
-
-/* Info event card - improved sizing and centering */
-.info-screen-shell .info-event-card {
-  width: 1200px;
-  min-height: 680px;
-  background: linear-gradient(180deg, rgba(16, 60, 93, 0.95) 0%, rgba(12, 47, 74, 0.98) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(184, 225, 250, 0.15);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Info content area - better alignment */
-.info-screen-shell .info-content {
-  width: 100%;
-  min-height: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-top: 40px;
-}
-
-/* Right illustration container - 370px wide per mockup S1 */
-.right-illustration-container {
-  width: 370px;
-  height: 100%;
-  flex-shrink: 0;
-  background: linear-gradient(180deg, #0b6fa4 0%, #0a5c8a 100%); /* Design tokens: primary -> secondary */
-  border-left: 1px solid rgba(170, 227, 255, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  overflow: hidden;
-  z-index: 2;
-}
-
-.info-screen-shell .right-illustration-container {
-  display: none; /* Illustration is not present in infocard mockup */
-}
-
 /* Individual game variable (metric display in sidebar) */
+
 .game-variable {
   display: flex;
   align-items: center;
@@ -1063,6 +821,7 @@ select {
 }
 
 /* Circular timer style for 'score' (days remaining) */
+
 .game-variable--score {
   width: 180px;
   height: 180px;
@@ -1098,47 +857,8 @@ select {
   text-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
 }
 
-.topbar-variables-container .game-variable {
-  min-height: 78px;
-  margin: 0;
-  clip-path: polygon(12px 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
-}
-
-.topbar-variables-container .game-variable--score {
-  width: 180px;
-  min-width: 180px;
-  height: 78px;
-  min-height: 78px;
-  margin: 0;
-  border-radius: 18px !important;
-  border: 1px solid rgba(255, 222, 125, 0.4) !important;
-  background: linear-gradient(135deg, rgba(243, 194, 82, 0.92) 0%, rgba(224, 159, 47, 0.96) 100%) !important;
-  box-shadow: 0 12px 28px rgba(17, 40, 58, 0.28) !important;
-  flex-direction: row !important;
-  justify-content: center;
-  clip-path: none;
-}
-
-.topbar-variables-container .game-variable--score .game-variable-content {
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 0 20px;
-}
-
-.topbar-variables-container .game-variable--score .game-variable-caption {
-  color: rgba(25, 57, 82, 0.95);
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-}
-
-.topbar-variables-container .game-variable--score .game-variable-value {
-  font-size: 2rem;
-  color: #173a55;
-  text-shadow: none;
-}
-
 /* Ice shard style for other variables per mockups */
+
 .game-variable:not(.game-variable--score) {
   background: linear-gradient(135deg, rgba(47, 127, 179, 0.8) 0%, rgba(38, 106, 150, 0.9) 100%) !important;
   border: 1px solid rgba(184, 225, 250, 0.3) !important;
@@ -1151,41 +871,6 @@ select {
   transform: translateX(4px) skewX(-2deg);
   background: rgba(47, 127, 179, 1) !important;
   border-color: rgba(184, 225, 250, 0.6) !important;
-}
-
-.topbar-variables-container .game-variable:not(.game-variable--score) {
-  flex: 0 0 145px;
-  min-width: 145px;
-  min-height: 78px;
-  height: 78px;
-  padding-left: 0;
-  background: transparent !important;
-  border: none !important;
-  clip-path: none;
-}
-
-/* Topbar variables use top-sidebar ice assets as visible backgrounds, not subtle overlays */
-.topbar-variables-container .game-variable-image {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  background-size: 100% 100%;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 1;
-  mix-blend-mode: normal;
-}
-
-/* Topbar non-score variable content sits over the ice asset */
-.topbar-variables-container .game-variable:not(.game-variable--score) .game-variable-content {
-  position: relative;
-  z-index: 1;
-  padding: 8px 12px;
-}
-
-.topbar-variables-container .game-variable:not(.game-variable--score):hover {
-  transform: translateY(-2px);
 }
 
 .game-variable-image {
@@ -1212,14 +897,6 @@ select {
   z-index: 1;
 }
 
-.topbar-variables-container .game-variable-content {
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 4px;
-  padding: 10px 14px 10px 16px;
-}
-
 .game-variable-caption {
   font-size: 11px;
   text-transform: uppercase;
@@ -1235,21 +912,12 @@ select {
   color: #ffffff;
 }
 
-.topbar-variables-container .game-variable-caption {
-  font-size: 0.72rem;
-  color: #d8f2ff;
-}
-
-.topbar-variables-container .game-variable-value {
-  font-size: 1.55rem;
-  line-height: 1.1;
-}
-
 .game-variable-description {
   display: none;
 }
 
 /* S1 card component - using design tokens */
+
 .game-card {
   display: flex;
   flex-direction: column;
@@ -1283,11 +951,6 @@ select {
   background: linear-gradient(180deg, rgba(64, 154, 203, 0.98) 0%, rgba(38, 112, 158, 0.98) 100%);
 }
 
-.topbar-screen-shell .topbar-board-title .game-card,
-.topbar-screen-shell .topbar-board-header > .game-card {
-  min-height: auto;
-}
-
 .game-card-text {
   margin: 0;
   font-size: 1.05rem; /* Design token: body_size */
@@ -1296,6 +959,7 @@ select {
 }
 
 /* S1 button component - Frosted glass style from mockup */
+
 .game-button {
   display: flex;
   align-items: center;
@@ -1334,190 +998,8 @@ select {
   filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.4));
 }
 
-/* Sidebar decoration - penguins placeholder from mockup */
-.sidebar-decoration {
-  width: 100%;
-  height: 140px;
-  margin-top: auto;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.sidebar-decoration::after {
-  content: "🐧🐧";
-  font-size: 80px;
-  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.3));
-  animation: penguin-float 4s ease-in-out infinite;
-}
-
-.topbar-decoration {
-  display: none;
-}
-
-@keyframes penguin-float {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-10px) rotate(-3deg); }
-}
-
-#btn-journal::before { background-image: url("/images/jurnal-hodov.png"); }
-#btn-hint::before { background-image: url("/images/podskazka.png"); }
-
-#nav-left {
-  margin-left: auto;
-}
-
-#nav-left, #nav-right {
-  width: 56px;
-  min-width: 56px;
-  height: 56px;
-  padding: 0;
-  justify-content: center;
-  border-radius: 16px;
-  font-size: 0;
-}
-
-#nav-left::before, #nav-right::before {
-  width: 29px;
-  height: 36px;
-  filter: none;
-}
-
-#nav-left::before {
-  background-image: url("/images/arrow-left.png");
-}
-
-#nav-right::before {
-  background-image: url("/images/arrow-right.png");
-}
-
-#nav-left:disabled, #nav-right:disabled {
-  opacity: 0.58;
-  background: rgba(230, 242, 250, 0.08);
-  border-color: rgba(230, 242, 250, 0.14);
-}
-
-/* Right decor illustration placeholder - whales & icebergs style */
-.right-illustration-placeholder {
-  width: 290px;
-  height: 620px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.01) 100%);
-  backdrop-filter: blur(14px);
-  border-radius: 28px;
-  border: 1px solid rgba(230, 242, 250, 0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #e6f2fa;
-  font-size: 15px;
-  text-align: center;
-  padding: 40px;
-  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.3);
-  position: relative;
-  overflow: hidden;
-}
-
-/* Add CSS iceberg */
-.right-illustration-placeholder::before {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  height: 44%;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, #e6f2fa 100%);
-  clip-path: polygon(0% 100%, 15% 40%, 35% 85%, 55% 20%, 80% 90%, 100% 45%, 100% 100%);
-  opacity: 0.24;
-}
-
-.right-illustration-placeholder::after {
-  content: "🐋";
-  font-size: 116px;
-  margin-top: 30px;
-  filter: drop-shadow(0 0 40px rgba(157, 227, 255, 0.8));
-  animation: float-whale 8s ease-in-out infinite;
-  z-index: 2;
-}
-
-@keyframes float-whale {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
-}
-
-/* ===========================================================================
-   Draft parity classes — migrated from draft/game-player-nextjs/globals.css
-   These ensure visual fidelity with the reference UI.
-   =========================================================================== */
-
-/* Card flip animation */
-.default-game-card {
-  transition: transform 0.5s ease-in-out;
-}
-
-.flipped {
-  transform: rotateY(180deg);
-}
-
-/* Journal cards container (used by draft layout) */
-.journal-cards-container {
-  display: flex;
-  gap: 1rem;
-}
-
-/* Journal variable component (draft style) */
-.default-journal-variable-component {
-  margin-top: 1em;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  color: #fff;
-  text-align: center;
-}
-
-.default-journal-variable-component .journal-variable__row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.default-journal-variable-component .journal-variable__value {
-  font-weight: 700;
-  font-size: 2rem;
-  line-height: 1;
-}
-
-.default-journal-variable-component .journal-variable__diff {
-  font-weight: 700;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.default-journal-variable-component .journal-variable__diff sup {
-  line-height: 1;
-}
-
-.default-journal-variable-component .journal-variable__caption {
-  margin-top: 0.5rem;
-}
-
-/* Tooltip description for game variables */
-.description-div {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 200px;
-  background-color: rgba(34, 46, 80);
-  padding: 10px;
-  z-index: 1;
-  font-weight: normal;
-  font-size: 0.75rem;
-  border-radius: 15px;
-}
-
 /* Additional background overlay (draft layout) */
+
 .additional-background {
   background-color: rgba(34, 46, 80, 0.5);
   grid-column: 2;
@@ -1561,19 +1043,6 @@ select {
     padding: 20px;
   }
 
-  .topbar-variables-container {
-    justify-content: flex-start;
-  }
-
-  .main-content-area {
-    width: 100%;
-    padding: 20px;
-  }
-
-  .topbar-main-content {
-    padding: 20px;
-  }
-
   .cards-container {
     width: 100%;
     height: auto;
@@ -1585,15 +1054,6 @@ select {
   .topbar-cards-container {
     max-width: none;
     padding-top: 0;
-  }
-
-  .bottom-controls-container {
-    width: 100%;
-    padding: 20px 0;
-  }
-
-  .right-illustration-container {
-    display: none;
   }
 }
 
@@ -1633,6 +1093,7 @@ select {
 }
 
 /* Loading state shown while session is booting */
+
 .loading-state {
   display: flex;
   flex-direction: column;
@@ -1655,6 +1116,22 @@ select {
 
 @keyframes loading-spin {
   to { transform: rotate(360deg); }
+}
+
+/*
+ * Entry-point error screen (ARC-003): shown by app/page.tsx when the URL has
+ * no ?gameId= query parameter. It reuses the ".runtime-status-panel" card
+ * (same blocking-state visual language as the runtime-unavailable states
+ * below) but needs its own full-viewport centering wrapper because, unlike
+ * those states, it never renders inside ".game-player-root".
+ */
+
+.entry-error {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
 }
 
 .runtime-status-panel {
@@ -1813,10 +1290,40 @@ select {
   width: 100%;
   min-height: 100vh;
   display: block;
+  /*
+   * Full-viewport player modes must be edge-to-edge. The fixed-size
+   * ".game-renderer" rule higher in this file (the legacy 1600x900 design-mockup
+   * frame) still leaks a 1px border, 12px rounded corners, a drop shadow, a solid
+   * #0b4f7a fill and a centering margin. Those combine with the shell padding to
+   * produce the dark outer frame and side stripes (UI-001). Reset them here so the
+   * game-screen background reaches every edge. Genre renderers (map-first,
+   * board-game) re-declare their own background/framing with higher specificity,
+   * so this generic reset does not touch them.
+   */
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/*
+ * Drop the shell's outer padding whenever it hosts a full-viewport game render, so
+ * the game background reaches every edge (part of UI-001). Loading, error and
+ * runtime-status panels keep the padded shell because they contain no
+ * ".game-renderer". Map-first declares the same reset with a more specific
+ * ":has(.game-renderer--map-first)" selector, so both stay consistent.
+ */
+
+.game-player-root:has(.game-renderer) {
+  padding: 0;
+  gap: 0;
 }
 
 /* Override .game-renderer:has() rules that set fixed dimensions for fallback renders in topbar mode */
+
 /* Also override responsive scale transforms from generic .game-renderer media queries */
+
 .game-renderer.game-renderer--topbar {
   width: 100%;
   min-height: 100vh;
@@ -1833,11 +1340,7 @@ select {
 
 .game-renderer .game-screen,
 .fallback-renderer .game-screen,
-.leftsidebar-screen,
-.topbar-screen-shell,
-.hint-screen,
-.journal-screen,
-.info-screen-shell {
+.topbar-screen-shell {
   width: 100%;
   min-height: 100vh;
   margin: 0;
@@ -1847,64 +1350,16 @@ select {
   background-repeat: no-repeat;
 }
 
-.leftsidebar-screen,
-.topbar-screen-shell,
-.hint-screen,
-.journal-screen,
-.info-screen-shell {
+.topbar-screen-shell {
   display: grid;
 }
 
-.leftsidebar-screen {
-  grid-template-columns: 20% 71% 9%;
-  grid-template-rows: 90% 10%;
-}
-
-.leftsidebar-screen .game-variables-container {
-  grid-column: 1;
-  grid-row: 1 / 3;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 10px;
-  padding: 24px 0 16px;
-  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
-  border-right: 1px solid rgba(170, 227, 255, 0.16);
-}
-
-.leftsidebar-screen .main-content-area {
-  grid-column: 2;
-  grid-row: 1;
-  display: grid;
-  align-content: start;
-  gap: 1rem;
-  padding: 0;
-  background: transparent;
-  width: 100% !important;
-}
-
-.leftsidebar-screen .cards-container {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-  padding-top: 2rem;
-  align-content: start;
-}
-
-.leftsidebar-screen .button-container {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.topbar-screen-shell,
-.hint-screen {
+.topbar-screen-shell {
   grid-template-columns: 10% 80% 10%;
   grid-template-rows: 15% 1fr auto;
 }
 
-.topbar-screen-shell .game-variables-container,
-.hint-screen .game-variables-container {
+.topbar-screen-shell .game-variables-container {
   grid-column: 1 / 4;
   grid-row: 1;
   display: flex;
@@ -1915,21 +1370,7 @@ select {
   border: none;
 }
 
-.topbar-screen-shell .main-content-area,
-.hint-screen .main-content-area {
-  grid-column: 2;
-  grid-row: 2;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 1rem;
-  padding: 0;
-  background: transparent;
-  backdrop-filter: none;
-}
-
-.topbar-screen-shell .cards-container,
-.hint-screen .cards-container {
+.topbar-screen-shell .cards-container {
   width: 100%;
   max-width: 1400px;
   margin: 0 auto;
@@ -1940,12 +1381,7 @@ select {
   align-items: stretch;
 }
 
-.topbar-screen-shell .topbar-board-header {
-  display: none;
-}
-
-.topbar-screen-shell .cards-container > *,
-.hint-screen .cards-container > * {
+.topbar-screen-shell .cards-container > * {
   width: auto !important;
   min-width: unset;
   max-width: unset;
@@ -1954,6 +1390,7 @@ select {
 }
 
 /* Cards in topbar mode - proper 3-column grid with visible action button */
+
 .topbar-screen-shell .topbar-cards-container {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1986,6 +1423,7 @@ select {
 }
 
 /* Action button inside topbar cards - visible, properly sized */
+
 .topbar-screen-shell .topbar-cards-container .game-card button.action-button {
   position: static;
   opacity: 1;
@@ -2027,9 +1465,6 @@ select {
 }
 
 .topbar-screen-shell .button-container,
-.hint-screen .button-container,
-.journal-screen .button-container,
-.info-screen-shell .button-container,
 .game-renderer .button-container {
   grid-column: 2;
   grid-row: 3;
@@ -2039,11 +1474,7 @@ select {
   padding: 2em 0;
 }
 
-.topbar-screen-shell .game-card,
-.leftsidebar-screen .game-card,
-.hint-screen .game-card,
-.journal-screen .game-card,
-.info-screen-shell .game-card {
+.topbar-screen-shell .game-card {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -2061,6 +1492,7 @@ select {
 }
 
 /* Hide internal action buttons in topbar screen S1 cards - card itself handles interaction */
+
 .topbar-screen-shell .game-card button.action-button {
   position: absolute;
   opacity: 0;
@@ -2071,6 +1503,7 @@ select {
 }
 
 /* Topbar S1 panel buttons - use draft helper styling with background images */
+
 .topbar-screen-shell .button-container.panel-buttons {
   grid-column: 2;
   grid-row: 3;
@@ -2112,112 +1545,7 @@ select {
   display: inline-block;
 }
 
-/* Topbar screen bottom controls - use draft helper button styling */
-/* Bottom controls are in .topbar-main-content which is grid column 2 (80% column) */
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container {
-  width: 1024px;
-  max-width: none;
-  height: 104px;
-  padding: 0 32px 12px;
-  margin: auto auto 0;
-  justify-content: flex-start;
-  align-items: center;
-  gap: 16px;
-  box-sizing: border-box;
-  transform: translateY(-19px);
-}
-
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container button {
-  all: unset;
-  background-repeat: no-repeat;
-  background-size: cover;
-  background-position: center;
-  color: rgba(255, 255, 255, 0.9);
-  border: none;
-  padding: 0.25em 0.75em;
-  font-weight: bold;
-  outline: none;
-  cursor: pointer;
-  display: inline-block;
-  height: 28px;
-  box-sizing: border-box;
-}
-
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container button:disabled {
-  opacity: 0.58;
-  cursor: not-allowed;
-}
-
-/* Journal button */
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#btn-journal {
-  background-image: url("/images/jurnal-hodov.png");
-  width: 138px;
-  height: 28px;
-}
-
-/* Hint button */
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#btn-hint {
-  background-image: url("/images/podskazka.png");
-  width: 109px;
-  height: 28px;
-}
-
-/* Arrow buttons - must set background-image BEFORE all:unset, use !important to override all:unset */
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#nav-left {
-  all: unset;
-  background-image: url("/images/arrow-left.png") !important;
-  cursor: pointer;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  width: 40px;
-  height: 40px;
-  display: inline-block;
-  box-sizing: border-box;
-  margin-left: auto;
-  color: transparent;
-  font-size: 0;
-  line-height: 0;
-}
-
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container button#nav-right {
-  all: unset;
-  background-image: url("/images/arrow-right.png") !important;
-  cursor: pointer;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  width: 40px;
-  height: 40px;
-  display: inline-block;
-  box-sizing: border-box;
-  color: transparent;
-  font-size: 0;
-  line-height: 0;
-}
-
-.topbar-screen-shell .topbar-main-content > .bottom-controls-container {
-  position: relative;
-  top: 0;
-}
-
-.topbar-screen-shell .bottom-controls-container .button-helper-arrow,
-.topbar-screen-shell .bottom-controls-container .action-button.button-helper-arrow {
-  all: unset;
-  cursor: pointer;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  width: 40px;
-  height: 40px;
-  display: inline-block;
-}
-
-.topbar-screen-shell .game-card:hover,
-.leftsidebar-screen .game-card:hover,
-.hint-screen .game-card:hover,
-.journal-screen .game-card:hover,
-.info-screen-shell .game-card:hover {
+.topbar-screen-shell .game-card:hover {
   background: rgba(162, 217, 247, 0.58);
   transform: none;
   box-shadow: none;
@@ -2239,144 +1567,6 @@ select {
   font-weight: 700;
   text-transform: lowercase;
   overflow: hidden;
-}
-
-.topbar-variables-container .game-variable {
-  flex: 0 0 75px;
-  min-width: 75px;
-  width: 75px;
-  flex-direction: column;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: transparent !important;
-  overflow: visible;
-  text-align: center;
-}
-
-.topbar-variables-container .game-variable--score {
-  display: grid;
-  grid-template-columns: 75px;
-  grid-template-rows: 47px auto;
-  row-gap: 2px;
-  flex-basis: 107px;
-  width: 107px;
-  min-width: 107px;
-  min-height: 80px;
-  height: 80px;
-  padding: 1px 0 0 16px;
-  align-items: start;
-  justify-items: start;
-  justify-content: start;
-}
-
-.topbar-variables-container .game-variable-image.game-variable-visual {
-  position: static;
-  width: 75px;
-  height: 47px;
-  margin-bottom: 0;
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center;
-  opacity: 1;
-  mix-blend-mode: normal;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.topbar-variables-container .game-variable--score .game-variable-image.game-variable-visual {
-  width: 75px;
-  height: 47px;
-  min-width: 75px;
-  min-height: 47px;
-  align-self: flex-start;
-}
-
-.topbar-variables-container .game-variable-value {
-  font-size: 32px;
-  line-height: 1;
-  color: #1c5f91;
-  text-shadow: none;
-}
-
-.topbar-variables-container .game-variable--score .game-variable-value {
-  color: #173a55;
-}
-
-.topbar-variables-container .game-variable-caption {
-  font-size: 11.52px;
-  line-height: 1.2;
-  color: #d8f2ff;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  margin-top: 2px;
-  text-align: center;
-}
-
-.topbar-variables-container .game-variable--score .game-variable-caption {
-  width: 75px;
-  margin-top: 0;
-  margin-left: 0;
-  grid-row: 2;
-}
-
-.topbar-variables-container .game-variable--score.game-variable--topbar {
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: flex-start !important;
-  justify-content: flex-start !important;
-  width: 107px;
-  min-width: 107px;
-  height: 80px;
-  min-height: 80px;
-  padding: 1px 0 0 16px;
-  box-sizing: border-box;
-}
-
-.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-image.game-variable-visual {
-  align-self: flex-start;
-  flex: 0 0 47px;
-}
-
-.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-caption {
-  display: block;
-  width: 75px;
-  margin: 4px 0 0;
-  text-align: center;
-  align-self: flex-start;
-}
-
-.topbar-variables-container .game-variable--score.game-variable--topbar {
-  position: relative !important;
-  display: block !important;
-  width: 107px !important;
-  min-width: 107px !important;
-  height: 80px !important;
-  min-height: 80px !important;
-  padding: 1px 0 0 16px !important;
-  box-sizing: border-box;
-}
-
-.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-image.game-variable-visual {
-  position: static !important;
-  width: 75px !important;
-  min-width: 75px !important;
-  height: 47px !important;
-  min-height: 47px !important;
-  margin: 0 !important;
-}
-
-.topbar-variables-container .game-variable--score.game-variable--topbar .game-variable-caption {
-  position: static !important;
-  display: block !important;
-  width: 107px !important;
-  margin: 6px 0 0 -16px !important;
-  text-align: center !important;
-  color: rgba(255, 255, 255, 0.92) !important;
 }
 
 .game-variable-image {
@@ -2447,341 +1637,6 @@ select {
   margin-left: auto;
 }
 
-#nav-left::before,
-#nav-right::before {
-  content: "";
-  display: block;
-  width: 100%;
-  height: 100%;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: contain;
-}
-
-#nav-left::before {
-  background-image: url("/images/arrow-left.png");
-}
-
-#nav-right::before {
-  background-image: url("/images/arrow-right.png");
-}
-
-#nav-left:disabled,
-#nav-right:disabled {
-  opacity: 0.58;
-  background: rgba(230, 242, 250, 0.08);
-  border-color: rgba(230, 242, 250, 0.14);
-}
-
-.hint-area {
-  width: 100%;
-  min-height: 90%;
-  background-color: rgba(255, 255, 255, 0.3);
-  padding: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.hint-text {
-  color: white;
-  font-weight: bold;
-  line-height: 1.5;
-}
-
-.journal-screen {
-  /* Full viewport journal layout with central two-column content over the game-owned background. */
-  grid-template-columns: 1fr;
-  grid-template-rows: 1fr;
-  background-image: var(--game-background-image, none);
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-.journal-main-content {
-  grid-row: 1;
-  background-color: rgba(34, 46, 80, 0.5);
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 2rem;
-}
-
-.journal-container {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding: 2.5rem;
-  background-color: rgba(27, 38, 44, 0.9);
-  min-height: 100%;
-  width: 100%;
-  max-width: 1400px;
-  box-sizing: border-box;
-  border-radius: 20px;
-}
-
-.journal-entries {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-}
-
-/* Journal entry card styling - large note-like appearance per moves-journal mockup */
-.journal-entry-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.5rem 2rem;
-  background: linear-gradient(145deg, rgba(15, 76, 117, 0.92) 0%, rgba(12, 60, 92, 0.95) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(170, 227, 255, 0.18);
-  min-height: 160px;
-  box-sizing: border-box;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-.journal-entry-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #ffffff;
-  line-height: 1.3;
-}
-
-.journal-entry-subtitle {
-  font-size: 1rem;
-  color: rgba(187, 225, 250, 0.9);
-  line-height: 1.6;
-  margin: 0;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.journal-entry-time {
-  font-size: 0.875rem;
-  color: rgba(187, 225, 250, 0.7);
-  margin-top: auto;
-  padding-top: 0.75rem;
-}
-
-/* Two-column journal entry layout (front text | back text) */
-.journal-entries-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.journal-entry-columns {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  gap: 1rem;
-  align-items: stretch;
-}
-
-.journal-entry-front,
-.journal-entry-back {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.journal-entry-divider {
-  width: 1px;
-  background: rgba(170, 227, 255, 0.2);
-  margin: 0 0.5rem;
-}
-
-.journal-entry-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: rgba(187, 225, 250, 0.7);
-}
-
-.journal-entry-text {
-  font-size: 0.95rem;
-  color: rgba(255, 255, 255, 0.95);
-  line-height: 1.5;
-}
-
-.journal-entry-metrics {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid rgba(170, 227, 255, 0.15);
-}
-
-/* Metric strip below journal entries - per moves-journal mockup */
-.journal-metric-strip {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1.5rem;
-  background: rgba(15, 76, 117, 0.5);
-  border-radius: 12px;
-  border: 1px solid rgba(170, 227, 255, 0.12);
-}
-
-.journal-metric-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  min-width: 100px;
-}
-
-.journal-metric-label {
-  font-size: 0.75rem;
-  color: rgba(187, 225, 250, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.journal-metric-value {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-/* Empty journal state - large placeholder note cards that match target structure */
-.journal-empty-state {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
-  padding: 1rem 0;
-}
-
-.journal-empty-card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  padding: 1.5rem 2rem;
-  background: linear-gradient(145deg, rgba(15, 76, 117, 0.5) 0%, rgba(12, 60, 92, 0.6) 100%);
-  border-radius: 16px;
-  border: 2px dashed rgba(170, 227, 255, 0.25);
-  min-height: 160px;
-  box-sizing: border-box;
-  align-items: center;
-  justify-content: center;
-}
-
-.journal-empty-card strong {
-  font-size: 1rem;
-  color: rgba(187, 225, 250, 0.6);
-}
-
-.journal-empty-card p {
-  font-size: 0.85rem;
-  color: rgba(187, 225, 250, 0.4);
-  margin: 0;
-  text-align: center;
-}
-
-.journal-variables-container {
-  display: flex;
-  gap: 1em;
-  flex-wrap: wrap;
-  text-transform: lowercase;
-  font-weight: bold;
-}
-
-.journal-variables-container > * {
-  flex-grow: 1;
-}
-
-.heading-h1 {
-  color: #fff;
-  font-weight: bold;
-  font-size: 1.25rem;
-  text-align: center;
-  padding: 2rem 0;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) {
-  grid-template-columns: 20% 71% 9%;
-  grid-template-rows: 90% 10%;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .game-variables-container {
-  grid-column: 1;
-  grid-row: 1 / 3;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 24px 0 16px;
-  background: linear-gradient(180deg, rgba(10, 80, 122, 0.96) 0%, rgba(7, 55, 86, 0.98) 100%);
-  border-right: 1px solid rgba(170, 227, 255, 0.16);
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .main-content-area {
-  grid-column: 2;
-  grid-row: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0;
-  background: transparent;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .info-content {
-  width: 100%;
-  min-height: auto;
-  display: flex;
-  justify-content: center;
-  padding-top: 0;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .info-event-card {
-  width: 100%;
-  min-height: 680px;
-  background: linear-gradient(180deg, rgba(16, 60, 93, 0.95) 0%, rgba(12, 47, 74, 0.98) 100%);
-  border-radius: 16px;
-  border: 1px solid rgba(184, 225, 250, 0.15);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .info-event-illustration {
-  min-height: 320px;
-  background:
-    linear-gradient(180deg, rgba(24, 99, 148, 0.25) 0%, rgba(7, 28, 47, 0.35) 100%),
-    var(--game-background-image, none);
-  background-size: cover;
-  background-position: center;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .info-event-text {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-}
-
-.info-screen-shell:not(.topbar-screen-shell) .info-event-text .game-card .game-card-text {
-  font-size: 1.5rem;
-  font-weight: 700;
-  line-height: 1.4;
-  color: #ffffff;
-}
-
-.info-screen-shell .info-bottom-controls {
-  grid-column: 2;
-  grid-row: 2;
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-  justify-content: flex-start;
-  padding: 1rem 0 1.5rem;
-}
-
-.right-illustration-container,
-.right-illustration-placeholder {
-  display: none;
-}
-
 .runtime-strip {
   display: none;
 }
@@ -2791,104 +1646,28 @@ select {
 }
 
 @media (max-width: 1280px) {
-  /* leftsidebar-screen maintains side-by-side layout with adjusted column widths */
-  .leftsidebar-screen {
-    grid-template-columns: 260px 1fr 60px;
-    grid-template-rows: 1fr auto;
-  }
-
-  .leftsidebar-screen .game-variables-container {
-    grid-column: 1;
-    grid-row: 1 / 3;
-  }
-
-  .leftsidebar-screen .main-content-area {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
-  .leftsidebar-screen .button-container {
-    grid-column: 2;
-    grid-row: 2;
-  }
-
-  .leftsidebar-screen .cards-container {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    padding-top: 1rem;
-  }
 
   /* Keep the draft topbar desktop grid at 1280px; only narrower screens need a stacked fallback. */
-  .topbar-screen-shell,
-  .hint-screen {
+  .topbar-screen-shell {
     grid-template-columns: 10% 80% 10%;
     grid-template-rows: 15% 1fr auto;
   }
 
-  .topbar-screen-shell .game-variables-container,
-  .hint-screen .game-variables-container {
+  .topbar-screen-shell .game-variables-container {
     grid-column: 1 / 4;
     grid-row: 1;
   }
 
-  .topbar-screen-shell .main-content-area,
-  .hint-screen .main-content-area,
-  .topbar-screen-shell .button-container,
-  .hint-screen .button-container {
+  .topbar-screen-shell .button-container {
     grid-column: 2;
   }
 
-  .topbar-screen-shell .main-content-area,
-  .hint-screen .main-content-area {
-    grid-row: 2;
-  }
-
-  .topbar-screen-shell .button-container,
-  .hint-screen .button-container {
+  .topbar-screen-shell .button-container {
     grid-row: 3;
   }
 
-  .topbar-screen-shell .cards-container,
-  .hint-screen .cards-container {
+  .topbar-screen-shell .cards-container {
     grid-template-columns: none;
-  }
-
-  /* Non-topbar screen types still use the compact stacked fallback at smaller viewports. */
-  .journal-screen,
-  .info-screen-shell {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
-  }
-
-  .journal-sidebar {
-    grid-column: 1;
-    grid-row: 1;
-    min-height: auto;
-    padding: 16px;
-  }
-
-  .journal-main-content {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .info-screen-shell .game-variables-container {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .info-screen-shell .main-content-area {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .journal-screen .button-container,
-  .info-screen-shell .button-container {
-    grid-column: 1;
-    grid-row: auto;
-  }
-
-  .journal-entries {
-    grid-template-columns: 1fr;
   }
 }
 
@@ -2898,8 +1677,8 @@ select {
    =========================================================================== */
 
 /* Variables container should span only the left two grid columns (90%) */
-.topbar-screen-shell .game-variables-container,
-.hint-screen .game-variables-container {
+
+.topbar-screen-shell .game-variables-container {
   grid-column: 1 / 3 !important;
   height: auto !important;
   padding: 1em !important;
@@ -2909,72 +1688,9 @@ select {
   justify-content: space-between !important;
 }
 
-/* Override .topbar-variables-container sizing to match draft natural height */
-.topbar-screen-shell .topbar-variables-container {
-  height: auto !important;
-  padding: 1em !important;
-  background: transparent !important;
-  border: none !important;
-  overflow: visible !important;
-  justify-content: space-between !important;
-  align-items: normal !important;
-  gap: normal !important;
-}
-
-/* Make topbar variables stretch to container height like draft */
-.topbar-screen-shell .topbar-variables-container .game-variable,
-.topbar-screen-shell .topbar-variables-container .game-variable:not(.game-variable--score),
-.topbar-screen-shell .topbar-variables-container .game-variable--score,
-.topbar-screen-shell .topbar-variables-container .game-variable--score.game-variable--topbar {
-  flex: 0 1 auto !important;
-  min-width: 75px !important;
-  width: auto !important;
-  height: auto !important;
-  min-height: auto !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: center !important;
-  justify-content: center !important;
-  gap: normal !important;
-  text-align: start !important;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  clip-path: none !important;
-}
-
-/* Variable image/value container */
-.topbar-screen-shell .topbar-variables-container .game-variable-image.game-variable-visual {
-  position: static !important;
-  width: 75px !important;
-  height: 47px !important;
-  min-width: 75px !important;
-  min-height: 47px !important;
-  margin: 0 0 10px 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  flex: none !important;
-}
-
-/* Variable caption */
-.topbar-screen-shell .topbar-variables-container .game-variable-caption {
-  font-size: 16px !important;
-  line-height: 1.2 !important;
-  color: #fff !important;
-  text-transform: lowercase !important;
-  font-weight: 700 !important;
-  text-align: center !important;
-  margin: 0 !important;
-  width: auto !important;
-}
-
 /* Cards container: switch from grid to flex to match draft */
-.topbar-screen-shell .cards-container,
-.hint-screen .cards-container {
+
+.topbar-screen-shell .cards-container {
   display: flex !important;
   flex-wrap: wrap !important;
   justify-content: center !important;
@@ -2986,8 +1702,8 @@ select {
 }
 
 /* Remove aggressive width: auto !important on card children */
-.topbar-screen-shell .cards-container > .game-card,
-.hint-screen .cards-container > .game-card {
+
+.topbar-screen-shell .cards-container > .game-card {
   width: calc(33.33% - 20px) !important;
   min-width: unset !important;
   max-width: unset !important;
@@ -2997,8 +1713,8 @@ select {
 }
 
 /* Card styling parity: draft uses semi-transparent light blue, no radius/border/shadow */
-.topbar-screen-shell .cards-container > .game-card,
-.hint-screen .cards-container > .game-card {
+
+.topbar-screen-shell .cards-container > .game-card {
   padding: 1em !important;
   background-color: rgba(162, 217, 247, 0.5) !important;
   background-image: none !important;
@@ -3011,41 +1727,22 @@ select {
 }
 
 /* Button container padding should match draft */
+
 .topbar-screen-shell .button-container.panel-buttons {
   padding: 2em !important;
   width: 100% !important;
   gap: 1em !important;
 }
 
-/* Match draft arrow button size: 40x40 not 56x56, remove border-radius */
-.topbar-screen-shell #nav-left,
-.topbar-screen-shell #nav-right {
-  width: 40px !important;
-  height: 40px !important;
-  min-width: 40px !important;
-  min-height: 40px !important;
-  border-radius: 0 !important;
-}
-
-/* Ensure topbar board header card doesn't force min-height */
-.topbar-screen-shell .topbar-board-header .game-card {
-  min-height: auto !important;
-}
-
-/* Make cards container stretch vertically inside main-content-area */
-.topbar-screen-shell .main-content-area .cards-container {
-  flex: 1 1 auto !important;
-  align-content: stretch !important;
-  align-items: stretch !important;
-}
-
 /* Cards should stretch to fill flex lines like draft .game-card */
+
 .topbar-screen-shell .cards-container > .game-card {
   display: block !important;
   gap: normal !important;
 }
 
 /* Override .fallback-card internal spacing to match draft single-text cards */
+
 .topbar-screen-shell .cards-container > .game-card .fallback-card-head,
 .topbar-screen-shell .cards-container > .game-card .fallback-card-meta,
 .topbar-screen-shell .cards-container > .game-card .action-button {
@@ -3059,6 +1756,7 @@ select {
 }
 
 /* Hide internal action buttons in topbar screen S1 cards - already hidden by position:absolute */
+
 .topbar-screen-shell .game-card button.action-button {
   position: absolute !important;
   opacity: 0 !important;
@@ -3066,563 +1764,6 @@ select {
   width: 1px !important;
   height: 1px !important;
   overflow: hidden !important;
-}
-
-/* ===========================================================================
-   Draft parity overrides — journal screen
-   =========================================================================== */
-
-.journal-screen {
-  grid-template-columns: 10% 80% 10% !important;
-  grid-template-rows: 15% 1fr auto !important;
-}
-
-.journal-main-content {
-  grid-column: 2 !important;
-  grid-row: 1 / 4 !important;
-  background-color: rgba(34, 46, 80, 0.5) !important;
-  padding: 0 !important;
-  display: flex !important;
-  flex-direction: column !important;
-  align-items: stretch !important;
-  width: 100% !important;
-  overflow-y: auto !important;
-}
-
-.journal-container {
-  display: flex !important;
-  flex-direction: column !important;
-  background-color: rgba(34, 46, 80, 0.8) !important;
-  border-radius: 0 !important;
-  padding: 0.75rem !important;
-  gap: 0 !important;
-  min-height: auto !important;
-  width: 100% !important;
-  max-width: none !important;
-}
-
-.journal-container .heading-h1 {
-  margin: 0 !important;
-  padding: 2rem 0 !important;
-  font-size: 1.25rem !important;
-}
-
-.journal-entries {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  gap: 16px !important;
-  grid-template-columns: none !important;
-}
-
-.journal-entries-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 16px !important;
-}
-
-.journal-entry-card,
-.journal-empty-card {
-  display: block !important;
-  background: rgba(162, 217, 247, 0.5) !important;
-  border-radius: 0 !important;
-  border: none !important;
-  box-shadow: none !important;
-  padding: 16px !important;
-  color: #fff !important;
-  font-weight: 700 !important;
-  font-size: 16px !important;
-  line-height: 1.4 !important;
-  min-height: auto !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.journal-entry-title,
-.journal-entry-subtitle,
-.journal-entry-time,
-.journal-entry-label {
-  display: none !important;
-}
-
-.journal-entry-divider {
-  display: none !important;
-}
-
-.journal-entry-columns {
-  display: grid !important;
-  grid-template-columns: 1fr 1fr !important;
-  gap: 1rem !important;
-  background: transparent !important;
-  padding: 0 !important;
-}
-
-.journal-entry-front,
-.journal-entry-back {
-  background: rgba(162, 217, 247, 0.5) !important;
-  padding: 16px !important;
-}
-
-.journal-entry-text {
-  font-size: 16px !important;
-  line-height: 22.4px !important;
-}
-
-.journal-entry-card {
-  background: transparent !important;
-  padding: 0 !important;
-}
-
-.journal-entry-metrics {
-  padding: 0 !important;
-}
-
-.journal-variables-container {
-  display: flex !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  gap: 1em !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  width: 100% !important;
-  text-transform: lowercase !important;
-  font-weight: bold !important;
-}
-
-.journal-variables-container > * {
-  flex-grow: 1 !important;
-  flex-shrink: 1 !important;
-  flex-basis: auto !important;
-}
-
-/* Journal variable component — matches draft default-journal-variable-component */
-.journal-variable-component {
-  display: flex !important;
-  flex-direction: column !important;
-  justify-content: center !important;
-  align-items: center !important;
-  color: #fff !important;
-  text-align: center !important;
-  margin-top: 1em !important;
-}
-
-.journal-variable-component .journal-variable__row {
-  display: flex !important;
-  align-items: center !important;
-  gap: 0.5rem !important;
-}
-
-.journal-variable-component .journal-variable__value {
-  font-weight: 700 !important;
-  font-size: 2rem !important;
-  line-height: 1 !important;
-  color: #fff !important;
-}
-
-.journal-variable-component .journal-variable__diff {
-  font-weight: 700 !important;
-  font-size: 1.5rem !important;
-  line-height: 1 !important;
-  color: #fff !important;
-}
-
-.journal-variable-component .journal-variable__caption {
-  margin-top: 0.5rem !important;
-  font-size: 1rem !important;
-  color: #fff !important;
-}
-
-/* Button container inside journal should match draft */
-.journal-main-content > .button-container.panel-buttons {
-  padding: 2em !important;
-  gap: 1em !important;
-  width: 100% !important;
-  justify-content: flex-start !important;
-  position: static !important;
-}
-
-/* ===========================================================================
-   Draft parity overrides — leftsidebar screen
-   =========================================================================== */
-
-/* Remove renderer border — draft main-screen has no border */
-.game-renderer:has(.leftsidebar-screen),
-.game-renderer:has(.journal-screen),
-.game-renderer:has(.hint-screen) {
-  border: none !important;
-  box-shadow: none !important;
-}
-
-/* Disable viewport scaling on journal screen — draft journal never scales */
-.game-renderer:has(.journal-screen) {
-  transform: none !important;
-}
-
-/* Make journal renderer responsive — draft journal fills viewport */
-.game-renderer:has(.journal-screen) {
-  width: 100% !important;
-  max-width: none !important;
-  height: 100vh !important;
-  margin: 0 !important;
-}
-
-/* Journal shell layout: remove .game-player-root padding/grid/gap to match draft */
-.game-player-root:has(.journal-screen) {
-  padding: 0 !important;
-  gap: 0 !important;
-  display: block !important;
-}
-
-.leftsidebar-screen .game-variables-container {
-  background: transparent !important;
-  border-right: none !important;
-  width: 100% !important;
-  height: fit-content !important;
-  align-items: center !important;
-  padding: 24px 0 16px 0 !important;
-  gap: 10px !important;
-  position: sticky !important;
-  top: 16px !important;
-  align-self: start !important;
-}
-
-/* Sidebar metrics: show image, remove gradient/clip-path, match draft score style */
-.leftsidebar-screen .game-variable {
-  position: relative !important;
-  display: flex !important;
-  flex-direction: row !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 85% !important;
-  min-width: auto !important;
-  padding: 6px 10px !important;
-  margin: 6px 0 !important;
-  background: transparent !important;
-  border: none !important;
-  border-radius: 0 !important;
-  clip-path: none !important;
-  box-shadow: none !important;
-  overflow: visible !important;
-  flex-grow: 0 !important;
-  flex-basis: auto !important;
-}
-
-.leftsidebar-screen .game-variable--score {
-  height: 84px !important;
-  min-height: 84px !important;
-  margin: 0 0 18px 0 !important;
-  color: #fff !important;
-}
-
-.leftsidebar-screen .game-variable:not(.game-variable--score) {
-  height: 56px !important;
-  min-height: 56px !important;
-  color: rgb(28, 95, 145) !important;
-}
-
-/* Make metric image visible and fill element */
-.leftsidebar-screen .game-variable-image {
-  display: block !important;
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100% !important;
-  height: 100% !important;
-  margin: 0 !important;
-  opacity: 1 !important;
-  mix-blend-mode: normal !important;
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-}
-
-/* Text sits over the image */
-.leftsidebar-screen .game-variable-content {
-  position: relative !important;
-  z-index: 1 !important;
-  display: flex !important;
-  flex-direction: row-reverse !important;
-  align-items: center !important;
-  justify-content: center !important;
-  padding: 0 !important;
-  width: 100% !important;
-}
-
-.leftsidebar-screen .game-variable--score .game-variable-content {
-  gap: 0.5em !important;
-}
-
-.leftsidebar-screen .game-variable:not(.game-variable--score) .game-variable-content {
-  gap: 0.75em !important;
-}
-
-.leftsidebar-screen .game-variable-caption {
-  font-size: clamp(12px, 1.2vw, 16px) !important;
-  font-weight: 800 !important;
-  line-height: 1 !important;
-  text-transform: none !important;
-  letter-spacing: normal !important;
-  color: inherit !important;
-}
-
-.leftsidebar-screen .game-variable-value {
-  font-size: clamp(22px, 3vw, 34px) !important;
-  font-weight: 800 !important;
-  line-height: 1 !important;
-  color: inherit !important;
-  text-shadow: none !important;
-}
-
-.leftsidebar-screen .cards-container {
-  display: grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 1em !important;
-  padding: 2em 1em 1em 1em !important;
-  align-content: start !important;
-  overflow: auto !important;
-  width: 80% !important;
-  margin: 0 auto !important;
-}
-
-.leftsidebar-screen .cards-container > .game-card {
-  width: 100% !important;
-  padding: 1.25em 1em !important;
-  border-radius: 10px !important;
-  background-color: rgba(162, 217, 247, 0.5) !important;
-  color: #fff !important;
-  font-weight: bold !important;
-  font-size: 1.05rem !important;
-  line-height: 1.35 !important;
-  box-shadow: none !important;
-  border: none !important;
-  min-height: auto !important;
-}
-
-/* Hide internal action buttons in leftsidebar cards */
-.leftsidebar-screen .cards-container > .game-card button.action-button {
-  display: none !important;
-}
-
-/* Match draft card text line-height */
-.leftsidebar-screen .cards-container > .game-card .game-card-text {
-  line-height: 1.35 !important;
-}
-
-/* Fallback button container for leftsidebar */
-.leftsidebar-screen .button-container.panel-buttons {
-  grid-column: 2 !important;
-  grid-row: 2 !important;
-  padding: 2em !important;
-  gap: 1em !important;
-  width: 100% !important;
-}
-
-/* Ensure leftsidebar fallback buttons use correct layout */
-.leftsidebar-screen .button-container.panel-buttons .button-helper {
-  all: unset !important;
-  color: rgba(255, 255, 255, 0.9) !important;
-  border: none !important;
-  padding: 0.25em 0.75em !important;
-  font-weight: bold !important;
-  outline: none !important;
-  cursor: pointer !important;
-  background-repeat: no-repeat !important;
-  background-size: cover !important;
-  background-position: center !important;
-  height: auto !important;
-}
-
-.leftsidebar-screen .button-container.panel-buttons .button-helper-arrow {
-  all: unset !important;
-  cursor: pointer !important;
-  background-repeat: no-repeat !important;
-  background-size: contain !important;
-  background-position: center !important;
-  width: 40px !important;
-  height: 40px !important;
-}
-
-/* Make main-content-area transparent to layout so children become direct grid items */
-.leftsidebar-screen .main-content-area {
-  display: contents !important;
-}
-
-/* Place cards in row 1, col 2 and fill the row */
-.leftsidebar-screen .cards-container {
-  grid-column: 2 !important;
-  grid-row: 1 !important;
-  height: 100% !important;
-  align-self: start !important;
-  z-index: 1 !important;
-  grid-template-rows: none !important;
-}
-
-/* Place footer in row 2, col 2 */
-.leftsidebar-screen .bottom-controls-container {
-  grid-column: 2 !important;
-  grid-row: 2 !important;
-  z-index: 1 !important;
-}
-
-/* Footer container matching draft .footer layout */
-.leftsidebar-screen .bottom-controls-container {
-  display: grid !important;
-  grid-template-columns: 1fr 2fr 1fr 60% 1fr 1fr !important;
-  gap: 0.5em !important;
-  padding: 0.5em 0.5em !important;
-  align-items: center !important;
-  width: 100% !important;
-  height: 108px !important;
-  border-radius: 8px !important;
-}
-
-/* Journal / Hint buttons */
-.leftsidebar-screen .bottom-controls-container button:nth-child(1) {
-  grid-column: 2 !important;
-  justify-self: center !important;
-}
-
-.leftsidebar-screen .bottom-controls-container button:nth-child(2) {
-  grid-column: 3 !important;
-  justify-self: center !important;
-}
-
-/* Arrow buttons */
-.leftsidebar-screen .bottom-controls-container button:nth-child(3) {
-  grid-column: 5 !important;
-  justify-self: end !important;
-}
-
-.leftsidebar-screen .bottom-controls-container button:nth-child(4) {
-  grid-column: 6 !important;
-  justify-self: start !important;
-}
-
-.leftsidebar-screen .bottom-controls-container #btn-journal,
-.leftsidebar-screen .bottom-controls-container #btn-hint {
-  background-image: url(/images/jurnal-hodov.png) !important;
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-color: transparent !important;
-  color: rgb(95, 166, 197) !important;
-  font-weight: 700 !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.4) !important;
-  cursor: pointer !important;
-  border: none !important;
-  outline: none !important;
-  height: 36px !important;
-  min-height: 36px !important;
-  width: 160px !important;
-  padding: 4px 12px !important;
-  box-sizing: content-box !important;
-  text-transform: lowercase !important;
-}
-
-.leftsidebar-screen .bottom-controls-container #btn-hint {
-  background-image: url(/images/podskazka.png) !important;
-  width: 125px !important;
-  min-height: 36px !important;
-}
-
-.leftsidebar-screen .bottom-controls-container #nav-left,
-.leftsidebar-screen .bottom-controls-container #nav-right {
-  background-image: url(/images/arrow-left.png) !important;
-  background-size: contain !important;
-  background-repeat: no-repeat !important;
-  background-position: center !important;
-  background-color: transparent !important;
-  border: none !important;
-  outline: none !important;
-  cursor: pointer !important;
-  height: 40px !important;
-  min-height: 40px !important;
-  width: 40px !important;
-  min-width: 40px !important;
-  padding: 0 !important;
-  font-size: 0 !important;
-  color: transparent !important;
-  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5)) !important;
-}
-
-.leftsidebar-screen .bottom-controls-container #nav-right {
-  background-image: url(/images/arrow-right.png) !important;
-}
-
-/* ===========================================================================
-   Draft parity overrides — info/hint screens
-   =========================================================================== */
-
-/* When info screen uses topbar composition, ensure topbar grid wins */
-.info-screen-shell.topbar-screen-shell {
-  grid-template-columns: 10% 80% 10% !important;
-  grid-template-rows: 15% 1fr auto !important;
-}
-
-/* Remove info-event-card chrome for draft parity */
-.info-screen-shell .info-event-card {
-  background: transparent !important;
-  border-radius: 0 !important;
-  border: none !important;
-  overflow: visible !important;
-  min-height: auto !important;
-}
-
-/* Hide illustration — draft hint has none */
-.info-screen-shell .info-event-illustration {
-  display: none !important;
-}
-
-/* Style info text like draft hint-text */
-.info-screen-shell .info-event-text {
-  gap: normal !important;
-  padding: 0 !important;
-  background: transparent !important;
-}
-
-/* Draft parity — info text should be plain white bold like hint-text */
-.info-screen-shell .info-event-text .game-card .game-card-text {
-  font-size: 1rem !important;
-  font-weight: bold !important;
-  line-height: 1.5 !important;
-  color: #fff !important;
-}
-
-/* Hint area should match draft: simple translucent block */
-.hint-screen .hint-area {
-  display: block !important;
-  align-items: normal !important;
-  justify-content: normal !important;
-  padding: 0 !important;
-  min-height: auto !important;
-  width: 100% !important;
-  height: 90% !important;
-}
-
-/* Hint text matches draft */
-.hint-screen .hint-text {
-  color: white !important;
-  font-weight: bold !important;
-  line-height: 1.5 !important;
-  width: 100% !important;
-  min-height: auto !important;
-  margin: 0 !important;
-}
-
-/* Match draft button-container padding for grid row 3 height */
-.hint-screen .button-container.panel-buttons {
-  padding: 2em !important;
-}
-
-/* Ensure info bottom controls don't force extra styling */
-.info-screen-shell .info-bottom-controls {
-  justify-content: flex-start !important;
-  padding: 1rem 0 !important;
-}
-
-/* Hide topbar variables when journal is open (draft parity) */
-.game-renderer:has(.journal-screen) .topbar-variables-container,
-.game-renderer:has(.journal-screen) .game-variables-container {
-  display: none !important;
 }
 
 /* ==========================================================================
@@ -3725,9 +1866,9 @@ select {
   overflow: hidden;
   border: 1px solid rgb(246 240 223 / 22%);
   border-radius: 0.7rem;
-  background: rgb(24 22 17 / 90%);
+  /* Solid overlays avoid repainting the moving map through a blur layer. */
+  background: rgb(24 22 17 / 98%);
   box-shadow: 0 0.8rem 2.2rem rgb(0 0 0 / 32%);
-  backdrop-filter: blur(12px);
 }
 
 .game-renderer--map-first .map-first-slot--status > .map-first-slot-content {
@@ -3775,9 +1916,8 @@ select {
   overflow: auto;
   border: 1px solid rgb(246 240 223 / 22%);
   border-radius: 0.8rem;
-  background: rgb(24 22 17 / 92%);
+  background: rgb(24 22 17 / 98%);
   box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 38%);
-  backdrop-filter: blur(14px);
   pointer-events: auto;
 }
 
@@ -3822,9 +1962,8 @@ select {
   overflow-x: auto;
   border: 1px solid rgb(246 240 223 / 22%);
   border-radius: 0.8rem;
-  background: rgb(24 22 17 / 94%);
+  background: rgb(24 22 17 / 98%);
   box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 38%);
-  backdrop-filter: blur(14px);
 }
 
 .game-renderer--map-first .map-first-slot--action-tray > .map-first-slot-content {
@@ -3885,13 +2024,12 @@ select {
   padding: 0.55rem 0.85rem;
   border: 1px solid rgb(246 240 223 / 28%);
   border-radius: 0.65rem;
-  background: rgb(24 22 17 / 94%);
+  background: rgb(24 22 17 / 98%);
   box-shadow: 0 0.7rem 1.8rem rgb(0 0 0 / 32%);
   color: #f6f0df;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
-  backdrop-filter: blur(12px);
 }
 
 .map-first-panel-toggle:hover,
@@ -3951,7 +2089,7 @@ select {
   }
 
   .game-renderer--map-first .map-first-slot--primary-panel,
-  .game-renderer--map-first .map-first-slot--context-panel {
+.game-renderer--map-first .map-first-slot--context-panel {
     top: auto;
     right: 0.75rem;
     bottom: 5.75rem;

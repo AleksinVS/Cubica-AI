@@ -1,0 +1,194 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/games/cards-money-trains/vector-map-classification.schema.json",
+  "title": "Cards, Money, Trains vector map style classification review",
+  "description": "Ручной непубликационный слой предложений поверх воспроизводимого извлечения векторной карты. Он классифицирует точные группы исходных стилей, но не изменяет извлечённые линии и не создаёт полигоны.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "schemaVersion",
+    "status",
+    "publishable",
+    "warning",
+    "rawReview",
+    "countryCatalog",
+    "styleClassifications",
+    "openIssues",
+    "summary"
+  ],
+  "properties": {
+    "$schema": { "const": "vector-map-classification.schema.json" },
+    "schemaVersion": { "const": "1.0" },
+    "status": { "const": "review-draft" },
+    "publishable": { "const": false },
+    "warning": { "type": "string", "minLength": 1 },
+    "rawReview": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["file", "sha256", "sourceFile", "sourceSha256"],
+      "properties": {
+        "file": { "const": "vector-map.review.json" },
+        "sha256": { "$ref": "#/definitions/sha256" },
+        "sourceFile": { "type": "string", "minLength": 1 },
+        "sourceSha256": { "$ref": "#/definitions/sha256" }
+      }
+    },
+    "countryCatalog": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": { "$ref": "#/definitions/countryProposal" }
+    },
+    "styleClassifications": {
+      "type": "array",
+      "minItems": 18,
+      "maxItems": 18,
+      "items": { "$ref": "#/definitions/styleClassification" }
+    },
+    "openIssues": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/openIssue" }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rawStyleGroupCount",
+        "classifiedCandidateCount",
+        "proposedBoundaryCandidateCount",
+        "heldCandidateCount",
+        "excludedCandidateCount",
+        "confirmedSemanticAssignmentCount"
+      ],
+      "properties": {
+        "rawStyleGroupCount": { "const": 18 },
+        "classifiedCandidateCount": { "const": 981 },
+        "proposedBoundaryCandidateCount": { "const": 978 },
+        "heldCandidateCount": { "const": 1 },
+        "excludedCandidateCount": { "const": 2 },
+        "confirmedSemanticAssignmentCount": { "const": 0 }
+      }
+    }
+  },
+  "definitions": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "countryProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "reviewStatus", "confirmationStatus"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^cmt-country-[a-z]+(?:-[a-z]+)*$"
+        },
+        "title": { "type": "string", "minLength": 1 },
+        "reviewStatus": { "const": "proposed" },
+        "confirmationStatus": { "const": "unconfirmed" }
+      }
+    },
+    "strokeStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cmyk", "width", "lineCap", "lineJoin"],
+      "properties": {
+        "cmyk": {
+          "type": "array",
+          "minItems": 4,
+          "maxItems": 4,
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        },
+        "width": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "lineCap": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "lineJoin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2
+        }
+      }
+    },
+    "styleClassification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "styleGroupId",
+        "strokeStyle",
+        "expectedCandidateCount",
+        "proposedRole",
+        "proposedCountryId",
+        "disposition",
+        "reviewStatus",
+        "confirmationStatus",
+        "rationale"
+      ],
+      "properties": {
+        "styleGroupId": {
+          "type": "string",
+          "pattern": "^boundary-style-[a-f0-9]{16}$"
+        },
+        "strokeStyle": { "$ref": "#/definitions/strokeStyle" },
+        "expectedCandidateCount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "proposedRole": {
+          "enum": [
+            "country-internal-boundary",
+            "major-boundary-fragment",
+            "outer-map-boundary",
+            "ambiguous-closed-contour",
+            "page-frame"
+          ]
+        },
+        "proposedCountryId": {
+          "oneOf": [
+            {
+              "type": "string",
+              "pattern": "^cmt-country-[a-z]+(?:-[a-z]+)*$"
+            },
+            { "type": "null" }
+          ]
+        },
+        "disposition": {
+          "enum": ["include", "hold", "exclude"]
+        },
+        "reviewStatus": { "const": "proposed" },
+        "confirmationStatus": { "const": "unconfirmed" },
+        "rationale": { "type": "string", "minLength": 1 }
+      }
+    },
+    "openIssue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "styleGroupId", "status", "question"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "kind": { "const": "ambiguous-closed-contour" },
+        "styleGroupId": {
+          "type": "string",
+          "pattern": "^boundary-style-[a-f0-9]{16}$"
+        },
+        "status": { "const": "open" },
+        "question": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

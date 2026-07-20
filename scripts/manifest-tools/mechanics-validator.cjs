@@ -15,9 +15,17 @@ const operationCatalogSchemaPath = path.join(
   "schemas",
   "mechanics-operation-catalog.schema.json"
 );
+const mechanicsBootstrapSchemaPath = path.join(
+  repoRoot,
+  "docs",
+  "architecture",
+  "schemas",
+  "mechanics-bootstrap.schema.json"
+);
 const MECHANICS_SCHEMA_ID = "https://cubica.platform/schemas/mechanics-plan.v1alpha1.json";
 const GAME_INTENT_SCHEMA_ID = "https://cubica.platform/schemas/game-intent.v1.json";
 const OPERATION_CATALOG_SCHEMA_ID = "https://cubica.platform/schemas/mechanics-operation-catalog.v1.json";
+const MECHANICS_BOOTSTRAP_SCHEMA_ID = "https://cubica.platform/schemas/mechanics-bootstrap.v1.json";
 
 function buildMechanicsAjv2020() {
   return buildStrictAjv2020(mechanicsSchemaPath);
@@ -81,6 +89,23 @@ function validateOperationCatalogSchema(catalog, ajv = getOperationCatalogAjv202
   return validateRegisteredSchema(catalog, ajv, OPERATION_CATALOG_SCHEMA_ID);
 }
 
+let sharedMechanicsBootstrap;
+function getMechanicsBootstrapAjv2020() {
+  if (!sharedMechanicsBootstrap) sharedMechanicsBootstrap = buildStrictAjv2020(mechanicsBootstrapSchemaPath);
+  return sharedMechanicsBootstrap;
+}
+
+/**
+ * Validate only the inert fields needed to select a versioned full validator.
+ *
+ * Plans and state intentionally remain opaque at this stage, preventing a
+ * historic package from being rejected by the current full schema before its
+ * exact registered profile has been selected.
+ */
+function validateMechanicsBootstrapSchema(manifest, ajv = getMechanicsBootstrapAjv2020()) {
+  return validateRegisteredSchema(manifest, ajv, MECHANICS_BOOTSTRAP_SCHEMA_ID);
+}
+
 function validateRegisteredSchema(value, ajv, schemaId) {
   const validate = ajv.getSchema(schemaId);
   if (!validate) throw new Error(`JSON Schema is not registered: ${schemaId}`);
@@ -102,6 +127,7 @@ function formatAjvErrors(errors) {
 
 module.exports = {
   GAME_INTENT_SCHEMA_ID,
+  MECHANICS_BOOTSTRAP_SCHEMA_ID,
   MECHANICS_SCHEMA_ID,
   OPERATION_CATALOG_SCHEMA_ID,
   buildMechanicsAjv2020,
@@ -109,10 +135,13 @@ module.exports = {
   gameIntentSchemaPath,
   getGameIntentAjv2020,
   getMechanicsAjv2020,
+  getMechanicsBootstrapAjv2020,
   getOperationCatalogAjv2020,
   mechanicsSchemaPath,
+  mechanicsBootstrapSchemaPath,
   operationCatalogSchemaPath,
   validateGameIntentSchema,
   validateMechanicsSchema,
+  validateMechanicsBootstrapSchema,
   validateOperationCatalogSchema
 };

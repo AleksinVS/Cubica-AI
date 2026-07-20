@@ -24,6 +24,7 @@ const phaserMock = vi.hoisted(() => {
   class Scene {}
   class Game {
     readonly scale = { refresh: vi.fn(), setParentSize: vi.fn() };
+    readonly renderer = { type: "WEBGL" };
 
     constructor(config: unknown) {
       configs.push(config);
@@ -41,6 +42,8 @@ const phaserMock = vi.hoisted(() => {
 
 vi.mock("phaser", () => ({
   AUTO: "AUTO",
+  WEBGL: "WEBGL",
+  CANVAS: "CANVAS",
   Scale: { FIT: "FIT", RESIZE: "RESIZE", CENTER_BOTH: "CENTER_BOTH", NO_CENTER: "NO_CENTER" },
   Scene: phaserMock.Scene,
   Game: phaserMock.Game
@@ -138,6 +141,57 @@ describe("InteractiveBoardSurface", () => {
     disposeProvider();
   });
 
+  it("does not repaint the scene when only the pending UI state changes", async () => {
+    const updateSession = vi.fn();
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
+      id: "advance",
+      label: "Перейти к соседнему узлу",
+      actionId: "board.move"
+    }]));
+    const disposeScene = registerPhaserSceneFactory(content.gameId, (context) => ({
+      scene: new context.Phaser.Scene(),
+      updateSession,
+      destroy() {}
+    }));
+    const initial = session(0);
+    const view = render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={initial}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn()}
+        isPending={false}
+      />
+    );
+
+    const action = await screen.findByRole("button", { name: "Перейти к соседнему узлу" });
+    await waitFor(() => expect(updateSession).toHaveBeenCalled());
+    const authoritativeRefreshes = updateSession.mock.calls.length;
+
+    view.rerender(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        // Presenter can produce a fresh object for the same immutable revision.
+        // That must not turn a pending-indicator update into a board repaint.
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={vi.fn()}
+        isPending
+      />
+    );
+
+    await waitFor(() => expect((action as HTMLButtonElement).disabled).toBe(true));
+    expect(updateSession).toHaveBeenCalledTimes(authoritativeRefreshes);
+
+    view.unmount();
+    disposeScene();
+    disposeProvider();
+  });
+
   it("dispatches the DOM alternative and reports a rejected runtime action", async () => {
     const disposeRegistration = registerPhaserSceneFactory(content.gameId, (context) => ({
       scene: new context.Phaser.Scene(),
@@ -174,6 +228,9 @@ describe("InteractiveBoardSurface", () => {
       objectId: "vehicle-a",
       targetNodeId: "node-b"
     });
+    const canvasHost = screen.getByTestId("interactive-board-canvas-host");
+    expect(Number(canvasHost.dataset.lastSceneApplyMs)).toBeGreaterThanOrEqual(0);
+    expect(Number(canvasHost.dataset.lastActionRoundTripMs)).toBeGreaterThanOrEqual(0);
     disposeRegistration();
   });
 
@@ -242,6 +299,68 @@ describe("InteractiveBoardSurface", () => {
       fromNodeId: "node-a",
       toNodeId: "node-c",
       variableContribution: 4
+    }));
+    disposeProvider();
+  });
+
+  it("preserves exact controlled text while exposing accessible validation hints", async () => {
+    const disposeProvider = registerAccessibleBoardActionsProvider(content.gameId, () => ([{
+      id: "name-team",
+      label: "Создать команду",
+      actionId: "team.create",
+      fields: [
+        {
+          name: "name",
+          label: "Название команды",
+          kind: "text",
+          required: true,
+          defaultValue: "Команда",
+          minLength: 1,
+          maxLength: 80,
+          pattern: ".*\\S.*"
+        },
+        {
+          name: "note",
+          label: "Примечание",
+          kind: "text",
+          defaultValue: "Черновик"
+        }
+      ]
+    }]));
+    const dispatchAction = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    const input = await screen.findByLabelText("Название команды") as HTMLInputElement;
+    expect(input.type).toBe("text");
+    expect(input.required).toBe(true);
+    expect(input.minLength).toBe(1);
+    expect(input.maxLength).toBe(80);
+    expect(input.pattern).toBe(".*\\S.*");
+    expect(input.value).toBe("Команда");
+
+    const optionalInput = screen.getByLabelText("Примечание") as HTMLInputElement;
+    expect(optionalInput.value).toBe("Черновик");
+    fireEvent.change(optionalInput, { target: { value: "" } });
+    expect(optionalInput.value).toBe("");
+
+    fireEvent.change(input, { target: { value: "" } });
+    expect(input.value).toBe("");
+    fireEvent.change(input, { target: { value: "  Северный экспресс  " } });
+    expect(input.value).toBe("  Северный экспресс  ");
+    fireEvent.click(screen.getByRole("button", { name: "Создать команду" }));
+
+    await waitFor(() => expect(dispatchAction).toHaveBeenCalledWith("team.create", {
+      name: "  Северный экспресс  "
     }));
     disposeProvider();
   });
@@ -661,6 +780,46 @@ describe("InteractiveBoardSurface", () => {
     expect((await screen.findByRole("button", { name: "Переместить" }) as HTMLButtonElement).disabled).toBe(true);
     await expect(sceneDispatch?.()).rejects.toThrow("Дождитесь завершения");
     expect(dispatchAction).not.toHaveBeenCalled();
+    disposeRegistration();
+  });
+
+  it("synchronously blocks a competing canvas command before React publishes pending state", async () => {
+    let sceneDispatch: (() => Promise<void>) | undefined;
+    let finishFirstDispatch: (() => void) | undefined;
+    const disposeRegistration = registerPhaserSceneFactory(content.gameId, (context) => {
+      sceneDispatch = () => context.dispatchAction("board.move");
+      return {
+        scene: new context.Phaser.Scene(),
+        updateSession() {},
+        destroy() {},
+        getAccessibleActions() {
+          return [{ id: "move", label: "Переместить", actionId: "board.move" }];
+        }
+      };
+    });
+    const dispatchAction = vi.fn(() => new Promise<void>((resolve) => {
+      finishFirstDispatch = resolve;
+    }));
+
+    render(
+      <InteractiveBoardSurface
+        gameId={content.gameId}
+        content={content}
+        session={session(0)}
+        assets={assets}
+        manifestProps={{ sceneId: "main" }}
+        dispatchAction={dispatchAction}
+      />
+    );
+
+    await screen.findByRole("button", { name: "Переместить" });
+    if (!sceneDispatch) throw new Error("Scene dispatcher was not registered.");
+    const firstDispatch = sceneDispatch();
+    await expect(sceneDispatch()).rejects.toThrow("Дождитесь завершения");
+    expect(dispatchAction).toHaveBeenCalledTimes(1);
+
+    finishFirstDispatch?.();
+    await firstDispatch;
     disposeRegistration();
   });
 

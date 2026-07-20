@@ -33,6 +33,10 @@ const gameAssetsSchema = JSON.parse(readFileSync(
   path.join(repoRoot, "docs", "architecture", "schemas", "game-assets.schema.json"),
   "utf8"
 )) as object;
+const gameStylesheetsSchema = JSON.parse(readFileSync(
+  path.join(repoRoot, "docs", "architecture", "schemas", "game-stylesheets.schema.json"),
+  "utf8"
+)) as object;
 const publishedBundleSchemaId = "https://cubica.platform/schemas/player-web-plugin-bundles.schema.json";
 // Strict Ajv mode keeps JSON Schema the single source of truth (ADR-025):
 // unknown keywords/formats and malformed schemas fail fast. allowUnionTypes and
@@ -46,6 +50,7 @@ const validatePublishedBundleMetadata = publishedBundleAjv.getSchema(publishedBu
 const gameAssetsAjv = new Ajv({ allErrors: true, strict: true });
 addFormats(gameAssetsAjv);
 const validateGameAssetsRegistry = gameAssetsAjv.compile(gameAssetsSchema);
+const validateGameStylesheetsMetadata = gameAssetsAjv.compile(gameStylesheetsSchema);
 
 const GAME_ASSET_CONTENT_TYPES: Readonly<Record<string, string>> = {
   png: "image/png",
@@ -53,6 +58,11 @@ const GAME_ASSET_CONTENT_TYPES: Readonly<Record<string, string>> = {
   webp: "image/webp",
   svg: "image/svg+xml"
 };
+
+// Content-addressable game-owned stylesheets are served as CSS (ADR-091). The
+// published bytes are immutable, so the same immutable cache policy as images
+// applies at the route layer.
+const GAME_STYLESHEET_CONTENT_TYPE = "text/css; charset=utf-8";
 
 interface RawMockupDesign {
   id?: string;
@@ -112,6 +122,8 @@ interface RawUiManifest {
     [key: string]: unknown;
   };
   entry_point?: string;
+  default_layout_mode?: unknown;
+  stylesheets?: unknown;
   screens?: Record<string, unknown>;
   panels?: Record<string, unknown>;
   design_artifacts?: {
@@ -215,11 +227,24 @@ const projectGameUiContent = (
     return undefined;
   }
 
+  // Carry the ADR-091 game-owned stylesheet references (asset:<id> forms) as
+  // plain strings. The renderer resolves them through the game asset index and
+  // injects <link> elements game-agnostically; unknown ids fail closed there.
+  const stylesheets = Array.isArray(rawManifest.stylesheets)
+    ? rawManifest.stylesheets.filter((value): value is string => typeof value === "string")
+    : undefined;
+
   return {
     id: typeof meta.id === "string" ? meta.id : "game.ui.web",
     version: typeof meta.version === "string" ? meta.version : "1.0.0",
     gameId: typeof meta.game_id === "string" ? meta.game_id : "game",
     entryPoint,
+    // ADR-093: design-time layout selector. Carried through so the screen router
+    // matches routing conditions against this value instead of server UI state.
+    defaultLayoutMode: typeof rawManifest.default_layout_mode === "string"
+      ? rawManifest.default_layout_mode as GamePlayerUiContent["defaultLayoutMode"]
+      : undefined,
+    stylesheets: stylesheets && stylesheets.length > 0 ? stylesheets : undefined,
     screens,
     panels: Object.keys(panels).length > 0 ? panels : undefined,
     screenRouting: (rawManifest.screen_routing ?? rawManifest.screenRouting) as ScreenRoutingEntry[] | undefined,
@@ -293,13 +318,35 @@ export interface ContentServiceResult {
 
 export interface GameAssetIndex {
   readonly gameId: string;
-  readonly assets: Readonly<Record<string, { readonly url: string; readonly kind: "image" }>>;
+  // Images (ADR-063) and game-owned stylesheets (ADR-091) share one asset-id
+  // namespace and one resolver form (asset:<id>). The client resolver only reads
+  // `url`, so adding the `css` kind is additive for existing consumers.
+  readonly assets: Readonly<Record<string, { readonly url: string; readonly kind: "image" | "css" }>>;
 }
 
 export interface GameAssetFileDelivery {
   readonly bytes: Buffer;
   readonly contentType: string;
   readonly extension: string;
+}
+
+export interface GameStylesheetDelivery {
+  readonly text: string;
+  readonly contentType: string;
+}
+
+interface PublishedGameStylesheet {
+  readonly stylesheetId: string;
+  readonly gameId: string;
+  readonly contentHash: string;
+  readonly integrity: string;
+  readonly filePath: string;
+  readonly url: string;
+}
+
+interface PublishedGameStylesheetMetadata {
+  readonly schemaVersion: "1.0";
+  readonly stylesheets: readonly PublishedGameStylesheet[];
 }
 
 export interface LocalPlayerWebPluginBundle {
@@ -508,10 +555,18 @@ export class ContentService {
     return source;
   }
 
-  /** Builds the public id-to-content-addressed-URL index for one game. */
+  /**
+   * Builds the public id-to-content-addressed-URL index for one game.
+   *
+   * The index unifies two delivery paths behind one `asset:<id>` namespace:
+   * images are hashed from their source files on the fly (ADR-063), while
+   * game-owned stylesheets point at their pre-published content-addressable URLs
+   * (ADR-091). The player-web renderer and Phaser scenes resolve both through
+   * this single index; an unknown id fails closed on the client.
+   */
   async getGameAssetIndex(gameId: string): Promise<GameAssetIndex> {
     const registry = await this.loadGameAssetsRegistry(gameId);
-    const entries = await Promise.all(registry.assets.map(async (asset) => {
+    const imageEntries = await Promise.all(registry.assets.map(async (asset) => {
       const sha256 = await this.getGameAssetHash(gameId, asset.file);
       const extension = path.extname(asset.file).slice(1).toLowerCase();
       return [asset.id, {
@@ -520,7 +575,64 @@ export class ContentService {
       }] as const;
     }));
 
-    return { gameId, assets: Object.fromEntries(entries) };
+    const stylesheetMetadata = await this.loadPublishedGameStylesheets(gameId);
+    const stylesheetEntries = stylesheetMetadata.map((stylesheet) => [
+      stylesheet.stylesheetId,
+      { url: stylesheet.url, kind: "css" as const }
+    ] as const);
+
+    return { gameId, assets: Object.fromEntries([...imageEntries, ...stylesheetEntries]) };
+  }
+
+  /** Resolves and verifies one immutable published stylesheet request. */
+  async getGameStylesheetSource(input: {
+    readonly gameId: string;
+    readonly stylesheetId: string;
+    readonly contentHash: string;
+  }): Promise<GameStylesheetDelivery> {
+    const stylesheets = await this.loadPublishedGameStylesheets(input.gameId);
+    const stylesheet = stylesheets.find((candidate) =>
+      candidate.stylesheetId === input.stylesheetId &&
+      candidate.gameId === input.gameId &&
+      candidate.contentHash === input.contentHash
+    );
+    if (stylesheet === undefined) {
+      throw new NotFoundError("Game stylesheet was not found");
+    }
+
+    const text = await this.repository.getPublishedGameStylesheetRaw(input.gameId, stylesheet.filePath);
+    const actualHash = createHash("sha256").update(text, "utf8").digest("hex");
+    if (actualHash !== stylesheet.contentHash) {
+      throw new Error(`Published stylesheet "${input.stylesheetId}" failed contentHash verification.`);
+    }
+    return { text, contentType: GAME_STYLESHEET_CONTENT_TYPE };
+  }
+
+  /** Loads and validates the optional ADR-091 published stylesheet index. */
+  private async loadPublishedGameStylesheets(gameId: string): Promise<readonly PublishedGameStylesheet[]> {
+    const raw = await this.repository.getPublishedGameStylesheetsRaw(gameId);
+    if (raw === undefined) {
+      return [];
+    }
+
+    let parsed: PublishedGameStylesheetMetadata;
+    try {
+      parsed = JSON.parse(raw) as PublishedGameStylesheetMetadata;
+    } catch {
+      throw new Error(`Published game stylesheet metadata for "${gameId}" must be valid JSON.`);
+    }
+    if (!validateGameStylesheetsMetadata(parsed)) {
+      const errors = (validateGameStylesheetsMetadata.errors ?? [])
+        .map((error: any) => `${error.instancePath || "/"} ${error.message}`)
+        .join("; ");
+      throw new Error(`Published game stylesheet metadata for "${gameId}" is invalid: ${errors}`);
+    }
+    for (const stylesheet of parsed.stylesheets) {
+      if (stylesheet.gameId !== gameId) {
+        throw new Error(`Published game stylesheet metadata for "${gameId}" contains a foreign gameId.`);
+      }
+    }
+    return parsed.stylesheets;
   }
 
   /** Resolves and verifies one immutable asset request against the registry. */
@@ -794,6 +906,14 @@ export async function getGameAssetFile(input: {
   readonly extension: string;
 }): Promise<GameAssetFileDelivery> {
   return contentService.getGameAssetFile(input);
+}
+
+export async function getGameStylesheetSource(input: {
+  readonly gameId: string;
+  readonly stylesheetId: string;
+  readonly contentHash: string;
+}): Promise<GameStylesheetDelivery> {
+  return contentService.getGameStylesheetSource(input);
 }
 
 function isMissingFileError(error: unknown): boolean {

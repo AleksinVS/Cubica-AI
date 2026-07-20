@@ -39,6 +39,18 @@
         "pointer": "/root/entry_point"
       }
     ],
+    "/stylesheets/0": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/stylesheets/0"
+      }
+    ],
+    "/stylesheets": [
+      {
+        "file": "games/simple-choice/authoring/ui/web.authoring.json",
+        "pointer": "/root/stylesheets"
+      }
+    ],
     "/metric_specs/0": [
       {
         "file": "games/simple-choice/authoring/ui/web.authoring.json",

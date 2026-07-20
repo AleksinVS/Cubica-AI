@@ -2,6 +2,7 @@
 
 export type {
   ActionResponse,
+  ArchivedSessionAudit,
   CreatedSession,
   CreateSessionCommand,
   CreateSessionInput,

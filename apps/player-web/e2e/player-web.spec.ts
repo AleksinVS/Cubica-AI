@@ -9,7 +9,10 @@ test.describe("player-web e2e", () => {
       response.request().method() === "POST"
     );
 
-    await page.goto("/");
+    // player-web is a game-agnostic entry point (ARC-003): it no longer
+    // defaults a bare "/" to a specific game, so this test passes gameId
+    // explicitly like every other game-boot test in this file.
+    await page.goto("/?gameId=antarctica");
     await expect(page.locator(".game-player-root")).toBeVisible();
     await expect(page.locator(".loading-state")).toHaveCount(0);
 
@@ -123,5 +126,19 @@ test.describe("player-web e2e", () => {
     await expect(page.locator(".loading-state")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Игра поставлена на паузу" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Повторить" })).toBeVisible();
+  });
+
+  test("shows an entry-point error and creates no session when gameId is missing (ARC-003)", async ({ page }) => {
+    let sessionRequested = false;
+    await page.route("**/api/runtime/sessions", (route) => {
+      sessionRequested = true;
+      return route.continue();
+    });
+
+    await page.goto("/");
+
+    await expect(page.getByRole("heading", { name: "Не указан идентификатор игры" })).toBeVisible();
+    await expect(page.locator(".game-player-root")).toHaveCount(0);
+    expect(sessionRequested).toBe(false);
   });
 });

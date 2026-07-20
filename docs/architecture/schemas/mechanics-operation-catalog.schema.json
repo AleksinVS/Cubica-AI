@@ -54,6 +54,10 @@
           "type": "string",
           "pattern": "^https://cubica\\.platform/schemas/mechanics-plan\\.v1alpha1\\.json#/\\$defs/[A-Za-z][A-Za-z0-9]+$"
         },
+        "resultSchemaRef": {
+          "type": "string",
+          "pattern": "^https://cubica\\.platform/schemas/mechanics-plan\\.v1alpha1\\.json#/\\$defs/[A-Za-z][A-Za-z0-9]+$"
+        },
         "inputType": { "$ref": "#/$defs/nonEmptyString" },
         "outputType": { "$ref": "#/$defs/nonEmptyString" },
         "confidentiality": {
@@ -89,7 +93,7 @@
           "type": "object",
           "required": ["class", "formula"],
           "properties": {
-            "class": { "enum": ["constant", "bounded-linear", "bounded-graph"] },
+            "class": { "enum": ["constant", "bounded-linear", "bounded-n-log-n", "bounded-graph"] },
             "formula": { "$ref": "#/$defs/nonEmptyString" }
           },
           "additionalProperties": false

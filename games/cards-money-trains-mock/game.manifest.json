@@ -555,10 +555,14 @@
         "status": "integrated-shared-runtime-contracts",
         "requiredMechanicsOperations": [
           "core.collection.id.allocate",
+          "core.entities.order",
           "core.entities.score",
           "deck.shuffle",
           "deck.draw",
+          "deck.extract",
+          "deck.return",
           "graph.regions.route.plan",
+          "graph.edge.position.inspect",
           "graph.edge.split",
           "graph.entity.traverse",
           "graph.shortestPath",
@@ -845,7 +849,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:27c81a83aed6fb0f8dd3797a71c86a45f81b423bb80924e822c9a7e0c36a564c"
+      "definitionHash": "sha256:689d38996397e40cc590309664839deef2773d88e02a704e2bba0afc15a6832c"
     },
     "mock.market.buy.white-wagon": {
       "capabilityFamily": "runtime.server",
@@ -865,7 +869,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:242c832e7cae8be653a9da057ee5aabf3397d20e74ac007fc2a508e10cc159fd"
+      "definitionHash": "sha256:6cc0bc882c9d82c36aca9e63d7afc51be772314b2ea407ccfa0427ae518a4b19"
     },
     "mock.market.buy.green-locomotive": {
       "capabilityFamily": "runtime.server",
@@ -885,7 +889,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:271ee371c13a14d0e5f0b42b13784ef5e5444bbebe86662c118e15a6b7af2e9f"
+      "definitionHash": "sha256:b4529850f3ad2a8356155aa342f3dc51cfe01bbd498ddad316ef7f64bb5d52bf"
     },
     "mock.market.sell.red-wagon": {
       "capabilityFamily": "runtime.server",
@@ -905,7 +909,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:ff55d6d2afcb6ee43b770fc2b5657ff580e4559da260aafebfa563f6cc291b79"
+      "definitionHash": "sha256:3f7c2c77181710e5d7e37192c0b38f04d7851cb24184c6d39478ebd94f378e4e"
     },
     "mock.market.finish": {
       "capabilityFamily": "runtime.server",
@@ -925,7 +929,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:9728126a839f759489ad0d35a80de7b9268b22dfb878a609a39040c47c104e43"
+      "definitionHash": "sha256:d86ec88ffa299fa7b521e41222e6f5e71cdfdb8e825f27315f70fc64beb499eb"
     },
     "mock.cargo.finish": {
       "capabilityFamily": "runtime.server",
@@ -945,7 +949,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:8de83929cb16284a24f1e02b9e9407dc29f0efafe53a914cce3e3dce7cd73a44"
+      "definitionHash": "sha256:a47d5e7862c7df98c29812ab607d773659f099a2e456af0cef22b2cb06d8a00c"
     },
     "mock.operations.finish": {
       "capabilityFamily": "runtime.server",
@@ -965,7 +969,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5cc31878a015973dbd8eab1fb435ebd2bde7c4297483d0f2b3d2b78552178569"
+      "definitionHash": "sha256:9a63a81b975476d32cc880f99e0fc75a3ccbe55f5076d2518ec28d00d0a90552"
     },
     "mock.construction.open-control-projects": {
       "capabilityFamily": "runtime.server",
@@ -985,7 +989,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:62b07342b381558cda8c83fbed75a37a898664fd3fb5be9ed53405118c53c471"
+      "definitionHash": "sha256:c9ae1f5b3371c3eb1744c82cd1560f25589dfe0580e17e16cbda99edc8c460fd"
     },
     "mock.debrief.pause.start": {
       "capabilityFamily": "runtime.server",
@@ -1005,7 +1009,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4db02d6f85b1725804a4a4ef51fc5c6c9d73bda1f158dd2a3fcbbdac3817d22e"
+      "definitionHash": "sha256:33886aa55c54941eb6f71b97da7cdf38096a36e86218b2ad89688fad64eb4879"
     },
     "mock.debrief.pause.postpone": {
       "capabilityFamily": "runtime.server",
@@ -1025,7 +1029,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b7897daa13df16d7b9409eb5b4d5781466df7a709f35cd56029a16d832799bf1"
+      "definitionHash": "sha256:a42a19c52eb6c895f5a419bdacd9815854f3ab483ce2d58941034c46f138fa7a"
     },
     "mock.debrief.pause.skip": {
       "capabilityFamily": "runtime.server",
@@ -1045,7 +1049,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:589ecb17a2c8f5b55281828c29820ce75b1bd4f518cacae5f4e61335b4ea0b05"
+      "definitionHash": "sha256:6682731218c6c94eaa27dd1fe1a6d0ccb9fd9e37314e78d5767d0ea8bfa6c01c"
     },
     "mock.debrief.final-reflection": {
       "capabilityFamily": "runtime.server",
@@ -1065,7 +1069,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:f76588cec1919c7f960669f1f22d8b427c2379f4be9beadaa87d9e95999016dc"
+      "definitionHash": "sha256:a7f2e08c15d9c739c69d5a0c87e1d8dd2756185e7c1a60344d98b66f50105ebd"
     },
     "mock.debrief.next-turn": {
       "capabilityFamily": "runtime.server",
@@ -1085,7 +1089,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:39b91a6c29bf53b4f4e98eadb794449cd75ba7c51e3544cc53b8edaecad5a95d"
+      "definitionHash": "sha256:38f7852bec6992b184d04cbaa61c1125f29b6008109d305b92b4b7b788fbb5fd"
     },
     "mock.news.draw": {
       "capabilityFamily": "runtime.server",
@@ -1105,7 +1109,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:45e12f4851c35e2a3d8d0cc91f947fdbeea7cde22963b04b9fedf2d424a7f4d8"
+      "definitionHash": "sha256:063e94b6b3ca4cb06fe0065c483bfe90b8df6639d8f21383d657f9a87ffb9be0"
     },
     "mock.news.apply.open-road": {
       "capabilityFamily": "runtime.server",
@@ -1125,7 +1129,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:22983f992dd6ed863206d26a9a950b276552051d1ff19bbf0d6c5b5b90ac45c8"
+      "definitionHash": "sha256:31dbbd47109942b6a4205d6dca850fe533ddb796d2f1e2f370fde84370139672"
     },
     "mock.news.apply.held-cargo-prompt": {
       "capabilityFamily": "runtime.server",
@@ -1145,7 +1149,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:341a47fb49d908256a0ef21b2fbc99d14391a31373de4e5b8310619e2ab8a600"
+      "definitionHash": "sha256:34c0c6376da540e98617aeac80072d26767343b41fbe5667164f4abed58bdc68"
     },
     "mock.news.apply.cheap-wagons": {
       "capabilityFamily": "runtime.server",
@@ -1165,7 +1169,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:54c41bfcc077a75af622b74479fdcfcfe1e6b498f4aec45033368e9cfcce1768"
+      "definitionHash": "sha256:16020652e09c8ac5d4f5c7c0cb49985e2b027b4929d2e8971bb988bd40ce535a"
     },
     "mock.news.apply.construction-prompt": {
       "capabilityFamily": "runtime.server",
@@ -1185,7 +1189,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:3fa08f57b5936124b5dac550b25b964141997db43f21dd9d4587f6d503ae9fd5"
+      "definitionHash": "sha256:5907f5863d531414a209c2f8219696e7f239a93d3d203188828cc4ebca6db723"
     },
     "mock.news.apply.stable-day": {
       "capabilityFamily": "runtime.server",
@@ -1205,7 +1209,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4add7725c788810fbb96060c1a4b85fa0f725687cb1d090b5e61aab9d5c8f49b"
+      "definitionHash": "sha256:47395e3ffd02a28d6fc9822f8b13fac2eb70c314a37a43471d4d253a77963b1f"
     },
     "mock.cargo.draw-offer": {
       "capabilityFamily": "runtime.server",
@@ -1225,12 +1229,12 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:adc66521246d118019dee3648572c37334e0a8df362c82904c1d556eeddd50a2"
+      "definitionHash": "sha256:46ec33bce6afed835010476f7ae73ee81ede1780ab77c086afb181f759510d91"
     },
     "mock.cargo.load.white": {
       "capabilityFamily": "runtime.server",
       "capability": "transport.cargo.load",
-      "displayName": "MOCK: загрузить груз B–F в белый вагон",
+      "displayName": "MOCK: загрузить выбранный предложенный груз",
       "allowedSessionRoles": [
         "facilitator"
       ],
@@ -1249,10 +1253,7 @@
                 "transport.wagon"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-wagon-white-2"
-            ]
+            }
           },
           "cargoId": {
             "type": "string",
@@ -1264,10 +1265,7 @@
                 "transport.cargo"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-cargo-b-f"
-            ]
+            }
           }
         },
         "required": [
@@ -1280,7 +1278,7 @@
         "planRef": "mock.cargo.load.white"
       },
       "invocation": "external",
-      "definitionHash": "sha256:72ddcbd945a6226a7e324e470e780c3e3f5ac0597dbd0339a528ce036b3c3fb8"
+      "definitionHash": "sha256:c9e936b67318f94b2e76e161abce81d25389fd1043268216a4b03b15414099a0"
     },
     "mock.cargo.deliver.b-f": {
       "capabilityFamily": "runtime.server",
@@ -1335,12 +1333,12 @@
         "planRef": "mock.cargo.deliver.b-f"
       },
       "invocation": "external",
-      "definitionHash": "sha256:8474bcbf154b6796fa65e4c396a27a48dfeb7a4fbc02d635e4069bbd7c77beb2"
+      "definitionHash": "sha256:4381795329659d71696c0a3f86cdea87f0026f90341d3bde76d4123cf3958d04"
     },
     "mock.operations.attach.white": {
       "capabilityFamily": "runtime.server",
       "capability": "transport.vehicle.attach",
-      "displayName": "MOCK: прицепить белый вагон",
+      "displayName": "MOCK: прицепить выбранный вагон",
       "allowedSessionRoles": [
         "facilitator"
       ],
@@ -1359,10 +1357,7 @@
                 "transport.locomotive"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-locomotive-purple-1"
-            ]
+            }
           },
           "wagonId": {
             "type": "string",
@@ -1375,10 +1370,7 @@
                 "transport.wagon"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-wagon-white-2"
-            ]
+            }
           }
         },
         "required": [
@@ -1391,12 +1383,12 @@
         "planRef": "mock.operations.attach.white"
       },
       "invocation": "external",
-      "definitionHash": "sha256:b6b72af5e210b49021a7384e01382e17525acc0c678a9178909006e861f1078c"
+      "definitionHash": "sha256:8f5032a38caeb9eb81f057c3f8cd2b1d0e8a28c3ff5564a896a595723776810c"
     },
     "mock.operations.detach.white": {
       "capabilityFamily": "runtime.server",
       "capability": "transport.vehicle.detach",
-      "displayName": "MOCK: отцепить белый вагон",
+      "displayName": "MOCK: отцепить выбранный вагон",
       "allowedSessionRoles": [
         "facilitator"
       ],
@@ -1415,10 +1407,7 @@
                 "transport.locomotive"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-locomotive-purple-1"
-            ]
+            }
           },
           "wagonId": {
             "type": "string",
@@ -1431,10 +1420,7 @@
                 "transport.wagon"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-wagon-white-2"
-            ]
+            }
           }
         },
         "required": [
@@ -1447,7 +1433,7 @@
         "planRef": "mock.operations.detach.white"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e338e05b46d094fdbae363f41927996e15d0cfccf3721683a68c7244f9cbaff0"
+      "definitionHash": "sha256:7e610fc2d2c1b02336d287ff2852a2bb73653e91f3abd55a74629db4d74ef288"
     },
     "mock.operations.attach.incompatible": {
       "capabilityFamily": "runtime.server",
@@ -1503,7 +1489,7 @@
         "planRef": "mock.operations.attach.incompatible"
       },
       "invocation": "external",
-      "definitionHash": "sha256:430d31cf56571cc98d798853081cb2d1446e1bb579a9db3eb3bc4cafe987d689"
+      "definitionHash": "sha256:f509d76542dd197cea71ea46896ff810b977a654930140746f4adc5d3fc8c152"
     },
     "mock.ranking.compute": {
       "capabilityFamily": "runtime.server",
@@ -1523,7 +1509,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:59a1ecea7ea6383bb27161af1193a179e151b678de2e07af8bb922a2be711c62"
+      "definitionHash": "sha256:1d46119f45de3c1c2525d0f6e45c542fe875b4e7d42e23ce1a3f87f4ce6bac44"
     },
     "mock.news.apply.block-road": {
       "capabilityFamily": "runtime.server",
@@ -1543,7 +1529,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:226fdebb3533a0457daeeed5e8a9ca9c703f9494eec353f3d1dd680882499b79"
+      "definitionHash": "sha256:bbbb52768037e50f1c0471a60696d5f9633105d6bfd5682021b8510194220854"
     },
     "mock.maintenance.pay": {
       "capabilityFamily": "runtime.server",
@@ -1563,7 +1549,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:7a0011f78ebc3be396403db0d23f175b2bc0d3ebb8efb5713cd42522bd1a9a98"
+      "definitionHash": "sha256:29eb01b3a0817efd8d858b8b1918bba3504c1cc7372f5dd4bb4e659b18bbdbf9"
     },
     "mock.locomotive.move": {
       "capabilityFamily": "runtime.server",
@@ -1613,12 +1599,12 @@
         "planRef": "mock.locomotive.move"
       },
       "invocation": "external",
-      "definitionHash": "sha256:dc7f5bfb3266721426950f7bda714a91b23291b55f4d23b581f50c7215d84de0"
+      "definitionHash": "sha256:f7c9c39886f554044980b8485b80c96e2a9446ab324e82d1bc7d34cfeace9457"
     },
     "mock.cargo.deliver": {
       "capabilityFamily": "runtime.server",
       "capability": "transport.cargo.deliver",
-      "displayName": "MOCK: доставить груз B–C",
+      "displayName": "MOCK: доставить выбранный груз",
       "allowedSessionRoles": [
         "facilitator"
       ],
@@ -1637,10 +1623,7 @@
                 "transport.wagon"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-wagon-white-1"
-            ]
+            }
           },
           "cargoId": {
             "type": "string",
@@ -1652,10 +1635,7 @@
                 "transport.cargo"
               ],
               "visibility": "public"
-            },
-            "enum": [
-              "mock-cargo-b-c"
-            ]
+            }
           }
         },
         "required": [
@@ -1668,7 +1648,7 @@
         "planRef": "mock.cargo.deliver"
       },
       "invocation": "external",
-      "definitionHash": "sha256:79d536784bffa244cf03d6067d94359f2d6b567dff3ccaba6e95261ba1173f0d"
+      "definitionHash": "sha256:3a824804d7634a1b32b2b81ef6326770f9d3e54c54a7df6e1b6478ed8a3711e8"
     },
     "construction.road.build": {
       "capabilityFamily": "runtime.server",
@@ -1740,7 +1720,7 @@
         "planRef": "construction.road.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:64ee4d03ae6dd9281a9771ba7488a0dcb246eac04f09b1bfbe7485ee0e318c89"
+      "definitionHash": "sha256:4c64a7a350fa1505c48e9cfb04b8231ceb8eeb67706b2c6949ac12beb34257de"
     },
     "construction.waypoint.build": {
       "capabilityFamily": "runtime.server",
@@ -1802,7 +1782,7 @@
         "planRef": "construction.waypoint.build"
       },
       "invocation": "external",
-      "definitionHash": "sha256:72a24503dde17f5e8f68284db3877658e770a2edeefdcef0b31fb4d5d26983b8"
+      "definitionHash": "sha256:c77f6630e60f40c1641694b550d6f39d2fd6600a201fefa81d9dd5a64fdf7da0"
     },
     "construction.mode.road": {
       "capabilityFamily": "runtime.server",
@@ -1822,7 +1802,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:4e5b569bdbcd226b90ee8141899b529e2800471135f7cf9393ee96ebdd065da3"
+      "definitionHash": "sha256:6d8ea9a0ed667dc0aca2317fcc40486003c6e82f38686a8991bbb2a342b6f889"
     },
     "construction.mode.waypoint": {
       "capabilityFamily": "runtime.server",
@@ -1842,7 +1822,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:41194c12776b02cfb77d9c443c5f3d889921be3e57bcde5c4d8debf8771507f0"
+      "definitionHash": "sha256:df5b2c24ab4032127a52572d9be1089cd597e0437498a6623babdab8ee7159d2"
     },
     "construction.phase.finish": {
       "capabilityFamily": "runtime.server",
@@ -1862,7 +1842,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:fa062e72e7306eb68d2cc71a3b4cc30b7be02328a39ff527db689d7a51ff6c0a"
+      "definitionHash": "sha256:3da6498c4062e7a58bc739e70beed85ec6c46011ffef30363d38a9e0672523ae"
     },
     "session.finish.request": {
       "capabilityFamily": "runtime.server",
@@ -1882,7 +1862,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:b2eee7e630da21ea19a3ba95583451d02217da626067bea8ddeba9ccf1f04ccd"
+      "definitionHash": "sha256:922ba229b9cbb9bf48e9d2f37dc229895c6106aba95cfcaf465c2466aabfd944"
     },
     "session.finish.cancel": {
       "capabilityFamily": "runtime.server",
@@ -1902,7 +1882,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:5ea3739ff25a140244ea439a2f2c1987e784f98957c457e98d2e0f23703dd97c"
+      "definitionHash": "sha256:c9f48743564b8fe261f246d88228d73e9bbb8cec2ae50b21c38c1022b84dc133"
     },
     "session.finish.confirm": {
       "capabilityFamily": "runtime.server",
@@ -1922,7 +1902,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:0d9ceb9377eb71aeb21860867db87fff81e57178844a50c41a872523cbc8525a"
+      "definitionHash": "sha256:56b7c8a0277bb16fa3fb7d6d295a1c5026a6d4b00207dcea4ccefbbd13120466"
     }
   },
   "state": {
@@ -1944,7 +1924,8 @@
         "finishConfirmationPending": false,
         "canRequestFinish": true,
         "fixtureId": "development-mock",
-        "contentMode": "mock"
+        "contentMode": "mock",
+        "locomotiveOrder": []
       },
       "construction": {
         "mode": null,
@@ -2232,7 +2213,8 @@
               "nodeId": "mock-terminal-b",
               "ownerTeamId": "purple-guild",
               "nominalValue": 10,
-              "actionPoints": 5
+              "actionPoints": 5,
+              "turnOrderCount": 1
             }
           },
           "mock-locomotive-green-1": {
@@ -2245,7 +2227,8 @@
               "nodeId": "mock-terminal-c",
               "ownerTeamId": "green-guild",
               "nominalValue": 10,
-              "actionPoints": 5
+              "actionPoints": 5,
+              "turnOrderCount": 1
             }
           },
           "mock-market-locomotive-green-2": {
@@ -2258,7 +2241,8 @@
               "nodeId": "mock-terminal-f",
               "ownerTeamId": "green-guild",
               "nominalValue": 0,
-              "actionPoints": 5
+              "actionPoints": 5,
+              "turnOrderCount": 0
             }
           }
         },
@@ -2876,14 +2860,11 @@
           },
           {
             "id": "mock-load-white-cargo",
-            "label": "MOCK: загрузить груз B–F в белый вагон",
+            "label": "MOCK: загрузить предложенный груз",
+            "description": "Выберите активный вагон и одну из двух открытых карт груза.",
             "actionId": "mock.cargo.load.white",
             "phase": "cargo",
-            "section": "cargo",
-            "params": {
-              "wagonId": "mock-wagon-white-2",
-              "cargoId": "mock-cargo-b-f"
-            }
+            "section": "cargo"
           },
           {
             "id": "mock-finish-cargo",
@@ -2894,58 +2875,35 @@
           },
           {
             "id": "mock-attach-white-wagon",
-            "label": "MOCK: прицепить второй белый вагон",
+            "label": "MOCK: прицепить выбранный вагон",
+            "description": "Выберите активный локомотив и активный вагон; допустимость сцепления проверит сервер.",
             "actionId": "mock.operations.attach.white",
             "phase": "operations",
-            "section": "operations",
-            "params": {
-              "vehicleId": "mock-locomotive-purple-1",
-              "wagonId": "mock-wagon-white-2"
-            }
+            "section": "operations"
           },
           {
             "id": "mock-detach-white-wagon",
-            "label": "MOCK: отцепить второй белый вагон",
+            "label": "MOCK: отцепить выбранный вагон",
+            "description": "Выберите активный локомотив и активный вагон; текущее сцепление проверит сервер.",
             "actionId": "mock.operations.detach.white",
             "phase": "operations",
-            "section": "operations",
-            "params": {
-              "vehicleId": "mock-locomotive-purple-1",
-              "wagonId": "mock-wagon-white-2"
-            }
+            "section": "operations"
           },
           {
-            "id": "mock-move-purple-b-c",
-            "label": "MOCK: перевести фиолетовый локомотив B–C",
+            "id": "mock-move-locomotive",
+            "label": "MOCK: переместить выбранный локомотив",
+            "description": "Сначала выберите активный локомотив и существующую дорогу на карте или в форме.",
             "actionId": "mock.locomotive.move",
             "phase": "operations",
-            "section": "operations",
-            "params": {
-              "vehicleId": "mock-locomotive-purple-1",
-              "edgeId": "mock-edge-b-c"
-            }
+            "section": "operations"
           },
           {
-            "id": "mock-deliver-b-c",
-            "label": "MOCK: доставить груз B–C",
+            "id": "mock-deliver-cargo",
+            "label": "MOCK: доставить выбранный груз",
+            "description": "Выберите активный вагон и публичный грузовой заказ; маршрут и право доставки проверит сервер.",
             "actionId": "mock.cargo.deliver",
             "phase": "operations",
-            "section": "operations",
-            "params": {
-              "wagonId": "mock-wagon-white-1",
-              "cargoId": "mock-cargo-b-c"
-            }
-          },
-          {
-            "id": "mock-deliver-b-f",
-            "label": "MOCK: доставить груз B–F",
-            "actionId": "mock.cargo.deliver.b-f",
-            "phase": "operations",
-            "section": "operations",
-            "params": {
-              "wagonId": "mock-wagon-white-2",
-              "cargoId": "mock-cargo-b-f"
-            }
+            "section": "operations"
           },
           {
             "id": "mock-finish-operations",
@@ -2971,14 +2929,14 @@
             }
           },
           {
-            "id": "mock-build-waypoint-a-b",
-            "label": "MOCK: поставить полустанок на A–B (5 монет)",
-            "description": "Вымышленный контроль: точка посередине существующей дороги.",
+            "id": "mock-build-waypoint-e-f",
+            "label": "MOCK: поставить полустанок на E–F (5 монет)",
+            "description": "Вымышленный контроль: точка посередине дороги лежит вне областей обоих конечных терминалов.",
             "actionId": "construction.waypoint.build",
             "phase": "construction",
             "section": "construction",
             "params": {
-              "edgeId": "mock-edge-a-b",
+              "edgeId": "mock-edge-e-f",
               "positionT": 0.5,
               "whiteContribution": 3,
               "redContribution": 2,
@@ -3082,38 +3040,50 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.0.0",
-        "artifactHash": "sha256:52ec636b147d905245539002f5a2063e334f6374e911764f75a3cf5e1bc111e7"
+        "moduleVersion": "1.3.0",
+        "artifactHash": "sha256:a9d081db599b358d68e0c3b2d8c025bb64afc9643229b9908f976d921b36f594"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
-        "moduleVersion": "1.0.0",
-        "artifactHash": "sha256:10410cb706aca595ceec0b82143fd96691c7366c253fd63776426e83782af40e",
+        "moduleVersion": "1.0.2",
+        "artifactHash": "sha256:3161401518d589927b3c181dd356812e92a127e844b38ed04b4a6e1b51101510",
         "algorithmVersions": {
           "randomStreams": "xoshiro128ss-streams-v1"
         }
       },
+      "cubica.ordering": {
+        "moduleId": "cubica.ordering",
+        "moduleVersion": "1.1.1",
+        "artifactHash": "sha256:ed5851f40ec005f4fa5657548fe53010ef5dda725ef3e5e4b43876230ac413f7",
+        "algorithmVersions": {
+          "ordering": "lexicographic-bounded-v1",
+          "tieBreak": "canonical-groups-xoshiro128ss-v1"
+        }
+      },
       "cubica.deck": {
         "moduleId": "cubica.deck",
-        "moduleVersion": "1.0.0",
-        "artifactHash": "sha256:86fb27c27f39be72a80452e766a8453cea904364f37de046d1b9d80db79bfb4f",
+        "moduleVersion": "1.2.0",
+        "artifactHash": "sha256:b7999be594d57bcd4639b67207c8863c29e2943121c2aa231c69b75513d1bf70",
         "algorithmVersions": {
           "shuffle": "fisher-yates-xoshiro128ss-streams-v1"
         }
       },
       "cubica.graph": {
         "moduleId": "cubica.graph",
-        "moduleVersion": "1.0.0",
-        "artifactHash": "sha256:9ab17e3b95abd6d1e35877afc971bf41cc6f256e78e3a96d9337f1c68734b1f6",
+        "moduleVersion": "2.0.1",
+        "artifactHash": "sha256:039cb65d814c9848661d96f4e8b6a17a8c58a1a2b6e3aa64af820ebaebd263b6",
         "algorithmVersions": {
           "regionPath": "region-segment-minimum-v1",
-          "randomTieBreak": "xoshiro128ss-streams-v1"
+          "randomTieBreak": "xoshiro128ss-streams-v1",
+          "edgePosition": "polyline-arc-length-v1",
+          "regionMembership": "closed-polygon-all-memberships-v1",
+          "geometryFingerprint": "canonical-json-sha256-v1"
         }
       },
       "cubica.relations": {
         "moduleId": "cubica.relations",
-        "moduleVersion": "1.0.0",
-        "artifactHash": "sha256:d78f5bd50bb7bb35582ce2bfc8128774e9b9d42d44088efa64461cd38a922445"
+        "moduleVersion": "1.0.2",
+        "artifactHash": "sha256:af4539d2569bf6561a47f2c30e6ff9352c99109d8a1d44b7e3cf5a8e86dec41f"
       }
     },
     "stateModel": {
@@ -3129,6 +3099,11 @@
           "minimum": -9007199254740991,
           "maximum": 9007199254740991
         },
+        "game.map-coordinate": {
+          "kind": "finite-number",
+          "minimum": -1000000000,
+          "maximum": 1000000000
+        },
         "core.optional-string": {
           "kind": "option",
           "itemType": "core.string"
@@ -3141,6 +3116,16 @@
           "kind": "set",
           "itemType": "core.string",
           "maxItems": 4096
+        },
+        "game.locomotive-order": {
+          "kind": "list",
+          "itemType": "core.string",
+          "maxItems": 64
+        },
+        "game.turn-order-count": {
+          "kind": "integer",
+          "minimum": 0,
+          "maximum": 1
         },
         "core.bounded-json": {
           "kind": "json",
@@ -4186,6 +4171,18 @@
           "valueType": "core.string",
           "access": "read-write"
         },
+        "public.session.locomotiveOrder": {
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "session",
+              "locomotiveOrder"
+            ]
+          },
+          "valueType": "game.locomotive-order",
+          "access": "read-write"
+        },
         "public.log": {
           "audienceRef": "public",
           "storage": {
@@ -4447,16 +4444,19 @@
           "valueType": "core.integer",
           "access": "read-write"
         },
-        "public.objects.locomotives": {
+        "public.teams.bound.maintenanceDue": {
           "audienceRef": "public",
           "storage": {
             "root": "public",
             "segments": [
-              "objects",
-              "locomotives"
+              "teams",
+              {
+                "binding": "teamId"
+              },
+              "maintenanceDue"
             ]
           },
-          "valueType": "game.public-objects-locomotives-record.48",
+          "valueType": "core.integer",
           "access": "read-write"
         },
         "public.ranking": {
@@ -4753,6 +4753,60 @@
         }
       },
       "collections": {
+        "teams": {
+          "itemShape": "record",
+          "audienceRef": "public",
+          "storage": {
+            "root": "public",
+            "segments": [
+              "teams"
+            ]
+          },
+          "capacity": 16,
+          "stableKey": "map-key",
+          "fields": {
+            "label": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "label"
+                ]
+              },
+              "valueType": "core.string",
+              "access": "read-only"
+            },
+            "type": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "type"
+                ]
+              },
+              "valueType": "core.string",
+              "access": "read-only"
+            },
+            "coins": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "coins"
+                ]
+              },
+              "valueType": "core.integer",
+              "access": "read-write"
+            },
+            "maintenanceDue": {
+              "storage": {
+                "kind": "path",
+                "path": [
+                  "maintenanceDue"
+                ]
+              },
+              "valueType": "core.integer",
+              "access": "read-write"
+            }
+          }
+        },
         "newsCards": {
           "audienceRef": "public",
           "storage": {
@@ -5077,6 +5131,14 @@
               "valueType": "core.integer",
               "access": "read-write"
             },
+            "turnOrderCount": {
+              "storage": {
+                "kind": "attribute",
+                "name": "turnOrderCount"
+              },
+              "valueType": "game.turn-order-count",
+              "access": "read-write"
+            },
             "networkId": {
               "storage": {
                 "kind": "attribute",
@@ -5149,6 +5211,17 @@
                 "name": "position"
               },
               "valueType": "core.bounded-json",
+              "access": "read-only"
+            },
+            "positionX": {
+              "source": {
+                "kind": "nested-field",
+                "field": "position",
+                "path": [
+                  "x"
+                ]
+              },
+              "valueType": "game.map-coordinate",
               "access": "read-only"
             },
             "annotationEvidence": {
@@ -5529,7 +5602,7 @@
     },
     "plans": {
       "mock.setup.start": {
-        "planHash": "sha256:82ce8e33fdb110a3b2d37c928c181281992104e57eacc5841f17e625e9d434b8",
+        "planHash": "sha256:c4130db519f35946049ea65b262a57574ae64b2dea1d6af8cfe3d8749b4e3c79",
         "transaction": {
           "steps": [
             {
@@ -5571,6 +5644,17 @@
             {
               "id": "s004",
               "kind": "command",
+              "op": "deck.extract",
+              "deckId": "cargo",
+              "source": "order",
+              "card": {
+                "op": "value.literal",
+                "value": "mock-cargo-b-c"
+              }
+            },
+            {
+              "id": "s005",
+              "kind": "command",
               "op": "core.state.patch",
               "patches": [
                 {
@@ -5586,7 +5670,7 @@
               ]
             },
             {
-              "id": "s005",
+              "id": "s006",
               "kind": "command",
               "op": "core.event.emit",
               "eventType": "mock.setup.start.event.5",
@@ -5606,7 +5690,7 @@
         }
       },
       "mock.market.buy.white-wagon": {
-        "planHash": "sha256:d9ea14d7642ba162cd7484881d1c5634266328758e35c7dc1d8ba539f601783c",
+        "planHash": "sha256:b3b06f2b29ee467dd3625e7396ffb3021a5c91b818ea03c3c88754d04605128f",
         "transaction": {
           "steps": [
             {
@@ -5743,7 +5827,7 @@
         }
       },
       "mock.market.buy.green-locomotive": {
-        "planHash": "sha256:68f8862bd91bd41eb165a07de4727402f4a35937c066489382ed1d0c03dd0f09",
+        "planHash": "sha256:0b1550a1d64b892c48018008430f5c76a68a5862342aaa198d3b422631aeb716",
         "transaction": {
           "steps": [
             {
@@ -5842,6 +5926,16 @@
                     "op": "value.literal",
                     "value": 10
                   }
+                },
+                {
+                  "operation": "set",
+                  "path": [
+                    "turnOrderCount"
+                  ],
+                  "value": {
+                    "op": "value.literal",
+                    "value": 1
+                  }
                 }
               ]
             },
@@ -5878,7 +5972,7 @@
         }
       },
       "mock.market.sell.red-wagon": {
-        "planHash": "sha256:e527cea8cc264f107e3a40a5066fc31bbdbc88791d716944479beffc3f0456e3",
+        "planHash": "sha256:cc5d61b158c047d10d8a46bf71597a2a2803cb407a5c5d0df29d60e06db4d7fe",
         "transaction": {
           "steps": [
             {
@@ -6013,7 +6107,7 @@
         }
       },
       "mock.market.finish": {
-        "planHash": "sha256:f78a2b0bb756ea82531f1dbc1524877456994b544d9a92464a099a028d2cf3e5",
+        "planHash": "sha256:c991f2cd422cdf9bb770a1a1b2e6a50601e4801f907b76bfd16591699d3e777c",
         "transaction": {
           "steps": [
             {
@@ -6074,7 +6168,7 @@
         }
       },
       "mock.cargo.finish": {
-        "planHash": "sha256:22554e0d7cc0a26e46583bf723ae14797acfd642aceb3f900a499dc35e29644f",
+        "planHash": "sha256:4bc31deba0419e159686554791148bea6560efae6c3eae5e3641138ba0cbacdc",
         "transaction": {
           "steps": [
             {
@@ -6100,6 +6194,177 @@
             {
               "id": "s002",
               "kind": "command",
+              "op": "deck.return",
+              "deckId": "cargo",
+              "card": {
+                "op": "value.state",
+                "ref": {
+                  "endpoint": "public.decks.cargo.offer.firstCardId"
+                }
+              },
+              "destination": "discard",
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.decks.cargo.offer.firstCardId"
+                      }
+                    },
+                    "exists": true
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "cargoOrders",
+                        "entityId": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "public.decks.cargo.offer.firstCardId"
+                          }
+                        }
+                      },
+                      "field": "status"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "available"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "s003",
+              "kind": "command",
+              "op": "deck.return",
+              "deckId": "cargo",
+              "card": {
+                "op": "value.state",
+                "ref": {
+                  "endpoint": "public.decks.cargo.offer.secondCardId"
+                }
+              },
+              "destination": "discard",
+              "when": {
+                "op": "predicate.all",
+                "items": [
+                  {
+                    "op": "predicate.exists",
+                    "value": {
+                      "op": "value.state",
+                      "ref": {
+                        "endpoint": "public.decks.cargo.offer.secondCardId"
+                      }
+                    },
+                    "exists": true
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "cargoOrders",
+                        "entityId": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "public.decks.cargo.offer.secondCardId"
+                          }
+                        }
+                      },
+                      "field": "status"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "available"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "id": "s004-active-locomotives",
+              "kind": "query",
+              "op": "core.entities.select",
+              "selector": {
+                "collection": "locomotives",
+                "objectTypes": [
+                  "transport.locomotive"
+                ],
+                "facets": {
+                  "availability": {
+                    "op": "value.literal",
+                    "value": "active"
+                  }
+                },
+                "cardinality": {
+                  "min": 0,
+                  "max": 64
+                }
+              }
+            },
+            {
+              "id": "s005-order-locomotives",
+              "kind": "command",
+              "op": "core.entities.order",
+              "selection": {
+                "op": "value.result",
+                "stepId": "s004-active-locomotives"
+              },
+              "keys": [
+                {
+                  "source": {
+                    "kind": "related-field",
+                    "referenceField": "nodeId",
+                    "collection": "networkNodes",
+                    "field": "positionX"
+                  },
+                  "direction": "descending",
+                  "missing": "error"
+                },
+                {
+                  "source": {
+                    "kind": "related-field",
+                    "referenceField": "ownerTeamId",
+                    "collection": "teams",
+                    "field": "coins"
+                  },
+                  "direction": "descending",
+                  "missing": "error"
+                },
+                {
+                  "source": {
+                    "kind": "related-aggregate",
+                    "collection": "locomotives",
+                    "join": {
+                      "current": {
+                        "kind": "field",
+                        "field": "ownerTeamId"
+                      },
+                      "relatedField": "ownerTeamId"
+                    },
+                    "aggregate": "sum",
+                    "valueField": "turnOrderCount"
+                  },
+                  "direction": "descending",
+                  "missing": "error"
+                }
+              ],
+              "tieBreak": {
+                "kind": "seeded-random",
+                "stream": "locomotive-order"
+              }
+            },
+            {
+              "id": "s006",
+              "kind": "command",
               "op": "core.state.patch",
               "patches": [
                 {
@@ -6111,11 +6376,44 @@
                     "op": "value.literal",
                     "value": "operations"
                   }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": null
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": null
+                  }
+                },
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.session.locomotiveOrder"
+                  },
+                  "value": {
+                    "op": "value.result",
+                    "stepId": "s005-order-locomotives",
+                    "path": [
+                      "ids"
+                    ]
+                  }
                 }
               ]
             },
             {
-              "id": "s003",
+              "id": "s007",
               "kind": "command",
               "op": "core.event.emit",
               "eventType": "mock.cargo.finish.event.3",
@@ -6135,7 +6433,7 @@
         }
       },
       "mock.operations.finish": {
-        "planHash": "sha256:5a232bf7780ec7f4046832610744a2ab7f8450662200397828f3f9e0d8905a8d",
+        "planHash": "sha256:0ade743153773c56f3ef6026c057565f6b31751a031402f2bfb76c782abfeac4",
         "transaction": {
           "steps": [
             {
@@ -6206,7 +6504,7 @@
         }
       },
       "mock.construction.open-control-projects": {
-        "planHash": "sha256:d31fd9699508f14a27f174bea2983da98dc6c37466500bb917aab837e7622783",
+        "planHash": "sha256:39083e20bceea556e12b04bec154c7833641f188d6247fabefe17bd779790f33",
         "transaction": {
           "steps": [
             {
@@ -6428,7 +6726,7 @@
         }
       },
       "mock.debrief.pause.start": {
-        "planHash": "sha256:295de71b145e47084bcc4ab2f2a50c3da9a3fc67c691940b5feef7be5e1e736b",
+        "planHash": "sha256:4a5ad3a51a7e279f7e45a97924041da793a0d4ce56581157433e52f96db7cd02",
         "transaction": {
           "steps": [
             {
@@ -6499,7 +6797,7 @@
         }
       },
       "mock.debrief.pause.postpone": {
-        "planHash": "sha256:9ad2f4aa231e18cb1e71ff9d4cde5e2276360ca90a092f6b7271cd7370dd79fa",
+        "planHash": "sha256:5268ff5703cc4053dda2d9533b9417fd6dc249677b1cb5e091feda9dd794e400",
         "transaction": {
           "steps": [
             {
@@ -6570,7 +6868,7 @@
         }
       },
       "mock.debrief.pause.skip": {
-        "planHash": "sha256:57d1e252c34f22654fc0f544be470e5c2053a3c0a2e605acca4421b3a6e8e67c",
+        "planHash": "sha256:5dc99e2bb4501b368396bc07ec7217d900f8f7df41f12d9c8848f929747dcf87",
         "transaction": {
           "steps": [
             {
@@ -6641,7 +6939,7 @@
         }
       },
       "mock.debrief.final-reflection": {
-        "planHash": "sha256:548cd31c760aeb01fa7ee2b103f0e0f1db02cf0c30a71b1283220d418b67bf63",
+        "planHash": "sha256:99a38573ef9202eeeb576133f18d5223ebea1d6d04f601fa82e6b5433df74103",
         "transaction": {
           "steps": [
             {
@@ -6702,7 +7000,7 @@
         }
       },
       "mock.debrief.next-turn": {
-        "planHash": "sha256:58185412c9eecc860bb9f0cdb474d2315750aa6462f1eea6616a060195dfa97a",
+        "planHash": "sha256:e23b5ac60ded28f83ab69fa050c559fabed8c8d8a3ef52070208efa16da6c6a8",
         "transaction": {
           "steps": [
             {
@@ -7042,7 +7340,7 @@
         }
       },
       "mock.news.draw": {
-        "planHash": "sha256:e032a5bbdf588d682b07155a480c9b9b5ccfd4ea641f7f05ab64e26800f179b1",
+        "planHash": "sha256:f0679d2c1a0464d119dc97fac7d991561dbca6ffff7f48296cc676964e2b920d",
         "transaction": {
           "steps": [
             {
@@ -7115,7 +7413,7 @@
         }
       },
       "mock.news.apply.open-road": {
-        "planHash": "sha256:73fed9271f0fce166b6f152bbde6bded4b4c7991a87e174f88bcbafc8e643cb1",
+        "planHash": "sha256:74a63260e67b4a8da181ef2e1050cffc12fe40961a2160acec82abc331c2d900",
         "transaction": {
           "steps": [
             {
@@ -7212,7 +7510,7 @@
         }
       },
       "mock.news.apply.held-cargo-prompt": {
-        "planHash": "sha256:89b3bfc6304266f18a1f15da936bade1b4c383549483bfa88c9a75a851b56e9f",
+        "planHash": "sha256:3bab2dc3d5b42adcc0488dd00f0d1b99061bd8fe165351e5608c036a0cda888d",
         "transaction": {
           "steps": [
             {
@@ -7292,7 +7590,7 @@
         }
       },
       "mock.news.apply.cheap-wagons": {
-        "planHash": "sha256:d6c9bcd3ca8fbec8968428c242a26d0bd72bec82f3f244961dfd40346d516d72",
+        "planHash": "sha256:8d38d0c86fc9077957ebe664ddd0fb52cf8b586efdd541f963afeac40a07f45c",
         "transaction": {
           "steps": [
             {
@@ -7389,7 +7687,7 @@
         }
       },
       "mock.news.apply.construction-prompt": {
-        "planHash": "sha256:fdd6d4479216b53577d2f32a2cc68760ddb7c68287b6d128cbc0b181a16cd32e",
+        "planHash": "sha256:3af90b20193e28869a4c3d6e049b27df91d87fbdf6d842139f99f3a8033a9148",
         "transaction": {
           "steps": [
             {
@@ -7469,7 +7767,7 @@
         }
       },
       "mock.news.apply.stable-day": {
-        "planHash": "sha256:55d2838f6adb28049c4b4a5a43ffb41d866545694392a78adb18fce4836ccd38",
+        "planHash": "sha256:cc8540e024d54acdf9ea8d2e13949a271b437b9224430343ac9f3bfa319685e9",
         "transaction": {
           "steps": [
             {
@@ -7549,7 +7847,7 @@
         }
       },
       "mock.cargo.draw-offer": {
-        "planHash": "sha256:1f3ecbc8868670ad2b62e486a4cb240e1f14195a37f7a5584df8c458d725b58f",
+        "planHash": "sha256:08c22491c742987129a863e43c6054b14a368ccfae5e7d8dd4a1a25f5e81c7a6",
         "transaction": {
           "steps": [
             {
@@ -7606,7 +7904,7 @@
               "errorCode": "ACTION_PRECONDITION_FAILED"
             },
             {
-              "id": "s002",
+              "id": "s002-draw-first",
               "kind": "command",
               "op": "deck.draw",
               "deckId": "cargo",
@@ -7616,7 +7914,20 @@
               "onEmpty": "reshuffle-discard"
             },
             {
-              "id": "s003",
+              "id": "s003-hold-first",
+              "kind": "command",
+              "op": "deck.extract",
+              "deckId": "cargo",
+              "source": "discard",
+              "card": {
+                "op": "value.state",
+                "ref": {
+                  "endpoint": "public.decks.cargo.offer.firstCardId"
+                }
+              }
+            },
+            {
+              "id": "s004-draw-second",
               "kind": "command",
               "op": "deck.draw",
               "deckId": "cargo",
@@ -7626,7 +7937,20 @@
               "onEmpty": "reshuffle-discard"
             },
             {
-              "id": "s004",
+              "id": "s005-hold-second",
+              "kind": "command",
+              "op": "deck.extract",
+              "deckId": "cargo",
+              "source": "discard",
+              "card": {
+                "op": "value.state",
+                "ref": {
+                  "endpoint": "public.decks.cargo.offer.secondCardId"
+                }
+              }
+            },
+            {
+              "id": "s006",
               "kind": "command",
               "op": "core.event.emit",
               "eventType": "mock.cargo.draw-offer.event.4",
@@ -7646,7 +7970,7 @@
         }
       },
       "mock.cargo.load.white": {
-        "planHash": "sha256:47e2406c1a3b1b6a21ef047600c37719ec530dfa04c212df69adc6df7c3b2225",
+        "planHash": "sha256:6b2e837a1d9a553a0e158f8f2481331b96ab5b0eb4ae97b99e4b7ee7354791c9",
         "transaction": {
           "steps": [
             {
@@ -7671,18 +7995,37 @@
                     }
                   },
                   {
-                    "op": "predicate.compare",
-                    "operator": "eq",
-                    "left": {
-                      "op": "value.state",
-                      "ref": {
-                        "endpoint": "public.decks.cargo.offer.firstCardId"
+                    "op": "predicate.any",
+                    "items": [
+                      {
+                        "op": "predicate.compare",
+                        "operator": "eq",
+                        "left": {
+                          "op": "value.param",
+                          "name": "cargoId"
+                        },
+                        "right": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "public.decks.cargo.offer.firstCardId"
+                          }
+                        }
+                      },
+                      {
+                        "op": "predicate.compare",
+                        "operator": "eq",
+                        "left": {
+                          "op": "value.param",
+                          "name": "cargoId"
+                        },
+                        "right": {
+                          "op": "value.state",
+                          "ref": {
+                            "endpoint": "public.decks.cargo.offer.secondCardId"
+                          }
+                        }
                       }
-                    },
-                    "right": {
-                      "op": "value.literal",
-                      "value": "mock-cargo-b-f"
-                    }
+                    ]
                   }
                 ]
               },
@@ -7734,6 +8077,32 @@
                         }
                       },
                       "field": "fromNodeId"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "networkNodes",
+                        "entityId": {
+                          "op": "value.entity",
+                          "entity": {
+                            "collection": "cargoOrders",
+                            "entityId": {
+                              "op": "value.param",
+                              "name": "cargoId"
+                            }
+                          },
+                          "field": "fromNodeId"
+                        }
+                      },
+                      "field": "availability"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "open"
                     }
                   },
                   {
@@ -7831,7 +8200,20 @@
               "kind": "command",
               "op": "core.number.add",
               "target": {
-                "endpoint": "public.teams.white-logistics.maintenanceDue"
+                "endpoint": "public.teams.bound.maintenanceDue",
+                "bindings": {
+                  "teamId": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": "wagons",
+                      "entityId": {
+                        "op": "value.param",
+                        "name": "wagonId"
+                      }
+                    },
+                    "field": "ownerTeamId"
+                  }
+                }
               },
               "delta": {
                 "op": "value.literal",
@@ -7841,11 +8223,127 @@
             {
               "id": "s004",
               "kind": "command",
+              "op": "deck.return",
+              "deckId": "cargo",
+              "card": {
+                "op": "value.state",
+                "ref": {
+                  "endpoint": "public.decks.cargo.offer.firstCardId"
+                }
+              },
+              "destination": "discard",
+              "when": {
+                "op": "predicate.compare",
+                "operator": "ne",
+                "left": {
+                  "op": "value.param",
+                  "name": "cargoId"
+                },
+                "right": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  }
+                }
+              }
+            },
+            {
+              "id": "s005",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": null
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "ne",
+                "left": {
+                  "op": "value.param",
+                  "name": "cargoId"
+                },
+                "right": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  }
+                }
+              }
+            },
+            {
+              "id": "s006",
+              "kind": "command",
+              "op": "deck.return",
+              "deckId": "cargo",
+              "card": {
+                "op": "value.state",
+                "ref": {
+                  "endpoint": "public.decks.cargo.offer.secondCardId"
+                }
+              },
+              "destination": "discard",
+              "when": {
+                "op": "predicate.compare",
+                "operator": "ne",
+                "left": {
+                  "op": "value.param",
+                  "name": "cargoId"
+                },
+                "right": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  }
+                }
+              }
+            },
+            {
+              "id": "s007",
+              "kind": "command",
+              "op": "core.state.patch",
+              "patches": [
+                {
+                  "operation": "set",
+                  "target": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  },
+                  "value": {
+                    "op": "value.literal",
+                    "value": null
+                  }
+                }
+              ],
+              "when": {
+                "op": "predicate.compare",
+                "operator": "ne",
+                "left": {
+                  "op": "value.param",
+                  "name": "cargoId"
+                },
+                "right": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  }
+                }
+              }
+            },
+            {
+              "id": "s008",
+              "kind": "command",
               "op": "core.event.emit",
               "eventType": "mock.cargo.load.white.event.4",
               "summary": {
                 "op": "value.literal",
-                "value": "MOCK: груз B–F загружен в белый вагон"
+                "value": "MOCK: выбранный предложенный груз загружен в выбранный вагон"
               },
               "audience": "public",
               "data": {
@@ -7859,7 +8357,7 @@
         }
       },
       "mock.cargo.deliver.b-f": {
-        "planHash": "sha256:babff85fb7d173fd31767522c6fe163f045092411a68ab8ca7255407c85e3daf",
+        "planHash": "sha256:7e9710c6d91d45ec92eac5e282bd0291ace24f8d88ca1d9cc16ae22d468f8a58",
         "transaction": {
           "steps": [
             {
@@ -7932,6 +8430,32 @@
                         }
                       },
                       "field": "toNodeId"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "networkNodes",
+                        "entityId": {
+                          "op": "value.entity",
+                          "entity": {
+                            "collection": "cargoOrders",
+                            "entityId": {
+                              "op": "value.param",
+                              "name": "cargoId"
+                            }
+                          },
+                          "field": "toNodeId"
+                        }
+                      },
+                      "field": "availability"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "open"
                     }
                   },
                   {
@@ -8203,6 +8727,17 @@
             {
               "id": "s004",
               "kind": "command",
+              "op": "deck.return",
+              "deckId": "cargo",
+              "card": {
+                "op": "value.param",
+                "name": "cargoId"
+              },
+              "destination": "discard"
+            },
+            {
+              "id": "s005",
+              "kind": "command",
               "op": "core.event.emit",
               "eventType": "mock.cargo.deliver.b-f.event.4",
               "summary": {
@@ -8221,7 +8756,7 @@
         }
       },
       "mock.operations.attach.white": {
-        "planHash": "sha256:6950e7227959e68815e67eaeecff955e15cf909a497071735f5235c76f4d98d0",
+        "planHash": "sha256:122b1e1e32d358f303b0e9afed855886c2fda7205a4b61e33ddb82ce7d0ee128",
         "transaction": {
           "steps": [
             {
@@ -8330,7 +8865,7 @@
         }
       },
       "mock.operations.detach.white": {
-        "planHash": "sha256:3569aa218f2768c8a98782c756547aafe307aef9aeb1f579a8514abff001b346",
+        "planHash": "sha256:cec5198bef3dfb6a7a7bfcf7b57354943a5efd83c21b186fc6d9e289dec82600",
         "transaction": {
           "steps": [
             {
@@ -8439,7 +8974,7 @@
         }
       },
       "mock.operations.attach.incompatible": {
-        "planHash": "sha256:afe5ed79b044c9ea4e8d1a0ac0e90df2252f65e536b1e394a57a7245e449705b",
+        "planHash": "sha256:cb357d21cb1cc8978d6e9df0c6d9f94bf3aa883c3cdb802090895a012132ffb3",
         "transaction": {
           "steps": [
             {
@@ -8531,7 +9066,7 @@
         }
       },
       "mock.ranking.compute": {
-        "planHash": "sha256:60ba08906a26b0d8fb9b53df2d09f7d33669d4f1d7197c74177661f8be369a81",
+        "planHash": "sha256:582b4b23467bbf5dd84df3fa210e7c6f77bee22b7b48b5a94384e77a56111f43",
         "transaction": {
           "steps": [
             {
@@ -8671,7 +9206,7 @@
         }
       },
       "mock.news.apply.block-road": {
-        "planHash": "sha256:6d8f3be76f50ffc144f7d81b610b11199666d91aa9ba10e38730a9aab4b3c625",
+        "planHash": "sha256:99491d28f967cd9804050c7ec2ff62dfedc6076efd6479916ddd76f42ffdbc0b",
         "transaction": {
           "steps": [
             {
@@ -8768,7 +9303,7 @@
         }
       },
       "mock.maintenance.pay": {
-        "planHash": "sha256:e4864a29a0a0de83dc293de1b8ee83ad21c0f4d54b6defa1e89c145efbbead48",
+        "planHash": "sha256:59491413b619c9c681b05bd790adaf3b3b0acdda27453faf7dc0c7bd759d7a88",
         "transaction": {
           "steps": [
             {
@@ -8913,7 +9448,7 @@
         }
       },
       "mock.locomotive.move": {
-        "planHash": "sha256:a966e02d5b84a7f0af87ce76252da6cc7c16c0d3fb269e3cbe652d7e627c9217",
+        "planHash": "sha256:9d8b41a143c3a2641246fc08ae8e03a70cc1197c1f274c097ca58bc7668f2653",
         "transaction": {
           "steps": [
             {
@@ -9020,7 +9555,7 @@
         }
       },
       "mock.cargo.deliver": {
-        "planHash": "sha256:16f161451ff5818d9a40ed6e66a21d69bd08ae37dbebe5b2401581869dbda8f2",
+        "planHash": "sha256:ab16b3badea5bdf53ce7049dece18dcfa780fd7dc6b5e23332f6b5e6bc84ede4",
         "transaction": {
           "steps": [
             {
@@ -9093,6 +9628,32 @@
                         }
                       },
                       "field": "toNodeId"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "networkNodes",
+                        "entityId": {
+                          "op": "value.entity",
+                          "entity": {
+                            "collection": "cargoOrders",
+                            "entityId": {
+                              "op": "value.param",
+                              "name": "cargoId"
+                            }
+                          },
+                          "field": "toNodeId"
+                        }
+                      },
+                      "field": "availability"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "open"
                     }
                   },
                   {
@@ -9354,7 +9915,20 @@
               "kind": "command",
               "op": "core.number.add",
               "target": {
-                "endpoint": "public.teams.white-logistics.maintenanceDue"
+                "endpoint": "public.teams.bound.maintenanceDue",
+                "bindings": {
+                  "teamId": {
+                    "op": "value.entity",
+                    "entity": {
+                      "collection": "wagons",
+                      "entityId": {
+                        "op": "value.param",
+                        "name": "wagonId"
+                      }
+                    },
+                    "field": "ownerTeamId"
+                  }
+                }
               },
               "delta": {
                 "op": "value.literal",
@@ -9364,11 +9938,22 @@
             {
               "id": "s004",
               "kind": "command",
+              "op": "deck.return",
+              "deckId": "cargo",
+              "card": {
+                "op": "value.param",
+                "name": "cargoId"
+              },
+              "destination": "discard"
+            },
+            {
+              "id": "s005",
+              "kind": "command",
               "op": "core.event.emit",
               "eventType": "mock.cargo.deliver.event.4",
               "summary": {
                 "op": "value.literal",
-                "value": "MOCK: груз B–C доставлен; выплата и тариф рассчитаны по открытому кратчайшему пути"
+                "value": "MOCK: выбранный груз доставлен; выплата и тариф рассчитаны по открытому кратчайшему пути"
               },
               "audience": "public",
               "data": {
@@ -9382,7 +9967,7 @@
         }
       },
       "construction.road.build": {
-        "planHash": "sha256:ce5076db0af343efe73e287864b56c9570c39c8c7e5808557e65daf1770501a3",
+        "planHash": "sha256:9cb2b023dddab9069dec5b812bdfc408eb7afabee0ef8469c0c62c7729a7acd2",
         "transaction": {
           "steps": [
             {
@@ -9661,7 +10246,7 @@
         }
       },
       "construction.waypoint.build": {
-        "planHash": "sha256:aa6c8f055ee758ec1110c2d3bc17f461d8ef278d26c26331465f880885f34a7f",
+        "planHash": "sha256:481f7192d349ead6ff5864a38335546154e5e0cf6f3c86aaa8bae7de55ae9f16",
         "transaction": {
           "steps": [
             {
@@ -9718,6 +10303,44 @@
                 }
               },
               "errorCode": "CONSTRUCTION_COST_MISMATCH"
+            },
+            {
+              "id": "s002.inspect-position",
+              "kind": "algorithm",
+              "op": "graph.edge.position.inspect",
+              "networkId": "main",
+              "edge": {
+                "op": "value.param",
+                "name": "edgeId"
+              },
+              "position": {
+                "op": "value.param",
+                "name": "positionT"
+              }
+            },
+            {
+              "id": "s002.outside-endpoint-regions",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.set.disjoint",
+                "left": {
+                  "op": "value.result",
+                  "stepId": "s002.inspect-position",
+                  "path": [
+                    "pointRegionIds"
+                  ]
+                },
+                "right": {
+                  "op": "value.result",
+                  "stepId": "s002.inspect-position",
+                  "path": [
+                    "endpoints",
+                    "regionIds"
+                  ]
+                }
+              },
+              "errorCode": "CONSTRUCTION_WAYPOINT_IN_ENDPOINT_REGION"
             },
             {
               "id": "s002.pay-white",
@@ -9800,13 +10423,9 @@
               "kind": "command",
               "op": "graph.edge.split",
               "networkId": "main",
-              "edge": {
-                "op": "value.param",
-                "name": "edgeId"
-              },
-              "position": {
-                "op": "value.param",
-                "name": "positionT"
+              "proof": {
+                "op": "value.result",
+                "stepId": "s002.inspect-position"
               }
             },
             {
@@ -10063,7 +10682,7 @@
         }
       },
       "construction.mode.road": {
-        "planHash": "sha256:bb7909d2d5a333c3dc2d39eddbbfc94cbb8e62edd42a1fe7f8748585ba71e7ff",
+        "planHash": "sha256:5d17298be6e89e6addd993cbab2a65d6c882a81b6a64e388dd980413a41fbfeb",
         "transaction": {
           "steps": [
             {
@@ -10107,7 +10726,7 @@
         }
       },
       "construction.mode.waypoint": {
-        "planHash": "sha256:2a7f8e7a98d486132359231e667eb4e7cfc9764c36dd4e2b79bfc710200ad62e",
+        "planHash": "sha256:58f2c46897849ec66640a294818e8a6f99f01a6fc9de9dd85bd1ba48d02174d1",
         "transaction": {
           "steps": [
             {
@@ -10151,7 +10770,7 @@
         }
       },
       "construction.phase.finish": {
-        "planHash": "sha256:5afc4ca64052a6f0a48da1340e3d88dc2851bbd984aedf14330587d0416a4805",
+        "planHash": "sha256:b8e0464e0a08004836bbaace69690ac692b4dec360fcb61a6c7441794150efff",
         "transaction": {
           "steps": [
             {
@@ -10232,7 +10851,7 @@
         }
       },
       "session.finish.request": {
-        "planHash": "sha256:36d221163e27b6a6c172a122c0a862d998da82e1adefae496aed8fed97989319",
+        "planHash": "sha256:66719630a0e9d70b5a0104652590234b4a6d3dc903ed9488427f511bf4764347",
         "transaction": {
           "steps": [
             {
@@ -10286,7 +10905,7 @@
         }
       },
       "session.finish.cancel": {
-        "planHash": "sha256:4ded8856297bcd2a49f6508c5199ace5196e1ad8b0a892c04ff7ec689d3655b1",
+        "planHash": "sha256:37094dcab90c65a6ea357236fb544b01f00db3a17a05469253cbac7dc9f0ef73",
         "transaction": {
           "steps": [
             {
@@ -10340,7 +10959,7 @@
         }
       },
       "session.finish.confirm": {
-        "planHash": "sha256:e41d3aa2913666f6fc0b35782286c817796a3cf147fdd1754eb4f949b61ee279",
+        "planHash": "sha256:b6560ac4ba0948082962cd0ad60ee2fa2e0c4071b0c48f60dc9a0144e2196a3a",
         "transaction": {
           "steps": [
             {

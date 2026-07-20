@@ -7,6 +7,7 @@ import type {
 import type { MetricsSnapshot } from "@/types/game-state";
 import { resolveMetricBinding } from "@/lib/metric-resolvers";
 import { resolveMetricBackgroundImage } from "@/lib/layout-helpers";
+import { resolveGameAssetReference, type GameAssetResolver } from "@/lib/game-asset-resolver";
 import type { PreviewElementAttributes } from "./preview-metadata";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
@@ -24,7 +25,8 @@ export function GameVariableComponent({
   backgroundImage,
   layoutMode,
   metricBackgroundImages,
-  previewAttributes
+  previewAttributes,
+  assetResolver
 }: {
   component: GameUiComponent<GameUiGameVariableComponentProps>;
   metrics: MetricsSnapshot;
@@ -33,6 +35,8 @@ export function GameVariableComponent({
   layoutMode?: PlayerLayoutMode;
   metricBackgroundImages?: Record<string, string>;
   previewAttributes?: PreviewElementAttributes;
+  /** Optional game asset index (ADR-063); `asset:<id>` values fail closed while absent. */
+  assetResolver?: GameAssetResolver | null;
 }) {
   const props: GameUiGameVariableComponentProps = component.props ?? {};
   const { value } = props;
@@ -44,7 +48,17 @@ export function GameVariableComponent({
   const id = (component as GameUiComponent).id ?? metricId;
   const caption = metricView?.label ?? props.caption ?? metricId ?? "";
   const description = metricView?.description ?? props.description;
-  const resolvedBackgroundImage = resolveMetricBackgroundImage(id, backgroundImage, layoutMode, metricBackgroundImages);
+  // TSK-20260719 R4b: `metricBackgroundImages` may still substitute a
+  // game-owned override before the asset id is resolved (that dictionary is
+  // out of this block's scope — R7); whatever image reference results from
+  // the topbar/default choice above is then resolved through the same
+  // `asset:<id>` channel as every other image property (ADR-063). A plain
+  // path/URL passes through unchanged, so games that don't opt into the
+  // asset channel keep working exactly as before.
+  const resolvedBackgroundImage = resolveGameAssetReference(
+    resolveMetricBackgroundImage(id, backgroundImage, layoutMode, metricBackgroundImages),
+    assetResolver
+  );
   const isProminent = props.layout === "prominent";
 
   if (layoutMode === "topbar") {

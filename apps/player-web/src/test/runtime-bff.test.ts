@@ -8,6 +8,7 @@ import { POST as resolvePortalRuntimeSession } from "../../app/api/portal/runtim
 import {
   browserSessionResponse,
   forwardAuthenticatedRuntimeRequest,
+  proxyRuntimeResponse,
   readBoundedBrowserRuntimeBody,
   runtimeCredentialCookieName
 } from "../../app/api/runtime/_shared";
@@ -109,6 +110,50 @@ describe("runtime BFF credential handoff", () => {
     expect(response.status).toBe(200);
     const upstreamInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
     expect(new Headers(upstreamInit.headers).get("Authorization")).toBe("Bearer secret-bearer");
+  });
+
+  it("forwards only canonical action timing diagnostics from runtime", async () => {
+    const response = await proxyRuntimeResponse(new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+        "Server-Timing": [
+          "total;dur=6",
+          "dispatch;dur=1.2",
+          "action-availability;dur=3.000",
+          "projection;dur=2",
+          "scheduler;dur=0.5"
+        ].join(", "),
+        "Set-Cookie": "runtime-secret=must-not-cross",
+        "X-Runtime-Internal": "must-not-cross"
+      }
+    }));
+
+    expect(response.headers.get("Server-Timing")).toBe([
+      "dispatch;dur=1.200",
+      "scheduler;dur=0.500",
+      "projection;dur=2.000",
+      "action-availability;dur=3.000",
+      "total;dur=6.000"
+    ].join(", "));
+    expect(response.headers.get("Set-Cookie")).toBeNull();
+    expect(response.headers.get("X-Runtime-Internal")).toBeNull();
+  });
+
+  it("drops the complete timing header when it contains an unknown metric", async () => {
+    const response = await proxyRuntimeResponse(new Response("{}", {
+      headers: {
+        "Server-Timing": [
+          "dispatch;dur=1.000",
+          "projection;dur=2.000",
+          "action-availability;dur=3.000",
+          "total;dur=6.000",
+          "session-secret;dur=1.000"
+        ].join(", ")
+      }
+    }));
+
+    expect(response.headers.get("Server-Timing")).toBeNull();
   });
 
   it("does not call runtime when the session credential is absent", async () => {

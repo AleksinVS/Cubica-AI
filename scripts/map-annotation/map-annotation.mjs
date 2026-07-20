@@ -607,12 +607,17 @@ export const createMapAnnotationReviewOverlaySvg = (annotation, options = {}) =>
   <text x="24" y="38" font-family="sans-serif" font-weight="bold" font-size="24" fill="#a32323">${escapeXml(header)}</text>
   <text x="24" y="68" font-family="sans-serif" font-size="18" fill="#7c2d12">${escapeXml(annotation.warning ?? "Resolve unknown records and review issues before confirmation.")}</text>\n`
     : `  <text x="24" y="38" font-family="sans-serif" font-weight="bold" font-size="24" fill="#a32323">${escapeXml(header)}</text>\n`;
+  // Optional empty sections must disappear completely. Emitting indentation
+  // for an absent region list creates trailing whitespace in generated review
+  // artifacts and makes an otherwise semantic update fail `git diff --check`.
+  const sceneMarkup = [regions, edges, nodeShapes]
+    .filter((section) => section.length > 0)
+    .map((section) => `  ${section}`)
+    .join("\n");
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="100%" height="100%" fill="#f4ead6"/>
   ${backgroundHref ? `<image href="${escapeXml(backgroundHref)}" x="0" y="0" width="${width}" height="${height}" preserveAspectRatio="none" opacity=".72"/>` : ""}
-${headerMarkup}  ${regions}
-  ${edges}
-  ${nodeShapes}
+${headerMarkup}${sceneMarkup}
 </svg>\n`;
 };
 

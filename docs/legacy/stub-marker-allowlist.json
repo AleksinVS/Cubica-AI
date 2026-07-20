@@ -3,129 +3,182 @@
   "entries": [
     {
       "path": "apps/portal-nextjs/src/lib/portalApi.js",
-      "markers": ["stub"],
+      "markers": [
+        "stub"
+      ],
       "owner": "Portal Team",
       "reason": "Frontend draft calls the registered portal-backend payment stub while the test VPS payment flow is active.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "packages/contracts/*/package.json",
-      "markers": ["TODO"],
+      "markers": [
+        "TODO"
+      ],
       "owner": "Platform Team",
       "reason": "Workspace package lifecycle scripts are non-executed placeholders until package build/test ownership is classified.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "apps/player-web/package.json",
-      "markers": ["TODO"],
+      "markers": [
+        "TODO"
+      ],
       "owner": "Frontend Team",
       "reason": "Lint script placeholder is outside the runtime/test gates fixed by this remediation.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "services/runtime-api/package.json",
-      "markers": ["TODO"],
+      "markers": [
+        "TODO"
+      ],
       "owner": "Backend Team",
       "reason": "Build/lint script placeholders are outside the canonical runtime verification gate.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "services/metadata-db/DEV_GUIDE.md",
-      "markers": ["stub", "заглушка", "временно"],
+      "markers": [
+        "stub",
+        "заглушка",
+        "временно"
+      ],
       "owner": "Backend Team",
       "reason": "Historical service development guide describes registration policy for future metadata ingestion work.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "services/game-repository/DEV_GUIDE.md",
-      "markers": ["mock", "stub", "заглушка", "временно"],
+      "markers": [
+        "mock",
+        "stub",
+        "заглушка",
+        "временно"
+      ],
       "owner": "Backend Team",
       "reason": "Historical service development guide describes pre-canonical repository scaffolding and registration policy.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "services/game-editor/DEV_GUIDE.md",
-      "markers": ["mock", "заглушка", "временно"],
+      "markers": [
+        "mock",
+        "заглушка",
+        "временно"
+      ],
       "owner": "Backend Team",
       "reason": "Historical service development guide describes future editor integration work rather than active runtime code.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "docs/tasks/README.md",
-      "markers": ["временно"],
+      "markers": [
+        "временно"
+      ],
       "owner": "Architecture Team",
       "reason": "Task-system documentation describes lifecycle policy and not an active implementation stub.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "docs/tasks/ROADMAP.md",
-      "markers": ["временно"],
+      "markers": [
+        "временно"
+      ],
       "owner": "Architecture Team",
       "reason": "Roadmap text describes transient planning risk, not an active implementation stub.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "docs/architecture/universality-analysis.md",
-      "markers": ["stub", "stubs"],
+      "markers": [
+        "stub",
+        "stubs"
+      ],
       "owner": "Architecture Team",
       "reason": "The document describes generated scaffold examples rather than an active runtime stub.",
       "expires_at": "2026-06-30"
     },
     {
       "path": "services/runtime-api/src/modules/ai/*.ts",
-      "markers": ["mock"],
+      "markers": [
+        "mock"
+      ],
       "owner": "Backend Team",
       "reason": "Deterministic mock AI agent runtime adapter (source \"mock\", MOCK_AGENT_RUNTIME_ID) is an intentional local/test adapter; the real LLM provider adapter is tracked by LEGACY-0029, not by these markers.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "services/runtime-api/tests/runtime-api.integration.ts",
-      "markers": ["mock"],
+      "markers": [
+        "mock"
+      ],
       "owner": "Backend Team",
       "reason": "Integration tests exercise the mock AI agent runtime adapter by design; not runtime stub debt.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "packages/contracts/ai/src/index.ts",
-      "markers": ["mock"],
+      "markers": [
+        "mock"
+      ],
       "owner": "Backend Team",
       "reason": "\"mock\" is a declared value of the agent-source enum (mock | local | provider) in the AI contract, not a stub.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "apps/editor-web/src/lib/agent-assistant-registry.test.ts",
-      "markers": ["not implemented"],
+      "markers": [
+        "not implemented"
+      ],
       "owner": "Frontend Team",
       "reason": "Test asserts the not-implemented fallback branch of the assistant registry; not implementation debt.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "apps/editor-web/src/lib/preview-dom-adapter.test.ts",
-      "markers": ["stub"],
+      "markers": [
+        "stub"
+      ],
       "owner": "Frontend Team",
       "reason": "Test stubs the browser canvas path (drawImage/toDataURL) for deterministic assertions; test-only.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "apps/player-web/e2e/.desc.json",
-      "markers": ["mock"],
+      "markers": [
+        "mock"
+      ],
       "owner": "Game Delivery Team",
       "reason": "Descriptor names the intentional test-only Cards Money Trains game package; it is product test content, not an implementation stub.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "apps/player-web/e2e/cards-money-trains-mock.spec.ts",
-      "markers": ["mock"],
+      "markers": [
+        "mock"
+      ],
       "owner": "Game Delivery Team",
       "reason": "Browser acceptance deliberately exercises the separately addressed test-only game package while author content is pending.",
       "expires_at": "2026-12-31"
     },
     {
       "path": "services/runtime-api/tests/cards-money-trains-complete-session.integration.ts",
-      "markers": ["mock"],
+      "markers": [
+        "mock"
+      ],
       "owner": "Game Delivery Team",
       "reason": "Runtime acceptance deliberately loads the separately addressed test-only game as data; duplicate-action debt is tracked by LEGACY-0052.",
       "expires_at": "2026-12-31"
+    },
+    {
+      "path": "apps/player-web/src/components/game-player-dom.test.tsx",
+      "markers": [
+        "временно"
+      ],
+      "owner": "Platform Team",
+      "reason": "Ложное срабатывание: подстрока «временно» входит в слово «одновременно» внутри эталонного сюжетного текста i19, восстановленного по монолиту (TSK-20260719 W2-D); текст нормативен и не является заглушкой.",
+      "expires_at": "2027-07-01"
     }
   ]
 }

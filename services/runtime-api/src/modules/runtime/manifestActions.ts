@@ -5,18 +5,36 @@ import { compareCanonicalIds } from "../mechanics/canonicalOrder.ts";
 
 const readActionsObject = (bundle: GameBundle): GameIntentCatalog => bundle.manifest.actions;
 
+const actionDefinitionCache = new WeakMap<
+  GameBundle,
+  ReadonlyArray<RuntimeManifestActionDefinition>
+>();
+
 export function listManifestActionDefinitions(bundle: GameBundle): Array<RuntimeManifestActionDefinition> {
+  const cached = actionDefinitionCache.get(bundle);
+  if (cached) {
+    // Preserve the established mutable-array return contract without exposing
+    // the shared cached container. Its definition objects remain frozen.
+    return [...cached];
+  }
+
   // PostgreSQL JSONB and other manifest transports do not promise to retain
   // author insertion order. Sorting at this trust boundary keeps every action
   // consumer—including the agent catalog—independent of storage key order.
-  return Object.entries(readActionsObject(bundle))
+  const definitions = Object.entries(readActionsObject(bundle))
     .sort(([leftActionId], [rightActionId]) => compareCanonicalIds(leftActionId, rightActionId))
     .map(([actionId, action]) => {
       // Game Intent validation has already admitted this catalog. This single
       // explicit unknown bridge exists only because the runtime contract keeps
       // an immutable raw JSON view for hashing and diagnostics.
       const raw = action as unknown as Record<string, unknown>;
-      return {
+      const allowedSessionRoles = action.allowedSessionRoles
+        ? [...action.allowedSessionRoles]
+        : undefined;
+      if (allowedSessionRoles) {
+        Object.freeze(allowedSessionRoles);
+      }
+      const definition: RuntimeManifestActionDefinition = {
         actionId,
         // Current publication requires invocation. The fallback exists only
         // for integrity-checked historic immutable bundles on exact receipt
@@ -28,10 +46,18 @@ export function listManifestActionDefinitions(bundle: GameBundle): Array<Runtime
         capability: action.capability,
         functionName: action.function,
         paramsSchema: action.paramsSchema as unknown as Record<string, unknown> | undefined,
-        allowedSessionRoles: action.allowedSessionRoles ? [...action.allowedSessionRoles] : undefined,
+        allowedSessionRoles,
         raw
       };
+      return Object.freeze(definition);
     });
+
+  // The returned catalog is shared by all consumers of the same immutable
+  // bundle. Freezing both the array and its copied role lists prevents one
+  // consumer from corrupting ordering or authorization data for another.
+  const immutableDefinitions = Object.freeze(definitions);
+  actionDefinitionCache.set(bundle, immutableDefinitions);
+  return [...immutableDefinitions];
 }
 
 export function getManifestActionDefinition(bundle: GameBundle, actionId: string) {

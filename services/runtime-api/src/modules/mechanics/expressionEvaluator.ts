@@ -1,6 +1,11 @@
 /** Pure evaluation of schema-validated Mechanics IR values and predicates. */
 import { isDeepStrictEqual } from "node:util";
-import { assertEvaluationDepth, charge, chargeIntermediateValue } from "./budget.ts";
+import {
+  assertEvaluationDepth,
+  charge,
+  chargeIntermediateValue,
+  measureBoundedJson
+} from "./budget.ts";
 import { MechanicsExecutionError } from "./errors.ts";
 import {
   collectionEntries,
@@ -10,21 +15,20 @@ import {
   readEndpoint,
   readEntityField,
   requireMechanicsIdentifier,
+  canonicalMechanicsValueIdentity,
+  derivedCollectionFieldReadWork,
   type ResolvedStateBindings
 } from "./stateModel.ts";
 import type {
   CollectionModel,
   JsonRecord,
   MechanicsExecutionContext,
+  MechanicsItemScope,
   Predicate,
   ValueExpression
 } from "./types.ts";
 
-export interface ItemScope {
-  model: CollectionModel;
-  id: string;
-  entity: JsonRecord;
-}
+export type ItemScope = MechanicsItemScope;
 
 type StateReferenceWithBindings = {
   endpoint: string;
@@ -57,7 +61,12 @@ export function evaluateExpression(
 ): unknown {
   assertEvaluationDepth(depth);
   charge(context, "expressionNodes");
-  const value = evaluateExpressionValue(expression, context, item, depth);
+  // Most operations evaluate expressions without an explicit item argument.
+  // A bounded `core.entities.each` body installs its trusted item on the
+  // executor context, while operations such as `core.entities.update` pass a
+  // more specific inner item and therefore intentionally shadow that binding.
+  const scopedItem = item ?? context.currentItem;
+  const value = evaluateExpressionValue(expression, context, scopedItem, depth);
   // Parameters, stored state and module results can bypass the HTTP body that
   // originally created them. Charge every materialized expression result so
   // repeated reads of large values cannot create unaccounted runtime work.
@@ -101,6 +110,7 @@ function evaluateExpressionValue(
           `Unknown collection "${entityExpression.entity.collection}"`
         );
       }
+      charge(context, "algorithmWork", derivedCollectionFieldReadWork(model, entityExpression.field));
       return readCollectionField(model, entity, entityExpression.field);
     }
     case "value.result": {
@@ -114,7 +124,9 @@ function evaluateExpressionValue(
     }
     case "value.item":
       if (!item) throw new MechanicsExecutionError("MECHANICS_ITEM_SCOPE_INVALID", "value.item requires an entity scope");
-      return readEntityField(item.model, item.entity, expression.area, expression.field);
+      return expression.area === "identity"
+        ? item.id
+        : readEntityField(item.model, item.entity, expression.area, expression.field);
     case "value.coalesce":
       for (const candidate of expression.items) {
         const value = evaluateExpression(candidate, context, item, depth + 1);
@@ -145,19 +157,20 @@ export function evaluatePredicate(
 ): boolean {
   assertEvaluationDepth(depth);
   charge(context, "expressionNodes");
+  const scopedItem = item ?? context.currentItem;
   switch (predicate.op) {
     case "predicate.constant": return predicate.value;
-    case "predicate.all": return predicate.items.every((part) => evaluatePredicate(part, context, item, depth + 1));
-    case "predicate.any": return predicate.items.some((part) => evaluatePredicate(part, context, item, depth + 1));
-    case "predicate.not": return !evaluatePredicate(predicate.item, context, item, depth + 1);
+    case "predicate.all": return predicate.items.every((part) => evaluatePredicate(part, context, scopedItem, depth + 1));
+    case "predicate.any": return predicate.items.some((part) => evaluatePredicate(part, context, scopedItem, depth + 1));
+    case "predicate.not": return !evaluatePredicate(predicate.item, context, scopedItem, depth + 1);
     case "predicate.compare":
       return compare(
-        evaluateExpression(predicate.left, context, item, depth + 1),
-        evaluateExpression(predicate.right, context, item, depth + 1),
+        evaluateExpression(predicate.left, context, scopedItem, depth + 1),
+        evaluateExpression(predicate.right, context, scopedItem, depth + 1),
         predicate.operator
       );
     case "predicate.exists": {
-      const value = evaluateExpression(predicate.value, context, item, depth + 1);
+      const value = evaluateExpression(predicate.value, context, scopedItem, depth + 1);
       return (value !== undefined && value !== null) === predicate.exists;
     }
     case "predicate.actor.active":
@@ -165,11 +178,11 @@ export function evaluatePredicate(
     case "predicate.turn.phase":
       return isDeepStrictEqual(
         readRuntimeTurnPhase(context),
-        evaluateExpression(predicate.phase, context, item, depth + 1)
+        evaluateExpression(predicate.phase, context, scopedItem, depth + 1)
       );
     case "predicate.entity.matches": {
       const entityId = requireMechanicsIdentifier(
-        evaluateExpression(predicate.entity.entityId, context, item, depth + 1),
+        evaluateExpression(predicate.entity.entityId, context, scopedItem, depth + 1),
         "Predicate entity id"
       );
       const entity = findEntity(context, predicate.entity.collection, entityId);
@@ -180,13 +193,13 @@ export function evaluatePredicate(
     }
     case "predicate.collection.count": {
       const source = new Map(collectionEntries(context, predicate.collection).entries);
-      const expected = evaluateExpression(predicate.equals, context, item, depth + 1);
-      const minimum = requireNumber(evaluateExpression(predicate.countAtLeast, context, item, depth + 1));
+      const expected = evaluateExpression(predicate.equals, context, scopedItem, depth + 1);
+      const minimum = requireNumber(evaluateExpression(predicate.countAtLeast, context, scopedItem, depth + 1));
       if (!Number.isSafeInteger(minimum) || minimum < 0) {
         throw new MechanicsExecutionError("MECHANICS_COUNT_INVALID", "Collection count minimum must be a non-negative safe integer");
       }
       const ids = predicate.ids.map((id) => requireMechanicsIdentifier(
-        evaluateExpression(id, context, item, depth + 1),
+        evaluateExpression(id, context, scopedItem, depth + 1),
         "Collection entity id"
       ));
       const count = ids.filter((id) => {
@@ -196,9 +209,111 @@ export function evaluatePredicate(
       }).length;
       return count >= minimum;
     }
+    case "predicate.set.disjoint": {
+      const left = requireBoundedRuntimeSet(
+        evaluateExpression(predicate.left, context, scopedItem, depth + 1),
+        "left set",
+        context
+      );
+      const right = requireBoundedRuntimeSet(
+        evaluateExpression(predicate.right, context, scopedItem, depth + 1),
+        "right set",
+        context
+      );
+      if (left.itemClass !== undefined &&
+          right.itemClass !== undefined &&
+          left.itemClass !== right.itemClass) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_SET_TYPE_MISMATCH",
+          "Set disjoint operands must contain the same runtime item class"
+        );
+      }
+      const leftIdentities = new Set(left.identities);
+      return right.identities.every((identity) => !leftIdentities.has(identity));
+    }
     default:
       throw new MechanicsExecutionError("MECHANICS_PREDICATE_UNSUPPORTED", `Unsupported predicate "${String((predicate as { op: string }).op)}"`);
   }
+}
+
+function requireBoundedRuntimeSet(
+  value: unknown,
+  label: string,
+  context: MechanicsExecutionContext
+): {
+  identities: Array<string>;
+  itemClass?: RuntimeSetItemClass;
+} {
+  if (!Array.isArray(value) || value.length > context.limits.resultEntities) {
+    throw new MechanicsExecutionError(
+      "MECHANICS_SET_REQUIRED",
+      `${label} must be a bounded set representation`
+    );
+  }
+  const usage = measureBoundedJson(value, {
+    maxBytes: context.limits.maxIntermediateValueBytes,
+    maxDepth: context.limits.maxJsonDepth,
+    maxNodes: context.limits.maxJsonNodes,
+    maxStringUtf8Bytes: context.limits.maxStringUtf8Bytes
+  }, "MECHANICS_SET_REQUIRED");
+  // Measuring the JSON and computing canonical set identities are two
+  // separate bounded traversals. Charge both so a caller cannot obtain
+  // unmetered canonicalization work by repeating a set predicate.
+  charge(context, "algorithmWork", usage.nodes);
+  const identities = value.map((item, index) =>
+    canonicalMechanicsValueIdentity(item, `${label}[${index}]`));
+  charge(context, "algorithmWork", usage.nodes);
+  if (new Set(identities).size !== identities.length) {
+    throw new MechanicsExecutionError(
+      "MECHANICS_SET_DUPLICATE",
+      `${label} must contain unique items`
+    );
+  }
+  const itemClasses = new Set(value.map(runtimeSetItemClass));
+  if (itemClasses.size > 1) {
+    throw new MechanicsExecutionError(
+      "MECHANICS_SET_TYPE_MISMATCH",
+      `${label} must contain one runtime item class`
+    );
+  }
+  return {
+    identities,
+    itemClass: itemClasses.values().next().value
+  };
+}
+
+/**
+ * Coarse runtime evidence for the statically proven set item type.
+ *
+ * JavaScript values do not retain their JSON Schema type reference, so this
+ * defensive check distinguishes primitive classes and the two structural JSON
+ * classes without trying to reconstruct optional record fields. The semantic
+ * checker remains the authoritative full type proof; this guard merely makes a
+ * corrupted direct-runtime call fail closed instead of comparing unlike data.
+ */
+type RuntimeSetItemClass =
+  | "null"
+  | "boolean"
+  | "number"
+  | "string"
+  | "array"
+  | "record";
+
+function runtimeSetItemClass(value: unknown): RuntimeSetItemClass {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "array";
+  if (isRecord(value)) return "record";
+  if (typeof value === "boolean" ||
+      typeof value === "number" ||
+      typeof value === "string") {
+    if (typeof value === "boolean") return "boolean";
+    if (typeof value === "number") return "number";
+    return "string";
+  }
+  throw new MechanicsExecutionError(
+    "MECHANICS_SET_TYPE_MISMATCH",
+    "Set items must be finite JSON values with a stable runtime item class"
+  );
 }
 
 /** Turn state is runtime-owned platform state, not a game-declared endpoint. */

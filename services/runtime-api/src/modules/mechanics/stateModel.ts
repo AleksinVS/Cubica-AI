@@ -4,7 +4,10 @@ import type {
   RecordCollectionModel
 } from "@cubica/contracts-manifest";
 import type { CollectionModel, MechanicsExecutionContext, JsonRecord } from "./types.ts";
-import { measureBoundedJson } from "./budget.ts";
+import {
+  measureBoundedJson,
+  type JsonPrimitiveMeasurementCache
+} from "./budget.ts";
 import { compareCanonicalIds } from "./canonicalOrder.ts";
 import { MechanicsExecutionError } from "./errors.ts";
 
@@ -21,11 +24,102 @@ type RuntimeStorageLocation = {
   root: "public" | "secret" | "players";
   segments: Array<RuntimeStorageSegment>;
 };
+type LogicalCollectionField = CollectionModel["fields"][string];
+type StoredLogicalCollectionField = Extract<LogicalCollectionField, { storage: unknown }>;
+type DerivedLogicalCollectionField = Extract<LogicalCollectionField, { source: unknown }>;
+
+/**
+ * Opaque proof that one exact snapshot crossed complete read-only validation.
+ *
+ * The brand is private to this module and the associated data lives in a
+ * private WeakMap, so neither manifest data nor a direct runtime caller can
+ * forge a cache hit. The proof is deliberately request-local: no session id,
+ * state version or availability decision is retained here.
+ */
+const verifiedReadOnlyStateAccessBrand: unique symbol =
+  Symbol("cubica.verified-read-only-state-access");
+export interface VerifiedReadOnlyStateAccess {
+  readonly [verifiedReadOnlyStateAccessBrand]: true;
+}
 
 type StateAccessContext = Pick<
   MechanicsExecutionContext,
   "stateModel" | "state" | "preActionState" | "params" | "actor" | "limits"
->;
+> & {
+  /** Present only inside one protected read-only predicate batch. */
+  verifiedReadOnlyStateAccess?: VerifiedReadOnlyStateAccess;
+  /**
+   * Primitive byte lengths shared only inside that same batch. This is not a
+   * state/object validation cache and cannot authorize a skipped branch.
+   */
+  jsonPrimitiveMeasurements?: JsonPrimitiveMeasurementCache;
+};
+
+type ValidatedCollectionAccess = {
+  model: CollectionModel;
+  entries: Array<[string, JsonRecord]>;
+  raw: JsonRecord | Array<unknown>;
+};
+
+type VerifiedEndpointRead = {
+  value: unknown;
+};
+
+type VerifiedCollectionRead = {
+  raw: JsonRecord | Array<unknown>;
+  result: ValidatedCollectionAccess;
+};
+
+type VerifiedReadOnlyStateAccessData = {
+  stateModel: StateAccessContext["stateModel"];
+  state: StateAccessContext["state"];
+  preActionState: StateAccessContext["preActionState"];
+  limits: StateAccessContext["limits"];
+  endpointReads: Map<string, VerifiedEndpointRead>;
+  collectionReads: Map<string, VerifiedCollectionRead>;
+};
+
+type StateModelTraversalMetadata = {
+  endpoints: ReadonlyArray<
+    readonly [string, StateAccessContext["stateModel"]["endpoints"][string]]
+  >;
+  collections: ReadonlyArray<readonly [string, CollectionModel]>;
+};
+
+type EntityAreaMetadata = {
+  facet: ReadonlySet<string>;
+  attribute: ReadonlySet<string>;
+};
+
+type CollectionFieldMetadata<TModel extends CollectionModel = CollectionModel> = {
+  stored: ReadonlyArray<
+    readonly [string, Extract<TModel["fields"][string], { storage: unknown }>]
+  >;
+  derived: ReadonlyArray<
+    readonly [string, Extract<TModel["fields"][string], { source: unknown }>]
+  >;
+};
+
+/**
+ * Admitted game bundles are deeply frozen once, so their descriptive model can
+ * safely own weakly referenced lookup metadata across many session snapshots.
+ * Session state and validation outcomes are intentionally absent from every
+ * cache: each call still traverses and validates every current stored value.
+ *
+ * Direct test/editor callers may supply mutable models. The helpers below
+ * detect that case and rebuild metadata instead of risking stale validation.
+ */
+const stateModelTraversalMetadataCache = new WeakMap<
+  StateAccessContext["stateModel"],
+  StateModelTraversalMetadata
+>();
+const recordPathMetadataCache = new WeakMap<RecordCollectionModel, RecordPathNode>();
+const entityAreaMetadataCache = new WeakMap<EntityCollectionModel, EntityAreaMetadata>();
+const collectionFieldMetadataCache = new WeakMap<CollectionModel, CollectionFieldMetadata>();
+const verifiedReadOnlyStateAccessData = new WeakMap<
+  VerifiedReadOnlyStateAccess,
+  VerifiedReadOnlyStateAccessData
+>();
 
 export const isRecord = (value: unknown): value is JsonRecord =>
   value !== null && typeof value === "object" && !Array.isArray(value);
@@ -54,6 +148,11 @@ function storageSegments(
     }
     return value;
   });
+}
+
+/** Binding-derived locations were not covered by the snapshot-wide model walk. */
+function storageNeedsBinding(segments: ReadonlyArray<RuntimeStorageSegment>): boolean {
+  return segments.some((segment) => typeof segment !== "string" && "binding" in segment);
 }
 
 function locationParts(
@@ -124,8 +223,8 @@ function availableStorageValues(
  * from the published stateModel: no parallel imperative game schema exists.
  */
 export function assertStateMatchesModel(context: StateAccessContext): void {
-  for (const [endpointId, endpoint] of Object.entries(context.stateModel.endpoints)
-    .sort(([left], [right]) => compareCanonicalIds(left, right))) {
+  const traversal = stateModelTraversalMetadata(context.stateModel);
+  for (const [endpointId, endpoint] of traversal.endpoints) {
     const values = availableStorageValues(context.state, endpoint.storage as RuntimeStorageLocation, context);
     for (const value of values) {
       // Projection-only endpoints may describe runtime-created convenience
@@ -135,8 +234,7 @@ export function assertStateMatchesModel(context: StateAccessContext): void {
     }
   }
 
-  for (const [collectionId, collection] of Object.entries(context.stateModel.collections)
-    .sort(([left], [right]) => compareCanonicalIds(left, right))) {
+  for (const [collectionId, collection] of traversal.collections) {
     const values = availableStorageValues(context.state, collection.storage as RuntimeStorageLocation, context);
     for (const value of values) {
       // A missing collection is the canonical empty representation accepted by
@@ -146,6 +244,85 @@ export function assertStateMatchesModel(context: StateAccessContext): void {
       validateCollectionValue(context, collection, value, collectionId);
     }
   }
+}
+
+/**
+ * Validate one authoritative snapshot and mint a non-transferable local proof.
+ *
+ * The complete model walk always happens before the proof exists. Individual
+ * endpoint and collection reads are still validated on their first use after
+ * this boundary; subsequent predicates may reuse only that same-value result.
+ * This preserves fail-closed behavior if an unusual direct caller exposes a
+ * changing property between the initial walk and its first actual read.
+ */
+export function validateReadOnlyStateAccess(
+  context: StateAccessContext
+): VerifiedReadOnlyStateAccess {
+  assertStateMatchesModel(context);
+  const proof = Object.freeze({
+    [verifiedReadOnlyStateAccessBrand]: true as const
+  });
+  verifiedReadOnlyStateAccessData.set(proof, {
+    stateModel: context.stateModel,
+    state: context.state,
+    preActionState: context.preActionState,
+    limits: context.limits,
+    endpointReads: new Map(),
+    collectionReads: new Map()
+  });
+  return proof;
+}
+
+/**
+ * Resolve proof data only when every identity that affects validation matches.
+ *
+ * A mismatch merely disables the optimization and falls back to the ordinary
+ * validation path. It never turns an invalid proof into authority.
+ */
+function readOnlyStateAccessData(
+  context: StateAccessContext
+): VerifiedReadOnlyStateAccessData | undefined {
+  const proof = context.verifiedReadOnlyStateAccess;
+  if (!proof) return undefined;
+  const data = verifiedReadOnlyStateAccessData.get(proof);
+  return data &&
+    data.stateModel === context.stateModel &&
+    data.state === context.state &&
+    data.preActionState === context.preActionState &&
+    data.limits === context.limits
+    ? data
+    : undefined;
+}
+
+/** Reuse only the canonical iteration order derived from a frozen state model. */
+function stateModelTraversalMetadata(
+  stateModel: StateAccessContext["stateModel"]
+): StateModelTraversalMetadata {
+  const cached = stateModelTraversalMetadataCache.get(stateModel);
+  if (cached) return cached;
+
+  const metadata: StateModelTraversalMetadata = {
+    endpoints: Object.freeze(
+      Object.entries(stateModel.endpoints)
+        .sort(([left], [right]) => compareCanonicalIds(left, right))
+        .map(([id, endpoint]) => Object.freeze([id, endpoint] as const))
+    ),
+    collections: Object.freeze(
+      Object.entries(stateModel.collections)
+        .sort(([left], [right]) => compareCanonicalIds(left, right))
+        .map(([id, collection]) => Object.freeze([id, collection] as const))
+    )
+  };
+  // Deeply admitted bundles freeze both the model and its symbol maps. A
+  // mutable direct caller receives the same result but never a reusable entry.
+  if (
+    Object.isFrozen(stateModel) &&
+    Object.isFrozen(stateModel.endpoints) &&
+    Object.isFrozen(stateModel.collections)
+  ) {
+    stateModelTraversalMetadataCache.set(stateModel, metadata);
+  }
+  return metadata;
 }
 
 function writeParts(root: JsonRecord, parts: Array<string>, value: unknown): void {
@@ -219,6 +396,24 @@ export function readEndpoint(
   }
   const state = source === "preAction" ? context.preActionState : context.state;
   const value = readParts(state, locationParts(endpoint.storage as RuntimeStorageLocation, context, bindings));
+  const readOnlyData = readOnlyStateAccessData(context);
+  const canReuseValidation = readOnlyData !== undefined &&
+    !storageNeedsBinding(endpoint.storage.segments as Array<RuntimeStorageSegment>);
+  if (canReuseValidation) {
+    const cacheKey = JSON.stringify([
+      source,
+      endpointId,
+      context.actor.actorPlayerId ?? null
+    ]);
+    const cached = readOnlyData.endpointReads.get(cacheKey);
+    // Primitive changes and replacement objects are observed and revalidated.
+    // In-place state mutation cannot occur in the assertion-only executor that
+    // owns this proof; normal transactional contexts never receive one.
+    if (cached && Object.is(cached.value, value)) return value;
+    assertValueMatchesType(context, endpoint.valueType, value, `endpoint "${endpointId}"`);
+    readOnlyData.endpointReads.set(cacheKey, { value });
+    return value;
+  }
   assertValueMatchesType(context, endpoint.valueType, value, `endpoint "${endpointId}"`);
   return value;
 }
@@ -266,10 +461,27 @@ export function removeEndpoint(
 export function collectionEntries(
   context: StateAccessContext,
   collectionId: string
-): { model: CollectionModel; entries: Array<[string, JsonRecord]>; raw: JsonRecord | Array<unknown> } {
+): ValidatedCollectionAccess {
   const model = context.stateModel.collections[collectionId];
   if (!model) throw new MechanicsExecutionError("MECHANICS_COLLECTION_REF_UNKNOWN", `Unknown collection "${collectionId}"`);
   const raw = readParts(context.state, locationParts(model.storage as RuntimeStorageLocation, context));
+  const readOnlyData = readOnlyStateAccessData(context);
+  const canReuseValidation = readOnlyData !== undefined &&
+    !storageNeedsBinding(model.storage.segments as Array<RuntimeStorageSegment>);
+  if (canReuseValidation) {
+    const cacheKey = JSON.stringify([
+      collectionId,
+      context.actor.actorPlayerId ?? null
+    ]);
+    const cached = readOnlyData.collectionReads.get(cacheKey);
+    // The same parsed entries are safe only for the same collection object.
+    // A replacement object is validated normally before becoming the new
+    // request-local cache value.
+    if (cached && cached.raw === raw) return cached.result;
+    const result = validateCollectionValue(context, model, raw, collectionId);
+    readOnlyData.collectionReads.set(cacheKey, { raw: result.raw, result });
+    return result;
+  }
   return validateCollectionValue(context, model, raw, collectionId);
 }
 
@@ -278,7 +490,7 @@ function validateCollectionValue(
   model: CollectionModel,
   raw: unknown,
   collectionId: string
-): { model: CollectionModel; entries: Array<[string, JsonRecord]>; raw: JsonRecord | Array<unknown> } {
+): ValidatedCollectionAccess {
   if (model.stableKey === "map-key") {
     if (!isRecord(raw)) throw new MechanicsExecutionError("MECHANICS_STATE_SHAPE_INVALID", `Collection "${collectionId}" must be an object map`);
     const entries = Object.entries(raw).map(([id, item]) => {
@@ -338,11 +550,12 @@ function validateCollectionEntity(
   }
   assertCollectionAreaFieldsDeclared(model, entity, "facet", collectionId, entityId);
   assertCollectionAreaFieldsDeclared(model, entity, "attribute", collectionId, entityId);
-  for (const [fieldId, field] of Object.entries(model.fields)) {
+  for (const [fieldId, field] of collectionFieldMetadata(model).stored) {
     const area = field.storage.kind === "facet" ? entity.facets : entity.attributes;
     if (!isRecord(area) || area[field.storage.name] === undefined) continue;
     assertValueMatchesType(context, field.valueType, area[field.storage.name], `entity "${entityId}" field "${fieldId}"`);
   }
+  validateDerivedCollectionFields(context, model, entity, collectionId, entityId);
 }
 
 interface RecordPathNode {
@@ -358,8 +571,18 @@ function validateRecordCollectionItem(
   collectionId: string,
   entityId: string
 ): void {
+  const root = recordPathMetadata(model);
+  validateRecordPathNode(context, model, item, root, `collection "${collectionId}" item "${entityId}"`, true);
+  validateDerivedCollectionFields(context, model, item, collectionId, entityId);
+}
+
+/** Build the declared closed-record path tree once for an admitted model. */
+function recordPathMetadata(model: RecordCollectionModel): RecordPathNode {
+  const cached = recordPathMetadataCache.get(model);
+  if (cached) return cached;
+
   const root: RecordPathNode = { children: new Map() };
-  for (const [fieldId, field] of Object.entries(model.fields)) {
+  for (const [fieldId, field] of collectionFieldMetadata(model).stored) {
     let node = root;
     for (const segment of field.storage.path) {
       const next = node.children.get(segment) ?? { children: new Map<string, RecordPathNode>() };
@@ -368,7 +591,37 @@ function validateRecordCollectionItem(
     }
     node.fieldId = fieldId;
   }
-  validateRecordPathNode(context, model, item, root, `collection "${collectionId}" item "${entityId}"`, true);
+  if (isFrozenRecordCollectionMetadata(model)) {
+    recordPathMetadataCache.set(model, root);
+  }
+  return root;
+}
+
+/** Require every model fragment read by the cached path tree to be immutable. */
+function isFrozenRecordCollectionMetadata(model: RecordCollectionModel): boolean {
+  return Object.isFrozen(model) &&
+    Object.isFrozen(model.fields) &&
+    collectionFieldMetadataCache.has(model) &&
+    collectionFieldMetadata(model).stored.every(([, field]) =>
+      Object.isFrozen(field.storage) && Object.isFrozen(field.storage.path));
+}
+
+/** Validate every declared projection at both input and candidate boundaries. */
+function validateDerivedCollectionFields(
+  context: StateAccessContext,
+  model: CollectionModel,
+  item: JsonRecord,
+  collectionId: string,
+  entityId: string
+): void {
+  for (const [fieldId, field] of collectionFieldMetadata(model).derived) {
+    assertValueMatchesType(
+      context,
+      field.valueType,
+      readCollectionField(model, item, fieldId),
+      `entity "${entityId}" in collection "${collectionId}" derived field "${fieldId}"`
+    );
+  }
 }
 
 function validateRecordPathNode(
@@ -417,17 +670,39 @@ function assertCollectionAreaFieldsDeclared(
       `Collection "${collectionId}" entity "${entityId}" has an invalid ${area} record`
     );
   }
-  const declaredNames = new Set(
-    Object.values(model.fields)
-      .filter((field) => field.storage.kind === area)
-      .map((field) => field.storage.name)
-  );
+  const declaredNames = entityAreaMetadata(model)[area];
   if (Object.keys(areaValue).some((name) => !declaredNames.has(name))) {
     throw new MechanicsExecutionError(
       "MECHANICS_ENTITY_FIELD_UNDECLARED",
       `Collection "${collectionId}" entity contains an undeclared ${area} field`
     );
   }
+}
+
+/** Reuse the two closed area name sets derived from one frozen entity model. */
+function entityAreaMetadata(model: EntityCollectionModel): EntityAreaMetadata {
+  const cached = entityAreaMetadataCache.get(model);
+  if (cached) return cached;
+
+  const facet = new Set<string>();
+  const attribute = new Set<string>();
+  for (const [, field] of collectionFieldMetadata(model).stored) {
+    if (field.storage.kind === "facet") facet.add(field.storage.name);
+    else if (field.storage.kind === "attribute") attribute.add(field.storage.name);
+  }
+  const metadata: EntityAreaMetadata = { facet, attribute };
+  if (isFrozenEntityCollectionMetadata(model)) {
+    entityAreaMetadataCache.set(model, metadata);
+  }
+  return metadata;
+}
+
+/** Require every model fragment read by cached facet/attribute sets to be immutable. */
+function isFrozenEntityCollectionMetadata(model: EntityCollectionModel): boolean {
+  return Object.isFrozen(model) &&
+    Object.isFrozen(model.fields) &&
+    collectionFieldMetadataCache.has(model) &&
+    collectionFieldMetadata(model).stored.every(([, field]) => Object.isFrozen(field.storage));
 }
 
 export function findEntity(context: StateAccessContext, collectionId: string, entityId: string): JsonRecord {
@@ -438,16 +713,39 @@ export function findEntity(context: StateAccessContext, collectionId: string, en
 
 /** Read one declared field without exposing its physical storage shape. */
 export function readCollectionField(model: CollectionModel, item: JsonRecord, fieldId: string): unknown {
-  if (model.itemShape === "record") {
-    const field = model.fields[fieldId];
-    if (!field) throw new MechanicsExecutionError("MECHANICS_FIELD_REF_UNKNOWN", `Unknown field "${fieldId}"`);
-    return readNestedPath(item, field.storage.path);
-  }
   const field = model.fields[fieldId];
   if (!field) throw new MechanicsExecutionError("MECHANICS_FIELD_REF_UNKNOWN", `Unknown field "${fieldId}"`);
+  if (isDerivedCollectionField(field)) {
+    const source = model.fields[field.source.field];
+    if (!source || !isStoredCollectionField(source)) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_DERIVED_FIELD_SOURCE_INVALID",
+        `Derived field "${fieldId}" does not reference a directly stored field`
+      );
+    }
+    return readNestedPath(readStoredCollectionField(model, item, source), field.source.path);
+  }
+  return readStoredCollectionField(model, item, field);
+}
+
+/** Read physical state only after semantic publication proved its field model. */
+function readStoredCollectionField(
+  model: CollectionModel,
+  item: JsonRecord,
+  field: Extract<LogicalCollectionField, { storage: unknown }>
+): unknown {
+  if (field.storage.kind === "path") {
+    return readNestedPath(item, field.storage.path);
+  }
   const areaKey = field.storage.kind === "facet" ? "facets" : "attributes";
   const areaValue = isRecord(item[areaKey]) ? item[areaKey] as JsonRecord : {};
   return areaValue[field.storage.name];
+}
+
+/** Extra bounded work performed by one logical field projection. */
+export function derivedCollectionFieldReadWork(model: CollectionModel, fieldId: string): number {
+  const field = model.fields[fieldId];
+  return field && isDerivedCollectionField(field) ? field.source.path.length : 0;
 }
 
 /** Backward-compatible entity wrapper that still enforces the requested area. */
@@ -459,7 +757,7 @@ export function readEntityField(
 ): unknown {
   if (model.itemShape === "record") return readCollectionField(model, entity, fieldId);
   const field = model.fields[fieldId];
-  if (!field || field.storage.kind !== area) {
+  if (!field || !collectionFieldBelongsToArea(model, field, area)) {
     throw new MechanicsExecutionError("MECHANICS_FIELD_REF_UNKNOWN", `Field "${fieldId}" is unavailable as ${area}`);
   }
   return readCollectionField(model, entity, fieldId);
@@ -478,7 +776,7 @@ export function writeEntityField(
     return;
   }
   const field = model.fields[fieldId];
-  if (!field || field.storage.kind !== area) {
+  if (!field || !isStoredCollectionField(field) || field.storage.kind !== area) {
     throw new MechanicsExecutionError("MECHANICS_FIELD_NOT_WRITABLE", `Field "${fieldId}" is not writable as ${area}`);
   }
   setCollectionField(context, model, entity, fieldId, value, false);
@@ -513,7 +811,7 @@ export function initializeEntityField(
 ): void {
   if (model.itemShape !== "record") {
     const field = model.fields[fieldId];
-    if (!field || field.storage.kind !== area) {
+    if (!field || !isStoredCollectionField(field) || field.storage.kind !== area) {
       throw new MechanicsExecutionError("MECHANICS_FIELD_REF_UNKNOWN", `Field "${fieldId}" is unavailable as ${area}`);
     }
   }
@@ -555,7 +853,7 @@ function setCollectionField(
 ): void {
   if (model.itemShape === "record") {
     const field = model.fields[fieldId];
-    if (!field || (!allowReadOnly && field.access !== "read-write")) {
+    if (!field || !isStoredCollectionField(field) || (!allowReadOnly && field.access !== "read-write")) {
       throw new MechanicsExecutionError("MECHANICS_FIELD_NOT_WRITABLE", `Field "${fieldId}" is not writable`);
     }
     assertValueMatchesType(context, field.valueType, value, `field "${fieldId}"`);
@@ -564,7 +862,7 @@ function setCollectionField(
     return;
   }
   const field = model.fields[fieldId];
-  if (!field || (!allowReadOnly && field.access !== "read-write")) {
+  if (!field || !isStoredCollectionField(field) || (!allowReadOnly && field.access !== "read-write")) {
     throw new MechanicsExecutionError("MECHANICS_FIELD_NOT_WRITABLE", `Field "${fieldId}" is not writable`);
   }
   assertValueMatchesType(context, field.valueType, value, `field "${fieldId}"`);
@@ -576,13 +874,67 @@ function setCollectionField(
   item[key] = target;
 }
 
-function readNestedPath(root: JsonRecord, path: ReadonlyArray<string>): unknown {
+function readNestedPath(root: unknown, path: ReadonlyArray<string>): unknown {
   let value: unknown = root;
   for (const segment of path) {
     if (!isRecord(value)) return undefined;
     value = value[segment];
   }
   return value;
+}
+
+function isStoredCollectionField(
+  field: LogicalCollectionField
+): field is Extract<LogicalCollectionField, { storage: unknown }> {
+  return "storage" in field;
+}
+
+function isDerivedCollectionField(
+  field: LogicalCollectionField
+): field is Extract<LogicalCollectionField, { source: unknown }> {
+  return "source" in field;
+}
+
+/**
+ * Split immutable field declarations once while retaining every per-value
+ * validation. This avoids rebuilding `Object.entries` arrays for each entity.
+ */
+function collectionFieldMetadata<TModel extends CollectionModel>(
+  model: TModel
+): CollectionFieldMetadata<TModel> {
+  const cached = collectionFieldMetadataCache.get(model) as
+    CollectionFieldMetadata<TModel> | undefined;
+  if (cached) return cached;
+
+  const stored: Array<readonly [string, StoredLogicalCollectionField]> = [];
+  const derived: Array<readonly [string, DerivedLogicalCollectionField]> = [];
+  for (const [fieldId, field] of Object.entries(model.fields)) {
+    if (isStoredCollectionField(field)) stored.push(Object.freeze([fieldId, field] as const));
+    else if (isDerivedCollectionField(field)) derived.push(Object.freeze([fieldId, field] as const));
+  }
+  const metadata = {
+    stored: Object.freeze(stored),
+    derived: Object.freeze(derived)
+  } as CollectionFieldMetadata<TModel>;
+  if (
+    Object.isFrozen(model) &&
+    Object.isFrozen(model.fields) &&
+    Object.values(model.fields).every((field) => Object.isFrozen(field))
+  ) {
+    collectionFieldMetadataCache.set(model, metadata as CollectionFieldMetadata);
+  }
+  return metadata;
+}
+
+/** Entity projections inherit the facet/attribute area of their stored source. */
+function collectionFieldBelongsToArea(
+  model: EntityCollectionModel,
+  field: LogicalCollectionField,
+  area: "facet" | "attribute"
+): boolean {
+  if (isStoredCollectionField(field)) return field.storage.kind === area;
+  const source = model.fields[field.source.field];
+  return Boolean(source && isStoredCollectionField(source) && source.storage.kind === area);
 }
 
 function writeNestedPath(
@@ -648,6 +1000,16 @@ function validateTypedValue(
         typeFailure(label, typeRef, `must be a safe integer in [${type.minimum}, ${type.maximum}]`);
       }
       return;
+    case "finite-number":
+      if (
+        typeof value !== "number" ||
+        !Number.isFinite(value) ||
+        value < type.minimum ||
+        value > type.maximum
+      ) {
+        typeFailure(label, typeRef, `must be a finite number in [${type.minimum}, ${type.maximum}]`);
+      }
+      return;
     case "decimal": {
       if (typeof value !== "number" || !Number.isFinite(value) || value < Number(type.minimum) || value > Number(type.maximum)) {
         typeFailure(label, typeRef, `must be a finite decimal in [${type.minimum}, ${type.maximum}]`);
@@ -673,7 +1035,7 @@ function validateTypedValue(
         maxDepth: Math.min(type.maxDepth, context.limits.maxJsonDepth),
         maxNodes: Math.min(type.maxNodes, context.limits.maxJsonNodes),
         maxStringUtf8Bytes: context.limits.maxStringUtf8Bytes
-      }, "MECHANICS_VALUE_RESOURCE_LIMIT");
+      }, "MECHANICS_VALUE_RESOURCE_LIMIT", context.jsonPrimitiveMeasurements);
       return;
     case "option":
       if (value === null || value === undefined) return;
@@ -744,6 +1106,16 @@ function canonicalJsonIdentity(value: unknown, label: string, depth: number): st
     return `{${entries.join(",")}}`;
   }
   throw new MechanicsExecutionError("MECHANICS_VALUE_TYPE_MISMATCH", `${label} is not a JSON value`);
+}
+
+/**
+ * Stable identity for one already bounded Mechanics value.
+ *
+ * Set predicates reuse the same canonical equality semantics as persisted
+ * typed sets, preventing runtime comparison and state validation from drifting.
+ */
+export function canonicalMechanicsValueIdentity(value: unknown, label = "Mechanics value"): string {
+  return canonicalJsonIdentity(value, label, 0);
 }
 
 function isPlainRecord(value: unknown): value is JsonRecord {

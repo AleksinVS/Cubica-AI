@@ -109,7 +109,7 @@
       "id": "remainingDays",
       "props": {
         "metricId": "remainingDays",
-        "backgroundImage": "/images/top-sidebar/days-top.png",
+        "backgroundImage": "asset:top-sidebar-days-top",
         "layout": "prominent"
       }
     },
@@ -125,7 +125,7 @@
       "id": "pro",
       "props": {
         "metricId": "pro",
-        "backgroundImage": "/images/top-sidebar/znaniya.png"
+        "backgroundImage": "asset:top-sidebar-znaniya"
       }
     },
     "ui.AntarcticaTopbarRepMetric": {
@@ -140,7 +140,7 @@
       "id": "rep",
       "props": {
         "metricId": "rep",
-        "backgroundImage": "/images/top-sidebar/doverie.png"
+        "backgroundImage": "asset:top-sidebar-doverie"
       }
     },
     "ui.AntarcticaTopbarLidMetric": {
@@ -155,7 +155,7 @@
       "id": "lid",
       "props": {
         "metricId": "lid",
-        "backgroundImage": "/images/top-sidebar/energia.png"
+        "backgroundImage": "asset:top-sidebar-energia"
       }
     },
     "ui.AntarcticaTopbarManMetric": {
@@ -170,7 +170,7 @@
       "id": "man",
       "props": {
         "metricId": "man",
-        "backgroundImage": "/images/top-sidebar/kontrol.png"
+        "backgroundImage": "asset:top-sidebar-kontrol"
       }
     },
     "ui.AntarcticaTopbarStatMetric": {
@@ -185,7 +185,7 @@
       "id": "stat",
       "props": {
         "metricId": "stat",
-        "backgroundImage": "/images/top-sidebar/status.png"
+        "backgroundImage": "asset:top-sidebar-status"
       }
     },
     "ui.AntarcticaTopbarContMetric": {
@@ -200,7 +200,7 @@
       "id": "cont",
       "props": {
         "metricId": "cont",
-        "backgroundImage": "/images/top-sidebar/kontakt.png"
+        "backgroundImage": "asset:top-sidebar-kontakt"
       }
     },
     "ui.AntarcticaTopbarConstrMetric": {
@@ -215,7 +215,7 @@
       "id": "constr",
       "props": {
         "metricId": "constr",
-        "backgroundImage": "/images/top-sidebar/konstruktiv.png"
+        "backgroundImage": "asset:top-sidebar-konstruktiv"
       }
     },
     "ui.AntarcticaScreenRoot": {
@@ -228,7 +228,7 @@
       },
       "type": "screenComponent",
       "props": {
-        "backgroundImage": "/images/arctic-background.png"
+        "backgroundImage": "asset:arctic-background"
       }
     },
     "ui.AntarcticaOverlayPanel": {
@@ -301,7 +301,7 @@
           "_semantics": "Кнопка открывает панель журнала ходов.",
           "id": "btn-journal",
           "props": {
-            "caption": "Журнал ходов"
+            "caption": "журнал ходов"
           },
           "actions": {
             "onClick": {
@@ -317,7 +317,7 @@
           "_semantics": "Кнопка открывает панель подсказки.",
           "id": "btn-hint",
           "props": {
-            "caption": "Подсказка"
+            "caption": "подсказка"
           },
           "actions": {
             "onClick": {
@@ -339,10 +339,19 @@
         {
           "_type": "ui.AntarcticaNavButton",
           "_label": "Вперед",
-          "_semantics": "Кнопка навигации вперед.",
+          "_semantics": "W2-B/ADR-055: стрелка \"Вперед\" на карточных/board-экранах несёт игровое действие advance (продвижение к следующему игровому экрану). actionId — advance-план разыгранной карточки текущего шага (forwardAdvanceActionId), disabled управляется состоянием forwardNavDisabled, пока доска не позволяет продолжить (canAdvance).",
           "id": "nav-right",
           "props": {
-            "caption": "Вперед"
+            "caption": "Вперед",
+            "disabled": "{{forwardNavDisabled}}"
+          },
+          "actions": {
+            "onClick": {
+              "command": "advance",
+              "payload": {
+                "actionId": "{{forwardAdvanceActionId}}"
+              }
+            }
           }
         }
       ]
@@ -397,6 +406,7 @@
       }
     },
     "entry_point": "S1",
+    "default_layout_mode": "topbar",
     "screens": [
       {
         "id": "S1",
@@ -572,15 +582,6 @@
                   "type": "areaComponent"
                 }
               ]
-            },
-            {
-              "_type": "ui.Component",
-              "_label": "Область additional background",
-              "_semantics": "UI-компонент типа areaComponent.",
-              "type": "areaComponent",
-              "props": {
-                "cssClass": "additional-background"
-              }
             }
           ],
           "type": "screenComponent"
@@ -755,15 +756,6 @@
                   "type": "areaComponent"
                 }
               ]
-            },
-            {
-              "_type": "ui.Component",
-              "_label": "Область additional background",
-              "_semantics": "UI-компонент типа areaComponent.",
-              "type": "areaComponent",
-              "props": {
-                "cssClass": "additional-background"
-              }
             }
           ],
           "type": "screenComponent"
@@ -891,7 +883,7 @@
                           "_semantics": "Иллюстрация строится из currentInfo.id.",
                           "type": "imageComponent",
                           "props": {
-                            "src": "/images/info/{{currentInfo.id}}.png",
+                            "src": "asset:info-{{currentInfo.id}}",
                             "alt": "{{currentInfo.title}}",
                             "cssClass": "info-event-illustration"
                           },
@@ -942,6 +934,40 @@
                   },
                   "children": [
                     {
+                      "_type": "ui.AntarcticaShowPanelButton",
+                      "_label": "Журнал ходов",
+                      "_semantics": "UI-компонент типа buttonComponent.",
+                      "id": "btn-journal",
+                      "props": {
+                        "caption": "журнал ходов"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "payload": {
+                            "panelId": "history"
+                          }
+                        }
+                      },
+                      "type": "buttonComponent"
+                    },
+                    {
+                      "_type": "ui.AntarcticaShowPanelButton",
+                      "_label": "Подсказка",
+                      "_semantics": "UI-компонент типа buttonComponent.",
+                      "id": "btn-hint",
+                      "props": {
+                        "caption": "подсказка"
+                      },
+                      "actions": {
+                        "onClick": {
+                          "payload": {
+                            "panelId": "hint"
+                          }
+                        }
+                      },
+                      "type": "buttonComponent"
+                    },
+                    {
                       "_type": "ui.AntarcticaNavButton",
                       "_label": "Назад",
                       "_semantics": "UI-компонент типа buttonComponent.",
@@ -968,53 +994,10 @@
                         }
                       },
                       "type": "buttonComponent"
-                    },
-                    {
-                      "_type": "ui.AntarcticaShowPanelButton",
-                      "_label": "Журнал ходов",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "id": "btn-journal",
-                      "props": {
-                        "caption": "Журнал ходов"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "payload": {
-                            "panelId": "history"
-                          }
-                        }
-                      },
-                      "type": "buttonComponent"
-                    },
-                    {
-                      "_type": "ui.AntarcticaShowPanelButton",
-                      "_label": "Подсказка",
-                      "_semantics": "UI-компонент типа buttonComponent.",
-                      "id": "btn-hint",
-                      "props": {
-                        "caption": "Подсказка"
-                      },
-                      "actions": {
-                        "onClick": {
-                          "payload": {
-                            "panelId": "hint"
-                          }
-                        }
-                      },
-                      "type": "buttonComponent"
                     }
                   ]
                 }
               ]
-            },
-            {
-              "_type": "ui.Component",
-              "_label": "Область additional background",
-              "_semantics": "UI-компонент типа areaComponent.",
-              "type": "areaComponent",
-              "props": {
-                "cssClass": "additional-background"
-              }
             }
           ],
           "type": "screenComponent"
@@ -1055,7 +1038,7 @@
                   "id": "remainingDays",
                   "props": {
                     "metricId": "remainingDays",
-                    "backgroundImage": "/images/left-sidebar/days.png",
+                    "backgroundImage": "asset:left-sidebar-days",
                     "layout": "prominent"
                   }
                 },
@@ -1067,7 +1050,7 @@
                   "id": "pro",
                   "props": {
                     "metricId": "pro",
-                    "backgroundImage": "/images/left-sidebar/znania.png"
+                    "backgroundImage": "asset:left-sidebar-znania"
                   }
                 },
                 {
@@ -1078,7 +1061,7 @@
                   "id": "rep",
                   "props": {
                     "metricId": "rep",
-                    "backgroundImage": "/images/left-sidebar/doverie.png"
+                    "backgroundImage": "asset:left-sidebar-doverie"
                   }
                 },
                 {
@@ -1089,7 +1072,7 @@
                   "id": "lid",
                   "props": {
                     "metricId": "lid",
-                    "backgroundImage": "/images/left-sidebar/energia.png"
+                    "backgroundImage": "asset:left-sidebar-energia"
                   }
                 },
                 {
@@ -1100,7 +1083,7 @@
                   "id": "man",
                   "props": {
                     "metricId": "man",
-                    "backgroundImage": "/images/left-sidebar/kontrol.png"
+                    "backgroundImage": "asset:left-sidebar-kontrol"
                   }
                 },
                 {
@@ -1111,7 +1094,7 @@
                   "id": "stat",
                   "props": {
                     "metricId": "stat",
-                    "backgroundImage": "/images/left-sidebar/status.png"
+                    "backgroundImage": "asset:left-sidebar-status"
                   }
                 },
                 {
@@ -1122,7 +1105,7 @@
                   "id": "cont",
                   "props": {
                     "metricId": "cont",
-                    "backgroundImage": "/images/left-sidebar/kontakt.png"
+                    "backgroundImage": "asset:left-sidebar-kontakt"
                   }
                 },
                 {
@@ -1133,7 +1116,7 @@
                   "id": "constr",
                   "props": {
                     "metricId": "constr",
-                    "backgroundImage": "/images/left-sidebar/konstruktiv.png"
+                    "backgroundImage": "asset:left-sidebar-konstruktiv"
                   }
                 },
                 {
@@ -1263,11 +1246,27 @@
           "props": {
             "cssClass": "main-screen journal-screen"
           },
+          "actions": {
+            "onClick": {
+              "command": "closePanel",
+              "payload": {
+                "panelId": "history"
+              }
+            }
+          },
           "children": [
             {
               "type": "areaComponent",
               "props": {
                 "cssClass": "journal-main-content"
+              },
+              "actions": {
+                "onClick": {
+                  "command": "closePanel",
+                  "payload": {
+                    "panelId": "history"
+                  }
+                }
               },
               "children": [
                 {
@@ -1372,7 +1371,7 @@
                                     {
                                       "type": "richTextComponent",
                                       "props": {
-                                        "html": "{{entry.data.backText}}",
+                                        "html": "{{entry.backText}}",
                                         "cssClass": "journal-entry-text"
                                       }
                                     }
@@ -1382,17 +1381,60 @@
                             },
                             {
                               "type": "areaComponent",
-                              "if": "{{entry.hasMetricSummary}}",
+                              "if": "{{entry.hasMetricRows}}",
                               "props": {
                                 "cssClass": "journal-entry-metrics"
                               },
                               "children": [
                                 {
-                                  "type": "richTextComponent",
+                                  "type": "areaComponent",
                                   "props": {
-                                    "html": "{{entry.metricSummary}}",
                                     "cssClass": "journal-variables-container"
-                                  }
+                                  },
+                                  "itemTemplate": {
+                                    "collection": "{{entry.metricRows}}",
+                                    "itemKey": "metric"
+                                  },
+                                  "children": [
+                                    {
+                                      "type": "areaComponent",
+                                      "props": {
+                                        "cssClass": "journal-variable-component"
+                                      },
+                                      "children": [
+                                        {
+                                          "type": "areaComponent",
+                                          "props": {
+                                            "cssClass": "journal-variable__row"
+                                          },
+                                          "children": [
+                                            {
+                                              "type": "richTextComponent",
+                                              "props": {
+                                                "html": "{{metric.value}}",
+                                                "cssClass": "journal-variable__value"
+                                              }
+                                            },
+                                            {
+                                              "type": "richTextComponent",
+                                              "if": "{{metric.hasDelta}}",
+                                              "props": {
+                                                "html": "<sup>{{metric.delta}}</sup>",
+                                                "cssClass": "journal-variable__diff"
+                                              }
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "type": "richTextComponent",
+                                          "props": {
+                                            "html": "{{metric.caption}}",
+                                            "cssClass": "journal-variable__caption"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  ]
                                 }
                               ]
                             }
@@ -1407,7 +1449,7 @@
                     {
                       "id": "btn-journal",
                       "props": {
-                        "caption": "Журнал ходов"
+                        "caption": "журнал ходов"
                       },
                       "actions": {
                         "onClick": {
@@ -1422,7 +1464,7 @@
                     {
                       "id": "btn-hint",
                       "props": {
-                        "caption": "Подсказка"
+                        "caption": "подсказка"
                       },
                       "actions": {
                         "onClick": {
@@ -1531,7 +1573,7 @@
                 {
                   "id": "btn-journal",
                   "props": {
-                    "caption": "Журнал ходов"
+                    "caption": "журнал ходов"
                   },
                   "actions": {
                     "onClick": {
@@ -1546,7 +1588,7 @@
                 {
                   "id": "btn-hint",
                   "props": {
-                    "caption": "Подсказка"
+                    "caption": "подсказка"
                   },
                   "actions": {
                     "onClick": {
@@ -1614,6 +1656,123 @@
         "conditions": {
           "screenId": "S1",
           "layoutMode": "leftsidebar"
+        }
+      }
+    ],
+    "stylesheets": [
+      "asset:antarctica-theme"
+    ],
+    "metric_specs": [
+      {
+        "id": "remainingDays",
+        "caption": "Остаток дней",
+        "description": "Сколько игровых дней осталось до предельного срока.",
+        "value": "{{game.state.public.metrics.remainingDays}}",
+        "aliases": [
+          "remainingDays",
+          "days"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-days",
+          "topbar": "asset:top-sidebar-days-top"
+        }
+      },
+      {
+        "id": "pro",
+        "caption": "Знания",
+        "description": "Объем полезных знаний по проекту изменений.",
+        "value": "{{game.state.public.metrics.pro}}",
+        "aliases": [
+          "pro",
+          "knowledge"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-znania",
+          "topbar": "asset:top-sidebar-znaniya"
+        }
+      },
+      {
+        "id": "rep",
+        "caption": "Доверие",
+        "description": "Отношение заинтересованных сторон к проекту.",
+        "value": "{{game.state.public.metrics.rep}}",
+        "aliases": [
+          "rep",
+          "trust"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-doverie",
+          "topbar": "asset:top-sidebar-doverie"
+        }
+      },
+      {
+        "id": "lid",
+        "caption": "Энергия",
+        "description": "Вовлеченность команды в проект и вера в успех изменений.",
+        "value": "{{game.state.public.metrics.lid}}",
+        "aliases": [
+          "lid",
+          "energy"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-energia",
+          "topbar": "asset:top-sidebar-energia"
+        }
+      },
+      {
+        "id": "man",
+        "caption": "Контроль",
+        "description": "Возможность координировать действия и выполнять намеченное.",
+        "value": "{{game.state.public.metrics.man}}",
+        "aliases": [
+          "man",
+          "control"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-kontrol",
+          "topbar": "asset:top-sidebar-kontrol"
+        }
+      },
+      {
+        "id": "stat",
+        "caption": "Статус",
+        "description": "Понимание важности проекта и его приоритетности.",
+        "value": "{{game.state.public.metrics.stat}}",
+        "aliases": [
+          "stat",
+          "status"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-status",
+          "topbar": "asset:top-sidebar-status"
+        }
+      },
+      {
+        "id": "cont",
+        "caption": "Контакт",
+        "description": "Легкость коммуникации участников проекта с окружением.",
+        "value": "{{game.state.public.metrics.cont}}",
+        "aliases": [
+          "cont",
+          "contact"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-kontakt",
+          "topbar": "asset:top-sidebar-kontakt"
+        }
+      },
+      {
+        "id": "constr",
+        "caption": "Конструктив",
+        "description": "Способность сохранять нацеленность на результат в стрессовой ситуации.",
+        "value": "{{game.state.public.metrics.constr}}",
+        "aliases": [
+          "constr",
+          "constructive"
+        ],
+        "images": {
+          "sidebar": "asset:left-sidebar-konstruktiv",
+          "topbar": "asset:top-sidebar-konstruktiv"
         }
       }
     ]

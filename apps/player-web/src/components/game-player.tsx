@@ -32,9 +32,11 @@ import {
 import {
   createEmptyGameAssetResolver,
   loadGameAssetResolver,
+  resolveThemeBackgroundStyle,
   uiUsesGameAssets,
   type GameAssetResolver
 } from "@/lib/game-asset-resolver";
+import { applyGameStylesheetLinks } from "@/lib/game-stylesheet-links";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 import { createManifestActionAdapter } from "@/lib/manifest-action-adapter";
 
@@ -88,6 +90,19 @@ export function GamePlayer({
     () => playerPluginBundles.map((bundle) => `${bundle.scope}:${bundle.pluginId}:${bundle.contentHash}`).join("|"),
     [playerPluginBundles]
   );
+  // TSK-20260719 R4b: whether the game needs the asset index (ADR-063) is
+  // still decided from the UI manifest alone (`uiUsesGameAssets(gameUi)`),
+  // not from the plugin config's themeBackgroundImage — a game that declares
+  // an `asset:<id>` background AND uses `asset:` anywhere in its UI manifest
+  // (the common case; every screen carries at least one such reference once
+  // migrated) already loads the resolver through this existing check. A game
+  // that used *only* a config-level `asset:` theme background with no
+  // UI-manifest asset reference at all would need this check widened to also
+  // look at `fullConfig.themeBackgroundImage`; left as a known, narrow gap
+  // (documented below) rather than reordering hook initialization around a
+  // config value that is not always available on the first render (a
+  // registered plugin's config only replaces the server default once
+  // `playerPluginState.status === "ready"`).
   const needsGameAssets = useMemo(() => uiUsesGameAssets(gameUi), [gameUi]);
   const [gameAssets, setGameAssets] = useState<GameAssetResolver | null>(
     () => needsGameAssets ? null : createEmptyGameAssetResolver()
@@ -136,6 +151,26 @@ export function GamePlayer({
       cancelled = true;
     };
   }, [content.gameId, needsGameAssets, runtimeApiUrl]);
+
+  // Game-owned stylesheets (ADR-091): inject a <link> per declared asset:<id>
+  // once the asset resolver is loaded, and remove them on unmount/reload. The
+  // stable signature avoids re-injecting when the array identity changes but its
+  // contents do not. The renderer stays game-agnostic — it applies whatever the
+  // manifest lists without knowing the game.
+  const gameStylesheetSignature = useMemo(
+    () => (gameUi?.stylesheets ?? []).join("|"),
+    [gameUi?.stylesheets]
+  );
+  useEffect(() => {
+    const references = gameUi?.stylesheets;
+    if (references === undefined || references.length === 0 || gameAssets === null) {
+      return;
+    }
+    return applyGameStylesheetLinks({ references, resolver: gameAssets });
+    // gameStylesheetSignature captures the reference contents; gameAssets flips
+    // from null to the loaded resolver.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameStylesheetSignature, gameAssets]);
 
   const presenterRef = useRef<GamePresenter | null>(null);
   const rootRef = useRef<HTMLElement | null>(null);
@@ -374,13 +409,14 @@ export function GamePlayer({
   };
 
   const state = playerState;
-  const rootStyle = fullConfig.themeBackgroundImage
-    ? ({
-        // WHY: shared layouts consume a neutral CSS variable. Only an active
-        // game plugin can provide the game-owned asset assigned to it.
-        "--game-background-image": `url(${JSON.stringify(fullConfig.themeBackgroundImage)})`
-      } as CSSProperties)
-    : undefined;
+  // WHY: shared layouts consume a neutral CSS variable. Only an active game
+  // plugin can provide the game-owned asset assigned to it. TSK-20260719 R4b:
+  // themeBackgroundImage may itself be an `asset:<id>` marker, resolved
+  // through the same fail-closed channel as every other image property
+  // (ADR-063) — an ordinary path/URL still passes through unchanged.
+  const rootStyle = resolveThemeBackgroundStyle(fullConfig.themeBackgroundImage, gameAssets) as
+    | CSSProperties
+    | undefined;
 
   if (playerPluginState.status === "error") {
     return (

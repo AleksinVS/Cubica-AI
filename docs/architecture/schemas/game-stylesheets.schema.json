@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/game-stylesheets.schema.json",
+  "title": "Cubica Published Game Stylesheets",
+  "description": "Generated metadata for immutable, content-addressable game-owned CSS assets (ADR-091). Produced by scripts/manifest-tools/build-game-stylesheets.cjs from games/<id>/assets/styles/*.css: the published CSS is a generated artifact whose asset:<id> image tokens are rewritten into content-addressable channel URLs. It is written only by the publish pipeline (never by hand) and served content-addressably with an immutable cache.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "stylesheets"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "const": "1.0"
+    },
+    "stylesheets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/publishedGameStylesheet"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": false,
+  "definitions": {
+    "publishedGameStylesheet": {
+      "type": "object",
+      "required": [
+        "stylesheetId",
+        "gameId",
+        "contentHash",
+        "integrity",
+        "filePath",
+        "url"
+      ],
+      "properties": {
+        "stylesheetId": {
+          "type": "string",
+          "description": "Stable asset id shared with the assets.json registry (asset:<id> namespace).",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "gameId": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,63}$"
+        },
+        "contentHash": {
+          "type": "string",
+          "description": "SHA-256 hex digest of the generated (token-rewritten) CSS bytes.",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "integrity": {
+          "type": "string",
+          "description": "SRI-style digest for optional integrity checks.",
+          "pattern": "^sha256-[A-Za-z0-9+/]+={0,2}$"
+        },
+        "filePath": {
+          "type": "string",
+          "description": "Game-root-relative path to the immutable generated CSS artifact.",
+          "pattern": "^published/[a-z0-9][a-z0-9-]{0,63}\\.[a-f0-9]{64}\\.css$"
+        },
+        "url": {
+          "type": "string",
+          "description": "Runtime-api URL path used by player-web to load the stylesheet.",
+          "pattern": "^/game-stylesheets/[a-z0-9][a-z0-9-]{0,63}/[a-z0-9][a-z0-9-]{0,63}/[a-f0-9]{64}\\.css$"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -59,6 +59,15 @@
       },
       "additionalProperties": true
     },
+    "stylesheets": {
+      "type": "array",
+      "description": "Optional game-owned CSS assets to load for this channel (ADR-091). Each item references a stylesheet registered in games/<id>/assets/assets.json via the channel-neutral form asset:<id>. The player-web renderer injects them game-agnostically after platform styles when the game mounts and removes them on unmount; source url() image references are rewritten to content-addressable channel URLs at publish time.",
+      "items": {
+        "type": "string",
+        "pattern": "^asset:[a-z0-9][a-z0-9-]{0,63}$"
+      },
+      "uniqueItems": true
+    },
     "screens": {
       "type": "object",
       "description": "Registry of UI screens for this UI manifest.",
@@ -155,6 +164,11 @@
     "entry_point": {
       "type": "string",
       "description": "Identifier of the start screen to render (must exist in 'screens')."
+    },
+    "default_layout_mode": {
+      "type": "string",
+      "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+      "description": "Design-time layout the game presents for this channel (ADR-093). The game developer chooses it at UI design time; the screen router matches screen_routing[].conditions.layoutMode against this value instead of any server-side UI state. The final layout of a selected screen is still driven by that screen's own layout_mode. When absent the player treats the layout as 'topbar'. Layout is a presentation property and must not be stored in server game state."
     },
     "layouts": {
       "type": "object",

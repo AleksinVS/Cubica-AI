@@ -7,6 +7,7 @@
  */
 
 import type {
+  ArchivedSessionAudit,
   CreateSessionRequest,
   CreateSessionResponse,
   GetSessionResponse,
@@ -51,6 +52,15 @@ export interface AuthenticatedSessionAccess {
   principal: SessionPrincipal;
   bundle: GameBundle;
 }
+
+/**
+ * Let an authenticated facilitator close a session at its exact audit boundary.
+ *
+ * This application-service method deliberately returns the protected archive
+ * object only to trusted server callers. A future player or facilitator HTTP
+ * endpoint must define a narrower audience-aware projection first.
+ */
+export type AuthenticatedArchivedSessionAccess = ArchivedSessionAudit<RuntimeState>;
 
 export class SessionService {
   private readonly sessionStore: SessionStorePort<RuntimeState>;
@@ -124,6 +134,30 @@ export class SessionService {
         sessionRole: principal.role
       })
     };
+  }
+
+  async archiveSession(
+    sessionId: SessionId,
+    accessToken: string
+  ): Promise<AuthenticatedArchivedSessionAccess> {
+    const archived = await this.sessionStore.archiveSession({
+      sessionId,
+      credentialSha256: hashSessionCredential(accessToken)
+    });
+    if (archived === null) throw new SessionAuthenticationError();
+    return archived;
+  }
+
+  async readArchivedSession(
+    sessionId: SessionId,
+    accessToken: string
+  ): Promise<AuthenticatedArchivedSessionAccess> {
+    const archived = await this.sessionStore.readArchivedSession({
+      sessionId,
+      credentialSha256: hashSessionCredential(accessToken)
+    });
+    if (archived === null) throw new SessionAuthenticationError();
+    return archived;
   }
 
   async restorePreviewSession(

@@ -20,6 +20,7 @@ export type {
   AuthoredInRepoOrigin,
   GameAssetEntry,
   RootGameAssets,
+  StylesheetAssetEntry,
   ThirdPartyOrigin
 } from "./generated/game-assets.ts";
 export type * from "./generated/mechanics-plan.ts";
@@ -509,6 +510,17 @@ export interface GamePlayerUiContent {
    */
   entryPoint: string;
   /**
+   * Design-time layout the game presents for this channel (ADR-093).
+   *
+   * Chosen by the game developer at UI design time. The screen router matches
+   * `screenRouting[].conditions.layoutMode` against this value to pick a layout
+   * variant screen (for example S1 topbar vs S1_LEFT leftsidebar), instead of
+   * reading any server-side UI state. The final layout of the selected screen is
+   * still driven by that screen's own `layoutMode`. When omitted the player
+   * treats the layout as `topbar`.
+   */
+  defaultLayoutMode?: GameUiLayoutMode;
+  /**
    * All available screen definitions keyed by screenId.
    * Covers S1 (opening entry) and bounded opening-tail screens:
    * - S1: opening entry screen with left-sidebar layout
@@ -537,6 +549,16 @@ export interface GamePlayerUiContent {
   metricSpecs?: Array<MetricConfigSpec>;
   /** Design artifact registry from the UI manifest (for reference/metadata). */
   designArtifacts?: Record<string, GameUiDesignArtifactRef>;
+  /**
+   * Game-owned CSS assets to load for this channel (ADR-091), each referenced
+   * by the channel-neutral `asset:<id>` form. The player-web renderer resolves
+   * them through the game asset index and injects a `<link>` per entry after
+   * platform styles when the game mounts, removing them on unmount. Unknown ids
+   * fail closed (the stylesheet is not injected). The renderer stays
+   * game-agnostic: it loads whatever the manifest declares without knowing the
+   * game.
+   */
+  stylesheets?: Array<string>;
 }
 
 /**

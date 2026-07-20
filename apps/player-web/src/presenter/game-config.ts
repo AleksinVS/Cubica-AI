@@ -9,7 +9,7 @@ import type {
   MetricConfigSpec
 } from "@cubica/contracts-manifest";
 
-import type { RuntimeUiState, MetricsSnapshot } from "@/types/game-state";
+import type { MetricsSnapshot } from "@/types/game-state";
 import type { GameSession } from "@/types/game-state";
 import type { PlayerLayoutMode } from "@/lib/player-layout-mode";
 
@@ -87,23 +87,25 @@ export interface GameConfigResolvers<TGameState = GameState, TUiContent = GamePl
    * (matching against screenRouting entries from the UI manifest,
    * then direct screenId lookup, then activeInfoId disambiguation).
    * Board-centric games (Antarctica) override this for step-to-screen mappings.
+   *
+   * Layout is a design-time choice declared in the UI manifest
+   * (`defaultLayoutMode`, ADR-093), so this resolver reads it from `uiContent`
+   * rather than from server-side UI state.
    */
   resolveScreenKey?: (
     screenId: string | null,
     stepIndex: number | null,
     infoId: string | null,
-    runtimeUi: RuntimeUiState,
     uiContent: TUiContent | undefined
   ) => string | null;
 
   /**
    * Determines the screen layout mode: topbar or leftsidebar.
    * Optional — when omitted, defaults to the data-driven layout resolver
-   * (checking screenRouting entries and runtimeUi.activeScreen).
+   * (the design-time `defaultLayoutMode` from the UI manifest, ADR-093).
    */
   resolveLayoutMode?: (
     screenKey: string | null,
-    runtimeUi: RuntimeUiState,
     gameState: TGameState
   ) => PlayerLayoutMode;
 

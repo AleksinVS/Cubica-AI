@@ -38,6 +38,11 @@ const manifestUsesSessionRandomness = (value: unknown): boolean => {
   if (!isObjectRecord(value)) {
     return false;
   }
+  if (value.op === "core.entities.order" &&
+      isObjectRecord(value.tieBreak) &&
+      value.tieBreak.kind === "seeded-random") {
+    return true;
+  }
   if (typeof value.op === "string" && SESSION_RANDOM_OPERATIONS.has(value.op)) {
     return true;
   }

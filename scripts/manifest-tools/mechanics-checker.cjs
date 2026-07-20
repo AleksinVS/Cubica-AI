@@ -8,6 +8,7 @@
  */
 
 const {
+  MAX_DECK_ITEMS,
   MAX_SESSION_RANDOM_STREAMS,
   MODULE_REGISTRY,
   OPERATION_MODULES,
@@ -19,6 +20,7 @@ const BUDGET_PROFILES = Object.freeze({
   "turn-based-standard-v1": Object.freeze({
     maxSteps: 512,
     maxExpressionNodes: 32_768,
+    maxAlgorithmWork: 10_000_000,
     maxScannedEntities: 65_536,
     maxResultEntities: 16_384,
     maxWrites: 65_536,
@@ -44,6 +46,7 @@ const BUDGET_PROFILES = Object.freeze({
   "turn-based-large-v1": Object.freeze({
     maxSteps: 512,
     maxExpressionNodes: 131_072,
+    maxAlgorithmWork: 40_000_000,
     maxScannedEntities: 262_144,
     maxResultEntities: 65_536,
     maxWrites: 262_144,
@@ -86,6 +89,11 @@ const isRecord = (value) => value !== null && typeof value === "object" && !Arra
 const SAFE_IDENTIFIER = /^(?!__proto__$|constructor$|prototype$)[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/u;
 const SYSTEM_SCHEDULE_ID_PATTERN = /^[A-Za-z0-9_-]{22,128}$/u;
 const isSafeMechanicsIdentifier = (value) => typeof value === "string" && SAFE_IDENTIFIER.test(value);
+const GRAPH_MAX_REGIONS = 512;
+const GRAPH_MAX_VERTICES_PER_REGION = 512;
+const GRAPH_MAX_TOTAL_REGION_VERTICES = 20_000;
+const GRAPH_MAX_POLYLINE_POINTS = 20_000;
+const GRAPH_GEOMETRY_EPSILON = 1e-9;
 
 /**
  * Confidentiality is an ordered lattice: a value may flow only to a sink
@@ -159,6 +167,7 @@ function checkMechanicsBundle(mechanics, options = {}) {
   checkNetworkBindings(options.networkModels || {}, model);
   checkStaticResourceBudgets(mechanics, profile);
   checkDeclaredRandomStreams(mechanics.plans);
+  const declaredDeckIds = collectDeclaredDeckIds(mechanics.plans);
 
   const actions = options.actions || {};
   const actionContexts = checkActionsAndBuildPlanParameterContexts(
@@ -199,7 +208,8 @@ function checkMechanicsBundle(mechanics, options = {}) {
       actionContexts.parameters.get(planId) || new Map(),
       actionContexts.planInvocations.get(planId) || "unbound",
       actions,
-      scheduleRegistrations
+      scheduleRegistrations,
+      declaredDeckIds
     );
   }
   checkCombinedSystemScheduleBudgets(scheduleRegistrations, actions, costs, profile);
@@ -279,10 +289,11 @@ function checkActionsAndBuildPlanParameterContexts(mechanics, actions, model, pa
         // to prove such a future plan; runtime admission may safely retain the
         // immutable, unreachable plan without inventing a public parameter
         // contract for it.
-        parameters.set(name, { kind: "unknown" });
+        parameters.set(name, { kind: "unknown", bindings: [] });
         continue;
       }
       let expected;
+      const bindings = [];
       for (const { actionId, action } of boundActions) {
         const properties = isRecord(action.paramsSchema?.properties) ? action.paramsSchema.properties : {};
         const property = properties[name];
@@ -295,6 +306,14 @@ function checkActionsAndBuildPlanParameterContexts(mechanics, actions, model, pa
         }
         const required = Array.isArray(action.paramsSchema?.required) && action.paramsSchema.required.includes(name);
         const actual = parameterTypeFromSchema(property, required);
+        const pendingPrefix = "pending:";
+        const pending = actionId.startsWith(pendingPrefix);
+        const sourceActionId = pending ? actionId.slice(pendingPrefix.length) : actionId;
+        bindings.push({
+          schema: property,
+          pointer: `/${pending ? "parameterActions" : "actions"}/${escapePointer(sourceActionId)}` +
+            `/paramsSchema/properties/${escapePointer(name)}`
+        });
         if (expected && (expected.value !== actual.value || expected.optional !== actual.optional)) {
           fail(
             "MECHANICS_PLAN_PARAM_SCHEMA_INCOMPATIBLE",
@@ -304,7 +323,7 @@ function checkActionsAndBuildPlanParameterContexts(mechanics, actions, model, pa
         }
         expected = actual;
       }
-      parameters.set(name, expected);
+      parameters.set(name, { ...expected, bindings });
     }
     contexts.set(planId, parameters);
   }
@@ -353,8 +372,10 @@ function parameterTypeFromSchema(property, required) {
 
 /** Module locks are an exact executable closure: neither missing nor idle. */
 function checkExactModuleLockUsage(plans, lockedModules) {
-  const operations = Object.values(plans).flatMap((plan) =>
-    plan.transaction.steps.map((step) => step.op));
+  const operations = [];
+  for (const plan of Object.values(plans)) {
+    visitMechanicsSteps(plan.transaction.steps, (step) => operations.push(step.op));
+  }
   const required = new Set(moduleIdsForOperations(operations));
   for (const moduleId of required) {
     if (!lockedModules.has(moduleId)) {
@@ -377,20 +398,72 @@ function checkDeclaredRandomStreams(plans) {
   const streams = new Set();
   for (const planId of Object.keys(plans).sort()) {
     const steps = plans[planId].transaction.steps;
-    for (const [stepIndex, step] of steps.entries()) {
-      if ((step.op !== "random.dice.roll" && step.op !== "deck.shuffle") || streams.has(step.stream)) {
-        continue;
+    visitMechanicsSteps(steps, (step, pointer) => {
+      const stream = step.op === "core.entities.order" && step.tieBreak?.kind === "seeded-random"
+        ? step.tieBreak.stream
+        : step.op === "random.dice.roll" || step.op === "deck.shuffle"
+          ? step.stream
+          : undefined;
+      if (stream === undefined || streams.has(stream)) {
+        return;
       }
-      streams.add(step.stream);
+      streams.add(stream);
       if (streams.size > MAX_SESSION_RANDOM_STREAMS) {
         fail(
           "MECHANICS_RANDOM_STREAM_LIMIT_EXCEEDED",
-          `/plans/${escapePointer(planId)}/transaction/steps/${stepIndex}/stream`,
+          `/plans/${escapePointer(planId)}/transaction/steps${pointer}/${
+            step.op === "core.entities.order" ? "tieBreak/stream" : "stream"
+          }`,
           `declared random streams exceed the runtime limit of ${MAX_SESSION_RANDOM_STREAMS}`
         );
       }
-    }
+    });
   }
+}
+
+/**
+ * Walk the one-level bounded execution tree admitted by `core.entities.each`.
+ *
+ * Keeping this traversal in one helper prevents module-lock and random-stream
+ * admission from accidentally seeing only top-level steps. This helper never
+ * recursively descends: it rejects a nested iteration as soon as it sees one,
+ * before an adversarial tree can consume the JavaScript call stack.
+ */
+function visitMechanicsSteps(steps, visit, pointer = "") {
+  steps.forEach((step, index) => {
+    const stepPointer = `${pointer}/${index}`;
+    visit(step, stepPointer);
+    if (step.op === "core.entities.each") {
+      step.body.forEach((bodyStep, bodyIndex) => {
+        const bodyPointer = `${stepPointer}/body/${bodyIndex}`;
+        if (bodyStep.op === "core.entities.each") {
+          fail(
+            "MECHANICS_EACH_NESTED",
+            `${bodyPointer}/op`,
+            "nested bounded iteration is not admitted"
+          );
+        }
+        visit(bodyStep, bodyPointer);
+      });
+    }
+  });
+}
+
+/**
+ * Treat literal `deck.shuffle` steps as the immutable package declaration.
+ *
+ * The traversal includes the bounded body admitted by `core.entities.each`.
+ * No dynamic operation can add a declaration: only the still-literal shuffle
+ * operation is allowed to create protected deck state.
+ */
+function collectDeclaredDeckIds(plans) {
+  const declared = new Set();
+  for (const plan of Object.values(plans)) {
+    visitMechanicsSteps(plan.transaction.steps, (step) => {
+      if (step.op === "deck.shuffle") declared.add(step.deckId);
+    });
+  }
+  return declared;
 }
 
 /**
@@ -601,6 +674,7 @@ function checkInitialCollectionState(initialState, model, profile) {
       const facetNames = new Map();
       const attributeNames = new Map();
       for (const [fieldId, field] of Object.entries(collection.fields)) {
+        if (!isStoredCollectionField(field)) continue;
         (field.storage.kind === "facet" ? facetNames : attributeNames).set(field.storage.name, { fieldId, field });
       }
       for (const [entityId, entity] of entries) {
@@ -613,6 +687,7 @@ function checkInitialCollectionState(initialState, model, profile) {
         }
         checkInitialEntityArea(entity.facets, facetNames, model, child(entityPointer, "facets"), "facet", profile);
         checkInitialEntityArea(entity.attributes, attributeNames, model, child(entityPointer, "attributes"), "attribute", profile);
+        checkInitialDerivedCollectionFields(entity, collection, model, entityPointer, profile);
       }
     }
   }
@@ -623,6 +698,7 @@ function checkInitialRecordCollectionItem(item, collection, model, pointer, prof
   if (!isRecord(item)) fail("MECHANICS_INITIAL_ENTITY_SHAPE_INVALID", pointer, "record collection item must be an object");
   const root = { children: new Map(), fieldId: undefined };
   for (const [fieldId, field] of Object.entries(collection.fields)) {
+    if (!isStoredCollectionField(field)) continue;
     let node = root;
     for (const segment of field.storage.path) {
       if (node.fieldId !== undefined) {
@@ -653,6 +729,53 @@ function checkInitialRecordCollectionItem(item, collection, model, pointer, prof
     }
   };
   visit(item, root, pointer, true);
+  checkInitialDerivedCollectionFields(item, collection, model, pointer, profile);
+}
+
+/**
+ * Validate logical derived fields without inventing physical state.
+ *
+ * Stored fields retain their existing optional-presence semantics. A derived
+ * field, however, is a declared refinement of its source and is therefore
+ * checked whenever an item exists; an absent nested value is accepted only
+ * when the derived value type itself is optional.
+ */
+function checkInitialDerivedCollectionFields(item, collection, model, pointer, profile) {
+  for (const [fieldId, field] of Object.entries(collection.fields)) {
+    if (!isDerivedCollectionField(field)) continue;
+    const value = readInitialCollectionField(item, collection, fieldId);
+    if (!literalMatchesDeclaredType(model, value, field.valueType, new Set(), profile)) {
+      fail(
+        "MECHANICS_INITIAL_STATE_TYPE_MISMATCH",
+        child(pointer, fieldId),
+        `derived field does not match declared type "${field.valueType}"`
+      );
+    }
+  }
+}
+
+/** Resolve one logical field from an already schema-checked collection model. */
+function readInitialCollectionField(item, collection, fieldId) {
+  const field = collection.fields[fieldId];
+  if (!field) return undefined;
+  if (isDerivedCollectionField(field)) {
+    return readObjectPath(
+      readInitialCollectionField(item, collection, field.source.field),
+      field.source.path
+    );
+  }
+  if (collection.itemShape === "record") return readObjectPath(item, field.storage.path);
+  const area = field.storage.kind === "facet" ? item.facets : item.attributes;
+  return isRecord(area) ? area[field.storage.name] : undefined;
+}
+
+function readObjectPath(root, path) {
+  let value = root;
+  for (const segment of path) {
+    if (!isRecord(value)) return undefined;
+    value = value[segment];
+  }
+  return value;
 }
 
 function initialCollectionEntries(value, collection, pointer) {
@@ -770,7 +893,12 @@ function checkNetworkBindings(networkModels, model) {
     const nodeCollection = requireCollection(model, network.nodeCollection, `${pointer}/nodeCollection`);
     const edgeCollection = requireCollection(model, network.edgeCollection, `${pointer}/edgeCollection`);
     requireCollectionStorageField(model, nodeCollection, "networkId", "attribute", `${pointer}/nodeCollection`, ["string", "enum"]);
+    requireCollectionStorageField(model, nodeCollection, "position", "attribute", `${pointer}/nodeCollection`, ["json"]);
     requireCollectionStorageField(model, edgeCollection, "networkId", "attribute", `${pointer}/edgeCollection`, ["string", "enum"]);
+    requireCollectionStorageField(model, edgeCollection, "fromNodeId", "attribute", `${pointer}/edgeCollection`, ["string", "enum"]);
+    requireCollectionStorageField(model, edgeCollection, "toNodeId", "attribute", `${pointer}/edgeCollection`, ["string", "enum"]);
+    requireCollectionStorageField(model, edgeCollection, "geometry", "attribute", `${pointer}/edgeCollection`, ["json"]);
+    checkNetworkRegionGeometry(network.regions, `${pointer}/regions`);
     requireBoundEndpoint(
       model,
       network.sequenceEndpoint,
@@ -799,6 +927,117 @@ function checkNetworkBindings(networkModels, model) {
     if (network.movement) checkMovementCapacityBinding(networkId, network.movement, model, pointer);
   }
 }
+
+/**
+ * Validate coordinate relationships that JSON Schema cannot express.
+ *
+ * Explicit closure (last point equals first) is accepted and removed before
+ * counting or checking a simple polygon, matching the runtime geometry helper.
+ */
+function checkNetworkRegionGeometry(regions, pointer) {
+  if (!Array.isArray(regions) || regions.length < 1 || regions.length > GRAPH_MAX_REGIONS) {
+    fail("MECHANICS_GRAPH_GEOMETRY_INVALID", pointer, `network must declare 1..${GRAPH_MAX_REGIONS} regions`);
+  }
+  const ids = new Set();
+  let totalVertices = 0;
+  for (const [regionIndex, region] of regions.entries()) {
+    const regionPointer = `${pointer}/${regionIndex}`;
+    if (ids.has(region.id)) {
+      fail("MECHANICS_GRAPH_GEOMETRY_INVALID", `${regionPointer}/id`, "region id must be unique");
+    }
+    ids.add(region.id);
+    let polygon = region.polygon;
+    if (polygon.length > 1 && graphPointEqual(polygon[0], polygon.at(-1))) polygon = polygon.slice(0, -1);
+    if (polygon.length < 3 || polygon.length > GRAPH_MAX_VERTICES_PER_REGION) {
+      fail(
+        "MECHANICS_GRAPH_GEOMETRY_INVALID",
+        `${regionPointer}/polygon`,
+        `canonical polygon must contain 3..${GRAPH_MAX_VERTICES_PER_REGION} vertices`
+      );
+    }
+    totalVertices += polygon.length;
+    if (totalVertices > GRAPH_MAX_TOTAL_REGION_VERTICES) {
+      fail(
+        "MECHANICS_GRAPH_GEOMETRY_INVALID",
+        pointer,
+        `network regions exceed ${GRAPH_MAX_TOTAL_REGION_VERTICES} canonical vertices`
+      );
+    }
+    const vertexKeys = new Set();
+    for (const [pointIndex, point] of polygon.entries()) {
+      const key = `${point.x},${point.y}`;
+      if (vertexKeys.has(key)) {
+        fail(
+          "MECHANICS_GRAPH_GEOMETRY_INVALID",
+          `${regionPointer}/polygon/${pointIndex}`,
+          "simple polygon cannot repeat a canonical vertex"
+        );
+      }
+      vertexKeys.add(key);
+    }
+    for (let first = 0; first < polygon.length; first += 1) {
+      const firstNext = (first + 1) % polygon.length;
+      if (graphDistance(polygon[first], polygon[firstNext]) <= GRAPH_GEOMETRY_EPSILON) {
+        fail(
+          "MECHANICS_GRAPH_GEOMETRY_INVALID",
+          `${regionPointer}/polygon/${first}`,
+          "simple polygon cannot contain a zero-length edge"
+        );
+      }
+      for (let second = first + 1; second < polygon.length; second += 1) {
+        const secondNext = (second + 1) % polygon.length;
+        const adjacent = first === second || firstNext === second || secondNext === first;
+        if (!adjacent && graphSegmentsIntersect(
+          polygon[first],
+          polygon[firstNext],
+          polygon[second],
+          polygon[secondNext]
+        )) {
+          fail(
+            "MECHANICS_GRAPH_GEOMETRY_INVALID",
+            `${regionPointer}/polygon`,
+            "region must be a simple polygon"
+          );
+        }
+      }
+    }
+  }
+}
+
+const graphPointEqual = (left, right) => left.x === right.x && left.y === right.y;
+const graphSubtract = (left, right) => ({ x: left.x - right.x, y: left.y - right.y });
+const graphCross = (left, right) => left.x * right.y - left.y * right.x;
+const graphOrientation = (first, second, third) =>
+  graphCross(graphSubtract(second, first), graphSubtract(third, first));
+const graphDistance = (left, right) => Math.hypot(left.x - right.x, left.y - right.y);
+const graphPointOnSegment = (point, from, to) => {
+  const segment = graphSubtract(to, from);
+  const offset = graphSubtract(point, from);
+  const tolerance = GRAPH_GEOMETRY_EPSILON * Math.max(1, Math.hypot(segment.x, segment.y));
+  return Math.abs(graphCross(offset, segment)) <= tolerance &&
+    point.x >= Math.min(from.x, to.x) - GRAPH_GEOMETRY_EPSILON &&
+    point.x <= Math.max(from.x, to.x) + GRAPH_GEOMETRY_EPSILON &&
+    point.y >= Math.min(from.y, to.y) - GRAPH_GEOMETRY_EPSILON &&
+    point.y <= Math.max(from.y, to.y) + GRAPH_GEOMETRY_EPSILON;
+};
+const graphSegmentsIntersect = (firstFrom, firstTo, secondFrom, secondTo) => {
+  const first = graphOrientation(firstFrom, firstTo, secondFrom);
+  const second = graphOrientation(firstFrom, firstTo, secondTo);
+  const third = graphOrientation(secondFrom, secondTo, firstFrom);
+  const fourth = graphOrientation(secondFrom, secondTo, firstTo);
+  if (((first > GRAPH_GEOMETRY_EPSILON && second < -GRAPH_GEOMETRY_EPSILON) ||
+       (first < -GRAPH_GEOMETRY_EPSILON && second > GRAPH_GEOMETRY_EPSILON)) &&
+      ((third > GRAPH_GEOMETRY_EPSILON && fourth < -GRAPH_GEOMETRY_EPSILON) ||
+       (third < -GRAPH_GEOMETRY_EPSILON && fourth > GRAPH_GEOMETRY_EPSILON))) return true;
+  return (Math.abs(first) <= GRAPH_GEOMETRY_EPSILON &&
+      graphPointOnSegment(secondFrom, firstFrom, firstTo)) ||
+    (Math.abs(second) <= GRAPH_GEOMETRY_EPSILON &&
+      graphPointOnSegment(secondTo, firstFrom, firstTo)) ||
+    (Math.abs(third) <= GRAPH_GEOMETRY_EPSILON &&
+      graphPointOnSegment(firstFrom, secondFrom, secondTo)) ||
+    (Math.abs(fourth) <= GRAPH_GEOMETRY_EPSILON &&
+      graphPointOnSegment(firstTo, secondFrom, secondTo));
+};
 
 function checkMovementCapacityBinding(networkId, movement, model, networkPointer) {
   const pointer = `${networkPointer}/movement`;
@@ -922,7 +1161,9 @@ function checkCollectionObjectTypes(collection, objectTypes, pointer) {
 /** Resolve a network model's physical facet/attribute name to a typed field. */
 function requireCollectionStorageField(model, collection, storageName, storageKind, pointer, expectedKinds, writable = false) {
   const field = Object.values(collection.fields).find((candidate) =>
-    candidate.storage.kind === storageKind && candidate.storage.name === storageName);
+    isStoredCollectionField(candidate) &&
+    candidate.storage.kind === storageKind &&
+    candidate.storage.name === storageName);
   if (!field) {
     fail(
       storageKind === "facet" ? "MECHANICS_GRAPH_CAPACITY_FACET_UNKNOWN" : "MECHANICS_GRAPH_ATTRIBUTE_UNKNOWN",
@@ -1027,6 +1268,15 @@ function createModel(stateModel) {
     if (type.kind === "integer" && type.minimum > type.maximum) {
       fail("MECHANICS_TYPE_RANGE_INVALID", pointer, "integer minimum exceeds maximum");
     }
+    if (type.kind === "finite-number" &&
+        (!Number.isFinite(type.minimum) || !Number.isFinite(type.maximum) ||
+          type.minimum > type.maximum)) {
+      fail(
+        "MECHANICS_TYPE_RANGE_INVALID",
+        pointer,
+        "finite-number bounds must be finite and minimum must not exceed maximum"
+      );
+    }
     if (type.kind === "decimal" && compareDecimal(type.minimum, type.maximum) > 0) {
       fail("MECHANICS_TYPE_RANGE_INVALID", pointer, "decimal minimum exceeds maximum");
     }
@@ -1048,6 +1298,9 @@ function createModel(stateModel) {
     }
     for (const [fieldId, field] of Object.entries(collection.fields)) {
       requireType(typeIds, field.valueType, child(child(pointer, "fields"), fieldId));
+      if (isDerivedCollectionField(field)) {
+        checkDerivedCollectionField(stateModel, collection, fieldId, field, pointer);
+      }
     }
     if (collection.itemShape === "record") checkRecordCollectionFieldPaths(collection, pointer);
   }
@@ -1084,7 +1337,9 @@ function createModel(stateModel) {
 }
 
 function checkRecordCollectionFieldPaths(collection, pointer) {
-  const paths = Object.entries(collection.fields).map(([fieldId, field]) => ({ fieldId, path: field.storage.path }));
+  const paths = Object.entries(collection.fields)
+    .filter(([, field]) => isStoredCollectionField(field))
+    .map(([fieldId, field]) => ({ fieldId, path: field.storage.path }));
   for (let leftIndex = 0; leftIndex < paths.length; leftIndex += 1) {
     for (let rightIndex = leftIndex + 1; rightIndex < paths.length; rightIndex += 1) {
       const left = paths[leftIndex];
@@ -1098,6 +1353,78 @@ function checkRecordCollectionFieldPaths(collection, pointer) {
         );
       }
     }
+  }
+}
+
+/**
+ * Prove that a projection reads one directly stored logical field.
+ *
+ * Record sources are traversed statically. A bounded JSON source is an
+ * intentional runtime-checked refinement: its declared resource limits bound
+ * storage while the derived value type validates the selected nested value.
+ */
+function checkDerivedCollectionField(stateModel, collection, fieldId, field, collectionPointer) {
+  const pointer = `${collectionPointer}/fields/${escapePointer(fieldId)}`;
+  const source = collection.fields[field.source.field];
+  if (!source) {
+    fail(
+      "MECHANICS_DERIVED_FIELD_SOURCE_UNKNOWN",
+      `${pointer}/source/field`,
+      `derived field source "${field.source.field}" is not declared`
+    );
+  }
+  if (!isStoredCollectionField(source)) {
+    fail(
+      "MECHANICS_DERIVED_FIELD_SOURCE_NOT_STORED",
+      `${pointer}/source/field`,
+      "derived fields must reference a directly stored field; chains are forbidden"
+    );
+  }
+
+  let sourceTypeRef = source.valueType;
+  let sourceType = stateModel.types[sourceTypeRef];
+  while (sourceType?.kind === "option") {
+    sourceTypeRef = sourceType.itemType;
+    sourceType = stateModel.types[sourceTypeRef];
+  }
+  if (sourceType?.kind === "json") return;
+  if (sourceType?.kind !== "record") {
+    fail(
+      "MECHANICS_DERIVED_FIELD_SOURCE_TYPE_INVALID",
+      `${pointer}/source/field`,
+      "nested-field source must use a bounded json or record type"
+    );
+  }
+
+  for (const [index, segment] of field.source.path.entries()) {
+    const childField = sourceType.fields[segment];
+    if (!childField) {
+      fail(
+        "MECHANICS_DERIVED_FIELD_PATH_UNKNOWN",
+        `${pointer}/source/path/${index}`,
+        `record source does not declare nested field "${segment}"`
+      );
+    }
+    sourceTypeRef = childField.typeRef;
+    sourceType = stateModel.types[sourceTypeRef];
+    while (sourceType?.kind === "option") {
+      sourceTypeRef = sourceType.itemType;
+      sourceType = stateModel.types[sourceTypeRef];
+    }
+    if (index < field.source.path.length - 1 && sourceType?.kind !== "record") {
+      fail(
+        "MECHANICS_DERIVED_FIELD_PATH_TYPE_INVALID",
+        `${pointer}/source/path/${index}`,
+        "only record objects may be traversed by a derived field path"
+      );
+    }
+  }
+  if (!areDeclaredTypesCompatible(stateModel, sourceTypeRef, field.valueType, new Set())) {
+    fail(
+      "MECHANICS_DERIVED_FIELD_TYPE_MISMATCH",
+      `${pointer}/valueType`,
+      "derived value type is incompatible with the statically resolved record field"
+    );
   }
 }
 
@@ -1248,17 +1575,37 @@ function checkPlan(
   parameters,
   planInvocation,
   actions,
-  scheduleRegistrations
+  scheduleRegistrations,
+  declaredDeckIds
 ) {
   const planPointer = `/plans/${escapePointer(planId)}`;
+  const declaredStepIds = new Set();
+  visitMechanicsSteps(plan.transaction.steps, (step, relativePointer) => {
+    const stepPointer = `${planPointer}/transaction/steps${relativePointer}`;
+    if (declaredStepIds.has(step.id)) {
+      fail(
+        "MECHANICS_STEP_ID_DUPLICATE",
+        `${stepPointer}/id`,
+        `duplicate step id "${step.id}" across the plan and bounded bodies`
+      );
+    }
+    declaredStepIds.add(step.id);
+  });
   if (planInvocation === "system") {
     assertSystemPlanHasNoActorContext(plan.transaction, model, networkModels, `${planPointer}/transaction`);
   }
   const results = new Map();
-  const cost = { steps: 0, expressionNodes: 0, scannedEntities: 0, resultEntities: 0, writes: 0, weightedCost: 0 };
+  const cost = {
+    steps: 0,
+    expressionNodes: 0,
+    algorithmWork: 0,
+    scannedEntities: 0,
+    resultEntities: 0,
+    writes: 0,
+    weightedCost: 0
+  };
   for (const [index, step] of plan.transaction.steps.entries()) {
     const pointer = `${planPointer}/transaction/steps/${index}`;
-    if (results.has(step.id)) fail("MECHANICS_STEP_ID_DUPLICATE", child(pointer, "id"), `duplicate step id "${step.id}"`);
     const moduleId = OPERATION_MODULES.get(step.op);
     if (!moduleId) fail("MECHANICS_OPERATION_UNKNOWN", child(pointer, "op"), `operation "${step.op}" is not registered`);
     if (!lockedModules.has(moduleId)) {
@@ -1266,6 +1613,7 @@ function checkPlan(
     }
     const context = {
       model,
+      lockedModules,
       results,
       pointer,
       currentCollection: undefined,
@@ -1274,12 +1622,14 @@ function checkPlan(
       planInvocation,
       actions,
       scheduleRegistrations,
+      declaredDeckIds,
       evaluationDepth: 0,
       networkModels,
       controlFlow: step.when
         ? checkPredicate(step.when, {
-            model,
-            results,
+          model,
+          lockedModules,
+          results,
             pointer,
             currentCollection: undefined,
             cost,
@@ -1293,7 +1643,14 @@ function checkPlan(
         : PUBLIC_MANIFEST_FLOW
     };
     const result = checkStep(step, context);
-    results.set(step.id, result);
+    // Runtime stores a skipped sentinel when `when` is false. The geometry
+    // proof boundary therefore records conditionality explicitly and rejects
+    // conditional inspection sources instead of pretending they always exist.
+    results.set(step.id, {
+      ...result,
+      operation: step.op,
+      conditional: step.when !== undefined
+    });
     cost.steps += 1;
   }
   cost.weightedCost = cost.steps + cost.expressionNodes + cost.scannedEntities * 2 + cost.resultEntities + cost.writes * 3;
@@ -1305,6 +1662,7 @@ function assertCostWithinProfile(cost, profile, pointer, code = "MECHANICS_STATI
   for (const [field, limitField] of [
     ["steps", "maxSteps"],
     ["expressionNodes", "maxExpressionNodes"],
+    ["algorithmWork", "maxAlgorithmWork"],
     ["scannedEntities", "maxScannedEntities"],
     ["resultEntities", "maxResultEntities"],
     ["writes", "maxWrites"],
@@ -1335,6 +1693,7 @@ function checkCombinedSystemScheduleBudgets(registrations, actions, costs, profi
     const combined = {
       steps: target.steps + 1,
       expressionNodes: target.expressionNodes + registration.triggerCost.expressionNodes,
+      algorithmWork: target.algorithmWork + registration.triggerCost.algorithmWork,
       scannedEntities: target.scannedEntities + registration.triggerCost.scannedEntities,
       resultEntities: target.resultEntities + registration.triggerCost.resultEntities,
       writes: target.writes + registration.triggerCost.writes
@@ -1388,7 +1747,7 @@ function assertExpressionFitsActionParamSchema(model, actual, expression, schema
   const expected = parameterTypeFromSchema(schema, true).value;
   const kinds = expressionTypeKinds(model, actual);
   const compatible = expected === "decimal"
-    ? kinds.includes("integer") || kinds.includes("decimal")
+    ? kinds.includes("integer") || kinds.includes("decimal") || kinds.includes("finite-number")
     : kinds.includes(expected);
   if (!kinds.includes("unknown") && !compatible) {
     fail(
@@ -1429,6 +1788,86 @@ function literalMatchesActionParamSchema(value, schema) {
   return true;
 }
 
+/**
+ * Prove that one deck access stays inside the finite package declaration.
+ *
+ * A literal id remains backwards-compatible. A dynamic id is deliberately
+ * narrower than a general value expression: every action bound to the plan
+ * must expose the same required string parameter through a finite const/enum
+ * whose complete value set was declared by literal `deck.shuffle` steps.
+ */
+function checkDeckReference(reference, context, pointer) {
+  if (typeof reference === "string") {
+    if (!context.declaredDeckIds.has(reference)) {
+      fail(
+        "MECHANICS_DECK_UNDECLARED",
+        pointer,
+        `deck "${reference}" is not declared by a literal deck.shuffle step`
+      );
+    }
+    return;
+  }
+
+  const checked = checkExpression(reference, context, pointer);
+  const parameter = context.parameters.get(reference.name);
+  if (!parameter || parameter.kind !== "parameter") {
+    fail(
+      "MECHANICS_DECK_PARAM_UNBOUNDED",
+      pointer,
+      "parameterized deck access requires at least one bound action schema"
+    );
+  }
+  if (parameter.value !== "string") {
+    fail(
+      "MECHANICS_DECK_PARAM_TYPE_INVALID",
+      pointer,
+      "parameterized deck access requires a string parameter"
+    );
+  }
+  if (parameter.optional) {
+    fail(
+      "MECHANICS_DECK_PARAM_UNBOUNDED",
+      pointer,
+      "parameterized deck access requires the parameter in every bound action"
+    );
+  }
+  assertExpressionFitsKinds(context.model, checked.type, ["string"], pointer);
+
+  for (const binding of parameter.bindings) {
+    const schema = binding.schema;
+    const hasConst = Object.prototype.hasOwnProperty.call(schema, "const");
+    const values = hasConst
+      ? [schema.const]
+      : Array.isArray(schema.enum) && schema.enum.length > 0
+        ? schema.enum
+        : undefined;
+    if (!values) {
+      fail(
+        "MECHANICS_DECK_PARAM_UNBOUNDED",
+        binding.pointer,
+        "deck parameter schema requires a non-empty string const or enum"
+      );
+    }
+    values.forEach((value, index) => {
+      const valuePointer = hasConst ? `${binding.pointer}/const` : `${binding.pointer}/enum/${index}`;
+      if (!isSafeMechanicsIdentifier(value)) {
+        fail(
+          "MECHANICS_DECK_ID_INVALID",
+          valuePointer,
+          "deck parameter value must be a safe Mechanics identifier"
+        );
+      }
+      if (!context.declaredDeckIds.has(value)) {
+        fail(
+          "MECHANICS_DECK_UNDECLARED",
+          valuePointer,
+          `deck "${value}" is not declared by a literal deck.shuffle step`
+        );
+      }
+    });
+  }
+}
+
 function checkStep(step, context) {
   const { model, results, pointer, cost } = context;
   switch (step.op) {
@@ -1437,9 +1876,10 @@ function checkStep(step, context) {
       return { kind: "assert", max: 0 };
     case "core.entities.select": {
       const collection = requireCollection(model, step.selector.collection, `${pointer}/selector/collection`);
+      let priorSelection;
       if (step.selector.within) {
-        const prior = requireResult(results, step.selector.within.stepId, `${pointer}/selector/within/stepId`);
-        if (prior.kind !== "entities" || prior.collection !== step.selector.collection) {
+        priorSelection = requireResult(results, step.selector.within.stepId, `${pointer}/selector/within/stepId`);
+        if (priorSelection.kind !== "entities" || priorSelection.collection !== step.selector.collection) {
           fail("MECHANICS_RESULT_TYPE_MISMATCH", `${pointer}/selector/within`, "within must reference an entity selection from the same collection");
         }
       }
@@ -1462,8 +1902,274 @@ function checkStep(step, context) {
         kind: "entities",
         collection: step.selector.collection,
         max,
+        producerOp: step.op,
+        conditional: step.when !== undefined,
         type: { kind: "entities", collection: step.selector.collection },
-        flow: joinFlows({ audience: collection.audienceRef, integrity: "server" }, selectorFlow)
+        flow: joinFlows(
+          context.controlFlow,
+          { audience: collection.audienceRef, integrity: "server" },
+          selectorFlow,
+          priorSelection?.flow
+        )
+      };
+    }
+    case "core.entities.each": {
+      const selection = requireResult(results, step.selection.stepId, `${pointer}/selection/stepId`);
+      if (
+        selection.kind !== "entities" ||
+        !["core.entities.select", "core.entities.order"].includes(selection.producerOp) ||
+        !Number.isSafeInteger(selection.max) ||
+        selection.max < 0
+      ) {
+        fail(
+          "MECHANICS_EACH_SELECTION_INVALID",
+          `${pointer}/selection`,
+          "bounded iteration requires a statically bounded selection produced by select or its checked order derivative"
+        );
+      }
+      if (selection.conditional) {
+        fail(
+          "MECHANICS_EACH_SOURCE_CONDITIONAL",
+          `${pointer}/selection`,
+          "bounded iteration cannot consume a selection that may have been skipped"
+        );
+      }
+      const collection = requireCollection(model, selection.collection, `${pointer}/selection`);
+      const bodyResults = new Map(results);
+      const bodyCost = {
+        steps: 0,
+        expressionNodes: 0,
+        algorithmWork: 0,
+        scannedEntities: 0,
+        resultEntities: 0,
+        writes: 0,
+        weightedCost: 0
+      };
+      const bodyBaseFlow = joinFlows(
+        context.controlFlow,
+        selection.flow,
+        { audience: collection.audienceRef, integrity: "server" }
+      );
+
+      for (const [bodyIndex, bodyStep] of step.body.entries()) {
+        const bodyPointer = `${pointer}/body/${bodyIndex}`;
+        if (bodyStep.op === "core.entities.each") {
+          fail(
+            "MECHANICS_EACH_NESTED",
+            `${bodyPointer}/op`,
+            "nested bounded iteration is not admitted"
+          );
+        }
+        const moduleId = OPERATION_MODULES.get(bodyStep.op);
+        if (!moduleId) {
+          fail(
+            "MECHANICS_OPERATION_UNKNOWN",
+            `${bodyPointer}/op`,
+            `operation "${bodyStep.op}" is not registered`
+          );
+        }
+        if (!context.lockedModules.has(moduleId)) {
+          fail(
+            "MECHANICS_MODULE_NOT_LOCKED",
+            `${bodyPointer}/op`,
+            `operation requires locked module "${moduleId}"`
+          );
+        }
+        const bodyContext = {
+          ...context,
+          results: bodyResults,
+          pointer: bodyPointer,
+          currentCollection: collection,
+          cost: bodyCost,
+          controlFlow: bodyStep.when
+            ? checkPredicate(bodyStep.when, {
+                ...context,
+                results: bodyResults,
+                pointer: bodyPointer,
+                currentCollection: collection,
+                cost: bodyCost,
+                controlFlow: bodyBaseFlow
+              }, `${bodyPointer}/when`)
+            : bodyBaseFlow
+        };
+        const result = checkStep(bodyStep, bodyContext);
+        bodyResults.set(bodyStep.id, {
+          ...result,
+          operation: bodyStep.op,
+          conditional: bodyStep.when !== undefined
+        });
+        bodyCost.steps += 1;
+      }
+
+      // Publication pays the complete body once for every statically possible
+      // selected entity. Runtime uses the same ordinary counters while
+      // executing each body, so no special unmetered execution path exists.
+      for (const field of [
+        "steps",
+        "expressionNodes",
+        "algorithmWork",
+        "scannedEntities",
+        "resultEntities",
+        "writes"
+      ]) {
+        cost[field] += bodyCost[field] * selection.max;
+      }
+      cost.algorithmWork += canonicalIterationWorkUpperBound(selection.max);
+      return {
+        kind: "entities-each",
+        max: 1,
+        type: {
+          kind: "structural",
+          shape: {
+            kind: "record",
+            fields: {
+              kind: { kind: "primitive", value: "string" },
+              collectionId: { kind: "primitive", value: "string" },
+              count: { kind: "primitive", value: "integer" }
+            }
+          }
+        },
+        paths: new Map([
+          ["collectionId", { kind: "primitive", value: "string" }],
+          ["count", { kind: "primitive", value: "integer" }]
+        ]),
+        flow: joinFlows(bodyBaseFlow)
+      };
+    }
+    case "core.entities.order": {
+      const selection = requireResult(results, step.selection.stepId, `${pointer}/selection/stepId`);
+      if (selection.kind !== "entities" || selection.producerOp !== "core.entities.select") {
+        fail(
+          "MECHANICS_ORDER_SELECTION_INVALID",
+          `${pointer}/selection`,
+          "ordering requires a preceding core.entities.select result"
+        );
+      }
+      if (selection.conditional) {
+        fail(
+          "MECHANICS_ORDER_SOURCE_CONDITIONAL",
+          `${pointer}/selection`,
+          "ordering cannot consume a selection that may have been skipped"
+        );
+      }
+      const collection = requireCollection(model, selection.collection, `${pointer}/selection`);
+      const flows = [
+        context.controlFlow,
+        selection.flow,
+        { audience: collection.audienceRef, integrity: "server" }
+      ];
+      let relatedCapacity = 0;
+      let derivedReadWork = 0;
+      for (const [keyIndex, key] of step.keys.entries()) {
+        const sourcePointer = `${pointer}/keys/${keyIndex}/source`;
+        const source = key.source;
+        if (source.kind === "current-field") {
+          const field = requireOrderingComparableField(model, collection, source.field, `${sourcePointer}/field`);
+          derivedReadWork += selection.max * derivedCollectionFieldReadWork(field.field);
+          continue;
+        }
+
+        const related = requireCollection(model, source.collection, `${sourcePointer}/collection`);
+        // A related aggregate first validates/indexes the collection and then
+        // builds the join-group index. Related-field needs only the first pass.
+        relatedCapacity += related.capacity * (source.kind === "related-aggregate" ? 2 : 1);
+        flows.push({ audience: related.audienceRef, integrity: "server" });
+        if (source.kind === "related-field") {
+          const reference = requireCollectionField(
+            collection,
+            source.referenceField,
+            `${sourcePointer}/referenceField`
+          );
+          requireOrderingReferenceType(model, reference.valueType, `${sourcePointer}/referenceField`);
+          const relatedField = requireOrderingComparableField(model, related, source.field, `${sourcePointer}/field`);
+          derivedReadWork += selection.max * (
+            derivedCollectionFieldReadWork(reference) +
+            derivedCollectionFieldReadWork(relatedField.field)
+          );
+          continue;
+        }
+
+        const relatedJoin = requireCollectionField(
+          related,
+          source.join.relatedField,
+          `${sourcePointer}/join/relatedField`
+        );
+        const currentJoinType = source.join.current.kind === "stable-id"
+          ? { kind: "stable-id" }
+          : {
+              kind: "field",
+              typeRef: requireCollectionField(
+                collection,
+                source.join.current.field,
+                `${sourcePointer}/join/current/field`
+              ).valueType
+            };
+        if (source.join.current.kind === "field") {
+          derivedReadWork += selection.max * derivedCollectionFieldReadWork(
+            requireCollectionField(
+              collection,
+              source.join.current.field,
+              `${sourcePointer}/join/current/field`
+            )
+          );
+        }
+        derivedReadWork += related.capacity * derivedCollectionFieldReadWork(relatedJoin);
+        assertOrderingJoinCompatible(
+          model,
+          currentJoinType,
+          relatedJoin.valueType,
+          `${sourcePointer}/join`
+        );
+        if (source.aggregate !== "count") {
+          const value = requireOrderingComparableField(
+            model,
+            related,
+            source.valueField,
+            `${sourcePointer}/valueField`,
+            true
+          );
+          derivedReadWork += selection.max * related.capacity *
+            derivedCollectionFieldReadWork(value.field);
+          if (source.aggregate === "sum" && value.type.kind === "finite-number") {
+            fail(
+              "MECHANICS_ORDER_FINITE_SUM_UNSUPPORTED",
+              `${sourcePointer}/valueField`,
+              "finite-number aggregation supports min/max but not non-associative binary64 sum"
+            );
+          }
+          assertOrderingAggregateRangeSafe(
+            value.type,
+            related.capacity,
+            source.aggregate,
+            `${sourcePointer}/valueField`
+          );
+        }
+      }
+
+      const max = selection.max;
+      cost.scannedEntities += collection.capacity + relatedCapacity;
+      cost.resultEntities += max * 2;
+      cost.algorithmWork += orderingWorkUpperBound(max, step.keys.length, relatedCapacity) + derivedReadWork;
+      const tieGroupsShape = {
+        kind: "list",
+        item: {
+          kind: "list",
+          item: { kind: "string" },
+          maxItems: max
+        },
+        maxItems: max
+      };
+      return {
+        kind: "entities",
+        collection: selection.collection,
+        max,
+        producerOp: step.op,
+        conditional: step.when !== undefined,
+        type: { kind: "entities", collection: selection.collection },
+        paths: new Map([
+          ["tieGroups", { kind: "structural", shape: tieGroupsShape }]
+        ]),
+        flow: joinFlows(...flows)
       };
     }
     case "core.collection.id.allocate": {
@@ -1633,16 +2339,39 @@ function checkStep(step, context) {
     case "core.entity.attributes.patch": {
       const collection = requireEntityRef(step.entity, context, `${pointer}/entity`);
       for (const [index, patch] of step.patches.entries()) {
-        const field = requireField(collection, patch.path[0], "attribute", `${pointer}/patches/${index}/path/0`, true);
+        const patchPointer = `${pointer}/patches/${index}`;
+        const field = requireField(collection, patch.path[0], "attribute", `${patchPointer}/path/0`, true);
+        const fieldType = model.types[field.valueType];
+        if (
+          patch.operation === "set-add" &&
+          (patch.path.length !== 1 || fieldType?.kind !== "set")
+        ) {
+          fail(
+            "MECHANICS_FIELD_TYPE_MISMATCH",
+            `${patchPointer}/path`,
+            "set-add requires one directly stored writable attribute with declared set type"
+          );
+        }
         const value = patch.value
-          ? checkExpression(patch.value, { ...context, currentCollection: collection }, `${pointer}/patches/${index}/value`)
+          ? checkExpression(patch.value, { ...context, currentCollection: collection }, `${patchPointer}/value`)
           : undefined;
-        if (value) assertExpressionFitsType(model, value.type, field.valueType, `${pointer}/patches/${index}/value`);
+        if (value) {
+          const expectedType = patch.operation === "set-add" && fieldType?.kind === "set"
+            ? fieldType.itemType
+            : field.valueType;
+          assertExpressionFitsType(model, value.type, expectedType, `${patchPointer}/value`);
+        }
         assertFlowToAudience(
           joinFlows(context.controlFlow, checkEntityRefFlow(step.entity, context, `${pointer}/entity`), value?.flow),
           collection.audienceRef,
-          `${pointer}/patches/${index}`
+          patchPointer
         );
+        // `set-add` may scan the complete declared set to prove idempotence.
+        // Charging the published maximum makes enclosing bounded iteration
+        // multiply the same safe upper bound before a package is admitted.
+        if (patch.operation === "set-add" && fieldType?.kind === "set") {
+          cost.algorithmWork += fieldType.maxItems;
+        }
       }
       cost.writes += step.patches.length;
       return { kind: "command", max: 0 };
@@ -1732,11 +2461,19 @@ function checkStep(step, context) {
       // A card catalogue may be public while the generated order remains in
       // server-only deck state. `deck.shuffle` is the trusted boundary that
       // separates those two labels; it never publishes the future order.
-      cost.scannedEntities += collection.capacity;
+      // Runtime either scans+shuffles a new bounded source or
+      // scans+shuffles an existing protected deck. Both paths are bounded by
+      // the shared deck-member limit, regardless of the larger declaration
+      // capacity of a sparsely populated source collection.
+      cost.scannedEntities += Math.max(
+        2 * MAX_DECK_ITEMS,
+        collection.capacity + MAX_DECK_ITEMS
+      );
       cost.writes += 1;
       return { kind: "deck", max: 1 };
     }
     case "deck.draw": {
+        checkDeckReference(step.deckId, context, `${pointer}/deckId`);
         const endpoint = checkStateReference(step.target, context, `${pointer}/target`, true).endpoint;
         const type = model.types[endpoint.valueType];
         const itemType = type?.kind === "option" ? model.types[type.itemType] : type;
@@ -1746,6 +2483,9 @@ function checkStep(step, context) {
         // deck.draw is another exact registered disclosure: one allowed card
         // identifier becomes visible, never the remaining deck order.
         assertFlowToAudience(joinFlows(context.controlFlow, endpoint.bindingFlow), endpoint.audienceRef, pointer);
+      // Worst case: validate all zones, reshuffle the discard, then remove
+      // the first order item. The runtime charges those same passes.
+      cost.scannedEntities += 3 * MAX_DECK_ITEMS;
       cost.writes += 2;
       return {
         kind: "deck",
@@ -1754,6 +2494,101 @@ function checkStep(step, context) {
         flow: joinFlows(
           { audience: model.endpoints[step.target.endpoint].audienceRef, integrity: "module" },
           endpoint.bindingFlow
+        )
+      };
+    }
+    case "deck.extract": {
+      checkDeckReference(step.deckId, context, `${pointer}/deckId`);
+      let targetFlow;
+      if (step.target) {
+        const endpoint = checkStateReference(step.target, context, `${pointer}/target`, true).endpoint;
+        const type = model.types[endpoint.valueType];
+        const itemType = type?.kind === "option" ? model.types[type.itemType] : type;
+        if (!itemType || itemType.kind !== "string") {
+          fail(
+            "MECHANICS_ENDPOINT_TYPE_MISMATCH",
+            `${pointer}/target/endpoint`,
+            "deck extract target must be string or optional string"
+          );
+        }
+        // Like deck.draw, extract is an explicit trusted disclosure of one
+        // selected identifier. A secret `when` still cannot signal through
+        // whether the target was written.
+        assertFlowToAudience(joinFlows(context.controlFlow, endpoint.bindingFlow), endpoint.audienceRef, pointer);
+        targetFlow = joinFlows(
+          { audience: endpoint.audienceRef, integrity: "module" },
+          endpoint.bindingFlow
+        );
+      }
+      if (step.card) {
+        const card = checkExpression(step.card, context, `${pointer}/card`);
+        assertExpressionFitsKinds(model, card.type, ["string", "enum"], `${pointer}/card`);
+      }
+      // Every extraction validates all zones; an explicit identifier adds one
+      // bounded source-zone search.
+      cost.scannedEntities += MAX_DECK_ITEMS * (step.card ? 2 : 1);
+      cost.writes += step.target ? 2 : 1;
+      return {
+        kind: "deck-item",
+        max: 1,
+        paths: new Map([
+          ["deckId", { kind: "primitive", value: "string" }],
+          ["cardId", { kind: "primitive", value: "string" }],
+          ["source", { kind: "primitive", value: "string" }]
+        ]),
+        // Without a declared target the selected hidden identifier remains
+        // server-only even though later steps in the same transaction can use
+        // it through value.result.
+        flow: targetFlow || { audience: "server", integrity: "module" }
+      };
+    }
+    case "deck.return": {
+      checkDeckReference(step.deckId, context, `${pointer}/deckId`);
+      const card = checkExpression(step.card, context, `${pointer}/card`);
+      assertExpressionFitsKinds(model, card.type, ["string", "enum"], `${pointer}/card`);
+      cost.scannedEntities += 2 * MAX_DECK_ITEMS;
+      cost.writes += 1;
+      return {
+        kind: "deck-item",
+        max: 1,
+        paths: new Map([
+          ["deckId", { kind: "primitive", value: "string" }],
+          ["cardId", { kind: "primitive", value: "string" }],
+          ["destination", { kind: "primitive", value: "string" }]
+        ]),
+        // Success/failure reveals protected held membership. With no explicit
+        // disclosure target, both the result and later value.result reads must
+        // remain server-only.
+        flow: joinFlows(
+          context.controlFlow,
+          card.flow,
+          { audience: "server", integrity: "server" }
+        )
+      };
+    }
+    case "deck.insert": {
+      checkDeckReference(step.deckId, context, `${pointer}/deckId`);
+      const collection = requireCollection(model, step.sourceCollection, `${pointer}/sourceCollection`);
+      const card = checkExpression(step.card, context, `${pointer}/card`);
+      assertExpressionFitsKinds(model, card.type, ["string", "enum"], `${pointer}/card`);
+      cost.scannedEntities += collection.capacity + 2 * MAX_DECK_ITEMS;
+      cost.writes += 1;
+      return {
+        kind: "deck-item",
+        max: 1,
+        paths: new Map([
+          ["deckId", { kind: "primitive", value: "string" }],
+          ["cardId", { kind: "primitive", value: "string" }],
+          ["destination", { kind: "primitive", value: "string" }]
+        ]),
+        // Source and deck membership are both protected predicates. The
+        // acknowledgement cannot become an undeclared public membership
+        // oracle through a later value.result.
+        flow: joinFlows(
+          context.controlFlow,
+          card.flow,
+          { audience: collection.audienceRef, integrity: "server" },
+          { audience: "server", integrity: "server" }
         )
       };
     }
@@ -1861,13 +2696,13 @@ function checkStep(step, context) {
       };
     }
     case "graph.regions.route.plan":
+    case "graph.edge.position.inspect":
     case "graph.edge.split":
     case "graph.entity.traverse":
     case "graph.shortestPath":
     case "relation.attach":
-    case "relation.detach":
-      {
-        const expressionFlows = checkAllExpressions(step, context, pointer);
+    case "relation.detach": {
+        const expressionFlows = checkDomainOperationExpressions(step, context);
         const stateAudiences = domainOperationStateAudiences(step, context);
         const stateFlows = stateAudiences.map((audience) => ({ audience, integrity: "server" }));
         for (const audience of stateAudiences) {
@@ -1877,10 +2712,10 @@ function checkStep(step, context) {
             pointer
           );
         }
+        cost.scannedEntities += domainCollectionScanUpperBound(step, context);
+        cost.writes += domainOperationWriteUpperBound(step);
+        return domainOperationResult(step, context, expressionFlows);
       }
-      cost.scannedEntities += domainCollectionScanUpperBound(step, context);
-      cost.writes += domainOperationWriteUpperBound(step);
-      return domainOperationResult(step, context);
     case "core.entities.score": {
       const entities = requireStateReferenceKind(step.entities, context, `${pointer}/entities`, ["record"]);
       const entityType = model.types[entities.valueType];
@@ -2009,6 +2844,7 @@ function checkStep(step, context) {
 function snapshotStaticCost(cost) {
   return {
     expressionNodes: cost.expressionNodes,
+    algorithmWork: cost.algorithmWork,
     scannedEntities: cost.scannedEntities,
     resultEntities: cost.resultEntities,
     writes: cost.writes
@@ -2017,6 +2853,87 @@ function snapshotStaticCost(cost) {
 
 function subtractStaticCost(after, before) {
   return Object.fromEntries(Object.keys(after).map((field) => [field, after[field] - before[field]]));
+}
+
+/**
+ * Prove graph-specific expression types and the inspection-proof chain.
+ *
+ * A proof is deliberately narrower than a generic value expression: it must
+ * name one earlier, unconditional inspect result from the same graph.
+ */
+function checkDomainOperationExpressions(step, context) {
+  const pointer = context.pointer;
+  if (step.op === "graph.edge.position.inspect") {
+    const edge = checkExpression(step.edge, context, `${pointer}/edge`);
+    assertExpressionFitsKinds(context.model, edge.type, ["string", "enum"], `${pointer}/edge`);
+    const position = checkExpression(step.position, context, `${pointer}/position`);
+    assertExpressionFitsKinds(
+      context.model,
+      position.type,
+      ["integer", "decimal", "finite-number"],
+      `${pointer}/position`
+    );
+    const network = requireGraphNetwork(step.networkId, context);
+    const canonicalVertices = network.regions.reduce(
+      (sum, region) => sum + canonicalGraphRegionVertexCount(region),
+      0
+    );
+    const polygonValidationWork = network.regions.reduce((sum, region) => {
+      const vertices = canonicalGraphRegionVertexCount(region);
+      return sum + vertices * vertices;
+    }, 0);
+    context.cost.algorithmWork +=
+      polygonValidationWork + canonicalVertices * 3 + GRAPH_MAX_POLYLINE_POINTS * 2;
+    context.cost.resultEntities += network.regions.length * 4;
+    return [edge.flow, position.flow];
+  }
+  if (step.op === "graph.edge.split") {
+    const proofExpression = checkExpression(step.proof, context, `${pointer}/proof`);
+    const source = requireResult(context.results, step.proof.stepId, `${pointer}/proof/stepId`);
+    if (source.kind !== "graph-edge-position-inspection" ||
+        source.operation !== "graph.edge.position.inspect") {
+      fail(
+        "MECHANICS_GRAPH_PROOF_SOURCE_INVALID",
+        `${pointer}/proof`,
+        "edge split proof must reference a prior edge-position inspection"
+      );
+    }
+    if (source.conditional) {
+      fail(
+        "MECHANICS_GRAPH_PROOF_SOURCE_CONDITIONAL",
+        `${pointer}/proof`,
+        "a conditional inspection cannot prove an unconditional future mutation"
+      );
+    }
+    if (source.networkId !== step.networkId) {
+      fail(
+        "MECHANICS_GRAPH_PROOF_NETWORK_MISMATCH",
+        `${pointer}/proof`,
+        "inspection proof and edge split must use the same network"
+      );
+    }
+    context.cost.algorithmWork += GRAPH_MAX_POLYLINE_POINTS * 2;
+    return [proofExpression.flow];
+  }
+  return checkAllExpressions(step, context, pointer);
+}
+
+function requireGraphNetwork(networkId, context) {
+  const network = context.networkModels[networkId];
+  if (!network) {
+    fail(
+      "MECHANICS_GRAPH_UNKNOWN",
+      `${context.pointer}/networkId`,
+      `network model "${String(networkId)}" is not declared`
+    );
+  }
+  return network;
+}
+
+function canonicalGraphRegionVertexCount(region) {
+  return region.polygon.length > 1 && graphPointEqual(region.polygon[0], region.polygon.at(-1))
+    ? region.polygon.length - 1
+    : region.polygon.length;
 }
 
 /**
@@ -2063,16 +2980,22 @@ function domainCollectionScanUpperBound(step, context) {
 }
 
 function domainOperationWriteUpperBound(step) {
-  if (step.op === "graph.regions.route.plan" || step.op === "graph.shortestPath") return 0;
+  if (step.op === "graph.regions.route.plan" ||
+      step.op === "graph.edge.position.inspect" ||
+      step.op === "graph.shortestPath") return 0;
   if (step.op === "graph.edge.split") return 7;
   if (step.op === "graph.entity.traverse") return 65;
   if (step.op === "relation.attach" || step.op === "relation.detach") return step.related.length;
   return 0;
 }
 
-function domainOperationResult(step, context) {
+function domainOperationResult(step, context, expressionFlows = []) {
   const network = context.networkModels[step.networkId];
-  const flow = { audience: network.visibility === "public" ? "public" : "server", integrity: "module" };
+  const joinedInputFlow = joinFlows(
+    { audience: network.visibility === "public" ? "public" : "server", integrity: "server" },
+    ...expressionFlows
+  );
+  const flow = { audience: joinedInputFlow.audience, integrity: "module" };
   if (step.op === "graph.regions.route.plan") {
     return {
       kind: "graph-route-plan",
@@ -2084,6 +3007,66 @@ function domainOperationResult(step, context) {
         ["regionSegments", { kind: "primitive", value: "integer" }],
         ["routePlan", { kind: "json-object" }]
       ]),
+      flow
+    };
+  }
+  if (step.op === "graph.edge.position.inspect") {
+    const regionSet = {
+      kind: "set",
+      item: { kind: "string" },
+      maxItems: network.regions.length
+    };
+    const point = {
+      kind: "record",
+      fields: {
+        x: { kind: "finite-number" },
+        y: { kind: "finite-number" }
+      }
+    };
+    const endpoint = {
+      kind: "record",
+      fields: {
+        id: { kind: "string" },
+        point,
+        regionIds: regionSet
+      }
+    };
+    const shape = {
+      kind: "record",
+      fields: {
+        proofVersion: { kind: "string" },
+        networkId: { kind: "string" },
+        edge: {
+          kind: "record",
+          fields: {
+            id: { kind: "string" },
+            geometryFingerprint: { kind: "string" }
+          }
+        },
+        normalizedPosition: { kind: "finite-number" },
+        point,
+        pointRegionIds: regionSet,
+        endpoints: {
+          kind: "record",
+          fields: {
+            from: endpoint,
+            to: endpoint,
+            regionIds: regionSet
+          }
+        }
+      }
+    };
+    return {
+      kind: "graph-edge-position-inspection",
+      networkId: step.networkId,
+      max: 1,
+      type: { kind: "structural", shape },
+      paths: new Map(
+        Object.entries(shape.fields).map(([fieldId, fieldShape]) => [
+          fieldId,
+          structuralShapeResultType(fieldShape)
+        ])
+      ),
       flow
     };
   }
@@ -2180,6 +3163,13 @@ function checkSelector(selector, collection, context, pointer) {
     for (const objectType of selector.objectTypes) {
       if (!collection.itemTypes.includes(objectType)) fail("MECHANICS_ENTITY_TYPE_MISMATCH", `${pointer}/objectTypes`, `undeclared collection item type "${objectType}"`);
     }
+  }
+  for (const fieldId of [
+    ...Object.keys(selector.facets || {}),
+    ...Object.keys(selector.attributes || {})
+  ]) {
+    const field = collection.fields[fieldId];
+    if (field) context.cost.algorithmWork += collection.capacity * derivedCollectionFieldReadWork(field);
   }
   flows.push(...checkFieldExpressions(selector.facets, "facet", collection, context, `${pointer}/facets`, false));
   for (const [fieldId, condition] of Object.entries(selector.attributes || {})) {
@@ -2313,13 +3303,66 @@ function checkPredicate(predicate, context, pointer) {
           ...values.map((value) => value.flow)
         );
       }
+    case "predicate.set.disjoint": {
+      const left = checkExpression(predicate.left, context, `${pointer}/left`);
+      const right = checkExpression(predicate.right, context, `${pointer}/right`);
+      const leftSet = requireBoundedSetExpression(context.model, left.type, `${pointer}/left`);
+      const rightSet = requireBoundedSetExpression(context.model, right.type, `${pointer}/right`);
+      if (!setItemTypesCompatible(context.model, leftSet.item, rightSet.item)) {
+        fail(
+          "MECHANICS_SET_TYPE_MISMATCH",
+          pointer,
+          "set disjoint operands must use the same compatible item type"
+        );
+      }
+      context.cost.algorithmWork += leftSet.maxItems + rightSet.maxItems;
+      return joinFlows(left.flow, right.flow);
+    }
     default: fail("MECHANICS_PREDICATE_UNKNOWN", `${pointer}/op`, `unsupported predicate "${predicate.op}"`);
   }
+}
+
+function requireBoundedSetExpression(model, type, pointer) {
+  if (type?.kind === "structural" && type.shape.kind === "set" &&
+      Number.isSafeInteger(type.shape.maxItems) && type.shape.maxItems >= 0) {
+    return {
+      maxItems: type.shape.maxItems,
+      item: { source: "structural", value: type.shape.item }
+    };
+  }
+  if (type?.kind === "type-ref") {
+    const declared = model.types[type.ref];
+    if (declared?.kind === "set") {
+      return {
+        maxItems: declared.maxItems,
+        item: { source: "declared", value: declared.itemType }
+      };
+    }
+  }
+  fail(
+    "MECHANICS_SET_TYPE_MISMATCH",
+    pointer,
+    "set disjoint requires a statically bounded typed set, not a list or broad JSON value"
+  );
+}
+
+function setItemTypesCompatible(model, left, right) {
+  if (left.source === "declared" && right.source === "declared") {
+    return areDeclaredTypesCompatible(model, left.value, right.value, new Set()) &&
+      areDeclaredTypesCompatible(model, right.value, left.value, new Set());
+  }
+  if (left.source === "structural" && right.source === "structural") {
+    return JSON.stringify(left.value) === JSON.stringify(right.value);
+  }
+  const structural = left.source === "structural" ? left.value : right.value;
+  const declared = left.source === "declared" ? left.value : right.value;
+  return isStructuralResultCompatible(model, structural, declared, new Set());
 }
 
 function collectionPathTypeRef(collection, fieldPath, pointer) {
   if (collection.itemShape === "record") {
     const field = Object.values(collection.fields).find((candidate) =>
+      isStoredCollectionField(candidate) &&
       candidate.storage.kind === "path" &&
       JSON.stringify(candidate.storage.path) === JSON.stringify(fieldPath));
     if (!field) fail("MECHANICS_FIELD_REF_UNKNOWN", pointer, `record collection does not declare path "${fieldPath.join(".")}"`);
@@ -2331,7 +3374,9 @@ function collectionPathTypeRef(collection, fieldPath, pointer) {
   }
   const storageKind = fieldPath[0] === "facets" ? "facet" : "attribute";
   const field = Object.values(collection.fields).find(
-    (candidate) => candidate.storage.kind === storageKind && candidate.storage.name === fieldPath[1]
+    (candidate) => isStoredCollectionField(candidate) &&
+      candidate.storage.kind === storageKind &&
+      candidate.storage.name === fieldPath[1]
   );
   if (!field) fail("MECHANICS_FIELD_REF_UNKNOWN", pointer, `collection does not declare stored field "${fieldPath.join(".")}"`);
   return field.valueType;
@@ -2381,6 +3426,7 @@ function checkExpression(expression, context, pointer) {
     case "value.entity": {
       const collection = requireEntityRef(expression.entity, context, `${pointer}/entity`);
       const field = requireCollectionField(collection, expression.field, `${pointer}/field`);
+      context.cost.algorithmWork += derivedCollectionFieldReadWork(field);
       return {
         type: { kind: "type-ref", ref: field.valueType },
         flow: joinFlows(
@@ -2411,6 +3457,12 @@ function checkExpression(expression, context, pointer) {
     }
     case "value.item": {
       if (!context.currentCollection) fail("MECHANICS_ITEM_SCOPE_INVALID", pointer, "value.item is only valid while evaluating a collection item");
+      if (expression.area === "identity") {
+        return {
+          type: { kind: "primitive", value: "string" },
+          flow: { audience: context.currentCollection.audienceRef, integrity: "server" }
+        };
+      }
       const field = requireField(context.currentCollection, expression.field, expression.area, `${pointer}/field`);
       return {
         type: { kind: "type-ref", ref: field.valueType },
@@ -2445,6 +3497,24 @@ function checkExpression(expression, context, pointer) {
 }
 
 function resultPathChildType(parent, segment, pointer) {
+  if (parent.kind === "structural") {
+    const shape = parent.shape;
+    if (shape.kind === "record") {
+      const field = shape.fields[segment];
+      if (!field) fail("MECHANICS_RESULT_PATH_UNKNOWN", pointer, `structural result has no field "${segment}"`);
+      return structuralShapeResultType(field);
+    }
+    if (shape.kind === "list") {
+      if (!/^(?:0|[1-9][0-9]*)$/u.test(segment)) {
+        fail("MECHANICS_RESULT_PATH_TYPE_MISMATCH", pointer, "structural list requires a numeric child segment");
+      }
+      const index = Number(segment);
+      if (!Number.isSafeInteger(index) || index >= shape.maxItems) {
+        fail("MECHANICS_RESULT_PATH_INDEX_OUT_OF_RANGE", pointer, "structural list index exceeds its declared bound");
+      }
+      return structuralShapeResultType(shape.item);
+    }
+  }
   if (!/^(?:0|[1-9][0-9]*)$/u.test(segment)) {
     fail("MECHANICS_RESULT_PATH_TYPE_MISMATCH", pointer, "only a bounded list result accepts a numeric child segment");
   }
@@ -2460,6 +3530,13 @@ function resultPathChildType(parent, segment, pointer) {
   }
   if (parent.kind === "list-of") return { kind: "primitive", value: parent.itemKind };
   fail("MECHANICS_RESULT_PATH_TYPE_MISMATCH", pointer, "numeric result path segment requires a list result");
+}
+
+function structuralShapeResultType(shape) {
+  if (["integer", "decimal", "finite-number", "string", "boolean"].includes(shape.kind)) {
+    return { kind: "primitive", value: shape.kind };
+  }
+  return { kind: "structural", shape };
 }
 
 function enterEvaluationContext(context, pointer) {
@@ -2586,16 +3663,169 @@ function requireField(collection, fieldId, storageKind, pointer, writable = fals
   }
   const field = collection.fields[fieldId];
   if (!field) fail("MECHANICS_FIELD_REF_UNKNOWN", pointer, `unknown field "${fieldId}"`);
-  if (field.storage.kind !== storageKind) fail("MECHANICS_FIELD_STORAGE_MISMATCH", pointer, `field is not stored as ${storageKind}`);
-  if (writable && field.access !== "read-write") fail("MECHANICS_FIELD_READ_ONLY", pointer, `field "${fieldId}" is read-only`);
+  const physical = isStoredCollectionField(field)
+    ? field
+    : collection.fields[field.source.field];
+  if (!physical || !isStoredCollectionField(physical) || physical.storage.kind !== storageKind) {
+    fail("MECHANICS_FIELD_STORAGE_MISMATCH", pointer, `field is not sourced from ${storageKind}`);
+  }
+  if (writable && (!isStoredCollectionField(field) || field.access !== "read-write")) {
+    fail("MECHANICS_FIELD_READ_ONLY", pointer, `field "${fieldId}" is read-only`);
+  }
   return field;
 }
 
 function requireCollectionField(collection, fieldId, pointer, writable = false) {
   const field = collection.fields[fieldId];
   if (!field) fail("MECHANICS_FIELD_REF_UNKNOWN", pointer, `unknown field "${fieldId}"`);
-  if (writable && field.access !== "read-write") fail("MECHANICS_FIELD_READ_ONLY", pointer, `field "${fieldId}" is read-only`);
+  if (writable && (!isStoredCollectionField(field) || field.access !== "read-write")) {
+    fail("MECHANICS_FIELD_READ_ONLY", pointer, `field "${fieldId}" is read-only`);
+  }
   return field;
+}
+
+function isStoredCollectionField(field) {
+  return isRecord(field) && isRecord(field.storage);
+}
+
+function isDerivedCollectionField(field) {
+  return isRecord(field) && isRecord(field.source) && field.source.kind === "nested-field";
+}
+
+/** Additional deterministic work beyond a direct logical-field lookup. */
+function derivedCollectionFieldReadWork(field) {
+  return isDerivedCollectionField(field) ? field.source.path.length : 0;
+}
+
+/**
+ * Resolve the scalar type that ordering may compare without assigning game
+ * meaning to enum declaration order or boolean values.
+ */
+function requireOrderingComparableField(model, collection, fieldId, pointer, numericOnly = false) {
+  const field = requireCollectionField(collection, fieldId, pointer);
+  const resolved = unwrapOrderingType(model, field.valueType, pointer);
+  const allowed = numericOnly
+    ? ["integer", "decimal", "finite-number"]
+    : ["integer", "decimal", "finite-number", "string"];
+  if (!allowed.includes(resolved.type.kind)) {
+    fail(
+      "MECHANICS_ORDER_FIELD_TYPE_UNSUPPORTED",
+      pointer,
+      `ordering field must use ${allowed.join(", ")} or an option over one of those types`
+    );
+  }
+  return { ...resolved, field };
+}
+
+function requireOrderingReferenceType(model, typeRef, pointer) {
+  const resolved = unwrapOrderingType(model, typeRef, pointer);
+  if (resolved.type.kind !== "string") {
+    fail(
+      "MECHANICS_ORDER_REFERENCE_INVALID",
+      pointer,
+      "related-field reference must use string or option<string>"
+    );
+  }
+  return resolved;
+}
+
+function unwrapOrderingType(model, typeRef, pointer) {
+  const seen = new Set();
+  let currentRef = typeRef;
+  let type = model.types[currentRef];
+  while (type?.kind === "option") {
+    if (seen.has(currentRef)) {
+      fail("MECHANICS_TYPE_CYCLE", pointer, "ordering field type contains an option cycle");
+    }
+    seen.add(currentRef);
+    currentRef = type.itemType;
+    type = model.types[currentRef];
+  }
+  if (!type) fail("MECHANICS_TYPE_REF_UNKNOWN", pointer, `unknown ordering field type "${currentRef}"`);
+  return { typeRef: currentRef, type };
+}
+
+function assertOrderingJoinCompatible(model, current, relatedTypeRef, pointer) {
+  const related = unwrapOrderingType(model, relatedTypeRef, `${pointer}/relatedField`);
+  if (current.kind === "stable-id") {
+    if (related.type.kind !== "string") {
+      fail(
+        "MECHANICS_ORDER_REFERENCE_INVALID",
+        pointer,
+        "stable entity identifiers can join only to string fields"
+      );
+    }
+    return;
+  }
+  const left = unwrapOrderingType(model, current.typeRef, `${pointer}/current`);
+  const scalarKinds = ["boolean", "integer", "decimal", "finite-number", "string", "enum"];
+  if (!scalarKinds.includes(left.type.kind) || !scalarKinds.includes(related.type.kind)) {
+    fail("MECHANICS_ORDER_REFERENCE_INVALID", pointer, "ordering joins require declared scalar fields");
+  }
+  const numeric = (kind) => kind === "integer" || kind === "decimal" || kind === "finite-number";
+  const compatible = numeric(left.type.kind) && numeric(related.type.kind) ||
+    left.type.kind === related.type.kind && (
+      left.type.kind !== "enum" || left.typeRef === related.typeRef
+    );
+  if (!compatible) {
+    fail(
+      "MECHANICS_ORDER_REFERENCE_INVALID",
+      pointer,
+      "ordering join fields use incompatible declared types"
+    );
+  }
+}
+
+/**
+ * Prove that every declared numeric value and the worst possible sum can be
+ * represented by the runtime's fixed-point safe-integer arithmetic.
+ */
+function assertOrderingAggregateRangeSafe(type, capacity, aggregate, pointer) {
+  if (type.kind === "finite-number") {
+    if (aggregate === "sum") {
+      fail(
+        "MECHANICS_ORDER_FINITE_SUM_UNSUPPORTED",
+        pointer,
+        "finite-number aggregation supports min/max but not non-associative binary64 sum"
+      );
+    }
+    return;
+  }
+  const scale = type.kind === "decimal" ? type.scale : 0;
+  const factor = 10 ** scale;
+  const minimum = type.kind === "decimal" ? Number(type.minimum) : type.minimum;
+  const maximum = type.kind === "decimal" ? Number(type.maximum) : type.maximum;
+  const scaledMinimum = Math.round(minimum * factor);
+  const scaledMaximum = Math.round(maximum * factor);
+  const declaredSafe = Number.isSafeInteger(scaledMinimum) &&
+    Number.isSafeInteger(scaledMaximum) &&
+    Number(minimum.toFixed(scale)) === minimum &&
+    Number(maximum.toFixed(scale)) === maximum;
+  const magnitude = Math.max(Math.abs(scaledMinimum), Math.abs(scaledMaximum));
+  const aggregateSafe = aggregate !== "sum" || Number.isSafeInteger(magnitude * capacity);
+  if (!declaredSafe || !aggregateSafe) {
+    fail(
+      "MECHANICS_ORDER_DECIMAL_OVERFLOW",
+      pointer,
+      "declared numeric range and collection capacity can exceed safe fixed-point aggregation"
+    );
+  }
+}
+
+function orderingWorkUpperBound(selectionSize, keyCount, relatedCapacity) {
+  const sortDepth = selectionSize <= 1 ? 0 : Math.ceil(Math.log2(selectionSize));
+  const work = selectionSize * keyCount +
+    relatedCapacity +
+    selectionSize * keyCount * sortDepth +
+    selectionSize * keyCount +
+    selectionSize;
+  return Number.isSafeInteger(work) ? work : Number.MAX_SAFE_INTEGER;
+}
+
+/** Conservative comparison/work bound for canonical identifier sorting. */
+function canonicalIterationWorkUpperBound(selectionSize) {
+  if (selectionSize <= 1) return selectionSize;
+  return selectionSize * Math.ceil(Math.log2(selectionSize)) + selectionSize;
 }
 
 function requireEntityRef(entity, context, pointer) {
@@ -2680,7 +3910,11 @@ function assertExpressionFitsType(model, actual, expectedTypeRef, pointer) {
     if (actual.optional && !expectedKinds.includes("option")) {
       fail("MECHANICS_EXPRESSION_TYPE_MISMATCH", pointer, "optional parameter requires an explicit value.coalesce before this use");
     }
-    if (expectedKinds.includes(actual.value) || (actual.value === "integer" && expectedKinds.includes("decimal"))) return;
+    if (
+      expectedKinds.includes(actual.value) ||
+      (["integer", "decimal"].includes(actual.value) && expectedKinds.includes("finite-number")) ||
+      (actual.value === "integer" && expectedKinds.includes("decimal"))
+    ) return;
   } else if (actual.kind === "actor-id") {
     const expectedKinds = expressionTypeKinds(model, { kind: "type-ref", ref: expectedTypeRef });
     if (expectedKinds.includes("string") || expectedKinds.includes("enum")) return;
@@ -2700,7 +3934,10 @@ function assertExpressionFitsType(model, actual, expectedTypeRef, pointer) {
     if (kinds.some((kind) => expectedKinds.includes(kind))) return;
     // Arithmetic may produce an integer that is safely accepted by a decimal
     // sink; the runtime still enforces the declared bounds and scale.
-    if (kinds.includes("integer") && expectedKinds.includes("decimal")) return;
+    if (
+      (kinds.includes("integer") && expectedKinds.includes("decimal")) ||
+      ((kinds.includes("integer") || kinds.includes("decimal")) && expectedKinds.includes("finite-number"))
+    ) return;
   }
   fail(
     "MECHANICS_EXPRESSION_TYPE_MISMATCH",
@@ -2725,12 +3962,15 @@ function isStructuralResultCompatible(model, shape, expectedTypeRef, seen) {
   if (expected.kind === "option") {
     return isStructuralResultCompatible(model, shape, expected.itemType, seen);
   }
-  if (shape.kind === "integer") return expected.kind === "integer" || expected.kind === "decimal";
-  if (shape.kind === "decimal" || shape.kind === "string" || shape.kind === "boolean") {
+  if (shape.kind === "integer") {
+    return expected.kind === "integer" || expected.kind === "decimal" || expected.kind === "finite-number";
+  }
+  if (shape.kind === "decimal") return expected.kind === "decimal" || expected.kind === "finite-number";
+  if (shape.kind === "finite-number" || shape.kind === "string" || shape.kind === "boolean") {
     return expected.kind === shape.kind;
   }
-  if (shape.kind === "list") {
-    return expected.kind === "list" &&
+  if (shape.kind === "list" || shape.kind === "set") {
+    return expected.kind === shape.kind &&
       expected.maxItems >= shape.maxItems &&
       isStructuralResultCompatible(model, shape.item, expected.itemType, seen);
   }
@@ -2766,7 +4006,14 @@ function areDeclaredTypesCompatible(model, actualRef, expectedRef, seen) {
       : areDeclaredTypesCompatible(model, actualRef, expected.itemType, seen);
   }
   if (actual.kind === "option") return false;
-  if (actual.kind === "integer" && expected.kind === "decimal") return true;
+  if (
+    (actual.kind === "integer" || actual.kind === "decimal" || actual.kind === "finite-number") &&
+    (expected.kind === "integer" || expected.kind === "decimal" || expected.kind === "finite-number")
+  ) {
+    // Runtime remains the authority for the target's exact range and decimal
+    // scale. Publication proves only that both sides are numeric.
+    return true;
+  }
   if (actual.kind !== expected.kind) return false;
   switch (actual.kind) {
     case "list":
@@ -2800,6 +4047,9 @@ function literalMatchesDeclaredType(model, value, typeRef, seen, profile) {
     case "string": return typeof value === "string" && (!profile ||
       Buffer.byteLength(value, "utf8") <= Math.min(type.maxUtf8Bytes ?? profile.maxStringUtf8Bytes, profile.maxStringUtf8Bytes));
     case "integer": return Number.isSafeInteger(value) && value >= type.minimum && value <= type.maximum;
+    case "finite-number":
+      return typeof value === "number" && Number.isFinite(value) &&
+        value >= type.minimum && value <= type.maximum;
     case "decimal": {
       if (typeof value !== "number" || !Number.isFinite(value) ||
         value < Number(type.minimum) || value > Number(type.maximum)) return false;
@@ -2856,7 +4106,8 @@ function assertComparableTypes(model, left, right, operator, pointer) {
   if (left.kind === "unknown" || right.kind === "unknown") return;
   const leftKinds = expressionTypeKinds(model, left);
   const rightKinds = expressionTypeKinds(model, right);
-  const numeric = (kinds) => kinds.includes("integer") || kinds.includes("decimal");
+  const numeric = (kinds) =>
+    kinds.includes("integer") || kinds.includes("decimal") || kinds.includes("finite-number");
   const comparable = (numeric(leftKinds) && numeric(rightKinds)) ||
     leftKinds.some((kind) => rightKinds.includes(kind)) ||
     (left.kind === "literal" && right.kind === "type-ref" && literalMatchesDeclaredType(model, left.value, right.ref, new Set())) ||

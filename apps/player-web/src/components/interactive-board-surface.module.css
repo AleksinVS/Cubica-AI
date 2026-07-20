@@ -38,8 +38,11 @@
   border: 1px solid rgb(246 240 223 / 24%);
   border-radius: 0.75rem;
   box-shadow: 0 1.2rem 3rem rgb(0 0 0 / 38%);
-  background: rgb(29 27 22 / 94%);
-  backdrop-filter: blur(12px);
+  /*
+   * A nearly opaque fill preserves legibility without recompositing a moving
+   * multi-megapixel canvas behind this panel on every pan or zoom frame.
+   */
+  background: rgb(29 27 22 / 98%);
 }
 
 .cameraControls {
@@ -52,9 +55,8 @@
   padding: 0.45rem;
   border: 1px solid rgb(246 240 223 / 24%);
   border-radius: 0.7rem;
-  background: rgb(29 27 22 / 94%);
+  background: rgb(29 27 22 / 98%);
   box-shadow: 0 0.8rem 2rem rgb(0 0 0 / 32%);
-  backdrop-filter: blur(12px);
 }
 
 .cameraButton,

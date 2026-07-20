@@ -13,9 +13,34 @@ const Ajv = (AjvLib as any).default || AjvLib;
 const addFormats = (addFormatsLib as any).default || addFormatsLib;
 const ajvErrors = (ajvErrorsLib as any).default || ajvErrorsLib;
 const require = createRequire(import.meta.url);
-const { validateGameIntentSchema, validateMechanicsSchema } = require("../../../../../scripts/manifest-tools/mechanics-validator.cjs") as {
+const {
+  validateGameIntentSchema,
+  validateMechanicsBootstrapSchema,
+  validateMechanicsSchema
+} = require("../../../../../scripts/manifest-tools/mechanics-validator.cjs") as {
   validateGameIntentSchema: (value: unknown) => { valid: boolean; errors: Array<{ pointer: string; message: string }> };
+  validateMechanicsBootstrapSchema: (value: unknown) => {
+    valid: boolean;
+    errors: Array<{ pointer: string; message: string }>;
+  };
   validateMechanicsSchema: (value: unknown) => { valid: boolean; errors: Array<{ pointer: string; message: string }> };
+};
+const { MECHANICS_ARTIFACT_REGISTRY } = require("../../../../../scripts/manifest-tools/mechanics-modules.cjs") as {
+  MECHANICS_ARTIFACT_REGISTRY: {
+    resolveSet: (moduleLock: unknown) =>
+      | {
+          state: "available";
+          validationProfileId: string;
+          executorProfileId: string;
+          modules: Map<string, unknown>;
+        }
+      | {
+          state: "blocked" | "missing";
+          alias?: string;
+          reason: string;
+          identity?: { moduleId?: unknown };
+        };
+  };
 };
 const {
   checkMechanicsBundle,
@@ -70,6 +95,8 @@ addFormats(ajv);
 ajvErrors(ajv);
 
 const validate = ajv.compile(gameManifestSchema);
+const CURRENT_MECHANICS_API_VERSION = "cubica.dev/mechanics/v1alpha1";
+const CURRENT_MECHANICS_VALIDATION_PROFILE = "mechanics-v1alpha1-current";
 
 type JsonRecord = Record<string, unknown>;
 const isRecord = (value: unknown): value is JsonRecord =>
@@ -178,6 +205,40 @@ const validateSemanticReferences = (manifest: JsonRecord) => {
 };
 
 export function validateGameManifest(manifest: unknown): GameManifest {
+  // The bootstrap contract is deliberately checked before the current full
+  // manifest schema. It reads no plan or state content; it only establishes
+  // which trusted, exact validator/executor profile is allowed to inspect the
+  // remainder of this package.
+  const bootstrap = validateMechanicsBootstrapSchema(manifest);
+  if (!bootstrap.valid) {
+    throw new ManifestValidationError(
+      `Mechanics bootstrap validation failed: ${bootstrap.errors
+        .map((error) => `${error.pointer || "/"} ${error.message}`)
+        .join("; ")}`
+    );
+  }
+  const bootstrapManifest = manifest as {
+    mechanics: {
+      apiVersion: string;
+      moduleLock: Record<string, unknown>;
+    };
+  };
+  const selected = MECHANICS_ARTIFACT_REGISTRY.resolveSet(bootstrapManifest.mechanics.moduleLock);
+  if (selected.state !== "available") {
+    const moduleLabel = selected.identity?.moduleId ? ` for module "${String(selected.identity.moduleId)}"` : "";
+    throw new ManifestValidationError(
+      `Mechanics executor ${selected.state}${moduleLabel}: ${selected.reason}`
+    );
+  }
+  if (
+    bootstrapManifest.mechanics.apiVersion !== CURRENT_MECHANICS_API_VERSION ||
+    selected.validationProfileId !== CURRENT_MECHANICS_VALIDATION_PROFILE
+  ) {
+    throw new ManifestValidationError(
+      `Mechanics validation profile is not installed for apiVersion "${bootstrapManifest.mechanics.apiVersion}"`
+    );
+  }
+
   const isValid = validate(manifest);
   if (!isValid) {
     const errors = validate.errors

@@ -39,6 +39,11 @@ import {
   selectRoadDraftNode,
   selectWaypointDraftPosition
 } from "./construction-selection.ts";
+import {
+  LOCOMOTIVE_MOVE_ACTION_ID,
+  selectMovementDraftEdge,
+  selectMovementDraftVehicle
+} from "./movement-selection.ts";
 
 const DESIGN_WIDTH = 1400;
 const DESIGN_HEIGHT = 1000;
@@ -81,6 +86,7 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
   let currentSession = context.session;
   let currentActionDraft: InteractiveBoardActionDraft | null = null;
   let currentSpatialPreview: InteractiveBoardSpatialPreview | null = null;
+  let currentStateVersion = context.session.version.stateVersion;
   let lastError: string | null = null;
   let disposed = false;
 
@@ -162,6 +168,8 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
         fontSize: "20px"
       }).setOrigin(0.5, 0);
 
+      this.drawLocomotiveOrder(projection);
+
       if (projection.nodes.length === 0) {
         this.add.text(DESIGN_WIDTH / 2, DESIGN_HEIGHT / 2,
           "Ожидаются авторские узлы, координаты и начальная сеть",
@@ -178,6 +186,62 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           fontSize: "18px",
           wordWrap: { width: DESIGN_WIDTH - BOARD_PADDING * 2 }
         }).setOrigin(0.5, 1);
+      }
+    }
+
+    /**
+     * Show the authoritative order as a small heads-up panel over the map.
+     *
+     * A heads-up panel is a compact information layer fixed to the viewport.
+     * It reads the list already saved by runtime and never repeats gameplay
+     * sorting in the browser. Six rows are enough for the mock while keeping
+     * the map itself the dominant working surface.
+     */
+    private drawLocomotiveOrder(projection: BoardProjection) {
+      if (projection.phase !== "operations" || projection.locomotiveOrder.length === 0) return;
+      const visible = projection.locomotiveOrder.slice(0, 6);
+      const hiddenCount = projection.locomotiveOrder.length - visible.length;
+      const panelWidth = 390;
+      const panelX = DESIGN_WIDTH - panelWidth - 28;
+      const panelY = 76;
+      const panelHeight = 58 + visible.length * 31 + (hiddenCount > 0 ? 26 : 0);
+
+      this.add.graphics()
+        .setDepth(900)
+        .setScrollFactor(0)
+        .fillStyle(0x172b36, 0.9)
+        .fillRoundedRect(panelX, panelY, panelWidth, panelHeight, 14)
+        .lineStyle(2, 0xf1dfb8, 0.8)
+        .strokeRoundedRect(panelX, panelY, panelWidth, panelHeight, 14);
+
+      this.add.text(panelX + 18, panelY + 14, "Очередь локомотивов", {
+        color: "#fff4dc",
+        fontFamily: "sans-serif",
+        fontStyle: "bold",
+        fontSize: "20px"
+      }).setDepth(901).setScrollFactor(0);
+
+      visible.forEach((entry, index) => {
+        this.add.text(
+          panelX + 18,
+          panelY + 48 + index * 31,
+          `${index + 1}. ${entry.ownerLabel} · ${entry.nodeLabel}`,
+          {
+            color: "#f8f2e7",
+            fontFamily: "sans-serif",
+            fontSize: "17px",
+            wordWrap: { width: panelWidth - 36 }
+          }
+        ).setDepth(901).setScrollFactor(0);
+      });
+
+      if (hiddenCount > 0) {
+        this.add.text(
+          panelX + 18,
+          panelY + 48 + visible.length * 31,
+          `Ещё ${hiddenCount}`,
+          { color: "#d6c7aa", fontFamily: "sans-serif", fontSize: "15px" }
+        ).setDepth(901).setScrollFactor(0);
       }
     }
 
@@ -361,15 +425,35 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
       );
       const canSelectWaypoint = projection.availableActions.some((action) =>
         action.actionId === WAYPOINT_BUILD_ACTION_ID && action.disabled !== true);
-      const selectedEdgeId = currentActionDraft?.actionId === WAYPOINT_BUILD_ACTION_ID
+      const selectedWaypointEdgeId = currentActionDraft?.actionId === WAYPOINT_BUILD_ACTION_ID
+        && typeof currentActionDraft.params.edgeId === "string"
+        ? currentActionDraft.params.edgeId
+        : null;
+      const selectedVehicleId = currentActionDraft?.actionId === LOCOMOTIVE_MOVE_ACTION_ID
+        && typeof currentActionDraft.params.vehicleId === "string"
+        ? currentActionDraft.params.vehicleId
+        : null;
+      const canSelectMovementEdge = selectedVehicleId !== null
+        && projection.vehicles.some((vehicle) =>
+          vehicle.kind === "locomotive" && vehicle.id === selectedVehicleId)
+        && projection.availableActions.some((action) =>
+          action.actionId === LOCOMOTIVE_MOVE_ACTION_ID && action.disabled !== true);
+      const selectedMovementEdgeId = canSelectMovementEdge
+        && currentActionDraft?.actionId === LOCOMOTIVE_MOVE_ACTION_ID
         && typeof currentActionDraft.params.edgeId === "string"
         ? currentActionDraft.params.edgeId
         : null;
       for (const edge of projection.edges) {
         const points = edge.points.map(toScreen);
         const highlight = edgeHighlights.get(edge.id);
-        const selected = selectedEdgeId === edge.id;
-        graphics.lineStyle(selected ? 11 : highlight ? 9 : 5, selected ? 0x1f8f6a : edgeColor(edge), 0.95);
+        const waypointSelected = selectedWaypointEdgeId === edge.id;
+        const movementSelected = selectedMovementEdgeId === edge.id;
+        const selected = waypointSelected || movementSelected;
+        graphics.lineStyle(
+          selected ? 11 : highlight ? 9 : 5,
+          movementSelected ? 0x315ccf : waypointSelected ? 0x1f8f6a : edgeColor(edge),
+          0.95
+        );
         for (let index = 1; index < points.length; index += 1) {
           const from = points[index - 1];
           const to = points[index];
@@ -377,7 +461,10 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
           const length = Phaser.Math.Distance.Between(from.x, from.y, to.x, to.y);
           if (length === 0) continue;
           graphics.lineBetween(from.x, from.y, to.x, to.y);
-          if ((!canSelectWaypoint && !highlight?.actionId) || context.isInteractionPending()) continue;
+          if (
+            (!canSelectWaypoint && !canSelectMovementEdge && !highlight?.actionId)
+            || context.isInteractionPending()
+          ) continue;
           const hitArea = this.add.zone(
             (from.x + to.x) / 2,
             (from.y + to.y) / 2,
@@ -395,6 +482,9 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
             event?.stopPropagation?.();
             if (canSelectWaypoint) {
               this.selectWaypointDraft(edge, points, pointer);
+            } else if (canSelectMovementEdge) {
+              const next = selectMovementDraftEdge(currentActionDraft, edge.id);
+              if (next) this.publishActionDraft(next);
             } else if (highlight) {
               this.dispatchHighlight(highlight);
             }
@@ -528,6 +618,12 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     ) {
       const nodes = new Map(projection.nodes.map((node) => [node.id, node]));
       const offsets = new Map<string, number>();
+      const canSelectMovementVehicle = projection.availableActions.some((action) =>
+        action.actionId === LOCOMOTIVE_MOVE_ACTION_ID && action.disabled !== true);
+      const selectedVehicleId = currentActionDraft?.actionId === LOCOMOTIVE_MOVE_ACTION_ID
+        && typeof currentActionDraft.params.vehicleId === "string"
+        ? currentActionDraft.params.vehicleId
+        : null;
       for (const vehicle of projection.vehicles) {
         if (!vehicle.nodeId) continue;
         const node = nodes.get(vehicle.nodeId);
@@ -535,12 +631,44 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
         const position = toScreen(node.position);
         const offset = offsets.get(vehicle.nodeId) ?? 0;
         offsets.set(vehicle.nodeId, offset + 1);
-        this.add.text(position.x - 20 + offset * 20, position.y + 22,
+        const markerX = position.x - 20 + offset * 24;
+        const markerY = position.y + 32;
+        const selected = selectedVehicleId === vehicle.id;
+        this.add.circle(
+          markerX,
+          markerY,
+          selected ? 17 : 14,
+          selected ? 0xe9f0ff : 0xfffaf0,
+          0.96
+        ).setStrokeStyle(selected ? 5 : 2, selected ? 0x315ccf : 0x354957, 1);
+        this.add.text(markerX, markerY,
           vehicle.kind === "locomotive" ? "◆" : "■", {
-            color: vehicle.kind === "locomotive" ? "#273f8f" : "#8f5a27",
+            color: vehicle.kind === "locomotive"
+              ? selected ? "#183d9f" : "#273f8f"
+              : "#8f5a27",
             fontFamily: "sans-serif",
-            fontSize: "20px"
+            fontSize: selected ? "23px" : "20px"
+          }).setOrigin(0.5);
+
+        if (
+          vehicle.kind === "locomotive"
+          && canSelectMovementVehicle
+          && !context.isInteractionPending()
+        ) {
+          // The marker remains comfortably selectable after the map camera is
+          // zoomed out. Clicking it only updates the shared local draft.
+          const hitArea = this.add.zone(markerX, markerY, 52, 52);
+          hitArea.setInteractive({ useHandCursor: true });
+          hitArea.on("pointerdown", (
+            _pointer: CameraPointer,
+            _localX: number,
+            _localY: number,
+            event: { stopPropagation?: () => void } | undefined
+          ) => {
+            event?.stopPropagation?.();
+            this.publishActionDraft(selectMovementDraftVehicle(currentActionDraft, vehicle.id));
           });
+        }
       }
     }
 
@@ -551,8 +679,18 @@ export const createCardsMoneyTrainsScene: PhaserSceneFactory = (
     scene,
     updateSession(session) {
       if (disposed) return;
+      const nextStateVersion = session.version.stateVersion;
+      const snapshotChanged = nextStateVersion !== currentStateVersion;
+      currentStateVersion = nextStateVersion;
       currentSession = session;
       lastError = null;
+      if (snapshotChanged && currentActionDraft !== null) {
+        // Every authoritative state change invalidates the local canvas/DOM
+        // choice. This mirrors the generic host rule and closes the short
+        // interval before React propagates its own cleared draft back here.
+        currentActionDraft = null;
+        context.onActionDraftChange(null);
+      }
       scene.renderProjection();
     },
     updateActionDraft(draft) {

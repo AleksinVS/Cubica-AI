@@ -28,7 +28,7 @@ import {
 } from "@/presenter/portal-launch-client";
 import { ReactViewGateway } from "@/presenter/react-view-gateway";
 import type { GameConfig } from "@/presenter/game-config";
-import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting } from "@/lib/screen-router";
+import { resolveScreenKey as resolveScreenKeyDefault, resolveLayoutModeFromRouting, resolveDesignLayoutMode } from "@/lib/screen-router";
 import { normalizePlayerLayoutMode } from "@/lib/player-layout-mode";
 import type { ClientRequest } from "@/presenter/types";
 import type { PlayerRuntimeStatus, PlayerState } from "@/presenter/types";
@@ -150,8 +150,8 @@ export class GamePresenter {
     const screenRouting = this.gameUi?.screenRouting;
     const screenKey = this.gameUi
       ? this.config.resolveScreenKey
-        ? this.config.resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId, runtimeUi, this.gameUi)
-        : resolveScreenKeyDefault(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi, this.gameUi)
+        ? this.config.resolveScreenKey(currentScreenId, currentStepIndex, activeInfoId, this.gameUi)
+        : resolveScreenKeyDefault(screenRouting, currentScreenId, currentStepIndex, activeInfoId, this.gameUi)
       : null;
 
     // The selected screen is the most local declarative owner of its layout.
@@ -160,10 +160,13 @@ export class GamePresenter {
     const declaredScreenLayout = screenKey
       ? normalizePlayerLayoutMode(this.gameUi?.screens[screenKey]?.layoutMode)
       : undefined;
+    // Design-time layout declared by the UI manifest (ADR-093); fallback source
+    // when a selected screen does not declare its own layoutMode.
+    const designLayoutMode = resolveDesignLayoutMode(this.gameUi);
     const layoutMode = declaredScreenLayout ?? (
       this.config.resolveLayoutMode
-        ? this.config.resolveLayoutMode(screenKey, runtimeUi, gameState)
-        : resolveLayoutModeFromRouting(screenRouting, currentScreenId, currentStepIndex, activeInfoId, runtimeUi) ?? "topbar"
+        ? this.config.resolveLayoutMode(screenKey, gameState)
+        : resolveLayoutModeFromRouting(screenRouting, currentScreenId, currentStepIndex, activeInfoId, designLayoutMode) ?? "topbar"
     );
 
     const rawActivePanel = typeof runtimeUi.activePanel === "string" ? runtimeUi.activePanel : null;

@@ -45,6 +45,20 @@ export type AccessibleBoardActionField =
       readonly min?: number;
       readonly max?: number;
       readonly step?: number;
+    }
+  | {
+      readonly name: string;
+      readonly label: string;
+      readonly kind: "text";
+      readonly required?: boolean;
+      readonly defaultValue?: string;
+      /**
+       * Browser feedback hints only. Runtime validates the authoritative
+       * action `paramsSchema` again before admitting the command.
+       */
+      readonly minLength?: number;
+      readonly maxLength?: number;
+      readonly pattern?: string;
     };
 
 /**

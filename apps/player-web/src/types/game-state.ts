@@ -37,7 +37,6 @@ export type MetricsSnapshot = Record<string, unknown>;
 
 export type RuntimeUiState = {
   activePanel?: string;
-  activeScreen?: string;
   lastCapabilityFamily?: string;
   lastCapability?: string;
   serverRequested?: boolean;

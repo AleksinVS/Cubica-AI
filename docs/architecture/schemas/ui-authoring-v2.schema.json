@@ -54,8 +54,22 @@
             "entry_point": {
               "$ref": "https://cubica.platform/schemas/manifest-authoring-common.schema.json#/definitions/entityId"
             },
+            "default_layout_mode": {
+              "type": "string",
+              "enum": ["leftsidebar", "topbar", "map-first", "auto"],
+              "description": "Design-time layout the game presents for this channel (ADR-093). The compiler passes it through to ui.manifest.json.default_layout_mode unchanged. Screen routing matches conditions.layoutMode against this value instead of server-side UI state."
+            },
             "theme": {
               "type": "object"
+            },
+            "stylesheets": {
+              "type": "array",
+              "description": "Optional game-owned CSS assets for this channel (ADR-091). Authors list stylesheet asset references as asset:<id>; the compiler passes them through to ui.manifest.json.stylesheets unchanged (compiler pass-through is delivered in TSK-20260719 block R3).",
+              "items": {
+                "type": "string",
+                "pattern": "^asset:[a-z0-9][a-z0-9-]{0,63}$"
+              },
+              "uniqueItems": true
             },
             "screens": {
               "type": "array",

@@ -34,7 +34,11 @@ const {
   validateMacroInput,
   validateMechanicsAuthoringSchema
 } = require("./mechanics-authoring-validator.cjs");
-const { recommendedModuleLockForOperations } = require("./mechanics-modules.cjs");
+const {
+  EXECUTION_CORPUS_HASH,
+  SHARED_KERNEL_HASH,
+  recommendedModuleLockForOperations
+} = require("./mechanics-modules.cjs");
 const { validateGameIntentSchema, validateMechanicsSchema } = require("./mechanics-validator.cjs");
 
 const repoRoot = path.resolve(__dirname, "..", "..");
@@ -580,18 +584,52 @@ function compileAuthoringFile(job, ajv = buildAjv()) {
 }
 
 /**
- * Combines every compile-invariant input into one hash prefix, computed once:
- * the cache format version, the compiler's own source hash (so a compiler code
- * change invalidates the cache — otherwise the cache would mask the change and
- * break the drift-check), and the schema-set hash.
+ * Produces the invariant part of a compile-cache key from explicit inputs.
+ *
+ * Keeping this operation pure lets the focused regression test prove that both
+ * trusted Mechanics corpus fingerprints independently invalidate the cache,
+ * without rewriting runtime sources or relying on Node's module cache.
+ */
+function computeCacheKeyPrefix({
+  formatVersion,
+  compilerHash,
+  schemasHash,
+  sharedKernelHash,
+  executionCorpusHash
+}) {
+  return hashText(
+    [
+      formatVersion,
+      compilerHash,
+      schemasHash,
+      sharedKernelHash,
+      executionCorpusHash
+    ].join("\0")
+  );
+}
+
+/**
+ * Combines every compile-invariant input into one cached hash prefix.
+ *
+ * The compiler emits exact Mechanics module locks. Those locks depend not only
+ * on this compiler and its schemas, but also on the complete trusted runtime
+ * corpus hashed by `mechanics-modules.cjs`. Omitting that transitive input lets
+ * a warm compile cache restore an old lock after runtime code changes, while an
+ * honest `--check` compile correctly reports drift. Including both corpus
+ * fingerprints keeps the cache a pure optimization rather than a competing
+ * source of generated manifests.
  */
 let cachedKeyPrefix;
 function getCacheKeyPrefix() {
   if (cachedKeyPrefix === undefined) {
     const compilerHash = hashText(fs.readFileSync(__filename, "utf8"));
-    cachedKeyPrefix = hashText(
-      [COMPILE_CACHE_FORMAT_VERSION, compilerHash, getSchemasHash()].join("\0")
-    );
+    cachedKeyPrefix = computeCacheKeyPrefix({
+      formatVersion: COMPILE_CACHE_FORMAT_VERSION,
+      compilerHash,
+      schemasHash: getSchemasHash(),
+      sharedKernelHash: SHARED_KERNEL_HASH,
+      executionCorpusHash: EXECUTION_CORPUS_HASH
+    });
   }
   return cachedKeyPrefix;
 }
@@ -1247,7 +1285,7 @@ function lowerMechanicsAuthoring(source, sourceFile) {
         throw new CompileError(`Lowered plan "${planId}" has duplicate step id "${step.id}"`, sourceFile, joinPointer(sourcePointers[0], "id"));
       }
       seen.add(step.id);
-      operations.push(step.op);
+      collectLoweredMechanicsOperations(step, operations);
     });
     plans[planId] = { transaction: { steps: lowered.map((entry) => entry.step) } };
     origins[planId] = lowered.map((entry) => entry.sourcePointers);
@@ -1269,6 +1307,26 @@ function lowerMechanicsAuthoring(source, sourceFile) {
     },
     origins
   };
+}
+
+/**
+ * Include bounded-body operations in the exact module lock.
+ *
+ * `core.entities.each` remains one authored top-level step, but its body is
+ * executable Mechanics IR and may use modules beyond `cubica.core`. Ignoring
+ * those operations here would produce a package that passes structural
+ * lowering yet fails closed at publication/runtime.
+ */
+function collectLoweredMechanicsOperations(step, operations) {
+  operations.push(step.op);
+  if (step.op === "core.entities.each") {
+    step.body.forEach((bodyStep) => {
+      if (bodyStep.op === "core.entities.each") {
+        throw new Error("Nested core.entities.each is not admitted");
+      }
+      operations.push(bodyStep.op);
+    });
+  }
 }
 
 function deleteMappingSubtree(mappings, prefix) {
@@ -1921,6 +1979,7 @@ module.exports = {
   compileAuthoringTextCached,
   compileJobs,
   compareGenerated,
+  computeCacheKeyPrefix,
   createCompileTelemetry,
   computeJobCacheKey,
   discoverJobs,

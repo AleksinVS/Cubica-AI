@@ -1,0 +1,19 @@
+{
+  "gameId": "simple-choice",
+  "assets": [
+    {
+      "id": "accent-mark",
+      "file": "images/accent-mark.svg",
+      "kind": "image",
+      "origin": { "type": "authored-in-repo" }
+    }
+  ],
+  "stylesheets": [
+    {
+      "id": "theme",
+      "file": "styles/theme.css",
+      "kind": "css",
+      "origin": { "type": "authored-in-repo" }
+    }
+  ]
+}

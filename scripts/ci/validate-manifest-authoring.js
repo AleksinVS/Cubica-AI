@@ -464,6 +464,20 @@ function validatePublishedPluginBundleDrift() {
   }
 }
 
+function validatePublishedGameStylesheetDrift() {
+  try {
+    execFileSync(
+      process.execPath,
+      [path.join(repoRoot, "scripts", "manifest-tools", "build-game-stylesheets.cjs"), "--check", "--quiet"],
+      { cwd: repoRoot, stdio: "pipe" }
+    );
+  } catch (error) {
+    const stderr = error.stderr ? String(error.stderr).trim() : "";
+    const stdout = error.stdout ? String(error.stdout).trim() : "";
+    fail([stderr, stdout].filter(Boolean).join("\n") || error.message);
+  }
+}
+
 function main() {
   const ajv = buildAjv();
   validateAuthoringInputs(ajv);
@@ -472,6 +486,7 @@ function main() {
   validatePublishedPlayerWebPluginBundles(ajv);
   validateCompilerDrift();
   validatePublishedPluginBundleDrift();
+  validatePublishedGameStylesheetDrift();
   validateGeneratedOutputs(ajv);
   validateSourceMapPointers();
   validateDanglingActionReferences();

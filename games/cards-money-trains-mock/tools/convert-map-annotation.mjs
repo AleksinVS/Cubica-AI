@@ -52,6 +52,14 @@ const transportManifestOptions = Object.freeze({
 // Their implementation is shared, so there is no second validation pipeline.
 export const validateAnnotation = validateMapAnnotation;
 export const toReviewOverlaySvg = createMapAnnotationReviewOverlaySvg;
+
+/**
+ * Converts the annotation without duplicating coordinates for game rules.
+ *
+ * The Mechanics state model exposes `position.x` as a typed read-only
+ * projection. Therefore both the renderer and locomotive ordering consume the
+ * same canonical `{x, y}` object, including a dynamically created waypoint.
+ */
 export const toManifestFragment = (annotation) =>
   createTransportManifestFragment(annotation, transportManifestOptions);
 

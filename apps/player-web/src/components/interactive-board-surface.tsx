@@ -68,6 +68,10 @@ export function InteractiveBoardSurface({
   const dispatchRef = useRef(dispatchAction);
   const previewTransportRoadRef = useRef(previewTransportRoad);
   const isPendingRef = useRef(isPending);
+  // React publishes `isPending` on the next render. This synchronous latch
+  // closes the smaller gap between the first dispatch call and that render so
+  // two different canvas targets cannot start competing commands.
+  const dispatchInFlightRef = useRef(false);
   const actionDraftRef = useRef<InteractiveBoardActionDraft | null>(null);
   const roadPreviewRef = useRef<RoadPreviewState | null>(null);
   const previewRequestSequenceRef = useRef(0);
@@ -87,6 +91,32 @@ export function InteractiveBoardSurface({
   dispatchRef.current = dispatchAction;
   previewTransportRoadRef.current = previewTransportRoad;
   isPendingRef.current = isPending;
+
+  /**
+   * Record the browser-visible part of an action without adding React state or
+   * a public telemetry contract. The values remain local DOM diagnostics that
+   * a facilitator or automated performance run can inspect in DevTools.
+   */
+  const dispatchMeasuredAction = useCallback(async (
+    actionId: string,
+    params?: Record<string, unknown>
+  ) => {
+    if (dispatchInFlightRef.current || isPendingRef.current) {
+      throw new Error("Дождитесь завершения предыдущего действия.");
+    }
+    dispatchInFlightRef.current = true;
+    const startedAt = performance.now();
+    try {
+      await dispatchRef.current(actionId, params);
+    } finally {
+      dispatchInFlightRef.current = false;
+      recordPerformanceDuration(
+        containerRef.current,
+        "lastActionRoundTripMs",
+        startedAt
+      );
+    }
+  }, []);
 
   /** Invalidate a calculation whenever its endpoint intent may have changed. */
   const clearRoadPreview = useCallback(() => {
@@ -115,10 +145,13 @@ export function InteractiveBoardSurface({
 
   useEffect(() => {
     const handle = handleRef.current;
+    const authoritativeSession = sessionRef.current;
 
     if (handle) {
       try {
-        handle.updateSession(session);
+        const startedAt = performance.now();
+        handle.updateSession(authoritativeSession);
+        recordPerformanceDuration(containerRef.current, "lastSceneApplyMs", startedAt);
         setSceneDiagnostic(null);
       } catch (error) {
         setDispatchDiagnostic(null);
@@ -130,7 +163,7 @@ export function InteractiveBoardSurface({
       // Keep this projection outside the scene-update try/catch. A broken
       // visual adapter must not prevent keyboard users from receiving the
       // actions from the newest authoritative snapshot.
-      setAccessibleActions(resolveAccessibleActions(gameId, session, handle));
+      setAccessibleActions(resolveAccessibleActions(gameId, authoritativeSession, handle));
       setActionDiagnostic(null);
     } catch (error) {
       // Fail closed on a broken projection so stale actions from an older
@@ -139,7 +172,13 @@ export function InteractiveBoardSurface({
       setDispatchDiagnostic(null);
       setActionDiagnostic(errorMessage(error, "Не удалось обновить доступные действия поля."));
     }
-  }, [gameId, isPending, session]);
+  // Presenter emits one view update before the request (`isPending=true`) and
+  // another after it. Repainting a multi-thousand-pixel Phaser board for the
+  // pending flag delays the request on the browser main thread even though no
+  // authoritative state changed. A runtime snapshot is immutable within its
+  // session/state version, so these two scalar keys are the correct refresh
+  // boundary for both the scene and its server-projected action catalog.
+  }, [gameId, session.sessionId, session.version.stateVersion]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -176,12 +215,13 @@ export function InteractiveBoardSurface({
           content,
           session: initialSession,
           assets,
-          isInteractionPending: () => isPendingRef.current,
+          isInteractionPending: () =>
+            isPendingRef.current || dispatchInFlightRef.current,
           dispatchAction: (actionId, params) => {
-            if (isPendingRef.current) {
+            if (isPendingRef.current || dispatchInFlightRef.current) {
               return Promise.reject(new Error("Дождитесь завершения предыдущего действия."));
             }
-            return dispatchRef.current(actionId, params);
+            return dispatchMeasuredAction(actionId, params);
           },
           onActionDraftChange: (draft) => {
             // Plugins are trusted, but clone and narrow this contribution so a
@@ -215,6 +255,16 @@ export function InteractiveBoardSurface({
           },
           scene: handle.scene
         });
+        // Keep the selected renderer observable for performance diagnostics.
+        // AUTO may choose the slower Canvas fallback on a device where WebGL
+        // is unavailable; recording that fact avoids blaming game rules or the
+        // map asset for a device-specific rendering path.
+        const rendererType = game.renderer?.type;
+        container.dataset.phaserRenderer = rendererType === Phaser.WEBGL
+          ? "webgl"
+          : rendererType === Phaser.CANVAS
+            ? "canvas"
+            : "unknown";
 
         if (cancelled) {
           destroySurface(handle, game);
@@ -225,7 +275,9 @@ export function InteractiveBoardSurface({
 
         handleRef.current = handle;
         setSceneReady(true);
+        const initialApplyStartedAt = performance.now();
         handle.updateSession(initialSession);
+        recordPerformanceDuration(container, "lastSceneApplyMs", initialApplyStartedAt);
         handle.updateActionDraft?.(actionDraftRef.current);
         const currentPreview = roadPreviewRef.current;
         handle.updateSpatialPreview?.(currentPreview ? {
@@ -286,7 +338,7 @@ export function InteractiveBoardSurface({
       setSceneReady(false);
       destroySurface(handle, game);
     };
-  }, [assets, clearRoadPreview, content, gameId, layoutMode, manifestProps.designHeight, manifestProps.designWidth, manifestProps.sceneId]);
+  }, [assets, clearRoadPreview, content, dispatchMeasuredAction, gameId, layoutMode, manifestProps.designHeight, manifestProps.designWidth, manifestProps.sceneId]);
 
   const label = manifestProps.accessibleLabel ?? "Интерактивное игровое поле";
 
@@ -307,7 +359,7 @@ export function InteractiveBoardSurface({
     setPendingActionId(action.id);
     setDispatchDiagnostic(null);
     try {
-      await dispatchAction(action.actionId, params);
+      await dispatchMeasuredAction(action.actionId, params);
       clearRoadPreview();
     } catch (error) {
       // The scene receives the same rejection through its injected dispatcher.
@@ -580,6 +632,22 @@ export function InteractiveBoardSurface({
   );
 }
 
+/**
+ * Store a bounded millisecond duration as a data attribute for diagnostics.
+ *
+ * Invalid clocks are ignored rather than publishing `NaN`/negative values.
+ */
+function recordPerformanceDuration(
+  container: HTMLElement | null,
+  key: "lastActionRoundTripMs" | "lastSceneApplyMs",
+  startedAt: number
+): void {
+  if (!container) return;
+  const duration = performance.now() - startedAt;
+  if (!Number.isFinite(duration) || duration < 0) return;
+  container.dataset[key] = duration.toFixed(3);
+}
+
 /** Render one plugin-projected field without teaching the host game rules. */
 function AccessibleActionField({
   action,
@@ -618,23 +686,50 @@ function AccessibleActionField({
     );
   }
 
+  if (field.kind === "number") {
+    return (
+      <label className={styles.actionField} htmlFor={id}>
+        <span>{field.label}</span>
+        <input
+          id={id}
+          name={field.name}
+          type="number"
+          required={field.required === true}
+          value={typeof value === "number" ? value : ""}
+          onChange={(event) => {
+            const rawValue = event.currentTarget.value;
+            const numberValue = event.currentTarget.valueAsNumber;
+            onValueChange(rawValue === "" || !Number.isFinite(numberValue) ? null : numberValue);
+          }}
+          min={field.min}
+          max={field.max}
+          step={field.step}
+          disabled={disabled}
+        />
+      </label>
+    );
+  }
+
   return (
     <label className={styles.actionField} htmlFor={id}>
       <span>{field.label}</span>
       <input
         id={id}
         name={field.name}
-        type="number"
+        type="text"
         required={field.required === true}
-        value={typeof value === "number" ? value : ""}
+        value={typeof value === "string" ? value : ""}
+        // Empty means “parameter omitted”, so clearing an optional field also
+        // removes an authored default. Every non-empty string is preserved
+        // exactly, including surrounding whitespace; Runtime's JSON Schema
+        // remains the final authority that accepts or rejects it.
         onChange={(event) => {
-          const rawValue = event.currentTarget.value;
-          const numberValue = event.currentTarget.valueAsNumber;
-          onValueChange(rawValue === "" || !Number.isFinite(numberValue) ? null : numberValue);
+          const nextValue = event.currentTarget.value;
+          onValueChange(nextValue === "" ? null : nextValue);
         }}
-        min={field.min}
-        max={field.max}
-        step={field.step}
+        minLength={field.minLength}
+        maxLength={field.maxLength}
+        pattern={field.pattern}
         disabled={disabled}
       />
     </label>

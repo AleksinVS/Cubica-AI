@@ -20,6 +20,24 @@ const RUNTIME_COOKIE_PATH = "/api/runtime";
  */
 const RUNTIME_CREDENTIAL_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 const MAX_BROWSER_RUNTIME_BODY_BYTES = 256 * 1024;
+const MAX_SERVER_TIMING_HEADER_LENGTH = 512;
+const MAX_SERVER_TIMING_DURATION_MS = Number.MAX_SAFE_INTEGER;
+const RUNTIME_SERVER_TIMING_METRICS = [
+  "dispatch",
+  "scheduler",
+  "reload",
+  "projection",
+  "action-availability",
+  "total"
+] as const;
+const REQUIRED_RUNTIME_SERVER_TIMING_METRICS = new Set([
+  "dispatch",
+  "projection",
+  "action-availability",
+  "total"
+]);
+const RUNTIME_SERVER_TIMING_METRIC_PATTERN =
+  /^(dispatch|scheduler|reload|projection|action-availability|total);dur=(\d+(?:\.\d{1,3})?)$/u;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -181,13 +199,73 @@ export function proxyRuntimeResponse(upstream: Response): Promise<Response> {
 }
 
 function proxyRuntimeText(upstream: Response, text: string): Response {
+  // This is a deliberate response-header allowlist. In particular, cookies,
+  // authentication challenges and arbitrary diagnostic headers from the
+  // internal runtime must never cross the browser-facing trust boundary.
+  const headers = new Headers({
+    "Content-Type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
+    "Cache-Control": "no-store"
+  });
+  const serverTiming = sanitizeRuntimeServerTiming(upstream.headers.get("server-timing"));
+  if (serverTiming !== null) {
+    headers.set("Server-Timing", serverTiming);
+  }
+
   return new Response(text, {
     status: upstream.status,
-    headers: {
-      "Content-Type": upstream.headers.get("content-type") ?? "application/json; charset=utf-8",
-      "Cache-Control": "no-store"
-    }
+    headers
   });
+}
+
+/**
+ * Validate and canonicalize the one diagnostic header allowed through the
+ * browser-facing proxy.
+ *
+ * The accepted grammar is deliberately narrower than the full Server-Timing
+ * standard: known metric names plus a non-negative decimal duration. This
+ * keeps runtime-provided descriptions or extension parameters from becoming a
+ * channel for session data, secrets or response-header injection.
+ */
+export function sanitizeRuntimeServerTiming(value: string | null): string | null {
+  if (value === null || value.length === 0 || value.length > MAX_SERVER_TIMING_HEADER_LENGTH) {
+    return null;
+  }
+
+  const accepted = new Map<string, number>();
+  for (const rawMetric of value.split(",")) {
+    const match = RUNTIME_SERVER_TIMING_METRIC_PATTERN.exec(rawMetric.trim());
+    if (match === null) {
+      return null;
+    }
+    const [, metricName, rawDuration] = match;
+    if (accepted.has(metricName)) {
+      return null;
+    }
+    const duration = Number(rawDuration);
+    if (
+      !Number.isFinite(duration) ||
+      duration < 0 ||
+      duration > MAX_SERVER_TIMING_DURATION_MS
+    ) {
+      return null;
+    }
+    accepted.set(metricName, duration);
+  }
+
+  for (const metricName of REQUIRED_RUNTIME_SERVER_TIMING_METRICS) {
+    if (!accepted.has(metricName)) {
+      return null;
+    }
+  }
+
+  return RUNTIME_SERVER_TIMING_METRICS
+    .flatMap((metricName) => {
+      const duration = accepted.get(metricName);
+      return duration === undefined
+        ? []
+        : [`${metricName};dur=${duration.toFixed(3)}`];
+    })
+    .join(", ");
 }
 
 function parseRecord(text: string): JsonRecord | null {

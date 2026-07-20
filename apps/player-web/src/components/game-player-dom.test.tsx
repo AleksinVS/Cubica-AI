@@ -564,9 +564,14 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(screen.getByText("Осталось дней")).toBeDefined();
     });
 
+    // Since TSK-20260719 R4b the plugin declares the theme background as an
+    // "asset:" reference resolved through the game-asset index. This test's
+    // fetch mock serves no index, so the documented fail-closed contract
+    // applies: no resolvable asset — no background property at all (never a
+    // broken URL). Resolution itself is covered by game-asset-resolver.test.ts.
     expect(
       (document.querySelector(".game-player-root") as HTMLElement).style.getPropertyValue("--game-background-image")
-    ).toBe('url("/images/arctic-background.png")');
+    ).toBe("");
 
     // Check that top metrics are HIDDEN in S1 mode
     const topMetrics = document.querySelector(".metrics");
@@ -593,34 +598,24 @@ describe("GamePlayer S1 DOM Rendering", () => {
   });
 
   it("keeps game-variables-container and main-content-area side-by-side in leftsidebar layout", async () => {
-    // Simulate a runtime state that explicitly requests left-sidebar layout
-    const sessionWithLeftSidebar = {
-      ...mockSession,
-      state: {
-        ...mockSession.state,
-        public: {
-          ...mockSession.state.public,
-          ui: { activeScreen: "left-sidebar" }
-        }
+    // Layout is a design-time choice (ADR-093): the game declares the leftsidebar
+    // layout in its UI manifest, and the target screen declares its own
+    // leftsidebar layout_mode. No server-side activeScreen flag is involved.
+    const leftSidebarUi: GamePlayerUiContent = {
+      ...mockS1Ui,
+      defaultLayoutMode: "leftsidebar",
+      screens: {
+        ...mockS1Ui.screens,
+        S1: { ...mockS1Ui.screens.S1, layoutMode: "leftsidebar" }
       }
     };
 
-    (global.fetch as any).mockImplementation((url: string) => {
-      if (url.includes("/api/runtime/sessions")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve(sessionWithLeftSidebar)
-        });
-      }
-      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-    });
-
     render(
-      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA} 
-        runtimeApiUrl="http://localhost:8080" 
-        content={mockContent} 
-        mockups={[]} 
-        gameUi={mockS1Ui} 
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        gameUi={leftSidebarUi}
       />
     );
 
@@ -1069,8 +1064,11 @@ describe("GamePlayer S1 DOM Rendering", () => {
               cardId: "3",
               frontText: "Карточка 3",
               backText: "Результат Карточки 3",
+              // ADR-092 top-level shape: before/after of the whole turn. The
+              // resolver derives the badge value (after) and signed delta.
               metricChanges: [
-                { metricId: "pro", delta: 5 }
+                { metricId: "pro", before: 3, after: 8 },
+                { metricId: "rep", before: 0, after: 0 }
               ],
               at: "2026-04-10T12:00:00Z"
             }
@@ -1105,6 +1103,86 @@ describe("GamePlayer S1 DOM Rendering", () => {
       expect(document.querySelector(".journal-entry-columns")).not.toBeNull();
       expect(document.querySelector(".journal-variables-container")).not.toBeNull();
     });
+
+    // ADR-092: each declared metric renders as a badge (value + optional delta +
+    // caption). The changed metric shows its after-value and signed delta; the
+    // unchanged metric shows its value but no delta superscript.
+    const badges = document.querySelectorAll(".journal-variable-component");
+    expect(badges.length).toBe(2);
+    const values = Array.from(document.querySelectorAll(".journal-variable__value")).map(
+      (node) => node.textContent
+    );
+    expect(values).toContain("8");
+    const diffs = Array.from(document.querySelectorAll(".journal-variable__diff")).map(
+      (node) => node.textContent
+    );
+    // Only the changed metric (pro 3->8) renders a delta superscript.
+    expect(diffs).toEqual(["+5"]);
+    const captions = Array.from(document.querySelectorAll(".journal-variable__caption")).map(
+      (node) => node.textContent
+    );
+    expect(captions).toContain("Знания");
+  });
+
+  it("renders journal entries whose card fields are nested under data (runtime shape)", async () => {
+    // The runtime `core.event.emit` step nests all game-defined fields inside
+    // `data` and keeps only `summary` at the top level. This is the exact
+    // envelope a real Antarctica card resolution produces; the resolver must
+    // flatten it so the entry is recognized instead of filtered out.
+    const sessionWithRuntimeShapedLog = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          ui: { activePanel: "history" },
+          log: [
+            {
+              eventType: "opening.card.1.event.10",
+              audience: "public",
+              summary: "Результат первой карточки",
+              data: {
+                kind: "opening-card-resolution",
+                entityType: "card",
+                displayMode: "card",
+                stageId: "stage_intro",
+                cardId: "1"
+              }
+            }
+          ],
+          timeline: { ...mockSession.state.public.timeline }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(sessionWithRuntimeShapedLog)
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={mockContent}
+        mockups={[]}
+        gameUi={generatedAntarcticaUi}
+      />
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector(".journal-screen")).not.toBeNull();
+      // A card entry must render (not an empty-state), proving the nested
+      // envelope was flattened and passed the card filter.
+      expect(document.querySelector(".journal-entry-columns")).not.toBeNull();
+    });
+    // The top-level `summary` is projected as the resolution ("back") text and
+    // must be visible now that `{{entry.backText}}` binds the flat DTO field.
+    expect(screen.queryAllByText(/Результат первой карточки/).length).toBeGreaterThan(0);
   });
 
   it("filters runtime.server and requestServer entries from journal", async () => {
@@ -1694,7 +1772,9 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Ускорение процесса")).toBeDefined();
+      // TSK-20260719 W2-D: LGC-016 fix - i17 title/body restored from the
+      // reference spec (was reduced to a single short placeholder sentence).
+      expect(screen.getByText("Времени все меньше!..")).toBeDefined();
       expect(document.querySelector(".info-event-card")).toBeDefined();
       expect(document.querySelector(".info-event-illustration")).toBeDefined();
       expect(document.querySelector(".info-event-text")).toBeDefined();
@@ -1705,13 +1785,14 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
 
+    // Since TSK-20260719 R7 (ARC-008) the manifest declares metric badge
+    // images as "asset:" references resolved through the game-asset index.
+    // This test serves no index, so the fail-closed contract renders badges
+    // without images (never a broken URL). Resolution itself is unit-tested
+    // in game-asset-resolver.test.ts; live badge rendering is covered by the
+    // R7 Playwright walkthrough and the S1 ui-compare gate.
     const metricImages = Array.from(document.querySelectorAll<HTMLElement>(".game-variable-image"));
-    expect(metricImages.length).toBe(8);
-    expect(
-      metricImages.every(
-        (node) => node.style.backgroundImage.includes("/images/left-sidebar/") || node.style.backgroundImage.includes("/images/top-sidebar/")
-      )
-    ).toBe(true);
+    expect(metricImages.length).toBe(0);
   });
 
   it("keeps the primary advance action wired for i17 info screen", async () => {
@@ -1779,6 +1860,102 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     });
   });
 
+  // W2-B / ADR-093 + ADR-055: on card/board screens the forward arrow is game
+  // navigation. It advances the current board step when the game allows it
+  // (public.timeline.canAdvance) by dispatching the resolved card's advance plan
+  // (the same action the "Продолжить" continue button carries). "Назад" has no
+  // game transition (the monolith has only a forward button), so it stays
+  // visible but always disabled.
+  it("enables the board forward arrow and dispatches the played card's advance action when the board can advance", async () => {
+    const sessionAtBoardReady = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          // Board step 9 (screenId S2) after the player played card 3, an advance
+          // card whose advanceActionId is opening.card.3.advance.
+          timeline: { screenId: "S2", stepIndex: 9, stageId: "opening", canAdvance: true },
+          opening: { selectedCardId: "3" }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string, options: any) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sessionAtBoardReady) });
+      }
+      if (url === "/api/runtime/actions") {
+        const body = JSON.parse(options.body);
+        // The forward arrow dispatches the resolved card's published advance plan.
+        expect(body.actionId).toBe("opening.card.3.advance");
+        expect(body.params).toEqual({});
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sessionAtBoardReady) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={generatedAntarcticaContent}
+        mockups={[]}
+        gameUi={generatedAntarcticaUi}
+      />
+    );
+
+    await waitFor(() => {
+      expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
+    });
+    expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
+
+    (global.fetch as any).mockClear();
+    fireEvent.click(screen.getByRole("button", { name: /Вперед/i }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith("/api/runtime/actions", expect.any(Object));
+    });
+    await waitFor(() => {
+      expect(loadPendingRuntimeCommand(sessionAtBoardReady.sessionId)).toBeNull();
+    });
+  });
+
+  it("keeps the board forward arrow disabled until the board can advance", async () => {
+    const sessionAtBoardWaiting = {
+      ...mockSession,
+      state: {
+        ...mockSession.state,
+        public: {
+          ...mockSession.state.public,
+          // Same board step, but no advance card played yet.
+          timeline: { screenId: "S2", stepIndex: 9, stageId: "opening", canAdvance: false }
+        }
+      }
+    };
+
+    (global.fetch as any).mockImplementation((url: string) => {
+      if (url.includes("/api/runtime/sessions")) {
+        return Promise.resolve({ ok: true, json: () => Promise.resolve(sessionAtBoardWaiting) });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(
+      <GamePlayer config={ANTARCTICA_GAME_CONFIG_DATA}
+        runtimeApiUrl="http://localhost:8080"
+        content={generatedAntarcticaContent}
+        mockups={[]}
+        gameUi={generatedAntarcticaUi}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /Вперед/i })).toBeDefined();
+    });
+    expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: /Назад/i }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("renders i18 info screen when screenId=S1 and activeInfoId=i18", async () => {
     const sessionAtI18 = {
       ...mockSession,
@@ -1810,9 +1987,20 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i18 title/body restored from the
+    // reference spec (was reduced to a single short placeholder sentence).
     await waitFor(() => {
-      expect(screen.getByText("Отправка разведчиков")).toBeDefined();
-      expect(screen.getByText("Разведчики готовы к отправке.")).toBeDefined();
+      expect(screen.getByText("Прочь все сомнения!")).toBeDefined();
+      // dom-testing-library's default `getByText` normalizer collapses all
+      // whitespace in the rendered node's text to single spaces before
+      // comparing, but does NOT apply the same normalization to a string
+      // matcher - so the query below must already be whitespace-collapsed
+      // (paragraph breaks -> single space) to match the multi-paragraph body.
+      expect(
+        screen.getByText(
+          `Ожидая возвращения разведчиков, многие нервничали. Это придавало драматизма! Когда, наконец, они вернулись, все до одного (хотя некоторые были ранены), все вздохнули с облегчением. А разведчики стали народными героями, и дети надевали на них медали из льдинок и каких-то разноцветных штуковин. Это было очень трогательно! Ощущение победы витало в воздухе. Праздник, затеянный в честь разведгруппы, превратился в массовые гуляния, которые продолжались всю ночь. Героев постоянно окружали любопытные и требовали рассказать про экспедицию, айсберги, подводных чудовищ снова и снова... Необходимая медицинская помощь и усиленное питание были предоставлены всем разведчикам. Конечно, в том объеме, в котором удалось это заранее подготовить: ведь если не сделать подготовительные действия по сбору рыбы, то решение проблемы "зимнего жира" займет дополнительно почти неделю! В конце концов, когда эмоции немного стихли, было организовано содержательное совещание, все рассказы об экспедиции были тщательно проанализированы: величина айсбергов, возможность укрыться от ветров, условия для защиты яиц, прочая инфраструктура, насколько сложно будет добраться птенцам и пожилым пингвинам?.. Теперь уже не осталось места для сомнений в том, что переезд - это вполне реально и, более того, это даст для колонии ту безопасность, ради которой все и было затеяно. Но нужно было сделать выбор. И желательно - правильный!`
+        )
+      ).toBeDefined();
     });
   });
 
@@ -1847,11 +2035,22 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i19 title/body restored from the
+    // reference spec (was reduced to a single short placeholder sentence).
+    // i19 and i19_1 share the same reference title; only the body text tells
+    // the "made it in time" (i19) and "ran out of time" (i19_1) variants apart.
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Последствия переезда")).toBeDefined();
-      expect(screen.getByText("После переезда началась работа над укреплением позиций.")).toBeDefined();
+      expect(screen.getByText("Великое переселение пингвинов…")).toBeDefined();
+      // See the i18 test above for why this query must already be
+      // whitespace-collapsed (dom-testing-library normalizes the rendered
+      // node's text, but not a string matcher).
+      expect(
+        screen.getByText(
+          `Вот и состоялся переезд... Конечно, не обошлось без различных досадных сбоев и непредвиденных обстоятельств, но они не были непреодолимы... Непреодолимо только время!.. К сожалению, времени не хватило, чтобы спасти всех пингвинов. Этот героический и одновременно трагический эпизод навсегда остался в памяти колонии. Эмоции постепенно улеглись, жизнь пошла своим чередом. Зима прошла на новом месте. Случались трудности. Новый айсберг отличался от прежнего: не было найдено богатых рыбой мест, было трудно предсказать направление ветра. Но все эти проблемы были не особенно серьезными. На следующий год разведчики нашли айсберг еще лучше, больше по площади и с большим количеством рыбных мест, имеющий очень комфортные параметры защиты от ветра. И, хотя это уже совсем другая история, но все-таки вопрос возник: а не стоит ли переехать снова?`
+        )
+      ).toBeDefined();
     });
   });
 
@@ -1886,11 +2085,21 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i19_1 title/body restored from the
+    // reference spec (was reduced to a single short placeholder sentence).
+    // See the note on the i19 test above for why the title is shared.
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Быстрый переезд")).toBeDefined();
-      expect(screen.getByText("Переезд был осуществлен быстро.")).toBeDefined();
+      expect(screen.getByText("Великое переселение пингвинов…")).toBeDefined();
+      // See the i18 test above for why this query must already be
+      // whitespace-collapsed (dom-testing-library normalizes the rendered
+      // node's text, but not a string matcher).
+      expect(
+        screen.getByText(
+          `Вот и состоялся переезд... Конечно, не обошлось без различных досадных сбоев и непредвиденных обстоятельств, но они не были непреодолимы... Непреодолимо только время!.. Переезд уложился в расчетные семь дней. Времени было достаточно, удалось спасти всех пингвинов, и это - триумф! Зима прошла на новом месте. В колонии случались трудности. Новый айсберг отличался от прежнего: не было найдено богатых рыбой мест, было трудно предсказать направление ветра. Но все эти проблемы были не особенно серьезными. На следующий год разведчики нашли айсберг еще лучше, больше по площади и с большим количеством рыбных мест, имеющий очень комфортные параметры защиты от ветра. И, хотя это уже совсем другая история, но все-таки вопрос возник: а не стоит ли переехать снова?`
+        )
+      ).toBeDefined();
     });
   });
 
@@ -1925,10 +2134,12 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
       />
     );
 
+    // TSK-20260719 W2-D: LGC-016 fix - i20 title restored from the reference
+    // spec (was reduced to a single short placeholder sentence).
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Второй переезд")).toBeDefined();
+      expect(screen.getByText("Правильный выбор!..")).toBeDefined();
       expect(screen.queryByText("Продолжить")).toBeNull();
       expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });
@@ -1968,8 +2179,10 @@ describe("GamePlayer Info Variant Screens (i19, i19_1, i20, i21)", () => {
     await waitFor(() => {
       const renderer = document.querySelector(".game-renderer");
       expect(renderer).toBeDefined();
-      expect(screen.getByText("Финальный экран")).toBeDefined();
-      expect(screen.getByText("История завершена.")).toBeDefined();
+      // Reference ending text restored by TSK-20260719 (LGC-017): title only,
+      // empty body — the monolith's single thank-you screen for both lines.
+      expect(screen.getByText("СПАСИБО ЗА ИГРУ!")).toBeDefined();
+      expect(screen.queryByText("История завершена.")).toBeNull();
       expect(screen.queryByText("Завершить")).toBeNull();
       expect((screen.getByRole("button", { name: /Вперед/i }) as HTMLButtonElement).disabled).toBe(false);
     });

@@ -1,5 +1,6 @@
 {
-  ".": "Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы.",
+  "_collapse": true,
+  ".": "Архив задач: старая иерархия milestones/epics/features/content-packs и завершенные TSK-файлы после внедрения новой системы. Содержимое не публикуется в PROJECT_STRUCTURE.yaml; описания ниже — метаданные для governance-проверок задач.",
   "content-packs/": "Архив старых ExecPlan/content-pack файлов.",
   "epics/": "Архив старых эпиков.",
   "features/": "Архив старых feature-файлов.",

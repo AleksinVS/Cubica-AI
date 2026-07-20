@@ -199,6 +199,52 @@ test("deck-only manifests receive the runtime-owned replay seed", () => {
   }
 });
 
+test("non-random deck lifecycle operations do not initialize a replay seed", () => {
+  for (const step of [
+    {
+      id: "extract",
+      kind: "command",
+      op: "deck.extract" as const,
+      deckId: "events",
+      source: "order" as const
+    },
+    {
+      id: "return",
+      kind: "command",
+      op: "deck.return" as const,
+      deckId: "events",
+      card: { op: "value.literal" as const, value: "event-a" },
+      destination: "discard" as const
+    },
+    {
+      id: "insert",
+      kind: "command",
+      op: "deck.insert" as const,
+      deckId: "events",
+      sourceCollection: "eventCards",
+      card: { op: "value.literal" as const, value: "event-a" },
+      destination: "held" as const
+    }
+  ] satisfies Array<Step>) {
+    const manifest = createManifest();
+    manifest.mechanics.moduleLock = recommendedModuleLock(["cubica.deck"]);
+    manifest.actions = {};
+    manifest.mechanics.plans = {
+      lifecycle: {
+        planHash: HASH,
+        transaction: { steps: [step] }
+      }
+    };
+
+    const state = initializeTurnBasedSessionState(manifest, declaredState(manifest));
+    assert.equal(
+      "random" in (state.secret as Record<string, unknown>),
+      false,
+      `${step.op} must not consume or initialize a random stream`
+    );
+  }
+});
+
 test("random-tie road planning receives runtime-owned replay state before its first action", () => {
   const manifest = createManifest();
   // The initializer only needs to detect the schema-validated capability here;
@@ -235,4 +281,82 @@ test("random-tie road planning receives runtime-owned replay state before its fi
     seed: "0123456789abcdeffedcba9876543210",
     counters: {}
   });
+});
+
+test("conditional seeded ordering initializes replay state while canonical ordering does not", () => {
+  for (const tieBreak of [
+    { kind: "seeded-random", stream: "fixture.order", expectsRandom: true },
+    { kind: "canonical-id", expectsRandom: false }
+  ] as const) {
+    const manifest = createManifest();
+    manifest.actions = {};
+    manifest.mechanics.moduleLock = recommendedModuleLock(["cubica.ordering"]);
+    manifest.mechanics.stateModel.types["core.integer"] = {
+      kind: "integer",
+      minimum: 0,
+      maximum: 10
+    };
+    manifest.mechanics.stateModel.collections.entities = {
+      audienceRef: "public",
+      storage: { root: "public", segments: ["entities"] },
+      capacity: 4,
+      stableKey: "map-key",
+      itemTypes: ["fixture.entity"],
+      fields: {
+        rank: {
+          storage: { kind: "attribute", name: "rank" },
+          valueType: "core.integer",
+          access: "read-only"
+        }
+      }
+    };
+    manifest.mechanics.plans = {
+      ordering: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            {
+              id: "selected",
+              kind: "query",
+              op: "core.entities.select",
+              selector: {
+                collection: "entities",
+                cardinality: { min: 0, max: 4 }
+              }
+            },
+            {
+              id: "ordered",
+              kind: "command",
+              op: "core.entities.order",
+              selection: { op: "value.result", stepId: "selected" },
+              keys: [{
+                source: { kind: "current-field", field: "rank" },
+                direction: "ascending",
+                missing: "error"
+              }],
+              tieBreak: tieBreak.kind === "seeded-random"
+                ? { kind: tieBreak.kind, stream: tieBreak.stream }
+                : { kind: tieBreak.kind },
+              // A false condition in this fixture represents a runtime branch.
+              // Bootstrap must still provision randomness because another
+              // session state can make the same published step executable.
+              when: { op: "predicate.constant", value: false }
+            }
+          ] as unknown as [Step, ...Array<Step>]
+        }
+      }
+    };
+    manifest.state.secret = {};
+
+    const state = initializeTurnBasedSessionState(
+      manifest,
+      declaredState(manifest),
+      { randomSeed: "0123456789abcdeffedcba9876543210" }
+    );
+
+    assert.equal(
+      "random" in (state.secret as Record<string, unknown>),
+      tieBreak.expectsRandom
+    );
+  }
 });

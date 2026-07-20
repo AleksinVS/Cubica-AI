@@ -90,6 +90,8 @@ Agents must always:
     - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.
     - When adding new significant directories, you MUST create a `.desc.json` file inside them containing a short semantic description (1-2 sentences).
     - After any structural changes (adding/removing folders or `.desc.json` files), you MUST run `node scripts/dev/generate-structure.js` to regenerate `PROJECT_STRUCTURE.yaml` and keep the architecture context up to date.
+    - `PROJECT_STRUCTURE.yaml` is a navigation map of the current repository, not an inventory of history: archived content (completed `TSK-*` files, historical snapshots, retired hierarchies) must never be listed file-by-file in it.
+    - Archive directories (the repository-root `archive/`, `docs/tasks/archive/`, and any future archive) MUST declare `"_collapse": true` in their `.desc.json`; the generator then renders such a directory as a single `directory...` line without contents. Per-file descriptions inside an archive `.desc.json` remain allowed where governance checks require them (for example, task descriptions in `docs/tasks/archive/.desc.json`), but they are metadata only and are not published into `PROJECT_STRUCTURE.yaml`.
 
 12. **ANTI-PATTERN: Declarative vs. Imperative Drift**
     - NEVER replace declarative, cross-platform contracts (e.g., JSON Schema, OpenAPI specs) with language-specific imperative code (e.g., manual TypeScript type guards, Zod schemas isolated in backend code).

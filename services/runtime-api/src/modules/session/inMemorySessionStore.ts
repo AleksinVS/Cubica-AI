@@ -8,6 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import type {
+  ArchivedSessionAudit,
   CreateSessionInput,
   CreatedSession,
   ImmutableGameBundle,
@@ -54,6 +55,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   private readonly receipts = new Map<string, SessionCommandReceipt>();
   private readonly eventsBySessionId = new Map<string, Array<SessionEventRecord>>();
   private readonly schedules = new Map<string, SessionSystemSchedule>();
+  /** Lifecycle metadata is separate so archiving cannot rewrite a snapshot. */
+  private readonly archivedAtBySessionId = new Map<string, Date>();
   private readonly lockedSessionIds = new Set<string>();
 
   async createSession(command: CreateSessionInput<TState>): Promise<CreatedSession<TState>> {
@@ -108,15 +111,58 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
   }
 
   async getSession(sessionId: string): Promise<SessionRecord<TState> | null> {
+    if (this.archivedAtBySessionId.has(sessionId)) return null;
     const session = this.sessions.get(sessionId);
     return session === undefined ? null : clone(session);
   }
 
   async authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null> {
+    if (this.archivedAtBySessionId.has(input.sessionId)) return null;
     const match = this.principalsBySessionId.get(input.sessionId)?.find(
       (candidate) => candidate.credentialSha256 === input.credentialSha256
     );
     return match === undefined ? null : clone(match.principal);
+  }
+
+  async archiveSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    return this.withSessionLock(input.sessionId, async () => {
+      const session = this.sessions.get(input.sessionId);
+      const storedPrincipal = this.findStoredPrincipal(input);
+      const bundle = session === undefined ? undefined : this.bundles.get(session.bundleHash);
+      if (
+        session === undefined ||
+        storedPrincipal?.principal.role !== "facilitator" ||
+        bundle === undefined
+      ) {
+        return null;
+      }
+
+      // The timestamp is the only lifecycle write. Repeated authorized archive
+      // requests preserve the first boundary instead of manufacturing a new one.
+      if (!this.archivedAtBySessionId.has(input.sessionId)) {
+        this.archivedAtBySessionId.set(input.sessionId, new Date());
+      }
+      return this.buildArchivedAudit(session, storedPrincipal.principal, bundle);
+    });
+  }
+
+  async readArchivedSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    const session = this.sessions.get(input.sessionId);
+    const storedPrincipal = this.findStoredPrincipal(input);
+    const bundle = session === undefined ? undefined : this.bundles.get(session.bundleHash);
+    if (
+      session === undefined ||
+      storedPrincipal?.principal.role !== "facilitator" ||
+      bundle === undefined ||
+      !this.archivedAtBySessionId.has(input.sessionId)
+    ) {
+      return null;
+    }
+    return this.buildArchivedAudit(session, storedPrincipal.principal, bundle);
   }
 
   async getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null> {
@@ -126,6 +172,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
 
   async getSessionEvents(sessionId: string, afterSequence = 0): Promise<Array<SessionEventRecord>> {
     if (!Number.isSafeInteger(afterSequence) || afterSequence < 0) throw new SessionStoreUnavailableError();
+    if (this.archivedAtBySessionId.has(sessionId)) return [];
     return clone((this.eventsBySessionId.get(sessionId) ?? []).filter((event) => event.sequence > afterSequence));
   }
 
@@ -133,6 +180,7 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     if (!Number.isSafeInteger(limit) || limit < 1 || limit > 64) {
       throw new SessionStoreUnavailableError();
     }
+    if (this.archivedAtBySessionId.has(sessionId)) return [];
     return clone([...this.schedules.values()]
       .filter((schedule) => schedule.sessionId === sessionId && schedule.status === "pending")
       .sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime() ||
@@ -148,7 +196,11 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       throw new SessionWriteLockedError(session.sessionId);
     }
     const current = this.sessions.get(session.sessionId);
-    if (!current || current.version.stateVersion !== options.expectedStateVersion) {
+    if (
+      !current ||
+      this.archivedAtBySessionId.has(session.sessionId) ||
+      current.version.stateVersion !== options.expectedStateVersion
+    ) {
       throw new SessionVersionConflictError(session.sessionId, options.expectedStateVersion);
     }
     assertNextSessionVersion(session.sessionId, current, session);
@@ -162,7 +214,9 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     operation: LockedSessionOperation<TState, TResult>
   ): Promise<TResult> {
     return this.withSessionLock(sessionId, async () => {
-      const current = this.sessions.get(sessionId);
+      const current = this.archivedAtBySessionId.has(sessionId)
+        ? undefined
+        : this.sessions.get(sessionId);
       const operationResult = await operation(current === undefined ? null : clone(current));
 
       if (operationResult.updatedSession !== undefined) {
@@ -187,7 +241,11 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       const storedPrincipal = this.principalsBySessionId.get(input.sessionId)?.find(
         (candidate) => candidate.credentialSha256 === input.credentialSha256
       );
-      if (current === undefined || storedPrincipal === undefined) {
+      if (
+        current === undefined ||
+        storedPrincipal === undefined ||
+        this.archivedAtBySessionId.has(input.sessionId)
+      ) {
         throw new SessionAuthenticationError();
       }
       const bundle = this.bundles.get(current.bundleHash);
@@ -258,7 +316,8 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
       const scheduleKey = systemScheduleKey(input.sessionId, input.scheduleId);
       const schedule = this.schedules.get(scheduleKey);
       const bundle = current === undefined ? undefined : this.bundles.get(current.bundleHash);
-      if (!current || !schedule || !bundle || schedule.sessionId !== current.sessionId ||
+      if (!current || this.archivedAtBySessionId.has(input.sessionId) ||
+          !schedule || !bundle || schedule.sessionId !== current.sessionId ||
           schedule.bundleHash !== current.bundleHash) {
         throw new SessionAuthenticationError();
       }
@@ -332,6 +391,30 @@ export class InMemorySessionStore<TState = unknown> implements SessionStorePort<
     } finally {
       this.lockedSessionIds.delete(sessionId);
     }
+  }
+
+  private findStoredPrincipal(input: SessionAuthenticationInput): StoredPrincipal | undefined {
+    return this.principalsBySessionId.get(input.sessionId)?.find(
+      (candidate) => candidate.credentialSha256 === input.credentialSha256
+    );
+  }
+
+  private buildArchivedAudit(
+    session: SessionRecord<TState>,
+    principal: SessionPrincipal,
+    bundle: ImmutableGameBundle
+  ): ArchivedSessionAudit<TState> {
+    const archivedAt = this.archivedAtBySessionId.get(session.sessionId);
+    if (archivedAt === undefined) throw new SessionStoreUnavailableError();
+
+    const receipts = [...this.receipts.values()]
+      .filter((receipt) => receipt.sessionId === session.sessionId)
+      .sort((left, right) =>
+        left.createdAt.getTime() - right.createdAt.getTime() ||
+        left.receiptId.localeCompare(right.receiptId));
+    const events = [...(this.eventsBySessionId.get(session.sessionId) ?? [])]
+      .sort((left, right) => left.sequence - right.sequence);
+    return clone({ session, archivedAt, principal, bundle, events, receipts });
   }
 }
 

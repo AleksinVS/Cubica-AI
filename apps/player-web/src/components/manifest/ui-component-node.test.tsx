@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { render } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 import React from "react";
 import { ManifestRenderer } from "./manifest-renderer";
 import type { GamePlayerS1UiContent } from "@cubica/contracts-manifest";
@@ -217,5 +217,259 @@ describe("UiComponentNode declarative action binding (ADR-055)", () => {
 
     expect((container.querySelector(".game-screen") as HTMLElement).style.backgroundImage)
       .toContain("https://runtime.example/game-assets/test-game/board/hash.svg");
+  });
+
+  /**
+   * TSK-20260719 R4b: the platform generalized `asset:<id>` resolution
+   * (previously only `screenComponent.props.backgroundImage`, see above) to
+   * every other declared image property — `gameVariableComponent.backgroundImage`,
+   * `imageComponent.src`, and the config-level theme background (covered by
+   * a dedicated pure-function test in `lib/game-asset-resolver.test.ts`). The
+   * tests below exercise the two remaining UI-manifest properties through the
+   * same public ManifestRenderer surface as the screenComponent case.
+   */
+  describe("generalized asset:<id> resolution (TSK-20260719 R4b)", () => {
+    it("resolves asset ids in gameVariableComponent's backgroundImage", () => {
+      const screen = {
+        type: "screen",
+        title: "Metric badge test screen",
+        root: {
+          type: "screenComponent",
+          props: {},
+          children: [
+            {
+              type: "gameVariableComponent",
+              id: "pro",
+              props: { metricId: "pro", backgroundImage: "asset:badge" }
+            }
+          ]
+        }
+      } as unknown as GamePlayerS1UiContent["screen"];
+      const resolver = createGameAssetResolver({
+        gameId: "test-game",
+        assets: { badge: { url: "/game-assets/test-game/badge/hash.png", kind: "image" } }
+      }, "https://runtime.example");
+
+      const { container } = render(
+        <ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} assetResolver={resolver} />
+      );
+
+      const badge = container.querySelector(".game-variable-image") as HTMLElement;
+      expect(badge).not.toBeNull();
+      expect(badge.style.backgroundImage).toContain("https://runtime.example/game-assets/test-game/badge/hash.png");
+    });
+
+    it("fails closed (no broken image, console warning) when a gameVariableComponent asset id is unknown", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const screen = {
+        type: "screen",
+        title: "Metric badge test screen",
+        root: {
+          type: "screenComponent",
+          props: {},
+          children: [
+            {
+              type: "gameVariableComponent",
+              id: "pro",
+              props: { metricId: "pro", backgroundImage: "asset:missing-badge" }
+            }
+          ]
+        }
+      } as unknown as GamePlayerS1UiContent["screen"];
+      const resolver = createGameAssetResolver(
+        { gameId: "test-game", assets: {} },
+        "https://runtime.example"
+      );
+
+      const { container } = render(
+        <ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} assetResolver={resolver} />
+      );
+
+      // No image layer is rendered; the component falls back to its plain
+      // (no-background) presentation instead of a broken url().
+      expect(container.querySelector(".game-variable-image")).toBeNull();
+      expect(container.querySelector(".game-variable-value--plain")).not.toBeNull();
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("resolves an imageComponent src that combines a {{template}} with an asset: marker, template first", () => {
+      const screen = {
+        type: "screen",
+        title: "Image component test screen",
+        root: {
+          type: "screenComponent",
+          props: {},
+          children: [
+            {
+              type: "imageComponent",
+              id: "info-illustration",
+              props: {
+                src: "asset:info-{{currentInfo.id}}",
+                alt: "{{currentInfo.title}}",
+                cssClass: "info-event-illustration"
+              }
+            }
+          ]
+        }
+      } as unknown as GamePlayerS1UiContent["screen"];
+      // The registered asset id is the template's *substituted* form
+      // (info-i5), proving substitution ran before asset resolution.
+      const resolver = createGameAssetResolver({
+        gameId: "test-game",
+        assets: { "info-i5": { url: "/game-assets/test-game/info-i5/hash.png", kind: "image" } }
+      }, "https://runtime.example");
+
+      const { container } = render(
+        <ManifestRenderer
+          screenDefinition={screen}
+          metrics={{}}
+          onAction={vi.fn()}
+          assetResolver={resolver}
+          gameState={{ currentInfo: { id: "i5", title: "Ледяной шторм" } }}
+        />
+      );
+
+      // imageComponent does not mirror its manifest `id` onto the DOM element
+      // (only buttonComponent does today), so tests target the declared
+      // cssClass instead — the same selector globals.css itself uses.
+      const illustration = container.querySelector(".info-event-illustration") as HTMLElement;
+      expect(illustration).not.toBeNull();
+      expect(illustration.style.backgroundImage)
+        .toContain("https://runtime.example/game-assets/test-game/info-i5/hash.png");
+      expect(illustration.getAttribute("aria-label")).toBe("Ледяной шторм");
+    });
+
+    it("fails closed for a decorative imageComponent when the templated asset id is unknown", () => {
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const screen = {
+        type: "screen",
+        title: "Image component test screen",
+        root: {
+          type: "screenComponent",
+          props: {},
+          children: [
+            {
+              type: "imageComponent",
+              id: "info-illustration",
+              props: { src: "asset:info-{{currentInfo.id}}", cssClass: "info-event-illustration" }
+            }
+          ]
+        }
+      } as unknown as GamePlayerS1UiContent["screen"];
+      // Pre-existing content gap (LEGACY-0023): some currentInfo.id values have
+      // no registered illustration yet. The registry stays empty on purpose.
+      const resolver = createGameAssetResolver({ gameId: "test-game", assets: {} }, "https://runtime.example");
+
+      const { container } = render(
+        <ManifestRenderer
+          screenDefinition={screen}
+          metrics={{}}
+          onAction={vi.fn()}
+          assetResolver={resolver}
+          gameState={{ currentInfo: { id: "i11" } }}
+        />
+      );
+
+      const illustration = container.querySelector(".info-event-illustration") as HTMLElement;
+      expect(illustration).not.toBeNull();
+      // No backgroundImage style at all — never `url(undefined)`.
+      expect(illustration.style.backgroundImage).toBe("");
+      expect(warnSpy).toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
+
+    it("fails closed for a plain <img> imageComponent by omitting the src attribute", () => {
+      const screen = {
+        type: "screen",
+        title: "Image component test screen",
+        root: {
+          type: "screenComponent",
+          props: {},
+          children: [
+            {
+              type: "imageComponent",
+              id: "plain-image",
+              props: { src: "asset:missing-plain-image", alt: "plain", cssClass: "plain-image-test" }
+            }
+          ]
+        }
+      } as unknown as GamePlayerS1UiContent["screen"];
+      const resolver = createGameAssetResolver({ gameId: "test-game", assets: {} }, "https://runtime.example");
+
+      const { container } = render(
+        <ManifestRenderer screenDefinition={screen} metrics={{}} onAction={vi.fn()} assetResolver={resolver} />
+      );
+
+      const image = container.querySelector("img.plain-image-test") as HTMLImageElement;
+      expect(image).not.toBeNull();
+      // React omits the attribute entirely for an undefined src, so the
+      // browser never issues a spurious request for a broken image.
+      expect(image.hasAttribute("src")).toBe(false);
+    });
+  });
+
+  describe("backdrop-dismiss action on a container (journal/hint panels)", () => {
+    // A container (areaComponent/screenComponent) that declares actions.onClick
+    // behaves as a dismissible backdrop: a click on its own empty area runs the
+    // command, but clicks on its children do not. This is how the Antarctica
+    // journal ("журнал ходов") closes on an empty-space click, matching the
+    // reference Bootstrap modal's backdrop dismiss — with no game specifics in
+    // the renderer.
+    const buildPanel = (): GamePlayerS1UiContent["screen"] => ({
+      type: "screen",
+      title: "Backdrop dismiss panel",
+      root: {
+        type: "screenComponent",
+        props: { cssClass: "main-screen journal-screen" },
+        children: [
+          {
+            type: "areaComponent",
+            props: { cssClass: "journal-main-content" },
+            actions: { onClick: { command: "closePanel", payload: { panelId: "history" } } },
+            children: [
+              {
+                type: "areaComponent",
+                props: { cssClass: "journal-container" },
+                children: [
+                  { type: "richTextComponent", props: { html: "<p>entry text</p>" } },
+                  {
+                    type: "buttonComponent",
+                    id: "btn-journal-close",
+                    props: { caption: "закрыть" },
+                    actions: { onClick: { command: "closePanel", payload: { panelId: "history" } } }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    } as unknown as GamePlayerS1UiContent["screen"]);
+
+    it("dispatches closePanel when the backdrop's own area is clicked", () => {
+      const onAction = vi.fn();
+      const { container } = render(
+        <ManifestRenderer screenDefinition={buildPanel()} metrics={{}} onAction={onAction} />
+      );
+      const backdrop = container.querySelector(".journal-main-content") as HTMLElement;
+      expect(backdrop).not.toBeNull();
+      // fireEvent.click sets event.target to the element itself, so
+      // target === currentTarget: a genuine empty-space (backdrop) click.
+      fireEvent.click(backdrop);
+      expect(onAction).toHaveBeenCalledWith("closePanel", { panelId: "history" });
+    });
+
+    it("does NOT dispatch closePanel when a child inside the container is clicked", () => {
+      const onAction = vi.fn();
+      const { container } = render(
+        <ManifestRenderer screenDefinition={buildPanel()} metrics={{}} onAction={onAction} />
+      );
+      // Clicking the inner content box (a descendant) bubbles up to the backdrop
+      // handler, but target !== currentTarget there, so it must not close.
+      const inner = container.querySelector(".journal-container") as HTMLElement;
+      fireEvent.click(inner);
+      expect(onAction).not.toHaveBeenCalledWith("closePanel", { panelId: "history" });
+    });
   });
 });

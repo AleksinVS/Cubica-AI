@@ -127,9 +127,13 @@
       "additionalProperties": false,
       "properties": {
         "x": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
           "type": "number"
         },
         "y": {
+          "maximum": 1000000000,
+          "minimum": -1000000000,
           "type": "number"
         }
       },
@@ -141,8 +145,10 @@
     },
     "GameManifestTransportRegion": {
       "additionalProperties": false,
+      "description": "Bounded simple polygon. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.",
       "properties": {
         "id": {
+          "maxLength": 256,
           "minLength": 1,
           "type": "string"
         },
@@ -150,6 +156,7 @@
           "items": {
             "$ref": "#/definitions/GameManifestCanonicalPoint"
           },
+          "maxItems": 513,
           "minItems": 3,
           "type": "array"
         }
@@ -495,6 +502,7 @@
           "items": {
             "$ref": "#/definitions/GameManifestTransportRegion"
           },
+          "maxItems": 512,
           "minItems": 1,
           "type": "array"
         },

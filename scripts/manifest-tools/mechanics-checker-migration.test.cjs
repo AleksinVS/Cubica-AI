@@ -217,6 +217,57 @@ function createFixture() {
 }
 
 /**
+ * Build one neutral entity with a directly stored typed set.
+ *
+ * The fixture deliberately uses generic tags so the proof belongs to the
+ * platform operation catalog rather than to any concrete game's closures.
+ */
+function setAddFixture() {
+  const fixture = createFixture();
+  Object.assign(fixture.mechanics.stateModel.types, {
+    "neutral.tag": {
+      kind: "enum",
+      values: ["alpha", "beta"]
+    },
+    "neutral.tags": {
+      kind: "set",
+      itemType: "neutral.tag",
+      maxItems: 3
+    }
+  });
+  Object.assign(fixture.mechanics.stateModel.collections.entities.fields, {
+    tags: {
+      storage: { kind: "attribute", name: "tags" },
+      valueType: "neutral.tags",
+      access: "read-write"
+    },
+    label: {
+      storage: { kind: "attribute", name: "label" },
+      valueType: "core.string",
+      access: "read-write"
+    }
+  });
+  fixture.mechanics.plans = {
+    setAdd: plan([{
+      id: "add-tag",
+      kind: "command",
+      op: "core.entity.attributes.patch",
+      entity: {
+        collection: "entities",
+        entityId: { op: "value.literal", value: "entity-1" }
+      },
+      patches: [{
+        operation: "set-add",
+        path: ["tags"],
+        value: { op: "value.literal", value: "alpha" }
+      }]
+    }])
+  };
+  fixture.actions = { setAdd: action("setAdd") };
+  return fixture;
+}
+
+/**
  * Build the smallest neutral turn-based package whose concrete participant
  * identities are intentionally absent from the reusable authoring state.
  */
@@ -433,12 +484,26 @@ function dynamicBindingFixture() {
   };
 }
 
-test("operation catalog exactly covers the 27 registered operations including system schedules", () => {
+test("operation catalog exactly covers all 33 registered operations including bounded iteration", () => {
   assert.equal(validateOperationCatalogSchema(operationCatalog).valid, true);
-  assert.equal(OPERATION_MODULES.size, 27);
+  assert.equal(OPERATION_MODULES.size, 33);
+  assert.ok(
+    MODULE_REGISTRY.get("cubica.core").operations.includes("core.entities.each")
+  );
   assert.deepEqual(
     MODULE_REGISTRY.get("cubica.system").operations,
     ["system.schedule.register", "system.schedule.cancel"]
+  );
+  assert.deepEqual(
+    MODULE_REGISTRY.get("cubica.ordering").operations,
+    ["core.entities.order"]
+  );
+  assert.deepEqual(
+    MODULE_REGISTRY.get("cubica.deck").operations,
+    ["deck.shuffle", "deck.draw", "deck.extract", "deck.return", "deck.insert"]
+  );
+  assert.ok(
+    MODULE_REGISTRY.get("cubica.graph").operations.includes("graph.edge.position.inspect")
   );
   assert.deepEqual(
     Object.keys(operationCatalog.operations).sort(),
@@ -577,6 +642,46 @@ test("keeps the same read-only field protected from later mutation", () => {
       value: { op: "value.literal", value: "network-2" }
     }]
   }];
+  expectSemanticError(fixture, "MECHANICS_FIELD_READ_ONLY");
+});
+
+test("admits one direct typed set-add and reserves the declared maximum scan", () => {
+  const fixture = finalizeFixture(setAddFixture());
+  const schema = validateMechanicsSchema(fixture.mechanics);
+  assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+  const checked = checkFixture(fixture);
+  assert.equal(checked.costs.setAdd.algorithmWork, 3);
+  assert.equal(checked.costs.setAdd.writes, 1);
+});
+
+test("schema keeps set-add value mandatory and its path direct", () => {
+  const nested = finalizeFixture(setAddFixture());
+  nested.mechanics.plans.setAdd.transaction.steps[0].patches[0].path = ["tags", "nested"];
+  assert.equal(validateMechanicsSchema(nested.mechanics).valid, false);
+
+  const missingValue = finalizeFixture(setAddFixture());
+  delete missingValue.mechanics.plans.setAdd.transaction.steps[0].patches[0].value;
+  assert.equal(validateMechanicsSchema(missingValue.mechanics).valid, false);
+});
+
+test("semantic checker rejects set-add to a non-set attribute", () => {
+  const fixture = setAddFixture();
+  fixture.mechanics.plans.setAdd.transaction.steps[0].patches[0].path = ["label"];
+  expectSemanticError(fixture, "MECHANICS_FIELD_TYPE_MISMATCH");
+});
+
+test("semantic checker rejects a set-add element outside the declared item type", () => {
+  const fixture = setAddFixture();
+  fixture.mechanics.plans.setAdd.transaction.steps[0].patches[0].value = {
+    op: "value.literal",
+    value: 42
+  };
+  expectSemanticError(fixture, "MECHANICS_EXPRESSION_TYPE_MISMATCH");
+});
+
+test("semantic checker keeps a read-only set protected from set-add", () => {
+  const fixture = setAddFixture();
+  fixture.mechanics.stateModel.collections.entities.fields.tags.access = "read-only";
   expectSemanticError(fixture, "MECHANICS_FIELD_READ_ONLY");
 });
 

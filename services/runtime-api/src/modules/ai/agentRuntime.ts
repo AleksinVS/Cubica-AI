@@ -412,6 +412,9 @@ export class AgentTurnService {
       eventType: event.eventType,
       summary: structuredClone(event.summary),
       data: structuredClone(event.data),
+      ...(event.metricChanges === undefined
+        ? {}
+        : { metricChanges: structuredClone(event.metricChanges) }),
       createdAt: nextSnapshot.updatedAt
     }));
     const nextViewerActorId = resolveSessionViewerActor(nextSnapshot, principal);
