@@ -5,10 +5,10 @@
     {
       "stylesheetId": "antarctica-theme",
       "gameId": "antarctica",
-      "contentHash": "110f6b6bb941c8980ea6bdb5f3556f85a84506a6b5cc81e925bbc2e5ef61c12b",
-      "integrity": "sha256-EQ9ra7lByJgOpr2181VvhahFBqa1zIHpJbvC5e9hwSs=",
-      "filePath": "published/antarctica-theme.110f6b6bb941c8980ea6bdb5f3556f85a84506a6b5cc81e925bbc2e5ef61c12b.css",
-      "url": "/game-stylesheets/antarctica/antarctica-theme/110f6b6bb941c8980ea6bdb5f3556f85a84506a6b5cc81e925bbc2e5ef61c12b.css"
+      "contentHash": "bce8915f27456b1df3bf0bca904090971cb66131c62523f57db2343034d512b0",
+      "integrity": "sha256-vOiRXydFax3zvwvKkECQlxy2YTHGJSP1fbI0MDTVErA=",
+      "filePath": "published/antarctica-theme.bce8915f27456b1df3bf0bca904090971cb66131c62523f57db2343034d512b0.css",
+      "url": "/game-stylesheets/antarctica/antarctica-theme/bce8915f27456b1df3bf0bca904090971cb66131c62523f57db2343034d512b0.css"
     }
   ]
 }

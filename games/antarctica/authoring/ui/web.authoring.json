@@ -75,6 +75,7 @@
       "props": {
         "title": "{{card.title}}",
         "summary": "{{card.summary}}",
+        "backText": "{{card.backText}}",
         "selectLabel": "{{card.selectLabel || \"Выбрать\"}}",
         "visualState": "{{card.visualState || \"default\"}}"
       },

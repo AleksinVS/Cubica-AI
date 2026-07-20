@@ -50,6 +50,12 @@ export interface GamePlayerBoardCard {
   selectLabel?: string;
   advanceActionId?: string;
   advanceLabel?: string;
+  /**
+   * Presentation state projected from the card's state facets (ADR-094). The UI
+   * template binds it, and the renderer flips a `resolved` card to its back.
+   * `resolved | selected | locked | default`.
+   */
+  visualState?: string;
 }
 
 export interface GamePlayerBoard {
