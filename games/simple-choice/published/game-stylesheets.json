@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../docs/architecture/schemas/game-stylesheets.schema.json",
+  "schemaVersion": "1.0",
+  "stylesheets": [
+    {
+      "stylesheetId": "theme",
+      "gameId": "simple-choice",
+      "contentHash": "03a707ef671c1b519d50c485c1223388d10a4dcba9dc1d7ac384ce0d4cb25135",
+      "integrity": "sha256-A6cH72ccG1GdUMSFwSIziNEKTcup3B16w4TODUyyUTU=",
+      "filePath": "published/theme.03a707ef671c1b519d50c485c1223388d10a4dcba9dc1d7ac384ce0d4cb25135.css",
+      "url": "/game-stylesheets/simple-choice/theme/03a707ef671c1b519d50c485c1223388d10a4dcba9dc1d7ac384ce0d4cb25135.css"
+    }
+  ]
+}

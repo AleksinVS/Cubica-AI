@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cubica.platform/schemas/mechanics-bootstrap.v1.json",
+  "title": "Cubica Mechanics loader bootstrap",
+  "description": "Minimal non-executable manifest view used only to select an exact versioned Mechanics validator and executor.",
+  "type": "object",
+  "required": ["mechanics"],
+  "properties": {
+    "mechanics": {
+      "type": "object",
+      "required": ["apiVersion", "moduleLock"],
+      "properties": {
+        "apiVersion": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "moduleLock": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 64,
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/moduleIdentity"
+          }
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+    },
+    "moduleIdentity": {
+      "type": "object",
+      "required": ["moduleId", "moduleVersion", "artifactHash"],
+      "properties": {
+        "moduleId": {
+          "$ref": "#/$defs/identifier"
+        },
+        "moduleVersion": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "artifactHash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$"
+        },
+        "algorithmVersions": {
+          "type": "object",
+          "maxProperties": 64,
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/identifier"
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

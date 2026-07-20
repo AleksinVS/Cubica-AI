@@ -181,8 +181,61 @@ function mechanicsInput(
     },
     networkModels: bundle.manifest.networkModels,
     objectModels: bundle.manifest.objectModels,
-    turnPhases: bundle.manifest.config.turnModel?.phases
+    turnPhases: bundle.manifest.config.turnModel?.phases,
+    publicMetrics: resolvePublicMetricRefs(bundle)
   };
+}
+
+/**
+ * Cache of derived public metric catalogs, keyed by the immutable bundle.
+ *
+ * The bundle is frozen, so the result cannot be stored on it; a WeakMap avoids
+ * re-scanning the catalog on every action dispatch without retaining bundles.
+ */
+const publicMetricRefsByBundle = new WeakMap<
+  GameBundle,
+  ReadonlyArray<{ metricId: string; statePath: string }>
+>();
+
+/**
+ * ADR-092: derive the ordered public metric catalog the executor snapshots.
+ *
+ * The platform stays game-agnostic: it reads the declarative metric catalog
+ * (`content.data.metrics`, schema-defined) and keeps only `state` metrics whose
+ * declared `statePath` lives under the public `public.` subtree. Computed
+ * metrics are excluded (they are derived from source state metrics), and games
+ * without such a catalog produce an empty list, so no metric block is emitted.
+ */
+function resolvePublicMetricRefs(
+  bundle: GameBundle
+): ReadonlyArray<{ metricId: string; statePath: string }> {
+  const cached = publicMetricRefsByBundle.get(bundle);
+  if (cached !== undefined) return cached;
+
+  const content = (bundle.manifest as { content?: { data?: { metrics?: unknown } } }).content;
+  const catalog = content?.data?.metrics;
+  const refs: Array<{ metricId: string; statePath: string }> = [];
+  if (Array.isArray(catalog)) {
+    for (const metric of catalog) {
+      if (
+        metric !== null &&
+        typeof metric === "object" &&
+        (metric as { kind?: unknown }).kind === "state" &&
+        typeof (metric as { metricId?: unknown }).metricId === "string" &&
+        typeof (metric as { statePath?: unknown }).statePath === "string" &&
+        (metric as { statePath: string }).statePath.startsWith("public.")
+      ) {
+        refs.push({
+          metricId: (metric as { metricId: string }).metricId,
+          statePath: (metric as { statePath: string }).statePath
+        });
+      }
+    }
+  }
+
+  const frozen = Object.freeze(refs);
+  publicMetricRefsByBundle.set(bundle, frozen);
+  return frozen;
 }
 
 function successfulRuntimeResult(

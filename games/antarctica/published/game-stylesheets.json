@@ -1,0 +1,14 @@
+{
+  "$schema": "../../../docs/architecture/schemas/game-stylesheets.schema.json",
+  "schemaVersion": "1.0",
+  "stylesheets": [
+    {
+      "stylesheetId": "antarctica-theme",
+      "gameId": "antarctica",
+      "contentHash": "110f6b6bb941c8980ea6bdb5f3556f85a84506a6b5cc81e925bbc2e5ef61c12b",
+      "integrity": "sha256-EQ9ra7lByJgOpr2181VvhahFBqa1zIHpJbvC5e9hwSs=",
+      "filePath": "published/antarctica-theme.110f6b6bb941c8980ea6bdb5f3556f85a84506a6b5cc81e925bbc2e5ef61c12b.css",
+      "url": "/game-stylesheets/antarctica/antarctica-theme/110f6b6bb941c8980ea6bdb5f3556f85a84506a6b5cc81e925bbc2e5ef61c12b.css"
+    }
+  ]
+}

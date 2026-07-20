@@ -8,6 +8,7 @@
 
 import { randomUUID } from "node:crypto";
 import type {
+  ArchivedSessionAudit,
   CreateSessionInput,
   CreatedSession,
   ImmutableGameBundle,
@@ -55,6 +56,10 @@ interface SessionRow extends QueryResultRow {
   last_event_sequence: string | number;
   created_at: Date | string;
   updated_at: Date | string;
+}
+
+interface ArchivedSessionRow extends SessionRow {
+  archived_at: Date | string;
 }
 
 interface PrincipalRow extends QueryResultRow {
@@ -169,6 +174,9 @@ const SELECT_SESSION = `SELECT ${SESSION_COLUMNS}
   FROM game_sessions
   WHERE id = $1 AND archived_at IS NULL AND bundle_hash IS NOT NULL`;
 const SELECT_SESSION_FOR_UPDATE = `${SELECT_SESSION} FOR UPDATE NOWAIT`;
+const SELECT_ARCHIVED_SESSION = `SELECT ${SESSION_COLUMNS}, archived_at
+  FROM game_sessions
+  WHERE id = $1 AND archived_at IS NOT NULL AND bundle_hash IS NOT NULL`;
 const SYSTEM_SCHEDULE_COLUMNS = `
   schedule_id,
   session_id,
@@ -306,6 +314,18 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     }
   }
 
+  async archiveSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    return this.runArchivedSessionTransaction(input, true);
+  }
+
+  async readArchivedSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    return this.runArchivedSessionTransaction(input, false);
+  }
+
   async getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null> {
     try {
       const result = await this.pool.query<BundleRow>(
@@ -323,7 +343,14 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
     if (!Number.isSafeInteger(afterSequence) || afterSequence < 0) throw new SessionStoreUnavailableError();
     try {
       const result = await this.pool.query<EventRow>(
-        `${SELECT_EVENT} WHERE session_id = $1 AND sequence > $2 ORDER BY sequence ASC`,
+        `${SELECT_EVENT}
+         WHERE session_id = $1 AND sequence > $2
+           AND EXISTS (
+             SELECT 1 FROM game_sessions s
+             WHERE s.id = session_events.session_id
+               AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL
+           )
+         ORDER BY sequence ASC`,
         [sessionId, afterSequence]
       );
       return result.rows.map(mapEventRow);
@@ -341,6 +368,11 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
         `SELECT ${SYSTEM_SCHEDULE_COLUMNS}
          FROM system_schedules
          WHERE session_id = $1 AND status = 'pending'
+           AND EXISTS (
+             SELECT 1 FROM game_sessions s
+             WHERE s.id = system_schedules.session_id
+               AND s.archived_at IS NULL AND s.bundle_hash IS NOT NULL
+           )
          ORDER BY created_at ASC, schedule_id ASC
          LIMIT $2`,
         [sessionId, limit]
@@ -620,6 +652,119 @@ export class PostgresSessionStore<TState = unknown> implements SessionStorePort<
 
   async close(): Promise<void> {
     await this.pool.end();
+  }
+
+  /**
+   * Authenticate and materialize one archive on a single checked-out client.
+   *
+   * The archive write touches only `archived_at`. All audit records are then
+   * read in the same transaction so callers never receive a partially
+   * assembled lifecycle boundary.
+   */
+  private async runArchivedSessionTransaction(
+    input: SessionAuthenticationInput,
+    shouldArchive: boolean
+  ): Promise<ArchivedSessionAudit<TState> | null> {
+    let client: SessionDatabaseClient;
+    try {
+      client = await this.pool.connect();
+    } catch (error) {
+      throw mapDatabaseOperationalError(error);
+    }
+    let transactionStarted = false;
+    let releaseError: Error | boolean | undefined;
+
+    try {
+      await queryClient(client, input.sessionId, "BEGIN");
+      transactionStarted = true;
+      const principalRead = await queryClient<PrincipalRow>(
+        client,
+        input.sessionId,
+        `SELECT p.principal_id, p.session_id, p.principal_kind, p.session_role,
+                p.actor_scope, p.created_at
+         FROM session_principals p
+         JOIN game_sessions s ON s.id = p.session_id
+         WHERE p.session_id = $1 AND p.credential_sha256 = $2
+           AND p.session_role = 'facilitator'
+           AND s.bundle_hash IS NOT NULL
+           ${shouldArchive ? "" : "AND s.archived_at IS NOT NULL"}`,
+        [input.sessionId, input.credentialSha256]
+      );
+      const principalRow = principalRead.rows[0];
+      if (principalRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+
+      const archivedRead = shouldArchive
+        ? await queryClient<ArchivedSessionRow>(
+          client,
+          input.sessionId,
+          `UPDATE game_sessions
+           SET archived_at = COALESCE(archived_at, CURRENT_TIMESTAMP)
+           WHERE id = $1 AND bundle_hash IS NOT NULL
+           RETURNING ${SESSION_COLUMNS}, archived_at`,
+          [input.sessionId]
+        )
+        : await queryClient<ArchivedSessionRow>(
+          client,
+          input.sessionId,
+          SELECT_ARCHIVED_SESSION,
+          [input.sessionId]
+        );
+      const archivedRow = archivedRead.rows[0];
+      if (archivedRow === undefined) {
+        await queryClient(client, input.sessionId, "COMMIT");
+        return null;
+      }
+
+      // Keep the audit reads sequential on one client. node-postgres queues
+      // client queries, and spelling out that order makes the transactional
+      // snapshot and scripted-adapter contract unambiguous.
+      const bundleRead = await queryClient<BundleRow>(
+        client,
+        input.sessionId,
+        `SELECT bundle_hash, game_id, canonical_bytes, canonical_bundle, created_at
+         FROM game_bundles WHERE bundle_hash = $1`,
+        [archivedRow.bundle_hash]
+      );
+      const eventRead = await queryClient<EventRow>(
+        client,
+        input.sessionId,
+        `${SELECT_EVENT}
+         WHERE session_id = $1
+         ORDER BY sequence ASC`,
+        [input.sessionId]
+      );
+      const receiptRead = await queryClient<ReceiptRow>(
+        client,
+        input.sessionId,
+        `${SELECT_RECEIPT}
+         WHERE session_id = $1
+         ORDER BY created_at ASC, receipt_id ASC`,
+        [input.sessionId]
+      );
+      const bundleRow = bundleRead.rows[0];
+      if (bundleRow === undefined) throw new SessionStoreUnavailableError();
+
+      const audit: ArchivedSessionAudit<TState> = {
+        session: mapSessionRow<TState>(archivedRow),
+        archivedAt: new Date(archivedRow.archived_at),
+        principal: mapPrincipalRow(principalRow),
+        bundle: mapBundleRow(bundleRow),
+        events: eventRead.rows.map(mapEventRow),
+        receipts: receiptRead.rows.map(mapReceiptRow)
+      };
+      await queryClient(client, input.sessionId, "COMMIT");
+      return audit;
+    } catch (error) {
+      if (transactionStarted) {
+        releaseError = await rollbackAfterFailure(client, error);
+      }
+      throw mapDatabaseOperationalError(error);
+    } finally {
+      client.release(releaseError);
+    }
   }
 
   private async runLockedTransaction<TResult>(

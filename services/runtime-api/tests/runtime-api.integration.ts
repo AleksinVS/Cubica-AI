@@ -946,6 +946,138 @@ test("POST /action-previews/transport-road is read-only, schema-bounded and stal
   }
 });
 
+test("ADR-092 card-61 metricChanges reflects the applied conditional effect in both history branches", async () => {
+  // Card 61 (Antarctica) applies time +7 unconditionally and +5 more when card
+  // 57 is not yet resolved. Two sessions with different card-57 history prove the
+  // runtime records the actually applied conditional value, not an authored
+  // constant. pro=60 makes the pro<60 and pro<45 branches inert, isolating the
+  // card-57 conditional. Reaching board 61 by real play is impractical, so the
+  // trusted store seam arranges the precondition state (as the transport-road
+  // preview test does); the HTTP path still runs real admission and the plan.
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const api = createRuntimeApiServer({
+    port: 0,
+    sessionStore: store,
+    createSessionRandomSeed: () => "00112233445566778899aabbccddeeff"
+  });
+  await api.start();
+  const localBaseUrl = `http://127.0.0.1:${api.port}`;
+
+  const localCreate = async (): Promise<CreateSessionResponse> => {
+    const res = await fetch(`${localBaseUrl}/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId: "antarctica" })
+    });
+    return readJson<CreateSessionResponse>(res);
+  };
+
+  const arrangeCard61 = async (sessionId: string, card57Resolved: boolean) => {
+    await store.withLockedSession(sessionId, async (current) => {
+      assert.ok(current);
+      const state = structuredClone(current.state) as {
+        public: {
+          timeline: Record<string, unknown>;
+          metrics: Record<string, number>;
+          objects: { cards: Record<string, { facets: Record<string, string> }> };
+        };
+      };
+      const timeline = state.public.timeline;
+      timeline.line = "main";
+      timeline.stepIndex = 32;
+      timeline.step_index = 32;
+      timeline.screenId = "S2";
+      timeline.screen_id = "S2";
+      timeline.canAdvance = false;
+      state.public.metrics.pro = 60;
+      state.public.metrics.time = 5;
+      state.public.objects.cards["57"].facets.resolution = card57Resolved ? "resolved" : "idle";
+      return {
+        updatedSession: {
+          ...current,
+          state: state as unknown as Record<string, unknown>,
+          version: {
+            sessionId,
+            stateVersion: current.version.stateVersion + 1,
+            lastEventSequence: current.version.lastEventSequence
+          },
+          updatedAt: new Date()
+        },
+        result: undefined
+      };
+    });
+  };
+
+  const dispatchCard61 = async (session: CreateSessionResponse): Promise<ActionResponse> => {
+    const current = await store.getSession(session.sessionId);
+    assert.ok(current);
+    const res = await fetch(`${localBaseUrl}/actions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.credential}`
+      },
+      body: JSON.stringify({
+        sessionId: session.sessionId,
+        actionId: "opening.card.61",
+        commandId: nextCommandId(),
+        expectedStateVersion: current.version.stateVersion,
+        params: {}
+      })
+    });
+    return readJson<ActionResponse>(res);
+  };
+
+  type MetricChange = { metricId: string; before: number; after: number };
+  const lastLogEntry = (action: ActionResponse): { metricChanges?: Array<MetricChange> } => {
+    const log = (action.state.public as unknown as { log: Array<{ metricChanges?: Array<MetricChange> }> }).log;
+    return log[log.length - 1];
+  };
+  const timeChange = (action: ActionResponse): MetricChange => {
+    const entry = lastLogEntry(action);
+    assert.ok(entry.metricChanges, "public card event must carry metricChanges");
+    const time = entry.metricChanges.find((change) => change.metricId === "time");
+    assert.ok(time, "metricChanges must include the time metric");
+    return time;
+  };
+
+  try {
+    const resolvedSession = await localCreate();
+    await arrangeCard61(resolvedSession.sessionId, true);
+    const resolvedAction = await dispatchCard61(resolvedSession);
+    assert.equal(resolvedAction.receipt.status, "applied", JSON.stringify(resolvedAction));
+    // Card 57 already resolved: only the unconditional +7 applies.
+    assert.deepEqual(timeChange(resolvedAction), { metricId: "time", before: 5, after: 12 });
+
+    const idleSession = await localCreate();
+    await arrangeCard61(idleSession.sessionId, false);
+    const idleAction = await dispatchCard61(idleSession);
+    assert.equal(idleAction.receipt.status, "applied", JSON.stringify(idleAction));
+    // Card 57 not resolved: the +5 conditional also applies (5 -> 17).
+    assert.deepEqual(timeChange(idleAction), { metricId: "time", before: 5, after: 17 });
+
+    // Every declared public state metric appears, in manifest catalog order.
+    assert.deepEqual(
+      lastLogEntry(idleAction).metricChanges?.map((change) => change.metricId),
+      ["time", "pro", "rep", "lid", "man", "stat", "cont", "constr"]
+    );
+  } finally {
+    await api.close();
+  }
+});
+
+test("ADR-092 omits metricChanges for a game without a public metric catalog (simple-choice)", async () => {
+  const session = await createSession({ gameId: "simple-choice" });
+  const { response, body } = await dispatchAction(session.sessionId, "choice.accept");
+  assert.equal(response.status, 200);
+  const action = body as ActionResponse;
+  const entry = (action.state.public as unknown as { log: Array<Record<string, unknown>> }).log[0];
+  assert.ok(entry, "expected a simple-choice log entry");
+  // simple-choice emits a public event but declares no metric catalog, so no
+  // metric block is attached even though the game has a public.metrics.score.
+  assert.equal("metricChanges" in entry, false);
+});
+
 test("GET /games/:id/player-content returns dataUi manifest for Antarctica", async () => {
   const { response, body } = await requestJson<PlayerFacingContent>("/games/antarctica/player-content");
 
@@ -985,7 +1117,25 @@ test("GET /games/:id/player-content returns Antarctica game-owned metric catalog
   ]);
   assert.equal(contentData.rules?.dayLimit, 60);
   assert.equal(contentData.metrics?.find((metric) => metric.metricId === "remainingDays")?.kind, "computed");
-  assert.equal((body.ui as { metricSpecs?: unknown } | undefined)?.metricSpecs, undefined);
+
+  // TSK-20260719 R7 (ARC-008): the UI manifest now also publishes metric_specs
+  // (captions/aliases/asset:<id> images) so player-web can derive
+  // fallbackMetrics from the manifest instead of a plugin-owned dictionary.
+  // This is a *second*, UI-facing metric catalog (SafeModeRenderer/legacy
+  // fallback shape) distinct from the game-owned metric catalog asserted
+  // above; both are expected to coexist.
+  const metricSpecs = (body.ui as { metricSpecs?: Array<{ id?: string; images?: { sidebar?: string; topbar?: string } }> } | undefined)
+    ?.metricSpecs;
+  assert.ok(metricSpecs, "expected games/antarctica UI content to publish metric_specs");
+  assert.deepEqual(
+    metricSpecs?.map((spec) => spec.id),
+    ["remainingDays", "pro", "rep", "lid", "man", "stat", "cont", "constr"]
+  );
+  // Images are asset:<id> references (ADR-063), never a baked-in /images/... path.
+  for (const spec of metricSpecs ?? []) {
+    assert.match(spec.images?.sidebar ?? "", /^asset:/u);
+    assert.match(spec.images?.topbar ?? "", /^asset:/u);
+  }
 });
 
 test("GET /games/:id/player-content returns published player-web plugin bundle references", async () => {
@@ -1525,78 +1675,63 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     card31.title,
     "Создать комитет по борьбе с лже-наукой. Провести детальную разъяснительную работу со всеми пингвинами, чтобы было понятно, в чем проблема. Над чем идет работа."
   );
-  assert.equal(
-    card31.summary,
-    "Такая кропотливая работа, безусловно, полезна. Почти все пингвины разобрались в ситуации. К несчастью, кто-то все равно посчитал, что это - заговор замалчивания."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - `summary` is now a short paraphrase of the
+  // FRONT side (was a verbatim duplicate of `backText`, a spoiler risk).
+  assert.equal(card31.summary, "Комитет разъясняет пингвинам суть проблемы напрямую.");
   assert.equal(card31.selectActionId, "opening.card.31");
   assert.equal(card31.advanceActionId, "opening.card.31.advance");
   assert.equal(
     card32.title,
     "Сделать мотивирующие листовки Айсберг не спасет себя сам! Узнай, что ты можешь сделать? В них объяснить ситуацию, что делается для решения, в чем нужна помощь."
   );
-  assert.equal(
-    card32.summary,
-    "Листовки получились интересные, многим они понравились. Хотя нельзя сказать, что они сильно повлияли. Хорошо, что паники почти и не было."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card32.summary, "Листовки объясняют ситуацию и просят о помощи.");
   assert.equal(card32.selectActionId, "opening.card.32");
   assert.equal(card32.advanceActionId, "opening.card.32.advance");
   assert.equal(
     card33.title,
     "Выявить наиболее тревожных пингвинов и провести работу с ними: успокоить, привлечь их к разъяснительной работе, поддержке других тревожных пингвинов."
   );
-  assert.equal(
-    card33.summary,
-    "Отличная идея! Разъясняя другим, пингвины успокаивались все больше. Конечно, пришлось их этому обучить и дать чек-листы, это было небыстро."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card33.summary, "Тревожных пингвинов успокаивают и вовлекают в разъяснительную работу.");
   assert.equal(card33.selectActionId, "opening.card.33");
   assert.equal(card33.advanceActionId, "opening.card.33.advance");
   assert.equal(
     card34.title,
     "Разработать и внедрить разумную систему наказаний для тех, кто сеет панику: штрафы за дезинформацию и вбросы, за публичные призывы - изоляция в ледяной пещере."
   );
-  assert.equal(
-    card34.summary,
-    "Паника затухает. Более точно было бы сказать, что она прячется до поры до времени. Как сжавшаяся пружина она может неожиданно расправиться. Осторожнее!"
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card34.summary, "За распространение паники вводят наказания.");
   assert.equal(card34.selectActionId, "opening.card.34");
   assert.ok(card34.advanceActionId === undefined);
   assert.equal(
     card35.title,
     "Провести серию выступлений для небольших групп пингвинов, пользуясь более неформальной обстановкой объяснить все простыми словами и успокоить."
   );
-  assert.equal(
-    card35.summary,
-    "Паника быстро затухает. Становится понятно, что все было не так уж и плохо, пингвины весьма понятливы и эмоционально стабильны."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card35.summary, "Небольшим группам простыми словами объясняют ситуацию.");
   assert.equal(card35.selectActionId, "opening.card.35");
   assert.equal(card35.advanceActionId, "opening.card.35.advance");
   assert.equal(
     card36.title,
     "Провести разъяснения с каждым пингвином персонально. Для этого подготовить специальную расширенную команду и действовать по строгому расписанию."
   );
-  assert.equal(
-    card36.summary,
-    "Пожалуй, это слишком затратный путь. Хотя, от паники не осталось и следа. Вы можете продолжать изменения - как ни в чем не бывало."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card36.summary, "Каждому пингвину дают личные разъяснения по расписанию.");
   assert.equal(card36.selectActionId, "opening.card.36");
   assert.equal(card36.advanceActionId, "opening.card.36.advance");
   assert.equal(
     card37.title,
     "Было столько идей, что может быть, некоторые были пропущены? Нужно проверить записи, сделать каталог идей по рубрикам, возможно, ответ уже найден. За дело!"
   );
-  assert.equal(
-    card37.summary,
-    "Все 492 идеи помещены в каталог. Работали круглосуточно, очень устали. Даже мысль о кальмарах уже не радует. Хороших идей не нашлось, новых не появилось."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card37.summary, "Все прежние идеи сводят в единый каталог.");
   assert.equal(
     card38.title,
     "Можно сделать еще одно общее собрание, но теперь уже с подготовкой – все должны принести не менее трех идей, как решить проблему. Нужно второе дыхание!"
   );
-  assert.equal(
-    card38.summary,
-    "Второго дыхания не случилось. Новых идей нет, они давно иссякли. Трата времени, напряжение и отсутствие выхода делают свое дело – пингвины встревожены."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card38.summary, "Собрание проводят с заранее подготовленными идеями участников.");
   assert.equal(
     card39.title,
     "Лидер предлагает оставить пока поиск решения, отдохнуть. Лучше просто понаблюдать за жизнью колонии, за природой, подышать свежим воздухом."
@@ -1622,10 +1757,8 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
   );
   assert.equal(card43.selectActionId, "opening.card.43");
   assert.equal(card43.advanceActionId, "opening.card.43.advance");
-  assert.equal(
-    card43.summary,
-    "Конечно, пингвины в шоке… Это уже новая беда или все еще старая? Конечно, Вожак был убедителен и заразил своей уверенностью многих. Тем не менее, Григорий, стоящий в толпе чувствовал, как растет его авторитет."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card43.summary, "Леонид призывает пингвинов сплотиться и стать переселенцами.");
   assert.equal(
     card44.title,
     "Леонид собирает общее собрание и выступает с презентацией на основе слайдов Профессора, подробно рассказывает о логике принимаемого решения, о плане реализации."
@@ -1660,60 +1793,50 @@ test("GET /games/:gameId/player-content returns player-facing content DTO", asyn
     card49.title,
     "Провести работу с лидерами мнений (у Профессора есть как раз свежий социальный граф колонии). Преодолеть сомнения и направить пропаганду через этих лидеров…"
   );
-  assert.equal(
-    card49.summary,
-    "Не все лидеры мнений готовы к такой работе: кто-то не вполне верит, кто-то занят делами, кто-то по-своему понял информацию… Эффект есть, но он не совсем такой, как ожидалось."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card49.summary, "Информацию распространяют через лидеров мнений колонии.");
   assert.equal(card49.selectActionId, "opening.card.49");
   assert.equal(card49.advanceActionId, "opening.card.49.advance");
   assert.equal(
     card50.title,
     "Провести совещания о будущих переменах по месту работы пингвинов с участием команды перемен и представителей Совета. Предложить задавать самые острые вопросы."
   );
-  assert.equal(
-    card50.summary,
-    "Возможность поговорить в рабочее время, открытость лидеров и неформальность обстановки очень помогли. Пингвины почувстовали себя в надежных руках и принесли уверенность домой."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card50.summary, "На рабочих местах пингвины открыто обсуждают перемены с командой.");
   assert.equal(card50.selectActionId, "opening.card.50");
   assert.equal(card50.advanceActionId, "opening.card.50.advance");
   assert.equal(
     card51.title,
     "Организовать семейные ужины - вечерние встречи с семьями пингвинов, узнать об их страхах и сомнениях, заразить их уверенностью и оптимизмом. Рассказать о новых возможностях."
   );
-  assert.equal(
-    card51.summary,
-    "Пингвины: а) выговорились, б) узнали, что страхи и сомнения есть у всех, в) заразились уверенностью, г) с энтузиазмом восприняли новые возможности. Многие стали мечтать о новом доме..."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card51.summary, "На семейных ужинах развеивают страхи и вселяют уверенность.");
   assert.equal(card51.selectActionId, "opening.card.51");
   assert.equal(card51.advanceActionId, "opening.card.51.advance");
   assert.equal(
     card52.title,
     "Организовать семинары в детских садах и школах о том, как прекрасны путешествия. Провести конкурсы на лучшие рассказы и рисунки о приключениях странствующих пингвинов."
   );
-  assert.equal(
-    card52.summary,
-    "Вовлечь детей было несложно! Увлекательные рассказы их вдохновили. Это )особенно вместе с конкурсами) позволило вовлечь и родителей. Пусть это игра, всем стало легче!"
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card52.summary, "Детей вовлекают конкурсами рассказов и рисунков о путешествиях.");
   assert.equal(card52.selectActionId, "opening.card.52");
   assert.equal(card52.advanceActionId, "opening.card.52.advance");
   assert.equal(
     card53.title,
     "Сделать видео-ролик для Айсберг-ТВ и показывать его так часто, как возможно. В ролике рассказать про будущий новый айсберг и показать элементы подготовки к переезду."
   );
-  assert.equal(
-    card53.summary,
-    "Ролик очень понравился пингвинам. Это было солидно! Правда немного не хватило частоты показов, возможно, не все увидели. Да и на подготовку ушло много времени."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card53.summary, "Видеоролик на Айсберг-ТВ рассказывает о будущем новом айсберге.");
   assert.equal(card53.selectActionId, "opening.card.53");
   assert.equal(card53.advanceActionId, "opening.card.53.advance");
   assert.equal(
+    // LGC-011 (TSK-20260719-antarctica-alignment, block 2.5a): восстановлено эталонное
+    // концевое многоточие "!.." (было "!…" - типографская правка, утраченная при миграции).
     card54.title,
-    "Заполнить айсберг жизнеутверждающими постерами о несгибаемости пингвинов, их юморе и любви к приключениям, новом лучшем айсберге. Размещать их также под водой!…"
+    "Заполнить айсберг жизнеутверждающими постерами о несгибаемости пингвинов, их юморе и любви к приключениям, новом лучшем айсберге. Размещать их также под водой!.."
   );
-  assert.equal(
-    card54.summary,
-    "У постеров хороший охват! Особенно удались подводные, ведь это было вновинку! Постеры настраивали на оптимизм. Некоторые даже стали мемами..."
-  );
+  // TSK-20260719 W2-D: LGC-013 fix - see the note above card31.summary.
+  assert.equal(card54.summary, "Айсберг украшают жизнеутверждающими постерами, даже под водой.");
   assert.equal(card54.selectActionId, "opening.card.54");
   assert.equal(card54.advanceActionId, "opening.card.54.advance");
   const card3 = (antarcticaContent.cards as Array<{ cardId: string }>).find((entry: any) => entry.cardId === "3");
@@ -1759,7 +1882,8 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
   assert.equal((s1Screen as any).root.type, "screenComponent");
   assert.ok((s1Screen as any).root.props);
   assert.match(String((s1Screen as any).root.props.cssClass), /\bmain-screen\b/);
-  assert.equal((s1Screen as any).root.props.backgroundImage, "/images/arctic-background.png");
+  // TSK-20260719 R4b: migrated to the game asset channel (ADR-063).
+  assert.equal((s1Screen as any).root.props.backgroundImage, "asset:arctic-background");
 
   // Verify children exist (areas)
   assert.ok(Array.isArray((s1Screen as any).root.children));
@@ -1816,11 +1940,12 @@ test("GET /games/antarctica/player-content returns antarcticaUi with S1 screen d
 
   const hintButton = buttonComponents.find((b: any) => b.id === "btn-hint");
   assert.ok(hintButton, "btn-hint button must be present");
-  assert.equal(hintButton.props.caption, "Подсказка");
+  // Lowercase captions follow the visual reference (TSK-20260719, UI-003).
+  assert.equal(hintButton.props.caption, "подсказка");
 
   const journalButton = buttonComponents.find((b: any) => b.id === "btn-journal");
   assert.ok(journalButton, "btn-journal button must be present");
-  assert.equal(journalButton.props.caption, "Журнал ходов");
+  assert.equal(journalButton.props.caption, "журнал ходов");
 
   // Verify design artifacts registry is present
   const designArtifacts = ui.designArtifacts as Record<string, unknown>;
@@ -1839,7 +1964,8 @@ test("GET /games/antarctica/player-content preserves asset references in antarct
   assert.ok(s1Screen, "S1 screen must exist");
   const root = (s1Screen as any).root;
   const rootProps = root.props as { backgroundImage?: string };
-  assert.equal(rootProps.backgroundImage, "/images/arctic-background.png");
+  // TSK-20260719 R4b: migrated to the game asset channel (ADR-063).
+  assert.equal(rootProps.backgroundImage, "asset:arctic-background");
 
   // Verify metric background images are preserved (not resolved, just data strings)
   const variablesArea = (root.children as Array<Record<string, unknown>>)?.find(

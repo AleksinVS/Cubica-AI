@@ -20,6 +20,42 @@ test("compiled mock manifest has its own identity and an executable network", ()
   assert.ok((manifest.networkModels as Record<string, unknown>).main);
   assert.ok(actions["construction.road.build"]);
   assert.ok(actions["construction.waypoint.build"]);
+
+  const state = manifest.state as Record<string, any>;
+  const dynamicBoardActionIds = [
+    "mock.cargo.load.white",
+    "mock.operations.attach.white",
+    "mock.operations.detach.white",
+    "mock.locomotive.move",
+    "mock.cargo.deliver"
+  ];
+  for (const actionId of dynamicBoardActionIds) {
+    const boardAction = state.public.board.availableActions.find(
+      (candidate: Record<string, unknown>) => candidate.actionId === actionId
+    );
+    assert.ok(boardAction, `${actionId} must remain visible on the facilitator board`);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(boardAction, "params"),
+      false,
+      `${actionId} must collect object IDs dynamically`
+    );
+  }
+
+  for (const actionId of [
+    "mock.cargo.load.white",
+    "mock.operations.attach.white",
+    "mock.operations.detach.white",
+    "mock.cargo.deliver"
+  ]) {
+    const paramsSchema = actions[actionId]?.paramsSchema as Record<string, any>;
+    for (const [parameterName, parameterSchema] of Object.entries(paramsSchema.properties)) {
+      assert.equal(
+        Object.prototype.hasOwnProperty.call(parameterSchema, "enum"),
+        false,
+        `${actionId}.${parameterName} must not pin a fixture object ID`
+      );
+    }
+  }
 });
 
 test("mock annotation produces connected references and explicitly closed regions", () => {

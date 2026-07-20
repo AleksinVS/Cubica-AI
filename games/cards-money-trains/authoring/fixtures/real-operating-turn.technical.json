@@ -1,0 +1,245 @@
+{
+  "$schema": "./real-operating-turn.technical.schema.json",
+  "fixtureKind": "real-operating-turn-technical-replay",
+  "gameId": "cards-money-trains",
+  "fixtureId": "real-operating-turn-technical-v1",
+  "status": "technical-review-only",
+  "publishable": false,
+  "assumptions": {
+    "roadState": "road-1-9 is open only inside this technical replay",
+    "cargoMultiplicity": "one technical instance of cargo-source-row-005; no physical deck multiplicity is asserted",
+    "teamAndPlacement": "two technical team entities, one wagon and one locomotive start at terminal-1 only for this replay; normal setup actions are tested separately",
+    "deckLifecycle": "news-24 or news-11 is selected explicitly; news and cargo deck lifecycle is bypassed"
+  },
+  "sourceIds": {
+    "positiveNewsId": "news-24",
+    "negativeNewsId": "news-11",
+    "cargoId": "cargo-source-row-005",
+    "fromNodeId": "terminal-1",
+    "toNodeId": "terminal-9",
+    "edgeId": "road-1-9"
+  },
+  "objects": {
+    "teams": {
+      "white-logistics": {
+        "objectType": "game.team",
+        "facets": {
+          "placementStatus": "placed"
+        },
+        "attributes": {
+          "label": "Белая",
+          "type": "logistics_company",
+          "colorId": "cobalt",
+          "coins": 10,
+          "placementOrderKey": 0
+        }
+      },
+      "purple-guild": {
+        "objectType": "game.team",
+        "facets": {
+          "placementStatus": "placed"
+        },
+        "attributes": {
+          "label": "Фиолетовая",
+          "type": "locomotive_guild",
+          "colorId": "violet",
+          "coins": 10,
+          "placementOrderKey": 0
+        }
+      }
+    },
+    "networkNodes": {
+      "terminal-1": {
+        "objectType": "transport.terminal",
+        "facets": {
+          "availability": "open"
+        },
+        "attributes": {
+          "networkId": "main",
+          "position": {
+            "x": 3757,
+            "y": 1546
+          },
+          "createdTurn": 0,
+          "activationTurn": 0,
+          "blockingReasons": []
+        }
+      },
+      "terminal-9": {
+        "objectType": "transport.terminal",
+        "facets": {
+          "availability": "open"
+        },
+        "attributes": {
+          "networkId": "main",
+          "position": {
+            "x": 3670,
+            "y": 680
+          },
+          "createdTurn": 0,
+          "activationTurn": 0,
+          "blockingReasons": []
+        }
+      }
+    },
+    "networkEdges": {
+      "road-1-9": {
+        "objectType": "transport.edge",
+        "facets": {
+          "state": "open"
+        },
+        "attributes": {
+          "networkId": "main",
+          "fromNodeId": "terminal-1",
+          "toNodeId": "terminal-9",
+          "geometry": {
+            "from": {
+              "x": 3757,
+              "y": 1546
+            },
+            "to": {
+              "x": 3670,
+              "y": 680
+            },
+            "polyline": [
+              {
+                "x": 3757,
+                "y": 1546
+              },
+              {
+                "x": 3670,
+                "y": 680
+              }
+            ]
+          },
+          "constructionCost": 0,
+          "regionSegments": 0,
+          "routePlan": {},
+          "splitFromEdgeId": "",
+          "createdTurn": 0,
+          "activationTurn": 0,
+          "blockingReasons": []
+        }
+      }
+    },
+    "locomotives": {
+      "technical-locomotive-purple-1": {
+        "objectType": "transport.locomotive",
+        "facets": {
+          "availability": "active"
+        },
+        "attributes": {
+          "networkId": "main",
+          "nodeId": "terminal-1",
+          "ownerTeamId": "purple-guild",
+          "actionPoints": 5
+        }
+      }
+    },
+    "wagons": {
+      "technical-wagon-white-1": {
+        "objectType": "transport.wagon",
+        "facets": {
+          "availability": "active"
+        },
+        "attributes": {
+          "networkId": "main",
+          "nodeId": "terminal-1",
+          "ownerTeamId": "white-logistics",
+          "attachedVehicleId": null,
+          "cargoId": null
+        }
+      }
+    },
+    "cargoOrders": {
+      "cargo-source-row-005": {
+        "objectType": "transport.cargo",
+        "facets": {
+          "status": "available"
+        },
+        "attributes": {
+          "networkId": "main",
+          "fromNodeId": "terminal-1",
+          "toNodeId": "terminal-9",
+          "payout": 13,
+          "settledRouteLength": null,
+          "holderTeamId": "white-logistics"
+        }
+      }
+    }
+  },
+  "branches": {
+    "positive": {
+      "newsId": "news-24",
+      "steps": [
+        {
+          "actionId": "technical.news.apply.24",
+          "expect": "applied"
+        },
+        {
+          "actionId": "technical.cargo.load",
+          "params": {
+            "wagonId": "technical-wagon-white-1",
+            "cargoId": "cargo-source-row-005"
+          },
+          "expect": "applied"
+        },
+        {
+          "actionId": "technical.operations.attach",
+          "params": {
+            "vehicleId": "technical-locomotive-purple-1",
+            "wagonId": "technical-wagon-white-1"
+          },
+          "expect": "applied"
+        },
+        {
+          "actionId": "technical.operations.move",
+          "params": {
+            "vehicleId": "technical-locomotive-purple-1",
+            "edgeId": "road-1-9"
+          },
+          "expect": "applied"
+        },
+        {
+          "actionId": "technical.cargo.deliver",
+          "params": {
+            "wagonId": "technical-wagon-white-1",
+            "cargoId": "cargo-source-row-005"
+          },
+          "expect": "applied"
+        }
+      ],
+      "expected": {
+        "logisticsCoins": 24,
+        "guildCoins": 12,
+        "locomotiveActionPoints": 3,
+        "locomotiveNodeId": "terminal-9",
+        "cargoStatus": "delivered",
+        "settledRouteLength": 1
+      }
+    },
+    "negative": {
+      "newsId": "news-11",
+      "steps": [
+        {
+          "actionId": "technical.news.apply.11",
+          "expect": "applied"
+        },
+        {
+          "actionId": "technical.operations.move",
+          "params": {
+            "vehicleId": "technical-locomotive-purple-1",
+            "edgeId": "road-1-9"
+          },
+          "expect": "rejected"
+        }
+      ],
+      "expected": {
+        "edgeState": "blocked",
+        "locomotiveNodeId": "terminal-1",
+        "locomotiveActionPoints": 5,
+        "rejectedStateVersionDelta": 0
+      }
+    }
+  }
+}

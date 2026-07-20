@@ -197,6 +197,16 @@
         },
         {
           "type": "object",
+          "required": ["kind", "minimum", "maximum"],
+          "properties": {
+            "kind": { "const": "finite-number" },
+            "minimum": { "type": "number" },
+            "maximum": { "type": "number" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
           "required": ["kind", "scale", "minimum", "maximum"],
           "properties": {
             "kind": { "const": "decimal" },
@@ -341,6 +351,12 @@
       "additionalProperties": false
     },
     "collectionField": {
+      "oneOf": [
+        { "$ref": "#/$defs/storedEntityCollectionField" },
+        { "$ref": "#/$defs/derivedCollectionField" }
+      ]
+    },
+    "storedEntityCollectionField": {
       "type": "object",
       "required": ["storage", "valueType", "access"],
       "properties": {
@@ -355,6 +371,30 @@
         },
         "valueType": { "$ref": "#/$defs/identifier" },
         "access": { "enum": ["read-only", "read-write"] }
+      },
+      "additionalProperties": false
+    },
+    "derivedCollectionField": {
+      "type": "object",
+      "required": ["source", "valueType", "access"],
+      "properties": {
+        "source": {
+          "type": "object",
+          "required": ["kind", "field", "path"],
+          "properties": {
+            "kind": { "const": "nested-field" },
+            "field": { "$ref": "#/$defs/identifier" },
+            "path": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 16,
+              "items": { "$ref": "#/$defs/identifier" }
+            }
+          },
+          "additionalProperties": false
+        },
+        "valueType": { "$ref": "#/$defs/identifier" },
+        "access": { "const": "read-only" }
       },
       "additionalProperties": false
     },
@@ -390,6 +430,12 @@
       "additionalProperties": false
     },
     "recordCollectionField": {
+      "oneOf": [
+        { "$ref": "#/$defs/storedRecordCollectionField" },
+        { "$ref": "#/$defs/derivedCollectionField" }
+      ]
+    },
+    "storedRecordCollectionField": {
       "type": "object",
       "required": ["storage", "valueType", "access"],
       "properties": {
@@ -443,8 +489,15 @@
     },
     "step": {
       "oneOf": [
+        { "$ref": "#/$defs/entitiesEachStep" },
+        { "$ref": "#/$defs/nonIterationStep" }
+      ]
+    },
+    "nonIterationStep": {
+      "oneOf": [
         { "$ref": "#/$defs/assertStep" },
         { "$ref": "#/$defs/selectEntitiesStep" },
+        { "$ref": "#/$defs/orderEntitiesStep" },
         { "$ref": "#/$defs/nextCollectionIdStep" },
         { "$ref": "#/$defs/sequenceNextStep" },
         { "$ref": "#/$defs/statePatchStep" },
@@ -459,8 +512,12 @@
         { "$ref": "#/$defs/randomRollStep" },
         { "$ref": "#/$defs/deckShuffleStep" },
         { "$ref": "#/$defs/deckDrawStep" },
+        { "$ref": "#/$defs/deckExtractStep" },
+        { "$ref": "#/$defs/deckReturnStep" },
+        { "$ref": "#/$defs/deckInsertStep" },
         { "$ref": "#/$defs/turnPhaseStep" },
         { "$ref": "#/$defs/graphRegionRouteStep" },
+        { "$ref": "#/$defs/graphEdgePositionInspectStep" },
         { "$ref": "#/$defs/graphSplitEdgeStep" },
         { "$ref": "#/$defs/graphEntityMoveStep" },
         { "$ref": "#/$defs/graphShortestPathStep" },
@@ -548,6 +605,13 @@
       },
       "additionalProperties": false
     },
+    "deckReference": {
+      "description": "A package-declared deck selected either by its legacy literal id or by one bounded action parameter.",
+      "oneOf": [
+        { "$ref": "#/$defs/identifier" },
+        { "$ref": "#/$defs/paramExpression" }
+      ]
+    },
     "actorExpression": {
       "type": "object",
       "required": ["op"],
@@ -590,13 +654,38 @@
       },
       "additionalProperties": false
     },
+    "graphInspectionProofRef": {
+      "type": "object",
+      "required": ["op", "stepId"],
+      "properties": {
+        "op": { "const": "value.result" },
+        "stepId": { "$ref": "#/$defs/stepId" }
+      },
+      "additionalProperties": false
+    },
     "itemReadExpression": {
+      "oneOf": [
+        { "$ref": "#/$defs/itemFieldReadExpression" },
+        { "$ref": "#/$defs/itemIdentityReadExpression" }
+      ]
+    },
+    "itemFieldReadExpression": {
       "type": "object",
       "required": ["op", "area", "field"],
       "properties": {
         "op": { "const": "value.item" },
         "area": { "enum": ["facet", "attribute"] },
         "field": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": false
+    },
+    "itemIdentityReadExpression": {
+      "type": "object",
+      "required": ["op", "area", "field"],
+      "properties": {
+        "op": { "const": "value.item" },
+        "area": { "const": "identity" },
+        "field": { "const": "id" }
       },
       "additionalProperties": false
     },
@@ -640,7 +729,8 @@
         { "$ref": "#/$defs/actorActivePredicate" },
         { "$ref": "#/$defs/turnPhasePredicate" },
         { "$ref": "#/$defs/entityMatchesPredicate" },
-        { "$ref": "#/$defs/collectionCountPredicate" }
+        { "$ref": "#/$defs/collectionCountPredicate" },
+        { "$ref": "#/$defs/setDisjointPredicate" }
       ]
     },
     "constantPredicate": {
@@ -757,6 +847,16 @@
       },
       "additionalProperties": false
     },
+    "setDisjointPredicate": {
+      "type": "object",
+      "required": ["op", "left", "right"],
+      "properties": {
+        "op": { "const": "predicate.set.disjoint" },
+        "left": { "$ref": "#/$defs/valueExpression" },
+        "right": { "$ref": "#/$defs/valueExpression" }
+      },
+      "additionalProperties": false
+    },
     "assertStep": {
       "type": "object",
       "required": ["id", "kind", "op", "predicate", "errorCode"],
@@ -777,15 +877,7 @@
       "required": ["collection", "cardinality"],
       "properties": {
         "collection": { "$ref": "#/$defs/identifier" },
-        "within": {
-          "type": "object",
-          "required": ["op", "stepId"],
-          "properties": {
-            "op": { "const": "value.result" },
-            "stepId": { "$ref": "#/$defs/stepId" }
-          },
-          "additionalProperties": false
-        },
+        "within": { "$ref": "#/$defs/entitySelectionResultRef" },
         "objectTypes": {
           "type": "array",
           "minItems": 1,
@@ -836,6 +928,169 @@
         "kind": { "const": "query" },
         "op": { "const": "core.entities.select" },
         "selector": { "$ref": "#/$defs/entitySelector" },
+        "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "entitySelectionResultRef": {
+      "type": "object",
+      "required": ["op", "stepId"],
+      "properties": {
+        "op": { "const": "value.result" },
+        "stepId": { "$ref": "#/$defs/stepId" }
+      },
+      "additionalProperties": false
+    },
+    "entitiesEachStep": {
+      "description": "Execute one bounded body for every member of a prior typed selection in canonical identifier order.",
+      "type": "object",
+      "required": ["id", "kind", "op", "selection", "body"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stepId" },
+        "kind": { "const": "command" },
+        "op": { "const": "core.entities.each" },
+        "selection": { "$ref": "#/$defs/entitySelectionResultRef" },
+        "body": {
+          "description": "Existing Mechanics operations executed in an iteration-local result scope. Nested core.entities.each is rejected by the semantic checker.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/$defs/nonIterationStep" }
+        },
+        "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "entityOrderJoinCurrent": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "stable-id" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "field"],
+          "properties": {
+            "kind": { "const": "field" },
+            "field": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "entityOrderSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "field"],
+          "properties": {
+            "kind": { "const": "current-field" },
+            "field": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "referenceField", "collection", "field"],
+          "properties": {
+            "kind": { "const": "related-field" },
+            "referenceField": { "$ref": "#/$defs/identifier" },
+            "collection": { "$ref": "#/$defs/identifier" },
+            "field": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "$ref": "#/$defs/entityOrderAggregateSource"
+        }
+      ]
+    },
+    "entityOrderJoin": {
+      "type": "object",
+      "required": ["current", "relatedField"],
+      "properties": {
+        "current": { "$ref": "#/$defs/entityOrderJoinCurrent" },
+        "relatedField": { "$ref": "#/$defs/identifier" }
+      },
+      "additionalProperties": false
+    },
+    "entityOrderAggregateSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind", "collection", "join", "aggregate"],
+          "properties": {
+            "kind": { "const": "related-aggregate" },
+            "collection": { "$ref": "#/$defs/identifier" },
+            "join": { "$ref": "#/$defs/entityOrderJoin" },
+            "aggregate": { "const": "count" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "collection", "join", "aggregate", "valueField"],
+          "properties": {
+            "kind": { "const": "related-aggregate" },
+            "collection": { "$ref": "#/$defs/identifier" },
+            "join": { "$ref": "#/$defs/entityOrderJoin" },
+            "aggregate": { "enum": ["sum", "min", "max"] },
+            "valueField": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "entityOrderKey": {
+      "type": "object",
+      "required": ["source", "direction", "missing"],
+      "properties": {
+        "source": { "$ref": "#/$defs/entityOrderSource" },
+        "direction": { "enum": ["ascending", "descending"] },
+        "missing": { "enum": ["error", "first", "last"] }
+      },
+      "additionalProperties": false
+    },
+    "entityOrderTieBreak": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "canonical-id" }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "required": ["kind", "stream"],
+          "properties": {
+            "kind": { "const": "seeded-random" },
+            "stream": { "$ref": "#/$defs/identifier" }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "orderEntitiesStep": {
+      "type": "object",
+      "required": ["id", "kind", "op", "selection", "keys", "tieBreak"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stepId" },
+        "kind": { "const": "command" },
+        "op": { "const": "core.entities.order" },
+        "selection": { "$ref": "#/$defs/entitySelectionResultRef" },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/entityOrderKey" }
+        },
+        "tieBreak": { "$ref": "#/$defs/entityOrderTieBreak" },
         "when": { "$ref": "#/$defs/predicate" }
       },
       "additionalProperties": false
@@ -1048,6 +1303,22 @@
           "additionalProperties": false
         },
         {
+          "description": "Idempotently add one typed value to one directly stored set attribute without replacing independent existing members.",
+          "type": "object",
+          "required": ["operation", "path", "value"],
+          "properties": {
+            "operation": { "const": "set-add" },
+            "path": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 1,
+              "items": { "$ref": "#/$defs/identifier" }
+            },
+            "value": { "$ref": "#/$defs/valueExpression" }
+          },
+          "additionalProperties": false
+        },
+        {
           "type": "object",
           "required": ["operation", "path", "value"],
           "properties": {
@@ -1089,15 +1360,7 @@
         "id": { "$ref": "#/$defs/stepId" },
         "kind": { "const": "command" },
         "op": { "const": "core.entities.update" },
-        "selection": {
-          "type": "object",
-          "required": ["op", "stepId"],
-          "properties": {
-            "op": { "const": "value.result" },
-            "stepId": { "$ref": "#/$defs/stepId" }
-          },
-          "additionalProperties": false
-        },
+        "selection": { "$ref": "#/$defs/entitySelectionResultRef" },
         "facetValues": {
           "type": "object",
           "maxProperties": 32,
@@ -1178,12 +1441,62 @@
         "id": { "$ref": "#/$defs/stepId" },
         "kind": { "const": "command" },
         "op": { "const": "deck.draw" },
-        "deckId": { "$ref": "#/$defs/identifier" },
+        "deckId": { "$ref": "#/$defs/deckReference" },
         "target": { "$ref": "#/$defs/stateRef" },
         "onEmpty": {
           "enum": ["reshuffle-discard", "fail"],
           "description": "A reshuffle reuses the named stream pinned by the deck.shuffle operation that created the deck."
         },
+        "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "deckExtractStep": {
+      "type": "object",
+      "required": ["id", "kind", "op", "deckId", "source"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stepId" },
+        "kind": { "const": "command" },
+        "op": { "const": "deck.extract" },
+        "deckId": { "$ref": "#/$defs/deckReference" },
+        "source": {
+          "enum": ["order", "discard"],
+          "description": "The top is the first order item or the last discard item."
+        },
+        "card": {
+          "$ref": "#/$defs/valueExpression",
+          "description": "Optional explicit item identifier; when omitted, the source top is extracted."
+        },
+        "target": { "$ref": "#/$defs/stateRef" },
+        "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "deckReturnStep": {
+      "type": "object",
+      "required": ["id", "kind", "op", "deckId", "card", "destination"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stepId" },
+        "kind": { "const": "command" },
+        "op": { "const": "deck.return" },
+        "deckId": { "$ref": "#/$defs/deckReference" },
+        "card": { "$ref": "#/$defs/valueExpression" },
+        "destination": { "enum": ["discard", "order-top", "order-bottom"] },
+        "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "deckInsertStep": {
+      "type": "object",
+      "required": ["id", "kind", "op", "deckId", "sourceCollection", "card", "destination"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stepId" },
+        "kind": { "const": "command" },
+        "op": { "const": "deck.insert" },
+        "deckId": { "$ref": "#/$defs/deckReference" },
+        "sourceCollection": { "$ref": "#/$defs/identifier" },
+        "card": { "$ref": "#/$defs/valueExpression" },
+        "destination": { "enum": ["held", "discard", "order-top", "order-bottom"] },
         "when": { "$ref": "#/$defs/predicate" }
       },
       "additionalProperties": false
@@ -1214,17 +1527,109 @@
       },
       "additionalProperties": false
     },
-    "graphSplitEdgeStep": {
+    "graphEdgePositionInspectStep": {
       "type": "object",
       "required": ["id", "kind", "op", "networkId", "edge", "position"],
+      "properties": {
+        "id": { "$ref": "#/$defs/stepId" },
+        "kind": { "const": "algorithm" },
+        "op": { "const": "graph.edge.position.inspect" },
+        "networkId": { "$ref": "#/$defs/identifier" },
+        "edge": { "$ref": "#/$defs/valueExpression" },
+        "position": { "$ref": "#/$defs/valueExpression" },
+        "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "graphSplitEdgeStep": {
+      "type": "object",
+      "required": ["id", "kind", "op", "networkId", "proof"],
       "properties": {
         "id": { "$ref": "#/$defs/stepId" },
         "kind": { "const": "command" },
         "op": { "const": "graph.edge.split" },
         "networkId": { "$ref": "#/$defs/identifier" },
-        "edge": { "$ref": "#/$defs/valueExpression" },
-        "position": { "$ref": "#/$defs/valueExpression" },
+        "proof": { "$ref": "#/$defs/graphInspectionProofRef" },
         "when": { "$ref": "#/$defs/predicate" }
+      },
+      "additionalProperties": false
+    },
+    "mechanicsCanonicalPoint": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": {
+          "type": "number",
+          "minimum": -1000000000,
+          "maximum": 1000000000
+        },
+        "y": {
+          "type": "number",
+          "minimum": -1000000000,
+          "maximum": 1000000000
+        }
+      },
+      "additionalProperties": false
+    },
+    "graphRegionIdSet": {
+      "type": "array",
+      "maxItems": 512,
+      "uniqueItems": true,
+      "items": { "$ref": "#/$defs/identifier" }
+    },
+    "graphEdgePositionEndpointInspection": {
+      "type": "object",
+      "required": ["id", "point", "regionIds"],
+      "properties": {
+        "id": { "$ref": "#/$defs/identifier" },
+        "point": { "$ref": "#/$defs/mechanicsCanonicalPoint" },
+        "regionIds": { "$ref": "#/$defs/graphRegionIdSet" }
+      },
+      "additionalProperties": false
+    },
+    "graphEdgePositionInspectionResult": {
+      "type": "object",
+      "required": [
+        "proofVersion",
+        "networkId",
+        "edge",
+        "normalizedPosition",
+        "point",
+        "pointRegionIds",
+        "endpoints"
+      ],
+      "properties": {
+        "proofVersion": { "const": "graph-edge-position-proof/v1" },
+        "networkId": { "$ref": "#/$defs/identifier" },
+        "edge": {
+          "type": "object",
+          "required": ["id", "geometryFingerprint"],
+          "properties": {
+            "id": { "$ref": "#/$defs/identifier" },
+            "geometryFingerprint": {
+              "type": "string",
+              "pattern": "^sha256:[0-9a-f]{64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        "normalizedPosition": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "point": { "$ref": "#/$defs/mechanicsCanonicalPoint" },
+        "pointRegionIds": { "$ref": "#/$defs/graphRegionIdSet" },
+        "endpoints": {
+          "type": "object",
+          "required": ["from", "to", "regionIds"],
+          "properties": {
+            "from": { "$ref": "#/$defs/graphEdgePositionEndpointInspection" },
+            "to": { "$ref": "#/$defs/graphEdgePositionEndpointInspection" },
+            "regionIds": { "$ref": "#/$defs/graphRegionIdSet" }
+          },
+          "additionalProperties": false
+        }
       },
       "additionalProperties": false
     },

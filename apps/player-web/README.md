@@ -23,8 +23,10 @@ npm run antarctica:play
 ```
 
 This starts both `runtime-api` (port 3001) and `player-web` (port 3000) together.
-Open `http://127.0.0.1:3000` in your browser. Add `?gameId=simple-choice`
-to run the minimal game-agnostic fixture.
+Open `http://127.0.0.1:3000/?gameId=antarctica` in your browser. Use
+`?gameId=simple-choice` to run the minimal game-agnostic fixture instead.
+`player-web` is a game-agnostic entry point (ARC-003): opening the URL
+without `?gameId=` shows an error screen instead of booting a default game.
 
 Press `Ctrl+C` to stop both services.
 
@@ -122,6 +124,7 @@ Run `npm test` to execute Vitest suites:
 - `src/components/manifest-renderer.test.tsx`: DOM tests for the manifest-driven renderer.
 - `src/components/game-player-dom.test.tsx`: Integration tests for the full GamePlayer component.
 - `src/components/game-player.test.tsx`: Logic and resolver tests.
+- `src/test/entry-missing-game-id.test.tsx`: entry-point (`app/page.tsx`) test asserting a missing/empty `?gameId=` renders the generic error screen and never reaches content loading (ARC-003).
 
 Run `npm run test:e2e` from the repository root to execute Playwright browser tests against `player-web` and `runtime-api`.
 

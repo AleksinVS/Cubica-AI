@@ -68,6 +68,21 @@ export const ru = {
 
   /** Journal overlay heading */
   journalHeading: "Журнал ходов",
+
+  /**
+   * Entry-point kicker shown above the "missing gameId" error title.
+   * "Точка входа" (entry point) is the generic Next.js route that boots any
+   * game; it stays game-agnostic on purpose (CLAUDE.md rule 10) and must not
+   * name a concrete game.
+   */
+  entryMissingGameIdKicker: "Точка входа плеера",
+
+  /** Entry-point error title shown when the URL has no ?gameId= query parameter */
+  entryMissingGameIdTitle: "Не указан идентификатор игры",
+
+  /** Entry-point error description explaining how to fix the URL */
+  entryMissingGameIdDescription:
+    "Добавьте параметр ?gameId=<идентификатор игры> к адресу страницы, чтобы запустить игру.",
 } as const;
 
 export type LocaleKey = keyof typeof ru;

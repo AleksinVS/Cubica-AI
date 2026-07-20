@@ -15,6 +15,7 @@ import type {
 
 const KIB = 1024;
 const MIB = 1024 * KIB;
+const MAX_JSON_PRIMITIVE_MEASUREMENTS_PER_KIND = 1_024;
 
 /**
  * Hard recursion ceiling shared by value expressions and predicates.
@@ -109,6 +110,41 @@ export interface JsonResourceUsage {
 }
 
 /**
+ * Request-local memo of primitive encoding costs.
+ *
+ * It contains neither object identities nor validation results. Reusing it
+ * across multiple mandatory walks in one synchronous request is therefore
+ * equivalent to re-running `Buffer.byteLength` for the same immutable string
+ * or deterministic JSON number spelling.
+ */
+const jsonPrimitiveMeasurementCacheBrand: unique symbol =
+  Symbol("cubica.json-primitive-measurement-cache");
+export interface JsonPrimitiveMeasurementCache {
+  readonly [jsonPrimitiveMeasurementCacheBrand]: true;
+}
+
+type JsonPrimitiveMeasurementCacheData = {
+  strings: Map<string, { utf8Bytes: number; jsonBytes: number }>;
+  numbers: Map<number, number>;
+};
+
+const jsonPrimitiveMeasurementCacheData = new WeakMap<
+  JsonPrimitiveMeasurementCache,
+  JsonPrimitiveMeasurementCacheData
+>();
+
+export function createJsonPrimitiveMeasurementCache(): JsonPrimitiveMeasurementCache {
+  const cache = Object.freeze({
+    [jsonPrimitiveMeasurementCacheBrand]: true as const
+  });
+  jsonPrimitiveMeasurementCacheData.set(cache, {
+    strings: new Map(),
+    numbers: new Map()
+  });
+  return cache;
+}
+
+/**
  * Measure a JSON value without first allocating its complete serialization.
  *
  * Object order does not change serialized size, but keys are still visited in
@@ -119,8 +155,30 @@ export interface JsonResourceUsage {
 export function measureBoundedJson(
   value: unknown,
   limits: JsonResourceLimits,
-  code = "MECHANICS_VALUE_RESOURCE_LIMIT"
+  code = "MECHANICS_VALUE_RESOURCE_LIMIT",
+  primitiveMeasurementCache?: JsonPrimitiveMeasurementCache
 ): JsonResourceUsage {
+  /**
+   * Game snapshots repeat a small vocabulary—field names, entity kinds,
+   * statuses and node ids—thousands of times. UTF-8 measurement used to encode
+   * every occurrence independently, even though primitive strings are
+   * immutable. A bounded request-local cache removes that duplicate CPU work
+   * without retaining session data after the validation boundary.
+   *
+   * The cap is independent of manifest budgets on purpose: unusually diverse
+   * but still valid state must not create a second unbounded memory cost merely
+   * to accelerate its resource check. Once full, the cache simply falls back
+   * to ordinary measurement for new values.
+   */
+  // A structurally forged cache object has no private WeakMap entry and falls
+  // back to a fresh memo. It can never supply trusted byte measurements.
+  const primitiveMeasurements =
+    (primitiveMeasurementCache &&
+      jsonPrimitiveMeasurementCacheData.get(primitiveMeasurementCache)) ??
+    {
+      strings: new Map(),
+      numbers: new Map()
+    };
   const ancestors = new Set<object>();
   let nodes = 0;
   let deepest = 0;
@@ -151,14 +209,24 @@ export function measureBoundedJson(
       if (!Number.isFinite(current) || Math.abs(current) > Number.MAX_SAFE_INTEGER) {
         resourceFailure(code, "number is outside the deterministic JSON range");
       }
-      addBytes(Buffer.byteLength(JSON.stringify(current), "utf8"));
+      const cached = primitiveMeasurements.numbers.get(current);
+      if (cached !== undefined) {
+        addBytes(cached);
+        return;
+      }
+      const jsonBytes = Buffer.byteLength(JSON.stringify(current), "utf8");
+      if (primitiveMeasurements.numbers.size < MAX_JSON_PRIMITIVE_MEASUREMENTS_PER_KIND) {
+        primitiveMeasurements.numbers.set(current, jsonBytes);
+      }
+      addBytes(jsonBytes);
       return;
     }
     if (typeof current === "string") {
-      if (Buffer.byteLength(current, "utf8") > limits.maxStringUtf8Bytes) {
+      const measurement = measureString(current);
+      if (measurement.utf8Bytes > limits.maxStringUtf8Bytes) {
         resourceFailure(code, "string exceeds the UTF-8 byte limit");
       }
-      addBytes(Buffer.byteLength(JSON.stringify(current), "utf8"));
+      addBytes(measurement.jsonBytes);
       return;
     }
     if (Array.isArray(current)) {
@@ -176,18 +244,32 @@ export function measureBoundedJson(
         const keys = Object.keys(current).sort();
         addBytes(2 + Math.max(0, keys.length - 1));
         for (const key of keys) {
-          if (Buffer.byteLength(key, "utf8") > limits.maxStringUtf8Bytes) {
+          const measurement = measureString(key);
+          if (measurement.utf8Bytes > limits.maxStringUtf8Bytes) {
             resourceFailure(code, "object key exceeds the UTF-8 byte limit");
           }
           const item = current[key];
           if (item === undefined) resourceFailure(code, "object contains a non-JSON value");
-          addBytes(Buffer.byteLength(JSON.stringify(key), "utf8") + 1);
+          addBytes(measurement.jsonBytes + 1);
           visit(item, depth + 1);
         }
       });
       return;
     }
     resourceFailure(code, "value cannot be represented as JSON");
+  };
+
+  const measureString = (current: string): { utf8Bytes: number; jsonBytes: number } => {
+    const cached = primitiveMeasurements.strings.get(current);
+    if (cached) return cached;
+    const measurement = {
+      utf8Bytes: Buffer.byteLength(current, "utf8"),
+      jsonBytes: Buffer.byteLength(JSON.stringify(current), "utf8")
+    };
+    if (primitiveMeasurements.strings.size < MAX_JSON_PRIMITIVE_MEASUREMENTS_PER_KIND) {
+      primitiveMeasurements.strings.set(current, measurement);
+    }
+    return measurement;
   };
 
   visit(value, 0);
@@ -249,14 +331,15 @@ export function chargeAuditOutput(context: MechanicsExecutionContext, entry: unk
 export function assertMechanicsStateWithinBudget(
   value: unknown,
   limits: MechanicsRuntimeLimits,
-  boundary: "input" | "candidate"
+  boundary: "input" | "candidate",
+  primitiveMeasurements?: JsonPrimitiveMeasurementCache
 ): JsonResourceUsage {
   return measureBoundedJson(value, {
     maxBytes: limits.maxCandidateStateBytes,
     maxDepth: limits.maxJsonDepth,
     maxNodes: limits.maxCandidateStateNodes,
     maxStringUtf8Bytes: limits.maxStringUtf8Bytes
-  }, boundary === "input" ? "MECHANICS_INPUT_STATE_LIMIT" : "MECHANICS_CANDIDATE_STATE_LIMIT");
+  }, boundary === "input" ? "MECHANICS_INPUT_STATE_LIMIT" : "MECHANICS_CANDIDATE_STATE_LIMIT", primitiveMeasurements);
 }
 
 /** Direct executor callers receive the same parameter protection as HTTP. */

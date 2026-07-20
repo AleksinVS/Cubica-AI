@@ -53,7 +53,6 @@ type PublicState = {
   timeline?: TimelineState;
   ui?: {
     activePanel?: string;
-    activeScreen?: string;
     lastCapabilityFamily?: string;
     lastCapability?: string;
     serverRequested?: boolean;
@@ -184,7 +183,6 @@ export function readTimeline(session: SessionSnapshot | null): TimelineState | u
  */
 export function readRuntimeUi(session: SessionSnapshot | null): {
   activePanel?: string;
-  activeScreen?: string;
   lastCapabilityFamily?: string;
   lastCapability?: string;
   serverRequested?: boolean;

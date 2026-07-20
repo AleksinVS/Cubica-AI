@@ -171,12 +171,6 @@
         "pointer": "/root/screens/0/root/props/cssClass"
       }
     ],
-    "/screens/agent/root/props/backgroundImage": [
-      {
-        "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",
-        "pointer": "/root/screens/0/root/props/backgroundImage"
-      }
-    ],
     "/screens/agent/root/children/0": [
       {
         "file": "games/ai-driven-choice/authoring/ui/web.authoring.json",

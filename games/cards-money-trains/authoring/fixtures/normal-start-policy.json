@@ -12,14 +12,31 @@
       "startingLocomotives": 1
     }
   },
+  "confirmedOddTeamCounts": [
+    5,
+    7,
+    9,
+    11
+  ],
+  "oddComposition": {
+    "rule": "logistics_company_count = locomotive_guild_count + 1",
+    "evenTeamCountStatus": "unconfirmed-fail-closed"
+  },
+  "placement": {
+    "controller": "facilitator",
+    "teamOrder": "server-seeded-random",
+    "allowedTargets": "open terminals on the main technical network",
+    "maximumLocomotivesPerTerminal": 2,
+    "teamAdvancesAfterAllOwnedReserveAssetsPlaced": true
+  },
   "financialConstraints": {
     "creditAllowed": false,
     "negativeBalanceAllowed": false,
     "vehicleSalePhase": "market"
   },
   "contentStatus": {
-    "teamCount": "not-provided",
-    "initialTopology": "not-provided",
-    "decks": "not-provided"
+    "teamCount": "confirmed-odd-configurations-only",
+    "initialTopology": "technical-review-only-awaiting-overlay-confirmation",
+    "decks": "author-imported-executable-review-only"
   }
 }

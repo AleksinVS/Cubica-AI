@@ -56,7 +56,7 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       return stepIndex !== null && ANTARCTICA_BOARD_STEP_INDEXES.has(stepIndex) ? BOARD_TOPBAR_SCREEN_KEY : null;
     },
 
-    resolveScreenKey(screenId, stepIndex, infoId, runtimeUi, gameUi) {
+    resolveScreenKey(screenId, stepIndex, infoId, gameUi) {
       if (screenId === "S2") {
         const boardKey = this.resolveBoardScreenKey?.(stepIndex) ?? null;
         if (boardKey && gameUi?.screens[boardKey]) {
@@ -66,7 +66,9 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       }
 
       if (screenId === "S1") {
-        if (runtimeUi.activeScreen === "left-sidebar" && gameUi?.screens[LEFT_SIDEBAR_SCREEN_KEY]) {
+        // ADR-093: the leftsidebar variant is a design-time choice declared in
+        // the UI manifest (default_layout_mode), not a server-side UI flag.
+        if (gameUi?.defaultLayoutMode === "leftsidebar" && gameUi?.screens[LEFT_SIDEBAR_SCREEN_KEY]) {
           return LEFT_SIDEBAR_SCREEN_KEY;
         }
         if (infoId && gameUi?.screens[INFO_TOPBAR_SCREEN_KEY]) {
@@ -88,22 +90,13 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
       return null;
     },
 
-    resolveLayoutMode(screenKey, runtimeUi, gameState) {
-      const { currentBoard, currentInfo } = gameState;
-      if (runtimeUi.activeScreen === "topbar") {
-        return "topbar";
-      }
-      if (runtimeUi.activeScreen === "left-sidebar") {
+    resolveLayoutMode(screenKey) {
+      // Every Antarctica screen declares its own layout_mode, so the presenter
+      // uses that directly (ADR-093); this remains only as a safety fallback.
+      // The leftsidebar design variant maps to the leftsidebar layout, every
+      // other screen uses topbar.
+      if (screenKey === LEFT_SIDEBAR_SCREEN_KEY) {
         return "leftsidebar";
-      }
-      if (screenKey && this.topbarScreenKeys.has(screenKey)) {
-        return "topbar";
-      }
-      if (currentBoard) {
-        return "topbar";
-      }
-      if (currentInfo && currentInfo.id !== "i0") {
-        return "topbar";
       }
       return "topbar";
     },
@@ -138,6 +131,16 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
           ? boardCards.find((card) => card.cardId === selectedCardId) ?? null
           : null;
 
+      // Forward navigation arrow on card/board screens (W2-B / ADR-055): the
+      // arrow advances the current board step when the game allows it. The
+      // advance plan is the resolved card's advanceActionId — the same action
+      // the "Продолжить" continue button carries once the board can advance.
+      // We gate on both canAdvance (timeline flag) and the presence of that
+      // action so a click never dispatches an empty action id.
+      const forwardAdvanceActionId =
+        canAdvance && selectedCard?.advanceActionId ? selectedCard.advanceActionId : "";
+      const forwardNavDisabled = forwardAdvanceActionId.length === 0;
+
       return {
         currentInfo,
         currentBoard,
@@ -150,6 +153,8 @@ export const createAntarcticaConfig: ResolverFactory<AntarcticaGameState, GamePl
         selectedMemberIds: selectedTeamMemberIds,
         pickCount,
         canAdvance,
+        forwardAdvanceActionId,
+        forwardNavDisabled,
         journalEntries,
         hasJournalEntries: journalEntries.length > 0,
         journalIsEmpty: journalEntries.length === 0,

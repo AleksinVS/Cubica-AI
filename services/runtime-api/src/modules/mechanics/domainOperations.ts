@@ -22,10 +22,23 @@ import {
   prepareMinimumRegionRoadCandidates,
   regionRoadRandomStreamId
 } from "../runtime/regionRoadPlanner.ts";
-import { charge } from "./budget.ts";
+import { charge, measureBoundedJson } from "./budget.ts";
 import { compareCanonicalIds } from "./canonicalOrder.ts";
 import { MechanicsExecutionError } from "./errors.ts";
 import { evaluateExpression } from "./expressionEvaluator.ts";
+import {
+  canonicalGraphPoint,
+  canonicalizeGraphRegions,
+  closedGraphRegionMembership,
+  graphEdgeGeometryFingerprint,
+  graphPointsEqual,
+  GRAPH_EDGE_POSITION_PROOF_VERSION,
+  GraphGeometryError,
+  readEffectiveGraphPolyline,
+  splitGraphPolyline,
+  type GraphPoint,
+  type GraphPolylineSplit
+} from "./graphGeometry.ts";
 import {
   collectionEntries,
   isRecord,
@@ -37,32 +50,132 @@ import type { JsonRecord, MechanicsExecutionContext, Step } from "./types.ts";
 type DomainStep = Extract<Step, {
   op:
     | "graph.regions.route.plan"
+    | "graph.edge.position.inspect"
     | "graph.edge.split"
     | "graph.entity.traverse"
     | "graph.shortestPath"
     | "relation.attach"
     | "relation.detach";
 }>;
-type Point = { x: number; y: number };
+type Point = GraphPoint;
 type RegionRoadCandidate = ReturnType<typeof prepareMinimumRegionRoadCandidates>["candidates"][number];
-type PolylineSplit = {
+type PolylineSplit = GraphPolylineSplit;
+
+interface GraphEdgePositionInspection {
+  proofVersion: typeof GRAPH_EDGE_POSITION_PROOF_VERSION;
+  networkId: string;
+  edge: {
+    id: string;
+    geometryFingerprint: string;
+  };
+  normalizedPosition: number;
   point: Point;
-  first: Array<Point>;
-  second: Array<Point>;
-  splitSegmentIndex: number;
-  splitVertexIndex?: number;
-};
+  pointRegionIds: Array<string>;
+  endpoints: {
+    from: { id: string; point: Point; regionIds: Array<string> };
+    to: { id: string; point: Point; regionIds: Array<string> };
+    regionIds: Array<string>;
+  };
+}
+
+/**
+ * Provenance marker for proof objects created by this exact executor process.
+ *
+ * The marker is intentionally not serializable. A client can copy the visible
+ * fields but cannot place its object in this set, so split never accepts a
+ * body-supplied lookalike as an inspection result.
+ */
+const serverGraphInspectionProofs = new WeakSet<object>();
 
 /** Dispatch one operation from the module registry's non-core domain set. */
 export function executeDomainOperation(step: DomainStep, context: MechanicsExecutionContext): unknown {
   switch (step.op) {
     case "graph.regions.route.plan": return planRegionRoute(step, context);
+    case "graph.edge.position.inspect": return inspectEdgePosition(step, context);
     case "graph.edge.split": return splitEdge(step, context);
     case "graph.entity.traverse": return traverseEntity(step, context);
     case "graph.shortestPath": return shortestPath(step, context);
     case "relation.attach": return changeRelation(step, context, true);
     case "relation.detach": return changeRelation(step, context, false);
   }
+}
+
+function inspectEdgePosition(
+  step: Extract<DomainStep, { op: "graph.edge.position.inspect" }>,
+  context: MechanicsExecutionContext
+): GraphEdgePositionInspection {
+  const model = requireNetwork(step.networkId, context);
+  const nodes = requireMapCollection(context, model.nodeCollection);
+  const edges = requireMapCollection(context, model.edgeCollection);
+  const edgeId = identifier(evaluateExpression(step.edge, context), "edge", step.id);
+  const normalizedPosition = finiteNumber(
+    evaluateExpression(step.position, context),
+    "edge position",
+    step.id
+  );
+  const edge = requireNetworkObject(edges, edgeId, step.networkId, "edge", step.id);
+  const endpoints = edgeEndpoints(edge, step.id);
+  const from = objectPoint(
+    requireNetworkObject(nodes, endpoints.fromNodeId, step.networkId, "node", step.id),
+    "from node",
+    step.id
+  );
+  const to = objectPoint(
+    requireNetworkObject(nodes, endpoints.toNodeId, step.networkId, "node", step.id),
+    "to node",
+    step.id
+  );
+  const attributes = objectAttributes(edge);
+  const points = geometryForStep(step.id, () =>
+    readEffectiveGraphPolyline(attributes.geometry, from, to));
+  const split = geometryForStep(step.id, () =>
+    splitGraphPolyline(points, normalizedPosition));
+
+  // Polygon simplicity is checked here as a fail-closed runtime defence. The
+  // semantic checker performs the same bounded validation before publication.
+  const canonicalRegions = geometryForStep(step.id, () =>
+    canonicalizeGraphRegions(model.regions));
+  charge(context, "algorithmWork", graphRegionInspectionWork(model.regions) + points.length);
+  const pointRegionIds = closedGraphRegionMembership(split.point, canonicalRegions);
+  const fromRegionIds = closedGraphRegionMembership(from, canonicalRegions);
+  const toRegionIds = closedGraphRegionMembership(to, canonicalRegions);
+  const endpointRegionIds = [...new Set([...fromRegionIds, ...toRegionIds])]
+    .sort(compareCanonicalIds);
+
+  const routePlanUsage = measureBoundedJson(attributes.routePlan ?? null, {
+    maxBytes: context.limits.maxIntermediateValueBytes,
+    maxDepth: context.limits.maxJsonDepth,
+    maxNodes: context.limits.maxJsonNodes,
+    maxStringUtf8Bytes: context.limits.maxStringUtf8Bytes
+  }, "MECHANICS_GRAPH_GEOMETRY_INVALID");
+  charge(context, "algorithmWork", routePlanUsage.nodes + points.length);
+  const result: GraphEdgePositionInspection = {
+    proofVersion: GRAPH_EDGE_POSITION_PROOF_VERSION,
+    networkId: step.networkId,
+    edge: {
+      id: edgeId,
+      geometryFingerprint: graphEdgeGeometryFingerprint({
+        networkId: step.networkId,
+        edgeId,
+        fromNodeId: endpoints.fromNodeId,
+        toNodeId: endpoints.toNodeId,
+        from,
+        to,
+        polyline: points,
+        routePlan: attributes.routePlan
+      })
+    },
+    normalizedPosition,
+    point: split.point,
+    pointRegionIds,
+    endpoints: {
+      from: { id: endpoints.fromNodeId, point: from, regionIds: fromRegionIds },
+      to: { id: endpoints.toNodeId, point: to, regionIds: toRegionIds },
+      regionIds: endpointRegionIds
+    }
+  };
+  serverGraphInspectionProofs.add(result);
+  return result;
 }
 
 function planRegionRoute(
@@ -144,22 +257,74 @@ function splitEdge(
   step: Extract<DomainStep, { op: "graph.edge.split" }>,
   context: MechanicsExecutionContext
 ): unknown {
+  const proof = requireGraphInspectionProof(step.proof.stepId, step.networkId, context, step.id);
   const model = requireNetwork(step.networkId, context);
   const nodes = requireMapCollection(context, model.nodeCollection);
   const edges = requireMapCollection(context, model.edgeCollection);
-  const edgeId = identifier(evaluateExpression(step.edge, context), "edge", step.id);
+  const edgeId = identifier(proof.edge.id, "inspected edge", step.id);
+  const proofEdgeCandidate = edges[edgeId];
+  if (!isRecord(proofEdgeCandidate) ||
+      objectAttributes(proofEdgeCandidate).networkId !== step.networkId) {
+    fail(
+      "MECHANICS_GRAPH_PROOF_STALE",
+      "The inspected edge no longer exists in the inspected network",
+      step.id
+    );
+  }
   const edge = requireNetworkObject(edges, edgeId, step.networkId, "edge", step.id);
   assertFacetAllowed(edge, model.edgeStateFacet, model.splittableEdgeStates, "edge", step.id);
-  const position = finiteNumber(evaluateExpression(step.position, context), "edge position", step.id);
-  if (position <= 0 || position >= 1) fail("MECHANICS_GRAPH_SPLIT_POSITION", "Edge split position must be inside (0, 1)", step.id);
+  const position = finiteNumber(proof.normalizedPosition, "inspected edge position", step.id);
 
   const endpoints = edgeEndpoints(edge, step.id);
-  const from = objectPoint(requireNetworkObject(nodes, endpoints.fromNodeId, step.networkId, "node", step.id), "from node", step.id);
-  const to = objectPoint(requireNetworkObject(nodes, endpoints.toNodeId, step.networkId, "node", step.id), "to node", step.id);
+  for (const endpointId of [endpoints.fromNodeId, endpoints.toNodeId]) {
+    const candidate = nodes[endpointId];
+    if (!isRecord(candidate) || objectAttributes(candidate).networkId !== step.networkId) {
+      fail(
+        "MECHANICS_GRAPH_PROOF_STALE",
+        "An inspected edge endpoint no longer exists in the inspected network",
+        step.id
+      );
+    }
+  }
+  const from = objectPoint(nodes[endpoints.fromNodeId] as JsonRecord, "from node", step.id);
+  const to = objectPoint(nodes[endpoints.toNodeId] as JsonRecord, "to node", step.id);
   const attributes = isRecord(edge.attributes) ? edge.attributes : {};
-  const points = readPolyline(attributes.geometry, from, to, step.id);
-  const split = splitPolyline(points, position, step.id);
-  const splitRoutePlan = splitStoredRoutePlan(attributes.routePlan, points.length, split, edgeId, step.id);
+  const points = geometryForProofRevalidation(step.id, () =>
+    readEffectiveGraphPolyline(attributes.geometry, from, to));
+  const split = geometryForProofRevalidation(step.id, () =>
+    splitGraphPolyline(points, position));
+  const currentFingerprint = graphEdgeGeometryFingerprint({
+    networkId: step.networkId,
+    edgeId,
+    fromNodeId: endpoints.fromNodeId,
+    toNodeId: endpoints.toNodeId,
+    from,
+    to,
+    polyline: points,
+    routePlan: attributes.routePlan
+  });
+  charge(context, "algorithmWork", points.length * 2);
+  if (currentFingerprint !== proof.edge.geometryFingerprint ||
+      !graphPointsEqual(split.point, proof.point)) {
+    fail(
+      "MECHANICS_GRAPH_PROOF_STALE",
+      "The inspected edge geometry or normalized position changed before split",
+      step.id
+    );
+  }
+  // Route-plan parsing can only influence the child edge payload. Perform it
+  // after the full fingerprint check so a changed plan is classified as a
+  // stale proof and no untrusted changed value is interpreted prematurely.
+  const splitRoutePlan = splitStoredRoutePlan(
+    attributes.routePlan,
+    points.length,
+    split,
+    edgeId,
+    step.id
+  );
+
+  // Every proof-dependent check above happens before allocation advances the
+  // sequence or any graph object is created/deleted.
   const nodeId = allocateCollectionId(nodes, `${step.networkId}:node`, model, context, step.id);
   const firstEdgeId = allocateCollectionId(edges, `${step.networkId}:edge`, model, context, step.id);
   // Reserve the first generated id explicitly. Copying the complete edge map
@@ -230,6 +395,10 @@ function traverseEntity(
   assertFacetAllowed(edge, model.edgeStateFacet, movement.traversableEdgeStates, "edge", step.id);
   const attrs = objectAttributes(asset);
   const currentNodeId = identifier(attrs[movement.locationAttribute], "asset location", step.id);
+  const currentNode = requireNetworkObject(nodes, currentNodeId, step.networkId, "source node", step.id);
+  // A node closure applies in both directions: checking only the destination
+  // would let a vehicle escape from, or transit through, a closed node.
+  assertFacetAllowed(currentNode, model.nodeStateFacet, movement.traversableNodeStates, "source node", step.id);
   const endpoints = edgeEndpoints(edge, step.id);
   const destinationNodeId = endpoints.fromNodeId === currentNodeId ? endpoints.toNodeId
     : endpoints.toNodeId === currentNodeId ? endpoints.fromNodeId : undefined;
@@ -577,67 +746,84 @@ function edgeEndpoints(edge: JsonRecord, stepId?: string): { fromNodeId: string;
 }
 
 function objectPoint(object: JsonRecord, label: string, stepId?: string): Point {
-  const value = objectAttributes(object).position;
-  if (!isRecord(value) || typeof value.x !== "number" || !Number.isFinite(value.x) || typeof value.y !== "number" || !Number.isFinite(value.y)) {
-    fail("MECHANICS_GRAPH_GEOMETRY", `${label} has no finite canonical position`, stepId);
-  }
-  return { x: value.x as number, y: value.y as number };
+  return geometryForStep(stepId, () =>
+    canonicalGraphPoint(objectAttributes(object).position, label));
 }
 
-function readPolyline(value: unknown, from: Point, to: Point, stepId: string): Array<Point> {
-  if (!isRecord(value) || !Array.isArray(value.polyline)) return [from, to];
-  if (value.polyline.length < 2 || value.polyline.length > 20_000) {
-    fail("MECHANICS_GRAPH_GEOMETRY", "Edge polyline must contain 2..20000 points", stepId);
+function requireGraphInspectionProof(
+  stepId: string,
+  networkId: string,
+  context: MechanicsExecutionContext,
+  consumerStepId: string
+): GraphEdgePositionInspection {
+  const candidate = context.results.get(stepId);
+  if (!isRecord(candidate) || !serverGraphInspectionProofs.has(candidate) ||
+      candidate.proofVersion !== GRAPH_EDGE_POSITION_PROOF_VERSION ||
+      candidate.networkId !== networkId ||
+      !isRecord(candidate.edge) ||
+      typeof candidate.edge.id !== "string" ||
+      typeof candidate.edge.geometryFingerprint !== "string" ||
+      typeof candidate.normalizedPosition !== "number" ||
+      !isRecord(candidate.point)) {
+    fail(
+      "MECHANICS_GRAPH_PROOF_INVALID",
+      "Edge split requires a whole server-origin inspection result from the same network",
+      consumerStepId
+    );
   }
-  const points = value.polyline.map((point) => {
-    if (!isRecord(point) || typeof point.x !== "number" || !Number.isFinite(point.x) || typeof point.y !== "number" || !Number.isFinite(point.y)) {
-      fail("MECHANICS_GRAPH_GEOMETRY", "Edge polyline contains an invalid point", stepId);
-    }
-    return { x: point.x as number, y: point.y as number };
-  });
-  if (!pointsEqual(points[0], from) || !pointsEqual(points.at(-1) as Point, to)) {
-    fail("MECHANICS_GRAPH_GEOMETRY", "Edge polyline endpoints do not match its graph nodes", stepId);
-  }
-  if (points.some((point, index) => index > 0 && pointsEqual(point, points[index - 1]))) {
-    fail("MECHANICS_GRAPH_GEOMETRY", "Edge polyline contains a zero-length segment", stepId);
-  }
-  return points;
+  return candidate as unknown as GraphEdgePositionInspection;
 }
 
-function splitPolyline(points: Array<Point>, position: number, stepId: string): PolylineSplit {
-  const lengths = points.slice(0, -1).map((point, index) => Math.hypot(points[index + 1].x - point.x, points[index + 1].y - point.y));
-  const total = lengths.reduce((sum, length) => sum + length, 0);
-  if (!(total > 0)) fail("MECHANICS_GRAPH_GEOMETRY", "Edge polyline has no positive length", stepId);
-  const target = total * position;
-  let traversed = 0;
-  for (let index = 0; index < lengths.length; index += 1) {
-    const next = traversed + lengths[index];
-    if (index < lengths.length - 1 && Math.abs(target - next) <= 1e-9) {
-      const vertexIndex = index + 1;
-      return {
-        point: { ...points[vertexIndex] },
-        first: points.slice(0, vertexIndex + 1),
-        second: points.slice(vertexIndex),
-        splitSegmentIndex: index,
-        splitVertexIndex: vertexIndex
-      };
+function geometryForStep<T>(stepId: string | undefined, operation: () => T): T {
+  try {
+    return operation();
+  } catch (error) {
+    if (error instanceof GraphGeometryError) {
+      throw new MechanicsExecutionError(error.code, error.message, stepId);
     }
-    if (target < next || index === lengths.length - 1) {
-      const local = (target - traversed) / lengths[index];
-      const point = {
-        x: points[index].x + (points[index + 1].x - points[index].x) * local,
-        y: points[index].y + (points[index + 1].y - points[index].y) * local
-      };
-      return {
-        point,
-        first: [...points.slice(0, index + 1), point],
-        second: [point, ...points.slice(index + 1)],
-        splitSegmentIndex: index
-      };
-    }
-    traversed += lengths[index];
+    throw error;
   }
-  fail("MECHANICS_GRAPH_GEOMETRY", "Edge split could not be resolved", stepId);
+}
+
+/**
+ * A proof establishes that geometry was valid earlier in this transaction.
+ * Any geometry failure during its second read is therefore state drift, not a
+ * new client input error, and is reported through the stable stale-proof code.
+ */
+function geometryForProofRevalidation<T>(
+  stepId: string | undefined,
+  operation: () => T
+): T {
+  try {
+    return operation();
+  } catch (error) {
+    if (error instanceof GraphGeometryError) {
+      throw new MechanicsExecutionError(
+        "MECHANICS_GRAPH_PROOF_STALE",
+        "The inspected graph geometry changed before mutation",
+        stepId
+      );
+    }
+    throw error;
+  }
+}
+
+/** Conservative deterministic cost for polygon validation plus three memberships. */
+function graphRegionInspectionWork(
+  regions: ReadonlyArray<GameManifestTransportNetworkModel["regions"][number]>
+): number {
+  return regions.reduce((sum, region) => {
+    const canonicalCount = region.polygon.length > 1 &&
+      isRecord(region.polygon[0]) &&
+      isRecord(region.polygon.at(-1)) &&
+      region.polygon[0].x === region.polygon.at(-1)?.x &&
+      region.polygon[0].y === region.polygon.at(-1)?.y
+      ? region.polygon.length - 1
+      : region.polygon.length;
+    // Simple-polygon validation is quadratic per polygon; the three linear
+    // passes classify the inspected point and both endpoint points.
+    return sum + canonicalCount * canonicalCount + canonicalCount * 3;
+  }, 0);
 }
 
 function splitStoredRoutePlan(
@@ -759,8 +945,6 @@ const interpolate = (left: Point, right: Point, position: number): Point => ({
   x: left.x + (right.x - left.x) * position,
   y: left.y + (right.y - left.y) * position
 });
-const pointsEqual = (left: Point, right: Point): boolean => Math.hypot(left.x - right.x, left.y - right.y) <= 1e-9;
-
 function pointOnSegment(point: Point, from: Point, to: Point): boolean {
   if (Math.abs(cross(subtract(point, from), subtract(to, from))) > 1e-9) return false;
   return point.x >= Math.min(from.x, to.x) - 1e-9 && point.x <= Math.max(from.x, to.x) + 1e-9 &&

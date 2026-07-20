@@ -36,6 +36,10 @@ describe("player presentation boundary", () => {
       "../../../games/antarctica/plugins/antarctica-player/src/config-data.ts"
     );
 
-    expect(pluginConfig).toContain('themeBackgroundImage: "/images/arctic-background.png"');
+    // TSK-20260719 R4b: the plugin migrated its own background reference to
+    // the game asset channel (ADR-063); the boundary this test protects
+    // (only the game plugin, never the platform, may opt into this
+    // background) is unchanged.
+    expect(pluginConfig).toContain('themeBackgroundImage: "asset:arctic-background"');
   });
 });

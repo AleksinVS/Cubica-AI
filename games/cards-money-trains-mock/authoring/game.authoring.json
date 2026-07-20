@@ -563,10 +563,14 @@
           "status": "integrated-shared-runtime-contracts",
           "requiredMechanicsOperations": [
             "core.collection.id.allocate",
+            "core.entities.order",
             "core.entities.score",
             "deck.shuffle",
             "deck.draw",
+            "deck.extract",
+            "deck.return",
             "graph.regions.route.plan",
+            "graph.edge.position.inspect",
             "graph.edge.split",
             "graph.entity.traverse",
             "graph.shortestPath",
@@ -582,7 +586,7 @@
       "transport.terminal": {
         "_type": "game.ObjectType",
         "_label": "Терминал транспортной сети",
-        "_semantics": "Авторитетный узел с канонической позицией; конкретные узлы ожидают авторскую топологию.",
+        "_semantics": "Авторитетный узел с канонической позицией; извлечённые реальные узлы подключаются после проверки и публикационного перевода разметки.",
         "collection": "networkNodes",
         "idField": "id",
         "scope": "session",
@@ -1216,7 +1220,7 @@
           "_semantics": "Общий эффект проверяет свободный вагон, состояние груза и совпадение узла отправления.",
           "capabilityFamily": "runtime.server",
           "capability": "transport.cargo.load",
-          "displayName": "MOCK: загрузить груз B–F в белый вагон",
+          "displayName": "MOCK: загрузить выбранный предложенный груз",
           "allowedSessionRoles": [
             "facilitator"
           ],
@@ -1235,10 +1239,7 @@
                     "transport.wagon"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-wagon-white-2"
-                ]
+                }
               },
               "cargoId": {
                 "type": "string",
@@ -1250,10 +1251,7 @@
                     "transport.cargo"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-cargo-b-f"
-                ]
+                }
               }
             },
             "required": [
@@ -1330,7 +1328,7 @@
           "_semantics": "Общий транспортный эффект проверяет узел, совместимость и списывает одну единицу действия.",
           "capabilityFamily": "runtime.server",
           "capability": "transport.vehicle.attach",
-          "displayName": "MOCK: прицепить белый вагон",
+          "displayName": "MOCK: прицепить выбранный вагон",
           "allowedSessionRoles": [
             "facilitator"
           ],
@@ -1349,10 +1347,7 @@
                     "transport.locomotive"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-locomotive-purple-1"
-                ]
+                }
               },
               "wagonId": {
                 "type": "string",
@@ -1365,10 +1360,7 @@
                     "transport.wagon"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-wagon-white-2"
-                ]
+                }
               }
             },
             "required": [
@@ -1388,7 +1380,7 @@
           "_semantics": "Общий транспортный эффект проверяет узел, совместимость и списывает одну единицу действия.",
           "capabilityFamily": "runtime.server",
           "capability": "transport.vehicle.detach",
-          "displayName": "MOCK: отцепить белый вагон",
+          "displayName": "MOCK: отцепить выбранный вагон",
           "allowedSessionRoles": [
             "facilitator"
           ],
@@ -1407,10 +1399,7 @@
                     "transport.locomotive"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-locomotive-purple-1"
-                ]
+                }
               },
               "wagonId": {
                 "type": "string",
@@ -1423,10 +1412,7 @@
                     "transport.wagon"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-wagon-white-2"
-                ]
+                }
               }
             },
             "required": [
@@ -1604,7 +1590,7 @@
           "_semantics": "Атомарно выполняет выплату банка, оплату перевозки и освобождение вагона.",
           "capabilityFamily": "runtime.server",
           "capability": "transport.cargo.deliver",
-          "displayName": "MOCK: доставить груз B–C",
+          "displayName": "MOCK: доставить выбранный груз",
           "allowedSessionRoles": [
             "facilitator"
           ],
@@ -1623,10 +1609,7 @@
                     "transport.wagon"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-wagon-white-1"
-                ]
+                }
               },
               "cargoId": {
                 "type": "string",
@@ -1638,10 +1621,7 @@
                     "transport.cargo"
                   ],
                   "visibility": "public"
-                },
-                "enum": [
-                  "mock-cargo-b-c"
-                ]
+                }
               }
             },
             "required": [
@@ -1909,7 +1889,8 @@
           "finishConfirmationPending": false,
           "canRequestFinish": true,
           "fixtureId": "development-mock",
-          "contentMode": "mock"
+          "contentMode": "mock",
+          "locomotiveOrder": []
         },
         "construction": {
           "mode": null,
@@ -2197,7 +2178,8 @@
                 "nodeId": "mock-terminal-b",
                 "ownerTeamId": "purple-guild",
                 "nominalValue": 10,
-                "actionPoints": 5
+                "actionPoints": 5,
+                "turnOrderCount": 1
               }
             },
             "mock-locomotive-green-1": {
@@ -2210,7 +2192,8 @@
                 "nodeId": "mock-terminal-c",
                 "ownerTeamId": "green-guild",
                 "nominalValue": 10,
-                "actionPoints": 5
+                "actionPoints": 5,
+                "turnOrderCount": 1
               }
             },
             "mock-market-locomotive-green-2": {
@@ -2223,7 +2206,8 @@
                 "nodeId": "mock-terminal-f",
                 "ownerTeamId": "green-guild",
                 "nominalValue": 0,
-                "actionPoints": 5
+                "actionPoints": 5,
+                "turnOrderCount": 0
               }
             }
           },
@@ -2841,14 +2825,11 @@
             },
             {
               "id": "mock-load-white-cargo",
-              "label": "MOCK: загрузить груз B–F в белый вагон",
+              "label": "MOCK: загрузить предложенный груз",
+              "description": "Выберите активный вагон и одну из двух открытых карт груза.",
               "actionId": "mock.cargo.load.white",
               "phase": "cargo",
-              "section": "cargo",
-              "params": {
-                "wagonId": "mock-wagon-white-2",
-                "cargoId": "mock-cargo-b-f"
-              }
+              "section": "cargo"
             },
             {
               "id": "mock-finish-cargo",
@@ -2859,58 +2840,35 @@
             },
             {
               "id": "mock-attach-white-wagon",
-              "label": "MOCK: прицепить второй белый вагон",
+              "label": "MOCK: прицепить выбранный вагон",
+              "description": "Выберите активный локомотив и активный вагон; допустимость сцепления проверит сервер.",
               "actionId": "mock.operations.attach.white",
               "phase": "operations",
-              "section": "operations",
-              "params": {
-                "vehicleId": "mock-locomotive-purple-1",
-                "wagonId": "mock-wagon-white-2"
-              }
+              "section": "operations"
             },
             {
               "id": "mock-detach-white-wagon",
-              "label": "MOCK: отцепить второй белый вагон",
+              "label": "MOCK: отцепить выбранный вагон",
+              "description": "Выберите активный локомотив и активный вагон; текущее сцепление проверит сервер.",
               "actionId": "mock.operations.detach.white",
               "phase": "operations",
-              "section": "operations",
-              "params": {
-                "vehicleId": "mock-locomotive-purple-1",
-                "wagonId": "mock-wagon-white-2"
-              }
+              "section": "operations"
             },
             {
-              "id": "mock-move-purple-b-c",
-              "label": "MOCK: перевести фиолетовый локомотив B–C",
+              "id": "mock-move-locomotive",
+              "label": "MOCK: переместить выбранный локомотив",
+              "description": "Сначала выберите активный локомотив и существующую дорогу на карте или в форме.",
               "actionId": "mock.locomotive.move",
               "phase": "operations",
-              "section": "operations",
-              "params": {
-                "vehicleId": "mock-locomotive-purple-1",
-                "edgeId": "mock-edge-b-c"
-              }
+              "section": "operations"
             },
             {
-              "id": "mock-deliver-b-c",
-              "label": "MOCK: доставить груз B–C",
+              "id": "mock-deliver-cargo",
+              "label": "MOCK: доставить выбранный груз",
+              "description": "Выберите активный вагон и публичный грузовой заказ; маршрут и право доставки проверит сервер.",
               "actionId": "mock.cargo.deliver",
               "phase": "operations",
-              "section": "operations",
-              "params": {
-                "wagonId": "mock-wagon-white-1",
-                "cargoId": "mock-cargo-b-c"
-              }
-            },
-            {
-              "id": "mock-deliver-b-f",
-              "label": "MOCK: доставить груз B–F",
-              "actionId": "mock.cargo.deliver.b-f",
-              "phase": "operations",
-              "section": "operations",
-              "params": {
-                "wagonId": "mock-wagon-white-2",
-                "cargoId": "mock-cargo-b-f"
-              }
+              "section": "operations"
             },
             {
               "id": "mock-finish-operations",
@@ -2936,14 +2894,14 @@
               }
             },
             {
-              "id": "mock-build-waypoint-a-b",
-              "label": "MOCK: поставить полустанок на A–B (5 монет)",
-              "description": "Вымышленный контроль: точка посередине существующей дороги.",
+              "id": "mock-build-waypoint-e-f",
+              "label": "MOCK: поставить полустанок на E–F (5 монет)",
+              "description": "Вымышленный контроль: точка посередине дороги лежит вне областей обоих конечных терминалов.",
               "actionId": "construction.waypoint.build",
               "phase": "construction",
               "section": "construction",
               "params": {
-                "edgeId": "mock-edge-a-b",
+                "edgeId": "mock-edge-e-f",
                 "positionT": 0.5,
                 "whiteContribution": 3,
                 "redContribution": 2,
@@ -3057,6 +3015,11 @@
             "minimum": -9007199254740991,
             "maximum": 9007199254740991
           },
+          "game.map-coordinate": {
+            "kind": "finite-number",
+            "minimum": -1000000000,
+            "maximum": 1000000000
+          },
           "core.optional-string": {
             "kind": "option",
             "itemType": "core.string"
@@ -3069,6 +3032,16 @@
             "kind": "set",
             "itemType": "core.string",
             "maxItems": 4096
+          },
+          "game.locomotive-order": {
+            "kind": "list",
+            "itemType": "core.string",
+            "maxItems": 64
+          },
+          "game.turn-order-count": {
+            "kind": "integer",
+            "minimum": 0,
+            "maximum": 1
           },
           "core.bounded-json": {
             "kind": "json",
@@ -4114,6 +4087,18 @@
             "valueType": "core.string",
             "access": "read-write"
           },
+          "public.session.locomotiveOrder": {
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "session",
+                "locomotiveOrder"
+              ]
+            },
+            "valueType": "game.locomotive-order",
+            "access": "read-write"
+          },
           "public.log": {
             "audienceRef": "public",
             "storage": {
@@ -4375,16 +4360,19 @@
             "valueType": "core.integer",
             "access": "read-write"
           },
-          "public.objects.locomotives": {
+          "public.teams.bound.maintenanceDue": {
             "audienceRef": "public",
             "storage": {
               "root": "public",
               "segments": [
-                "objects",
-                "locomotives"
+                "teams",
+                {
+                  "binding": "teamId"
+                },
+                "maintenanceDue"
               ]
             },
-            "valueType": "game.public-objects-locomotives-record.48",
+            "valueType": "core.integer",
             "access": "read-write"
           },
           "public.ranking": {
@@ -4681,6 +4669,60 @@
           }
         },
         "collections": {
+          "teams": {
+            "itemShape": "record",
+            "audienceRef": "public",
+            "storage": {
+              "root": "public",
+              "segments": [
+                "teams"
+              ]
+            },
+            "capacity": 16,
+            "stableKey": "map-key",
+            "fields": {
+              "label": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "label"
+                  ]
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "type": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "type"
+                  ]
+                },
+                "valueType": "core.string",
+                "access": "read-only"
+              },
+              "coins": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "coins"
+                  ]
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              },
+              "maintenanceDue": {
+                "storage": {
+                  "kind": "path",
+                  "path": [
+                    "maintenanceDue"
+                  ]
+                },
+                "valueType": "core.integer",
+                "access": "read-write"
+              }
+            }
+          },
           "newsCards": {
             "audienceRef": "public",
             "storage": {
@@ -5005,6 +5047,14 @@
                 "valueType": "core.integer",
                 "access": "read-write"
               },
+              "turnOrderCount": {
+                "storage": {
+                  "kind": "attribute",
+                  "name": "turnOrderCount"
+                },
+                "valueType": "game.turn-order-count",
+                "access": "read-write"
+              },
               "networkId": {
                 "storage": {
                   "kind": "attribute",
@@ -5077,6 +5127,17 @@
                   "name": "position"
                 },
                 "valueType": "core.bounded-json",
+                "access": "read-only"
+              },
+              "positionX": {
+                "source": {
+                  "kind": "nested-field",
+                  "field": "position",
+                  "path": [
+                    "x"
+                  ]
+                },
+                "valueType": "game.map-coordinate",
                 "access": "read-only"
               },
               "annotationEvidence": {
@@ -5517,6 +5578,31 @@
                     "left": {
                       "op": "value.entity",
                       "entity": {
+                        "collection": "networkNodes",
+                        "entityId": {
+                          "op": "value.entity",
+                          "entity": {
+                            "collection": "cargoOrders",
+                            "entityId": {
+                              "$macroInput": "itemId"
+                            }
+                          },
+                          "field": "fromNodeId"
+                        }
+                      },
+                      "field": "availability"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "open"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
                         "collection": "wagons",
                         "entityId": {
                           "$macroInput": "containerId"
@@ -5656,6 +5742,31 @@
                         }
                       },
                       "field": "toNodeId"
+                    }
+                  },
+                  {
+                    "op": "predicate.compare",
+                    "operator": "eq",
+                    "left": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "networkNodes",
+                        "entityId": {
+                          "op": "value.entity",
+                          "entity": {
+                            "collection": "cargoOrders",
+                            "entityId": {
+                              "$macroInput": "itemId"
+                            }
+                          },
+                          "field": "toNodeId"
+                        }
+                      },
+                      "field": "availability"
+                    },
+                    "right": {
+                      "op": "value.literal",
+                      "value": "open"
                     }
                   },
                   {
@@ -6540,6 +6651,42 @@
               "errorCode": "CONSTRUCTION_COST_MISMATCH"
             },
             {
+              "id": "inspect-position",
+              "kind": "algorithm",
+              "op": "graph.edge.position.inspect",
+              "networkId": "main",
+              "edge": {
+                "$macroInput": "edgeId"
+              },
+              "position": {
+                "$macroInput": "positionT"
+              }
+            },
+            {
+              "id": "outside-endpoint-regions",
+              "kind": "assert",
+              "op": "core.assert",
+              "predicate": {
+                "op": "predicate.set.disjoint",
+                "left": {
+                  "op": "value.result",
+                  "stepId": "inspect-position",
+                  "path": [
+                    "pointRegionIds"
+                  ]
+                },
+                "right": {
+                  "op": "value.result",
+                  "stepId": "inspect-position",
+                  "path": [
+                    "endpoints",
+                    "regionIds"
+                  ]
+                }
+              },
+              "errorCode": "CONSTRUCTION_WAYPOINT_IN_ENDPOINT_REGION"
+            },
+            {
               "id": "pay-white",
               "kind": "command",
               "op": "core.resource.transfer",
@@ -6616,11 +6763,9 @@
               "kind": "command",
               "op": "graph.edge.split",
               "networkId": "main",
-              "edge": {
-                "$macroInput": "edgeId"
-              },
-              "position": {
-                "$macroInput": "positionT"
+              "proof": {
+                "op": "value.result",
+                "stepId": "inspect-position"
               }
             },
             {
@@ -6919,6 +7064,17 @@
               {
                 "id": "s004",
                 "kind": "command",
+                "op": "deck.extract",
+                "deckId": "cargo",
+                "source": "order",
+                "card": {
+                  "op": "value.literal",
+                  "value": "mock-cargo-b-c"
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
                 "op": "core.state.patch",
                 "patches": [
                   {
@@ -6934,7 +7090,7 @@
                 ]
               },
               {
-                "id": "s005",
+                "id": "s006",
                 "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "mock.setup.start.event.5",
@@ -7187,6 +7343,16 @@
                     "value": {
                       "op": "value.literal",
                       "value": 10
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "path": [
+                      "turnOrderCount"
+                    ],
+                    "value": {
+                      "op": "value.literal",
+                      "value": 1
                     }
                   }
                 ]
@@ -7443,6 +7609,177 @@
               {
                 "id": "s002",
                 "kind": "command",
+                "op": "deck.return",
+                "deckId": "cargo",
+                "card": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  }
+                },
+                "destination": "discard",
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.decks.cargo.offer.firstCardId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.entity",
+                        "entity": {
+                          "collection": "cargoOrders",
+                          "entityId": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.decks.cargo.offer.firstCardId"
+                            }
+                          }
+                        },
+                        "field": "status"
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": "available"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s003",
+                "kind": "command",
+                "op": "deck.return",
+                "deckId": "cargo",
+                "card": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  }
+                },
+                "destination": "discard",
+                "when": {
+                  "op": "predicate.all",
+                  "items": [
+                    {
+                      "op": "predicate.exists",
+                      "value": {
+                        "op": "value.state",
+                        "ref": {
+                          "endpoint": "public.decks.cargo.offer.secondCardId"
+                        }
+                      },
+                      "exists": true
+                    },
+                    {
+                      "op": "predicate.compare",
+                      "operator": "eq",
+                      "left": {
+                        "op": "value.entity",
+                        "entity": {
+                          "collection": "cargoOrders",
+                          "entityId": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.decks.cargo.offer.secondCardId"
+                            }
+                          }
+                        },
+                        "field": "status"
+                      },
+                      "right": {
+                        "op": "value.literal",
+                        "value": "available"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "s004-active-locomotives",
+                "kind": "query",
+                "op": "core.entities.select",
+                "selector": {
+                  "collection": "locomotives",
+                  "objectTypes": [
+                    "transport.locomotive"
+                  ],
+                  "facets": {
+                    "availability": {
+                      "op": "value.literal",
+                      "value": "active"
+                    }
+                  },
+                  "cardinality": {
+                    "min": 0,
+                    "max": 64
+                  }
+                }
+              },
+              {
+                "id": "s005-order-locomotives",
+                "kind": "command",
+                "op": "core.entities.order",
+                "selection": {
+                  "op": "value.result",
+                  "stepId": "s004-active-locomotives"
+                },
+                "keys": [
+                  {
+                    "source": {
+                      "kind": "related-field",
+                      "referenceField": "nodeId",
+                      "collection": "networkNodes",
+                      "field": "positionX"
+                    },
+                    "direction": "descending",
+                    "missing": "error"
+                  },
+                  {
+                    "source": {
+                      "kind": "related-field",
+                      "referenceField": "ownerTeamId",
+                      "collection": "teams",
+                      "field": "coins"
+                    },
+                    "direction": "descending",
+                    "missing": "error"
+                  },
+                  {
+                    "source": {
+                      "kind": "related-aggregate",
+                      "collection": "locomotives",
+                      "join": {
+                        "current": {
+                          "kind": "field",
+                          "field": "ownerTeamId"
+                        },
+                        "relatedField": "ownerTeamId"
+                      },
+                      "aggregate": "sum",
+                      "valueField": "turnOrderCount"
+                    },
+                    "direction": "descending",
+                    "missing": "error"
+                  }
+                ],
+                "tieBreak": {
+                  "kind": "seeded-random",
+                  "stream": "locomotive-order"
+                }
+              },
+              {
+                "id": "s006",
+                "kind": "command",
                 "op": "core.state.patch",
                 "patches": [
                   {
@@ -7454,11 +7791,44 @@
                       "op": "value.literal",
                       "value": "operations"
                     }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.decks.cargo.offer.firstCardId"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": null
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.decks.cargo.offer.secondCardId"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": null
+                    }
+                  },
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.session.locomotiveOrder"
+                    },
+                    "value": {
+                      "op": "value.result",
+                      "stepId": "s005-order-locomotives",
+                      "path": [
+                        "ids"
+                      ]
+                    }
                   }
                 ]
               },
               {
-                "id": "s003",
+                "id": "s007",
                 "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "mock.cargo.finish.event.3",
@@ -8935,7 +9305,7 @@
                 "errorCode": "ACTION_PRECONDITION_FAILED"
               },
               {
-                "id": "s002",
+                "id": "s002-draw-first",
                 "kind": "command",
                 "op": "deck.draw",
                 "deckId": "cargo",
@@ -8945,7 +9315,20 @@
                 "onEmpty": "reshuffle-discard"
               },
               {
-                "id": "s003",
+                "id": "s003-hold-first",
+                "kind": "command",
+                "op": "deck.extract",
+                "deckId": "cargo",
+                "source": "discard",
+                "card": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  }
+                }
+              },
+              {
+                "id": "s004-draw-second",
                 "kind": "command",
                 "op": "deck.draw",
                 "deckId": "cargo",
@@ -8955,7 +9338,20 @@
                 "onEmpty": "reshuffle-discard"
               },
               {
-                "id": "s004",
+                "id": "s005-hold-second",
+                "kind": "command",
+                "op": "deck.extract",
+                "deckId": "cargo",
+                "source": "discard",
+                "card": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  }
+                }
+              },
+              {
+                "id": "s006",
                 "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "mock.cargo.draw-offer.event.4",
@@ -8999,18 +9395,37 @@
                       }
                     },
                     {
-                      "op": "predicate.compare",
-                      "operator": "eq",
-                      "left": {
-                        "op": "value.state",
-                        "ref": {
-                          "endpoint": "public.decks.cargo.offer.firstCardId"
+                      "op": "predicate.any",
+                      "items": [
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.param",
+                            "name": "cargoId"
+                          },
+                          "right": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.decks.cargo.offer.firstCardId"
+                            }
+                          }
+                        },
+                        {
+                          "op": "predicate.compare",
+                          "operator": "eq",
+                          "left": {
+                            "op": "value.param",
+                            "name": "cargoId"
+                          },
+                          "right": {
+                            "op": "value.state",
+                            "ref": {
+                              "endpoint": "public.decks.cargo.offer.secondCardId"
+                            }
+                          }
                         }
-                      },
-                      "right": {
-                        "op": "value.literal",
-                        "value": "mock-cargo-b-f"
-                      }
+                      ]
                     }
                   ]
                 },
@@ -9036,7 +9451,20 @@
                 "kind": "command",
                 "op": "core.number.add",
                 "target": {
-                  "endpoint": "public.teams.white-logistics.maintenanceDue"
+                  "endpoint": "public.teams.bound.maintenanceDue",
+                  "bindings": {
+                    "teamId": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "wagons",
+                        "entityId": {
+                          "op": "value.param",
+                          "name": "wagonId"
+                        }
+                      },
+                      "field": "ownerTeamId"
+                    }
+                  }
                 },
                 "delta": {
                   "op": "value.literal",
@@ -9046,11 +9474,127 @@
               {
                 "id": "s004",
                 "kind": "command",
+                "op": "deck.return",
+                "deckId": "cargo",
+                "card": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.firstCardId"
+                  }
+                },
+                "destination": "discard",
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "ne",
+                  "left": {
+                    "op": "value.param",
+                    "name": "cargoId"
+                  },
+                  "right": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.decks.cargo.offer.firstCardId"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "s005",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.decks.cargo.offer.firstCardId"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": null
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "ne",
+                  "left": {
+                    "op": "value.param",
+                    "name": "cargoId"
+                  },
+                  "right": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.decks.cargo.offer.firstCardId"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "s006",
+                "kind": "command",
+                "op": "deck.return",
+                "deckId": "cargo",
+                "card": {
+                  "op": "value.state",
+                  "ref": {
+                    "endpoint": "public.decks.cargo.offer.secondCardId"
+                  }
+                },
+                "destination": "discard",
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "ne",
+                  "left": {
+                    "op": "value.param",
+                    "name": "cargoId"
+                  },
+                  "right": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.decks.cargo.offer.secondCardId"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "s007",
+                "kind": "command",
+                "op": "core.state.patch",
+                "patches": [
+                  {
+                    "operation": "set",
+                    "target": {
+                      "endpoint": "public.decks.cargo.offer.secondCardId"
+                    },
+                    "value": {
+                      "op": "value.literal",
+                      "value": null
+                    }
+                  }
+                ],
+                "when": {
+                  "op": "predicate.compare",
+                  "operator": "ne",
+                  "left": {
+                    "op": "value.param",
+                    "name": "cargoId"
+                  },
+                  "right": {
+                    "op": "value.state",
+                    "ref": {
+                      "endpoint": "public.decks.cargo.offer.secondCardId"
+                    }
+                  }
+                }
+              },
+              {
+                "id": "s008",
+                "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "mock.cargo.load.white.event.4",
                 "summary": {
                   "op": "value.literal",
-                  "value": "MOCK: груз B–F загружен в белый вагон"
+                  "value": "MOCK: выбранный предложенный груз загружен в выбранный вагон"
                 },
                 "audience": "public",
                 "data": {
@@ -9119,6 +9663,17 @@
               },
               {
                 "id": "s004",
+                "kind": "command",
+                "op": "deck.return",
+                "deckId": "cargo",
+                "card": {
+                  "op": "value.param",
+                  "name": "cargoId"
+                },
+                "destination": "discard"
+              },
+              {
+                "id": "s005",
                 "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "mock.cargo.deliver.b-f.event.4",
@@ -9688,7 +10243,20 @@
                 "kind": "command",
                 "op": "core.number.add",
                 "target": {
-                  "endpoint": "public.teams.white-logistics.maintenanceDue"
+                  "endpoint": "public.teams.bound.maintenanceDue",
+                  "bindings": {
+                    "teamId": {
+                      "op": "value.entity",
+                      "entity": {
+                        "collection": "wagons",
+                        "entityId": {
+                          "op": "value.param",
+                          "name": "wagonId"
+                        }
+                      },
+                      "field": "ownerTeamId"
+                    }
+                  }
                 },
                 "delta": {
                   "op": "value.literal",
@@ -9698,11 +10266,22 @@
               {
                 "id": "s004",
                 "kind": "command",
+                "op": "deck.return",
+                "deckId": "cargo",
+                "card": {
+                  "op": "value.param",
+                  "name": "cargoId"
+                },
+                "destination": "discard"
+              },
+              {
+                "id": "s005",
+                "kind": "command",
                 "op": "core.event.emit",
                 "eventType": "mock.cargo.deliver.event.4",
                 "summary": {
                   "op": "value.literal",
-                  "value": "MOCK: груз B–C доставлен; выплата и тариф рассчитаны по открытому кратчайшему пути"
+                  "value": "MOCK: выбранный груз доставлен; выплата и тариф рассчитаны по открытому кратчайшему пути"
                 },
                 "audience": "public",
                 "data": {

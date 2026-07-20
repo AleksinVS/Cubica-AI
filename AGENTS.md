@@ -96,12 +96,19 @@ Agents must always:
    - Do not leave completed, failed, or obsolete subagent sessions running or open; this prevents dangling workers from blocking future agent spawns.
    - Before reporting that a subagent-driven task is complete, check that no unnecessary subagents remain active.
 
-8. **Use subagents and parallelize work where justified**
+8. **Use subagents, plan efficient execution, and simplify final designs**
    - Там, где это оправдано, используй субагентов и распараллеливай работу.
    - Модель и reasoning (глубину рассуждения модели) выбирай исходя из сложности и критичности задачи:
      - `luna` с reasoning `medium`, `high` — для механической работы и выполнения тестов. Разрабатывать тесты и исправлять выявленные ошибки должны `terra`, `sol` или основной агент — в зависимости от сложности тестов и ошибок. Для выполнения тестов всегда используй субагента `luna`, кроме двух случаев: когда оправдано повышение до `terra` или `sol`; когда речь идет о единичных тестах, которые дешевле запустить без субагентов;
-     - `terra` с reasoning `high` или `xhigh` — для простых и очевидных задач;
-     - `sol` с reasoning `high`, `xhigh` — для сложных, неочевидных, критичных, ответственных и архитектурных задач.
+     - `terra` с reasoning `medium` или `high` — для простых или очевидных задач;
+     - `sol` с reasoning `high` — для сложных, неочевидных, критичных и архитектурно значимых задач.
+   - Сравнительный визуальный анализ (систематическое сопоставление реализованного интерфейса с макетом, эталоном или снимком экрана) относится к наиболее сложным задачам: итоговый анализ должен выполнять `sol` с reasoning `high` либо более сильная доступная модель с высоким уровнем рассуждения. Более дешевой модели можно поручить только механическую подготовку материалов и измерений, но не итоговую оценку расхождений, их причин и приоритетов исправления.
+   - При подготовке исполнительской документации в `docs/tasks/` следуй подробным локальным правилам из `docs/tasks/AGENTS.md`: план должен допускать необязательное разбиение на проверяемые блоки для разных уровней моделей и глубины рассуждения.
+   - На заключительном этапе планирования архитектуры или крупного исполнительского блока обязательно проверь, можно ли упростить архитектуру, реализацию или последовательность работ без потери требуемой функциональности, качества, безопасности и принятых ограничений. Зафиксируй принятые упрощения либо кратко объясни, почему дальнейшее упрощение нецелесообразно.
+   - Такая проверка не разрешает самостоятельно менять согласованные архитектурные границы. Если упрощение затрагивает публичные контракты, источник истины, границы доверия и безопасности, хранение, совместимость или существенную стоимость эксплуатации, сначала согласуй решение с PM и отрази его в ADR.
+   - Архитектурные решения принимает только основной агент после согласования с PM. Субагент может провести аудит, собрать варианты, оценить последствия или реализовать уже принятое решение, но не может самостоятельно утвердить новую архитектурную границу.
+   - Передавай субагенту максимально полный уже собранный контекст: точную цель, принятые решения, найденные факты, пути к нужным файлам, ограничения, ожидаемые результаты и проверки. Не заставляй субагента повторять уже выполненную основным агентом подготовительную работу.
+   - Основной агент обязан проверить результат субагента по исходным файлам, контрактам и свежим доказательствам перед принятием или передачей пользователю.
 
 9. **Развивать платформу через конкретные игры**
    - По умолчанию новая продуктовая разработка начинается с вводных PM по конкретной игре и одного **вертикального среза** (законченного сценария от правил и состояния до интерфейса и проверок).
@@ -116,13 +123,14 @@ Agents must always:
     - Fixing such documented gaps has a high priority. Unplanned architectural drift is strictly prohibited.
 
 11. **Platform purity over game-specific hacks**
-    - Any new game mechanic MUST be implemented by extending the manifest schema (capabilities, handlers, state extensions).
+    - Any new game mechanic MUST be expressed through the schema-first Game Intent → Cubica Mechanics IR path: typed state model, bounded action parameters, published plans, composable operations and authoring macros.
+    - A new game rule MUST first be assembled from the existing operation catalog. A new general runtime operation or public schema extension is allowed only when the accepted language cannot express the rule with the required type safety, atomicity, determinism, security and bounded cost; this is an architecture change and requires PM approval.
     - NEVER add game-specific `if/else` branches or hardcode game IDs (e.g., "antarctica") in the core platform layers (like `services/runtime-api`).
     - Before designing or implementing a game mechanic, the agent MUST explicitly analyze whether the mechanic is:
       - **general**: useful for a whole class of games or the platform as a whole;
       - **game-specific**: meaningful only for one concrete game or scenario.
     - If the classification is unclear, the agent MUST clarify it with the user or document the assumption before implementation.
-    - General mechanics belong in platform contracts, schema extensions, reusable handlers, or shared renderer behavior. Game-specific mechanics belong in the concrete game bundle/plugin/manifest and must not leak into generic player/runtime layers.
+    - General mechanics belong in platform contracts, the neutral Mechanics operation catalog, schema extensions, reusable algorithms, or shared renderer behavior. Game-specific workflows belong in the concrete game's authoring macros, plans, bundle, plugin, and content; they must not leak into generic player/runtime layers.
     - Для игрового движка универсальность является целевым свойством, а не риском, который нужно откладывать до второго или третьего похожего случая. Один реальный игровой срез может быть достаточным основанием для общей возможности, если контракт использует нейтральные понятия, допускает композицию и доказан нейтральной тестовой фикстурой.
     - По возможности общие runtime-операции должны описывать выбор, фильтрацию, упорядочивание, вычисление, массовое изменение, планирование и атомарную композицию над игровыми данными. Они не должны кодировать предметную семантику вроде «открыть построенную дорогу», если то же правило выражается общими операциями над объектами и временем.
     - Запрет преждевременной универсальности относится к внутренним техническим абстракциям самой платформы, у которых нет текущего потребителя. Он не применяется к публичному декларативному языку игрового движка: узкие игровые операции там создают риск дорогой последующей миграции всех игр.
@@ -131,6 +139,8 @@ Agents must always:
     - `PROJECT_STRUCTURE.yaml` is the single machine-readable source of truth for the repository layout.
     - When adding new significant directories, you MUST create a `.desc.json` file inside them containing a short semantic description (1-2 sentences).
     - After any structural changes (adding/removing folders or `.desc.json` files), you MUST run `node scripts/dev/generate-structure.js` to regenerate `PROJECT_STRUCTURE.yaml` and keep the architecture context up to date.
+    - `PROJECT_STRUCTURE.yaml` is a navigation map of the current repository, not an inventory of history: archived content (completed `TSK-*` files, historical snapshots, retired hierarchies) must never be listed file-by-file in it.
+    - Archive directories (the repository-root `archive/`, `docs/tasks/archive/`, and any future archive) MUST declare `"_collapse": true` in their `.desc.json`; the generator then renders such a directory as a single `directory...` line without contents. Per-file descriptions inside an archive `.desc.json` remain allowed where governance checks require them (for example, task descriptions in `docs/tasks/archive/.desc.json`), but they are metadata only and are not published into `PROJECT_STRUCTURE.yaml`.
 
 13. **ANTI-PATTERN: Declarative vs. Imperative Drift**
     - NEVER replace declarative, cross-platform contracts (e.g., JSON Schema, OpenAPI specs) with language-specific imperative code (e.g., manual TypeScript type guards, Zod schemas isolated in backend code).
@@ -186,6 +196,7 @@ Before planning anything, use these entry points:
 - [PROJECT_STRUCTURE.yaml](/home/abc/projects/Cubica-AI/PROJECT_STRUCTURE.yaml) - current repository layout and workspace map.
 - [docs/architecture/PROJECT_ARCHITECTURE.md](/home/abc/projects/Cubica-AI/docs/architecture/PROJECT_ARCHITECTURE.md) - canonical architecture overview and ADR cross-links.
 - [docs/architecture/gameplay-slices/README.md](/home/abc/projects/Cubica-AI/docs/architecture/gameplay-slices/README.md) - rules and index for bounded gameplay slice records; use these for delivery-specific migration details instead of ADRs.
+- [docs/tasks/AGENTS.md](/home/abc/projects/Cubica-AI/docs/tasks/AGENTS.md) - mandatory local rules for execution planning, subagent-ready decomposition, model/effort selection, and final simplification review.
 - [docs/tasks/STRATEGY.md](/home/abc/projects/Cubica-AI/docs/tasks/STRATEGY.md) - product-led development mode, strategic priorities, and rules for selecting platform work.
 - [NEXT_STEPS.md](/home/abc/projects/Cubica-AI/NEXT_STEPS.md) - current execution priorities and the next bounded slices.
 

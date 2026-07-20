@@ -58,6 +58,7 @@ import {
   resolveCurrentBoard,
   resolveCurrentInfoEntry,
   resolveBoardCards,
+  resolveJournalEntries,
 } from "@cubica/antarctica-player-plugin/state-resolvers";
 import type { GamePlayerContent } from "@cubica/antarctica-player-plugin/contracts";
 
@@ -75,7 +76,7 @@ describe("antarctica shared UI screen routing", () => {
     const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
 
     expect(config.resolveBoardScreenKey?.(30)).toBe("board-topbar");
-    expect(config.resolveScreenKey?.("S2", 30, null, { activeScreen: "topbar" }, uiWithSharedVariants)).toBe(
+    expect(config.resolveScreenKey?.("S2", 30, null, uiWithSharedVariants)).toBe(
       "board-topbar"
     );
   });
@@ -84,7 +85,7 @@ describe("antarctica shared UI screen routing", () => {
     const config = createAntarcticaConfig(ANTARCTICA_GAME_CONFIG_DATA);
 
     expect(config.resolveBoardScreenKey?.(15)).toBeNull();
-    expect(config.resolveScreenKey?.("S2", 15, null, { activeScreen: "topbar" }, uiWithSharedVariants)).toBeNull();
+    expect(config.resolveScreenKey?.("S2", 15, null, uiWithSharedVariants)).toBeNull();
   });
 });
 
@@ -787,6 +788,61 @@ describe("slice-step34-38-ending: Boards 67_68 and 69_70, Infos i19/i19_1, i20, 
     it("readCanAdvance returns false at terminal i21 step 38", () => {
       const canAdvance = readCanAdvance(openingTailStep38InfoI21SessionSnapshot);
       expect(canAdvance).toBe(false);
+    });
+  });
+});
+
+/**
+ * Regression test for the journal-log normalization fix (cluster E,
+ * TSK-20260719-antarctica-alignment).
+ *
+ * The runtime's `core.event.emit` step nests every game-defined field except
+ * `summary` inside `entry.data` (see `resolveJournalEntries` /
+ * `normalizeLogEntry` in state-resolvers.ts). Older/mock log entries instead
+ * kept those same fields flat on the entry itself. Both shapes must resolve
+ * to the same journal projection, otherwise a live session's card entries
+ * (nested form) silently render as an empty journal.
+ */
+describe("resolveJournalEntries: runtime log entry shape normalization", () => {
+  const emptyGameContent: GamePlayerContent = { infos: [], boards: [], cards: [] };
+
+  it("normalizes flat and data-nested log entries to the same journal fields", () => {
+    const publicState = {
+      log: [
+        // Legacy/mock shape: card fields live at the top level of the entry.
+        {
+          cardId: "55",
+          displayMode: "card",
+          frontText: "Front A",
+          backText: "Back A",
+          at: "2026-07-19T00:00:00.000Z"
+        },
+        // Real runtime shape: `core.event.emit` nests card fields under `data`
+        // and keeps `summary` (the resolution/back text) at the top level.
+        {
+          summary: "Back B",
+          at: "2026-07-19T00:01:00.000Z",
+          data: {
+            cardId: "55",
+            displayMode: "card",
+            frontText: "Front B"
+          }
+        }
+      ]
+    };
+
+    const entries = resolveJournalEntries(emptyGameContent, publicState, []);
+
+    expect(entries).toHaveLength(2);
+    expect(entries[0]).toMatchObject({
+      frontText: "Front A",
+      backText: "Back A",
+      at: "2026-07-19T00:00:00.000Z"
+    });
+    expect(entries[1]).toMatchObject({
+      frontText: "Front B",
+      backText: "Back B",
+      at: "2026-07-19T00:01:00.000Z"
     });
   });
 });

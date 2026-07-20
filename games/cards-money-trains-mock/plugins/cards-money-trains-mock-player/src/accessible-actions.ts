@@ -13,6 +13,7 @@ import type {
 } from "@cubica/player-web/plugin-api";
 
 import { projectBoardSession } from "./board-state.ts";
+import { LOCOMOTIVE_MOVE_ACTION_ID } from "./movement-selection.ts";
 
 type BoardProjection = ReturnType<typeof projectBoardSession>;
 
@@ -25,6 +26,50 @@ const contributionLabel = (name: string, projection: BoardProjection): string =>
   const team = projection.teams.find((candidate) =>
     candidate.id.toLowerCase().includes(prefix) || candidate.label.toLowerCase().includes(prefix));
   return team ? `Вклад: ${team.label}` : `Вклад: ${prefix}`;
+};
+
+/** Human-readable public label for one explicitly active transport unit. */
+const vehicleLabel = (
+  vehicle: BoardProjection["vehicles"][number],
+  projection: BoardProjection
+): string => {
+  const team = projection.teams.find((candidate) => candidate.id === vehicle.ownerTeamId);
+  const node = projection.nodes.find((candidate) => candidate.id === vehicle.nodeId);
+  return [
+    team?.label ?? vehicle.ownerTeamId ?? "Без владельца",
+    node?.label ?? vehicle.nodeId ?? "Вне станции",
+    "активен",
+    vehicle.id
+  ].join(" · ");
+};
+
+const cargoStatusLabel = (status: string | null): string => {
+  if (status === "available") return "доступен";
+  if (status === "in_transit") return "в пути";
+  if (status === "delivered") return "доставлен";
+  return status ? `статус: ${status}` : "статус не указан";
+};
+
+/** Describe one public order while leaving all route and status checks to runtime. */
+const cargoLabel = (
+  cargo: BoardProjection["cargoOrders"][number],
+  projection: BoardProjection
+): string => {
+  const from = projection.nodes.find((node) => node.id === cargo.fromNodeId);
+  const to = projection.nodes.find((node) => node.id === cargo.toNodeId);
+  const route = `${from?.label ?? cargo.fromNodeId ?? "?"} → ${to?.label ?? cargo.toNodeId ?? "?"}`;
+  const payout = cargo.payout === null ? "выплата не указана" : `выплата ${cargo.payout}`;
+  return `${route} · ${cargoStatusLabel(cargo.status)} · ${payout} · ${cargo.id}`;
+};
+
+/** Public endpoint labels for a road; openness remains a runtime concern. */
+const edgeLabel = (
+  edge: BoardProjection["edges"][number],
+  projection: BoardProjection
+): string => {
+  const from = projection.nodes.find((node) => node.id === edge.fromNodeId);
+  const to = projection.nodes.find((node) => node.id === edge.toNodeId);
+  return `${from?.label ?? edge.fromNodeId} — ${to?.label ?? edge.toNodeId}`;
 };
 
 /** Build a normal keyboard form from public board choices, never from rules. */
@@ -63,7 +108,7 @@ const actionFields = (
         required: true,
         options: selectOptions(projection.edges.map((edge) => ({
           id: edge.id,
-          label: `${projection.nodes.find((node) => node.id === edge.fromNodeId)?.label ?? edge.fromNodeId} — ${projection.nodes.find((node) => node.id === edge.toNodeId)?.label ?? edge.toNodeId}`
+          label: edgeLabel(edge, projection)
         })))
       },
       {
@@ -76,6 +121,120 @@ const actionFields = (
         step: 0.01
       },
       ...contributionFields
+    ];
+  }
+  if (action.actionId === LOCOMOTIVE_MOVE_ACTION_ID) {
+    return [
+      {
+        name: "vehicleId",
+        label: "Активный локомотив",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.vehicles
+          .filter((vehicle) => vehicle.kind === "locomotive")
+          .map((vehicle) => ({
+            id: vehicle.id,
+            label: vehicleLabel(vehicle, projection)
+          })))
+      },
+      {
+        name: "edgeId",
+        label: "Дорога",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.edges.map((edge) => ({
+          id: edge.id,
+          label: edgeLabel(edge, projection)
+        })))
+      }
+    ];
+  }
+  if (action.actionId === "mock.cargo.load.white") {
+    return [
+      {
+        name: "wagonId",
+        label: "Активный вагон",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.vehicles
+          .filter((vehicle) => vehicle.kind === "wagon")
+          .map((vehicle) => ({
+            id: vehicle.id,
+            label: vehicleLabel(vehicle, projection)
+          })))
+      },
+      {
+        name: "cargoId",
+        label: "Предложенный груз",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.cargoOfferIds.map((id) => {
+          const cargo = projection.cargoOrders.find((candidate) => candidate.id === id);
+          return {
+            id,
+            label: cargo ? cargoLabel(cargo, projection) : id
+          };
+        }))
+      }
+    ];
+  }
+  if (
+    action.actionId === "mock.operations.attach.white"
+    || action.actionId === "mock.operations.detach.white"
+  ) {
+    return [
+      {
+        name: "vehicleId",
+        label: "Активный локомотив",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.vehicles
+          .filter((vehicle) => vehicle.kind === "locomotive")
+          .map((vehicle) => ({
+            id: vehicle.id,
+            label: vehicleLabel(vehicle, projection)
+          })))
+      },
+      {
+        name: "wagonId",
+        label: "Активный вагон",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.vehicles
+          .filter((vehicle) => vehicle.kind === "wagon")
+          .map((vehicle) => ({
+            id: vehicle.id,
+            label: vehicleLabel(vehicle, projection)
+          })))
+      }
+    ];
+  }
+  if (action.actionId === "mock.cargo.deliver") {
+    return [
+      {
+        name: "wagonId",
+        label: "Активный вагон",
+        kind: "select",
+        required: true,
+        options: selectOptions(projection.vehicles
+          .filter((vehicle) => vehicle.kind === "wagon")
+          .map((vehicle) => ({
+            id: vehicle.id,
+            label: vehicleLabel(vehicle, projection)
+          })))
+      },
+      {
+        name: "cargoId",
+        label: "Публичный грузовой заказ",
+        kind: "select",
+        required: true,
+        // Deliberately include every public status. Runtime alone decides
+        // whether a selected order is currently deliverable.
+        options: selectOptions(projection.cargoOrders.map((cargo) => ({
+          id: cargo.id,
+          label: cargoLabel(cargo, projection)
+        })))
+      }
     ];
   }
   return undefined;

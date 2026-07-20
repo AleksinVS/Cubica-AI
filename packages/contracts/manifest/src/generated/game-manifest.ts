@@ -436,12 +436,15 @@ export interface GameManifestTransportNetworkModel {
   sequenceEndpoint: GameManifestSafeIdentifier;
   /**
    * @minItems 1
+   * @maxItems 512
    */
   regions: [GameManifestTransportRegion, ...GameManifestTransportRegion[]];
   roadPlanning?: GameManifestTransportRoadPlanning;
   movement?: GameManifestTransportMovementModel;
 }
 /**
+ * Bounded simple polygon. A final point equal to the first is an optional explicit closure and is not counted as an additional canonical vertex.
+ *
  * This interface was referenced by `GameManifestSchemaDefs`'s JSON-Schema
  * via the `definition` "GameManifestTransportRegion".
  */
@@ -449,6 +452,7 @@ export interface GameManifestTransportRegion {
   id: string;
   /**
    * @minItems 3
+   * @maxItems 513
    */
   polygon: [
     GameManifestCanonicalPoint,

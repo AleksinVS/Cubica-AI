@@ -159,12 +159,28 @@ test("HTTP admission returns 429 with Retry-After, while an exact receipt retry 
     assert.equal(accepted.status, 200);
     const acceptedBody = await accepted.json() as {
       version: { stateVersion: number };
+      timings?: unknown;
     };
+    assert.equal(
+      Object.hasOwn(acceptedBody, "timings"),
+      false,
+      "latency observability must not change the public JSON contract"
+    );
+    assert.deepEqual(
+      readServerTimingMetricNames(accepted.headers.get("Server-Timing")),
+      ["dispatch", "scheduler", "projection", "action-availability", "total"],
+      "a zero-attempt scheduler scan must not trigger a redundant session/principal reload"
+    );
 
     // A transport retry is resolved from the durable receipt before the
     // controller, despite carrying the now-stale original state version.
     const retry = await postAction(firstCommand);
     assert.equal(retry.status, 200);
+    assert.deepEqual(
+      readServerTimingMetricNames(retry.headers.get("Server-Timing")),
+      ["dispatch", "projection", "action-availability", "total"],
+      "an idempotent receipt retry did not commit, so no scheduler or reload timing is advertised"
+    );
 
     const limited = await postAction({
       ...firstCommand,
@@ -182,3 +198,16 @@ test("HTTP admission returns 429 with Retry-After, while an exact receipt retry 
     await api.close();
   }
 });
+
+/**
+ * Validate the deliberately narrow header form while returning its canonical
+ * metric order for concise route assertions.
+ */
+function readServerTimingMetricNames(value: string | null): string[] {
+  assert.notEqual(value, null, "the accepted action response must expose Server-Timing");
+  return value!.split(", ").map((metric) => {
+    const match = metric.match(/^([a-z][a-z-]*);dur=\d+\.\d{3}$/u);
+    assert.notEqual(match, null, `invalid Server-Timing metric: ${metric}`);
+    return match![1]!;
+  });
+}

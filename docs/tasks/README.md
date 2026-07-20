@@ -32,6 +32,7 @@
 
 ```text
 docs/tasks/
+  AGENTS.md
   README.md
   STRATEGY.md
   ROADMAP.md
@@ -64,7 +65,7 @@ docs/tasks/
 
 Перед началом работы агент или разработчик читает:
 
-1. `AGENTS.md`.
+1. Корневой `AGENTS.md`, затем локальный `docs/tasks/AGENTS.md`.
 2. `PROJECT_OVERVIEW.md`.
 3. `PROJECT_STRUCTURE.yaml`.
 4. `docs/architecture/PROJECT_ARCHITECTURE.md`.
@@ -135,6 +136,12 @@ none | TSK-YYYYMMDD-parent-slug
 
 Журнал передачи между исполнителями.
 ```
+
+Обязательные для агентов правила подготовки `Plan` и `Execution`, выбора
+субагентов, уровня модели и глубины рассуждения, а также заключительной
+проверки на возможное упрощение определены в локальном
+[`AGENTS.md`](AGENTS.md). Этот `README.md` остается описанием системы задач и
+формата документов для людей и агентов и не заменяет локальные инструкции.
 
 Завершенные (`done`) и замененные (`dropped`) задачи не остаются в
 `docs/tasks/active/`: после фиксации итогового журнала их перемещают в

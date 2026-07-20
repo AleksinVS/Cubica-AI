@@ -317,6 +317,26 @@ export function UiComponentNode({
   const resolvedDesignImage = resolveDesignImage(component.designImageRef, designArtifacts);
   const isImageMode = effectiveVisualMode === "image" || (effectiveVisualMode === "auto" && !!resolvedDesignImage);
 
+  // WHY (ADR-055 + reference parity): a structural container (areaComponent or
+  // screenComponent) may declare `actions.onClick` to behave as a dismissible
+  // backdrop — a click on the container's OWN empty area runs the command, while
+  // clicks on its children (cards, buttons, text) do not. The `target ===
+  // currentTarget` guard is exactly this backdrop semantic: it fires only when the
+  // click landed on the container element itself, not on a descendant. This mirrors
+  // a modal backdrop (the Antarctica journal/hint panels close on an empty-space
+  // click, matching the reference Bootstrap modal's `data-dismiss` backdrop) with no
+  // game specifics in the generic renderer: the command (e.g. `closePanel`) is
+  // declared in the UI manifest. Interactive controls must be buttonComponents,
+  // whose own onClick already stops at the button.
+  const backdropAction = component.actions?.onClick;
+  const handleBackdropClick = backdropAction?.command
+    ? (event: React.MouseEvent<HTMLDivElement>) => {
+        if (event.target === event.currentTarget) {
+          onAction(backdropAction.command, backdropAction.payload ?? {});
+        }
+      }
+    : undefined;
+
   // itemTemplate: итерация по коллекции с локальным контекстом
   if (component.itemTemplate && gameState) {
     const collection = resolveExpressions(
@@ -417,6 +437,7 @@ export function UiComponentNode({
           className={component.type === "areaComponent" ? `game-area ${cssClass}` : `game-screen ${cssClass}`}
           data-workspace-slot={component.type === "areaComponent" ? areaAttributes.workspaceSlot : undefined}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
+          onClick={handleBackdropClick}
         >
           {itemContent}
         </div>
@@ -499,6 +520,7 @@ export function UiComponentNode({
           {...previewAttributes}
           className={`game-screen ${cssClass}`}
           style={bgImage ? { backgroundImage: `url(${bgImage})` } : undefined}
+          onClick={handleBackdropClick}
         >
           {/*
             WHY (ADR-055): render the decorative background layer from generic,
@@ -573,6 +595,7 @@ export function UiComponentNode({
           className={`game-area ${areaAttributes.className}`}
           data-workspace-slot={areaAttributes.workspaceSlot}
           style={areaBgImage ? { backgroundImage: `url(${areaBgImage})` } : undefined}
+          onClick={handleBackdropClick}
         >
           {children.map((child, index) => (
             <UiComponentNode
@@ -612,6 +635,7 @@ export function UiComponentNode({
           layoutMode={layoutMode}
           metricBackgroundImages={metricBackgroundImages}
           previewAttributes={previewAttributes}
+          assetResolver={assetResolver}
         />
       );
     }
@@ -661,6 +685,7 @@ export function UiComponentNode({
           localContext={localContext}
           gameState={gameState}
           previewAttributes={previewAttributes}
+          assetResolver={assetResolver}
         />
       );
     }

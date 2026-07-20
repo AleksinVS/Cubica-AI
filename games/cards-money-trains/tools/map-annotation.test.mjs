@@ -40,7 +40,10 @@ test("initial network review draft preserves the extracted topology without publ
   assert.equal(annotation.nodes.length, 25);
   assert.equal(annotation.edges.length, 10);
   assert.equal(annotation.regions.length, 0);
-  assert.equal(annotation.reviewIssues.length, 4);
+  assert.deepEqual(
+    annotation.reviewIssues.map((issue) => issue.code),
+    ["confirm-overlay-alignment"]
+  );
   assert.equal(connectedNodeIds.size, 11);
 
   for (let number = 1; number <= 23; number += 1) {
@@ -49,14 +52,22 @@ test("initial network review draft preserves the extracted topology without publ
   assert.equal(nodeIds.has("terminal-3-14"), true);
   assert.equal(nodeIds.has("waypoint-9-3-4"), true);
   assert.equal(
+    annotation.nodes.find((node) => node.id === "terminal-3-14")?.kind,
+    "terminal"
+  );
+  assert.equal(
+    annotation.nodes.find((node) => node.id === "waypoint-9-3-4")?.kind,
+    "waypoint"
+  );
+  assert.equal(
     annotation.edges.some((edge) =>
       edge.id === "road-3-3-14" &&
       edge.fromNodeId === "terminal-3" &&
       edge.toNodeId === "terminal-3-14"),
     true
   );
-  assert.equal(annotation.nodes.every((node) => node.state === "unknown"), true);
-  assert.equal(annotation.edges.every((edge) => edge.state === "unknown"), true);
+  assert.equal(annotation.nodes.every((node) => node.state === "open"), true);
+  assert.equal(annotation.edges.every((edge) => edge.state === "open"), true);
 
   assert.throws(
     () => toManifestFragment(annotation),
@@ -64,7 +75,7 @@ test("initial network review draft preserves the extracted topology without publ
   );
   assert.match(
     toReviewOverlaySvg(annotation),
-    /REVIEW DRAFT: UNCONFIRMED, NOT PUBLISHABLE · 4 OPEN ISSUES/
+    /REVIEW DRAFT: UNCONFIRMED, NOT PUBLISHABLE · 1 OPEN ISSUE/
   );
 });
 

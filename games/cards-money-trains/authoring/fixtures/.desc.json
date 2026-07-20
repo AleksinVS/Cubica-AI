@@ -1,3 +1,3 @@
 {
-  "description": "Bounded game fixtures containing only confirmed normal-start and demonstration data; missing topology, decks, payouts, and moves remain explicit blockers."
+  "description": "Bounded authoring inputs and intake artifacts for confirmed normal-start, cargo, news, country descriptions, the author-confirmed terminal-to-country mapping, source-review data, and the guarded real operating-turn replay. Unresolved runtime semantics, map geometry, deck lifecycles, and author confirmations remain explicit instead of being inferred."
 }

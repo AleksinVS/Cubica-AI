@@ -910,6 +910,99 @@ const commandToSvg = (command, matrix) => {
   return `${command.op} ${points.map((point) => `${svgNumber(point.x)} ${svgNumber(point.y)}`).join(" ")}`;
 };
 
+const compareNumbers = (left, right) => left - right;
+
+const compareStrokeStyles = (left, right) => {
+  for (let index = 0; index < 4; index += 1) {
+    const difference = compareNumbers(left.cmyk[index], right.cmyk[index]);
+    if (difference !== 0) return difference;
+  }
+  return (
+    compareNumbers(left.width, right.width) ||
+    compareNumbers(left.lineCap, right.lineCap) ||
+    compareNumbers(left.lineJoin, right.lineJoin)
+  );
+};
+
+/**
+ * Serialize the exact source values rather than a display colour. The key is
+ * hashed into the SVG group id so repeated extraction keeps the same identity
+ * even when a future reviewed source introduces another style before it.
+ */
+const strokeStyleKey = (style) =>
+  `cmyk=${style.cmyk.join(",")};width=${style.width};cap=${style.lineCap};join=${style.lineJoin}`;
+
+/**
+ * Group candidates by every source stroke attribute preserved in the JSON.
+ * The artifact has already passed its JSON Schema before this function runs;
+ * this is a presentation transform, not a second imperative validator.
+ */
+export const groupBoundaryCandidatesByStrokeStyle = (candidates) => {
+  const byStyle = new Map();
+  for (const candidate of candidates) {
+    const key = strokeStyleKey(candidate.strokeStyle);
+    const existing = byStyle.get(key);
+    if (existing) {
+      existing.candidates.push(candidate);
+    } else {
+      byStyle.set(key, {
+        key,
+        id: `boundary-style-${createHash("sha256").update(key).digest("hex").slice(0, 16)}`,
+        style: candidate.strokeStyle,
+        candidates: [candidate]
+      });
+    }
+  }
+  return [...byStyle.values()].sort((left, right) =>
+    compareStrokeStyles(left.style, right.style));
+};
+
+const cmykToHex = (cmyk) => {
+  const channels = cmyk.slice(0, 3).map((component) =>
+    Math.round(255 * (1 - Math.min(1, component + cmyk[3]))));
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+};
+
+const SVG_LINE_CAPS = ["butt", "round", "square"];
+const SVG_LINE_JOINS = ["miter", "round", "bevel"];
+
+const renderStyleLegend = (groups) => {
+  const panelX = 2110;
+  const panelY = 36;
+  const panelWidth = 2933;
+  const panelHeight = 544;
+  const columnCount = 2;
+  const rowsPerColumn = Math.ceil(groups.length / columnCount);
+  const columnWidth = 1430;
+  const entries = groups.map((group, index) => {
+    const column = Math.floor(index / rowsPerColumn);
+    const row = index % rowsPerColumn;
+    const x = panelX + 42 + column * columnWidth;
+    const y = panelY + 112 + row * 46;
+    const order = String(index + 1).padStart(2, "0");
+    const colour = cmykToHex(group.style.cmyk);
+    const label = (
+      `S${order} · ${group.candidates.length} шт. · ` +
+      `CMYK ${group.style.cmyk.join("/")} · w ${group.style.width} · ` +
+      `cap ${group.style.lineCap} · join ${group.style.lineJoin}`
+    );
+    return [
+      `    <g aria-label="${xmlEscape(label)}">`,
+      `      <line x1="${x}" y1="${y - 8}" x2="${x + 72}" y2="${y - 8}" ` +
+        `stroke="${colour}" stroke-width="${Math.max(5, group.style.width * 5)}" ` +
+        `stroke-linecap="${SVG_LINE_CAPS[group.style.lineCap]}" ` +
+        `stroke-linejoin="${SVG_LINE_JOINS[group.style.lineJoin]}" />`,
+      `      <text x="${x + 92}" y="${y}" fill="#ffffff" font-size="23">${xmlEscape(label)}</text>`,
+      "    </g>"
+    ].join("\n");
+  }).join("\n");
+  return `  <g id="stroke-style-legend" role="group" aria-labelledby="stroke-style-legend-title" font-family="sans-serif">
+    <rect x="${panelX}" y="${panelY}" width="${panelWidth}" height="${panelHeight}" rx="20" fill="#10151d" fill-opacity="0.94" stroke="#b9d7e8" stroke-width="4" />
+    <text id="stroke-style-legend-title" x="${panelX + 42}" y="${panelY + 61}" fill="#ffffff" font-size="31" font-weight="700">Исходные стили линий · ${groups.length} групп · ${groups.reduce((sum, group) => sum + group.candidates.length, 0)} кандидатов</text>
+${entries}
+  </g>`;
+};
+
 /** Build the human-review overlay from the JSON artifact. */
 export const createReviewOverlay = (artifact, { backgroundHref }) => {
   if (!validatedArtifacts.has(artifact)) {
@@ -917,9 +1010,35 @@ export const createReviewOverlay = (artifact, { backgroundHref }) => {
   }
   assertSafeBackgroundHref(backgroundHref);
   const matrix = artifact.calibration.pdfToCanonical;
-  const paths = artifact.boundaryCandidates.map((candidate) => {
-    const data = candidate.pdfCommands.map((command) => commandToSvg(command, matrix)).join(" ");
-    return `    <path id="${candidate.id}" d="${data}" />`;
+  const styleGroups = groupBoundaryCandidatesByStrokeStyle(artifact.boundaryCandidates);
+  const paths = styleGroups.map((group, index) => {
+    const styleNumber = String(index + 1).padStart(2, "0");
+    const styleLabel = (
+      `Стиль S${styleNumber}: ${group.candidates.length} кандидатов; ` +
+      `CMYK ${group.style.cmyk.join("/")}; ширина ${group.style.width}; ` +
+      `окончание ${group.style.lineCap}; стык ${group.style.lineJoin}`
+    );
+    const candidates = group.candidates.map((candidate) => {
+      const data = candidate.pdfCommands.map((command) => commandToSvg(command, matrix)).join(" ");
+      return [
+        `      <path id="${xmlEscape(candidate.id)}" data-candidate-id="${xmlEscape(candidate.id)}" d="${data}">`,
+        `        <title>${xmlEscape(candidate.id)} · S${styleNumber}</title>`,
+        "      </path>"
+      ].join("\n");
+    }).join("\n");
+    return [
+      `    <g id="${group.id}" data-style-order="${styleNumber}" ` +
+        `data-candidate-count="${group.candidates.length}" ` +
+        `data-stroke-style="${xmlEscape(group.key)}" fill="none" ` +
+        `stroke="${cmykToHex(group.style.cmyk)}" ` +
+        `stroke-width="${Math.max(3, svgNumber(group.style.width * 4))}" ` +
+        `stroke-linecap="${SVG_LINE_CAPS[group.style.lineCap]}" ` +
+        `stroke-linejoin="${SVG_LINE_JOINS[group.style.lineJoin]}" ` +
+        `opacity="0.94" role="group" aria-labelledby="${group.id}-title">`,
+      `      <title id="${group.id}-title">${xmlEscape(styleLabel)}</title>`,
+      candidates,
+      "    </g>"
+    ].join("\n");
   }).join("\n");
   const terminals = artifact.terminalCandidates.map((candidate) => {
     const { x, y } = candidate.canonicalPosition;
@@ -932,9 +1051,9 @@ export const createReviewOverlay = (artifact, { backgroundHref }) => {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="5079" height="3627" viewBox="0 0 5079 3627" role="img" aria-labelledby="title description">
   <title id="title">Проверочное наложение векторных кандидатов карты</title>
-  <description id="description">Непубликационный слой: пурпурные линии ещё не назначены областям и странам; бирюзовые точки показывают калибровку по 23 терминалам.</description>
-  <image href="${xmlEscape(backgroundHref)}" x="0" y="0" width="5079" height="3627" preserveAspectRatio="none" opacity="0.72" />
-  <g id="unclassified-boundary-candidates" fill="none" stroke="#d000d6" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.72">
+  <desc id="description">Непубликационный слой для ручной классификации: 981 линия сгруппирована по точному исходному стилю CMYK, ширине, окончанию и стыку. Идентификатор каждой линии доступен как идентификатор элемента и во всплывающей подсказке. Линии ещё не назначены областям и странам; бирюзовые точки показывают калибровку по 23 терминалам.</desc>
+  <image href="${xmlEscape(backgroundHref)}" x="0" y="0" width="5079" height="3627" preserveAspectRatio="none" opacity="0.5" />
+  <g id="unclassified-boundary-candidates" aria-label="Неразмеченные кандидаты границ">
 ${paths}
   </g>
   <g id="calibration-terminals" fill="#00e5ff" stroke="#002c38" stroke-width="4" font-family="sans-serif" font-size="38" font-weight="700">
@@ -945,6 +1064,7 @@ ${terminals}
     <text x="78" y="105" fill="#ffffff" font-size="43" font-weight="700">ЧЕРНОВИК: контуры не назначены областям</text>
     <text x="78" y="166" fill="#ffd9fb" font-size="34">${artifact.summary.boundaryCandidateCount} верхнеуровневых обводок · ошибка калибровки ≤ ${artifact.calibration.maxErrorPx} px</text>
   </g>
+${renderStyleLegend(styleGroups)}
 </svg>
 `;
 };

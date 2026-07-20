@@ -1,0 +1,389 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.platform/schemas/cards-money-trains-real-operating-turn-technical-v1.json",
+  "title": "Cards Money Trains non-publishable real operating turn replay",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "fixtureKind",
+    "gameId",
+    "fixtureId",
+    "status",
+    "publishable",
+    "assumptions",
+    "sourceIds",
+    "objects",
+    "branches"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "./real-operating-turn.technical.schema.json"
+    },
+    "fixtureKind": {
+      "const": "real-operating-turn-technical-replay"
+    },
+    "gameId": {
+      "const": "cards-money-trains"
+    },
+    "fixtureId": {
+      "const": "real-operating-turn-technical-v1"
+    },
+    "status": {
+      "const": "technical-review-only"
+    },
+    "publishable": {
+      "const": false
+    },
+    "assumptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roadState",
+        "cargoMultiplicity",
+        "teamAndPlacement",
+        "deckLifecycle"
+      ],
+      "properties": {
+        "roadState": {
+          "const": "road-1-9 is open only inside this technical replay"
+        },
+        "cargoMultiplicity": {
+          "const": "one technical instance of cargo-source-row-005; no physical deck multiplicity is asserted"
+        },
+        "teamAndPlacement": {
+          "const": "two technical team entities, one wagon and one locomotive start at terminal-1 only for this replay; normal setup actions are tested separately"
+        },
+        "deckLifecycle": {
+          "const": "news-24 or news-11 is selected explicitly; news and cargo deck lifecycle is bypassed"
+        }
+      }
+    },
+    "sourceIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "positiveNewsId",
+        "negativeNewsId",
+        "cargoId",
+        "fromNodeId",
+        "toNodeId",
+        "edgeId"
+      ],
+      "properties": {
+        "positiveNewsId": {
+          "const": "news-24"
+        },
+        "negativeNewsId": {
+          "const": "news-11"
+        },
+        "cargoId": {
+          "const": "cargo-source-row-005"
+        },
+        "fromNodeId": {
+          "const": "terminal-1"
+        },
+        "toNodeId": {
+          "const": "terminal-9"
+        },
+        "edgeId": {
+          "const": "road-1-9"
+        }
+      }
+    },
+    "objects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "teams",
+        "networkNodes",
+        "networkEdges",
+        "locomotives",
+        "wagons",
+        "cargoOrders"
+      ],
+      "properties": {
+        "teams": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "white-logistics",
+            "purple-guild"
+          ],
+          "properties": {
+            "white-logistics": {
+              "$ref": "#/definitions/team"
+            },
+            "purple-guild": {
+              "$ref": "#/definitions/team"
+            }
+          }
+        },
+        "networkNodes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "terminal-1",
+            "terminal-9"
+          ],
+          "properties": {
+            "terminal-1": {
+              "$ref": "#/definitions/networkNode"
+            },
+            "terminal-9": {
+              "$ref": "#/definitions/networkNode"
+            }
+          }
+        },
+        "networkEdges": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "road-1-9"
+          ],
+          "properties": {
+            "road-1-9": {
+              "$ref": "#/definitions/networkEdge"
+            }
+          }
+        },
+        "locomotives": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "technical-locomotive-purple-1"
+          ],
+          "properties": {
+            "technical-locomotive-purple-1": {
+              "$ref": "#/definitions/locomotive"
+            }
+          }
+        },
+        "wagons": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "technical-wagon-white-1"
+          ],
+          "properties": {
+            "technical-wagon-white-1": {
+              "$ref": "#/definitions/wagon"
+            }
+          }
+        },
+        "cargoOrders": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cargo-source-row-005"
+          ],
+          "properties": {
+            "cargo-source-row-005": {
+              "$ref": "#/definitions/cargo"
+            }
+          }
+        }
+      }
+    },
+    "branches": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "positive",
+        "negative"
+      ],
+      "properties": {
+        "positive": {
+          "$ref": "#/definitions/branch"
+        },
+        "negative": {
+          "$ref": "#/definitions/branch"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "team": {
+      "type": "object",
+      "required": [
+        "objectType",
+        "facets",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objectType": {
+          "const": "game.team"
+        },
+        "facets": {
+          "type": "object"
+        },
+        "attributes": {
+          "type": "object"
+        }
+      }
+    },
+    "point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "x",
+        "y"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      }
+    },
+    "networkNode": {
+      "type": "object",
+      "required": [
+        "objectType",
+        "facets",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objectType": {
+          "const": "transport.terminal"
+        },
+        "facets": {
+          "type": "object"
+        },
+        "attributes": {
+          "type": "object"
+        }
+      }
+    },
+    "networkEdge": {
+      "type": "object",
+      "required": [
+        "objectType",
+        "facets",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objectType": {
+          "const": "transport.edge"
+        },
+        "facets": {
+          "type": "object"
+        },
+        "attributes": {
+          "type": "object"
+        }
+      }
+    },
+    "locomotive": {
+      "type": "object",
+      "required": [
+        "objectType",
+        "facets",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objectType": {
+          "const": "transport.locomotive"
+        },
+        "facets": {
+          "type": "object"
+        },
+        "attributes": {
+          "type": "object"
+        }
+      }
+    },
+    "wagon": {
+      "type": "object",
+      "required": [
+        "objectType",
+        "facets",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objectType": {
+          "const": "transport.wagon"
+        },
+        "facets": {
+          "type": "object"
+        },
+        "attributes": {
+          "type": "object"
+        }
+      }
+    },
+    "cargo": {
+      "type": "object",
+      "required": [
+        "objectType",
+        "facets",
+        "attributes"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "objectType": {
+          "const": "transport.cargo"
+        },
+        "facets": {
+          "type": "object"
+        },
+        "attributes": {
+          "type": "object"
+        }
+      }
+    },
+    "actionStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "actionId"
+      ],
+      "properties": {
+        "actionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "params": {
+          "type": "object"
+        },
+        "expect": {
+          "enum": [
+            "applied",
+            "rejected"
+          ]
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "newsId",
+        "steps"
+      ],
+      "properties": {
+        "newsId": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/definitions/actionStep"
+          }
+        },
+        "expected": {
+          "type": "object"
+        }
+      }
+    }
+  }
+}

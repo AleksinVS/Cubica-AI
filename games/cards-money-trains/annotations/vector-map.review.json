@@ -20,7 +20,7 @@
   },
   "referenceAnnotation": {
     "file": "initial-network.review.json",
-    "sha256": "070353e8dc03d56fa29f1acc3869ab6ce3b0c7d2729e21e3cfb0b3e798cabee1",
+    "sha256": "8e20dfc935323dfb96deec79f479eb6f526c8c73ad26217bb72d834848a2f9c0",
     "nodeSelector": "^terminal-[0-9]+$",
     "terminalCount": 23
   },

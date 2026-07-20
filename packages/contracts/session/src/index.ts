@@ -95,6 +95,23 @@ export interface SessionRecord<TState = unknown> {
   updatedAt: Date;
 }
 
+/**
+ * Immutable audit view of a session after its lifecycle was closed.
+ *
+ * Archiving adds only `archivedAt`; the snapshot, pinned bundle, event ledger
+ * and command receipts remain the exact records that existed at the boundary.
+ * This protected store contract is not a player-facing projection: application
+ * services must authenticate the caller before exposing any audit material.
+ */
+export interface ArchivedSessionAudit<TState = unknown> {
+  session: SessionRecord<TState>;
+  archivedAt: Date;
+  principal: SessionPrincipal;
+  bundle: ImmutableGameBundle;
+  events: ReadonlyArray<SessionEventRecord>;
+  receipts: ReadonlyArray<SessionCommandReceipt>;
+}
+
 export interface CreateSessionRequest {
   gameId?: string;
   /**
@@ -310,6 +327,13 @@ export interface SessionEventRecord {
   eventType: string;
   summary: unknown;
   data: Record<string, unknown>;
+  /**
+   * ADR-092 public-metric deltas of the action transaction. Present only on
+   * public events of a game that declares a public metric catalog; several
+   * public events of one transaction share the same block. Optional and
+   * additive: older events and games without the catalog omit it.
+   */
+  metricChanges?: ReadonlyArray<{ metricId: string; before: number; after: number }>;
   createdAt: Date;
 }
 
@@ -491,6 +515,23 @@ export interface SessionStorePort<TState = unknown> {
   getSession(sessionId: SessionId): Promise<SessionRecord<TState> | null>;
   /** Authenticate a live session from a credential digest without exposing it. */
   authenticateSession(input: SessionAuthenticationInput): Promise<SessionPrincipal | null>;
+  /**
+   * Close a live session without rewriting any gameplay or audit record.
+   *
+   * A facilitator credential is checked inside the store boundary so
+   * archiving cannot race an unauthenticated lookup. Repeating the same
+   * authorized request is idempotent and returns the original timestamp.
+   */
+  archiveSession(input: SessionAuthenticationInput): Promise<ArchivedSessionAudit<TState> | null>;
+  /**
+   * Authenticate a facilitator and read an archive through its dedicated
+   * audit boundary.
+   *
+   * Normal live-session reads deliberately do not fall back to this method.
+   */
+  readArchivedSession(
+    input: SessionAuthenticationInput
+  ): Promise<ArchivedSessionAudit<TState> | null>;
   /** Resolve rules only by the immutable hash pinned into the session record. */
   getImmutableBundle(bundleHash: string): Promise<ImmutableGameBundle | null>;
   /** Read the immutable gameplay event ledger in canonical sequence order. */

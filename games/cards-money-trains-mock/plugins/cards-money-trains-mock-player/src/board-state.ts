@@ -34,6 +34,15 @@ export interface BoardVehicleView {
   readonly ownerTeamId: string | null;
 }
 
+/** Public cargo facts needed to label facilitator choices without deciding legality. */
+export interface BoardCargoOrderView {
+  readonly id: string;
+  readonly fromNodeId: string | null;
+  readonly toNodeId: string | null;
+  readonly status: string | null;
+  readonly payout: number | null;
+}
+
 export interface TeamSummaryView {
   readonly id: string;
   readonly label: string;
@@ -41,6 +50,13 @@ export interface TeamSummaryView {
   readonly coins: number | null;
   readonly locomotives: number;
   readonly wagons: number;
+}
+
+/** One server-calculated locomotive slot shown to the facilitator. */
+export interface LocomotiveOrderEntryView {
+  readonly id: string;
+  readonly ownerLabel: string;
+  readonly nodeLabel: string;
 }
 
 export interface BoardLogEntryView {
@@ -78,7 +94,10 @@ export interface BoardProjection {
   readonly nodes: readonly BoardNodeView[];
   readonly edges: readonly BoardEdgeView[];
   readonly vehicles: readonly BoardVehicleView[];
+  readonly cargoOrders: readonly BoardCargoOrderView[];
+  readonly cargoOfferIds: readonly string[];
   readonly teams: readonly TeamSummaryView[];
+  readonly locomotiveOrder: readonly LocomotiveOrderEntryView[];
   readonly highlights: readonly BoardHighlightView[];
   readonly availableActions: readonly ProjectedBoardAction[];
   readonly actionSections: readonly BoardActionSectionView[];
@@ -178,7 +197,10 @@ const readVehicles = (publicState: JsonRecord): BoardVehicleView[] => {
       const attributes = isRecord(raw.attributes) ? raw.attributes : {};
       const facets = isRecord(raw.facets) ? raw.facets : {};
       const availability = text(facets.availability);
-      if (availability === "reserve" || availability === "sold") return [];
+      // The scene and its DOM alternative may offer only objects which the
+      // public snapshot explicitly marks active. Missing or unfamiliar facet
+      // values fail closed instead of becoming selectable by browser guesswork.
+      if (availability !== "active") return [];
       return [{
         id,
         kind,
@@ -187,6 +209,35 @@ const readVehicles = (publicState: JsonRecord): BoardVehicleView[] => {
       }];
     });
   return [...read("locomotives", "locomotive"), ...read("wagons", "wagon")];
+};
+
+/**
+ * Project every public cargo order without filtering by gameplay status.
+ *
+ * Availability, route and delivery checks belong to the authoritative
+ * Mechanics plan. The browser needs only public facts for understandable
+ * labels and therefore never inspects a secret deck or guesses legality.
+ */
+const readCargoOrders = (publicState: JsonRecord): BoardCargoOrderView[] =>
+  Object.entries(objectCollection(publicState, "cargoOrders")).flatMap(([id, raw]) => {
+    if (!isRecord(raw)) return [];
+    const attributes = isRecord(raw.attributes) ? raw.attributes : {};
+    const facets = isRecord(raw.facets) ? raw.facets : {};
+    return [{
+      id,
+      fromNodeId: text(attributes.fromNodeId),
+      toNodeId: text(attributes.toNodeId),
+      status: text(facets.status),
+      payout: finiteNumber(attributes.payout)
+    }];
+  });
+
+/** Read only the two IDs which the public deck projection explicitly offers. */
+const readCargoOfferIds = (publicState: JsonRecord): string[] => {
+  const decks = isRecord(publicState.decks) ? publicState.decks : {};
+  const cargo = isRecord(decks.cargo) ? decks.cargo : {};
+  const offer = isRecord(cargo.offer) ? cargo.offer : {};
+  return [offer.firstCardId, offer.secondCardId].flatMap((value) => text(value) ?? []);
 };
 
 const readTeams = (
@@ -207,6 +258,38 @@ const readTeams = (
         vehicle.ownerTeamId === id && vehicle.kind === "locomotive").length,
       wagons: vehicles.filter((vehicle) =>
         vehicle.ownerTeamId === id && vehicle.kind === "wagon").length
+    }];
+  });
+};
+
+/**
+ * Present the saved runtime order without recalculating any tie-break in UI.
+ *
+ * Missing labels fall back to stable ids so an incomplete mock snapshot stays
+ * diagnosable, while malformed list entries are ignored rather than guessed.
+ */
+const readLocomotiveOrder = (
+  publicState: JsonRecord,
+  nodes: readonly BoardNodeView[],
+  teams: readonly TeamSummaryView[]
+): LocomotiveOrderEntryView[] => {
+  const session = isRecord(publicState.session) ? publicState.session : {};
+  if (!Array.isArray(session.locomotiveOrder)) return [];
+  const locomotives = objectCollection(publicState, "locomotives");
+  const nodeLabels = new Map(nodes.map((node) => [node.id, node.label]));
+  const teamLabels = new Map(teams.map((team) => [team.id, team.label]));
+
+  return session.locomotiveOrder.flatMap((rawId) => {
+    const id = text(rawId);
+    if (!id) return [];
+    const locomotive = isRecord(locomotives[id]) ? locomotives[id] : {};
+    const attributes = isRecord(locomotive.attributes) ? locomotive.attributes : {};
+    const ownerTeamId = text(attributes.ownerTeamId);
+    const nodeId = text(attributes.nodeId);
+    return [{
+      id,
+      ownerLabel: ownerTeamId ? teamLabels.get(ownerTeamId) ?? ownerTeamId : "команда не указана",
+      nodeLabel: nodeId ? nodeLabels.get(nodeId) ?? nodeId : "станция не указана"
     }];
   });
 };
@@ -388,6 +471,8 @@ export function projectBoardSession(session: { state?: unknown; actionAvailabili
   const phase = text(sessionState.phase) ?? "unknown";
   const nodes = readNodes(publicState);
   const vehicles = readVehicles(publicState);
+  const teams = readTeams(publicState, vehicles);
+  const cargoOrders = readCargoOrders(publicState);
   const availableActions = readActions(
     board,
     phase,
@@ -398,7 +483,10 @@ export function projectBoardSession(session: { state?: unknown; actionAvailabili
     nodes,
     edges: readEdges(publicState, nodes),
     vehicles,
-    teams: readTeams(publicState, vehicles),
+    cargoOrders,
+    cargoOfferIds: readCargoOfferIds(publicState),
+    teams,
+    locomotiveOrder: readLocomotiveOrder(publicState, nodes, teams),
     highlights: readHighlights(board),
     availableActions,
     actionSections: groupActions(availableActions),

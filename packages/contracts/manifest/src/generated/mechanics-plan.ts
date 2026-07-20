@@ -39,6 +39,11 @@ export type ValueType =
       maximum: number;
     }
   | {
+      kind: "finite-number";
+      minimum: number;
+      maximum: number;
+    }
+  | {
       kind: "decimal";
       scale: number;
       minimum: string;
@@ -100,6 +105,16 @@ export type StorageSegment =
 export type CollectionModel = EntityCollectionModel | RecordCollectionModel;
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "collectionField".
+ */
+export type CollectionField = StoredEntityCollectionField | DerivedCollectionField;
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "recordCollectionField".
+ */
+export type RecordCollectionField = StoredRecordCollectionField | DerivedCollectionField;
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "valueExpression".
  */
 export type ValueExpression =
@@ -132,11 +147,22 @@ export type JsonValue =
 export type StepId = string;
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "itemReadExpression".
+ */
+export type ItemReadExpression = ItemFieldReadExpression | ItemIdentityReadExpression;
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "step".
  */
-export type Step =
+export type Step = EntitiesEachStep | NonIterationStep;
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "nonIterationStep".
+ */
+export type NonIterationStep =
   | AssertStep
   | SelectEntitiesStep
+  | OrderEntitiesStep
   | NextCollectionIdStep
   | SequenceNextStep
   | StatePatchStep
@@ -151,8 +177,12 @@ export type Step =
   | RandomRollStep
   | DeckShuffleStep
   | DeckDrawStep
+  | DeckExtractStep
+  | DeckReturnStep
+  | DeckInsertStep
   | TurnPhaseStep
   | GraphRegionRouteStep
+  | GraphEdgePositionInspectStep
   | GraphSplitEdgeStep
   | GraphEntityMoveStep
   | GraphShortestPathStep
@@ -175,7 +205,66 @@ export type Predicate =
   | ActorActivePredicate
   | TurnPhasePredicate
   | EntityMatchesPredicate
-  | CollectionCountPredicate;
+  | CollectionCountPredicate
+  | SetDisjointPredicate;
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityOrderSource".
+ */
+export type EntityOrderSource =
+  | {
+      kind: "current-field";
+      field: Identifier;
+    }
+  | {
+      kind: "related-field";
+      referenceField: Identifier;
+      collection: Identifier;
+      field: Identifier;
+    }
+  | EntityOrderAggregateSource;
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityOrderAggregateSource".
+ */
+export type EntityOrderAggregateSource =
+  | {
+      kind: "related-aggregate";
+      collection: Identifier;
+      join: EntityOrderJoin;
+      aggregate: "count";
+    }
+  | {
+      kind: "related-aggregate";
+      collection: Identifier;
+      join: EntityOrderJoin;
+      aggregate: "sum" | "min" | "max";
+      valueField: Identifier;
+    };
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityOrderJoinCurrent".
+ */
+export type EntityOrderJoinCurrent =
+  | {
+      kind: "stable-id";
+    }
+  | {
+      kind: "field";
+      field: Identifier;
+    };
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityOrderTieBreak".
+ */
+export type EntityOrderTieBreak =
+  | {
+      kind: "canonical-id";
+    }
+  | {
+      kind: "seeded-random";
+      stream: Identifier;
+    };
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "statePatch".
@@ -335,6 +424,15 @@ export type AttributePatch =
           ];
     }
   | {
+      operation: "set-add";
+      /**
+       * @minItems 1
+       * @maxItems 1
+       */
+      path: [Identifier];
+      value: ValueExpression;
+    }
+  | {
       operation: "set" | "increment" | "append";
       /**
        * @minItems 1
@@ -458,6 +556,13 @@ export type AttributePatch =
       value: ValueExpression;
     };
 /**
+ * A package-declared deck selected either by its legacy literal id or by one bounded action parameter.
+ *
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "deckReference".
+ */
+export type DeckReference = Identifier | ParamExpression;
+/**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "randomStreamId".
  */
@@ -467,6 +572,13 @@ export type RandomStreamId = string;
  * via the `definition` "jsonPropertyName".
  */
 export type JsonPropertyName = string;
+/**
+ * @maxItems 512
+ *
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "graphRegionIdSet".
+ */
+export type GraphRegionIdSet = Identifier[];
 
 /**
  * Canonical, bounded and transactional gameplay program embedded in an immutable game bundle.
@@ -559,15 +671,146 @@ export interface EntityCollectionModel {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "collectionField".
+ * via the `definition` "storedEntityCollectionField".
  */
-export interface CollectionField {
+export interface StoredEntityCollectionField {
   storage: {
     kind: "facet" | "attribute";
     name: Identifier;
   };
   valueType: Identifier;
   access: "read-only" | "read-write";
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "derivedCollectionField".
+ */
+export interface DerivedCollectionField {
+  source: {
+    kind: "nested-field";
+    field: Identifier;
+    /**
+     * @minItems 1
+     * @maxItems 16
+     */
+    path:
+      | [Identifier]
+      | [Identifier, Identifier]
+      | [Identifier, Identifier, Identifier]
+      | [Identifier, Identifier, Identifier, Identifier]
+      | [Identifier, Identifier, Identifier, Identifier, Identifier]
+      | [Identifier, Identifier, Identifier, Identifier, Identifier, Identifier]
+      | [Identifier, Identifier, Identifier, Identifier, Identifier, Identifier, Identifier]
+      | [Identifier, Identifier, Identifier, Identifier, Identifier, Identifier, Identifier, Identifier]
+      | [Identifier, Identifier, Identifier, Identifier, Identifier, Identifier, Identifier, Identifier, Identifier]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ]
+      | [
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier,
+          Identifier
+        ];
+  };
+  valueType: Identifier;
+  access: "read-only";
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -585,9 +828,9 @@ export interface RecordCollectionModel {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "recordCollectionField".
+ * via the `definition` "storedRecordCollectionField".
  */
-export interface RecordCollectionField {
+export interface StoredRecordCollectionField {
   storage: {
     kind: "path";
     /**
@@ -913,12 +1156,21 @@ export interface ResultExpression {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "itemReadExpression".
+ * via the `definition` "itemFieldReadExpression".
  */
-export interface ItemReadExpression {
+export interface ItemFieldReadExpression {
   op: "value.item";
   area: "facet" | "attribute";
   field: Identifier;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "itemIdentityReadExpression".
+ */
+export interface ItemIdentityReadExpression {
+  op: "value.item";
+  area: "identity";
+  field: "id";
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -1105,6 +1357,175 @@ export interface Plan {
      */
     steps: [Step, ...Step[]];
   };
+}
+/**
+ * Execute one bounded body for every member of a prior typed selection in canonical identifier order.
+ *
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entitiesEachStep".
+ */
+export interface EntitiesEachStep {
+  id: StepId;
+  kind: "command";
+  op: "core.entities.each";
+  selection: EntitySelectionResultRef;
+  /**
+   * Existing Mechanics operations executed in an iteration-local result scope. Nested core.entities.each is rejected by the semantic checker.
+   *
+   * @minItems 1
+   * @maxItems 16
+   */
+  body:
+    | [NonIterationStep]
+    | [NonIterationStep, NonIterationStep]
+    | [NonIterationStep, NonIterationStep, NonIterationStep]
+    | [NonIterationStep, NonIterationStep, NonIterationStep, NonIterationStep]
+    | [NonIterationStep, NonIterationStep, NonIterationStep, NonIterationStep, NonIterationStep]
+    | [NonIterationStep, NonIterationStep, NonIterationStep, NonIterationStep, NonIterationStep, NonIterationStep]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ]
+    | [
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep,
+        NonIterationStep
+      ];
+  when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entitySelectionResultRef".
+ */
+export interface EntitySelectionResultRef {
+  op: "value.result";
+  stepId: StepId;
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -1330,6 +1751,15 @@ export interface CollectionCountPredicate {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "setDisjointPredicate".
+ */
+export interface SetDisjointPredicate {
+  op: "predicate.set.disjoint";
+  left: ValueExpression;
+  right: ValueExpression;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "selectEntitiesStep".
  */
 export interface SelectEntitiesStep {
@@ -1345,10 +1775,7 @@ export interface SelectEntitiesStep {
  */
 export interface EntitySelector {
   collection: Identifier;
-  within?: {
-    op: "value.result";
-    stepId: StepId;
-  };
+  within?: EntitySelectionResultRef;
   /**
    * @minItems 1
    * @maxItems 64
@@ -1369,6 +1796,40 @@ export interface EntitySelector {
     min: number;
     max: number;
   };
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "orderEntitiesStep".
+ */
+export interface OrderEntitiesStep {
+  id: StepId;
+  kind: "command";
+  op: "core.entities.order";
+  selection: EntitySelectionResultRef;
+  /**
+   * @minItems 1
+   * @maxItems 32
+   */
+  keys: [EntityOrderKey, ...EntityOrderKey[]];
+  tieBreak: EntityOrderTieBreak;
+  when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityOrderKey".
+ */
+export interface EntityOrderKey {
+  source: EntityOrderSource;
+  direction: "ascending" | "descending";
+  missing: "error" | "first" | "last";
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "entityOrderJoin".
+ */
+export interface EntityOrderJoin {
+  current: EntityOrderJoinCurrent;
+  relatedField: Identifier;
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -1514,10 +1975,7 @@ export interface EntitiesUpdateStep {
   id: StepId;
   kind: "command";
   op: "core.entities.update";
-  selection: {
-    op: "value.result";
-    stepId: StepId;
-  };
+  selection: EntitySelectionResultRef;
   facetValues?: {
     [k: string]: ValueExpression;
   };
@@ -1586,12 +2044,68 @@ export interface DeckDrawStep {
   id: StepId;
   kind: "command";
   op: "deck.draw";
-  deckId: Identifier;
+  deckId: DeckReference;
   target: StateRef;
   /**
    * A reshuffle reuses the named stream pinned by the deck.shuffle operation that created the deck.
    */
   onEmpty: "reshuffle-discard" | "fail";
+  when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "deckExtractStep".
+ */
+export interface DeckExtractStep {
+  id: StepId;
+  kind: "command";
+  op: "deck.extract";
+  deckId: DeckReference;
+  /**
+   * The top is the first order item or the last discard item.
+   */
+  source: "order" | "discard";
+  /**
+   * Optional explicit item identifier; when omitted, the source top is extracted.
+   */
+  card?:
+    | LiteralExpression
+    | ParamExpression
+    | ActorExpression
+    | StateReadExpression
+    | EntityReadExpression
+    | ResultExpression
+    | ItemReadExpression
+    | ArithmeticExpression
+    | CoalesceExpression;
+  target?: StateRef;
+  when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "deckReturnStep".
+ */
+export interface DeckReturnStep {
+  id: StepId;
+  kind: "command";
+  op: "deck.return";
+  deckId: DeckReference;
+  card: ValueExpression;
+  destination: "discard" | "order-top" | "order-bottom";
+  when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "deckInsertStep".
+ */
+export interface DeckInsertStep {
+  id: StepId;
+  kind: "command";
+  op: "deck.insert";
+  deckId: DeckReference;
+  sourceCollection: Identifier;
+  card: ValueExpression;
+  destination: "held" | "discard" | "order-top" | "order-bottom";
   when?: Predicate;
 }
 /**
@@ -1620,6 +2134,19 @@ export interface GraphRegionRouteStep {
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "graphEdgePositionInspectStep".
+ */
+export interface GraphEdgePositionInspectStep {
+  id: StepId;
+  kind: "algorithm";
+  op: "graph.edge.position.inspect";
+  networkId: Identifier;
+  edge: ValueExpression;
+  position: ValueExpression;
+  when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "graphSplitEdgeStep".
  */
 export interface GraphSplitEdgeStep {
@@ -1627,9 +2154,16 @@ export interface GraphSplitEdgeStep {
   kind: "command";
   op: "graph.edge.split";
   networkId: Identifier;
-  edge: ValueExpression;
-  position: ValueExpression;
+  proof: GraphInspectionProofRef;
   when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "graphInspectionProofRef".
+ */
+export interface GraphInspectionProofRef {
+  op: "value.result";
+  stepId: StepId;
 }
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -1784,4 +2318,41 @@ export interface RankingGroup {
 export interface BaseStepProperties {
   id?: StepId;
   when?: Predicate;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "mechanicsCanonicalPoint".
+ */
+export interface MechanicsCanonicalPoint {
+  x: number;
+  y: number;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "graphEdgePositionEndpointInspection".
+ */
+export interface GraphEdgePositionEndpointInspection {
+  id: Identifier;
+  point: MechanicsCanonicalPoint;
+  regionIds: GraphRegionIdSet;
+}
+/**
+ * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
+ * via the `definition` "graphEdgePositionInspectionResult".
+ */
+export interface GraphEdgePositionInspectionResult {
+  proofVersion: "graph-edge-position-proof/v1";
+  networkId: Identifier;
+  edge: {
+    id: Identifier;
+    geometryFingerprint: string;
+  };
+  normalizedPosition: number;
+  point: MechanicsCanonicalPoint;
+  pointRegionIds: GraphRegionIdSet;
+  endpoints: {
+    from: GraphEdgePositionEndpointInspection;
+    to: GraphEdgePositionEndpointInspection;
+    regionIds: GraphRegionIdSet;
+  };
 }

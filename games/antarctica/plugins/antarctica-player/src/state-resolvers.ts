@@ -15,6 +15,7 @@ import type {
   GamePlayerContent,
   GamePlayerInfoEntry,
   GamePlayerJournalEntry,
+  GamePlayerJournalMetricRow,
   GamePlayerTeamSelectionScene
 } from "./contracts";
 import type { FallbackMetricSpec, SessionSnapshot } from "@cubica/player-web/plugin-api";
@@ -79,6 +80,12 @@ function readAntarcticaPublicState(session: SessionSnapshot | null): AntarcticaP
   return readPublicState(session) as AntarcticaPublicState | undefined;
 }
 
+/**
+ * One ADR-092 metric snapshot pair as it arrives on a runtime log entry:
+ * `before`/`after` are the whole-transaction metric values.
+ */
+type RuntimeMetricChange = { metricId?: string; before?: number; after?: number };
+
 type RuntimeLogLike = Record<string, unknown> & {
   at?: string;
   cardId?: string;
@@ -88,9 +95,88 @@ type RuntimeLogLike = Record<string, unknown> & {
   backText?: string;
   metricsBefore?: Record<string, unknown>;
   metricsAfter?: Record<string, unknown>;
-  metricChanges?: Array<{ metricId?: string; delta?: number }>;
+  metricChanges?: Array<RuntimeMetricChange>;
   summary?: string;
+  /**
+   * Game-defined event payload. The runtime nests everything except `summary`
+   * inside `data` (see runtime `core.event.emit`), so the journal card fields
+   * (`cardId`, `entityType`, `displayMode`, …) live here, not at the top level.
+   * `metricChanges` is a top-level platform field (ADR-092), not part of `data`,
+   * but we still accept a nested copy for mock/legacy robustness.
+   */
+  data?: Record<string, unknown>;
 };
+
+/**
+ * Fields the journal projection reads from a single runtime log entry.
+ *
+ * This is a flattened view: the runtime stores game-defined fields nested inside
+ * `entry.data`, but older/mock entries kept them at the top level. Normalizing
+ * once here means the rest of the resolver never has to know which shape it got.
+ */
+type NormalizedJournalEntry = {
+  at?: string;
+  cardId?: string;
+  displayMode?: string;
+  entityType?: string;
+  frontText?: string;
+  backText?: string;
+  summary?: string;
+  metricsBefore?: Record<string, unknown>;
+  metricsAfter?: Record<string, unknown>;
+  metricChanges?: Array<RuntimeMetricChange>;
+};
+
+/** Reads a nested record value, returning `undefined` for non-record inputs. */
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+/**
+ * Flattens a runtime log entry into the shape the journal projection expects.
+ *
+ * Why this exists: the runtime `core.event.emit` step keeps game-defined data
+ * nested under `entry.data` so a generic Presenter never has to guess which
+ * arbitrary field names are platform journal metadata. A real Antarctica card
+ * resolution therefore arrives as
+ * `{ eventType, audience, summary, data: { cardId, entityType, displayMode, … } }`.
+ * The previous flat lookups (`entry.cardId`) always missed, so every card entry
+ * was filtered out and the journal rendered empty. We prefer any top-level field
+ * (mock/legacy flat form) and fall back to the nested `data` field so both
+ * shapes work.
+ */
+function normalizeLogEntry(entry: RuntimeLogLike): NormalizedJournalEntry {
+  const data = asRecord(entry.data) ?? {};
+  const readString = (key: string): string | undefined => {
+    const flat = entry[key];
+    if (typeof flat === "string") {
+      return flat;
+    }
+    const nested = data[key];
+    return typeof nested === "string" ? nested : undefined;
+  };
+
+  return {
+    at: readString("at"),
+    cardId: readString("cardId"),
+    displayMode: readString("displayMode"),
+    entityType: readString("entityType"),
+    frontText: readString("frontText"),
+    backText: readString("backText"),
+    // The runtime keeps `summary` at the top level; it carries the card
+    // resolution ("back") text, so we treat it as a back-text fallback below.
+    summary: readString("summary"),
+    metricsBefore: asRecord(entry.metricsBefore) ?? asRecord(data.metricsBefore),
+    metricsAfter: asRecord(entry.metricsAfter) ?? asRecord(data.metricsAfter),
+    metricChanges: Array.isArray(entry.metricChanges)
+      ? (entry.metricChanges as Array<RuntimeMetricChange>)
+      : Array.isArray(data.metricChanges)
+        ? (data.metricChanges as Array<RuntimeMetricChange>)
+        : undefined
+  };
+}
 
 type HintSourceState = Pick<AntarcticaGameState, "currentInfo" | "currentBoard" | "currentTeamSelection">;
 
@@ -275,7 +361,7 @@ export function resolveBoardCards(
     });
 }
 
-function isCardJournalEntry(entry: RuntimeLogLike): boolean {
+function isCardJournalEntry(entry: NormalizedJournalEntry): boolean {
   const hasVisibleCardText = Boolean(entry.frontText || entry.backText || entry.summary);
   const isCardEntry = entry.displayMode === "card" || entry.entityType === "card";
   return Boolean(entry.cardId && (isCardEntry || hasVisibleCardText));
@@ -300,34 +386,90 @@ function formatSignedDelta(delta: number): string {
   return delta > 0 ? `+${delta}` : String(delta);
 }
 
-function resolveMetricSummary(entry: RuntimeLogLike, metricSpecs: ReadonlyArray<FallbackMetricSpec>): string {
-  if (Array.isArray(entry.metricChanges) && entry.metricChanges.length > 0) {
-    const captions = new Map<string, string>();
-    for (const spec of metricSpecs) {
-      captions.set(spec.id, spec.caption);
-      for (const alias of spec.aliases) {
-        captions.set(alias, spec.caption);
-      }
+/**
+ * Builds a caption lookup keyed by both the metric id and each declared alias.
+ *
+ * The runtime `metricChanges` block keys metrics by their canonical `metricId`
+ * (for example `time`), while game-owned specs may also list aliases; matching
+ * on either keeps captions coming from the catalog/`metric_specs` rather than
+ * being hard-coded in the template.
+ */
+function buildMetricCaptions(metricSpecs: ReadonlyArray<FallbackMetricSpec>): Map<string, string> {
+  const captions = new Map<string, string>();
+  for (const spec of metricSpecs) {
+    captions.set(spec.id, spec.caption);
+    for (const alias of spec.aliases) {
+      captions.set(alias, spec.caption);
     }
+  }
+  return captions;
+}
 
+/**
+ * Builds the per-metric badge rows shown under one journal entry (ADR-092).
+ *
+ * Prefers the authoritative `metricChanges` block (before/after of the whole
+ * turn); falls back to the legacy `metricsBefore/After` snapshots for mock
+ * entries. Every declared public metric is emitted (matching the reference
+ * journal, which shows all metrics), and `hasDelta` marks the ones that actually
+ * changed so the template can hide the delta superscript for unchanged metrics.
+ */
+function resolveMetricRows(
+  entry: NormalizedJournalEntry,
+  metricSpecs: ReadonlyArray<FallbackMetricSpec>
+): Array<GamePlayerJournalMetricRow> {
+  const captions = buildMetricCaptions(metricSpecs);
+
+  if (Array.isArray(entry.metricChanges) && entry.metricChanges.length > 0) {
     return entry.metricChanges
-      .filter((change): change is { metricId: string; delta: number } =>
-        typeof change.metricId === "string" && typeof change.delta === "number"
+      .filter((change): change is { metricId: string; before?: number; after?: number } =>
+        typeof change.metricId === "string"
       )
-      .map((change) => `${captions.get(change.metricId) ?? change.metricId}: ${formatSignedDelta(change.delta)}`)
-      .join(" · ");
+      .map((change) => {
+        const before = typeof change.before === "number" ? change.before : 0;
+        const after = typeof change.after === "number" ? change.after : before;
+        const delta = after - before;
+        return {
+          caption: captions.get(change.metricId) ?? change.metricId,
+          value: after,
+          previousValue: before,
+          delta: formatSignedDelta(delta),
+          hasDelta: delta !== 0
+        };
+      });
   }
 
-  const parts: Array<string> = [];
+  // Legacy/mock fallback: derive rows from full before/after metric snapshots.
+  const rows: Array<GamePlayerJournalMetricRow> = [];
   for (const spec of metricSpecs) {
     const before = metricValue(entry.metricsBefore, spec);
     const after = metricValue(entry.metricsAfter, spec);
-    if (before === null || after === null || before === after) {
+    if (before === null && after === null) {
       continue;
     }
-    parts.push(`${spec.caption}: ${formatSignedDelta(after - before)}`);
+    const beforeValue = before ?? 0;
+    const afterValue = after ?? beforeValue;
+    const delta = afterValue - beforeValue;
+    rows.push({
+      caption: spec.caption,
+      value: afterValue,
+      previousValue: beforeValue,
+      delta: formatSignedDelta(delta),
+      hasDelta: delta !== 0
+    });
   }
-  return parts.join(" · ");
+  return rows;
+}
+
+/**
+ * One-line textual metric summary (changed metrics only), kept for accessibility
+ * and any consumer that wants a compact string rather than the badge rows.
+ */
+function resolveMetricSummary(rows: ReadonlyArray<GamePlayerJournalMetricRow>): string {
+  return rows
+    .filter((row) => row.hasDelta)
+    .map((row) => `${row.caption}: ${row.delta}`)
+    .join(" · ");
 }
 
 /**
@@ -348,13 +490,19 @@ export function resolveJournalEntries(
   const cardsById = new Map(gameContent.cards.map((card) => [card.cardId, card]));
   return publicState.log
     .filter((entry): entry is RuntimeLogLike => !!entry && typeof entry === "object")
+    // Flatten the runtime `{ summary, data: { … } }` envelope before filtering so
+    // the card fields (nested under `data`) are visible to the projection.
+    .map((entry) => normalizeLogEntry(entry))
     .filter(isCardJournalEntry)
     .map((entry) => {
-      const cardId = typeof entry.cardId === "string" ? entry.cardId : "";
+      const cardId = entry.cardId ?? "";
       const card = cardsById.get(cardId);
       const frontText = entry.frontText ?? card?.summary ?? "";
+      // The runtime emits the card resolution ("back") text as the top-level
+      // `summary`; keep the explicit `backText` and card content as fallbacks.
       const backText = entry.backText ?? entry.summary ?? card?.backText ?? "";
-      const metricSummary = resolveMetricSummary(entry, metricSpecs);
+      const metricRows = resolveMetricRows(entry, metricSpecs);
+      const metricSummary = resolveMetricSummary(metricRows);
 
       if (!frontText && !backText) {
         return null;
@@ -365,6 +513,8 @@ export function resolveJournalEntries(
         backText,
         metricSummary,
         hasMetricSummary: metricSummary.length > 0,
+        metricRows,
+        hasMetricRows: metricRows.length > 0,
         at: entry.at ?? ""
       };
     })

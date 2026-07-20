@@ -265,6 +265,9 @@ export async function dispatchRuntimeSystemAction(
       eventType: event.eventType,
       summary: structuredClone(event.summary),
       data: structuredClone(event.data),
+      ...(event.metricChanges === undefined
+        ? {}
+        : { metricChanges: structuredClone(event.metricChanges) }),
       createdAt: snapshot.updatedAt
     }));
     return {

@@ -42,6 +42,12 @@ export const CURRENT_BUNDLE_COMPILER_LOCK = Object.freeze({
 export interface VerifiedImmutableBundleContent {
   gameId: string;
   manifest: Record<string, unknown>;
+  /**
+   * Envelope parsed from the verified canonical bytes. Keeping this independent
+   * object lets the bounded cache compare future store records without parsing
+   * those bytes again or retaining another full clone of the manifest.
+   */
+  canonicalBundle: Record<string, unknown>;
 }
 
 /** Create the immutable store payload for newly published content. */
@@ -110,7 +116,11 @@ export function verifyImmutableBundleContent(
   ) {
     throw new TypeError("Immutable bundle envelope is unsupported or inconsistent.");
   }
-  return { gameId: parsed.gameId, manifest: parsed.manifest };
+  return {
+    gameId: parsed.gameId,
+    manifest: parsed.manifest,
+    canonicalBundle: parsed
+  };
 }
 
 export function isValidImmutableBundleInput(

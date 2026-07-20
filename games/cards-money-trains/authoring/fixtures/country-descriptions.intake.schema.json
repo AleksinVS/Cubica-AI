@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cubica.example/schemas/cards-money-trains-country-descriptions-intake.schema.json",
+  "title": "Cards, Money, Trains author country descriptions intake",
+  "description": "Schema for a deterministic, review-only extraction of country descriptions from the author's PDF. Source terminal labels remain unconfirmed labels and are not promoted to runtime IDs or map coordinates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "apiVersion",
+    "gameId",
+    "locale",
+    "status",
+    "publishable",
+    "source",
+    "summary",
+    "unresolved",
+    "countryRecords"
+  ],
+  "properties": {
+    "$schema": { "const": "./country-descriptions.intake.schema.json" },
+    "apiVersion": {
+      "const": "cubica.game/cards-money-trains-country-descriptions-intake/v1"
+    },
+    "gameId": { "const": "cards-money-trains" },
+    "locale": { "const": "ru-RU" },
+    "status": { "const": "review-draft" },
+    "publishable": { "const": false },
+    "source": { "$ref": "#/$defs/source" },
+    "summary": { "$ref": "#/$defs/summary" },
+    "unresolved": { "$ref": "#/$defs/unresolved" },
+    "countryRecords": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": { "$ref": "#/$defs/countryRecord" }
+    }
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "extractor", "pageCount"],
+      "properties": {
+        "path": { "const": "draft/trains/Описания стран Гвинеи 1 стол.pdf" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "extractor": { "const": "pdftotext -layout -enc UTF-8" },
+        "pageCount": { "const": 10 }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "countryRecordCount",
+        "recordsWithTerminalLabels",
+        "sourceTerminalLabelCount"
+      ],
+      "properties": {
+        "countryRecordCount": { "const": 10 },
+        "recordsWithTerminalLabels": { "const": 9 },
+        "sourceTerminalLabelCount": { "const": 23 }
+      }
+    },
+    "unresolved": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "countryIdMapping",
+        "terminalIdMapping",
+        "mapCoordinatesConfirmed",
+        "productionManifestLinked"
+      ],
+      "properties": {
+        "countryIdMapping": { "const": "not-reviewed" },
+        "terminalIdMapping": { "const": "not-reviewed" },
+        "mapCoordinatesConfirmed": { "const": false },
+        "productionManifestLinked": { "const": false }
+      }
+    },
+    "terminalLabel": {
+      "type": "string",
+      "pattern": "^(?:[1-9]|1[0-9]|2[0-3])$"
+    },
+    "countryRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourcePage",
+        "sourceOrder",
+        "sourceTitle",
+        "sourceTerminalLine",
+        "sourceTerminalLabels",
+        "sourceNarrative",
+        "text"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^country-description-review-(?:0[1-9]|10)$"
+        },
+        "sourcePage": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "sourceOrder": { "type": "integer", "minimum": 1, "maximum": 10 },
+        "sourceTitle": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "sourceTerminalLine": {
+          "type": ["string", "null"],
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "sourceTerminalLabels": {
+          "type": "array",
+          "maxItems": 23,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/terminalLabel" }
+        },
+        "sourceNarrative": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        }
+      }
+    }
+  }
+}

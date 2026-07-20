@@ -140,6 +140,7 @@ const assertPublishedMechanicsContract = (manifest) => {
   const operationModules = {
     "core.assert": "cubica.core",
     "core.collection.id.allocate": "cubica.core",
+    "core.entities.order": "cubica.ordering",
     "core.entities.score": "cubica.core",
     "core.entities.select": "cubica.core",
     "core.entities.update": "cubica.core",
@@ -152,7 +153,10 @@ const assertPublishedMechanicsContract = (manifest) => {
     "core.resource.transfer": "cubica.core",
     "core.state.patch": "cubica.core",
     "deck.draw": "cubica.deck",
+    "deck.extract": "cubica.deck",
+    "deck.return": "cubica.deck",
     "deck.shuffle": "cubica.deck",
+    "graph.edge.position.inspect": "cubica.graph",
     "graph.edge.split": "cubica.graph",
     "graph.entity.traverse": "cubica.graph",
     "graph.regions.route.plan": "cubica.graph",
@@ -163,7 +167,7 @@ const assertPublishedMechanicsContract = (manifest) => {
   assert.deepEqual(collectMechanicsOperations(manifest.mechanics), Object.keys(operationModules).sort());
   assert.deepEqual(
     Object.keys(manifest.mechanics.moduleLock),
-    ["cubica.core", "cubica.random", "cubica.deck", "cubica.graph", "cubica.relations"],
+    ["cubica.core", "cubica.random", "cubica.ordering", "cubica.deck", "cubica.graph", "cubica.relations"],
     "the compiler must publish the exact dependency-closed module lock"
   );
   for (const moduleId of Object.keys(manifest.mechanics.moduleLock)) {
@@ -201,6 +205,7 @@ const assertPublishedMechanicsContract = (manifest) => {
     "score"
   ]);
   assert.deepEqual(manifest.state.public.ranking, { groups: {} });
+  assert.deepEqual(manifest.state.public.session.locomotiveOrder, []);
 };
 
 test("mock annotation validates and reproduces the committed manifest fragment", async () => {
@@ -213,6 +218,10 @@ test("mock annotation validates and reproduces the committed manifest fragment",
   assert.equal(fragment.networkModels.main.roadPlanning.mode, "region-segment-minimum");
   assert.equal(fragment.networkModels.main.roadPlanning.navigationGraph.portals.length, 2);
   assert.match(fragment.networkModels.main.roadPlanning.geometryHash, /^sha256:[0-9a-f]{64}$/u);
+  for (const node of Object.values(fragment.state.public.objects.networkNodes)) {
+    assert.equal(Object.hasOwn(node.attributes, "positionX"), false);
+    assert.equal(Number.isFinite(node.attributes.position.x), true);
+  }
 });
 
 test("mock adapter rejects author-confirmed data", async () => {
@@ -299,7 +308,7 @@ test("compiled mock executes the documented operating and construction transcrip
   assert.equal(publicState.objects.cargoOrders["mock-cargo-b-c"].attributes.settledRouteLength, 1);
   assert.equal(publicState.objects.wagons["mock-wagon-white-2"].attributes.cargoId, "mock-cargo-b-f");
   assert.equal(publicState.log.length, 18);
-  assert.equal(publicState.objects.networkEdges["mock-edge-a-b"], undefined);
+  assert.equal(publicState.objects.networkEdges["mock-edge-e-f"], undefined);
   const plannedRoad = publicState.objects.networkEdges["main:edge:1001"].attributes;
   assert.equal(plannedRoad.constructionCost, 6);
   assert.equal(plannedRoad.regionSegments, 3);
@@ -319,7 +328,62 @@ test("compiled mock executes the documented operating and construction transcrip
   assert.equal(publicState.objects.networkEdges["main:edge:1003"].facets.state, "building");
 });
 
-test("closed edge, full terminal, premature delivery and insufficient maintenance fail atomically", async () => {
+test("a waypoint created from exact geometry is immediately usable by typed locomotive ordering", async () => {
+  const manifest = validateGameManifest(await readJson("game.manifest.json"));
+  const constructionState = structuredClone(manifest.state);
+  constructionState.public.session.phase = "construction";
+  constructionState.public.construction.available = true;
+  const construction = await createFacilitatorSession(manifest, constructionState);
+
+  const build = await dispatchTestAction({
+    store: construction.store,
+    sessionId: construction.session.sessionId,
+    actionId: "construction.waypoint.build",
+    params: {
+      edgeId: "mock-edge-e-f",
+      positionT: 0.5,
+      whiteContribution: 3,
+      redContribution: 2,
+      purpleContribution: 0,
+      greenContribution: 0
+    }
+  });
+  assert.equal(build.result.ok, true);
+
+  const afterBuild = await construction.store.getSession(construction.session.sessionId);
+  const [waypointId, waypoint] = Object.entries(
+    afterBuild.state.public.objects.networkNodes
+  ).find(([id, node]) =>
+    id.startsWith("main:node:") && node.objectType === "transport.waypoint"
+  ) ?? [];
+  assert.equal(typeof waypointId, "string");
+  assert.equal(Object.hasOwn(waypoint.attributes, "positionX"), false);
+  assert.equal(Number.isFinite(waypoint.attributes.position.x), true);
+
+  // Re-enter at the next cargo-order boundary using the durable state produced
+  // by construction. The new node has only canonical `position`; Mechanics
+  // must resolve the horizontal coordinate through its declared projection.
+  const orderingState = structuredClone(afterBuild.state);
+  orderingState.public.session.phase = "cargo";
+  orderingState.public.objects.locomotives[
+    "mock-locomotive-purple-1"
+  ].attributes.nodeId = waypointId;
+  const ordering = await createFacilitatorSession(manifest, orderingState);
+  const finishCargo = await dispatchTestAction({
+    store: ordering.store,
+    sessionId: ordering.session.sessionId,
+    actionId: "mock.cargo.finish"
+  });
+  assert.equal(finishCargo.result.ok, true);
+
+  const afterOrdering = await ordering.store.getSession(ordering.session.sessionId);
+  assert.deepEqual(afterOrdering.state.public.session.locomotiveOrder, [
+    "mock-locomotive-green-1",
+    "mock-locomotive-purple-1"
+  ]);
+});
+
+test("forbidden waypoint, closed edge, full terminal, premature delivery and insufficient maintenance fail atomically", async () => {
   const manifest = validateGameManifest(await readJson("game.manifest.json"));
   const createSession = async (mutate) => {
     const state = structuredClone(manifest.state);
@@ -433,6 +497,271 @@ test("closed edge, full terminal, premature delivery and insufficient maintenanc
     current.state.public.objects.locomotives["mock-market-locomotive-green-2"].facets.availability,
     "reserve"
   );
+
+  const forbiddenWaypoint = await createSession((state) => {
+    state.public.session.phase = "construction";
+    state.public.construction.available = true;
+  });
+  const beforeForbiddenWaypoint = await forbiddenWaypoint.store.getSession(
+    forbiddenWaypoint.session.sessionId
+  );
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: forbiddenWaypoint.store,
+      sessionId: forbiddenWaypoint.session.sessionId,
+      actionId: "construction.waypoint.build",
+      params: {
+        edgeId: "mock-edge-a-b",
+        positionT: 0.5,
+        whiteContribution: 3,
+        redContribution: 2,
+        purpleContribution: 0,
+        greenContribution: 0
+      }
+    }),
+    /CONSTRUCTION_WAYPOINT_IN_ENDPOINT_REGION|assertion/i
+  );
+  current = await forbiddenWaypoint.store.getSession(forbiddenWaypoint.session.sessionId);
+  assert.equal(current.version.stateVersion, beforeForbiddenWaypoint.version.stateVersion);
+  assert.deepEqual(current.state, beforeForbiddenWaypoint.state);
+});
+
+test("closed cargo terminals reject loading and delivery without partial state changes", async () => {
+  const manifest = validateGameManifest(await readJson("game.manifest.json"));
+
+  /**
+   * A rejected cargo command must preserve the gameplay state it attempted to
+   * change. Compare the complete team ledger plus the wagon and cargo order so
+   * the test catches partial payment, loading, unloading or status transitions.
+   */
+  const assertCargoStateUnchanged = async ({ store, sessionId, before, wagonId, cargoId }) => {
+    const after = await store.getSession(sessionId);
+    assert.equal(after.version.stateVersion, before.version.stateVersion);
+    assert.deepEqual(after.state.public.teams, before.state.public.teams);
+    assert.deepEqual(
+      after.state.public.objects.wagons[wagonId],
+      before.state.public.objects.wagons[wagonId]
+    );
+    assert.deepEqual(
+      after.state.public.objects.cargoOrders[cargoId],
+      before.state.public.objects.cargoOrders[cargoId]
+    );
+  };
+
+  const loadState = structuredClone(manifest.state);
+  loadState.public.session.phase = "cargo";
+  loadState.public.decks.cargo.offer.firstCardId = "mock-cargo-b-f";
+  loadState.public.objects.networkNodes["mock-terminal-b"].facets.availability = "closed";
+  const load = await createFacilitatorSession(manifest, loadState);
+  const beforeLoad = await load.store.getSession(load.session.sessionId);
+
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: load.store,
+      sessionId: load.session.sessionId,
+      actionId: "mock.cargo.load.white",
+      params: { wagonId: "mock-wagon-white-2", cargoId: "mock-cargo-b-f" }
+    }),
+    /CARGO_LOAD_INVALID|assertion/i
+  );
+  await assertCargoStateUnchanged({
+    store: load.store,
+    sessionId: load.session.sessionId,
+    before: beforeLoad,
+    wagonId: "mock-wagon-white-2",
+    cargoId: "mock-cargo-b-f"
+  });
+
+  const deliveryState = structuredClone(manifest.state);
+  deliveryState.public.session.phase = "operations";
+  deliveryState.public.objects.wagons["mock-wagon-white-1"].attributes.nodeId = "mock-terminal-c";
+  deliveryState.public.objects.networkNodes["mock-terminal-c"].facets.availability = "closed";
+  const delivery = await createFacilitatorSession(manifest, deliveryState);
+  const beforeDelivery = await delivery.store.getSession(delivery.session.sessionId);
+
+  await assertRejectedAction(
+    dispatchTestAction({
+      store: delivery.store,
+      sessionId: delivery.session.sessionId,
+      actionId: "mock.cargo.deliver",
+      params: { wagonId: "mock-wagon-white-1", cargoId: "mock-cargo-b-c" }
+    }),
+    /CARGO_DELIVERY_INVALID|assertion/i
+  );
+  await assertCargoStateUnchanged({
+    store: delivery.store,
+    sessionId: delivery.session.sessionId,
+    before: beforeDelivery,
+    wagonId: "mock-wagon-white-1",
+    cargoId: "mock-cargo-b-c"
+  });
+});
+
+test("dynamic cargo and coupling actions use selected active objects and their actual owners", async () => {
+  const manifest = validateGameManifest(await readJson("game.manifest.json"));
+
+  const loadState = structuredClone(manifest.state);
+  loadState.public.session.phase = "cargo";
+  loadState.public.decks.cargo.offer.firstCardId = "mock-cargo-b-f";
+  loadState.public.decks.cargo.offer.secondCardId = "mock-cargo-f-a";
+  loadState.secret.decks.cargo = {
+    order: [],
+    discard: [],
+    held: ["mock-cargo-b-f", "mock-cargo-f-a"],
+    stream: "deck.cargo"
+  };
+  const load = await createFacilitatorSession(manifest, loadState);
+  const loadOutcome = await dispatchTestAction({
+    store: load.store,
+    sessionId: load.session.sessionId,
+    actionId: "mock.cargo.load.white",
+    params: {
+      wagonId: "mock-wagon-red-2",
+      cargoId: "mock-cargo-f-a"
+    }
+  });
+  assert.equal(loadOutcome.result.ok, true);
+  let current = await load.store.getSession(load.session.sessionId);
+  assert.equal(
+    current.state.public.objects.wagons["mock-wagon-red-2"].attributes.cargoId,
+    "mock-cargo-f-a"
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders["mock-cargo-f-a"].facets.status,
+    "in_transit"
+  );
+  assert.equal(current.state.public.teams["red-logistics"].maintenanceDue, 3);
+  assert.equal(current.state.public.teams["white-logistics"].maintenanceDue, 3);
+  assert.equal(current.state.public.decks.cargo.offer.firstCardId, null);
+  assert.equal(current.state.public.decks.cargo.offer.secondCardId, "mock-cargo-f-a");
+  assert.deepEqual(current.state.secret.decks.cargo, {
+    order: [],
+    discard: ["mock-cargo-b-f"],
+    held: ["mock-cargo-f-a"],
+    stream: "deck.cargo"
+  });
+
+  const finishCargoOutcome = await dispatchTestAction({
+    store: load.store,
+    sessionId: load.session.sessionId,
+    actionId: "mock.cargo.finish"
+  });
+  assert.equal(finishCargoOutcome.result.ok, true);
+  current = await load.store.getSession(load.session.sessionId);
+  assert.equal(current.state.public.session.phase, "operations");
+  assert.deepEqual(current.state.public.session.locomotiveOrder, [
+    "mock-locomotive-green-1",
+    "mock-locomotive-purple-1"
+  ]);
+  assert.deepEqual(current.state.public.decks.cargo.offer, {
+    firstCardId: null,
+    secondCardId: null
+  });
+  assert.deepEqual(
+    current.state.secret.decks.cargo.held,
+    ["mock-cargo-f-a"],
+    "a loaded cargo stays outside deck rotation until delivery"
+  );
+
+  const couplingState = structuredClone(manifest.state);
+  couplingState.public.session.phase = "operations";
+  couplingState.public.objects.wagons["mock-wagon-red-2"].attributes.nodeId = "mock-terminal-c";
+  const coupling = await createFacilitatorSession(manifest, couplingState);
+  const attachOutcome = await dispatchTestAction({
+    store: coupling.store,
+    sessionId: coupling.session.sessionId,
+    actionId: "mock.operations.attach.white",
+    params: {
+      vehicleId: "mock-locomotive-green-1",
+      wagonId: "mock-wagon-red-2"
+    }
+  });
+  assert.equal(attachOutcome.result.ok, true);
+  current = await coupling.store.getSession(coupling.session.sessionId);
+  assert.equal(
+    current.state.public.objects.wagons["mock-wagon-red-2"].attributes.attachedVehicleId,
+    "mock-locomotive-green-1"
+  );
+  assert.equal(
+    current.state.public.objects.locomotives["mock-locomotive-green-1"].attributes.actionPoints,
+    4
+  );
+
+  const detachOutcome = await dispatchTestAction({
+    store: coupling.store,
+    sessionId: coupling.session.sessionId,
+    actionId: "mock.operations.detach.white",
+    params: {
+      vehicleId: "mock-locomotive-green-1",
+      wagonId: "mock-wagon-red-2"
+    }
+  });
+  assert.equal(detachOutcome.result.ok, true);
+  current = await coupling.store.getSession(coupling.session.sessionId);
+  assert.equal(
+    current.state.public.objects.wagons["mock-wagon-red-2"].attributes.attachedVehicleId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.locomotives["mock-locomotive-green-1"].attributes.actionPoints,
+    3
+  );
+
+  const deliveryState = structuredClone(manifest.state);
+  deliveryState.public.session.phase = "operations";
+  deliveryState.public.objects.locomotives["mock-locomotive-green-1"].attributes.nodeId =
+    "mock-terminal-e";
+  Object.assign(deliveryState.public.objects.wagons["mock-wagon-red-2"].attributes, {
+    nodeId: "mock-terminal-e",
+    attachedVehicleId: "mock-locomotive-green-1",
+    cargoId: "mock-cargo-c-e"
+  });
+  deliveryState.public.objects.cargoOrders["mock-cargo-c-e"].facets.status = "in_transit";
+  deliveryState.public.teams["red-logistics"].maintenanceDue = 3;
+  deliveryState.secret.decks.cargo = {
+    order: [],
+    discard: [],
+    held: ["mock-cargo-c-e"],
+    stream: "deck.cargo"
+  };
+  const delivery = await createFacilitatorSession(manifest, deliveryState);
+  const deliveryOutcome = await dispatchTestAction({
+    store: delivery.store,
+    sessionId: delivery.session.sessionId,
+    actionId: "mock.cargo.deliver",
+    params: {
+      wagonId: "mock-wagon-red-2",
+      cargoId: "mock-cargo-c-e"
+    }
+  });
+  assert.equal(deliveryOutcome.result.ok, true);
+  current = await delivery.store.getSession(delivery.session.sessionId);
+  assert.equal(current.state.public.teams["red-logistics"].coins, 13);
+  assert.equal(current.state.public.teams["green-guild"].coins, 14);
+  assert.equal(current.state.public.teams["red-logistics"].maintenanceDue, 2);
+  assert.equal(current.state.public.teams["white-logistics"].maintenanceDue, 3);
+  assert.equal(
+    current.state.public.objects.wagons["mock-wagon-red-2"].attributes.cargoId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.wagons["mock-wagon-red-2"].attributes.attachedVehicleId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders["mock-cargo-c-e"].facets.status,
+    "delivered"
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders["mock-cargo-c-e"].attributes.settledRouteLength,
+    2
+  );
+  assert.deepEqual(current.state.secret.decks.cargo, {
+    order: [],
+    discard: ["mock-cargo-c-e"],
+    held: [],
+    stream: "deck.cargo"
+  });
 });
 
 test("full mock data declares hidden decks and an immutable, fully typed Mechanics program", async () => {
@@ -457,11 +786,13 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
 
   assertPublishedMechanicsContract(manifest);
   assert.equal(Object.hasOwn(mechanicsSource.mechanics, "moduleLock"), false);
-  assert.equal(
-    Object.hasOwn(manifest.mechanics.stateModel.endpoints, "public.objects.wagons"),
-    false,
-    "the collection is the typed source of truth; a concrete snapshot endpoint must not narrow later writes"
-  );
+  for (const collection of ["wagons", "locomotives"]) {
+    assert.equal(
+      Object.hasOwn(manifest.mechanics.stateModel.endpoints, `public.objects.${collection}`),
+      false,
+      "the collection is the typed source of truth; a concrete snapshot endpoint must not narrow later writes"
+    );
+  }
   for (const fieldId of ["cargoId", "attachedVehicleId"]) {
     assert.equal(manifest.mechanics.stateModel.collections.wagons.fields[fieldId].valueType, "core.optional-string");
   }
@@ -518,8 +849,80 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
     "core.entity.attributes.patch",
     "core.entity.facet.set",
     "core.number.add",
+    "deck.return",
+    "core.state.patch",
+    "deck.return",
+    "core.state.patch",
     "core.event.emit"
   ]);
+  assert.deepEqual(planOps("mock.cargo.finish"), [
+    "core.assert",
+    "deck.return",
+    "deck.return",
+    "core.entities.select",
+    "core.entities.order",
+    "core.state.patch",
+    "core.event.emit"
+  ]);
+  assert.deepEqual(planOps("mock.cargo.draw-offer"), [
+    "core.assert",
+    "deck.draw",
+    "deck.extract",
+    "deck.draw",
+    "deck.extract",
+    "core.event.emit"
+  ]);
+  const cargoOfferDraws =
+    manifest.mechanics.plans["mock.cargo.draw-offer"].transaction.steps
+      .filter((step) => step.op === "deck.draw");
+  assert.equal(cargoOfferDraws.length, 2);
+  assert.ok(
+    cargoOfferDraws.every((step) => step.onEmpty === "reshuffle-discard"),
+    "a new cargo offer must recycle the discard instead of exhausting a finite test deck"
+  );
+  const locomotiveOrderStep =
+    manifest.mechanics.plans["mock.cargo.finish"].transaction.steps
+      .find((step) => step.op === "core.entities.order");
+  assert.deepEqual(locomotiveOrderStep?.keys, [
+    {
+      source: {
+        kind: "related-field",
+        referenceField: "nodeId",
+        collection: "networkNodes",
+        field: "positionX"
+      },
+      direction: "descending",
+      missing: "error"
+    },
+    {
+      source: {
+        kind: "related-field",
+        referenceField: "ownerTeamId",
+        collection: "teams",
+        field: "coins"
+      },
+      direction: "descending",
+      missing: "error"
+    },
+    {
+      source: {
+        kind: "related-aggregate",
+        collection: "locomotives",
+        join: {
+          current: { kind: "field", field: "ownerTeamId" },
+          relatedField: "ownerTeamId"
+        },
+        aggregate: "sum",
+        valueField: "turnOrderCount"
+      },
+      direction: "descending",
+      missing: "error"
+    }
+  ]);
+  assert.deepEqual(locomotiveOrderStep?.tieBreak, {
+    kind: "seeded-random",
+    stream: "locomotive-order"
+  });
   assert.deepEqual(planOps("mock.cargo.deliver"), [
     "core.assert",
     "core.assert",
@@ -530,6 +933,7 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
     "core.entity.facet.set",
     "core.entity.attributes.patch",
     "core.number.add",
+    "deck.return",
     "core.event.emit"
   ]);
   assert.deepEqual(planOps("mock.locomotive.move"), [
@@ -574,6 +978,8 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
   assert.deepEqual(planOps("construction.waypoint.build"), [
     "core.assert",
     "core.assert",
+    "graph.edge.position.inspect",
+    "core.assert",
     "core.resource.transfer",
     "core.resource.transfer",
     "core.resource.transfer",
@@ -586,6 +992,33 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
     "core.entity.facet.set",
     "core.entity.attributes.patch"
   ]);
+  const waypointSteps =
+    manifest.mechanics.plans["construction.waypoint.build"].transaction.steps;
+  const waypointInspect = waypointSteps.find(
+    (step) => step.op === "graph.edge.position.inspect"
+  );
+  const waypointRegionGuard = waypointSteps.find(
+    (step) => step.errorCode === "CONSTRUCTION_WAYPOINT_IN_ENDPOINT_REGION"
+  );
+  assert.equal(typeof waypointInspect?.id, "string");
+  assert.deepEqual(waypointRegionGuard?.predicate, {
+    op: "predicate.set.disjoint",
+    left: {
+      op: "value.result",
+      stepId: waypointInspect.id,
+      path: ["pointRegionIds"]
+    },
+    right: {
+      op: "value.result",
+      stepId: waypointInspect.id,
+      path: ["endpoints", "regionIds"]
+    }
+  });
+  const waypointSplit = waypointSteps.find((step) => step.op === "graph.edge.split");
+  assert.deepEqual(waypointSplit?.proof, {
+    op: "value.result",
+    stepId: waypointInspect.id
+  });
   const transfers = Object.values(manifest.mechanics.plans).flatMap((plan) =>
     plan.transaction.steps.filter((step) => step.op === "core.resource.transfer")
   );
@@ -649,6 +1082,46 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
       assert.equal(vehicle.attributes.nominalValue >= 0, true);
     }
   }
+  assert.equal(
+    manifest.state.public.objects.locomotives["mock-locomotive-green-1"].attributes.turnOrderCount,
+    1
+  );
+  assert.equal(
+    manifest.state.public.objects.locomotives["mock-market-locomotive-green-2"].attributes.turnOrderCount,
+    0
+  );
+  assert.equal(manifest.mechanics.stateModel.collections.teams.itemShape, "record");
+  assert.deepEqual(
+    manifest.mechanics.stateModel.collections.teams.fields.coins.storage,
+    { kind: "path", path: ["coins"] }
+  );
+  assert.deepEqual(
+    manifest.mechanics.stateModel.collections.networkNodes.fields.positionX,
+    {
+      source: {
+        kind: "nested-field",
+        field: "position",
+        path: ["x"]
+      },
+      valueType: "game.map-coordinate",
+      access: "read-only"
+    }
+  );
+  assert.deepEqual(
+    manifest.mechanics.stateModel.types["game.map-coordinate"],
+    {
+      kind: "finite-number",
+      minimum: -1_000_000_000,
+      maximum: 1_000_000_000
+    }
+  );
+  assert.equal(
+    manifest.mechanics.stateModel.collections.locomotives.fields.turnOrderCount.valueType,
+    "game.turn-order-count"
+  );
+  assert.ok(
+    manifest.content.data.integrationReadiness.requiredMechanicsOperations.includes("core.entities.order")
+  );
 
   const ui = await readJson("authoring/ui/web.authoring.json");
   const serializedUi = JSON.stringify(ui);

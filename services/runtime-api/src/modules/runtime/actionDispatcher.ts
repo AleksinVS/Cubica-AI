@@ -104,6 +104,8 @@ export interface PublishedGameIntentEvent {
   eventType: string;
   summary: unknown;
   data: Record<string, unknown>;
+  /** ADR-092 public-metric deltas; present only on qualifying public events. */
+  metricChanges?: ReadonlyArray<{ metricId: string; before: number; after: number }>;
 }
 
 /**
@@ -502,6 +504,9 @@ export async function dispatchRuntimeAction(
       eventType: event.eventType,
       summary: structuredClone(event.summary),
       data: structuredClone(event.data),
+      ...(event.metricChanges === undefined
+        ? {}
+        : { metricChanges: structuredClone(event.metricChanges) }),
       createdAt: snapshot.updatedAt
     }));
     return {

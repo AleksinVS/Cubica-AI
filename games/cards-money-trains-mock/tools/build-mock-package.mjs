@@ -85,7 +85,14 @@ const vehicleCollections = (gameplay) => {
           nominalValue: vehicle.kind === "locomotive"
             ? gameplay.market.prices.locomotive.purchase
             : gameplay.market.prices.wagon.purchase,
-          ...(vehicle.kind === "locomotive" ? { actionPoints: vehicle.actionPoints ?? 0 } : {}),
+          ...(vehicle.kind === "locomotive"
+            ? {
+                actionPoints: vehicle.actionPoints ?? 0,
+                // Active owned locomotives contribute to the team's turn-order
+                // count. A numeric flag makes the later aggregate declarative.
+                turnOrderCount: 1
+              }
+            : {}),
           ...(vehicle.attachedVehicleId ? { attachedVehicleId: vehicle.attachedVehicleId } : {}),
           ...(vehicle.cargoId ? { cargoId: vehicle.cargoId } : {})
         }
@@ -102,7 +109,14 @@ const vehicleCollections = (gameplay) => {
         nodeId: vehicle.nodeId,
         ownerTeamId: vehicle.ownerTeamId,
         nominalValue: 0,
-        ...(vehicle.kind === "locomotive" ? { actionPoints: vehicle.actionPoints ?? 0 } : {})
+        ...(vehicle.kind === "locomotive"
+          ? {
+              actionPoints: vehicle.actionPoints ?? 0,
+              // Reserve stock already names its future owner for purchasing,
+              // but must not strengthen that team's ordering tie-break yet.
+              turnOrderCount: 0
+            }
+          : {})
       }
     };
   }
@@ -392,10 +406,14 @@ const build = async () => {
     status: "integrated-shared-runtime-contracts",
     requiredMechanicsOperations: [
       "core.collection.id.allocate",
+      "core.entities.order",
       "core.entities.score",
       "deck.shuffle",
       "deck.draw",
+      "deck.extract",
+      "deck.return",
       "graph.regions.route.plan",
+      "graph.edge.position.inspect",
       "graph.edge.split",
       "graph.entity.traverse",
       "graph.shortestPath",
@@ -451,6 +469,9 @@ const build = async () => {
   publicState.session.fixtureId = "development-mock";
   publicState.session.contentMode = "mock";
   publicState.session.phase = "setup";
+  // Runtime calculates this list from active objects when cargo selection
+  // finishes. The browser only presents the saved authoritative result.
+  publicState.session.locomotiveOrder = [];
   publicState.construction.available = false;
   publicState.methodology = { status: "idle", activePauseId: null };
   publicState.market = { wagonPurchasePrice: gameplay.market.prices.wagon.purchase };
@@ -596,11 +617,11 @@ const build = async () => {
       },
       {
         id: "mock-load-white-cargo",
-        label: "MOCK: загрузить груз B–F в белый вагон",
+        label: "MOCK: загрузить предложенный груз",
+        description: "Выберите активный вагон и одну из двух открытых карт груза.",
         actionId: "mock.cargo.load.white",
         phase: "cargo",
-        section: "cargo",
-        params: { wagonId: "mock-wagon-white-2", cargoId: "mock-cargo-b-f" }
+        section: "cargo"
       },
       {
         id: "mock-finish-cargo",
@@ -611,43 +632,35 @@ const build = async () => {
       },
       {
         id: "mock-attach-white-wagon",
-        label: "MOCK: прицепить второй белый вагон",
+        label: "MOCK: прицепить выбранный вагон",
+        description: "Выберите активный локомотив и активный вагон; допустимость сцепления проверит сервер.",
         actionId: "mock.operations.attach.white",
         phase: "operations",
-        section: "operations",
-        params: { vehicleId: "mock-locomotive-purple-1", wagonId: "mock-wagon-white-2" }
+        section: "operations"
       },
       {
         id: "mock-detach-white-wagon",
-        label: "MOCK: отцепить второй белый вагон",
+        label: "MOCK: отцепить выбранный вагон",
+        description: "Выберите активный локомотив и активный вагон; текущее сцепление проверит сервер.",
         actionId: "mock.operations.detach.white",
         phase: "operations",
-        section: "operations",
-        params: { vehicleId: "mock-locomotive-purple-1", wagonId: "mock-wagon-white-2" }
+        section: "operations"
       },
       {
-        id: "mock-move-purple-b-c",
-        label: "MOCK: перевести фиолетовый локомотив B–C",
+        id: "mock-move-locomotive",
+        label: "MOCK: переместить выбранный локомотив",
+        description: "Сначала выберите активный локомотив и существующую дорогу на карте или в форме.",
         actionId: "mock.locomotive.move",
         phase: "operations",
-        section: "operations",
-        params: { vehicleId: "mock-locomotive-purple-1", edgeId: "mock-edge-b-c" }
+        section: "operations"
       },
       {
-        id: "mock-deliver-b-c",
-        label: "MOCK: доставить груз B–C",
+        id: "mock-deliver-cargo",
+        label: "MOCK: доставить выбранный груз",
+        description: "Выберите активный вагон и публичный грузовой заказ; маршрут и право доставки проверит сервер.",
         actionId: "mock.cargo.deliver",
         phase: "operations",
-        section: "operations",
-        params: { wagonId: "mock-wagon-white-1", cargoId: "mock-cargo-b-c" }
-      },
-      {
-        id: "mock-deliver-b-f",
-        label: "MOCK: доставить груз B–F",
-        actionId: "mock.cargo.deliver.b-f",
-        phase: "operations",
-        section: "operations",
-        params: { wagonId: "mock-wagon-white-2", cargoId: "mock-cargo-b-f" }
+        section: "operations"
       },
       {
         id: "mock-finish-operations",
@@ -673,14 +686,14 @@ const build = async () => {
         }
       },
       {
-        id: "mock-build-waypoint-a-b",
-        label: "MOCK: поставить полустанок на A–B (5 монет)",
-        description: "Вымышленный контроль: точка посередине существующей дороги.",
+        id: "mock-build-waypoint-e-f",
+        label: "MOCK: поставить полустанок на E–F (5 монет)",
+        description: "Вымышленный контроль: точка посередине дороги лежит вне областей обоих конечных терминалов.",
         actionId: "construction.waypoint.build",
         phase: "construction",
         section: "construction",
         params: {
-          edgeId: "mock-edge-a-b",
+          edgeId: "mock-edge-e-f",
           positionT: 0.5,
           whiteContribution: 3,
           redContribution: 2,

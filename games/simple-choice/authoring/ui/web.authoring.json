@@ -14,6 +14,9 @@
       "game_id": "simple-choice"
     },
     "entry_point": "intro",
+    "stylesheets": [
+      "asset:theme"
+    ],
     "metric_specs": [
       {
         "id": "score",

@@ -45,8 +45,13 @@ const {
 const { validateMechanicsSchema } = require("../../../scripts/manifest-tools/mechanics-validator.cjs") as {
   validateMechanicsSchema: (value: unknown) => { valid: boolean; errors: Array<unknown> };
 };
-const { BUDGET_PROFILES, checkMechanicsBundle } = require("../../../scripts/manifest-tools/mechanics-checker.cjs") as {
+const {
+  BUDGET_PROFILES,
+  checkMechanicsBundle,
+  MechanicsSemanticError
+} = require("../../../scripts/manifest-tools/mechanics-checker.cjs") as {
   BUDGET_PROFILES: Record<string, Record<string, number>>;
+  MechanicsSemanticError: new (...args: Array<any>) => Error & { code: string };
   checkMechanicsBundle: (value: unknown, options?: {
     actions?: Record<string, unknown>;
     initialState?: Record<string, unknown>;
@@ -300,6 +305,121 @@ const createState = () => ({
   secret: {}
 });
 
+/**
+ * Extend the neutral entity fixture with scalar and structural typed sets.
+ *
+ * This proves the generic patch contract without borrowing names or rules from
+ * the game that first required independent closure reasons.
+ */
+function createSetAddMechanics(): CubicaMechanicsIRV1Alpha1 {
+  const mechanics = createMechanics();
+  Object.assign(mechanics.stateModel.types, {
+    "fixture.tag": {
+      kind: "enum",
+      values: ["alpha", "beta", "gamma", "delta"]
+    },
+    "fixture.tags": {
+      kind: "set",
+      itemType: "fixture.tag",
+      maxItems: 3
+    },
+    "fixture.marker": {
+      kind: "record",
+      fields: {
+        label: { typeRef: "core.string", optional: false },
+        active: { typeRef: "core.boolean", optional: false }
+      }
+    },
+    "fixture.markers": {
+      kind: "set",
+      itemType: "fixture.marker",
+      maxItems: 1
+    }
+  });
+  Object.assign(mechanics.stateModel.collections.pieces.fields, {
+    tags: {
+      storage: { kind: "attribute", name: "tags" },
+      valueType: "fixture.tags",
+      access: "read-write"
+    },
+    markers: {
+      storage: { kind: "attribute", name: "markers" },
+      valueType: "fixture.markers",
+      access: "read-write"
+    }
+  });
+  mechanics.plans.addTag = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "add-tag",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "pieces",
+          entityId: { op: "value.literal", value: "alpha" }
+        },
+        patches: [{
+          operation: "set-add",
+          path: ["tags"],
+          value: { op: "value.literal", value: "gamma" }
+        }]
+      }]
+    }
+  };
+  mechanics.plans.addMarker = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "add-marker",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: {
+          collection: "pieces",
+          entityId: { op: "value.literal", value: "alpha" }
+        },
+        patches: [{
+          operation: "set-add",
+          path: ["markers"],
+          // Reversed property insertion order proves that equality follows the
+          // canonical typed-set identity, not object construction history.
+          value: {
+            op: "value.literal",
+            value: { active: true, label: "same" }
+          }
+        }]
+      }]
+    }
+  };
+  mechanics.plans.rollbackTag = {
+    planHash: HASH,
+    transaction: {
+      steps: [
+        structuredClone(mechanics.plans.addTag.transaction.steps[0]),
+        {
+          id: "reject-tag",
+          kind: "assert",
+          op: "core.assert",
+          predicate: { op: "predicate.constant", value: false },
+          errorCode: "FIXTURE_SET_ADD_ROLLBACK"
+        }
+      ]
+    }
+  };
+  return finalizePlanHashes(mechanics);
+}
+
+function createSetAddState(options: {
+  tags?: Array<string>;
+  markers?: Array<{ label: string; active: boolean }>;
+} = {}) {
+  const state = createState();
+  const attributes = state.public.pieces.alpha.attributes as Record<string, unknown>;
+  attributes.tags = options.tags ?? [];
+  attributes.markers = options.markers ?? [];
+  return state;
+}
+
 test("schema-valid generic query, update, event and journal execute on one candidate clone", () => {
   const mechanics = createMechanics();
   const schemaResult = validateMechanicsSchema(mechanics);
@@ -331,6 +451,165 @@ test("schema-valid generic query, update, event and journal execute on one candi
     summary: "Active pieces updated",
     data: { updatedIds: ["alpha", "zeta"] }
   }]);
+});
+
+/**
+ * ADR-092 neutral fixture: adds two public metric endpoints, declares an
+ * optional `metricChanges` field on the journal entry record, and provides one
+ * plan that changes a metric and emits a public journal event plus one plan that
+ * emits a server-only event. No published game name or rule leaks into this
+ * platform contract proof.
+ */
+function createMetricAuditMechanics(): CubicaMechanicsIRV1Alpha1 {
+  const mechanics = createMechanics();
+  Object.assign(mechanics.stateModel.endpoints, {
+    "public.metrics.alpha": {
+      audienceRef: "public",
+      storage: { root: "public", segments: ["metrics", "alpha"] },
+      valueType: "core.integer",
+      access: "read-write"
+    },
+    "public.metrics.beta": {
+      audienceRef: "public",
+      storage: { root: "public", segments: ["metrics", "beta"] },
+      valueType: "core.integer",
+      access: "read-write"
+    }
+  });
+  // The stored journal entry is a closed record; declaring the optional
+  // metricChanges field is exactly the additive change ADR-092 needs in a game.
+  (mechanics.stateModel.types["fixture.journalEntry"] as { fields: Record<string, unknown> }).fields
+    .metricChanges = { typeRef: "fixture.json", optional: true };
+  Object.assign(mechanics.stateModel.events, {
+    "fixture.server-note": {
+      audienceRef: "server",
+      payloadType: "fixture.eventPayload"
+    }
+  });
+  mechanics.plans.bumpAndPublish = {
+    planHash: HASH,
+    transaction: {
+      steps: [
+        {
+          id: "bumpAlpha",
+          kind: "command",
+          op: "core.number.add",
+          target: { endpoint: "public.metrics.alpha" },
+          delta: { op: "value.literal", value: 3 }
+        },
+        {
+          // A conditional step whose predicate is false is skipped, proving the
+          // snapshot reflects the applied candidate state, not authored deltas.
+          id: "bumpAlphaSkipped",
+          kind: "command",
+          op: "core.number.add",
+          target: { endpoint: "public.metrics.alpha" },
+          delta: { op: "value.literal", value: 10 },
+          when: {
+            op: "predicate.compare",
+            operator: "eq",
+            left: { op: "value.literal", value: 1 },
+            right: { op: "value.literal", value: 2 }
+          }
+        },
+        {
+          id: "publishEvent",
+          kind: "command",
+          op: "core.event.emit",
+          eventType: "fixture.updated",
+          audience: "public",
+          summary: { op: "value.literal", value: "metrics changed" },
+          data: { updatedIds: { op: "value.literal", value: [] } }
+        }
+      ]
+    }
+  };
+  mechanics.plans.bumpAndPublishServer = {
+    planHash: HASH,
+    transaction: {
+      steps: [
+        {
+          id: "bumpAlpha",
+          kind: "command",
+          op: "core.number.add",
+          target: { endpoint: "public.metrics.alpha" },
+          delta: { op: "value.literal", value: 3 }
+        },
+        {
+          id: "publishServer",
+          kind: "command",
+          op: "core.event.emit",
+          eventType: "fixture.server-note",
+          audience: "server",
+          summary: { op: "value.literal", value: "server only" },
+          data: { updatedIds: { op: "value.literal", value: [] } }
+        }
+      ]
+    }
+  };
+  return finalizePlanHashes(mechanics);
+}
+
+const createMetricState = () => {
+  const state = createState() as { public: Record<string, unknown>; secret: Record<string, unknown> };
+  state.public.metrics = { alpha: 4, beta: 20 };
+  return state;
+};
+
+const NEUTRAL_PUBLIC_METRICS = [
+  { metricId: "alpha", statePath: "public.metrics.alpha" },
+  { metricId: "beta", statePath: "public.metrics.beta" }
+];
+
+test("ADR-092 attaches whole-transaction public metric deltas to public events and journal entries", () => {
+  const mechanics = createMetricAuditMechanics();
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.bumpAndPublish,
+    state: createMetricState(),
+    actorContext: { sessionRole: "player" },
+    publicMetrics: NEUTRAL_PUBLIC_METRICS
+  });
+
+  const expectedChanges = [
+    { metricId: "alpha", before: 4, after: 7 },
+    { metricId: "beta", before: 20, after: 20 }
+  ];
+  // The skipped +10 is not applied, so `after` is 7, not 17: the block reflects
+  // the actually committed state (ADR-092), not the sum of authored deltas.
+  assert.equal((output.candidateState.public as { metrics: { alpha: number } }).metrics.alpha, 7);
+  assert.deepEqual(output.events[0].metricChanges, expectedChanges);
+  const journal = (output.candidateState.public as { journal: Array<Record<string, unknown>> }).journal;
+  assert.deepEqual(journal[0].metricChanges, expectedChanges);
+});
+
+test("ADR-092 omits metric deltas when the game declares no public metric catalog", () => {
+  const mechanics = createMetricAuditMechanics();
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.bumpAndPublish,
+    state: createMetricState(),
+    actorContext: { sessionRole: "player" }
+    // No publicMetrics: the game has no public metric catalog.
+  });
+
+  assert.equal(output.events[0].metricChanges, undefined);
+  const journal = (output.candidateState.public as { journal: Array<Record<string, unknown>> }).journal;
+  assert.equal("metricChanges" in journal[0], false);
+});
+
+test("ADR-092 does not enrich non-public events even with a public metric catalog", () => {
+  const mechanics = createMetricAuditMechanics();
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.bumpAndPublishServer,
+    state: createMetricState(),
+    actorContext: { sessionRole: "player" },
+    publicMetrics: NEUTRAL_PUBLIC_METRICS
+  });
+
+  assert.equal(output.events[0].audience, "server");
+  assert.equal(output.events[0].metricChanges, undefined);
 });
 
 test("system schedule operations emit only protected atomic mutations", () => {
@@ -414,6 +693,193 @@ test("a later failed assertion discards all earlier candidate writes", () => {
       error.code === "FIXTURE_PRECONDITION_FAILED" && error.stepId === "rejectCandidate"
   );
   assert.deepEqual(original, createState());
+});
+
+test("set-add appends one typed member and charges the members actually scanned", () => {
+  const mechanics = createSetAddMechanics();
+  const schema = validateMechanicsSchema(mechanics);
+  assert.equal(schema.valid, true, JSON.stringify(schema.errors));
+  const original = createSetAddState({ tags: ["alpha", "beta"] });
+
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.addTag,
+    state: original,
+    actorContext: { sessionRole: "player" }
+  });
+
+  const attributes = (
+    output.candidateState.public as {
+      pieces: { alpha: { attributes: Record<string, unknown> } };
+    }
+  ).pieces.alpha.attributes;
+  assert.deepEqual(attributes.tags, ["alpha", "beta", "gamma"]);
+  assert.equal(output.cost.algorithmWork, 2);
+  assert.equal(output.cost.writes, 1);
+  assert.deepEqual(
+    (original.public.pieces.alpha.attributes as Record<string, unknown>).tags,
+    ["alpha", "beta"],
+    "the authoritative input snapshot remains unchanged"
+  );
+});
+
+test("duplicate set-add succeeds at full capacity and stops at the matching member", () => {
+  const mechanics = createSetAddMechanics();
+  const patch = mechanics.plans.addTag.transaction.steps[0];
+  assert.equal(patch.op, "core.entity.attributes.patch");
+  if (patch.op !== "core.entity.attributes.patch") return;
+  const addition = patch.patches[0];
+  assert.notEqual(addition.operation, "remove");
+  if (addition.operation === "remove") return;
+  addition.value = { op: "value.literal", value: "beta" };
+  finalizePlanHashes(mechanics);
+  const original = createSetAddState({ tags: ["alpha", "beta", "gamma"] });
+
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.addTag,
+    state: original,
+    actorContext: { sessionRole: "player" }
+  });
+
+  const attributes = (
+    output.candidateState.public as {
+      pieces: { alpha: { attributes: Record<string, unknown> } };
+    }
+  ).pieces.alpha.attributes;
+  assert.deepEqual(attributes.tags, ["alpha", "beta", "gamma"]);
+  assert.equal(output.cost.algorithmWork, 2);
+  assert.equal(output.cost.writes, 1);
+});
+
+test("canonical structural duplicate is a no-op even when its set is full", () => {
+  const mechanics = createSetAddMechanics();
+  const original = createSetAddState({
+    markers: [{ label: "same", active: true }]
+  });
+
+  const output = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.addMarker,
+    state: original,
+    actorContext: { sessionRole: "player" }
+  });
+
+  const attributes = (
+    output.candidateState.public as {
+      pieces: { alpha: { attributes: Record<string, unknown> } };
+    }
+  ).pieces.alpha.attributes;
+  assert.deepEqual(attributes.markers, [{ label: "same", active: true }]);
+  assert.equal(output.cost.algorithmWork, 1);
+});
+
+test("set-add rejects a distinct member at capacity without mutating input", () => {
+  const mechanics = createSetAddMechanics();
+  const patch = mechanics.plans.addTag.transaction.steps[0];
+  assert.equal(patch.op, "core.entity.attributes.patch");
+  if (patch.op !== "core.entity.attributes.patch") return;
+  const addition = patch.patches[0];
+  assert.notEqual(addition.operation, "remove");
+  if (addition.operation === "remove") return;
+  addition.value = { op: "value.literal", value: "delta" };
+  finalizePlanHashes(mechanics);
+  const original = createSetAddState({ tags: ["alpha", "beta", "gamma"] });
+  const before = structuredClone(original);
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.addTag,
+      state: original,
+      actorContext: { sessionRole: "player" }
+    }),
+    (error) =>
+      error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_SET_CAPACITY_EXCEEDED"
+  );
+  assert.deepEqual(original, before);
+});
+
+test("set-add validates a runtime element before retaining it", () => {
+  const mechanics = createSetAddMechanics();
+  const patch = mechanics.plans.addTag.transaction.steps[0];
+  assert.equal(patch.op, "core.entity.attributes.patch");
+  if (patch.op !== "core.entity.attributes.patch") return;
+  const addition = patch.patches[0];
+  assert.notEqual(addition.operation, "remove");
+  if (addition.operation === "remove") return;
+  addition.value = { op: "value.literal", value: 42 };
+  finalizePlanHashes(mechanics);
+  const original = createSetAddState();
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.addTag,
+      state: original,
+      actorContext: { sessionRole: "player" }
+    }),
+    (error) =>
+      error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_VALUE_TYPE_MISMATCH"
+  );
+  assert.deepEqual(
+    (original.public.pieces.alpha.attributes as Record<string, unknown>).tags,
+    []
+  );
+});
+
+test("a later failure rolls back an earlier successful set-add", () => {
+  const mechanics = createSetAddMechanics();
+  const original = createSetAddState({ tags: ["alpha", "beta"] });
+  const before = structuredClone(original);
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.rollbackTag,
+      state: original,
+      actorContext: { sessionRole: "player" }
+    }),
+    (error) =>
+      error instanceof MechanicsExecutionError &&
+      error.code === "FIXTURE_SET_ADD_ROLLBACK"
+  );
+  assert.deepEqual(original, before);
+});
+
+test("set disjoint fails closed when a direct runtime caller supplies unlike item classes", () => {
+  const mechanics = createMechanics();
+  mechanics.plans.runtimeSetTypeMismatch = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "reject-unlike-sets",
+        kind: "assert",
+        op: "core.assert",
+        predicate: {
+          op: "predicate.set.disjoint",
+          left: { op: "value.literal", value: ["one"] },
+          right: { op: "value.literal", value: [1] }
+        },
+        errorCode: "FIXTURE_UNREACHABLE"
+      }]
+    }
+  } as CubicaMechanicsIRV1Alpha1["plans"][string];
+  finalizePlanHashes(mechanics);
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.runtimeSetTypeMismatch,
+      state: createState(),
+      actorContext: { sessionRole: "player" }
+    }),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_SET_TYPE_MISMATCH" &&
+      error.stepId === "reject-unlike-sets"
+  );
 });
 
 test("runtime rejects a write outside the declared state type without mutating input", () => {
@@ -612,6 +1078,111 @@ test("record-map collections validate closed paths and expose generic typed fiel
     }),
     (error) => error instanceof MechanicsExecutionError && error.code === "MECHANICS_ENTITY_FIELD_UNDECLARED"
   );
+});
+
+test("derived fields read exact nested values, validate input state, and reject every write path", () => {
+  const mechanics = createMechanics();
+  mechanics.stateModel.types["fixture.coordinate"] = {
+    kind: "finite-number",
+    minimum: -1_000_000_000,
+    maximum: 1_000_000_000
+  };
+  mechanics.stateModel.collections.pieces.fields.position = {
+    storage: { kind: "attribute", name: "position" },
+    valueType: "fixture.json",
+    access: "read-write"
+  };
+  mechanics.stateModel.collections.pieces.fields.positionX = {
+    source: { kind: "nested-field", field: "position", path: ["x"] },
+    valueType: "fixture.coordinate",
+    access: "read-only"
+  };
+  mechanics.plans.incrementOnly = {
+    planHash: HASH,
+    transaction: {
+      steps: [{
+        id: "incrementOnly",
+        kind: "command",
+        op: "core.number.add",
+        target: { endpoint: "counter" },
+        delta: { op: "value.literal", value: 1 }
+      }]
+    }
+  };
+  finalizePlanHashes(mechanics);
+
+  const state = createState();
+  const coordinates: Record<string, number> = {
+    alpha: 987_654_321.1234567,
+    middle: -0,
+    zeta: 987_654_321.1234568
+  };
+  for (const [id, item] of Object.entries(state.public.pieces)) {
+    (item.attributes as Record<string, unknown>).position = { x: coordinates[id], y: 0 };
+  }
+  const model = mechanics.stateModel.collections.pieces;
+  assert.equal(
+    readCollectionField(model, state.public.pieces.alpha, "positionX"),
+    987_654_321.1234567
+  );
+
+  const context = {
+    stateModel: mechanics.stateModel,
+    state,
+    preActionState: state,
+    params: {},
+    actor: { sessionRole: "player" as const },
+    limits: RUNTIME_BUDGETS[mechanics.budgetProfile]
+  };
+  assert.throws(
+    () => writeCollectionField(context, model, state.public.pieces.alpha, "positionX", 1),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_FIELD_NOT_WRITABLE"
+  );
+  assert.throws(
+    () => initializeCollectionField(context, model, {}, "positionX", 1),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_FIELD_NOT_WRITABLE"
+  );
+
+  const valid = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.incrementOnly,
+    state,
+    actorContext: { sessionRole: "player" }
+  });
+  assert.equal((valid.candidateState.public as { counter: number }).counter, 5);
+
+  for (const [invalidX, expectedCode] of [
+    [undefined, "MECHANICS_INPUT_STATE_LIMIT"],
+    ["invalid", "MECHANICS_VALUE_TYPE_MISMATCH"],
+    [1_000_000_001, "MECHANICS_VALUE_TYPE_MISMATCH"],
+    [Number.POSITIVE_INFINITY, "MECHANICS_INPUT_STATE_LIMIT"]
+  ] as const) {
+    const corrupt = structuredClone(state);
+    (
+      (corrupt.public.pieces.alpha.attributes as Record<string, unknown>).position as
+        Record<string, unknown>
+    ).x = invalidX;
+    let caught: unknown;
+    try {
+      executeMechanicsTransaction({
+        mechanics,
+        plan: mechanics.plans.incrementOnly,
+        state: corrupt,
+        actorContext: { sessionRole: "player" }
+      });
+    } catch (error) {
+      caught = error;
+    }
+    assert.ok(caught instanceof MechanicsExecutionError);
+    assert.equal(
+      caught.code,
+      expectedCode,
+      `input projection must reject ${String(invalidX)} before any mutation`
+    );
+    assert.equal(corrupt.public.counter, 4);
+  }
 });
 
 test("actor identity is available only through value.actor, never injected into params", () => {
@@ -1333,6 +1904,36 @@ test("graph construction composes route planning, explicit payment, id allocatio
     "the graph operation does not price the route; an explicit resource operation owns payment"
   );
 
+  const inspected = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.inspect,
+    state: inserted.candidateState,
+    actorContext: { sessionRole: "player" },
+    networkModels,
+    objectModels
+  });
+  const inspectedPoint = (inspected.result as any).point;
+  assert.equal(inspectedPoint.x, 1 + (8 / 3));
+  assert.equal(Number.isFinite(inspectedPoint.x), true);
+  assert.notEqual(
+    inspectedPoint.x,
+    Math.round(inspectedPoint.x * 1_000_000) / 1_000_000,
+    "the graph contract must not silently round an inspected coordinate to six decimals"
+  );
+  assert.equal(inspectedPoint.y, 5);
+  assert.deepEqual((inspected.result as any).pointRegionIds, ["middle-field"]);
+  assert.deepEqual((inspected.result as any).endpoints.regionIds, ["left-field", "right-field"]);
+  assert.match((inspected.result as any).edge.geometryFingerprint, /^sha256:[0-9a-f]{64}$/u);
+  assert.deepEqual(inspected.audit.at(-1)?.result, {
+    kind: "graph-edge-position-inspection",
+    proofVersion: "graph-edge-position-proof/v1"
+  });
+  assert.equal(
+    JSON.stringify(inspected.audit).includes("geometryFingerprint"),
+    false,
+    "durable audit must not disclose the internal geometry proof"
+  );
+
   const split = executeMechanicsTransaction({
     mechanics,
     plan: mechanics.plans.split,
@@ -1347,7 +1948,259 @@ test("graph construction composes route planning, explicit payment, id allocatio
     replacedEdgeId: "neutral:edge:42"
   });
   assert.equal((split.candidateState.public as ReturnType<typeof createGraphState>["public"]).transport.sequence, 45);
+  const splitNodes = (split.candidateState.public as ReturnType<typeof createGraphState>["public"]).nodes as
+    Record<string, Record<string, unknown>>;
+  const waypoint = splitNodes["neutral:node:43"];
+  assert.equal(
+    readCollectionField(mechanics.stateModel.collections.nodes, waypoint, "positionX"),
+    5,
+    "the split node exposes its exact x coordinate without a duplicated stored field"
+  );
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(waypoint.attributes as Record<string, unknown>, "positionX"),
+    false
+  );
+  const orderedAfterSplit = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.orderNodes,
+    state: split.candidateState,
+    actorContext: { sessionRole: "player" },
+    networkModels,
+    objectModels
+  });
+  assert.deepEqual(
+    (orderedAfterSplit.result as { ids: Array<string> }).ids,
+    ["right", "destination", "neutral:node:43", "left"],
+    "the newly split node is immediately orderable through its derived coordinate"
+  );
   assert.equal(original.public.transport.sequence, 41);
+});
+
+test("graph split rejects a stale inspection proof and rolls back the intervening mutation", () => {
+  const networkModels = createGraphNetworkModels();
+  const objectModels = createGraphObjectModels();
+  const mechanics = finalizePlanHashes(createGraphMechanics(), { networkModels, objectModels });
+  const original = createGraphState();
+  const inserted = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.insert,
+    state: original,
+    actorContext: { sessionRole: "player" },
+    networkModels,
+    objectModels
+  }).candidateState;
+  const before = structuredClone(inserted);
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.staleSplit,
+      state: inserted,
+      actorContext: { sessionRole: "player" },
+      networkModels,
+      objectModels
+    }),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_GRAPH_PROOF_STALE" &&
+      error.stepId === "split"
+  );
+  assert.deepEqual(inserted, before);
+});
+
+test("graph split detects endpoint drift covered by the inspection fingerprint", () => {
+  const networkModels = createGraphNetworkModels();
+  const objectModels = createGraphObjectModels();
+  const mechanics = finalizePlanHashes(createGraphMechanics(), { networkModels, objectModels });
+  const inserted = executeMechanicsTransaction({
+    mechanics,
+    plan: mechanics.plans.insert,
+    state: createGraphState(),
+    actorContext: { sessionRole: "player" },
+    networkModels,
+    objectModels
+  }).candidateState;
+  const before = structuredClone(inserted);
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.staleEndpointSplit,
+      state: inserted,
+      actorContext: { sessionRole: "player" },
+      networkModels,
+      objectModels
+    }),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_GRAPH_PROOF_STALE" &&
+      error.stepId === "split"
+  );
+  assert.deepEqual(inserted, before);
+});
+
+test("graph split rejects a same-shaped proof that lacks server provenance", () => {
+  const networkModels = createGraphNetworkModels();
+  const objectModels = createGraphObjectModels();
+  const mechanics = createGraphMechanics();
+  mechanics.stateModel.types["fixture.proof-list"] = {
+    kind: "list",
+    itemType: "core.graph-json",
+    maxItems: 4
+  };
+  mechanics.stateModel.endpoints.proofSink = {
+    audienceRef: "public",
+    storage: { root: "public", segments: ["proofSink"] },
+    valueType: "fixture.proof-list",
+    access: "read-write"
+  };
+  mechanics.plans.forgedSplit = {
+    planHash: HASH,
+    transaction: {
+      steps: [
+        {
+          id: "lookalike",
+          kind: "command",
+          op: "core.collection.append",
+          target: { endpoint: "proofSink" },
+          value: {
+            op: "value.literal",
+            value: {
+              proofVersion: "graph-edge-position-proof/v1",
+              networkId: "neutral",
+              edge: {
+                id: "neutral:edge:42",
+                geometryFingerprint: `sha256:${"0".repeat(64)}`
+              },
+              normalizedPosition: 0.5,
+              point: { x: 5, y: 5 },
+              pointRegionIds: ["middle-field"],
+              endpoints: {
+                from: { id: "left", point: { x: 1, y: 5 }, regionIds: ["left-field"] },
+                to: { id: "right", point: { x: 9, y: 5 }, regionIds: ["right-field"] },
+                regionIds: ["left-field", "right-field"]
+              }
+            }
+          }
+        },
+        {
+          id: "split",
+          kind: "command",
+          op: "graph.edge.split",
+          networkId: "neutral",
+          proof: { op: "value.result", stepId: "lookalike" }
+        }
+      ]
+    }
+  } as CubicaMechanicsIRV1Alpha1["plans"][string];
+  finalizePlanHashes(mechanics, { networkModels, objectModels });
+  const state = createGraphState() as ReturnType<typeof createGraphState> & {
+    public: ReturnType<typeof createGraphState>["public"] & { proofSink: Array<unknown> };
+  };
+  state.public.proofSink = [];
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.forgedSplit,
+      state,
+      actorContext: { sessionRole: "player" },
+      networkModels,
+      objectModels
+    }),
+    (error) => error instanceof MechanicsExecutionError &&
+      error.code === "MECHANICS_GRAPH_PROOF_INVALID" &&
+      error.stepId === "split"
+  );
+  assert.deepEqual(state.public.proofSink, []);
+});
+
+test("graph split schema accepts only an opaque prior inspection result", () => {
+  const networkModels = createGraphNetworkModels();
+  const objectModels = createGraphObjectModels();
+
+  const legacy = finalizePlanHashes(createGraphMechanics(), { networkModels, objectModels });
+  const legacySplit = legacy.plans.split.transaction.steps.at(-1) as any;
+  delete legacySplit.proof;
+  legacySplit.edge = { op: "value.literal", value: "neutral:edge:42" };
+  legacySplit.position = { op: "value.literal", value: 0.5 };
+  finalizePlanHashes(legacy, { networkModels, objectModels });
+  assert.equal(validateMechanicsSchema(legacy).valid, false);
+
+  const pathProof = finalizePlanHashes(createGraphMechanics(), { networkModels, objectModels });
+  (pathProof.plans.split.transaction.steps.at(-1) as any).proof.path = ["point"];
+  finalizePlanHashes(pathProof, { networkModels, objectModels });
+  assert.equal(validateMechanicsSchema(pathProof).valid, false);
+
+  const literalProof = finalizePlanHashes(createGraphMechanics(), { networkModels, objectModels });
+  (literalProof.plans.split.transaction.steps.at(-1) as any).proof = {
+    op: "value.literal",
+    value: { client: "forged" }
+  };
+  finalizePlanHashes(literalProof, { networkModels, objectModels });
+  assert.equal(validateMechanicsSchema(literalProof).valid, false);
+});
+
+test("semantic checker proves the inspection-to-split chain and typed set operands", () => {
+  const networkModels = createGraphNetworkModels();
+  const objectModels = createGraphObjectModels();
+  const expectCode = (
+    mutate: (mechanics: CubicaMechanicsIRV1Alpha1) => void,
+    code: string,
+    models: GameManifestTransportNetworkModelMap = networkModels
+  ): void => {
+    const mechanics = createGraphMechanics();
+    mutate(mechanics);
+    finalizePlanHashes(mechanics, { networkModels: models, objectModels });
+    assert.throws(
+      () => checkMechanicsBundle(mechanics, {
+        networkModels: models,
+        objectModels
+      }),
+      (error) => error instanceof MechanicsSemanticError && error.code === code
+    );
+  };
+
+  expectCode((mechanics) => {
+    (mechanics.plans.split.transaction.steps.at(-1) as any).proof.stepId = "allowed-region";
+  }, "MECHANICS_GRAPH_PROOF_SOURCE_INVALID");
+
+  expectCode((mechanics) => {
+    (mechanics.plans.split.transaction.steps[0] as any).when = {
+      op: "predicate.constant",
+      value: true
+    };
+  }, "MECHANICS_GRAPH_PROOF_SOURCE_CONDITIONAL");
+
+  expectCode((mechanics) => {
+    const split = mechanics.plans.split.transaction.steps.at(-1) as any;
+    split.proof.stepId = "future-inspect";
+  }, "MECHANICS_RESULT_REF_FORWARD_OR_UNKNOWN");
+
+  expectCode((mechanics) => {
+    mechanics.stateModel.types["fixture.number-set"] = {
+      kind: "set",
+      itemType: "core.integer",
+      maxItems: 8
+    };
+    mechanics.stateModel.endpoints.numberSet = {
+      audienceRef: "public",
+      storage: { root: "public", segments: ["numberSet"] },
+      valueType: "fixture.number-set",
+      access: "read-only"
+    };
+    const assertion = mechanics.plans.split.transaction.steps[1] as any;
+    assertion.predicate.right = {
+      op: "value.state",
+      ref: { endpoint: "numberSet" }
+    };
+  }, "MECHANICS_SET_TYPE_MISMATCH");
+
+  const twoNetworks = {
+    ...networkModels,
+    other: structuredClone(networkModels.neutral)
+  };
+  expectCode((mechanics) => {
+    (mechanics.plans.split.transaction.steps.at(-1) as any).networkId = "other";
+  }, "MECHANICS_GRAPH_PROOF_NETWORK_MISMATCH", twoNetworks);
 });
 
 test("graph capacity counts only lifecycle states declared as occupying a node", () => {
@@ -1388,6 +2241,28 @@ test("graph capacity counts only lifecycle states declared as occupying a node",
   );
   assert.equal(occupied.public.vehicles.moving.attributes.nodeId, "left");
   assert.equal(occupied.public.vehicles.moving.attributes.actionPoints, 2);
+});
+
+test("graph traversal rejects a closed source node without spending movement resources", () => {
+  const networkModels = createGraphNetworkModels();
+  const objectModels = createGraphObjectModels();
+  const mechanics = finalizePlanHashes(createGraphMechanics(), { networkModels, objectModels });
+  const closedAtSource = createGraphState();
+  closedAtSource.public.nodes.left.facets.availability = "closed";
+
+  assert.throws(
+    () => executeMechanicsTransaction({
+      mechanics,
+      plan: mechanics.plans.traverse,
+      state: closedAtSource,
+      actorContext: { sessionRole: "player" },
+      networkModels,
+      objectModels
+    }),
+    { code: "MECHANICS_GRAPH_STATE", stepId: "traverse" }
+  );
+  assert.equal(closedAtSource.public.vehicles.moving.attributes.nodeId, "left");
+  assert.equal(closedAtSource.public.vehicles.moving.attributes.actionPoints, 2);
 });
 
 test("publication rejects incomplete or ill-typed graph capacity bindings", () => {
@@ -1627,6 +2502,7 @@ function createGraphMechanics(): CubicaMechanicsIRV1Alpha1 {
       "core.collection.id.allocate",
       "core.resource.transfer",
       "core.entity.create",
+      "core.entities.order",
       "graph.edge.split",
       "graph.entity.traverse"
     ]),
@@ -1635,6 +2511,7 @@ function createGraphMechanics(): CubicaMechanicsIRV1Alpha1 {
         "core.integer": { kind: "integer", minimum: 0, maximum: 1_000 },
         "core.string": { kind: "string" },
         "core.optional-string": { kind: "option", itemType: "core.string" },
+        "core.coordinate": { kind: "finite-number", minimum: -1_000_000_000, maximum: 1_000_000_000 },
         "fixture.vehicle-lifecycle": { kind: "enum", values: ["active", "reserve"] },
         "core.graph-json": { kind: "json", maxDepth: 16, maxNodes: 4_096, maxUtf8Bytes: 256 * 1_024 }
       },
@@ -1673,6 +2550,11 @@ function createGraphMechanics(): CubicaMechanicsIRV1Alpha1 {
             position: {
               storage: { kind: "attribute", name: "position" },
               valueType: "core.graph-json",
+              access: "read-write"
+            },
+            positionX: {
+              source: { kind: "nested-field", field: "position", path: ["x"] },
+              valueType: "core.coordinate",
               access: "read-only"
             }
           }
@@ -1707,7 +2589,7 @@ function createGraphMechanics(): CubicaMechanicsIRV1Alpha1 {
             geometry: {
               storage: { kind: "attribute", name: "geometry" },
               valueType: "core.graph-json",
-              access: "read-only"
+              access: "read-write"
             },
             constructionCost: {
               storage: { kind: "attribute", name: "constructionCost" },
@@ -1835,17 +2717,165 @@ function createGraphMechanics(): CubicaMechanicsIRV1Alpha1 {
           ]
         }
       },
-      split: {
+      inspect: {
         planHash: HASH,
         transaction: {
           steps: [{
-            id: "split",
-            kind: "command",
-            op: "graph.edge.split",
+            id: "inspect",
+            kind: "algorithm",
+            op: "graph.edge.position.inspect",
             networkId: "neutral",
             edge: { op: "value.literal", value: "neutral:edge:42" },
-            position: { op: "value.literal", value: 0.5 }
+            position: { op: "value.literal", value: 1 / 3 }
           }]
+        }
+      },
+      split: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            {
+              id: "inspect",
+              kind: "algorithm",
+              op: "graph.edge.position.inspect",
+              networkId: "neutral",
+              edge: { op: "value.literal", value: "neutral:edge:42" },
+              position: { op: "value.literal", value: 0.5 }
+            },
+            {
+              id: "allowed-region",
+              kind: "assert",
+              op: "core.assert",
+              predicate: {
+                op: "predicate.set.disjoint",
+                left: {
+                  op: "value.result",
+                  stepId: "inspect",
+                  path: ["pointRegionIds"]
+                },
+                right: {
+                  op: "value.result",
+                  stepId: "inspect",
+                  path: ["endpoints", "regionIds"]
+                }
+              },
+              errorCode: "FIXTURE_POINT_TOO_CLOSE"
+            },
+            {
+              id: "split",
+              kind: "command",
+              op: "graph.edge.split",
+              networkId: "neutral",
+              proof: { op: "value.result", stepId: "inspect" }
+            }
+          ]
+        }
+      },
+      orderNodes: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            {
+              id: "selected-nodes",
+              kind: "query",
+              op: "core.entities.select",
+              selector: {
+                collection: "nodes",
+                cardinality: { min: 0, max: 32 }
+              }
+            },
+            {
+              id: "ordered-nodes",
+              kind: "command",
+              op: "core.entities.order",
+              selection: { op: "value.result", stepId: "selected-nodes" },
+              keys: [{
+                source: { kind: "current-field", field: "positionX" },
+                direction: "descending",
+                missing: "error"
+              }],
+              tieBreak: { kind: "canonical-id" }
+            }
+          ]
+        }
+      },
+      staleSplit: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            {
+              id: "inspect",
+              kind: "algorithm",
+              op: "graph.edge.position.inspect",
+              networkId: "neutral",
+              edge: { op: "value.literal", value: "neutral:edge:42" },
+              position: { op: "value.literal", value: 0.5 }
+            },
+            {
+              id: "mutate",
+              kind: "command",
+              op: "core.entity.attributes.patch",
+              entity: {
+                collection: "edges",
+                entityId: { op: "value.literal", value: "neutral:edge:42" }
+              },
+              patches: [{
+                operation: "set",
+                path: ["geometry"],
+                value: {
+                  op: "value.literal",
+                  value: {
+                    from: { x: 1, y: 5 },
+                    to: { x: 9, y: 5 },
+                    polyline: [{ x: 1, y: 5 }, { x: 5, y: 6 }, { x: 9, y: 5 }]
+                  }
+                }
+              }]
+            },
+            {
+              id: "split",
+              kind: "command",
+              op: "graph.edge.split",
+              networkId: "neutral",
+              proof: { op: "value.result", stepId: "inspect" }
+            }
+          ]
+        }
+      },
+      staleEndpointSplit: {
+        planHash: HASH,
+        transaction: {
+          steps: [
+            {
+              id: "inspect",
+              kind: "algorithm",
+              op: "graph.edge.position.inspect",
+              networkId: "neutral",
+              edge: { op: "value.literal", value: "neutral:edge:42" },
+              position: { op: "value.literal", value: 0.5 }
+            },
+            {
+              id: "mutate-endpoint",
+              kind: "command",
+              op: "core.entity.attributes.patch",
+              entity: {
+                collection: "nodes",
+                entityId: { op: "value.literal", value: "right" }
+              },
+              patches: [{
+                operation: "set",
+                path: ["position"],
+                value: { op: "value.literal", value: { x: 8.5, y: 5 } }
+              }]
+            },
+            {
+              id: "split",
+              kind: "command",
+              op: "graph.edge.split",
+              networkId: "neutral",
+              proof: { op: "value.result", stepId: "inspect" }
+            }
+          ]
         }
       },
       traverse: {
@@ -1897,10 +2927,20 @@ function createGraphNetworkModels(): GameManifestTransportNetworkModelMap {
       splittableEdgeStates: ["open"],
       builtEdgeState: "open",
       sequenceEndpoint: "sequence",
-      regions: [{
-        id: "field",
-        polygon: [{ x: 0, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 0, y: 10 }]
-      }],
+      regions: [
+        {
+          id: "left-field",
+          polygon: [{ x: 0, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 10 }, { x: 0, y: 10 }, { x: 0, y: 0 }]
+        },
+        {
+          id: "middle-field",
+          polygon: [{ x: 3, y: 0 }, { x: 7, y: 0 }, { x: 7, y: 10 }, { x: 3, y: 10 }, { x: 3, y: 0 }]
+        },
+        {
+          id: "right-field",
+          polygon: [{ x: 7, y: 0 }, { x: 10, y: 0 }, { x: 10, y: 10 }, { x: 7, y: 10 }, { x: 7, y: 0 }]
+        }
+      ],
       movement: {
         vehicleCollection: "vehicles",
         vehicleObjectTypes: ["fixture.vehicle"],

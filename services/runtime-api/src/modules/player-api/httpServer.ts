@@ -12,7 +12,10 @@ import {
   hashSessionCredential,
   requireBearerCredential
 } from "../session/sessionAuthentication.ts";
-import { RuntimeService } from "../runtime/runtime.service.ts";
+import {
+  RuntimeService,
+  type RuntimeServiceDispatchTimings
+} from "../runtime/runtime.service.ts";
 import {
   BoundedInMemoryCommandAdmissionController,
   CommandAdmissionRejectedError,
@@ -48,7 +51,7 @@ export interface RuntimeApiServerOptions {
   /** Deterministic-test seam; never populated from an HTTP request or environment variable. */
   createSessionRandomSeed?: () => string;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
-  assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile">;
+  assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile" | "getGameStylesheetSource">;
   /** Shared command/Agent-Turn admission boundary for this runtime process. */
   commandAdmissionController?: CommandAdmissionController;
 }
@@ -66,11 +69,58 @@ const editorWorktreesRoots = parseEditorPreviewWorktreesRoots(
 // preventing an unauthenticated request from growing process memory without a
 // bound. Narrow action-specific schemas impose much smaller semantic limits.
 const MAX_JSON_BODY_BYTES = 2 * 1024 * 1024;
+const MAX_SERVER_TIMING_DURATION_MS = Number.MAX_SAFE_INTEGER;
+const SERVER_TIMING_METRICS = [
+  ["dispatch", "dispatchMs"],
+  ["scheduler", "schedulerMs"],
+  ["reload", "reloadMs"],
+  ["projection", "projectionMs"],
+  ["action-availability", "actionAvailabilityMs"],
+  ["total", "totalMs"]
+] as const satisfies ReadonlyArray<
+  readonly [string, keyof RuntimeServiceDispatchTimings]
+>;
 
 const sendJson = (response: ServerResponse, statusCode: number, payload: unknown) => {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload));
 };
+
+/**
+ * Serialize coarse internal action timings using the standard `Server-Timing`
+ * response header. Metric names are fixed rather than derived from runtime
+ * data, and durations are bounded finite decimals, so neither game content nor
+ * an unexpected numeric value can inject another response header.
+ *
+ * Scheduler and reload are intentionally omitted when dispatch did not commit
+ * state and therefore did not run the post-commit scheduler pass.
+ */
+export function formatServerTimingHeader(
+  timings: Partial<RuntimeServiceDispatchTimings>
+): string | undefined {
+  const metrics: string[] = [];
+
+  for (const [metricName, timingKey] of SERVER_TIMING_METRICS) {
+    const duration = formatServerTimingDuration(timings[timingKey]);
+    if (duration !== undefined) {
+      metrics.push(`${metricName};dur=${duration}`);
+    }
+  }
+
+  return metrics.length > 0 ? metrics.join(", ") : undefined;
+}
+
+function formatServerTimingDuration(duration: number | undefined): string | undefined {
+  if (
+    duration === undefined ||
+    !Number.isFinite(duration) ||
+    duration < 0 ||
+    duration > MAX_SERVER_TIMING_DURATION_MS
+  ) {
+    return undefined;
+  }
+  return duration.toFixed(3);
+}
 
 const readJsonBody = async (request: IncomingMessage): Promise<unknown> => {
   const chunks: Buffer[] = [];
@@ -232,6 +282,24 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         return;
       }
 
+      const gameStylesheetMatch = request.method === "GET" &&
+        requestUrl.pathname.match(
+          /^\/game-stylesheets\/([a-z0-9][a-z0-9-]{0,63})\/([a-z0-9][a-z0-9-]{0,63})\/([a-f0-9]{64})\.css$/u
+        );
+      if (gameStylesheetMatch) {
+        const [, gameId, stylesheetId, contentHash] = gameStylesheetMatch;
+        assertGameId(gameId, "gameId");
+        const delivery = await assetContentService.getGameStylesheetSource({ gameId, stylesheetId, contentHash });
+        response.writeHead(200, {
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=31536000, immutable",
+          "Content-Type": delivery.contentType,
+          "X-Content-Type-Options": "nosniff"
+        });
+        response.end(delivery.text);
+        return;
+      }
+
       const publishedPluginBundleMatch = request.method === "GET" &&
         requestUrl.pathname.match(/^\/published-plugin-bundles\/([^/]+)\/([^/]+)\/([a-f0-9]{64})\.mjs$/u);
       if (publishedPluginBundleMatch) {
@@ -317,12 +385,16 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
         const body = await readJsonBody(request);
         const requestBody = parseDispatchActionRequest(body);
 
-        const { response: dispatchResponse } = await runtimeService.dispatch({
+        const { response: dispatchResponse, timings } = await runtimeService.dispatch({
           sessionStore: sessionService.getSessionStore(),
           accessToken: requireBearerCredential(request.headers),
           input: requestBody
         });
 
+        const serverTiming = formatServerTimingHeader(timings);
+        if (serverTiming !== undefined) {
+          response.setHeader("Server-Timing", serverTiming);
+        }
         sendJson(response, 200, dispatchResponse);
         return;
       }

@@ -553,6 +553,166 @@ test("in-memory exact retry sees the durable receipt and does not mutate twice",
   assert.deepEqual(await store.getSessionEvents(actualSessionId, 1), []);
 });
 
+test("in-memory archive preserves audit records and closes every live mutation path", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const created = await store.createSession(createInput());
+  const actualSessionId = created.session.sessionId;
+  const committedEvent = event({ session: actualSessionId, sequence: 1 });
+  const committedReceipt = receipt({
+    session: actualSessionId,
+    before: 0,
+    after: 1,
+    eventRefs: [committedEvent.eventId]
+  });
+  const schedule = { ...systemSchedule(), sessionId: actualSessionId };
+  await store.withCommandTransaction(
+    { sessionId: actualSessionId, credentialSha256, commandId },
+    async ({ currentSession }) => ({
+      result: undefined,
+      updatedSession: {
+        ...currentSession,
+        state: { public: { step: 2 } },
+        version: { sessionId: actualSessionId, stateVersion: 1, lastEventSequence: 1 },
+        updatedAt: now
+      },
+      receipt: committedReceipt,
+      events: [committedEvent],
+      scheduleMutations: [{ kind: "register", schedule }]
+    })
+  );
+
+  const archive = await store.archiveSession({ sessionId: actualSessionId, credentialSha256 });
+  assert.ok(archive);
+  assert.deepEqual(archive.session.state, { public: { step: 2 } });
+  assert.equal(archive.session.version.stateVersion, 1);
+  assert.equal(archive.bundle.bundleHash, bundleHash);
+  assert.deepEqual(archive.events, [committedEvent]);
+  assert.deepEqual(archive.receipts, [committedReceipt]);
+
+  const repeated = await store.archiveSession({ sessionId: actualSessionId, credentialSha256 });
+  assert.equal(repeated?.archivedAt.getTime(), archive.archivedAt.getTime());
+  assert.equal(await store.getSession(actualSessionId), null);
+  assert.equal(await store.authenticateSession({ sessionId: actualSessionId, credentialSha256 }), null);
+  assert.deepEqual(await store.getSessionEvents(actualSessionId), []);
+  assert.deepEqual(await store.listPendingSystemSchedules(actualSessionId), []);
+  assert.equal(
+    await store.readArchivedSession({ sessionId: actualSessionId, credentialSha256: "0".repeat(64) }),
+    null
+  );
+  assert.deepEqual(
+    await store.readArchivedSession({ sessionId: actualSessionId, credentialSha256 }),
+    repeated
+  );
+
+  await assert.rejects(
+    store.updateSession({
+      ...archive.session,
+      version: { sessionId: actualSessionId, stateVersion: 2, lastEventSequence: 1 }
+    }, { expectedStateVersion: 1 })
+  );
+  let commandCallbackReached = false;
+  await assert.rejects(
+    store.withCommandTransaction(
+      { sessionId: actualSessionId, credentialSha256, commandId: "cli_BBBBBBBBBBBBBBBBBBBBBB" },
+      async () => {
+        commandCallbackReached = true;
+        return { result: undefined };
+      }
+    ),
+    SessionAuthenticationError
+  );
+  assert.equal(commandCallbackReached, false);
+
+  let systemCallbackReached = false;
+  await assert.rejects(
+    store.withSystemCommandTransaction(
+      {
+        sessionId: actualSessionId,
+        scheduleId,
+        occurrence: 1,
+        commandId: createSystemCommandId(actualSessionId, scheduleId, 1)
+      },
+      async () => {
+        systemCallbackReached = true;
+        return { result: undefined, scheduleDisposition: "defer" };
+      }
+    ),
+    SessionAuthenticationError
+  );
+  assert.equal(systemCallbackReached, false);
+});
+
+test("archive lifecycle mutation and audit read reject a non-facilitator principal", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  const input = createInput();
+  input.sessionRole = "observer";
+  input.principal.role = "observer";
+  const created = await store.createSession(input);
+  const auth = { sessionId: created.session.sessionId, credentialSha256 };
+
+  assert.equal(await store.archiveSession(auth), null);
+  assert.equal(await store.readArchivedSession(auth), null);
+  assert.deepEqual(await store.getSession(created.session.sessionId), created.session);
+});
+
+test("PostgreSQL archive updates only lifecycle metadata and returns the immutable audit corpus", async () => {
+  const archivedAt = new Date("2026-07-17T10:00:00.000Z");
+  const storedEvent = event({ session: sessionId, sequence: 8 });
+  const storedReceipt = receipt({ before: 4, after: 5, eventRefs: [storedEvent.eventId] });
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM session_principals p")) return result([principalRow]);
+    if (text.includes("UPDATE game_sessions")) {
+      return result([{ ...persistedRow, archived_at: archivedAt }], 1);
+    }
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM session_events")) return result([eventRow(storedEvent)]);
+    if (text.includes("FROM command_receipts")) return result([receiptRow(storedReceipt)]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const archive = await store.archiveSession({ sessionId, credentialSha256 });
+
+  assert.ok(archive);
+  assert.equal(archive.archivedAt.toISOString(), archivedAt.toISOString());
+  assert.deepEqual(archive.session.state, persistedRow.state);
+  assert.equal(archive.bundle.bundleHash, bundleHash);
+  assert.deepEqual(archive.events, [storedEvent]);
+  assert.deepEqual(archive.receipts, [storedReceipt]);
+  const archiveWrite = client.queries.find(({ text }) => text.includes("UPDATE game_sessions"));
+  assert.match(archiveWrite?.text ?? "", /SET archived_at = COALESCE\(archived_at, CURRENT_TIMESTAMP\)/u);
+  assert.doesNotMatch(archiveWrite?.text ?? "", /\bstate\s*=/u);
+  assert.doesNotMatch(archiveWrite?.text ?? "", /\bupdated_at\s*=/u);
+  assert.ok(client.queries.some(({ text }) => text.includes("p.session_role = 'facilitator'")));
+  assert.deepEqual(client.queries.map(({ text }) => firstSqlWord(text)), [
+    "BEGIN", "SELECT", "UPDATE", "SELECT", "SELECT", "SELECT", "COMMIT"
+  ]);
+});
+
+test("PostgreSQL reads an existing archive through the credential-bound audit path", async () => {
+  const archivedAt = new Date("2026-07-17T10:00:00.000Z");
+  const client = new ScriptedClient((text) => {
+    if (text.includes("FROM session_principals p")) return result([principalRow]);
+    if (text.includes("FROM game_sessions") && text.includes("archived_at IS NOT NULL")) {
+      return result([{ ...persistedRow, archived_at: archivedAt }]);
+    }
+    if (text.includes("FROM game_bundles")) return result([bundleRow]);
+    if (text.includes("FROM session_events") || text.includes("FROM command_receipts")) return result([]);
+    return result([]);
+  });
+  const store = new PostgresSessionStore<Record<string, unknown>>(new ScriptedPool(client));
+
+  const archive = await store.readArchivedSession({ sessionId, credentialSha256 });
+
+  assert.equal(archive?.archivedAt.toISOString(), archivedAt.toISOString());
+  assert.equal(archive?.principal.principalId, principalId);
+  assert.equal(client.queries.some(({ text }) => text.includes("UPDATE game_sessions")), false);
+  assert.ok(client.queries.some(({ text }) =>
+    text.includes("p.credential_sha256 = $2") &&
+    text.includes("p.session_role = 'facilitator'") &&
+    text.includes("s.archived_at IS NOT NULL")));
+});
+
 test("in-memory system transaction rejects a forged receipt before consuming its occurrence", async () => {
   const store = new InMemorySessionStore<Record<string, unknown>>();
   const created = await store.createSession(createInput());
@@ -905,7 +1065,7 @@ test("PostgreSQL reads session events after a cursor in canonical sequence order
     new ScriptedClient(() => result([])),
     (text, values) => {
       assert.match(text, /FROM session_events/u);
-      assert.match(text, /sequence > \$2 ORDER BY sequence ASC/u);
+      assert.match(text, /sequence > \$2[\s\S]*archived_at IS NULL[\s\S]*ORDER BY sequence ASC/u);
       assert.deepEqual(values, [sessionId, 7]);
       return result([eventRow(storedEvent)]);
     }

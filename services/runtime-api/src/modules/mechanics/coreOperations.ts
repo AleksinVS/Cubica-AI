@@ -11,9 +11,11 @@ import {
 } from "./expressionEvaluator.ts";
 import {
   collectionEntries,
+  derivedCollectionFieldReadWork,
   findEntity,
   initializeEntityField,
   isRecord,
+  canonicalMechanicsValueIdentity,
   readCollectionField,
   readEndpoint,
   readEntityField,
@@ -25,6 +27,7 @@ import {
   writeEntityField
 } from "./stateModel.ts";
 import type {
+  CollectionModel,
   EntitySelection,
   JsonRecord,
   MechanicsExecutionContext,
@@ -40,6 +43,50 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
       return true;
     case "core.entities.select":
       return selectEntities(step, context);
+    case "core.entities.each": {
+      if (context.currentItem !== undefined) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_EACH_NESTED",
+          "Nested bounded entity iteration is not executable",
+          step.id
+        );
+      }
+      const selection = requireSelection(context.results.get(step.selection.stepId), step.id);
+      const model = context.stateModel.collections[selection.collectionId];
+      if (!model) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_COLLECTION_REF_UNKNOWN",
+          `Unknown collection "${selection.collectionId}"`,
+          step.id
+        );
+      }
+      if (!context.executeBoundedBody) {
+        throw new MechanicsExecutionError(
+          "MECHANICS_EACH_EXECUTOR_UNAVAILABLE",
+          "Bounded entity iteration requires the transactional step executor",
+          step.id
+        );
+      }
+      const ids = [...selection.ids].sort(compareCanonicalIds);
+      charge(context, "algorithmWork", canonicalIterationWorkUpperBound(ids.length));
+      for (const [iterationIndex, entityId] of ids.entries()) {
+        const entity = findEntity(context, selection.collectionId, entityId);
+        context.executeBoundedBody(
+          step.body,
+          { model, entity, id: entityId },
+          // The canonical index is collision-free even when entity identifiers
+          // themselves contain dots or other safe Mechanics punctuation. The
+          // body result still records the affected entity where its operation
+          // contract calls for that information.
+          `${step.id}[${iterationIndex}]`
+        );
+      }
+      return {
+        kind: "entities-each",
+        collectionId: selection.collectionId,
+        count: ids.length
+      };
+    }
     case "core.collection.id.allocate":
       return allocateCollectionId(step, context);
     case "core.sequence.next":
@@ -132,6 +179,71 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
       const entity = findEntity(context, step.entity.collection, entityId);
       const model = context.stateModel.collections[step.entity.collection];
       for (const patch of step.patches) {
+        if (patch.operation === "set-add") {
+          const setType = requireDirectWritableSetType(
+            context,
+            model,
+            patch.path,
+            step.id
+          );
+          const current = readEntityField(model, entity, "attribute", patch.path[0]);
+          if (!Array.isArray(current)) {
+            throw new MechanicsExecutionError(
+              "MECHANICS_SET_REQUIRED",
+              `Attribute "${patch.path[0]}" must contain its declared set representation`,
+              step.id
+            );
+          }
+          const value = evaluateExpression(
+            patch.value,
+            context,
+            { model, entity, id: entityId }
+          );
+          // Runtime parameters do not exist at publication time. Validate the
+          // exact element again before comparing or retaining it.
+          assertValueMatchesType(
+            context,
+            setType.itemType,
+            value,
+            `set-add value for attribute "${patch.path[0]}"`
+          );
+          const valueIdentity = canonicalMechanicsValueIdentity(
+            value,
+            `set-add value for attribute "${patch.path[0]}"`
+          );
+          let scannedItems = 0;
+          const alreadyPresent = current.some((item, index) => {
+            scannedItems += 1;
+            return canonicalMechanicsValueIdentity(
+              item,
+              `attribute "${patch.path[0]}"[${index}]`
+            ) === valueIdentity;
+          });
+          // Runtime charges actual visited members; publication reserves the
+          // complete maxItems bound, including when this step is inside each.
+          charge(context, "algorithmWork", scannedItems);
+          if (!alreadyPresent) {
+            if (current.length >= setType.maxItems) {
+              throw new MechanicsExecutionError(
+                "MECHANICS_SET_CAPACITY_EXCEEDED",
+                `Attribute "${patch.path[0]}" reached its declared set capacity`,
+                step.id
+              );
+            }
+            writeEntityField(
+              context,
+              model,
+              entity,
+              "attribute",
+              patch.path[0],
+              [...current, structuredClone(value)]
+            );
+          }
+          // Count the authored mutation attempt even when idempotence avoids
+          // a physical write, matching the static one-write reservation.
+          charge(context, "writes");
+          continue;
+        }
         const current = structuredClone(readEntityField(model, entity, "attribute", patch.path[0]));
         // The schema exposes a closed discriminated union: `remove` has no
         // value at all, while every other operation requires one. Narrowing on
@@ -189,6 +301,15 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
       context.events.push(event);
       charge(context, "events");
       const journalReference = context.stateModel.events[step.eventType]?.journalEndpoint;
+      // ADR-092: a public event of a game with a public metric catalog receives
+      // the whole-transaction metric snapshot after every step runs. The values
+      // are not known yet here (later steps may still change metrics), so this
+      // step only records the target; the executor fills the block at the end.
+      const auditsMetrics =
+        step.audience === "public" &&
+        context.publicMetrics !== undefined &&
+        context.publicMetrics.length > 0;
+      let journalIndex: number | undefined;
       if (journalReference) {
         const journal = readStateReference(context, journalReference);
         if (!Array.isArray(journal)) {
@@ -198,6 +319,10 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
             step.id
           );
         }
+        // The appended entry takes the current end index; appends never reorder
+        // earlier entries, so this index stays valid for the end-of-transaction
+        // metric-audit pass even if later events append more entries.
+        journalIndex = journal.length;
         // Keep game-defined data nested so a generic Presenter never has to
         // guess which arbitrary field names are platform journal metadata.
         // The session store keeps the same full envelope separately.
@@ -211,6 +336,14 @@ export function executeCoreOperation(step: Step, context: MechanicsExecutionCont
           }
         ]);
         charge(context, "writes");
+      }
+      if (auditsMetrics) {
+        (context.metricAuditTargets ??= []).push({
+          event,
+          ...(journalReference !== undefined && journalIndex !== undefined
+            ? { journalReference, journalIndex }
+            : {})
+        });
       }
       return event;
     }
@@ -514,9 +647,13 @@ function matchesExactFields(
   item: { model: import("./types.ts").CollectionModel; entity: JsonRecord; id: string },
   context: MechanicsExecutionContext
 ): boolean {
-  return Object.entries(fields ?? {}).every(([field, expression]) =>
-    isDeepStrictEqual(readEntityField(item.model, item.entity, area, field), evaluateExpression(expression, context, item))
-  );
+  return Object.entries(fields ?? {}).every(([field, expression]) => {
+    charge(context, "algorithmWork", derivedCollectionFieldReadWork(item.model, field));
+    return isDeepStrictEqual(
+      readEntityField(item.model, item.entity, area, field),
+      evaluateExpression(expression, context, item)
+    );
+  });
 }
 
 function matchesAttributeConditions(
@@ -525,6 +662,7 @@ function matchesAttributeConditions(
   context: MechanicsExecutionContext
 ): boolean {
   return Object.entries(fields ?? {}).every(([field, condition]) => {
+    charge(context, "algorithmWork", derivedCollectionFieldReadWork(item.model, field));
     const current = readEntityField(item.model, item.entity, "attribute", field);
     if ("operator" in condition) {
       const expected = evaluateExpression(condition.value, context, item);
@@ -538,12 +676,26 @@ function matchesAttributeConditions(
   });
 }
 
-function requireSelection(value: unknown, stepId: string): EntitySelection {
+/**
+ * Validate a protected result produced by `core.entities.select`.
+ *
+ * Ordering is a separate Mechanics module, but it consumes the same typed
+ * selection contract as core updates. Keeping the runtime guard here avoids
+ * two subtly different definitions of a trusted selection result.
+ */
+export function requireSelection(value: unknown, stepId: string): EntitySelection {
   if (!isRecord(value) || value.kind !== "entities" || typeof value.collectionId !== "string" ||
-      !Array.isArray(value.ids) || !value.ids.every((id) => typeof id === "string")) {
+      !Array.isArray(value.ids) || !value.ids.every((id) => typeof id === "string") ||
+      new Set(value.ids).size !== value.ids.length) {
     throw new MechanicsExecutionError("MECHANICS_RESULT_TYPE_MISMATCH", "Expected an entity selection", stepId);
   }
   return value as unknown as EntitySelection;
+}
+
+/** Runtime counterpart of the publication sort-work upper bound. */
+function canonicalIterationWorkUpperBound(selectionSize: number): number {
+  if (selectionSize <= 1) return selectionSize;
+  return selectionSize * Math.ceil(Math.log2(selectionSize)) + selectionSize;
 }
 
 function patchNested(current: unknown, path: Array<string>, operation: string, value: unknown): unknown {
@@ -573,6 +725,57 @@ function patchNested(current: unknown, path: Array<string>, operation: string, v
   return root;
 }
 
+/**
+ * Resolve the narrow schema-backed target of `set-add`.
+ *
+ * The operation deliberately accepts one logical attribute rather than an
+ * arbitrary JSON path. This keeps type, access and capacity entirely owned by
+ * the published state model and prevents a nested broad-JSON escape hatch.
+ */
+function requireDirectWritableSetType(
+  context: MechanicsExecutionContext,
+  model: CollectionModel,
+  path: ReadonlyArray<string>,
+  stepId: string
+): Extract<
+  MechanicsExecutionContext["stateModel"]["types"][string],
+  { kind: "list" | "set" }
+> & { kind: "set" } {
+  if (path.length !== 1 || model.itemShape === "record") {
+    throw new MechanicsExecutionError(
+      "MECHANICS_SET_TARGET_INVALID",
+      "set-add requires one direct entity attribute",
+      stepId
+    );
+  }
+  const field = model.fields[path[0]];
+  if (
+    !field ||
+    !("storage" in field) ||
+    field.storage.kind !== "attribute" ||
+    field.access !== "read-write"
+  ) {
+    throw new MechanicsExecutionError(
+      "MECHANICS_FIELD_NOT_WRITABLE",
+      `Attribute "${path[0]}" is not a directly stored writable field`,
+      stepId
+    );
+  }
+  const type = context.stateModel.types[field.valueType];
+  if (!type || type.kind !== "set") {
+    throw new MechanicsExecutionError(
+      "MECHANICS_SET_REQUIRED",
+      `Attribute "${path[0]}" must have declared set type`,
+      stepId
+    );
+  }
+  // The generated contract intentionally shares one structural variant for
+  // list and set (`kind: "list" | "set"`). The runtime check above narrows
+  // that schema-backed variant to the set-only view needed by this operation;
+  // no independent imperative data shape is introduced here.
+  return type as typeof type & { kind: "set" };
+}
+
 type StateReference = {
   endpoint: string;
   bindings?: Record<string, import("./types.ts").ValueExpression>;
@@ -597,6 +800,65 @@ function writeStateReference(
 
 function removeStateReference(context: MechanicsExecutionContext, reference: StateReference): void {
   removeEndpoint(context, reference, evaluateStateReferenceBindings(reference, context));
+}
+
+/**
+ * Read a declared public metric value by its dot path (ADR-092).
+ *
+ * The platform never hard-codes metric names: it walks the game-declared
+ * `statePath` (for example `public.metrics.time`) generically. A missing or
+ * non-finite value reads as 0 so a partially initialized metric still yields a
+ * well-formed snapshot instead of failing the whole action.
+ */
+function readMetricNumberAtPath(state: unknown, statePath: string): number {
+  let current: unknown = state;
+  for (const segment of statePath.split(".")) {
+    if (!isRecord(current)) return 0;
+    current = current[segment];
+  }
+  return typeof current === "number" && Number.isFinite(current) ? current : 0;
+}
+
+/**
+ * Attach ADR-092 public-metric deltas to the transaction's public events.
+ *
+ * Called by the executor once every step has run, so both the pre-action snapshot
+ * (`context.preActionState`) and the committed candidate state (`context.state`)
+ * are stable. All recorded public events share one block (the whole-transaction
+ * delta), and any in-state journal entry an event appended receives an identical
+ * copy so the player-facing journal can render metric rows. No-op when the game
+ * declares no public metric catalog or no public event was recorded.
+ */
+export function applyTransactionMetricAudit(context: MechanicsExecutionContext): void {
+  const targets = context.metricAuditTargets;
+  const publicMetrics = context.publicMetrics;
+  if (!targets || targets.length === 0 || !publicMetrics || publicMetrics.length === 0) {
+    return;
+  }
+
+  const metricChanges = publicMetrics.map((metric) => ({
+    metricId: metric.metricId,
+    before: readMetricNumberAtPath(context.preActionState, metric.statePath),
+    after: readMetricNumberAtPath(context.state, metric.statePath)
+  }));
+
+  for (const target of targets) {
+    target.event.metricChanges = metricChanges;
+    if (target.journalReference === undefined || target.journalIndex === undefined) {
+      continue;
+    }
+    // The journal array read here is the live candidate array (no more writes
+    // follow), so mutating the recorded entry in place enriches the durable
+    // state the player projection reads.
+    const journal = readStateReference(context, target.journalReference);
+    if (!Array.isArray(journal)) {
+      continue;
+    }
+    const entry = journal[target.journalIndex];
+    if (isRecord(entry)) {
+      entry.metricChanges = structuredClone(metricChanges);
+    }
+  }
 }
 
 function finiteNumber(value: unknown): number {
