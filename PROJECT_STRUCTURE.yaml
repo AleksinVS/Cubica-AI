@@ -54,7 +54,7 @@ docs: # Архитектура, задачи, планирование
       078-canonical-replay-state-fingerprint.md: file # ADR-078: принятый версионированный отпечаток полного серверного состояния для воспроизводимых replay с точным исключением служебных отметок времени.
       079-server-projected-action-availability.md: file # ADR-079: принятая серверная проекция доступности действий из того же guard-вычислителя, который защищает dispatch, без раскрытия внутренних путей состояния.
       080-declarative-map-first-workspace.md: file # ADR-080: принятый общий декларативный режим, в котором пространственная карта заполняет рабочую область, а статус, действия и методические панели размещаются смысловыми слоями поверх неё.
-      095-product-context-system-boundaries.md: file # ADR-095: черновая граница продуктовой системы знаний с диалогами и процессом в PostgreSQL, универсальными областями, управляемым Git-каноном Markdown, совместным происхождением и строго локальными правками.
+      095-product-context-system-boundaries.md: file # ADR-095: черновая граница продуктовой системы знаний с временными операциями записи в PostgreSQL, управляемым Git-каноном Markdown, набором чтения, явными зависимостями, локальными правками и ограниченным смысловым обзором.
     schemas: # JSON Schema contracts for runtime manifests, authoring manifests, design artifacts and related architecture data.
       external-skill-memory.schema.json: file # JSON Schema пополняемой памяти ошибок и практик адаптации внешних навыков по ADR-069.
       external-skill-policy.schema.json: file # JSON Schema профиля совместимости внешних навыков по ADR-069.
@@ -74,7 +74,7 @@ docs: # Архитектура, задачи, планирование
     cards-money-trains-platform-design.md: file # Нормативный архитектурный дизайн игры «Карты, деньги, поезда»: границы платформы и игры, состояние, фазы, транспортная сеть, интерфейс, надежность и последовательность поставки.
     element-prompt-contract.md: file # Проектный контракт элементного промта: сохраненный authoring-промт экземпляра, шаблон промта прототипа, жизненный цикл нормализации и границы с промтами визуальной генерации.
     generative-ui-surface-protocol.md: file # Проектная архитектура Cubica-owned Generative UI Surface Protocol: MVP-роль CopilotKit, собственный compatible Agent UI target, Cubica Surface contracts, A2UI/AG-UI adapter boundaries and AI-driven gameplay surfaces.
-    product-context-system.md: file # Черновая архитектура продуктовых знаний пользовательских агентов: сырые диалоги и предложения в PostgreSQL, управляемая Git-история Markdown, универсальные области владения, совместно созданные знания, строго локальные патчи, детерминированное обслуживание и навигация без начального поискового индекса.
+    product-context-system.md: file # Черновая архитектура продуктовых знаний: диалоги и временные операции записи в PostgreSQL, подтверждённый Markdown в управляемом Git, локальные патчи, набор чтения, явные зависимости и ограниченный смысловой обзор без начального поискового индекса.
     project-knowledge-system.md: file # Принятая архитектура проектной вики Cubica: канон смыслового синтеза, wiki-граф, FTS5 и векторный поиск, проверки качества и производный контекст модулей, символов, вызовов и контрактов.
     runtime-api-openapi.yaml: file # Current OpenAPI 3.1 contract for the implemented services/runtime-api modular monolith HTTP API по ADR-051.
   legacy:
