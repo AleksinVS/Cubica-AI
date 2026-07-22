@@ -21,8 +21,7 @@
 - [11. Инварианты](#11-инварианты)
 - [12. Отклоненные альтернативы](#12-отклоненные-альтернативы)
 - [13. Последствия](#13-последствия)
-- [14. Открытые вопросы](#14-открытые-вопросы)
-- [15. Связанные артефакты](#15-связанные-артефакты)
+- [14. Связанные артефакты](#14-связанные-артефакты)
 
 ## 1. Понимание решения
 
@@ -87,7 +86,9 @@ Authoring schema v2 должна добавить обязательные autho
 - `_label` - отображаемое в редакторе имя, в UI называется "Синоним";
 - `_semantics` - короткое объяснение смысла объекта, где это нужно для автора, схемы или AI assistant.
 
-ADR-048 расширяет эти author-facing metadata полем `_prompt` для конкретных authoring-экземпляров и `_promptTemplate` для прототипов. Первый срез реализован в authoring JSON Schema и compiler stripping rules; автоматическая синхронизация промта со структурой остается отдельной последующей задачей.
+ADR-048 расширяет эти author-facing metadata полем `_prompt` для конкретных
+authoring-экземпляров и `_promptTemplate` для прототипов. Эти поля остаются
+authoring-only и не попадают в runtime manifests.
 
 Кириллица допустима и желательна в `_label`, `title`, `name`, `description` and `_semantics`. Технические `id`, object keys, `_type` и reference keys должны оставаться ASCII-first, чтобы ссылки, JSON Pointer, diffs and CI checks были устойчивыми.
 
@@ -113,17 +114,10 @@ UI authoring structure должна отражать дерево UI:
 
 ## 6. Preview-first редактор
 
-Целевой editor layout:
-
-- окно предпросмотра занимает почти весь экран;
-- сверху узкая menu bar;
-- ниже narrow toolbar для невизуальных элементов;
-- ниже timeline;
-- снизу status bar;
-- слева collapsible manifest entity tree;
-- справа collapsible Monaco/text editor;
-- property panel остается floating inspector рядом с выбранной сущностью;
-- AI prompt surface появляется рядом с курсором после selection или selection rectangle.
+Предпросмотр является основной рабочей поверхностью, а timeline, дерево сущностей,
+текстовый редактор, панель свойств и AI-ввод — синхронизированными инструментами
+одного authoring-документа. Точная раскладка и адаптивное поведение принадлежат
+UX-спецификации, а не архитектурной границе.
 
 Preview должен работать через изолированную editor preview session. Редактор может использовать existing player/runtime contracts, но должен иметь быстрый feedback loop:
 
@@ -184,29 +178,17 @@ Player preview должен отдавать editor overlay metadata:
 
 Preview не должен пытаться угадывать связь DOM -> manifest через brittle CSS selectors. Renderer должен явно проставлять editor metadata в безопасном канале: data attributes for same-origin preview, structured overlay map, or postMessage payload for iframe isolation.
 
-При клике:
-
-1. preview делает hit-test;
-2. верхний объект становится active entity;
-3. tree selection, property panel and Monaco pointer синхронизируются;
-4. overlay показывает рамку выбранного объекта;
-5. рядом с курсором открывается однострочный AI prompt input, который растет до заданного максимума;
-6. если hit stack содержит несколько объектов, рядом появляется object picker.
-
-При drag selection rectangle редактор должен создать region selection intent. AI assistant получает выбранную область, список intersecting entities, screenshot crop if available, current authoring pointers and diagnostics. AI-правка может применяться автоматически только после dry-run, validation and undo journal entry; пользователь не подтверждает технический patch вручную.
+Выбор в preview через renderer adapter разрешается в authoring-сущность и
+синхронизируется с другими представлениями. Групповой выбор создаёт ограниченный
+intent с указателями, диагностикой и доступными renderer metadata. Любая AI-правка
+проходит dry-run, validation и запись undo journal.
 
 ## 10. AI-правки, undo и версионирование
 
-AI editing flow должен быть инкрементальным:
-
-1. Пользователь пишет prompt на выбранной сущности или регионе preview.
-2. Редактор создает `EditorPatchIntent` с prompt, target pointers, active file, session id, selected preview entities, diagnostics and scoped context.
-3. Агент получает только ограниченный context: выбранные JSON subtrees, nearby siblings, schema fragments, relevant source-map entries and plugin boundary metadata. Большие authoring JSON не передаются целиком.
-4. Агент возвращает `ChangeSet`, not a full rewritten manifest.
-5. Редактор делает dry-run в session worktree, validates the result and applies the ChangeSet automatically if checks pass.
-6. Пользователь видит результат в preview/tree/property/Monaco and a plain-language diff summary after the fact.
-7. Пользователь может вызвать undo или продолжить следующими prompt-правками.
-8. Save creates a Git commit in the project repo.
+AI editing остаётся инкрементальным: агент получает только ограниченный контекст
+выбранных сущностей и возвращает `ChangeSet`, а не полную перепись проекта.
+Редактор проверяет изменение в session worktree; durable версия появляется только
+после Save-коммита и может быть отменена без разрушения истории.
 
 `ChangeSet` должен поддерживать не только JSON Patch, потому что game project может содержать пользовательские плагины:
 
@@ -215,14 +197,9 @@ AI editing flow должен быть инкрементальным:
 - `fileCreates`, `fileDeletes`, `fileRenames` for plugin files, tests and assets metadata;
 - generated artifacts only when project policy requires reproducible runtime bundle commits.
 
-Undo до Save работает через session journal. Каждый инкрементальный шаг сохраняет:
-
-- prompt and author-facing summary;
-- affected files and pointers;
-- forward ChangeSet;
-- inverse ChangeSet;
-- before/after hashes;
-- validation summary.
+Undo до Save работает через session journal, достаточный для прямого и обратного
+применения, проверки исходных хешей и объяснения изменения автору. Точная форма
+журнала принадлежит контрактной документации.
 
 For reliability, AI-generated JSON Patch should initially allow only `add`, `remove`, `replace` and `test`. `move` and `copy` are deferred because inverse generation and author-facing explanation are harder to guarantee.
 
@@ -235,9 +212,10 @@ Versioning model is Project Git Workspace with Session Worktrees:
 - generated manifests/source maps are committed only by explicit project policy;
 - rollback of a saved version uses a new revert/restore commit, never `reset --hard`;
 - user plugins live inside the project repo and are validated as part of the same transaction;
-- ADR-037 fixes the concrete plugin direction: project-local trusted plugins now, marketplace-safe sandbox evolution later, no target continuation of `apps/player-web/src/plugins` as a platform plugin home.
+- ADR-037 fixes the plugin direction: project-local trusted plugins and a
+  marketplace-safe sandbox evolution path.
 
-Plugin changes extend validation gates. A ChangeSet touching plugins must run plugin manifest schema validation, TypeScript typecheck/build where applicable, plugin unit tests if present, runtime integration smoke where applicable and platform purity checks that prevent game-specific code from leaking into platform core. The concrete plugin contract, marketplace direction, dependency policy and Antarctica plugin migration target are defined in ADR-037.
+Plugin changes extend validation gates. A ChangeSet touching plugins must run plugin manifest schema validation, TypeScript typecheck/build where applicable, plugin unit tests if present, runtime integration smoke where applicable and platform purity checks that prevent game-specific code from leaking into platform core. The concrete plugin contract, marketplace direction and dependency policy are defined in ADR-037.
 
 ## 11. Инварианты
 
@@ -255,7 +233,8 @@ Plugin changes extend validation gates. A ChangeSet touching plugins must run pl
 - Runtime/player layers не импортируют editor-engine and do not depend on editor-only traces.
 - Editor preview content sources expose generated manifests only; they must not expose authoring JSON, editor layouts, patch journals or playthrough traces to runtime/player layers.
 - Game-specific plugins live in the project repo/plugin boundary and must not introduce game-specific branches into platform core.
-- Project-local plugins are the target model for user-editable plugins; current `apps/player-web/src/plugins/*` code is migration input, not the long-term plugin home.
+- Project-local plugins are the target model for user-editable plugins;
+  platform application source is not a plugin home.
 
 ## 12. Отклоненные альтернативы
 
@@ -319,29 +298,7 @@ Costs:
 - plugin editing requires broader ChangeSet support and stronger validation than manifest-only editing.
 - production or remote project preview needs a generated bundle handoff policy that does not rely on local filesystem paths.
 
-## 14. Открытые вопросы
-
-Закрыто последующими решениями и реализацией:
-
-- preview использует iframe + проверяемый `postMessage` boundary;
-- reference implementation — thin DOM adapter текущего React player;
-- именованные сценарии реализованы как authoring fixtures по ADR-057;
-- Agent UI пишет только через `EditorChangeSet`, approval/dry-run gates и
-  bounded context ADR-044/047/057;
-- reusable capability и game-specific plugin code разделены ADR-037/040;
-- production/remote publication boundary принята ADR-065.
-
-Остаётся открыто:
-
-- Нужна ли совместимость authoring schema v1/v2 через compiler adapter или миграция должна быть one-way.
-- Какие technical fields скрывать в entity tree by default, and how to expose advanced mode.
-- Какая политика проекта определяет, коммитятся ли generated manifests/source maps together with authoring files.
-- Какой конкретный storage/worker adapter реализует принятую ADR-065 удалённую
-  preview/publication model.
-- Как Phaser/canvas adapters предоставляют bounds, hit-test и highlight для
-  конкретных игровых поверхностей.
-
-## 15. Связанные артефакты
+## 14. Связанные артефакты
 
 - `services/game-editor/docs/editor-engine-preview-timeline-editor.md`
 - `services/game-editor/docs/editor-engine-authoring-manifest-editor.md`

@@ -26,21 +26,14 @@
 
 `game`-манифест владеет игровым смыслом: предметными сущностями, их текстами, правилами, состоянием, действиями и словарями игровых понятий. `ui`-манифест владеет тем, как эти данные показываются в конкретном канале: экранными вариантами, панелями, расположением, иконками, CSS-классами и UI-only подписями. Presenter строит player-facing projection - подготовленную для игрока модель отображения из игрового контента и session state.
 
-Для `Antarctica` отдельно согласовано:
-
-- `time` - авторитетная игровая метрика "прошло дней";
-- `remainingDays` - вычисляемая player-facing метрика "осталось дней";
-- `remainingDays` не должен храниться как отдельное изменяемое session state рядом с `time`;
-- историческое использование `score` для "остатка дней" не является целевым контрактом.
-
 ## 2. Контекст
 
-После нормализации UI-манифеста `Antarctica` и переноса журнала ходов в `ui.panels.history` осталось несколько разрывов границы:
+Аудит манифестов выявил несколько повторяющихся разрывов границы:
 
 - игровые карточки хранят `title`, `summary` and result text в game manifest, что соответствует предметной модели;
 - игровые метрики хранят числовые значения в `state.public.metrics`, но их человекочитаемые подписи и часть семантики находятся в UI manifest;
-- topbar/sidebar UI вынужден знать, что `pro` означает "Знания", `rep` означает "Доверие", `lid` означает "Энергия";
-- `score` местами используется как отображаемый "остаток дней", хотя фактическая игровая метрика времени должна быть `time`;
+- channel UI вынужден расшифровывать короткие внутренние ключи игровых метрик;
+- одно и то же производное значение местами хранится рядом с исходной метрикой;
 - если эти правила не зафиксировать, будущие UI-каналы будут дублировать или по-разному интерпретировать игровые понятия.
 
 Существующие ADR уже задают направление:
@@ -56,7 +49,8 @@
 ## 3. Термины
 
 - **Игровой смысл** - значение сущности в правилах и методике игры: что такое карточка, метрика, персонаж, этап, действие или событие.
-- **UI-only подпись** - текст, который обслуживает интерфейс конкретного канала и не меняет игровой смысл: "Далее", "Назад", "Закрыть", "Журнал ходов", "Нет записей".
+- **UI-only подпись** - текст элемента управления, который обслуживает
+  интерфейс конкретного канала и не меняет игровой смысл.
 - **Player-facing projection** - подготовленная для игрока модель отображения, которую Presenter или игровой plugin строит из game content и session state.
 - **Авторитетное состояние** - состояние, которое runtime хранит и изменяет как источник истины игровой сессии.
 - **Вычисляемая метрика** - значение, полученное из авторитетного состояния и declarative formula или projection rule. Оно может показываться как метрика, но не хранится как независимое изменяемое state.
@@ -75,8 +69,9 @@ Presenter owns player-facing projection
 
 1. `game`-манифест хранит игровые сущности и человекочитаемые поля, которые описывают их смысл: названия карточек, результаты карточек, описания этапов, названия и описания игровых метрик, методические пояснения.
 2. `ui`-манифест хранит channel-specific отображение: экранные варианты, панели, расположение блоков, CSS-классы, channel-specific assets, иконки, фоновые изображения, текст кнопок и локальные подписи элементов управления.
-3. Presenter или игровой plugin строит player-facing projection: `currentBoard`, `visibleCards`, `journalEntries`, `metricViews`, `remainingDays` and similar renderer-ready values.
-4. UI-компоненты не должны выводить игровой смысл из сырых ключей state вроде `pro`, `rep`, `lid`.
+3. Presenter или игровой plugin строит player-facing projection: видимое поле,
+   доступные объекты, журнал и вычисленные метрики в готовом для renderer виде.
+4. UI-компоненты не должны выводить игровой смысл из внутренних ключей state.
 5. UI-манифест может ссылаться на `metricId`, `cardId`, `collection`, `panelId` and projection paths, но не должен быть единственным местом, где хранится смысл игрового объекта.
 6. Game manifest не должен хранить UI-only commands or panel-open actions; это уже закреплено ADR-053 и распространяется на новые локальные UI interactions.
 7. На пути записи UI manifest публикует точную привязку элемента или жеста к
@@ -92,11 +87,11 @@ Presenter owns player-facing projection
 | --- | --- | --- |
 | Карточка, этап, персонаж, ресурс, игровая метрика | `game`-манифест | Это предметная модель игры. |
 | `title`, `summary`, `body`, результат карточки | `game`-манифест | Это смысл выбора и последствия действия. |
-| Название метрики "Знания", "Доверие", "Энергия" | `game`-манифест | Это игровые понятия, общие для всех каналов. |
+| Название игровой метрики | `game`-манифест | Это игровое понятие, общее для всех каналов. |
 | Описание того, как метрика влияет на игру | `game`-манифест or methodology asset | Это методическая и игровая семантика. |
 | Topbar, sidebar, overlay, grid, panel layout | `ui`-манифест | Это channel-specific presentation. |
 | Иконка метрики для Web topbar/sidebar | `ui`-манифест or UI asset registry | Это визуальное оформление канала. |
-| Текст кнопки "Далее", "Назад", "Закрыть" | `ui`-манифест | Это интерфейсная подпись. |
+| Текст элемента управления | `ui`-манифест | Это интерфейсная подпись канала. |
 | `journalEntries`, `metricViews`, `visibleCards` | Presenter/player-facing projection | Это готовая модель для View. |
 | Открытая локальная панель | Presenter/View state | Это transient UI state, а не gameplay state. |
 
@@ -119,22 +114,22 @@ Presenter owns player-facing projection
     "data": {
       "metrics": [
         {
-          "metricId": "time",
-          "label": "Прошло дней",
-          "description": "Количество игровых дней, потраченных командой.",
+          "metricId": "elapsed",
+          "label": "Elapsed value",
+          "description": "Authoritative accumulated value.",
           "kind": "state",
-          "statePath": "public.metrics.time"
+          "statePath": "public.metrics.elapsed"
         },
         {
-          "metricId": "remainingDays",
-          "label": "Осталось дней",
-          "description": "Сколько дней осталось до предельного срока.",
+          "metricId": "remaining",
+          "label": "Remaining value",
+          "description": "Value derived from a declared limit.",
           "kind": "computed",
           "computed": {
             "expression": {
               "-": [
-                { "var": "content.rules.dayLimit" },
-                { "var": "public.metrics.time" }
+                { "var": "content.rules.limit" },
+                { "var": "public.metrics.elapsed" }
               ]
             }
           }
@@ -145,13 +140,9 @@ Presenter owns player-facing projection
 }
 ```
 
-Для `Antarctica` принять следующие правила:
-
-- `state.public.metrics.time` хранит прошедшие дни;
-- `remainingDays` вычисляется из `time` and declared game limit;
-- если нужен настоящий счет игры, он должен получить отдельный смысл и не называться остатком дней;
-- `score` не должен использоваться как новое имя для `remainingDays`;
-- UI должен рендерить `remainingDays` через player-facing projection, например `metricViews.remainingDays`, а не через скрытую формулу в React-компоненте.
+Авторитетная метрика хранится в session state, а производная вычисляется из неё
+и объявленного game content. UI получает производное значение через
+player-facing projection, а не через скрытую формулу в компоненте.
 
 Вычисляемая метрика может отображаться рядом с обычными метриками. Отличие только в источнике значения: обычная метрика читается из authoritative session state, вычисляемая метрика выводится из него.
 
@@ -179,7 +170,8 @@ JSON Schema остается single source of truth for manifest structures по
 3. Runtime and player must not infer game semantics from UI captions.
 4. Presenter projection contracts should be typed and validated where they cross package or service boundaries.
 5. Game-specific projection can live in a game plugin, but platform renderer should consume projection data declaratively and avoid hardcoded game IDs.
-6. Runtime state should not store both `time` and `remainingDays` as independently mutable values.
+6. Runtime state should not store both source and derived metric as independently
+   mutable values.
 
 Schema reuse should follow the existing project rule: reusable fragments belong in schema definitions, and instance data should remain clear and validated by Ajv or equivalent standard validator.
 
@@ -196,9 +188,8 @@ Schema reuse should follow the existing project rule: reusable fragments belong 
 - Gameplay labels are not UI-only labels.
 - Metric labels and descriptions are gameplay metadata.
 - Computed metrics are not independent authoritative state.
-- `time` means elapsed game days in `Antarctica`.
-- `remainingDays` means computed days left in `Antarctica`.
-- `score` must not remain an implicit alias for remaining days.
+- Названия и смысл игровых метрик принадлежат game manifest.
+- Производная метрика не может быть неявным псевдонимом другой метрики.
 - Platform code must not introduce game-specific branches to fix this boundary.
 - JSON Schema remains the source of truth for new manifest structures.
 
@@ -212,13 +203,14 @@ Schema reuse should follow the existing project rule: reusable fragments belong 
 
 Отклонено. Тексты кнопок, пустые состояния панелей and layout labels are presentation details. Их перенос в game manifest привел бы к обратной проблеме: game manifest начал бы владеть каналом отображения.
 
-### Хранить `remainingDays` в session state рядом с `time`
+### Хранить производную метрику рядом с исходной
 
 Отклонено. Это создает два изменяемых источника истины для одного значения. Runtime может вычислить остаток дней из elapsed days and declared limit.
 
-### Продолжать использовать `score` как остаток дней
+### Использовать одну метрику как неявный псевдоним другой
 
-Отклонено. `score` имеет другое привычное значение: счет или баллы. Для "осталось дней" нужен явный `remainingDays`, чтобы не смешивать score and time semantics.
+Отклонено. Разные игровые понятия требуют разных стабильных идентификаторов;
+неявные псевдонимы размывают семантику и расходятся между каналами.
 
 ### Дать UI вычислять все производные значения самостоятельно
 
@@ -226,10 +218,10 @@ Schema reuse should follow the existing project rule: reusable fragments belong 
 
 ## 11. Последствия
 
-- Будущая миграция `Antarctica` должна перенести словарь игровых метрик из UI authoring manifest в game authoring/runtime manifests.
-- `time` becomes elapsed days; `remainingDays` becomes computed projection value.
-- Topbar/sidebar UI should reference metric identifiers or `metricViews`, not own gameplay captions.
+- Словарь игровых метрик принадлежит game authoring/runtime manifests.
+- Channel UI ссылается на идентификаторы метрик или `metricViews`, но не владеет
+  игровыми подписями.
 - Existing card text placement in game manifest remains the correct direction.
 - UI manifests keep layout, panels, buttons, icons and channel-specific assets.
 - Player-facing projection becomes the explicit place for joining game content, session state and computed display values.
-- Schema and compiler changes are required before enforcing this rule in CI.
+- Schema, compiler и проверки должны сохранять эту границу.

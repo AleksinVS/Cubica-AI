@@ -108,9 +108,10 @@ ADR-047 закрепил safety gates (approval envelope, отклонённый
   операция; требуется бюджет и кэш с ключом principal/actor/session/
   `basisStateVersion`/`bundleHash`.
 - «Всегда легальное» fallback-действие накладывает требование на дизайн игр с агентскими местами — фиксируется как readiness-условие, о котором должен предупреждать редактор.
-- Внеочередные реакции (торги, аукционы) инициируют агентские ходы вне `turn.activePlayerId` — первый срез ограничивается ходами по очереди, реакционные ходы явно помечаются как расширение.
+- Внеочередные реакции инициируют агентские ходы вне `turn.activePlayerId` и
+  требуют той же actor-scoped availability, authorization и command receipt,
+  что обычный ход.
 
 ## 5. Связанные документы
 
 - ADR-038 (testing policy), ADR-046 (AI-driven runtime mode, system-initiated turns, failure policy), ADR-047 (safety gates), ADR-058 (turn flow, состояние «на игрока»), ADR-059 (участники, очередь, персональная проекция).
-- `docs/tasks/active/TSK-20260705-agent-controlled-players.md` — исполнительная программа.

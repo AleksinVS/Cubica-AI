@@ -21,8 +21,7 @@
 - [11. Архитектурные инварианты](#11-архитектурные-инварианты)
 - [12. Отклоненные и отложенные альтернативы](#12-отклоненные-и-отложенные-альтернативы)
 - [13. Последствия](#13-последствия)
-- [14. Открытые вопросы реализации](#14-открытые-вопросы-реализации)
-- [15. Связанные артефакты](#15-связанные-артефакты)
+- [14. Связанные артефакты](#14-связанные-артефакты)
 
 ## 1. Понимание решения
 
@@ -59,7 +58,7 @@ ADR-049 добавил dynamic prompt projection: человек видит со
 
 Ранее рассматривался persisted `editor.entities.json` как полный sidecar
 индекс. После критического анализа этот вариант признан слишком рискованным
-для первого среза: он дублирует смысловые связи, создает новую точку
+для базовой архитектуры: он дублирует смысловые связи, создаёт новую точку
 рассинхронизации и может выглядеть как источник истины.
 
 ## 3. Термины
@@ -97,7 +96,7 @@ Cubica принимает **in-memory `EditorEntityProjection`** как перв
    project-local plugin metadata.
 3. Проекция хранит source pointers и диагностику, но не копирует исходные
    игровые, методические или визуальные узлы.
-4. В первом срезе не создается persisted `editor.entities.json`.
+4. Persisted `editor.entities.json` не является частью базовой модели.
 5. Будущий persisted файл допустим только как **hints-only sidecar**: файл
    подсказок редактора, где нет канонических связей, поведения, UI-дерева или
    копий source objects.
@@ -143,38 +142,38 @@ authoring sources, а не только в projection или hints sidecar.
 ```json
 {
   "projectionVersion": 1,
-  "gameId": "antarctica",
+  "gameId": "example-game",
   "sourceHashes": {
     "game.authoring.json": "sha256:...",
     "ui/web.authoring.json": "sha256:..."
   },
   "entities": [
     {
-      "entityId": "game-step:game.authoring.json#/root/logic/flows/0/steps/17",
+      "entityId": "game-step:game.authoring.json#/root/logic/flows/0/steps/0",
       "kind": "game-step",
-      "label": "Информационный экран i17",
+      "label": "Example step",
       "primarySource": {
         "file": "game.authoring.json",
-        "pointer": "/root/logic/flows/0/steps/17"
+        "pointer": "/root/logic/flows/0/steps/0"
       },
       "facets": {
         "logic": [
           {
             "file": "game.authoring.json",
-            "pointer": "/root/logic/flows/0/steps/17"
+            "pointer": "/root/logic/flows/0/steps/0"
           }
         ],
         "content": [
           {
             "file": "game.authoring.json",
-            "pointer": "/root/content/infos/i17"
+            "pointer": "/root/content/items/example-item"
           }
         ],
         "views": [
           {
             "channel": "web",
             "file": "ui/web.authoring.json",
-            "pointer": "/root/screens/3"
+            "pointer": "/root/screens/0"
           }
         ]
       },
@@ -220,16 +219,16 @@ Persisted sidecar откладывается. Если он понадобитс
 ```json
 {
   "schemaVersion": "1.0",
-  "gameId": "antarctica",
+  "gameId": "example-game",
   "hints": {
     "groups": [
       {
-        "id": "editor-group:opening",
-        "label": "Вступление",
+        "id": "editor-group:example",
+        "label": "Example group",
         "members": [
           {
             "file": "game.authoring.json",
-            "pointer": "/root/logic/flows/0/steps/17"
+            "pointer": "/root/logic/flows/0/steps/0"
           }
         ]
       }
@@ -239,9 +238,9 @@ Persisted sidecar откладывается. Если он понадобитс
 }
 ```
 
-Даже этот файл не должен быть первым срезом реализации. Его нужно добавлять
-только после того, как in-memory projection докажет пользу и появятся реальные
-editor-only данные, которые нельзя восстановить из источников.
+Такой файл допустим только при наличии editor-only данных, которые нельзя
+восстановить из авторитетных источников; он не является обязательной частью
+базовой проекции.
 
 ## 8. Построение и жизненный цикл
 
@@ -282,18 +281,9 @@ Lifecycle rules:
 
 Editor surfaces should use editor entities as the user-facing navigation unit.
 
-Expected behavior:
-
-- left tree shows editor entities, not only file-local JSON nodes;
-- property panel groups fields by facets: logic, content, state, view, design
-  and plugin;
-- preview selection resolves to one editor entity and then to source pointers;
-- Monaco can reveal every source pointer involved in the selected entity;
-- AI assistant receives scoped projection for the selected entity, not whole
-  authoring files;
-- dynamic prompt projection from ADR-049 can assemble the visible prompt from
-  the selected entity and its significant source facets;
-- `EditorChangeSet` writes patches to original authoring files.
+Editor surfaces use editor entities as the navigation unit, resolve selection to
+source pointers and send only scoped projection context to AI tools.
+`EditorChangeSet` always writes patches to original authoring files.
 
 Cross-file ownership must be visible. If one property panel edits data from
 several files, each edited field must show its source file and pointer.
@@ -383,7 +373,7 @@ Positive consequences:
 - dynamic prompt projection gets a stable selected-entity boundary;
 - cross-file diagnostics become first-class;
 - authoring/runtime source-of-truth boundaries remain intact;
-- first implementation avoids persisted drift by default.
+- derived-by-default проекция избегает дрейфа сохранённых данных.
 
 Costs and risks:
 
@@ -394,25 +384,7 @@ Costs and risks:
 - optional hints sidecar can still confuse users if it is introduced without
   strict limits.
 
-## 14. Открытые вопросы реализации
-
-These questions are implementation details, not blockers for the accepted
-architecture:
-
-- Which entity kinds should the first builder support: steps, screens, actions,
-  cards, metrics, object types or only selected `_type` instances?
-- What exact derivation rule should generate `entityId` when authoring nodes do
-  not have stable IDs?
-- Which schema annotations and custom Cubica annotations are enough for Russian
-  field labels and hidden technical fields?
-- Should future `projection-hints.json` be committed, session-only or split by
-  hint type?
-- Should projection generation become a blocking CI gate or an advisory editor
-  diagnostic first?
-- Which UI surfaces consume projection in the first slice: entity tree,
-  property panel, preview selection, AI context or all of them?
-
-## 15. Связанные артефакты
+## 14. Связанные артефакты
 
 - `docs/architecture/adrs/030-semantic-prototype-manifests.md`
 - `docs/architecture/adrs/034-editor-engine-authoring-manifest-editor.md`
@@ -422,5 +394,3 @@ architecture:
 - `docs/architecture/adrs/050-authoring-prototype-extraction-and-promotion.md`
 - `docs/architecture/element-prompt-contract.md`
 - `docs/processes/editor-prompts.md`
-- `packages/editor-engine/src/index.ts`
-- `apps/editor-web/src/lib/editor-web-adapter.ts`

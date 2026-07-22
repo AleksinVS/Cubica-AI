@@ -12,7 +12,9 @@
 
 ## Context
 
-The current `game.manifest.json` for complex games like Antarctica is extremely large (over 9000 lines). A significant portion of this size comes from repetitive action definitions, especially deterministic transitions between info screens or board steps. These actions often share the same `handlerType`, `guard` patterns, and `effects[]` structures, differing only in specific parameters like `stepIndex` or text messages.
+Large manifests may repeat structurally identical action definitions that differ
+only by bounded parameters. Repetition increases authoring cost and obscures the
+semantic intent of an action.
 
 This redundancy has several negative consequences:
 1. **Context Bloat:** Large manifests consume significant tokens in LLM context windows, leading to attention degradation and errors during AI-assisted development.
@@ -21,68 +23,29 @@ This redundancy has several negative consequences:
 
 ## Decision
 
-We will implement **Action Templates** (also referred to as Macros) to allow defining reusable logic patterns within the manifest.
+The historical decision introduced **Action Templates** (macros): named reusable
+action fragments referenced through `templateId` with bounded `params`.
 
-### 1. Root `templates` Section
-Add a `templates` section to the root of the `GameManifest`. This section will store reusable action fragments.
+The intended invariants were:
 
-```json
-{
-  "templates": {
-    "advance_step": {
-      "handlerType": "manifest-data",
-      "deterministic": {
-        "guard": {
-          "timeline": { "line": "main", "stepIndex": "{{current}}", "canAdvance": false }
-        },
-        "effects": [
-          { "op": "timeline.set", "stepIndex": "{{next}}" },
-          {
-            "op": "log.append",
-            "kind": "opening-info-advance",
-            "stageId": "stage_intro",
-            "summary": "{{summary}}"
-          }
-        ]
-      }
-    }
-  }
-}
-```
+- template references and parameters are validated by the manifest schema;
+- expansion is deterministic and produces an ordinary action definition;
+- an action-level value takes precedence over the corresponding template value;
+- placeholders may reference only declared parameters;
+- expansion does not grant access to the environment or introduce hidden runtime
+  side effects.
 
-### 2. Template Reference in Actions
-Actions can now reference a template using `templateId` and provide a `params` object for variable substitution.
-
-```json
-"actions": {
-  "opening.info.i02.advance": {
-    "templateId": "advance_step",
-    "params": {
-      "current": 1,
-      "next": 2,
-      "summary": "Интро i02 завершено, переход к i03."
-    }
-  }
-}
-```
-
-### 3. Resolution Logic
-The `runtime-api` engine will resolve templates at execution time (or loading time).
-- If an action has a `templateId`, the engine retrieves the template from the manifest.
-- It performs a deep merge of the template over the action definition (action fields take precedence).
-- It substitutes placeholders in the format `{{paramName}}` using the values provided in `params`.
-- The resolved action is then processed normally.
-
-### 4. Schema Updates
-The JSON schema for `game.manifest.json` will be updated to include the `templates` section and the new fields in `GameManifestActionDefinition`.
+ADR-084 supersedes runtime template resolution. The reusable authoring concept
+remains permitted only as a build-time macro that expands completely into typed
+Mechanics IR before publication.
 
 ## Consequences
 
 **Positive:**
-- **Massive Size Reduction:** We expect a 5-10x reduction in manifest size for repetitive flows.
+- **Size Reduction:** Repetitive flows can be represented more compactly during authoring.
 - **Improved AI Performance:** Agents will have more room in their context window and a clearer understanding of game logic.
 - **Standardization:** Common patterns like "advance step" or "apply metric delta" will be centralized and easier to evolve.
 
 **Negative:**
 - **Indirection:** Understanding a single action now requires looking up its template.
-- **Implementation Overhead:** The `runtime-api` needs logic for template resolution and parameter substitution.
+- **Tooling Cost:** Authoring tooling must expand and validate macros before publication.

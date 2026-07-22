@@ -23,33 +23,19 @@
 
 ## 1. Понимание решения
 
-Решение понимается так: текущая диаграмма `editor-engine` технически строится из authoring JSON, но фактически показывает плоское JSON-дерево, а не рабочую flow-диаграмму. Следующий срез должен заменить отображение полного дерева на прогрессивно раскрываемый семантический граф.
+Решение понимается так: диаграмма `editor-engine` является прогрессивно
+раскрываемым семантическим графом authoring JSON, а не отображением полного
+плоского JSON-дерева.
 
 Прогрессивное раскрытие - это режим, в котором редактор показывает только выбранную ветку и ближайший контекст, а соседние ветки сворачивает. Семантический граф - это проекция authoring JSON, где узлы называются и выглядят по смыслу элемента: действие, экран, состояние, метрика, условие, ссылка, коллекция или свойство. Эти смыслы выводятся из JSON Schema, `_type`, `_semantics`, `id`, `name`, `title`, пути коллекции и декларативных правил проекции, а не из hardcoded game IDs.
 
 ## 2. Контекст
 
-ADR-034 закрепил, что flow-chart является проекцией authoring JSON, а не вторым источником истины. Первый реализованный срез подтвердил boundary, но UI оказался непригоден для больших манифестов.
-
-Фактический UI-snapshot Antarctica на 2026-05-22:
-
-- screenshot: `.tmp/antarctica-editor-current-20260522-1440x1000.png`;
-- DOM metrics: `.tmp/antarctica-editor-current-20260522-metrics.json`;
-- accessibility snapshot: `.tmp/antarctica-editor-current-20260522-snapshot.md`.
-
-Наблюдения:
-
-- `nodeCount = 120`;
-- `visibleCount = 120`;
-- `edgeCount = 0`;
-- все visible nodes используют default React Flow node renderer;
-- различие ролей сведено к `role-*` CSS class и тонкой цветной линии;
-- подписи строятся как role + label + JSON Pointer, поэтому пользователь видит путь JSON, а не смысл элемента;
-- JSON editor занимает правую половину экрана постоянно;
-- property panel уже открыт поверх graph даже без выбора meaningful node;
-- попытка клика по одному узлу через Playwright зависла, что подтверждает интерактивную хрупкость текущей плотной сцены.
-
-Причина 0 edges в UI: core projection строит `contains`/`references` edges, но web layer режет nodes до первых 120, затем фильтрует edges по visible node ids. Для больших документов это легко оставляет сцену без связей.
+ADR-034 закрепил, что flow-chart является проекцией authoring JSON, а не вторым
+источником истины. Полное плоское дерево плохо масштабируется: технические
+свойства вытесняют смысловые связи, произвольное усечение может разорвать граф,
+а плотная сцена становится непригодной для навигации. Поэтому ограничение
+видимого графа должно следовать семантике раскрытия, а не позиции узла в массиве.
 
 ## 3. Термины
 
@@ -71,9 +57,8 @@ Canvas должен показывать visible graph model, а не первы
 
 Принять следующие правила:
 
-- по умолчанию открывается root summary с 3-7 top-level semantic branches;
-- выбор branch раскрывает ее первый уровень и сворачивает sibling branches;
-- выбор другого branch автоматически сворачивает предыдущую active branch;
+- по умолчанию открывается корневое резюме смысловых ветвей;
+- выбор ветви раскрывает ближайший контекст и сворачивает нерелевантные соседние ветви;
 - property nodes не показываются на canvas как самостоятельные узлы, если только пользователь явно не включает raw JSON/debug view;
 - свойства выбранного semantic node редактируются в inspector/property panel;
 - JSON editor остается точным fallback view, но может быть свернут;
@@ -103,7 +88,8 @@ Layout companion file может хранить раскрытие и позиц
 
 ## 6. Семантика узлов
 
-Core editor-engine остается game-agnostic. Он не должен знать `antarctica` или конкретные игровые карточки.
+Core editor-engine остается game-agnostic. Он не должен знать идентификатор
+конкретной игры или конкретные игровые объекты.
 
 Semantic role выводится по приоритету:
 
@@ -148,22 +134,9 @@ Semantic title выводится по приоритету:
 
 JSON editor and property panel become collapsible.
 
-Property panel behavior:
-
-- default state: collapsed;
-- selecting a graph node opens it automatically;
-- close/collapse button hides it without clearing selection;
-- on desktop it appears as floating inspector near selected node unless pinned;
-- pinned mode docks it to the right side;
-- on narrow screens it becomes bottom sheet;
-- panel state can be stored in layout companion file.
-
-JSON editor behavior:
-
-- default state can remain open for technical authors, but user can collapse it;
-- collapsed JSON editor leaves a narrow tab with diagnostics count and current pointer;
-- selecting "Open in JSON" expands JSON editor and reveals the pointer;
-- validation markers remain active even while JSON editor is collapsed.
+Панель свойств и текстовый редактор являются сворачиваемыми проекциями того же
+выбора. Их состояние может храниться в editor-only layout, а диагностика должна
+оставаться активной независимо от видимости панели.
 
 ## 8. Производительность
 
@@ -178,12 +151,9 @@ React Flow should render only the visible graph. Performance controls:
 - persist drag layout after drag stop, not on every move;
 - keep minimap optional for large graphs.
 
-Target first budget:
-
-- initial Antarctica graph: <= 25 visible nodes;
-- expanded active branch: <= 60 visible nodes;
-- edge count should be non-zero whenever semantic relationships exist;
-- graph interaction should not block click selection for ordinary nodes.
+Visible graph должен иметь явный бюджет сложности, сохранять существующие
+семантические связи и оставаться интерактивным. Конкретные числовые бюджеты и
+проверяемые сценарии принадлежат исполнительской задаче.
 
 ## 9. Инварианты
 
@@ -191,7 +161,7 @@ Target first budget:
 - Progressive disclosure state is editor-only layout state.
 - Semantic roles are projection metadata, not runtime contract.
 - Runtime-api and player-web must not import editor projection code.
-- No game-specific IDs or Antarctica-only branches in core editor-engine.
+- No game-specific IDs or game-only branches in core editor-engine.
 - Raw JSON view must remain available for exact editing.
 
 ## 10. Отклоненные альтернативы
@@ -204,9 +174,11 @@ Target first budget:
 
 Отклонено: это создает второй source of truth and breaks ADR-030/ADR-034.
 
-### Make Antarctica-Specific Projection Rules In Core
+### Make Game-Specific Projection Rules In Core
 
-Отклонено: это нарушает platform purity. Antarctica-specific meaning may exist only in its authoring content or optional game-local projection metadata, not in generic core.
+Отклонено: это нарушает platform purity. Game-specific meaning may exist only
+in its authoring content or optional game-local projection metadata, not in
+generic core.
 
 ### Hide JSON Editor Permanently
 
@@ -225,10 +197,9 @@ Costs:
 
 - ProjectionEngine needs richer semantic metadata and expansion state;
 - editor-web needs custom React Flow nodes and edges;
-- e2e tests must assert graph usability, not just non-blank canvas.
+- проверка редактора должна учитывать пригодность графа для навигации, а не
+  только возможность его построения.
 
 ## 12. Связанные артефакты
 
 - `services/game-editor/docs/editor-engine-authoring-manifest-editor.md`
-- `docs/tasks/archive/TSK-20260522-editor-engine-progressive-graph-ux.md`
-- `docs/tasks/artifacts/TSK-20260522-editor-engine-progressive-graph-ux/execution-matrix.md`
