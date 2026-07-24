@@ -1256,13 +1256,19 @@ const buildConstructionCycleAuthoring = (sourceAuthoring) => {
     "remaining market, cargo selection sequencing and reporting workflows";
   const postCargoPriorityBlocker =
     "remaining market and reporting workflows";
+  const reportingOnlyBlocker = "remaining reporting workflows";
+  const marketReady =
+    root.content.data.operatingTurn?.market?.status === "executable";
   const blockers = new Set(root.config.runtimeBlockers);
   blockers.delete(broadBlocker);
   blockers.delete(preciseBlocker);
   blockers.delete(postCargoPriorityBlocker);
+  blockers.delete(reportingOnlyBlocker);
   blockers.add(
     root.content.data.cardLifecycle?.cargoSelectionPriority
-      ? postCargoPriorityBlocker
+      ? marketReady
+        ? reportingOnlyBlocker
+        : postCargoPriorityBlocker
       : preciseBlocker
   );
   root.config.runtimeBlockers = [...blockers];

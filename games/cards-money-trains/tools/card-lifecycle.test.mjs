@@ -308,7 +308,7 @@ test("generator materializes every physical source row and exact remaining gap",
   assert.equal(manifest.config.runtimeReady, false);
   assert.deepEqual(
     manifest.config.runtimeBlockers.filter((item) => /news/u.test(item)),
-    ["remaining executable news effects 19, 28 and 29"]
+    []
   );
   assert.equal(Object.keys(manifest.state.public.objects.cargoOrders).length, 174);
   assert.equal(Object.keys(manifest.state.public.objects.newsCards).length, 34);
@@ -330,7 +330,7 @@ test("generator materializes every physical source row and exact remaining gap",
   );
   assert.deepEqual(
     manifest.content.data.cardLifecycle.unresolvedRuleNewsNumbers,
-    [19, 28, 29]
+    []
   );
   assert.equal(
     manifest.content.data.cardLifecycle.status,
@@ -339,12 +339,11 @@ test("generator materializes every physical source row and exact remaining gap",
   assert.deepEqual(
     manifest.content.data.cardLifecycle.workingInterpretations,
     [
-      "terminal-with-fewer-than-two-cards-skips-its-current-wagon-slot",
       "full-cargo-priority-tie-uses-deterministic-seeded-random-until-author-confirmation"
     ]
   );
   assert.ok(
-    manifest.config.runtimeBlockers.includes("single remaining cargo card offer policy")
+    !manifest.config.runtimeBlockers.includes("single remaining cargo card offer policy")
   );
   assert.deepEqual(
     manifest.content.data.cardLifecycle.executableCargoAdditionNewsNumbers,
@@ -352,7 +351,7 @@ test("generator materializes every physical source row and exact remaining gap",
   );
   assert.deepEqual(
     manifest.content.data.cardLifecycle.executableScalarNewsNumbers,
-    [22, 23, 24, 25, 30, 31, 32, 33, 34]
+    [22, 23, 24, 25, 28, 29, 30, 31, 32, 33, 34]
   );
   assert.deepEqual(
     manifest.content.data.cardLifecycle.executableNetworkClosureNewsNumbers,
@@ -360,12 +359,15 @@ test("generator materializes every physical source row and exact remaining gap",
   );
   assert.deepEqual(
     manifest.content.data.cardLifecycle.executableEconomicNewsNumbers,
-    [14, 16, 22]
+    [14, 16, 19, 22, 28, 29]
   );
   for (const actionId of [
     "news.effect.apply.14",
     "news.effect.apply.16",
-    "news.effect.apply.22"
+    "news.effect.apply.22",
+    "news.effect.apply.28",
+    "news.effect.apply.29",
+    "news.effect.19.finish"
   ]) {
     assert.deepEqual(manifest.actions[actionId].paramsSchema, {
       type: "object",
@@ -636,9 +638,19 @@ test("cargo queue enforces wagon slots, owner priority, protected offers and ato
     params: { wagonId: suitableWagonId, cargoId: firstCardId }
   });
   assert.equal(loaded.result.ok, true);
+  const afterLoad = await session.store.getSession(session.sessionId);
+  assert.equal(
+    afterLoad.state.public.objects.cargoOrders[firstCardId]
+      .attributes.carrierWagonId,
+    suitableWagonId
+  );
+  assert.equal(
+    afterLoad.state.public.objects.cargoOrders[firstCardId]
+      .attributes.originDeparted,
+    false
+  );
   assert.ok(
-    (await session.store.getSession(session.sessionId))
-      .state.secret.decks[currentTerminalId].held.includes(firstCardId),
+    afterLoad.state.secret.decks[currentTerminalId].held.includes(firstCardId),
     "loading must not return a chosen physical card to rotation"
   );
 
@@ -648,9 +660,8 @@ test("cargo queue enforces wagon slots, owner priority, protected offers and ato
   });
   assert.equal(finished.result.ok, true);
 
-  // R-27 remains a clearly labelled technical policy: a one-card terminal
-  // offers nothing and resolves its current wagon through skip without
-  // mutating the protected deck.
+  // The author-confirmed one-card edge uses the same protected offer. There is
+  // no synthetic card and no direct client access to the deck.
   const oneCardSession = await initialize(manifest);
   await updateScenario(oneCardSession, (state) => {
     state.public.session.phase = "cargo";
@@ -672,17 +683,87 @@ test("cargo queue enforces wagon slots, owner priority, protected offers and ato
     state.public.cards.cargo.remaining["terminal-1"] = 1;
   });
   const oneCardBefore = await oneCardSession.store.getSession(oneCardSession.sessionId);
-  const oneCardDeckBefore = structuredClone(oneCardBefore.state.secret.decks["terminal-1"]);
-  const technicalSkip = await dispatch({
+  const oneCardDraw = await dispatch({
     ...oneCardSession,
-    actionId: "cargo.offer.skip",
+    actionId: "cargo.offer.draw",
     params: { terminalId: "terminal-1" }
   });
-  assert.equal(technicalSkip.result.ok, true);
+  assert.equal(oneCardDraw.result.ok, true);
   const oneCardAfter = await oneCardSession.store.getSession(oneCardSession.sessionId);
-  assert.deepEqual(oneCardAfter.state.secret.decks["terminal-1"], oneCardDeckBefore);
-  assert.equal(oneCardAfter.state.public.cards.cargo.currentWagonId, null);
-  assert.deepEqual(oneCardAfter.state.public.cards.cargo.selectionOrder, []);
+  const singleCardId =
+    oneCardAfter.state.public.cards.cargo.offer.firstCardId;
+  assert.equal(typeof singleCardId, "string");
+  assert.equal(
+    oneCardAfter.state.public.cards.cargo.offer.secondCardId,
+    null
+  );
+  assert.equal(
+    oneCardAfter.state.public.objects.cargoOrders[singleCardId].facets.status,
+    "offered"
+  );
+  assert.equal((await dispatch({
+    ...oneCardSession,
+    actionId: "cargo.offer.select",
+    params: { terminalId: "terminal-1", cargoId: singleCardId }
+  })).result.ok, true);
+  const oneCardSelected = await oneCardSession.store.getSession(
+    oneCardSession.sessionId
+  );
+  assert.equal(
+    oneCardSelected.state.public.objects.cargoOrders[singleCardId].facets.status,
+    "available"
+  );
+  assert.equal(
+    oneCardSelected.state.public.cards.cargo.remaining["terminal-1"],
+    0
+  );
+  assert.equal(oneCardSelected.state.public.cards.cargo.currentWagonId, null);
+  assert.deepEqual(oneCardSelected.state.public.cards.cargo.selectionOrder, []);
+
+  // Skipping the same one-card shape returns exactly that card and never sends
+  // a null second id into deck.return or entity mutation.
+  const oneCardSkipSession = await initialize(manifest);
+  await updateScenario(oneCardSkipSession, (state) => {
+    state.public.session.phase = "cargo";
+    state.public.session.turnNumber = 2;
+    const [wagon] = Object.values(state.public.objects.wagons);
+    wagon.facets.availability = "active";
+    wagon.attributes.nodeId = "terminal-1";
+  });
+  assert.equal((await dispatch({
+    ...oneCardSkipSession,
+    actionId: "cargo.queue.prepare"
+  })).result.ok, true);
+  await updateScenario(oneCardSkipSession, (state) => {
+    state.public.cards.cargo.remaining["terminal-1"] = 1;
+  });
+  const oneCardSkipBefore = await oneCardSkipSession.store.getSession(
+    oneCardSkipSession.sessionId
+  );
+  const oneCardDeckBefore = structuredClone(
+    oneCardSkipBefore.state.secret.decks["terminal-1"]
+  );
+  assert.equal((await dispatch({
+    ...oneCardSkipSession,
+    actionId: "cargo.offer.draw",
+    params: { terminalId: "terminal-1" }
+  })).result.ok, true);
+  assert.equal((await dispatch({
+    ...oneCardSkipSession,
+    actionId: "cargo.offer.skip",
+    params: { terminalId: "terminal-1" }
+  })).result.ok, true);
+  const oneCardSkipped = await oneCardSkipSession.store.getSession(
+    oneCardSkipSession.sessionId
+  );
+  assert.deepEqual(
+    allDeckMembers(oneCardSkipped.state.secret.decks["terminal-1"]).sort(),
+    allDeckMembers(oneCardDeckBefore).sort()
+  );
+  assert.equal(
+    oneCardSkipped.state.public.cards.cargo.remaining["terminal-1"],
+    1
+  );
 });
 
 test("news skips turn one, adds cargo once and enters stagnation after depletion", async () => {

@@ -667,12 +667,17 @@ const buildTrainFormationAuthoring = (sourceAuthoring) => {
     "remaining market, cargo selection sequencing and reporting workflows"
   );
   blockers.delete("remaining market and reporting workflows");
+  blockers.delete("remaining reporting workflows");
   const cargoPriorityReady =
     root.content.data.cardLifecycle?.cargoSelectionPriority !== undefined;
+  const marketReady =
+    root.content.data.operatingTurn?.market?.status === "executable";
   blockers.add(cargoSettlementReady
     ? (
         cargoPriorityReady && root.content.data.constructionCycle
-          ? "remaining market and reporting workflows"
+          ? marketReady
+            ? "remaining reporting workflows"
+            : "remaining market and reporting workflows"
           : root.content.data.constructionCycle
             ? "remaining market, cargo selection sequencing and reporting workflows"
             : cargoPriorityReady

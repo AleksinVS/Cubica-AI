@@ -1,5 +1,5 @@
 /**
- * Focused Runtime proof for the complete economic news №16 and №22 slice.
+ * Focused Runtime proof for economic news №16, №19, №22, №28 and №29.
  *
  * Scenario preparation creates teams and transport through their public setup
  * intents. Direct store edits only enter upstream phases that are still
@@ -310,6 +310,191 @@ test("news №16 atomically charges only balances above fifteen and resolves onc
   });
 });
 
+test("news №19 derives floor(total/5), validates ownership and removes the exact quota", async () => {
+  const manifest = await loadManifest();
+  const session = await createSession(manifest);
+  await addTeam(session, "logistics_company", 0);
+  await addTeam(session, "logistics_company", 1);
+  await initializeCards(session);
+
+  let firstTeamId;
+  let secondTeamId;
+  let selectedWagonId;
+  let anotherFirstTeamWagonId;
+  let foreignWagonId;
+  let selectedCargoId;
+  let selectedCargoOriginId;
+  await updateScenario(session, (state) => {
+    const teams = Object.entries(state.public.objects.teams)
+      .sort(([left], [right]) => left.localeCompare(right));
+    [firstTeamId, secondTeamId] = teams.map(([teamId]) => teamId);
+    const wagons = state.public.objects.wagons;
+    const firstTeamWagons = Object.entries(wagons).filter(
+      ([, wagon]) => wagon.attributes.ownerTeamId === firstTeamId
+    );
+    assert.equal(firstTeamWagons.length, 2);
+    selectedWagonId = firstTeamWagons[0][0];
+    anotherFirstTeamWagonId = firstTeamWagons[1][0];
+    foreignWagonId = Object.entries(wagons).find(
+      ([, wagon]) => wagon.attributes.ownerTeamId === secondTeamId
+    )[0];
+    [selectedCargoId] = Object.keys(state.public.objects.cargoOrders);
+    const selectedCargo = state.public.objects.cargoOrders[selectedCargoId];
+    selectedCargoOriginId = selectedCargo.attributes.fromNodeId;
+    selectedCargo.facets.status = "in_transit";
+    selectedCargo.attributes.holderTeamId = firstTeamId;
+    selectedCargo.attributes.carrierWagonId = selectedWagonId;
+    selectedCargo.attributes.originDeparted = true;
+    selectedCargo.attributes.originDepartureTurn = 1;
+    wagons[selectedWagonId].attributes.cargoId = selectedCargoId;
+    const selectedCargoDeck = state.secret.decks[selectedCargoOriginId];
+    selectedCargoDeck.order = selectedCargoDeck.order.filter(
+      (cargoId) => cargoId !== selectedCargoId
+    );
+    selectedCargoDeck.discard = selectedCargoDeck.discard.filter(
+      (cargoId) => cargoId !== selectedCargoId
+    );
+    if (!selectedCargoDeck.held.includes(selectedCargoId)) {
+      selectedCargoDeck.held.push(selectedCargoId);
+    }
+
+    // The market workflow is a separate slice. Three structurally valid
+    // active copies provide the smallest five-unit team fixture without
+    // bypassing the news action that performs the authoritative count.
+    for (let index = 0; index < 3; index += 1) {
+      const cloneId = `news-19-extra-wagon-${index + 1}`;
+      wagons[cloneId] = structuredClone(firstTeamWagons[0][1]);
+      wagons[cloneId].facets.availability = "active";
+      wagons[cloneId].attributes.nodeId = "terminal-1";
+    }
+    for (const wagon of Object.values(wagons)) {
+      wagon.facets.availability = "active";
+      wagon.attributes.nodeId ??= "terminal-1";
+    }
+    for (const team of Object.values(state.public.objects.teams)) {
+      team.facets.placementStatus = "placed";
+    }
+  });
+  await drawNews(session, 19, 2);
+
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "news.effect.19.prepare-team",
+    params: { teamId: firstTeamId }
+  })).result.ok, true);
+  let current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.teams[firstTeamId]
+      .attributes.news19VehicleCountSnapshot,
+    5
+  );
+  assert.equal(
+    current.state.public.objects.teams[firstTeamId]
+      .attributes.news19RemovalRequired,
+    1
+  );
+  assert.equal(
+    current.state.public.objects.teams[firstTeamId]
+      .attributes.news19RemovalRemaining,
+    1
+  );
+
+  await assertRejectedWithoutMutation(session, {
+    actionId: "news.effect.19.remove-wagon",
+    params: { teamId: firstTeamId, wagonId: foreignWagonId }
+  });
+  await assertRejectedWithoutMutation(session, {
+    actionId: "news.effect.19.finish"
+  });
+
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "news.effect.19.remove-wagon",
+    params: { teamId: firstTeamId, wagonId: selectedWagonId }
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.wagons[selectedWagonId].facets.availability,
+    "sold"
+  );
+  assert.equal(
+    current.state.public.objects.wagons[selectedWagonId]
+      .attributes.news19ConfiscatedTurn,
+    2
+  );
+  assert.equal(
+    current.state.public.objects.wagons[selectedWagonId].attributes.cargoId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId].facets.status,
+    "available"
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.holderTeamId,
+    firstTeamId
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.carrierWagonId,
+    null
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.originDeparted,
+    false
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[selectedCargoId]
+      .attributes.originDepartureTurn,
+    0
+  );
+  assert.ok(
+    current.state.secret.decks[selectedCargoOriginId].held.includes(
+      selectedCargoId
+    ),
+    "the confiscated wagon must not return the team's held cargo card to deck rotation"
+  );
+  assert.equal(
+    current.state.public.objects.teams[firstTeamId]
+      .attributes.news19RemovalRemaining,
+    0
+  );
+  await assertRejectedWithoutMutation(session, {
+    actionId: "news.effect.19.remove-wagon",
+    params: { teamId: firstTeamId, wagonId: anotherFirstTeamWagonId }
+  });
+
+  // The second team owns only its two initial wagons and therefore resolves
+  // automatically with floor(2/5) = 0.
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "news.effect.19.prepare-team",
+    params: { teamId: secondTeamId }
+  })).result.ok, true);
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "news.effect.19.finish"
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(current.state.public.news.currentCardId, null);
+  assert.equal(current.state.public.session.phase, "maintenance");
+  assert.deepEqual(
+    current.state.public.log
+      .filter((event) => event.eventType === "news.vehicle.confiscated")
+      .map((event) => event.data),
+    [{
+      newsId: "news-19",
+      teamId: firstTeamId,
+      vehicleId: selectedWagonId,
+      vehicleKind: "wagon",
+      quotaRemaining: 0,
+      turnNumber: 2
+    }]
+  );
+});
+
 test("news №22 charges only the first successful movement and resets next news", async () => {
   const manifest = await loadManifest();
   const session = await createSession(manifest);
@@ -445,6 +630,164 @@ test("news №22 insufficient funds rolls back movement while explicit skip rema
   );
 });
 
+test("news №28 pays both owners immediately on origin departure and only for one turn", async () => {
+  const manifest = await loadManifest();
+  const session = await createSession(manifest);
+  await addTeam(session, "logistics_company", 0);
+  await addTeam(session, "locomotive_guild", 1);
+  await initializeCards(session);
+
+  let logisticsTeamId;
+  let guildTeamId;
+  let wagonId;
+  let locomotiveId;
+  let cargoId;
+  await updateScenario(session, (state) => {
+    const objects = state.public.objects;
+    [logisticsTeamId] = Object.entries(objects.teams).find(
+      ([, team]) => team.attributes.type === "logistics_company"
+    );
+    [guildTeamId] = Object.entries(objects.teams).find(
+      ([, team]) => team.attributes.type === "locomotive_guild"
+    );
+    [wagonId] = Object.entries(objects.wagons).find(
+      ([, wagon]) => wagon.attributes.ownerTeamId === logisticsTeamId
+    );
+    [locomotiveId] = Object.entries(objects.locomotives).find(
+      ([, locomotive]) => locomotive.attributes.ownerTeamId === guildTeamId
+    );
+    [cargoId] = Object.entries(objects.cargoOrders).find(
+      ([, cargo]) => cargo.attributes.fromNodeId === "terminal-5"
+    );
+    assert.ok(logisticsTeamId && guildTeamId && wagonId && locomotiveId && cargoId);
+
+    objects.teams[logisticsTeamId].facets.placementStatus = "placed";
+    objects.teams[guildTeamId].facets.placementStatus = "placed";
+    const locomotive = objects.locomotives[locomotiveId];
+    locomotive.facets.availability = "active";
+    locomotive.attributes.nodeId = "terminal-5";
+    locomotive.attributes.turnOrderCount = 1;
+    locomotive.attributes.actionPoints = 5;
+    locomotive.attributes.movementResolvedTurn = 0;
+    const wagon = objects.wagons[wagonId];
+    wagon.facets.availability = "active";
+    wagon.attributes.nodeId = "terminal-5";
+    wagon.attributes.attachedVehicleId = locomotiveId;
+    wagon.attributes.cargoId = cargoId;
+    const cargo = objects.cargoOrders[cargoId];
+    cargo.facets.status = "in_transit";
+    cargo.attributes.holderTeamId = logisticsTeamId;
+    cargo.attributes.carrierWagonId = wagonId;
+    cargo.attributes.originDeparted = false;
+    cargo.attributes.originDepartureTurn = 0;
+  });
+
+  await drawNews(session, 28, 2);
+  assert.equal((await applyNews(session, 28)).result.ok, true);
+  let current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.turnEffects.cargoDepartureBonusNewsId,
+    "news-28"
+  );
+  assert.deepEqual(
+    current.state.public.turnEffects.cargoDepartureBonusTerminalIds,
+    ["terminal-5", "terminal-7"]
+  );
+
+  await updateScenario(session, (state) => {
+    state.public.session.phase = "operations";
+    state.public.movement.locomotiveOrder = [locomotiveId];
+    state.public.movement.currentLocomotiveId = locomotiveId;
+  });
+  current = await session.store.getSession(session.sessionId);
+  const edgeId = incidentOpenEdgeId(current.state, locomotiveId);
+  const logisticsCoins =
+    current.state.public.objects.teams[logisticsTeamId].attributes.coins;
+  const guildCoins =
+    current.state.public.objects.teams[guildTeamId].attributes.coins;
+
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "movement.locomotive.traverse",
+    params: { edgeId }
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.teams[logisticsTeamId].attributes.coins,
+    logisticsCoins + 1
+  );
+  assert.equal(
+    current.state.public.objects.teams[guildTeamId].attributes.coins,
+    guildCoins + 1
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[cargoId].attributes.originDeparted,
+    true
+  );
+  assert.equal(
+    current.state.public.objects.cargoOrders[cargoId]
+      .attributes.originDepartureTurn,
+    2
+  );
+  assert.equal(current.state.public.movement.departureWagonId, null);
+  assert.deepEqual(
+    current.state.public.log
+      .filter(
+        (event) => event.eventType === "news.cargo.departure-bonus.paid"
+      )
+      .map((event) => event.data),
+    [{
+      newsId: "news-28",
+      cargoId,
+      wagonId,
+      locomotiveId,
+      logisticsTeamId,
+      guildTeamId,
+      originNodeId: "terminal-5",
+      amountPerTeam: 1,
+      turnNumber: 2
+    }]
+  );
+
+  // Returning over the same bidirectional road cannot export the same cargo
+  // twice, even while the news remains active.
+  assert.equal((await dispatch({
+    ...session,
+    actionId: "movement.locomotive.traverse",
+    params: { edgeId }
+  })).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.objects.teams[logisticsTeamId].attributes.coins,
+    logisticsCoins + 1
+  );
+  assert.equal(
+    current.state.public.objects.teams[guildTeamId].attributes.coins,
+    guildCoins + 1
+  );
+
+  await drawNews(session, 29, 3);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.turnEffects.cargoDepartureBonusNewsId,
+    null
+  );
+  assert.deepEqual(
+    current.state.public.turnEffects.cargoDepartureBonusTerminalIds,
+    []
+  );
+  assert.equal((await applyNews(session, 29)).result.ok, true);
+  current = await session.store.getSession(session.sessionId);
+  assert.equal(
+    current.state.public.turnEffects.cargoDepartureBonusNewsId,
+    "news-29"
+  );
+  assert.deepEqual(
+    current.state.public.turnEffects.cargoDepartureBonusTerminalIds,
+    ["terminal-14", "terminal-15"]
+  );
+});
+
 test("ordinary movement records the turn without charging when news №22 is inactive", async () => {
   const manifest = await loadManifest();
   const session = await createSession(manifest);
@@ -488,4 +831,3 @@ test("ordinary movement records the turn without charging when news №22 is ina
     false
   );
 });
-

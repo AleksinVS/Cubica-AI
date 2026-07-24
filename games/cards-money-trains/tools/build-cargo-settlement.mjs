@@ -13,8 +13,8 @@
  *   the normal slice and the protected technical replay;
  * - movement still owns locomotive resolution, while this later slice changes
  *   only its final phase destination from construction to settlement;
- * - market sequencing and the one-card terminal policy remain unresolved and
- *   are not invented here.
+ * - market sequencing and the one-card terminal policy are owned by their
+ *   earlier generators; this later slice preserves their resolved status.
  */
 
 import assert from "node:assert/strict";
@@ -52,6 +52,10 @@ const postCargoPriorityRuntimeBlocker =
   "remaining market and reporting workflows";
 const preConstructionPostCargoPriorityRuntimeBlocker =
   "remaining market, construction and reporting workflows";
+const postMarketConstructionRuntimeBlocker =
+  "remaining construction and reporting workflows";
+const reportingOnlyRuntimeBlocker =
+  "remaining reporting workflows";
 
 const readJson = async (filePath) => JSON.parse(await readFile(filePath, "utf8"));
 const literal = (value) => ({ op: "value.literal", value });
@@ -281,6 +285,33 @@ const buildLoadMacro = () => {
         value: literal("in_transit")
       },
       {
+        // The explicit carrier relation lets the later movement transaction
+        // prove which cargo actually left its origin with the current train.
+        // It is game-owned state assembled from ordinary typed entity fields,
+        // not client authority or a transport-specific runtime shortcut.
+        id: "record-carrier",
+        kind: "command",
+        op: "core.entity.attributes.patch",
+        entity: { collection: "cargoOrders", entityId: cargoId },
+        patches: [
+          {
+            operation: "set",
+            path: ["carrierWagonId"],
+            value: wagonId
+          },
+          {
+            operation: "set",
+            path: ["originDeparted"],
+            value: literal(false)
+          },
+          {
+            operation: "set",
+            path: ["originDepartureTurn"],
+            value: literal(0)
+          }
+        ]
+      },
+      {
         id: "journal",
         kind: "command",
         op: "core.event.emit",
@@ -485,6 +516,10 @@ const buildDeliveryMacro = () => {
         }, {
           operation: "set",
           path: ["holderTeamId"],
+          value: literal(null)
+        }, {
+          operation: "set",
+          path: ["carrierWagonId"],
           value: literal(null)
         }]
       },
@@ -995,13 +1030,14 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
     settlementFinishAllowsUndeliveredCargo: true,
     unresolvedBeforeFullTurn: [
       ...(
-        root.content.data.operatingTurn?.repeatablePhaseCycle
+      root.content.data.operatingTurn?.repeatablePhaseCycle
           ? []
           : ["market-entry-to-cargo"]
-      ),
-      "single-remaining-card-policy"
+      )
     ]
   };
+  const marketReady =
+    root.content.data.operatingTurn?.market?.status === "executable";
   const movementTurn = root.content.data.movementTurn;
   if (movementTurn) {
     movementTurn.status =
@@ -1016,12 +1052,19 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
       && item !== "remaining-market-cargo-selection-construction-and-reporting-workflows"
       && item !== "remaining-market-construction-and-reporting-workflows"
       && item !== "remaining-market-and-reporting-workflows"
+      && item !== "remaining-cargo-selection-construction-and-reporting-workflows"
+      && item !== "remaining-construction-and-reporting-workflows"
+      && item !== "remaining-reporting-workflows"
     );
     for (const item of [
       "publishable-author-confirmed-network-overlay",
       root.content.data.constructionCycle
-        ? "remaining-market-and-reporting-workflows"
-        : "remaining-market-construction-and-reporting-workflows"
+        ? marketReady
+          ? "remaining-reporting-workflows"
+          : "remaining-market-and-reporting-workflows"
+        : marketReady
+          ? "remaining-construction-and-reporting-workflows"
+          : "remaining-market-construction-and-reporting-workflows"
     ]) {
       if (!movementTurn.unresolvedAfterBoundary.includes(item)) {
         movementTurn.unresolvedAfterBoundary.push(item);
@@ -1034,10 +1077,17 @@ const buildCargoSettlementAuthoring = (sourceAuthoring) => {
   blockers.delete(preciseRuntimeBlocker);
   blockers.delete(postConstructionRuntimeBlocker);
   blockers.delete(preConstructionPostCargoPriorityRuntimeBlocker);
+  blockers.delete(postCargoPriorityRuntimeBlocker);
+  blockers.delete(postMarketConstructionRuntimeBlocker);
+  blockers.delete(reportingOnlyRuntimeBlocker);
   blockers.add(
     root.content.data.constructionCycle
-      ? postCargoPriorityRuntimeBlocker
-      : preConstructionPostCargoPriorityRuntimeBlocker
+      ? marketReady
+        ? reportingOnlyRuntimeBlocker
+        : postCargoPriorityRuntimeBlocker
+      : marketReady
+        ? postMarketConstructionRuntimeBlocker
+        : preConstructionPostCargoPriorityRuntimeBlocker
   );
   root.config.runtimeBlockers = [...blockers];
   root.config.runtimeReady = false;

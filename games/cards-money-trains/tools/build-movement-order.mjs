@@ -72,6 +72,12 @@ const entityValue = (collection, entityId, field) => ({
   entity: { collection, entityId },
   field
 });
+const itemId = () => ({ op: "value.item", area: "identity", field: "id" });
+const itemAttribute = (field) => ({
+  op: "value.item",
+  area: "attribute",
+  field
+});
 const compare = (operator, left, right) => ({
   op: "predicate.compare",
   operator,
@@ -79,6 +85,7 @@ const compare = (operator, left, right) => ({
   right
 });
 const all = (...items) => ({ op: "predicate.all", items });
+const any = (...items) => ({ op: "predicate.any", items });
 
 /**
  * Publish the three game-local controls that can be rendered by any Player.
@@ -350,6 +357,51 @@ const buildTraverseCurrentLocomotive = () => {
       turnNumber
     )
   );
+  const carrierWagonId = itemId();
+  const cargoId = result("departure-cargo", ["ids", "0"]);
+  const logisticsTeamId = itemAttribute("ownerTeamId");
+  const activeDepartureBonusNewsId =
+    state("public.turnEffects.cargoDepartureBonusNewsId");
+  const hasDepartureCargo = compare(
+    "ne",
+    result("departure-cargo", ["ids"]),
+    literal([])
+  );
+  const departureBonusApplies = all(
+    hasDepartureCargo,
+    any(
+      all(
+        compare("eq", activeDepartureBonusNewsId, literal("news-28")),
+        any(
+          compare(
+            "eq",
+            result("traverse", ["fromNodeId"]),
+            literal("terminal-5")
+          ),
+          compare(
+            "eq",
+            result("traverse", ["fromNodeId"]),
+            literal("terminal-7")
+          )
+        )
+      ),
+      all(
+        compare("eq", activeDepartureBonusNewsId, literal("news-29")),
+        any(
+          compare(
+            "eq",
+            result("traverse", ["fromNodeId"]),
+            literal("terminal-14")
+          ),
+          compare(
+            "eq",
+            result("traverse", ["fromNodeId"]),
+            literal("terminal-15")
+          )
+        )
+      )
+    )
+  );
 
   return {
     action: action({
@@ -463,12 +515,156 @@ const buildTraverseCurrentLocomotive = () => {
             when: firstLevyMovement
           },
           {
+            // Select the current train's wagons rather than trusting a cargo
+            // relation supplied by the client. The bounded body uses each
+            // wagon's declared cargoId to prove an undeparted cargo relation.
+            id: "current-train-wagons",
+            kind: "query",
+            op: "core.entities.select",
+            selector: {
+              collection: "wagons",
+              objectTypes: ["transport.wagon"],
+              facets: { availability: literal("active") },
+              attributes: {
+                networkId: literal("main"),
+                attachedVehicleId: currentLocomotiveId,
+                cargoId: {
+                  operator: "ne",
+                  value: literal(null)
+                }
+              },
+              cardinality: { min: 0, max: 64 }
+            }
+          },
+          {
             id: "traverse",
             kind: "command",
             op: "graph.entity.traverse",
             networkId: "main",
             entity: currentLocomotiveId,
             edge: param("edgeId")
+          },
+          {
+            id: "resolve-cargo-origin-departures",
+            kind: "command",
+            op: "core.entities.each",
+            selection: result("current-train-wagons"),
+            body: [
+              {
+                // The temporary typed endpoint carries the outer wagon identity
+                // into the nested selector. This is required because value.item
+                // inside a selector deliberately scopes to the selected cargo,
+                // not to the enclosing wagon iteration.
+                id: "publish-departure-wagon",
+                kind: "command",
+                op: "core.state.patch",
+                patches: [{
+                  operation: "set",
+                  target: {
+                    endpoint: "public.movement.departureWagonId"
+                  },
+                  value: carrierWagonId
+                }]
+              },
+              {
+                id: "departure-cargo",
+                kind: "query",
+                op: "core.entities.select",
+                selector: {
+                  collection: "cargoOrders",
+                  objectTypes: ["transport.cargo"],
+                  facets: { status: literal("in_transit") },
+                  attributes: {
+                    networkId: literal("main"),
+                    fromNodeId: result("traverse", ["fromNodeId"]),
+                    carrierWagonId: state(
+                      "public.movement.departureWagonId"
+                    ),
+                    originDeparted: literal(false)
+                  },
+                  cardinality: { min: 0, max: 1 }
+                }
+              },
+              {
+                id: "mark-origin-departed",
+                kind: "command",
+                op: "core.entities.update",
+                selection: result("departure-cargo"),
+                attributeValues: {
+                  originDeparted: literal(true),
+                  originDepartureTurn: turnNumber
+                },
+                when: hasDepartureCargo
+              },
+              {
+                id: "pay-logistics-departure-bonus",
+                kind: "command",
+                op: "core.resource.transfer",
+                from: { kind: "bank" },
+                to: {
+                  kind: "state",
+                  target: {
+                    endpoint: "public.teams.bound.coins",
+                    bindings: { teamId: logisticsTeamId }
+                  }
+                },
+                amount: literal(1),
+                onInsufficient: "fail",
+                when: departureBonusApplies
+              },
+              {
+                id: "pay-guild-departure-bonus",
+                kind: "command",
+                op: "core.resource.transfer",
+                from: { kind: "bank" },
+                to: {
+                  kind: "state",
+                  target: {
+                    endpoint: "public.teams.bound.coins",
+                    bindings: { teamId: ownerTeamId }
+                  }
+                },
+                amount: literal(1),
+                onInsufficient: "fail",
+                when: departureBonusApplies
+              },
+              {
+                id: "journal-departure-bonus",
+                kind: "command",
+                op: "core.event.emit",
+                eventType: "news.cargo.departure-bonus.paid",
+                summary: literal(
+                  "Банк сразу выплатил бонус за вывоз груза перевозчику и гильдии"
+                ),
+                audience: "public",
+                data: {
+                  newsId: activeDepartureBonusNewsId,
+                  cargoId,
+                  wagonId: carrierWagonId,
+                  locomotiveId: currentLocomotiveId,
+                  logisticsTeamId,
+                  guildTeamId: ownerTeamId,
+                  originNodeId: result("traverse", ["fromNodeId"]),
+                  amountPerTeam: literal(1),
+                  turnNumber
+                },
+                when: departureBonusApplies
+              },
+              {
+                id: "clear-departure-wagon",
+                kind: "command",
+                op: "core.state.patch",
+                patches: [
+                  {
+                    operation: "set",
+                    target: {
+                      endpoint: "public.movement.departureWagonId"
+                    },
+                    value: literal(null)
+                  }
+                ]
+              }
+            ]
           },
           {
             id: "spend-action-point",
@@ -725,7 +921,11 @@ const buildSkipCurrentLocomotive = (finalPhase = "construction") => {
 const declareMovementState = (root) => {
   root.state.public.movement = {
     locomotiveOrder: [],
-    currentLocomotiveId: null
+    currentLocomotiveId: null,
+    // Transaction-local bridge for one bounded wagon iteration. Every
+    // successful iteration clears it before commit, so saved sessions expose
+    // null outside the movement command.
+    departureWagonId: null
   };
 
   const stateModel = root.mechanics.stateModel;
@@ -791,6 +991,15 @@ const declareMovementState = (root) => {
       storage: {
         root: "public",
         segments: ["movement", "currentLocomotiveId"]
+      },
+      valueType: "core.optional-string",
+      access: "read-write"
+    },
+    "public.movement.departureWagonId": {
+      audienceRef: "public",
+      storage: {
+        root: "public",
+        segments: ["movement", "departureWagonId"]
       },
       valueType: "core.optional-string",
       access: "read-write"
@@ -873,6 +1082,20 @@ const declareMovementEvents = (stateModel) => {
         balanceAfter: { typeRef: "core.integer", optional: false },
         turnNumber: { typeRef: "core.integer", optional: false }
       }
+    },
+    "game.news-cargo-departure-bonus-event": {
+      kind: "record",
+      fields: {
+        newsId: { typeRef: "core.optional-string", optional: false },
+        cargoId: { typeRef: "core.string", optional: false },
+        wagonId: { typeRef: "core.string", optional: false },
+        locomotiveId: { typeRef: "core.optional-string", optional: false },
+        logisticsTeamId: { typeRef: "core.string", optional: false },
+        guildTeamId: { typeRef: "core.string", optional: false },
+        originNodeId: { typeRef: "core.string", optional: false },
+        amountPerTeam: { typeRef: "core.integer", optional: false },
+        turnNumber: { typeRef: "core.integer", optional: false }
+      }
     }
   });
   Object.assign(stateModel.events, {
@@ -899,6 +1122,11 @@ const declareMovementEvents = (stateModel) => {
     "news.locomotive.levy.paid": {
       audienceRef: "public",
       payloadType: "game.news-locomotive-levy-event",
+      journalEndpoint: { endpoint: "public.log" }
+    },
+    "news.cargo.departure-bonus.paid": {
+      audienceRef: "public",
+      payloadType: "game.news-cargo-departure-bonus-event",
       journalEndpoint: { endpoint: "public.log" }
     }
   });
@@ -1105,13 +1333,16 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
   ];
 
   const trainFormationReady = root.content.data.trainFormation !== undefined;
+  const marketReady =
+    root.content.data.operatingTurn?.market?.status === "executable";
   root.content.data.movementTurn = {
     status:
       cargoSettlementReady
         ? "executable-order-traversal-formation-through-settlement-boundary"
         : "executable-order-real-graph-traversal-and-all-skip-through-construction-boundary",
     publishable: false,
-    supportedSetup: "confirmed odd team counts 5/7/9/11",
+    supportedSetup:
+      "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
     order: [
       "network-node-position-x-descending",
       "owner-team-coins-descending",
@@ -1130,17 +1361,25 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
       ? [
           "publishable-author-confirmed-network-overlay",
           cargoPriorityReady && root.content.data.constructionCycle
-            ? "remaining-market-and-reporting-workflows"
+            ? marketReady
+              ? "remaining-reporting-workflows"
+              : "remaining-market-and-reporting-workflows"
             : cargoPriorityReady
-              ? "remaining-market-construction-and-reporting-workflows"
-            : "remaining-market-cargo-selection-construction-and-reporting-workflows"
+              ? marketReady
+                ? "remaining-construction-and-reporting-workflows"
+                : "remaining-market-construction-and-reporting-workflows"
+              : marketReady
+                ? "remaining-cargo-selection-construction-and-reporting-workflows"
+                : "remaining-market-cargo-selection-construction-and-reporting-workflows"
         ]
       : [
           trainFormationReady
             ? "loading-unloading-and-delivery"
             : "train-formation-loading-unloading-and-delivery",
           "publishable-author-confirmed-network-overlay",
-          "remaining-market-settlement-and-construction-workflows"
+          marketReady
+            ? "remaining-settlement-and-construction-workflows"
+            : "remaining-market-settlement-and-construction-workflows"
         ]
   };
 
@@ -1162,17 +1401,31 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
     "remaining market, cargo selection sequencing and reporting workflows"
   );
   blockers.delete("remaining market and reporting workflows");
+  blockers.delete("remaining cargo selection and reporting workflows");
+  blockers.delete("remaining cargo selection, construction and reporting workflows");
+  blockers.delete("remaining construction and reporting workflows");
+  blockers.delete("remaining reporting workflows");
   blockers.add(cargoSettlementReady
     ? (
         cargoPriorityReady && root.content.data.constructionCycle
-          ? "remaining market and reporting workflows"
+          ? marketReady
+            ? "remaining reporting workflows"
+            : "remaining market and reporting workflows"
           : root.content.data.constructionCycle
-            ? "remaining market, cargo selection sequencing and reporting workflows"
-            : "remaining market, cargo selection sequencing, construction and reporting workflows"
+            ? marketReady
+              ? "remaining cargo selection and reporting workflows"
+              : "remaining market, cargo selection sequencing and reporting workflows"
+            : marketReady
+              ? "remaining cargo selection, construction and reporting workflows"
+              : "remaining market, cargo selection sequencing, construction and reporting workflows"
       )
     : trainFormationReady
-      ? "remaining market, cargo handling, settlement, construction and reporting workflows"
-      : "remaining market, train formation, cargo handling, settlement, construction and reporting workflows");
+      ? marketReady
+        ? "remaining cargo handling, settlement, construction and reporting workflows"
+        : "remaining market, cargo handling, settlement, construction and reporting workflows"
+      : marketReady
+        ? "remaining train formation, cargo handling, settlement, construction and reporting workflows"
+        : "remaining market, train formation, cargo handling, settlement, construction and reporting workflows");
   root.config.runtimeBlockers = [...blockers];
   root.config.runtimeReady = false;
 

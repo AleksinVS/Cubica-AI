@@ -24,7 +24,8 @@ import {
   authoringPath,
   buildFromDisk,
   contrastColorIds,
-  supportedOddTeamCounts
+  supportedTeamCompositions,
+  supportedTeamCounts
 } from "./build-session-setup.mjs";
 
 const toolsRoot = path.dirname(fileURLToPath(import.meta.url));
@@ -137,6 +138,19 @@ const addOddComposition = async (session, count) => {
   }
 };
 
+const addConfirmedComposition = async (session, composition) => {
+  for (let index = 0; index < composition.logisticsCompanyCount; index += 1) {
+    await addTeam(session, "logistics_company", index);
+  }
+  for (let index = 0; index < composition.locomotiveGuildCount; index += 1) {
+    await addTeam(
+      session,
+      "locomotive_guild",
+      composition.logisticsCompanyCount + index
+    );
+  }
+};
+
 const finalize = (session) => dispatch({
   ...session,
   actionId: "session.setup.finalize"
@@ -184,12 +198,54 @@ test("setup and card generators are idempotent and keep teams as entities", asyn
       "public.teams.bound.progressiveTaxWagonCount"
     ]
   );
+  for (const field of [
+    "news19PreparedTurn",
+    "news19VehicleCountSnapshot",
+    "news19RemovalRequired",
+    "news19RemovalRemaining",
+    "news19ResolvedTurn"
+  ]) {
+    assert.deepEqual(teams.fields[field], {
+      storage: { kind: "attribute", name: field },
+      valueType: "core.integer",
+      access: "read-write"
+    });
+  }
+  for (const collection of ["wagons", "locomotives"]) {
+    assert.deepEqual(
+      root.mechanics.stateModel.collections[collection].fields.news19ConfiscatedTurn,
+      {
+        storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
+        valueType: "core.integer",
+        access: "read-write"
+      }
+    );
+  }
   assert.equal(root.mechanics.macros["cmt.construction.road"], undefined);
   assert.equal(root.mechanics.macros["cmt.construction.waypoint"], undefined);
   assert.equal(root.config.runtimeReady, false);
   assert.equal(root.content.data.sessionSetup.publishable, false);
+  assert.deepEqual(
+    root.content.data.sessionSetup.supportedTeamCounts,
+    supportedTeamCounts
+  );
+  assert.deepEqual(root.content.data.rules.teams.supportedCounts, supportedTeamCounts);
+  assert.equal(
+    root.content.data.rules.teams.evenComposition,
+    "logistics_company_count = locomotive_guild_count"
+  );
   assert.equal(
     root.config.runtimeBlockers.includes("accessible free-text team-name entry"),
+    false
+  );
+  assert.equal(
+    root.config.runtimeBlockers.includes("R-28 even-team composition"),
+    false
+  );
+  assert.equal(
+    root.config.runtimeBlockers.includes(
+      "R-26 finite market stock or explicit no-extra-limit confirmation"
+    ),
     false
   );
   assert.equal(
@@ -233,10 +289,21 @@ test("team creation is atomic, bounded, and rejects a reused contrast color", as
   assert.equal(teams[teamId].attributes.coins, 10);
   assert.equal(teams[teamId].attributes.type, "logistics_company");
   assert.equal(teams[teamId].facets.placementStatus, "configured");
+  assert.deepEqual(
+    {
+      prepared: teams[teamId].attributes.news19PreparedTurn,
+      snapshot: teams[teamId].attributes.news19VehicleCountSnapshot,
+      required: teams[teamId].attributes.news19RemovalRequired,
+      remaining: teams[teamId].attributes.news19RemovalRemaining,
+      resolved: teams[teamId].attributes.news19ResolvedTurn
+    },
+    { prepared: 0, snapshot: 0, required: 0, remaining: 0, resolved: 0 }
+  );
   assert.equal(Object.keys(wagons).length, 2);
   assert.ok(Object.values(wagons).every((wagon) =>
     wagon.attributes.ownerTeamId === teamId &&
     wagon.attributes.nodeId === null &&
+    wagon.attributes.news19ConfiscatedTurn === 0 &&
     wagon.facets.availability === "reserve"
   ));
 
@@ -279,33 +346,42 @@ test("team names preserve exact text while the server rejects invalid strings at
   assert.equal(team.attributes.label, exactName);
 });
 
-test("all confirmed odd team counts finalize while an even composition fails closed", async () => {
+test("all confirmed 4–12 team compositions finalize and wrong parity fails closed", async () => {
   const manifest = await loadManifest();
-  for (const count of supportedOddTeamCounts) {
+  assert.deepEqual(supportedTeamCounts, [4, 5, 6, 7, 8, 9, 10, 11, 12]);
+  for (const composition of supportedTeamCompositions) {
     const session = await createSession(manifest);
-    await addOddComposition(session, count);
+    await addConfirmedComposition(session, composition);
     const finalized = await finalize(session);
-    assert.equal(finalized.result.ok, true, `${count} teams must be supported`);
+    assert.equal(
+      finalized.result.ok,
+      true,
+      `${composition.teamCount} teams must be supported`
+    );
     const current = await session.store.getSession(session.sessionId);
     const setup = current.state.public.setup;
     assert.equal(setup.status, "placement");
     assert.equal(current.state.public.session.phase, "setup-placement");
-    assert.equal(setup.placementOrder.length, count);
-    assert.equal(new Set(setup.placementOrder).size, count);
+    assert.equal(setup.placementOrder.length, composition.teamCount);
+    assert.equal(new Set(setup.placementOrder).size, composition.teamCount);
     assert.equal(setup.currentTeamId, setup.placementOrder[0]);
   }
 
-  const evenSession = await createSession(manifest);
-  for (let index = 0; index < 3; index += 1) {
-    await addTeam(evenSession, "logistics_company", index);
+  const invalidSession = await createSession(manifest);
+  for (let index = 0; index < 4; index += 1) {
+    await addTeam(invalidSession, "logistics_company", index);
   }
-  for (let index = 0; index < 3; index += 1) {
-    await addTeam(evenSession, "locomotive_guild", 3 + index);
+  for (let index = 0; index < 2; index += 1) {
+    await addTeam(invalidSession, "locomotive_guild", 4 + index);
   }
-  const beforeRejected = await evenSession.store.getSession(evenSession.sessionId);
-  const rejected = await finalize(evenSession);
+  const beforeRejected = await invalidSession.store.getSession(
+    invalidSession.sessionId
+  );
+  const rejected = await finalize(invalidSession);
   assert.equal(rejected.result.ok, false);
-  const afterRejected = await evenSession.store.getSession(evenSession.sessionId);
+  const afterRejected = await invalidSession.store.getSession(
+    invalidSession.sessionId
+  );
   assert.equal(afterRejected.version.stateVersion, beforeRejected.version.stateVersion);
   assert.equal(afterRejected.state.public.session.phase, "setup");
 });

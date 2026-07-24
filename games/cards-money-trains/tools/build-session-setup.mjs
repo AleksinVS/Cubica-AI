@@ -4,8 +4,8 @@
  *
  * The generator deliberately composes already accepted generic Mechanics
  * operations. It does not add a setup-specific runtime branch, publish the
- * review network, decide the unresolved even-team rule, or implement market
- * stock. Keeping this transformation separate from the card lifecycle gives
+ * review network or implement market workflows. Keeping this transformation
+ * separate from the card lifecycle gives
  * each generator one clear ownership boundary and prevents either import from
  * restoring the obsolete four-team record map.
  */
@@ -37,7 +37,23 @@ const lifecyclePrefixes = [
   "news.cargo-addition.",
   "news.effect."
 ];
-const supportedOddTeamCounts = [5, 7, 9, 11];
+const supportedTeamCompositions = [
+  { teamCount: 4, logisticsCompanyCount: 2, locomotiveGuildCount: 2 },
+  { teamCount: 5, logisticsCompanyCount: 3, locomotiveGuildCount: 2 },
+  { teamCount: 6, logisticsCompanyCount: 3, locomotiveGuildCount: 3 },
+  { teamCount: 7, logisticsCompanyCount: 4, locomotiveGuildCount: 3 },
+  { teamCount: 8, logisticsCompanyCount: 4, locomotiveGuildCount: 4 },
+  { teamCount: 9, logisticsCompanyCount: 5, locomotiveGuildCount: 4 },
+  { teamCount: 10, logisticsCompanyCount: 5, locomotiveGuildCount: 5 },
+  { teamCount: 11, logisticsCompanyCount: 6, locomotiveGuildCount: 5 },
+  { teamCount: 12, logisticsCompanyCount: 6, locomotiveGuildCount: 6 }
+];
+const supportedTeamCounts = supportedTeamCompositions.map(
+  ({ teamCount }) => teamCount
+);
+const supportedOddTeamCounts = supportedTeamCounts.filter(
+  (teamCount) => teamCount % 2 === 1
+);
 const contrastColorIds = [
   "cobalt",
   "orange",
@@ -230,7 +246,15 @@ const createTeamStep = (teamType) => ({
     // active vehicles inside maintenance completion. Setup initializes them
     // because this is the only normal-session path that creates teams.
     progressiveTaxLocomotiveCount: literal(0),
-    progressiveTaxWagonCount: literal(0)
+    progressiveTaxWagonCount: literal(0),
+    // News №19 is resolved team by team. Setup initializes the durable quota
+    // bookkeeping so a newly created team cannot enter the staged workflow
+    // with fields that are missing or inherited from a later generator order.
+    news19PreparedTurn: literal(0),
+    news19VehicleCountSnapshot: literal(0),
+    news19RemovalRequired: literal(0),
+    news19RemovalRemaining: literal(0),
+    news19ResolvedTurn: literal(0)
   }
 });
 
@@ -260,7 +284,8 @@ const createWagonStep = (idStep, createStep) => ({
     // preparation transaction proves its terminal, owner and active status.
     cargoOfferEligibleTurn: literal(0),
     cargoOfferResolvedTurn: literal(0),
-    cargoPriorityActiveCount: literal(0)
+    cargoPriorityActiveCount: literal(0),
+    news19ConfiscatedTurn: literal(0)
   }
 });
 
@@ -291,7 +316,8 @@ const createLocomotiveStep = () => ({
     lastMovedTurn: literal(0),
     // See createWagonStep: setup must initialize every newly created asset so
     // a later maintenance selector never has to interpret a missing value.
-    maintenancePaidTurn: literal(0)
+    maintenancePaidTurn: literal(0),
+    news19ConfiscatedTurn: literal(0)
   }
 });
 
@@ -388,14 +414,30 @@ const buildAddLocomotiveGuild = () => {
 
 const buildFinalize = () => {
   const id = "session.setup.finalize";
-  const supportedCount = any(...supportedOddTeamCounts.map((count) =>
-    compare("eq", state("public.setup.teamCount"), literal(count))
+  const supportedComposition = any(...supportedTeamCompositions.map((composition) =>
+    all(
+      compare(
+        "eq",
+        state("public.setup.teamCount"),
+        literal(composition.teamCount)
+      ),
+      compare(
+        "eq",
+        state("public.setup.logisticsCompanyCount"),
+        literal(composition.logisticsCompanyCount)
+      ),
+      compare(
+        "eq",
+        state("public.setup.locomotiveGuildCount"),
+        literal(composition.locomotiveGuildCount)
+      )
+    )
   ));
   return {
     action: action({
       id,
       label: "Зафиксировать состав и порядок размещения",
-      semantics: "Принимает только подтверждённые нечётные составы и создаёт воспроизводимую случайную очередь размещения."
+      semantics: "Принимает от 4 до 12 команд: при чётном составе типов поровну, при нечётном перевозчиков на одну больше. Затем создаёт воспроизводимую случайную очередь размещения."
     }),
     plan: {
       transaction: {
@@ -406,20 +448,9 @@ const buildFinalize = () => {
             op: "core.assert",
             predicate: all(
               setupGuard(),
-              supportedCount,
-              compare(
-                "eq",
-                state("public.setup.logisticsCompanyCount"),
-                {
-                  op: "number.add",
-                  items: [
-                    state("public.setup.locomotiveGuildCount"),
-                    literal(1)
-                  ]
-                }
-              )
+              supportedComposition
             ),
-            errorCode: "SESSION_SETUP_TEAM_COMPOSITION_UNCONFIRMED"
+            errorCode: "SESSION_SETUP_TEAM_COMPOSITION_INVALID"
           },
           {
             id: "select-teams",
@@ -427,7 +458,7 @@ const buildFinalize = () => {
             op: "core.entities.select",
             selector: {
               collection: "teams",
-              cardinality: { min: 5, max: 11 }
+              cardinality: { min: 4, max: 12 }
             }
           },
           {
@@ -1108,6 +1139,31 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         },
         valueType: "core.integer",
         access: "read-write"
+      },
+      news19PreparedTurn: {
+        storage: { kind: "attribute", name: "news19PreparedTurn" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19VehicleCountSnapshot: {
+        storage: { kind: "attribute", name: "news19VehicleCountSnapshot" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19RemovalRequired: {
+        storage: { kind: "attribute", name: "news19RemovalRequired" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19RemovalRemaining: {
+        storage: { kind: "attribute", name: "news19RemovalRemaining" },
+        valueType: "core.integer",
+        access: "read-write"
+      },
+      news19ResolvedTurn: {
+        storage: { kind: "attribute", name: "news19ResolvedTurn" },
+        valueType: "core.integer",
+        access: "read-write"
       }
     }
   };
@@ -1141,6 +1197,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     valueType: "game.binary-count",
     access: "read-write"
   };
+  collections.wagons.fields.news19ConfiscatedTurn = {
+    storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
   // Setup owns locomotive creation and placement, so it also preserves the
   // movement generator's explicit markers when generators run in any order.
   collections.locomotives.fields.turnOrderCount = {
@@ -1155,6 +1216,11 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
   };
   collections.locomotives.fields.lastMovedTurn = {
     storage: { kind: "attribute", name: "lastMovedTurn" },
+    valueType: "core.integer",
+    access: "read-write"
+  };
+  collections.locomotives.fields.news19ConfiscatedTurn = {
+    storage: { kind: "attribute", name: "news19ConfiscatedTurn" },
     valueType: "core.integer",
     access: "read-write"
   };
@@ -1326,23 +1392,26 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
     .find((step) => step.id === "facilitator.setup");
   if (setupStep) {
     setupStep._semantics =
-      "Ведущий создаёт подтверждённый нечётный состав, фиксирует случайную очередь и размещает всю стартовую технику.";
+      "Ведущий создаёт от 4 до 12 команд в подтверждённом соотношении типов, фиксирует случайную очередь и размещает всю стартовую технику.";
     setupStep.actionIds = [
       ...generated.map((item) => item.action.id),
       ...setupStep.actionIds.filter((actionId) => !actionId.startsWith(setupActionPrefix))
     ];
   }
 
+  root.content.data.rules.teams.supportedCounts = supportedTeamCounts;
   root.content.data.rules.teams.supportedOddCounts = supportedOddTeamCounts;
   root.content.data.rules.teams.oddComposition =
     "logistics_company_count = locomotive_guild_count + 1";
+  root.content.data.rules.teams.evenComposition =
+    "logistics_company_count = locomotive_guild_count";
   root.content.data.rules.teams.contrastColorIds = contrastColorIds;
   root.content.data.sessionSetup = {
     status: "executable-technical-draft",
     publishable: false,
     sourceNetwork: "annotations/initial-network.review.json",
     networkUse: "technical placement only until author overlay confirmation",
-    supportedTeamCounts: supportedOddTeamCounts,
+    supportedTeamCounts,
     initialResources: {
       coinsPerTeam: 10,
       logisticsCompany: { wagons: 2, locomotives: 0 },
@@ -1356,8 +1425,6 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       advancesOnlyAfterAllCurrentTeamAssetsArePlaced: true
     },
     unresolved: [
-      "R-28-even-team-composition",
-      "R-26-finite-market-stock-or-explicit-no-extra-limit",
       "dynamic-team-construction-contributions",
       "author-confirmation-of-initial-network-overlay"
     ]
@@ -1374,8 +1441,8 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
   const blockers = new Set(root.config.runtimeBlockers);
   blockers.delete("team configuration and initial transport assets");
   blockers.delete("accessible free-text team-name entry");
-  blockers.add("R-28 even-team composition");
-  blockers.add("R-26 finite market stock or explicit no-extra-limit confirmation");
+  blockers.delete("R-28 even-team composition");
+  blockers.delete("R-26 finite market stock or explicit no-extra-limit confirmation");
   root.config.runtimeBlockers = [...blockers];
   root.config.runtimeReady = false;
 
@@ -1419,7 +1486,7 @@ const run = async (argv) => {
     await writeAtomically(authoringPath, builtText);
   }
   process.stdout.write(
-    `cards-money-trains: ${checkOnly ? "verified" : "built"} bounded odd-team session setup\n`
+    `cards-money-trains: ${checkOnly ? "verified" : "built"} bounded 4–12-team session setup\n`
   );
 };
 
@@ -1436,5 +1503,7 @@ export {
   buildSessionSetupAuthoring,
   contrastColorIds,
   networkPath,
-  supportedOddTeamCounts
+  supportedOddTeamCounts,
+  supportedTeamCompositions,
+  supportedTeamCounts
 };

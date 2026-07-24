@@ -226,12 +226,12 @@ test("six game-local generators preserve the complete cargo-settlement authoring
   );
   assert.equal(
     actual.root.config.runtimeBlockers.includes(
-      "remaining market and reporting workflows"
+      "remaining reporting workflows"
     ),
     true
   );
-  assert.equal(actual.root.logic.actions.length, 82);
-  assert.equal(Object.keys(actual.root.mechanics.plans).length, 82);
+  assert.equal(actual.root.logic.actions.length, 92);
+  assert.equal(Object.keys(actual.root.mechanics.plans).length, 92);
 });
 
 test("normal load derives ownership and journals the confirmed cargo relation", async () => {

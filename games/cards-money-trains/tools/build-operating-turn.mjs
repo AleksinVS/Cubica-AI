@@ -2,19 +2,19 @@
 /**
  * Build the repeatable operating-turn skeleton for «Карты, деньги, поезда».
  *
- * This game-local generator connects the already executable odd-team setup and
- * physical card lifecycle to mandatory maintenance. It also supplies explicit
- * phase boundaries for a turn in which the facilitator makes no market trade
- * and builds nothing, so the unfinished market and construction content cannot
- * prevent multi-turn testing. Finite market stock, the one-card cargo edge,
- * real construction and reporting/reflection content remain explicit blockers.
+ * This game-local generator connects the already executable 4–12-team setup and
+ * physical card lifecycle to mandatory maintenance and the repeatable vehicle
+ * market. It also supplies explicit phase boundaries for a turn in which the
+ * facilitator builds nothing, so unfinished construction content cannot
+ * prevent multi-turn testing. Reporting/reflection content remains an explicit
+ * blocker.
  * The generator composes accepted neutral Mechanics operations only and never
  * adds a game-specific Runtime branch.
  *
  * Ownership boundary:
  * - this file owns actions/plans prefixed with `session.play.` or `maintenance.`;
- * - it owns only the exact phase actions `market.phase.finish` and
- *   `reporting.phase.finish`, not future market or reporting commands;
+ * - it owns the exact four vehicle-market actions plus
+ *   `market.phase.finish` and `reporting.phase.finish`;
  * - setup owns vehicle creation and therefore initializes vehicle maintenance;
  * - the card lifecycle owns cargo creation and initializes cargo maintenance;
  * - this file owns the shared maintenance fields and the repeatable phase
@@ -34,6 +34,10 @@ const authoringPath = path.join(gameRoot, "authoring", "game.authoring.json");
 const normalFixtureId = "normal-start-policy";
 const ownedActionPrefixes = ["session.play.", "maintenance."];
 const ownedExactActionIds = new Set([
+  "market.purchase.wagon",
+  "market.purchase.locomotive",
+  "market.sell.wagon",
+  "market.sell.locomotive",
   "market.phase.finish",
   "reporting.phase.finish"
 ]);
@@ -43,6 +47,10 @@ const ownedBoardActionIds = new Set([
   "maintenance-pay-wagon",
   "maintenance-pay-held-cargo",
   "maintenance-phase-finish",
+  "market-purchase-wagon",
+  "market-purchase-locomotive",
+  "market-sell-wagon",
+  "market-sell-locomotive",
   "market-phase-finish",
   "reporting-phase-finish"
 ]);
@@ -138,6 +146,36 @@ const objectReferenceParams = ({ parameterName, collection, objectType }) => ({
   },
   required: [parameterName]
 });
+
+/** Describe a configured team plus one open terminal selected by the facilitator. */
+const marketPurchaseParams = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    teamId: {
+      type: "string",
+      maxLength: 128,
+      "x-cubica-ref": {
+        kind: "object",
+        collection: "teams",
+        allowedTypes: ["game.team"],
+        visibility: "public"
+      }
+    },
+    stationId: {
+      type: "string",
+      maxLength: 128,
+      "x-cubica-ref": {
+        kind: "object",
+        collection: "networkNodes",
+        network: "main",
+        allowedTypes: ["transport.terminal"],
+        visibility: "public"
+      }
+    }
+  },
+  required: ["teamId", "stationId"]
+};
 
 /** Guard every normal-session operating action against technical fixtures. */
 const normalPhaseGuard = (phase) => all(
@@ -832,22 +870,457 @@ const buildMaintenanceFinish = () => {
   };
 };
 
+/** Resolve a turn-scoped news price first and the persistent market price second. */
+const marketPurchasePrice = (assetKind) => ({
+  op: "value.coalesce",
+  items: [
+    state(`public.turnEffects.purchasePriceOverrides.${assetKind}`),
+    state(`public.market.basePurchasePrices.${assetKind}`)
+  ]
+});
+
+/** Prove that a public team exists, finished placement, and may own this asset kind. */
+const marketTeamMatches = (teamId, teamType) => ({
+  op: "predicate.entity.matches",
+  entity: {
+    collection: "teams",
+    entityId: teamId
+  },
+  objectType: "game.team",
+  facets: {
+    placementStatus: literal("placed")
+  },
+  attributes: {
+    type: literal(teamType)
+  }
+});
+
+/** Purchases may place a new vehicle only on an open terminal of the main network. */
+const marketStationMatches = () => ({
+  op: "predicate.entity.matches",
+  entity: {
+    collection: "networkNodes",
+    entityId: param("stationId")
+  },
+  objectType: "transport.terminal",
+  facets: {
+    availability: literal("open")
+  },
+  attributes: {
+    networkId: literal("main")
+  }
+});
+
 /**
- * Leave the market without a trade.
+ * Build the complete initial state of a newly purchased vehicle.
  *
- * This is deliberately a phase boundary rather than a mock purchase: the
- * author has not yet confirmed finite stock and per-team limits. The action
- * changes no money, ownership or inventory, so it remains valid when the real
- * market commands are added alongside it later.
+ * Later game-local generators extend every creation path with their own
+ * markers. The optional flags preserve those fields when this earlier
+ * generator is rebuilt over a fully composed authoring document.
+ */
+const purchasedVehicleAttributes = ({
+  assetKind,
+  includeFormationTarget,
+  includeNews19Marker
+}) => {
+  const common = {
+    networkId: literal("main"),
+    nodeId: param("stationId"),
+    ownerTeamId: param("teamId"),
+    maintenancePaidTurn: state("public.session.turnNumber")
+  };
+  if (assetKind === "locomotive") {
+    return {
+      ...common,
+      actionPoints: literal(5),
+      turnOrderCount: literal(1),
+      movementResolvedTurn: literal(0),
+      lastMovedTurn: literal(0),
+      ...(includeNews19Marker
+        ? { news19ConfiscatedTurn: literal(0) }
+        : {})
+    };
+  }
+  return {
+    ...common,
+    attachedVehicleId: literal(null),
+    cargoId: literal(null),
+    cargoOfferEligibleTurn: literal(0),
+    cargoOfferResolvedTurn: literal(0),
+    cargoPriorityActiveCount: literal(0),
+    ...(includeFormationTarget
+      ? { formationTargetLocomotiveId: literal(null) }
+      : {}),
+    ...(includeNews19Marker
+      ? { news19ConfiscatedTurn: literal(0) }
+      : {})
+  };
+};
+
+/**
+ * Buy one vehicle without inventing a finite game market.
+ *
+ * Collection capacity remains the platform's bounded-execution safety limit,
+ * not a game rule. The shared monotonic setup sequence creates a deterministic
+ * collision-free identifier, while the whole debit-and-create transaction
+ * rolls back if funds, permissions, terminal validity or capacity fail.
+ */
+const buildMarketPurchase = ({
+  assetKind,
+  collection,
+  objectType,
+  teamType,
+  label,
+  includeFormationTarget,
+  includeNews19Marker
+}) => {
+  const id = `market.purchase.${assetKind}`;
+  const price = marketPurchasePrice(assetKind);
+  const allocateStepId = `allocate-${assetKind}-id`;
+  const capacitySteps = assetKind === "locomotive"
+    ? [{
+        id: "select-locomotives-at-terminal",
+        kind: "query",
+        op: "core.entities.select",
+        selector: {
+          collection: "locomotives",
+          objectTypes: ["transport.locomotive"],
+          facets: { availability: literal("active") },
+          attributes: {
+            networkId: literal("main"),
+            nodeId: param("stationId")
+          },
+          // Two existing locomotives exceed this declared maximum and abort
+          // before the shared id sequence or money can change.
+          cardinality: { min: 0, max: 1 }
+        }
+      }]
+    : [];
+  return {
+    action: action({
+      id,
+      label,
+      semantics:
+        `Покупает один ${assetKind === "wagon" ? "вагон" : "локомотив"} разрешённому типу команды по серверной цене и сразу размещает его на открытом терминале.`,
+      paramsSchema: marketPurchaseParams
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: all(
+              normalPhaseGuard("market"),
+              compare(
+                "eq",
+                state(`public.turnEffects.purchasePermissions.${assetKind}`),
+                literal(true)
+              ),
+              marketTeamMatches(param("teamId"), teamType),
+              marketStationMatches()
+            ),
+            errorCode: "MARKET_PURCHASE_UNAVAILABLE"
+          },
+          ...capacitySteps,
+          {
+            id: allocateStepId,
+            kind: "command",
+            op: "core.collection.id.allocate",
+            collection,
+            sequence: { endpoint: "public.setup.assetSequence" },
+            prefix: assetKind
+          },
+          {
+            id: "debit",
+            kind: "command",
+            op: "core.resource.transfer",
+            from: {
+              kind: "state",
+              target: {
+                endpoint: "public.teams.bound.coins",
+                bindings: {
+                  teamId: param("teamId")
+                }
+              }
+            },
+            to: { kind: "bank" },
+            amount: price,
+            onInsufficient: "fail"
+          },
+          {
+            id: "create-vehicle",
+            kind: "command",
+            op: "core.entity.create",
+            visibility: "public",
+            collection,
+            entityId: result(allocateStepId, ["id"]),
+            objectType,
+            facets: {
+              availability: literal("active")
+            },
+            attributes: purchasedVehicleAttributes({
+              assetKind,
+              includeFormationTarget,
+              includeNews19Marker
+            })
+          },
+          {
+            id: "journal",
+            kind: "command",
+            op: "core.event.emit",
+            eventType: "market.vehicle.purchased",
+            summary: literal(
+              assetKind === "wagon"
+                ? "Команда купила вагон"
+                : "Команда купила локомотив"
+            ),
+            audience: "public",
+            data: {
+              kind: literal("market-purchase"),
+              assetKind: literal(assetKind),
+              teamId: param("teamId"),
+              vehicleId: result(allocateStepId, ["id"]),
+              amount: price,
+              turnNumber: state("public.session.turnNumber")
+            }
+          }
+        ]
+      }
+    }
+  };
+};
+
+/** Prove that the server-owned selected vehicle is saleable by its team type. */
+const marketSaleGuard = ({
+  collection,
+  parameterName,
+  objectType,
+  teamType,
+  includeFormationTarget
+}) => {
+  const vehicleId = param(parameterName);
+  const neutralAttributes = collection === "wagons"
+    ? {
+        networkId: literal("main"),
+        cargoId: literal(null),
+        attachedVehicleId: literal(null),
+        ...(includeFormationTarget
+          ? { formationTargetLocomotiveId: literal(null) }
+          : {})
+      }
+    : { networkId: literal("main") };
+  return all(
+    normalPhaseGuard("market"),
+    {
+      op: "predicate.entity.matches",
+      entity: { collection, entityId: vehicleId },
+      objectType,
+      facets: {
+        availability: literal("active")
+      },
+      attributes: neutralAttributes
+    },
+    marketTeamMatches(
+      entityValue(collection, vehicleId, "ownerTeamId"),
+      teamType
+    )
+  );
+};
+
+/**
+ * Sell one eligible vehicle back to the unbounded market.
+ *
+ * Ownership is derived from the selected object and is never accepted as a
+ * client parameter. Sold objects remain in the immutable session history but
+ * leave the map and all current-turn participation.
+ */
+const buildMarketSale = ({
+  assetKind,
+  collection,
+  parameterName,
+  objectType,
+  teamType,
+  label,
+  salePrice,
+  includeFormationTarget
+}) => {
+  const id = `market.sell.${assetKind}`;
+  const vehicleId = param(parameterName);
+  const ownerTeamId = entityValue(collection, vehicleId, "ownerTeamId");
+  const locomotiveAttachmentSteps = assetKind === "locomotive"
+    ? [{
+        id: "select-attached-wagons",
+        kind: "query",
+        op: "core.entities.select",
+        selector: {
+          collection: "wagons",
+          objectTypes: ["transport.wagon"],
+          facets: { availability: literal("active") },
+          attributes: {
+            attachedVehicleId: vehicleId
+          },
+          cardinality: { min: 0, max: 64 }
+        }
+      }, {
+        id: "assert-no-attached-wagons",
+        kind: "assert",
+        op: "core.assert",
+        predicate: compare(
+          "eq",
+          result("select-attached-wagons", ["ids"]),
+          literal([])
+        ),
+        errorCode: "MARKET_SALE_ATTACHED_WAGONS"
+      }]
+    : [];
+  const resetPatches = assetKind === "locomotive"
+    ? [{
+        operation: "set",
+        path: ["nodeId"],
+        value: literal(null)
+      }, {
+        operation: "set",
+        path: ["actionPoints"],
+        value: literal(0)
+      }, {
+        operation: "set",
+        path: ["turnOrderCount"],
+        value: literal(0)
+      }, {
+        operation: "set",
+        path: ["movementResolvedTurn"],
+        value: literal(0)
+      }, {
+        operation: "set",
+        path: ["lastMovedTurn"],
+        value: literal(0)
+      }]
+    : [{
+        operation: "set",
+        path: ["nodeId"],
+        value: literal(null)
+      }, {
+        operation: "set",
+        path: ["cargoOfferEligibleTurn"],
+        value: literal(0)
+      }, {
+        operation: "set",
+        path: ["cargoOfferResolvedTurn"],
+        value: literal(0)
+      }, {
+        operation: "set",
+        path: ["cargoPriorityActiveCount"],
+        value: literal(0)
+      }];
+  return {
+    action: action({
+      id,
+      label,
+      semantics:
+        `Продаёт пустой и свободный ${assetKind === "wagon" ? "вагон" : "локомотив"} его серверно определённого владельца и возвращает фиксированную сумму.`,
+      paramsSchema: objectReferenceParams({
+        parameterName,
+        collection,
+        objectType
+      })
+    }),
+    plan: {
+      transaction: {
+        steps: [
+          {
+            id: "guard",
+            kind: "assert",
+            op: "core.assert",
+            predicate: marketSaleGuard({
+              collection,
+              parameterName,
+              objectType,
+              teamType,
+              includeFormationTarget
+            }),
+            errorCode: "MARKET_SALE_UNAVAILABLE"
+          },
+          ...locomotiveAttachmentSteps,
+          {
+            id: "credit",
+            kind: "command",
+            op: "core.resource.transfer",
+            from: { kind: "bank" },
+            to: {
+              kind: "state",
+              target: {
+                endpoint: "public.teams.bound.coins",
+                bindings: {
+                  teamId: ownerTeamId
+                }
+              }
+            },
+            amount: literal(salePrice),
+            onInsufficient: "fail"
+          },
+          {
+            id: "remove-from-map",
+            kind: "command",
+            op: "core.entity.attributes.patch",
+            entity: {
+              collection,
+              entityId: vehicleId
+            },
+            patches: resetPatches
+          },
+          {
+            id: "mark-sold",
+            kind: "command",
+            op: "core.entity.facet.set",
+            entity: {
+              collection,
+              entityId: vehicleId
+            },
+            facet: "availability",
+            value: literal("sold")
+          },
+          {
+            id: "journal",
+            kind: "command",
+            op: "core.event.emit",
+            eventType: "market.vehicle.sold",
+            summary: literal(
+              assetKind === "wagon"
+                ? "Команда продала вагон"
+                : "Команда продала локомотив"
+            ),
+            audience: "public",
+            data: {
+              kind: literal("market-sale"),
+              assetKind: literal(assetKind),
+              teamId: ownerTeamId,
+              vehicleId,
+              amount: literal(salePrice),
+              turnNumber: state("public.session.turnNumber")
+            }
+          }
+        ]
+      }
+    }
+  };
+};
+
+/**
+ * Leave the market after any number of trades, including zero.
+ *
+ * This remains a separate facilitator decision: all purchase and sale actions
+ * keep the phase open so the group can repeat them before continuing.
  */
 const buildMarketFinish = () => {
   const id = "market.phase.finish";
   return {
     action: action({
       id,
-      label: "Завершить рынок без сделок",
+      label: "Завершить рынок",
       semantics:
-        "Явно завершает рыночный этап текущего хода, не покупая и не продавая технику.",
+        "Явно завершает рыночный этап после любого количества покупок и продаж техники.",
       paramsSchema: noParamsSchema
     }),
     plan: {
@@ -875,7 +1348,7 @@ const buildMarketFinish = () => {
             kind: "command",
             op: "core.event.emit",
             eventType: "market.phase.finished",
-            summary: literal("Ведущий завершил рынок без сделок"),
+            summary: literal("Ведущий завершил рынок"),
             audience: "public",
             data: {
               kind: literal("phase"),
@@ -1139,6 +1612,17 @@ const declareEvents = (stateModel) => {
         turnNumber: { typeRef: "core.integer", optional: false }
       }
     },
+    "game.market-vehicle-transaction-event": {
+      kind: "record",
+      fields: {
+        kind: { typeRef: "core.string", optional: false },
+        assetKind: { typeRef: "core.string", optional: false },
+        teamId: { typeRef: "core.string", optional: false },
+        vehicleId: { typeRef: "core.string", optional: false },
+        amount: { typeRef: "core.integer", optional: false },
+        turnNumber: { typeRef: "core.integer", optional: false }
+      }
+    },
     "game.turn-phase-finished-event": {
       kind: "record",
       fields: {
@@ -1174,6 +1658,16 @@ const declareEvents = (stateModel) => {
     "maintenance.progressive-asset-tax.paid": {
       audienceRef: "public",
       payloadType: "game.progressive-asset-tax-paid-event",
+      journalEndpoint: { endpoint: "public.log" }
+    },
+    "market.vehicle.purchased": {
+      audienceRef: "public",
+      payloadType: "game.market-vehicle-transaction-event",
+      journalEndpoint: { endpoint: "public.log" }
+    },
+    "market.vehicle.sold": {
+      audienceRef: "public",
+      payloadType: "game.market-vehicle-transaction-event",
       journalEndpoint: { endpoint: "public.log" }
     },
     "market.phase.finished": {
@@ -1229,6 +1723,51 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     buildSessionStart(),
     ...buildMaintenancePayments(),
     buildMaintenanceFinish(),
+    buildMarketPurchase({
+      assetKind: "wagon",
+      collection: "wagons",
+      objectType: "transport.wagon",
+      teamType: "logistics_company",
+      label: "Купить вагон",
+      includeFormationTarget:
+        stateModel.collections.wagons.fields.formationTargetLocomotiveId !==
+        undefined,
+      includeNews19Marker:
+        stateModel.collections.wagons.fields.news19ConfiscatedTurn !== undefined
+    }),
+    buildMarketPurchase({
+      assetKind: "locomotive",
+      collection: "locomotives",
+      objectType: "transport.locomotive",
+      teamType: "locomotive_guild",
+      label: "Купить локомотив",
+      includeFormationTarget: false,
+      includeNews19Marker:
+        stateModel.collections.locomotives.fields.news19ConfiscatedTurn !==
+        undefined
+    }),
+    buildMarketSale({
+      assetKind: "wagon",
+      collection: "wagons",
+      parameterName: "wagonId",
+      objectType: "transport.wagon",
+      teamType: "logistics_company",
+      label: "Продать вагон",
+      salePrice: 2,
+      includeFormationTarget:
+        stateModel.collections.wagons.fields.formationTargetLocomotiveId !==
+        undefined
+    }),
+    buildMarketSale({
+      assetKind: "locomotive",
+      collection: "locomotives",
+      parameterName: "locomotiveId",
+      objectType: "transport.locomotive",
+      teamType: "locomotive_guild",
+      label: "Продать локомотив",
+      salePrice: 4,
+      includeFormationTarget: false
+    }),
     buildMarketFinish(),
     buildReportingFinish()
   ];
@@ -1313,10 +1852,46 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
       section: "maintenance"
     }];
   const phaseBoundaryBoardActions = [{
-      id: "market-phase-finish",
-      label: "Завершить рынок без сделок",
+      id: "market-purchase-wagon",
+      label: "Купить вагон",
       description:
-        "Переходит к грузам без покупки и продажи техники; полноценный рынок остаётся отдельной работой.",
+        "Выберите команду-перевозчика и открытый терминал; сервер применит новость, цену и проверку денег.",
+      actionId: "market.purchase.wagon",
+      phase: "market",
+      section: "market"
+    },
+    {
+      id: "market-purchase-locomotive",
+      label: "Купить локомотив",
+      description:
+        "Выберите паровозную гильдию и открытый терминал; сервер также не допустит третий локомотив в точке.",
+      actionId: "market.purchase.locomotive",
+      phase: "market",
+      section: "market"
+    },
+    {
+      id: "market-sell-wagon",
+      label: "Продать вагон",
+      description:
+        "Выберите активный пустой и не прицепленный вагон команды-перевозчика.",
+      actionId: "market.sell.wagon",
+      phase: "market",
+      section: "market"
+    },
+    {
+      id: "market-sell-locomotive",
+      label: "Продать локомотив",
+      description:
+        "Выберите активный локомотив паровозной гильдии без прицепленных вагонов.",
+      actionId: "market.sell.locomotive",
+      phase: "market",
+      section: "market"
+    },
+    {
+      id: "market-phase-finish",
+      label: "Завершить рынок",
+      description:
+        "Переходит к грузам после любого количества покупок и продаж, включая ноль.",
       actionId: "market.phase.finish",
       phase: "market",
       section: "market"
@@ -1419,9 +1994,13 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
       _type: "game.Step",
       _label: "Рынок",
       _semantics:
-        "До подключения подтверждённого запаса техники ведущий может явно завершить рынок без сделок и продолжить проверяемый ход.",
+        "Ведущий повторяет разрешённые покупки и продажи техники, затем явно завершает рынок.",
       screenId: "facilitator",
       actionIds: [
+        "market.purchase.wagon",
+        "market.purchase.locomotive",
+        "market.sell.wagon",
+        "market.sell.locomotive",
         "market.phase.finish",
         ...finishActionIds
       ]
@@ -1457,10 +2036,11 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     root.content.data.cardLifecycle?.cargoSelectionPriority !== undefined;
   root.content.data.operatingTurn = {
     status: constructionReady
-      ? "executable-repeatable-no-purchase-cycle-with-construction"
-      : "executable-repeatable-no-purchase-no-build-cycle",
+      ? "executable-repeatable-market-cycle-with-construction"
+      : "executable-repeatable-market-no-build-cycle",
     publishable: false,
-    supportedSetup: "confirmed odd team counts 5/7/9/11",
+    supportedSetup:
+      "confirmed team counts 4–12; even split equally, odd split with one extra logistics company",
     firstTurnNews: "explicit skip without deck or random consumption",
     maintenance: {
       coinsPerActiveVehicle: 1,
@@ -1485,18 +2065,32 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
           "transaction fails without loan, elimination or partial charge"
       }
     },
+    market: {
+      status: "executable",
+      permissions:
+        "logistics companies buy/sell wagons; locomotive guilds buy/sell locomotives",
+      basePurchasePrices: { wagon: 5, locomotive: 10 },
+      salePrices: { wagon: 2, locomotive: 4 },
+      turnOverrides:
+        "news purchase prohibition and purchase price override are resolved from authoritative turnEffects",
+      inventory:
+        "no game stock or per-team limit; collection capacity 64 is only a bounded-execution safeguard",
+      placement:
+        "purchases become active at an open main-network terminal; at most two locomotives per terminal",
+      repetition:
+        "any number of atomic trades may occur before the facilitator finishes the phase"
+    },
     repeatablePhaseCycle: {
-      marketToCargo: "explicit-no-trade-finish",
+      marketToCargo: "explicit-finish-after-repeatable-transactions",
       reportingToNews: "atomic-turn-increment",
-      scope: constructionReady ? "no-purchase-with-construction" : "no-purchase-no-build"
+      scope: constructionReady ? "market-with-construction" : "market-no-build"
     },
     boundary: "next-turn-news",
     unresolvedAfterBoundary: [
-      "R-26-finite-market-stock-or-explicit-no-extra-limit",
-      "R-27-single-cargo-card-offer-policy",
       "author-confirmation-of-initial-network-overlay",
-      "remaining-news-effects",
-      "market-purchases-and-sales",
+      ...(root.content.data.cardLifecycle?.unresolvedRuleNewsNumbers?.length
+        ? ["remaining-news-effects"]
+        : []),
       ...(cargoPriorityReady ? [] : ["cargo-selection-priority"]),
       ...(constructionReady ? [] : ["real-construction"]),
       "reporting-and-reflection-content"
@@ -1524,9 +2118,11 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     "remaining market, cargo selection sequencing and reporting workflows";
   const postCargoPriorityBlocker =
     "remaining market and reporting workflows";
+  const reportingOnlyBlocker = "remaining reporting workflows";
   blockers.delete(precisePostCargoSettlementBlocker);
   blockers.delete(postConstructionBlocker);
   blockers.delete(postCargoPriorityBlocker);
+  blockers.delete(reportingOnlyBlocker);
   if (root.content.data.movementTurn) {
     // A later movement generator may already have proved ordering and the
     // explicit all-skip path, and perhaps real graph traversal as well.
@@ -1540,7 +2136,7 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
         blockers.delete(precisePostFormationBlocker);
         blockers.add(
           cargoPriorityReady && constructionReady
-            ? postCargoPriorityBlocker
+            ? reportingOnlyBlocker
             : constructionReady
               ? postConstructionBlocker
               : precisePostCargoSettlementBlocker
@@ -1598,7 +2194,7 @@ const run = async (argv) => {
     await writeAtomically(authoringPath, builtText);
   }
   process.stdout.write(
-    `cards-money-trains: ${checkOnly ? "verified" : "built"} repeatable no-purchase/no-build turn cycle\n`
+    `cards-money-trains: ${checkOnly ? "verified" : "built"} repeatable market turn cycle\n`
   );
 };
 
