@@ -175,7 +175,8 @@ record, журнал, две bounded collections, несколько типов,
 - типизированные add/set над скаляром и record;
 - строгий порядок: assert до изменений, event после успешных изменений;
 - откат всех targets при одной ошибке;
-- откат state, random counters, events и session version;
+- откат state, events и session version; случайное значение не сохраняется,
+  если вся команда не была зафиксирована;
 - запрет secret/control-flow → public;
 - одинаковый результат replay после PostgreSQL round-trip.
 

@@ -77,6 +77,7 @@ const sourceCollectionId = (terminalId) =>
   `cargoSourceTerminal${String(Number(terminalId.slice("terminal-".length))).padStart(2, "0")}`;
 const activeNetworkClosureReasonEndpoint =
   "public.news.activeNetworkClosureReason";
+const completionAvailabilityEndpoint = "public.session.canRequestFinish";
 
 /**
  * Exact author-confirmed one-turn network closures.
@@ -675,7 +676,7 @@ const buildCargoQueuePrepare = () => {
               }
             ],
             tieBreak: {
-              kind: "seeded-random",
+              kind: "server-random",
               stream: "cargo-offer-order"
             },
             when: hasEligibleWagons
@@ -2848,6 +2849,26 @@ const ownsLifecycleAction = (candidate) =>
 const ownsLifecyclePlan = (planId) =>
   lifecycleActionPrefixes.some((prefix) => planId.startsWith(prefix));
 
+/** Capture completion-owned availability patches from lifecycle-owned plans. */
+const captureCompletionAvailabilityPatches = (plans) => {
+  const availabilityPatches = new Map();
+  for (const [planId, plan] of Object.entries(plans)) {
+    if (!ownsLifecyclePlan(planId)) continue;
+    for (const step of plan.transaction.steps) {
+      if (step.op !== "core.state.patch") continue;
+      const patches = step.patches.filter(
+        (patch) =>
+          patch.operation === "set"
+          && patch.target?.endpoint === completionAvailabilityEndpoint
+      );
+      if (patches.length > 0) {
+        availabilityPatches.set(`${planId}\0${step.id}`, patches);
+      }
+    }
+  }
+  return availabilityPatches;
+};
+
 /**
  * Keep the older bounded technical replay aligned with the same safe set
  * semantics as the ordinary game path.
@@ -2901,6 +2922,8 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
   assertIntakeSemantics(intake);
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
+  const completionAvailabilityPatches =
+    captureCompletionAvailabilityPatches(root.mechanics.plans);
   const cargoById = new Map(intake.cargoRecords.map((item) => [item.id, item]));
   const baseByTerminal = Object.fromEntries(terminalIds.map((id) => [id, []]));
   for (const cargo of intake.cargoRecords) {
@@ -3014,11 +3037,6 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
     intake.newsRecords.map((item) => [item.id, buildNewsObject(item)])
   );
   root.state.secret = {
-    random: {
-      alg: "xoshiro128ss-streams-v1",
-      seed: "0000000000000000000000000000c0de",
-      counters: {}
-    },
     decks: {},
     cargoSources: Object.fromEntries(
       terminalIds.map((terminalId) => [
@@ -3587,6 +3605,14 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
         buildScalarNewsEffect(item, scalarNewsEffectPatchesByNumber.get(item.number))
       ),
   ];
+  for (const generatedItem of generated) {
+    for (const step of generatedItem.plan.transaction.steps) {
+      const availabilityPatches = completionAvailabilityPatches.get(
+        `${generatedItem.action.id}\0${step.id}`
+      );
+      if (availabilityPatches) step.patches.push(...availabilityPatches);
+    }
+  }
   const preservedActions = root.logic.actions.filter(
     (candidate) => !ownsLifecycleAction(candidate)
   );
@@ -3778,7 +3804,7 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       "news-34-base-purchase-prices-persist-until-game-end"
     ],
     workingInterpretations: [
-      "full-cargo-priority-tie-uses-deterministic-seeded-random-until-author-confirmation"
+      "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
     ],
     cargoSelectionPriority: {
       status: "executable-with-two-explicit-technical-policies",
@@ -3786,7 +3812,7 @@ const buildLifecycleAuthoring = (sourceAuthoring, intake) => {
       eligibility:
         "active empty logistics-company wagon at an open numbered terminal 1-23",
       ownerPriority: ["coins-descending", "active-owned-wagon-count-descending"],
-      fullTiePolicy: "server-seeded-random:cargo-offer-order",
+      fullTiePolicy: "server-random:cargo-offer-order",
       clientAuthority: {
         prepare: [],
         draw: ["terminalId"],

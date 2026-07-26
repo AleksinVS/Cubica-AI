@@ -1,0 +1,5 @@
+interface:
+  display_name: "C_codex-agent-routing"
+  short_description: "Маршрутизация Codex по модели, риску и контексту"
+  default_prompt: "Use $codex-agent-routing to select the smallest sufficient Codex agent profile, reasoning effort, and bounded context packet for this task."
+

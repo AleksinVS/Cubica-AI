@@ -44,6 +44,7 @@ import {
 } from "./actionRegistry.ts";
 import { resolveActionReferences, validateActionParameters } from "./actionParameters.ts";
 import type { CommandAdmissionController } from "./commandAdmission.ts";
+import type { SessionRandomProviderInput } from "./sessionRandom.ts";
 
 type RuntimeState = Record<string, unknown>;
 
@@ -52,6 +53,8 @@ export interface DispatchRuntimeActionOptions {
   credentialSha256: string;
   input: DispatchActionInput;
   admissionController: CommandAdmissionController;
+  /** Internal deterministic-test seam; production omits it. */
+  random?: SessionRandomProviderInput;
 }
 
 export interface DispatchRuntimeActionOutcome {
@@ -85,6 +88,8 @@ export interface ExecutePublishedGameIntentCandidateOptions {
   params?: Record<string, unknown>;
   actorPlayerId?: string;
   sessionRole: PublishedGameIntentSessionRole;
+  /** Internal deterministic-test seam; production omits it. */
+  random?: SessionRandomProviderInput;
   sessionId?: string;
   now?: Date;
 }
@@ -233,7 +238,10 @@ export async function executePublishedGameIntentCandidate(
   const params = validateActionParameters(definition, options.params);
   const resolvedRefs = resolveActionReferences(definition, params, options.state);
   const plan = options.bundle.manifest.mechanics.plans[definition.binding.planRef];
-  const handler = createRuntimeActionRegistry(options.bundle).get(options.actionId);
+  const handler = createRuntimeActionRegistry(
+    options.bundle,
+    options.random ?? {}
+  ).get(options.actionId);
   if (!plan || !handler) {
     throw new RequestValidationError(`Action "${options.actionId}" has no published Mechanics plan`);
   }
@@ -278,7 +286,7 @@ export async function executeProtectedSystemIntentCandidate(
     throw new RequestValidationError(`Action "${options.actionId}" is not defined for the protected system path`);
   }
   const plan = options.bundle.manifest.mechanics.plans[definition.binding.planRef];
-  if (!plan || !createRuntimeActionRegistry(options.bundle).has(options.actionId)) {
+  if (!plan || !createRuntimeActionRegistry(options.bundle, options.random ?? {}).has(options.actionId)) {
     throw new RequestValidationError(`Action "${options.actionId}" has no published Mechanics plan`);
   }
 
@@ -301,6 +309,7 @@ export async function executeProtectedSystemIntentCandidate(
       now: options.now ?? new Date(),
       manifestAction: definition
     },
+    protectedRandom: options.random ?? {},
     admitTarget: () => {
       if (definition.allowedSessionRoles &&
           !definition.allowedSessionRoles.includes(options.sessionRole)) {
@@ -406,6 +415,7 @@ export async function dispatchRuntimeAction(
       params: options.input.params,
       actorPlayerId: commandActorPlayerId,
       sessionRole,
+      ...(options.random === undefined ? {} : { random: options.random }),
       now: new Date()
     };
     validatePublishedGameIntentAdmission(candidateOptions);

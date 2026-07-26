@@ -10,6 +10,14 @@
       "canonicalSkillPath": "skills/C_cubica/SKILL.md"
     },
     {
+      "catalogName": "C_codex-agent-routing",
+      "runtimeName": "codex-agent-routing",
+      "origin": "internal",
+      "capability": "orchestration.codex-routing",
+      "activationMode": "automatic",
+      "canonicalSkillPath": "skills/C_codex-agent-routing/SKILL.md"
+    },
+    {
       "catalogName": "C_external-skill-adapter",
       "runtimeName": "external-skill-adapter",
       "origin": "internal",

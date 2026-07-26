@@ -15,10 +15,14 @@ const {
 const {
   HISTORICAL_BLOCKED_LOCKS,
   MECHANICS_ARTIFACT_REGISTRY,
+  MODULE_REGISTRY,
+  PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS,
   PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS,
   PRE_FINITE_NUMBER_BLOCKED_ARTIFACTS,
   PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS,
   PRE_PARAMETERIZED_DECK_BLOCKED_ARTIFACTS,
+  PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS,
+  SHARED_KERNEL_VERSION,
   SHARED_VALIDATION_DEPENDENCIES,
   hashMechanicsCorpus,
   hashModuleArtifact
@@ -201,6 +205,23 @@ test("shared validation identity pins exact validator dependency versions", () =
   });
 });
 
+test("current exact modules pin the live server-random provider", () => {
+  assert.equal(SHARED_KERNEL_VERSION, "mechanics-shared-kernel-v10");
+  assert.equal(MODULE_REGISTRY.get("cubica.random").moduleVersion, "1.1.0");
+  assert.equal(
+    MODULE_REGISTRY.get("cubica.random").algorithmVersions.randomProvider,
+    "server-crypto-random-v1"
+  );
+  assert.equal(
+    MODULE_REGISTRY.get("cubica.deck").algorithmVersions.shuffle,
+    "fisher-yates-server-crypto-random-v1"
+  );
+  assert.equal(
+    MODULE_REGISTRY.get("cubica.graph").algorithmVersions.randomTieBreak,
+    "server-crypto-random-v1"
+  );
+});
+
 test("pre-registry production locks are known but blocked without a frozen executor", () => {
   for (const [moduleId, artifactHash] of Object.entries(HISTORICAL_BLOCKED_LOCKS)) {
     const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve({
@@ -237,6 +258,45 @@ test("the exact pre-logarithmic-random module set remains archive-only", () => {
     assert.match(
       resolved.reason,
       /pre-logarithmic-random-advance executable corpus is unavailable/u
+    );
+  }
+});
+
+test("the exact seed-counter stream module set remains archive-only", () => {
+  assert.equal(
+    PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS.length,
+    7,
+    "the archived corpus must retain every module affected by the shared kernel"
+  );
+  for (const identity of PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS) {
+    const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve(identity);
+    assert.equal(resolved.state, "blocked");
+    assert.match(
+      resolved.reason,
+      /pre-random-stream-snapshot executable corpus is unavailable/u
+    );
+  }
+});
+
+test("the exact snapshot-only provider module set remains archive-only", () => {
+  assert.deepEqual(
+    PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS.map(({ moduleId }) => moduleId),
+    [
+      "cubica.core",
+      "cubica.random",
+      "cubica.ordering",
+      "cubica.deck",
+      "cubica.graph",
+      "cubica.relations"
+    ],
+    "the archive must retain every exact v9 identity materialized in a bundle"
+  );
+  for (const identity of PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS) {
+    const resolved = MECHANICS_ARTIFACT_REGISTRY.resolve(identity);
+    assert.equal(resolved.state, "blocked");
+    assert.match(
+      resolved.reason,
+      /snapshot-only random-provider corpus is unavailable/u
     );
   }
 });

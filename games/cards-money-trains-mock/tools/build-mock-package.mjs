@@ -532,11 +532,6 @@ const build = async () => {
     }]))
   };
   game.root.state.secret = {
-    random: {
-      alg: "xoshiro128ss-streams-v1",
-      seed: gameplay.decks.controlSeed,
-      counters: {}
-    },
     decks: {}
   };
   publicState.board = {

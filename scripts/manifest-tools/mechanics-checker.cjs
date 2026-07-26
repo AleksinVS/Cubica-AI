@@ -9,8 +9,6 @@
 
 const {
   MAX_DECK_ITEMS,
-  MAX_SESSION_RANDOM_ADVANCE_WORK,
-  MAX_SESSION_RANDOM_STREAMS,
   MODULE_REGISTRY,
   OPERATION_MODULES,
   moduleIdsForOperations
@@ -167,7 +165,6 @@ function checkMechanicsBundle(mechanics, options = {}) {
   }
   checkNetworkBindings(options.networkModels || {}, model);
   checkStaticResourceBudgets(mechanics, profile);
-  checkDeclaredRandomStreams(mechanics.plans);
   const declaredDeckIds = collectDeclaredDeckIds(mechanics.plans);
 
   const actions = options.actions || {};
@@ -387,38 +384,6 @@ function checkExactModuleLockUsage(plans, lockedModules) {
     if (!required.has(moduleId)) {
       fail("MECHANICS_MODULE_LOCK_UNUSED", "/moduleLock", `locked module "${moduleId}" is not in the executable dependency closure`);
     }
-  }
-}
-
-/**
- * Reject a bundle that can name more persisted random streams than runtime
- * can ever store. The limit applies to the union across all plans: distinct
- * actions execute in the same session and therefore share one counter map.
- */
-function checkDeclaredRandomStreams(plans) {
-  const streams = new Set();
-  for (const planId of Object.keys(plans).sort()) {
-    const steps = plans[planId].transaction.steps;
-    visitMechanicsSteps(steps, (step, pointer) => {
-      const stream = step.op === "core.entities.order" && step.tieBreak?.kind === "seeded-random"
-        ? step.tieBreak.stream
-        : step.op === "random.dice.roll" || step.op === "deck.shuffle"
-          ? step.stream
-          : undefined;
-      if (stream === undefined || streams.has(stream)) {
-        return;
-      }
-      streams.add(stream);
-      if (streams.size > MAX_SESSION_RANDOM_STREAMS) {
-        fail(
-          "MECHANICS_RANDOM_STREAM_LIMIT_EXCEEDED",
-          `/plans/${escapePointer(planId)}/transaction/steps${pointer}/${
-            step.op === "core.entities.order" ? "tieBreak/stream" : "stream"
-          }`,
-          `declared random streams exceed the runtime limit of ${MAX_SESSION_RANDOM_STREAMS}`
-        );
-      }
-    });
   }
 }
 
@@ -2151,11 +2116,6 @@ function checkStep(step, context) {
       cost.scannedEntities += collection.capacity + relatedCapacity;
       cost.resultEntities += max * 2;
       cost.algorithmWork += orderingWorkUpperBound(max, step.keys.length, relatedCapacity) + derivedReadWork;
-      if (step.tieBreak.kind === "seeded-random") {
-        // Every complete-tie group has at least two members and runtime
-        // restores the persisted stream once per shuffled group.
-        cost.algorithmWork += Math.floor(max / 2) * MAX_SESSION_RANDOM_ADVANCE_WORK;
-      }
       const tieGroupsShape = {
         kind: "list",
         item: {
@@ -2447,7 +2407,6 @@ function checkStep(step, context) {
         // hidden. A secret `when` still may not leak through whether it ran.
         assertFlowToAudience(joinFlows(context.controlFlow, endpoint.bindingFlow), endpoint.audienceRef, pointer);
       cost.writes += 2;
-      cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
       return {
         kind: "random",
         max: 1,
@@ -2476,7 +2435,6 @@ function checkStep(step, context) {
         2 * MAX_DECK_ITEMS,
         collection.capacity + MAX_DECK_ITEMS
       );
-      cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
       cost.writes += 1;
       return { kind: "deck", max: 1 };
     }
@@ -2494,7 +2452,6 @@ function checkStep(step, context) {
       // Worst case: validate all zones, reshuffle the discard, then remove
       // the first order item. The runtime charges those same passes.
       cost.scannedEntities += 3 * MAX_DECK_ITEMS;
-      cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
       cost.writes += 2;
       return {
         kind: "deck",
@@ -2722,11 +2679,6 @@ function checkStep(step, context) {
           );
         }
         cost.scannedEntities += domainCollectionScanUpperBound(step, context);
-        if (step.op === "graph.regions.route.plan") {
-          // The route planner may have several equally minimal candidates.
-          // Runtime charges only a real tie; publication reserves one rebuild.
-          cost.algorithmWork += MAX_SESSION_RANDOM_ADVANCE_WORK;
-        }
         cost.writes += domainOperationWriteUpperBound(step);
         return domainOperationResult(step, context, expressionFlows);
       }

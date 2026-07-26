@@ -1,42 +1,12 @@
 /**
- * Replay-stable pseudo-random numbers for deterministic game sessions.
+ * Command-local server randomness for neutral Mechanics operations.
  *
- * `SessionRandomState` is the low-level state of one xoshiro128** generator.
- * Runtime snapshots persist `SessionRandomStreamsState`: one cryptographic
- * master seed plus a counter per named stream. A stream seed is derived only
- * from the master seed and its stable id, so consuming one mechanic's stream
- * cannot perturb dice, decks or route tie-breaking owned by another mechanic.
+ * Production uses Node's cryptographic integer source and deliberately keeps
+ * no generator state in the game session. Tests may inject a bounded sampler
+ * through the internal input object; this is a process-local test seam, not a
+ * session profile or a public gameplay capability.
  */
-import { createHash, randomBytes } from "node:crypto";
-import { createRequire } from "node:module";
-
-const require = createRequire(import.meta.url);
-const mechanicsLimits = require("../../../../../scripts/manifest-tools/mechanics-modules.cjs") as {
-  MAX_SESSION_RANDOM_ADVANCE_LEVELS: number;
-  MAX_SESSION_RANDOM_STREAMS: number;
-  MAX_SESSION_RANDOM_ADVANCE_WORK: number;
-};
-
-export const SESSION_RANDOM_ALGORITHM = "xoshiro128ss-v1" as const;
-export const SESSION_RANDOM_STREAMS_ALGORITHM = "xoshiro128ss-streams-v1" as const;
-/** Shared publication/runtime capacity of the persisted named-stream map. */
-export const MAX_SESSION_RANDOM_STREAMS = mechanicsLimits.MAX_SESSION_RANDOM_STREAMS;
-/** Maximum Mechanics work reserved for restoring one persisted random stream. */
-export const MAX_SESSION_RANDOM_ADVANCE_WORK =
-  mechanicsLimits.MAX_SESSION_RANDOM_ADVANCE_WORK;
-
-export interface SessionRandomState {
-  alg: typeof SESSION_RANDOM_ALGORITHM;
-  seed: string;
-  counter: number;
-}
-
-/** Persisted root for independently advancing, replay-stable named streams. */
-export interface SessionRandomStreamsState {
-  alg: typeof SESSION_RANDOM_STREAMS_ALGORITHM;
-  seed: string;
-  counters: Record<string, number>;
-}
+import { randomInt as cryptoRandomInt } from "node:crypto";
 
 export interface DiceRollResult {
   values: Array<number>;
@@ -44,424 +14,110 @@ export interface DiceRollResult {
   isDouble: boolean;
 }
 
+/** Result of one unbiased choice from a bounded list. */
+export interface SessionRandomChoice<T> {
+  value: T;
+  index: number;
+}
+
+/** Internal source used by every neutral random Mechanics operation. */
+export interface SessionRandomProvider {
+  rollDice(purposeId: string, dice: string): DiceRollResult;
+  shuffle<T>(purposeId: string, input: ReadonlyArray<T>): Array<T>;
+  choose<T>(purposeId: string, input: ReadonlyArray<T>): SessionRandomChoice<T>;
+}
+
+export interface SessionRandomProviderInput {
+  /**
+   * Internal test seam. Production omits it and uses `node:crypto.randomInt`.
+   * The callback must return an integer in `[0, exclusiveUpperBound)`.
+   */
+  sampleRange?: (exclusiveUpperBound: number) => number;
+}
+
 interface ParsedDice {
   count: number;
   sides: number;
 }
 
-/**
- * Optional deterministic work meter supplied by the Mechanics executor.
- *
- * Runtime-only previews use the same fast replay algorithm without a Mechanics
- * budget. Authoritative operations pass this meter so historical reconstruction
- * is charged before the first transition matrix is applied.
- */
-export interface SessionRandomWorkMeter {
-  charge: (units: number) => void;
-}
-
 const UINT32_RANGE = 0x1_0000_0000;
-const XOSHIRO_STATE_WORDS = 4;
-const UINT32_BITS = 32;
-const XOSHIRO_STATE_BITS = XOSHIRO_STATE_WORDS * UINT32_BITS;
-const SEED_PATTERN = /^[0-9a-f]{32}$/u;
 const DICE_PATTERN = /^([1-9][0-9]?)d([1-9][0-9]{0,3})$/u;
-const STREAM_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
+const PURPOSE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/u;
 const FORBIDDEN_RECORD_KEYS = new Set(["__proto__", "constructor", "prototype"]);
-const STREAM_DERIVATION_DOMAIN = Buffer.from("cubica.random-stream/v1", "utf8");
 
-const rotateLeft = (value: number, shift: number): number =>
-  ((value << shift) | (value >>> (32 - shift))) >>> 0;
-
-/** One normative xoshiro128** step; mutates the four-word working state. */
-const nextUint32 = (words: Array<number>): number => {
-  const result = Math.imul(rotateLeft(Math.imul(words[1], 5) >>> 0, 7), 9) >>> 0;
-  const t = (words[1] << 9) >>> 0;
-
-  words[2] = (words[2] ^ words[0]) >>> 0;
-  words[3] = (words[3] ^ words[1]) >>> 0;
-  words[1] = (words[1] ^ words[2]) >>> 0;
-  words[0] = (words[0] ^ words[3]) >>> 0;
-  words[2] = (words[2] ^ t) >>> 0;
-  words[3] = rotateLeft(words[3], 11);
-
-  return result;
-};
-
-/**
- * Apply a GF(2) linear transformation stored as 128 output columns.
- *
- * xoshiro's state transition uses only XOR, shifts and rotation, so each
- * output bit is a linear function of the input bits. A flattened Uint32Array
- * keeps the immutable transition table compact and avoids BigInt semantics.
- */
-const applyLinearTransform = (
-  transform: Uint32Array,
-  input: ReadonlyArray<number>
-): Array<number> => {
-  const output = [0, 0, 0, 0];
-  for (let wordIndex = 0; wordIndex < XOSHIRO_STATE_WORDS; wordIndex += 1) {
-    let remaining = input[wordIndex] >>> 0;
-    while (remaining !== 0) {
-      const leastSignificantBit = (remaining & -remaining) >>> 0;
-      const bitInWord = 31 - Math.clz32(leastSignificantBit);
-      const columnOffset =
-        (wordIndex * UINT32_BITS + bitInWord) * XOSHIRO_STATE_WORDS;
-      for (let outputWord = 0; outputWord < XOSHIRO_STATE_WORDS; outputWord += 1) {
-        output[outputWord] =
-          (output[outputWord] ^ transform[columnOffset + outputWord]) >>> 0;
-      }
-      remaining = (remaining ^ leastSignificantBit) >>> 0;
-    }
+/** Validate the authored purpose identifier without giving it persistence semantics. */
+export const assertSessionRandomPurposeId = (purposeId: string): void => {
+  if (
+    !PURPOSE_ID_PATTERN.test(purposeId) ||
+    FORBIDDEN_RECORD_KEYS.has(purposeId)
+  ) {
+    throw new Error("Session random purpose id is invalid");
   }
-  return output;
-};
-
-/** Build the one-step transition matrix directly from the normative step. */
-const buildBaseTransition = (): Uint32Array => {
-  const transform = new Uint32Array(XOSHIRO_STATE_BITS * XOSHIRO_STATE_WORDS);
-  for (let bit = 0; bit < XOSHIRO_STATE_BITS; bit += 1) {
-    const basis = [0, 0, 0, 0];
-    basis[Math.floor(bit / UINT32_BITS)] = (1 << (bit % UINT32_BITS)) >>> 0;
-    nextUint32(basis);
-    transform.set(basis, bit * XOSHIRO_STATE_WORDS);
-  }
-  return transform;
-};
-
-/** Square one transition matrix: applying its columns to itself yields T². */
-const squareLinearTransform = (transform: Uint32Array): Uint32Array => {
-  const squared = new Uint32Array(transform.length);
-  for (let bit = 0; bit < XOSHIRO_STATE_BITS; bit += 1) {
-    const columnOffset = bit * XOSHIRO_STATE_WORDS;
-    const column = [
-      transform[columnOffset],
-      transform[columnOffset + 1],
-      transform[columnOffset + 2],
-      transform[columnOffset + 3]
-    ];
-    squared.set(applyLinearTransform(transform, column), columnOffset);
-  }
-  return squared;
-};
-
-/**
- * Precompute T^(2^k) for every bit of a non-negative safe-integer counter.
- *
- * The table is constructed once when the runtime module loads. Per request,
- * restoring a stream then needs at most 53 bounded matrix applications rather
- * than `counter` calls to the generator.
- */
-const buildAdvancePowers = (): ReadonlyArray<Uint32Array> => {
-  const powers: Array<Uint32Array> = [];
-  let current = buildBaseTransition();
-  for (let level = 0; level < mechanicsLimits.MAX_SESSION_RANDOM_ADVANCE_LEVELS; level += 1) {
-    powers.push(current);
-    if (level + 1 < mechanicsLimits.MAX_SESSION_RANDOM_ADVANCE_LEVELS) {
-      current = squareLinearTransform(current);
-    }
-  }
-  return Object.freeze(powers);
-};
-
-const XOSHIRO_ADVANCE_POWERS = buildAdvancePowers();
-
-/**
- * Conservative work for replaying one counter.
- *
- * Each selected binary level applies one transform and may inspect all 128
- * state bits. Publication reserves the 53-level maximum; runtime charges the
- * tighter level count for the actual persisted counter before doing the work.
- */
-export const sessionRandomAdvanceWork = (counter: number): number => {
-  if (!Number.isSafeInteger(counter) || counter < 0) {
-    throw new Error("Session random counter must be a non-negative safe integer");
-  }
-  let levels = 0;
-  let remaining = counter;
-  while (remaining > 0) {
-    levels += 1;
-    remaining = Math.floor(remaining / 2);
-  }
-  return levels * XOSHIRO_STATE_BITS;
-};
-
-/** Advance the working state by exactly `counter` normative xoshiro steps. */
-const advanceState = (words: Array<number>, counter: number): Array<number> => {
-  let advanced = words;
-  let remaining = counter;
-  let level = 0;
-  while (remaining > 0) {
-    if (remaining % 2 === 1) {
-      advanced = applyLinearTransform(XOSHIRO_ADVANCE_POWERS[level], advanced);
-    }
-    remaining = Math.floor(remaining / 2);
-    level += 1;
-  }
-  return advanced;
-};
-
-const parseSeed = (seed: string): Array<number> => {
-  if (!SEED_PATTERN.test(seed)) {
-    throw new Error("Session random seed must contain exactly 32 lowercase hexadecimal characters");
-  }
-
-  const words = [0, 8, 16, 24].map((offset) => Number.parseInt(seed.slice(offset, offset + 8), 16) >>> 0);
-  // xoshiro has one forbidden all-zero state. The fixed replacement is part of
-  // the public replay contract, so changing it would require a new algorithm id.
-  return words.every((word) => word === 0) ? [1, 2, 3, 4] : words;
 };
 
 const parseDice = (dice: string): ParsedDice => {
   const match = DICE_PATTERN.exec(dice);
-  if (!match) {
-    throw new Error(`Dice notation "${dice}" must use NdM`);
-  }
-
+  if (!match) throw new Error(`Invalid dice notation "${dice}"; expected NdM`);
   const count = Number(match[1]);
   const sides = Number(match[2]);
-  if (!Number.isSafeInteger(count) || count < 1 || count > 99) {
-    throw new Error("Dice count must be an integer from 1 to 99");
-  }
-  if (!Number.isSafeInteger(sides) || sides < 2 || sides > 1000) {
-    throw new Error("Dice side count must be an integer from 2 to 1000");
-  }
-
+  if (count < 1 || count > 99) throw new Error("Dice count must be between 1 and 99");
+  if (sides < 2 || sides > 1000) throw new Error("Dice side count must be between 2 and 1000");
   return { count, sides };
 };
 
-const assertRandomState = (state: SessionRandomState) => {
-  if (state.alg !== SESSION_RANDOM_ALGORITHM) {
-    throw new Error(`Unsupported session random algorithm "${String(state.alg)}"`);
-  }
-  if (!Number.isSafeInteger(state.counter) || state.counter < 0) {
-    throw new Error("Session random counter must be a non-negative safe integer");
-  }
-};
-
-/** Validate one static stream id before it is used as a persisted map key. */
-export const assertSessionRandomStreamId = (streamId: string): void => {
-  if (!STREAM_ID_PATTERN.test(streamId) || FORBIDDEN_RECORD_KEYS.has(streamId)) {
-    throw new Error(`Session random stream id "${streamId}" is invalid`);
-  }
-};
-
-/** Fail closed when a snapshot carries malformed or unsupported stream state. */
-const assertRandomStreamsState = (state: SessionRandomStreamsState): void => {
-  if (state.alg !== SESSION_RANDOM_STREAMS_ALGORITHM) {
-    throw new Error(`Unsupported session random streams algorithm "${String(state.alg)}"`);
-  }
-  parseSeed(state.seed);
-  if (typeof state.counters !== "object" || state.counters === null || Array.isArray(state.counters)) {
-    throw new Error("Session random stream counters must be an object");
-  }
-  const counters = Object.entries(state.counters);
-  if (counters.length > MAX_SESSION_RANDOM_STREAMS) {
-    throw new Error(`Session random state exceeds the ${MAX_SESSION_RANDOM_STREAMS} stream limit`);
-  }
-  for (const [streamId, counter] of counters) {
-    assertSessionRandomStreamId(streamId);
-    if (!Number.isSafeInteger(counter) || counter < 0) {
-      throw new Error(`Session random stream "${streamId}" counter must be a non-negative safe integer`);
-    }
-  }
-};
-
 /**
- * Add an unambiguous length-prefixed field to the derivation hash.
+ * Build a fresh command-local provider.
  *
- * Explicit buffers avoid environment-dependent string encodings. Length
- * framing prevents two differently split fields from producing the same hash
- * input, while the fixed domain keeps this derivation separate from every
- * other SHA-256 use in the platform.
+ * `crypto.randomInt(max)` performs unbiased bounded sampling. A failed command
+ * may consume system entropy, but it leaves no accepted game result; a retry
+ * is therefore allowed to choose another value until one transaction commits.
  */
-const updateFramedHash = (
-  hash: ReturnType<typeof createHash>,
-  bytes: Uint8Array
-): void => {
-  const length = Buffer.allocUnsafe(4);
-  length.writeUInt32BE(bytes.byteLength, 0);
-  hash.update(length);
-  hash.update(bytes);
-};
+export const createSessionRandomProvider = (
+  input: SessionRandomProviderInput = {}
+): SessionRandomProvider => {
+  const sampleRange = input.sampleRange ?? ((range: number) => cryptoRandomInt(range));
 
-/** Derive the private 128-bit xoshiro seed for exactly one named stream. */
-const deriveSessionRandomStreamSeed = (masterSeed: string, streamId: string): string => {
-  parseSeed(masterSeed);
-  assertSessionRandomStreamId(streamId);
-  const hash = createHash("sha256");
-  updateFramedHash(hash, STREAM_DERIVATION_DOMAIN);
-  updateFramedHash(hash, Buffer.from(masterSeed, "hex"));
-  updateFramedHash(hash, Buffer.from(streamId, "utf8"));
-  return hash.digest("hex").slice(0, 32);
-};
-
-/**
- * Rebuild the deterministic generator at the persisted counter and expose one
- * unbiased integer sampler. Keeping this logic shared prevents dice and deck
- * operations from advancing the replay counter differently.
- */
-const createRangeSampler = (
-  state: SessionRandomState,
-  workMeter?: SessionRandomWorkMeter
-) => {
-  assertRandomState(state);
-  const seedWords = parseSeed(state.seed);
-  workMeter?.charge(sessionRandomAdvanceWork(state.counter));
-  const words = advanceState(seedWords, state.counter);
-
-  let counter = state.counter;
-  const sample = (range: number): number => {
+  const sample = (purposeId: string, range: number): number => {
+    assertSessionRandomPurposeId(purposeId);
     if (!Number.isSafeInteger(range) || range < 1 || range > UINT32_RANGE) {
       throw new Error("Random range must be a positive safe integer no larger than 2^32");
     }
-    const limit = Math.floor(UINT32_RANGE / range) * range;
-    while (true) {
-      // The persisted contract accepts only safe integer counters. Refuse
-      // before mutating the working generator so a stream at the boundary
-      // cannot produce an unrepresentable snapshot or consume hidden work.
-      if (counter >= Number.MAX_SAFE_INTEGER) {
-        throw new Error("Session random counter cannot advance beyond the safe integer limit");
+    const value = sampleRange(range);
+    if (!Number.isSafeInteger(value) || value < 0 || value >= range) {
+      throw new Error("Server random source returned a value outside its requested range");
+    }
+    return value;
+  };
+
+  return {
+    rollDice(purposeId, dice) {
+      const parsed = parseDice(dice);
+      const values = Array.from(
+        { length: parsed.count },
+        () => sample(purposeId, parsed.sides) + 1
+      );
+      return {
+        values,
+        total: values.reduce((sum, value) => sum + value, 0),
+        isDouble: values.length === 2 && values[0] === values[1]
+      };
+    },
+    shuffle<T>(purposeId: string, inputValues: ReadonlyArray<T>): Array<T> {
+      assertSessionRandomPurposeId(purposeId);
+      const values = [...inputValues];
+      for (let index = values.length - 1; index > 0; index -= 1) {
+        const swapIndex = sample(purposeId, index + 1);
+        [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
       }
-      const value = nextUint32(words);
-      counter += 1;
-      if (value < limit) return value % range;
+      return values;
+    },
+    choose<T>(purposeId: string, inputValues: ReadonlyArray<T>): SessionRandomChoice<T> {
+      assertSessionRandomPurposeId(purposeId);
+      if (inputValues.length === 0) {
+        throw new Error("Cannot choose a server-random value from an empty list");
+      }
+      const index = inputValues.length === 1 ? 0 : sample(purposeId, inputValues.length);
+      return { value: inputValues[index], index };
     }
   };
-
-  return {
-    sample,
-    snapshot: (): SessionRandomState => ({ alg: state.alg, seed: state.seed, counter })
-  };
-};
-
-/** Create a fresh session state; tests may pass a seed to obtain a fixed replay. */
-export const createSessionRandomState = (seed = randomBytes(16).toString("hex")): SessionRandomState => {
-  parseSeed(seed);
-  return {
-    alg: SESSION_RANDOM_ALGORITHM,
-    seed,
-    counter: 0
-  };
-};
-
-/** Create the persisted root used by all named random consumers in a session. */
-export const createSessionRandomStreamsState = (
-  seed = randomBytes(16).toString("hex")
-): SessionRandomStreamsState => {
-  parseSeed(seed);
-  return {
-    alg: SESSION_RANDOM_STREAMS_ALGORITHM,
-    seed,
-    counters: {}
-  };
-};
-
-/** Reconstruct one low-level generator without mutating the persisted root. */
-export const readSessionRandomStream = (
-  state: SessionRandomStreamsState,
-  streamId: string
-): SessionRandomState => {
-  assertRandomStreamsState(state);
-  assertSessionRandomStreamId(streamId);
-  const counter = Object.prototype.hasOwnProperty.call(state.counters, streamId)
-    ? state.counters[streamId]
-    : 0;
-  if (!Number.isSafeInteger(counter) || counter < 0) {
-    throw new Error(`Session random stream "${streamId}" counter must be a non-negative safe integer`);
-  }
-  return {
-    alg: SESSION_RANDOM_ALGORITHM,
-    seed: deriveSessionRandomStreamSeed(state.seed, streamId),
-    counter
-  };
-};
-
-/**
- * Persist the next counter for one stream and leave every other stream intact.
- * The derived seed is verified as well as the counter so callers cannot write
- * a generator from another stream into this stream's replay history.
- */
-export const writeSessionRandomStream = (
-  state: SessionRandomStreamsState,
-  streamId: string,
-  random: SessionRandomState
-): SessionRandomStreamsState => {
-  const current = readSessionRandomStream(state, streamId);
-  assertRandomState(random);
-  if (random.seed !== current.seed || random.counter < current.counter) {
-    throw new Error(`Session random stream "${streamId}" cannot accept unrelated or rewound state`);
-  }
-  if (!Object.prototype.hasOwnProperty.call(state.counters, streamId) &&
-      Object.keys(state.counters).length >= MAX_SESSION_RANDOM_STREAMS) {
-    throw new Error(`Session random state exceeds the ${MAX_SESSION_RANDOM_STREAMS} stream limit`);
-  }
-  return {
-    alg: state.alg,
-    seed: state.seed,
-    counters: { ...state.counters, [streamId]: random.counter }
-  };
-};
-
-/**
- * Roll dice without modulo bias and return the next persisted random state.
- * Every rejected sample still advances `counter`, which is essential for replay.
- */
-export const rollSessionDice = (
-  state: SessionRandomState,
-  dice: string,
-  workMeter?: SessionRandomWorkMeter
-): { random: SessionRandomState; result: DiceRollResult } => {
-  const parsed = parseDice(dice);
-  const sampler = createRangeSampler(state, workMeter);
-  const sampleSide = (): number => {
-    return sampler.sample(parsed.sides) + 1;
-  };
-
-  const values = Array.from({ length: parsed.count }, sampleSide);
-  return {
-    random: sampler.snapshot(),
-    result: {
-      values,
-      total: values.reduce((sum, value) => sum + value, 0),
-      isDouble: values.length === 2 && values[0] === values[1]
-    }
-  };
-};
-
-/**
- * Fisher–Yates shuffle backed by the persisted session PRNG. The input is not
- * mutated, and every chosen index advances the same replay counter as dice.
- */
-export const shuffleSessionValues = <T>(
-  state: SessionRandomState,
-  input: ReadonlyArray<T>,
-  workMeter?: SessionRandomWorkMeter
-): { random: SessionRandomState; values: Array<T> } => {
-  const sampler = createRangeSampler(state, workMeter);
-  const values = [...input];
-  for (let index = values.length - 1; index > 0; index -= 1) {
-    const swapIndex = sampler.sample(index + 1);
-    [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
-  }
-  return { random: sampler.snapshot(), values };
-};
-
-/**
- * Choose one value with the same persisted, unbiased generator used by dice
- * and decks. A singleton deliberately consumes no random word: deterministic
- * operations must not perturb later replay merely because they used this
- * generic helper.
- */
-export const chooseSessionValue = <T>(
-  state: SessionRandomState,
-  input: ReadonlyArray<T>,
-  workMeter?: SessionRandomWorkMeter
-): { random: SessionRandomState; value: T; index: number } => {
-  assertRandomState(state);
-  if (input.length === 0) throw new Error("Cannot choose a session-random value from an empty list");
-  if (input.length === 1) return { random: { ...state }, value: input[0], index: 0 };
-  const sampler = createRangeSampler(state, workMeter);
-  const index = sampler.sample(input.length);
-  return { random: sampler.snapshot(), value: input[index], index };
 };

@@ -526,7 +526,7 @@
         "tags": ["RuntimeActions"],
         "operationId": "previewTransportRoad",
         "summary": "Calculate a read-only server-owned road route for selected endpoints.",
-        "description": "The preview uses the exact requested session version and simulates any tied-route PRNG choice without persisting the next random state. POST /actions remains authoritative and recalculates the complete transaction.",
+        "description": "The preview uses the exact requested session version and never changes session state. It does not reserve a tied choice, so confirmation may select another equally valid candidate. POST /actions remains authoritative and recalculates the complete transaction.",
         "x-cubica-scope": "public",
         "security": [{ "SessionBearer": [] }],
         "requestBody": {

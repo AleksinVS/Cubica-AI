@@ -2,7 +2,7 @@
  * Universal bounded lexicographic ordering for typed entity selections.
  *
  * The module knows only collections, logical field identifiers, equality
- * joins and named random streams. Game concepts such as turns, vehicles or
+ * joins and authored random-purpose identifiers. Game concepts such as turns, vehicles or
  * ownership remain authored data and never enter this implementation.
  */
 import { charge } from "./budget.ts";
@@ -17,10 +17,7 @@ import {
   requireMechanicsIdentifier
 } from "./stateModel.ts";
 import {
-  readSessionRandomStream,
-  shuffleSessionValues,
-  writeSessionRandomStream,
-  type SessionRandomStreamsState
+  type SessionRandomProvider
 } from "../runtime/sessionRandom.ts";
 import type {
   CollectionModel,
@@ -140,7 +137,7 @@ export function executeOrderingOperation(step: OrderStep, context: MechanicsExec
       prepareKeyValue(step, key, id, entity, selectedCollection.model, context, caches))
   }));
 
-  // Canonical ID is deliberately the initial complete-tie order. Seeded
+  // Canonical ID is deliberately the initial complete-tie order. Server
   // randomness is applied later to whole equal groups, never in a comparator.
   prepared.sort((left, right) =>
     comparePreparedEntities(left, right, step.keys) || compareCanonicalIds(left.id, right.id));
@@ -158,25 +155,15 @@ export function executeOrderingOperation(step: OrderStep, context: MechanicsExec
     if (tieGroups.length === 0) {
       ids.push(...prepared.map((entry) => entry.id));
     } else {
-      const streams = requireRandomStreams(context);
-      let stream = readSessionRandomStream(streams, step.tieBreak.stream);
+      const random = requireRandomProvider(context);
       for (const group of equalGroups) {
         const canonicalIds = group.map((entry) => entry.id);
         if (canonicalIds.length < 2) {
           ids.push(...canonicalIds);
           continue;
         }
-        const shuffled = shuffleSessionValues(stream, canonicalIds, {
-          // Each complete-tie group rebuilds the same named stream at its
-          // updated counter. Charge that bounded historical work before the
-          // sampler applies its first transition power.
-          charge: (units) => charge(context, "algorithmWork", units)
-        });
-        stream = shuffled.random;
-        ids.push(...shuffled.values);
+        ids.push(...random.shuffle(step.tieBreak.stream, canonicalIds));
       }
-      context.random = writeSessionRandomStream(streams, step.tieBreak.stream, stream);
-      persistRandom(context);
     }
   }
 
@@ -565,18 +552,10 @@ function joinKey(value: unknown): string | undefined {
   );
 }
 
-function requireRandomStreams(context: MechanicsExecutionContext): SessionRandomStreamsState {
+function requireRandomProvider(context: MechanicsExecutionContext): SessionRandomProvider {
   if (context.random) return context.random;
-  const secret = isRecord(context.state.secret) ? context.state.secret : undefined;
-  if (!secret || !isRecord(secret.random)) {
-    throw new MechanicsExecutionError("MECHANICS_RANDOM_STATE_MISSING", "Runtime random state is not initialized");
-  }
-  context.random = secret.random as unknown as SessionRandomStreamsState;
-  return context.random;
-}
-
-function persistRandom(context: MechanicsExecutionContext): void {
-  if (!context.random) return;
-  if (!isRecord(context.state.secret)) context.state.secret = {};
-  (context.state.secret as JsonRecord).random = context.random;
+  throw new MechanicsExecutionError(
+    "MECHANICS_RANDOM_PROVIDER_MISSING",
+    "Runtime random provider is not initialized"
+  );
 }

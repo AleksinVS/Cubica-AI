@@ -11,26 +11,33 @@ import type { Predicate, Step } from "@cubica/contracts-manifest";
 import { getManifestActionDefinition, listManifestActionDefinitions } from "./manifestActions.ts";
 import { executeMechanicsTransaction, MechanicsExecutionError } from "../mechanics/index.ts";
 import { executeMechanicsTransactionWithTrustedPrefix } from "../mechanics/mechanicsExecutor.ts";
+import type { SessionRandomProviderInput } from "./sessionRandom.ts";
 
 type RuntimeState = Record<string, unknown>;
 
 const SYSTEM_TRIGGER_FALSE_CODE = "SYSTEM_SCHEDULE_TRIGGER_FALSE";
 
-const createRegistryMap = (bundle: GameBundle) => {
+const createRegistryMap = (
+  bundle: GameBundle,
+  protectedRandom?: SessionRandomProviderInput
+) => {
   const registry = new Map<string, RuntimeActionHandler<RuntimeState>>();
 
   for (const definition of listManifestActionDefinitions(bundle)) {
     const plan = bundle.manifest.mechanics.plans[definition.binding.planRef];
     if (!plan) continue;
     registry.set(definition.actionId, (context) =>
-      executePublishedRuntimeAction(bundle, definition, context));
+      executePublishedRuntimeAction(bundle, definition, context, protectedRandom));
   }
 
   return registry;
 };
 
-export function createRuntimeActionRegistry(bundle: GameBundle): RuntimeActionRegistry<RuntimeState> {
-  const registry = createRegistryMap(bundle);
+export function createRuntimeActionRegistry(
+  bundle: GameBundle,
+  protectedRandom?: SessionRandomProviderInput
+): RuntimeActionRegistry<RuntimeState> {
+  const registry = createRegistryMap(bundle, protectedRandom);
 
   return {
     get(actionId: string) {
@@ -55,6 +62,8 @@ export interface ExecuteSystemScheduledRuntimeActionOptions {
   context: RuntimeActionContext<RuntimeState>;
   scheduleId: string;
   trigger: Predicate;
+  /** Protected session provider; never exposed through the game action context. */
+  protectedRandom?: SessionRandomProviderInput;
   /**
    * Revalidate live resource references after the trigger succeeds.
    *
@@ -111,7 +120,7 @@ export function executeSystemScheduledRuntimeAction(
 
   try {
     const executed = executeMechanicsTransactionWithTrustedPrefix(
-      mechanicsInput(options.bundle, plan, options.context),
+      mechanicsInput(options.bundle, plan, options.context, options.protectedRandom),
       [triggerStep],
       options.admitTarget
     );
@@ -146,7 +155,8 @@ export function executeSystemScheduledRuntimeAction(
 function executePublishedRuntimeAction(
   bundle: GameBundle,
   definition: RuntimeManifestActionDefinition,
-  context: RuntimeActionContext<RuntimeState>
+  context: RuntimeActionContext<RuntimeState>,
+  protectedRandom?: SessionRandomProviderInput
 ): RuntimeActionResult<RuntimeState> {
   const plan = bundle.manifest.mechanics.plans[definition.binding.planRef];
   if (!plan) {
@@ -156,7 +166,9 @@ function executePublishedRuntimeAction(
     };
   }
   try {
-    return successfulRuntimeResult(executeMechanicsTransaction(mechanicsInput(bundle, plan, context)));
+    return successfulRuntimeResult(
+      executeMechanicsTransaction(mechanicsInput(bundle, plan, context, protectedRandom))
+    );
   } catch (error) {
     if (error instanceof MechanicsExecutionError) {
       return { ok: false, error: { code: error.code, message: error.message } };
@@ -168,7 +180,8 @@ function executePublishedRuntimeAction(
 function mechanicsInput(
   bundle: GameBundle,
   plan: GameBundle["manifest"]["mechanics"]["plans"][string],
-  context: RuntimeActionContext<RuntimeState>
+  context: RuntimeActionContext<RuntimeState>,
+  protectedRandom?: SessionRandomProviderInput
 ) {
   return {
     mechanics: bundle.manifest.mechanics,
@@ -179,12 +192,14 @@ function mechanicsInput(
       actorPlayerId: context.actorPlayerId,
       sessionRole: context.sessionRole
     },
+    ...(protectedRandom === undefined ? {} : { random: protectedRandom }),
     networkModels: bundle.manifest.networkModels,
     objectModels: bundle.manifest.objectModels,
     turnPhases: bundle.manifest.config.turnModel?.phases,
     publicMetrics: resolvePublicMetricRefs(bundle)
   };
 }
+
 
 /**
  * Cache of derived public metric catalogs, keyed by the immutable bundle.

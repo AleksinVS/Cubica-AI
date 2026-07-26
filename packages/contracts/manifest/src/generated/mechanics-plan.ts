@@ -262,8 +262,11 @@ export type EntityOrderTieBreak =
       kind: "canonical-id";
     }
   | {
-      kind: "seeded-random";
-      stream: Identifier;
+      kind: "server-random";
+      /**
+       * Legacy field name for a stable random-purpose identifier; it does not create or select a persisted generator stream.
+       */
+      stream: string;
     };
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
@@ -605,9 +608,9 @@ export type RankingGroup1 = {
 };
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
- * via the `definition` "randomStreamId".
+ * via the `definition` "randomPurposeId".
  */
-export type RandomStreamId = string;
+export type RandomPurposeId = string;
 /**
  * This interface was referenced by `CubicaMechanicsIRV1Alpha1`'s JSON-Schema
  * via the `definition` "jsonPropertyName".
@@ -2055,7 +2058,7 @@ export interface RandomRollStep {
   op: "random.dice.roll";
   dice: string;
   /**
-   * Stable named random stream; its counter advances independently from every other stream.
+   * Stable random-purpose identifier used for validation and audit context; no generator state is persisted.
    */
   stream: string;
   target: StateRef;
@@ -2072,7 +2075,7 @@ export interface DeckShuffleStep {
   deckId: Identifier;
   sourceCollection: Identifier;
   /**
-   * Stable named random stream pinned into deck state for later automatic reshuffles.
+   * Stable random-purpose identifier retained with deck state so automatic reshuffles keep the same declared intent; no generator state is persisted.
    */
   stream: string;
   when?: Predicate;

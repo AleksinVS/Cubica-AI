@@ -222,7 +222,7 @@
           "type": "string"
         },
         "tieBreak": {
-          "const": "session-random"
+          "const": "server-random"
         },
         "boundaryPolicy": {
           "const": "lowest-region-id"

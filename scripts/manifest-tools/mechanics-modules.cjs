@@ -15,26 +15,6 @@ const { validateOperationCatalogSchema } = require("./mechanics-validator.cjs");
 const { createMechanicsArtifactRegistry } = require("./mechanics-version-registry.cjs");
 
 /**
- * Maximum number of independently persisted random-stream counters.
- *
- * Publication and runtime deliberately import this one value: otherwise a
- * bundle could pass the static checker and later fail only after enough named
- * streams had been used in a live session.
- */
-const MAX_SESSION_RANDOM_STREAMS = 2_048;
-/**
- * A JavaScript safe integer has at most 53 significant binary digits.
- *
- * The replay counter is therefore reconstructed with at most 53 precomputed
- * powers of the 128-bit xoshiro state transition. One application examines
- * at most all 128 state bits, so this product is the conservative Mechanics
- * work reservation for rebuilding one random sampler.
- */
-const MAX_SESSION_RANDOM_ADVANCE_LEVELS = 53;
-const SESSION_RANDOM_STATE_BITS = 128;
-const MAX_SESSION_RANDOM_ADVANCE_WORK =
-  MAX_SESSION_RANDOM_ADVANCE_LEVELS * SESSION_RANDOM_STATE_BITS;
-/**
  * Maximum number of mutually exclusive members in one protected deck.
  *
  * Publication uses this same value for conservative scan-cost estimates and
@@ -57,7 +37,7 @@ if (!operationCatalogValidation.valid) {
     .map((error) => `${error.pointer || "/"} ${error.message}`)
     .join("; ")}`);
 }
-const SHARED_KERNEL_VERSION = "mechanics-shared-kernel-v8";
+const SHARED_KERNEL_VERSION = "mechanics-shared-kernel-v10";
 /**
  * Shared trusted Mechanics corpus.
  *
@@ -195,8 +175,8 @@ function hashModuleArtifact(descriptor, moduleCorpusHash, sharedKernel = undefin
 const rawDescriptors = [
   {
     moduleId: "cubica.core",
-    moduleVersion: "1.4.1",
-    behaviorVersion: "mechanics-core-v1alpha1-6",
+    moduleVersion: "1.4.3",
+    behaviorVersion: "mechanics-core-v1alpha1-7",
     dependencies: [],
     operations: [
       "core.assert",
@@ -221,43 +201,43 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.random",
-    moduleVersion: "1.0.3",
-    behaviorVersion: "mechanics-random-v1alpha1-4",
+    moduleVersion: "1.1.0",
+    behaviorVersion: "mechanics-random-v1alpha1-6",
     dependencies: ["cubica.core"],
     operations: ["random.dice.roll"],
-    algorithmVersions: { randomStreams: "xoshiro128ss-streams-v1" }
+    algorithmVersions: { randomProvider: "server-crypto-random-v1" }
   },
   {
     moduleId: "cubica.ordering",
-    moduleVersion: "1.1.2",
-    behaviorVersion: "mechanics-ordering-v3",
+    moduleVersion: "1.2.0",
+    behaviorVersion: "mechanics-ordering-v5",
     dependencies: ["cubica.core", "cubica.random"],
     operations: ["core.entities.order"],
     algorithmVersions: {
       ordering: "lexicographic-bounded-v1",
-      tieBreak: "canonical-groups-xoshiro128ss-v1"
+      tieBreak: "canonical-groups-server-crypto-random-v1"
     }
   },
   {
     moduleId: "cubica.system",
-    moduleVersion: "1.0.3",
-    behaviorVersion: "mechanics-system-v1alpha1-1",
+    moduleVersion: "1.0.5",
+    behaviorVersion: "mechanics-system-v1alpha1-2",
     dependencies: ["cubica.core"],
     operations: ["system.schedule.register", "system.schedule.cancel"],
     algorithmVersions: {}
   },
   {
     moduleId: "cubica.deck",
-    moduleVersion: "1.2.1",
-    behaviorVersion: "mechanics-deck-v1alpha1-7",
+    moduleVersion: "1.3.0",
+    behaviorVersion: "mechanics-deck-v1alpha1-9",
     dependencies: ["cubica.random"],
     operations: ["deck.shuffle", "deck.draw", "deck.extract", "deck.return", "deck.insert"],
-    algorithmVersions: { shuffle: "fisher-yates-xoshiro128ss-streams-v1" }
+    algorithmVersions: { shuffle: "fisher-yates-server-crypto-random-v1" }
   },
   {
     moduleId: "cubica.graph",
-    moduleVersion: "2.1.1",
-    behaviorVersion: "mechanics-region-graph-v1alpha1-6",
+    moduleVersion: "2.2.0",
+    behaviorVersion: "mechanics-region-graph-v1alpha1-8",
     dependencies: ["cubica.random"],
     operations: [
       "graph.regions.route.plan",
@@ -268,7 +248,7 @@ const rawDescriptors = [
     ],
     algorithmVersions: {
       regionPath: "region-segment-minimum-v1",
-      randomTieBreak: "xoshiro128ss-streams-v1",
+      randomTieBreak: "server-crypto-random-v1",
       edgePosition: "polyline-arc-length-v1",
       regionMembership: "closed-polygon-all-memberships-v1",
       geometryFingerprint: "canonical-json-sha256-v1"
@@ -276,8 +256,8 @@ const rawDescriptors = [
   },
   {
     moduleId: "cubica.relations",
-    moduleVersion: "1.0.3",
-    behaviorVersion: "mechanics-relation-v1alpha1-2",
+    moduleVersion: "1.0.5",
+    behaviorVersion: "mechanics-relation-v1alpha1-3",
     dependencies: ["cubica.core"],
     operations: ["relation.attach", "relation.detach"],
     algorithmVersions: {}
@@ -684,6 +664,68 @@ const PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS = Object.freeze([
 ]);
 
 /**
+ * Exact artifacts used immediately before snapshots began storing the complete
+ * four-word working state of every used random stream.
+ *
+ * Their seed-plus-counter runtime is not retained as an executable profile.
+ * Keeping the exact triples as blocked history prevents a saved pre-release
+ * party from being opened by the new snapshot-state executor under old locks.
+ */
+const PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS = Object.freeze([
+  {
+    moduleId: "cubica.core",
+    moduleVersion: "1.4.1",
+    artifactHash: "sha256:f62b23cc2f01c97a2378bdf9864186d7cf5793a259ea9c53571503b0c0788eb0",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.random",
+    moduleVersion: "1.0.3",
+    artifactHash: "sha256:8d3b84f2affb3dcca13243a869b2040d6c6fe3624c5c2fb8a7e14c3a34da94ea",
+    algorithmVersions: { randomStreams: "xoshiro128ss-streams-v1" }
+  },
+  {
+    moduleId: "cubica.ordering",
+    moduleVersion: "1.1.2",
+    artifactHash: "sha256:06f4497da1664137da60e9f3594830e2b979e711331e99e0ab25f1dd5810cdf8",
+    algorithmVersions: {
+      ordering: "lexicographic-bounded-v1",
+      tieBreak: "canonical-groups-xoshiro128ss-v1"
+    }
+  },
+  {
+    moduleId: "cubica.system",
+    moduleVersion: "1.0.3",
+    artifactHash: "sha256:d2e0bfad42a5bc8fbacdb3347d3c14275511d3c4cb5a8fdd1de94edc8a9181f1",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.deck",
+    moduleVersion: "1.2.1",
+    artifactHash: "sha256:115682c3b96aa9bf6d691b7c0972a1af2815cc6ec901ac25884014e4897eed41",
+    algorithmVersions: { shuffle: "fisher-yates-xoshiro128ss-streams-v1" }
+  },
+  {
+    moduleId: "cubica.graph",
+    moduleVersion: "2.1.1",
+    artifactHash: "sha256:f413edf67134f784f533eb96a8cc4a749d1eea57ceb22b326842829fa37231ed",
+    algorithmVersions: {
+      regionPath: "region-segment-minimum-v1",
+      randomTieBreak: "xoshiro128ss-streams-v1",
+      edgePosition: "polyline-arc-length-v1",
+      regionMembership: "closed-polygon-all-memberships-v1",
+      geometryFingerprint: "canonical-json-sha256-v1"
+    }
+  },
+  {
+    moduleId: "cubica.relations",
+    moduleVersion: "1.0.3",
+    artifactHash: "sha256:b0477a6fe78fa73ae5145477b2baa8dc55075ddd18b82fff5b75a922e1b20d54",
+    algorithmVersions: {}
+  }
+]);
+
+/**
  * Exact artifacts used before random streams gained logarithmic replay.
  *
  * The random sequence itself is unchanged, but replay cost accounting and the
@@ -746,6 +788,66 @@ const PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS = Object.freeze([
 ]);
 
 /**
+ * Materialized snapshot-only provider artifacts from shared kernel v9.
+ *
+ * They were generated during the pre-release transition and are retained as
+ * archive identities only. The dual-provider executor must never run under
+ * these hashes because live sessions no longer persist PRNG state.
+ *
+ * `cubica.system` is intentionally absent: no compiled v9 bundle locked that
+ * module, so no exact artifact identity became a possible session dependency.
+ * Archive registries record observed exact triples; they must never invent a
+ * hash for a descriptor that was not materialized.
+ */
+const PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS = Object.freeze([
+  {
+    moduleId: "cubica.core",
+    moduleVersion: "1.4.2",
+    artifactHash: "sha256:4eed1a0afa37ed852380f0d7b7afd3f1ffee5e600e6fe47a8acd61ca195dbb6b",
+    algorithmVersions: {}
+  },
+  {
+    moduleId: "cubica.random",
+    moduleVersion: "1.0.4",
+    artifactHash: "sha256:027d8d4c2443f0ee80a190e8bdf5066fa216fccceeb06e7052053deee71eec89",
+    algorithmVersions: { randomStreams: "xoshiro128ss-streams-snapshot-v2" }
+  },
+  {
+    moduleId: "cubica.ordering",
+    moduleVersion: "1.1.3",
+    artifactHash: "sha256:1f507fa04b58843e96b8db3b1cb6871d6a24aba97d19f42b683ece96639ffe68",
+    algorithmVersions: {
+      ordering: "lexicographic-bounded-v1",
+      tieBreak: "canonical-groups-xoshiro128ss-streams-snapshot-v2"
+    }
+  },
+  {
+    moduleId: "cubica.deck",
+    moduleVersion: "1.2.2",
+    artifactHash: "sha256:d9c2d28b5a75e50a02cd9897cd4b3be861d259b922f83f9ca86dcf8bcb47aaf0",
+    algorithmVersions: { shuffle: "fisher-yates-xoshiro128ss-streams-snapshot-v2" }
+  },
+  {
+    moduleId: "cubica.graph",
+    moduleVersion: "2.1.2",
+    artifactHash: "sha256:d4aeb658676e8f2a062c390577bbdbecd26ef846d3a9e10238e1f948589982cc",
+    algorithmVersions: {
+      regionPath: "region-segment-minimum-v1",
+      randomTieBreak: "xoshiro128ss-streams-snapshot-v2",
+      edgePosition: "polyline-arc-length-v1",
+      regionMembership: "closed-polygon-all-memberships-v1",
+      geometryFingerprint: "canonical-json-sha256-v1"
+    }
+  },
+  {
+    moduleId: "cubica.relations",
+    moduleVersion: "1.0.4",
+    artifactHash: "sha256:60c60683b16a39bd031774163a1434748e5d51eb4d4a06ff2cd770fadef51f4f",
+    algorithmVersions: {}
+  }
+]);
+
+/**
  * Production registry contains the exact current snapshot and recognises the
  * last pre-registry locks as blocked history. The latter are not executable:
  * their frozen source corpus was not retained, so pretending otherwise would
@@ -757,6 +859,16 @@ const MECHANICS_ARTIFACT_REGISTRY = createMechanicsArtifactRegistry([
     state: "available",
     validationProfileId: "mechanics-v1alpha1-current",
     executorProfileId: "mechanics-runtime-current"
+  })),
+  ...PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS.map((artifact) => ({
+    ...artifact,
+    state: "blocked",
+    reason: "snapshot-only random-provider corpus is unavailable; dependent pre-release sessions are archive-only"
+  })),
+  ...PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS.map((artifact) => ({
+    ...artifact,
+    state: "blocked",
+    reason: "pre-random-stream-snapshot executable corpus is unavailable; dependent pre-release sessions are archive-only"
   })),
   ...PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS.map((artifact) => ({
     ...artifact,
@@ -862,16 +974,15 @@ module.exports = {
   HISTORICAL_BLOCKED_LOCKS,
   PRE_GEOMETRY_BLOCKED_ARTIFACTS,
   MAX_DECK_ITEMS,
-  MAX_SESSION_RANDOM_ADVANCE_LEVELS,
-  MAX_SESSION_RANDOM_ADVANCE_WORK,
-  MAX_SESSION_RANDOM_STREAMS,
   MECHANICS_ARTIFACT_REGISTRY,
   MODULE_CORPUS_FILES,
   MODULE_REGISTRY,
   OPERATION_CATALOG,
   OPERATION_MODULES,
+  PRE_DUAL_RANDOM_PROVIDER_BLOCKED_ARTIFACTS,
   PRE_DYNAMIC_SCORE_BLOCKED_ARTIFACTS,
   PRE_LOGARITHMIC_RANDOM_ADVANCE_BLOCKED_ARTIFACTS,
+  PRE_RANDOM_STREAM_SNAPSHOT_BLOCKED_ARTIFACTS,
   PRE_PARAMETERIZED_DECK_BLOCKED_ARTIFACTS,
   PRE_FINITE_NUMBER_BLOCKED_ARTIFACTS,
   SHARED_KERNEL_FILES,

@@ -58,7 +58,8 @@
       "runtimeReady": false,
       "runtimeBlockers": [
         "initial network state review",
-        "canonical region polygons"
+        "canonical region polygons",
+        "remaining reporting workflows"
       ]
     },
     "content": {
@@ -307,7 +308,7 @@
             "news-34-base-purchase-prices-persist-until-game-end"
           ],
           "workingInterpretations": [
-            "full-cargo-priority-tie-uses-deterministic-seeded-random-until-author-confirmation"
+            "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
           ],
           "cargoSelectionPriority": {
             "status": "executable-with-two-explicit-technical-policies",
@@ -317,7 +318,7 @@
               "coins-descending",
               "active-owned-wagon-count-descending"
             ],
-            "fullTiePolicy": "server-seeded-random:cargo-offer-order",
+            "fullTiePolicy": "server-random:cargo-offer-order",
             "clientAuthority": {
               "prepare": [],
               "draw": [
@@ -361,7 +362,7 @@
             }
           },
           "placement": {
-            "order": "server-seeded-random",
+            "order": "server-random",
             "controller": "facilitator",
             "targets": "open terminals in the main technical network",
             "maximumLocomotivesPerTerminal": 2,
@@ -435,9 +436,9 @@
             "network-node-position-x-descending",
             "owner-team-coins-descending",
             "owner-active-locomotive-count-descending",
-            "complete-tie-seeded-random"
+            "complete-tie-server-random"
           ],
-          "namedRandomStream": "locomotive-order",
+          "randomPurposeId": "locomotive-order",
           "savedForWholePhase": true,
           "actionPointsReset": 5,
           "graphTraversal": "main-technical-review-network",
@@ -10736,11 +10737,6 @@
         }
       },
       "secret": {
-        "random": {
-          "alg": "xoshiro128ss-streams-v1",
-          "seed": "0000000000000000000000000000c0de",
-          "counters": {}
-        },
         "decks": {},
         "cargoSources": {
           "terminal-1": {
@@ -20281,7 +20277,7 @@
                   }
                 ],
                 "tieBreak": {
-                  "kind": "seeded-random",
+                  "kind": "server-random",
                   "stream": "session-setup-placement-order"
                 }
               },
@@ -27152,7 +27148,7 @@
                   }
                 ],
                 "tieBreak": {
-                  "kind": "seeded-random",
+                  "kind": "server-random",
                   "stream": "locomotive-order"
                 }
               },
@@ -27211,16 +27207,6 @@
                     "value": {
                       "op": "value.literal",
                       "value": "operations"
-                    }
-                  },
-                  {
-                    "operation": "set",
-                    "target": {
-                      "endpoint": "public.session.canRequestFinish"
-                    },
-                    "value": {
-                      "op": "value.literal",
-                      "value": false
                     }
                   }
                 ]
@@ -38163,16 +38149,6 @@
                       "op": "value.literal",
                       "value": "settlement"
                     }
-                  },
-                  {
-                    "operation": "set",
-                    "target": {
-                      "endpoint": "public.session.canRequestFinish"
-                    },
-                    "value": {
-                      "op": "value.literal",
-                      "value": false
-                    }
                   }
                 ],
                 "when": {
@@ -41414,7 +41390,7 @@
                   }
                 ],
                 "tieBreak": {
-                  "kind": "seeded-random",
+                  "kind": "server-random",
                   "stream": "cargo-offer-order"
                 },
                 "when": {
@@ -57922,7 +57898,7 @@
           "algorithmVersion": "region-segment-minimum-v1",
           "geometryVersion": "technical-placeholder-vertical-strips-v1",
           "geometryHash": "sha256:5f5c005afc15f73508a75477ce6006da1f85066cedbbae2cdedb8dc130afb78e",
-          "tieBreak": "session-random",
+          "tieBreak": "server-random",
           "boundaryPolicy": "lowest-region-id",
           "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds",
           "navigationGraph": {

@@ -63,7 +63,7 @@ const loadManifest = async () =>
   validateGameManifest(await readJson(path.join(gameRoot, "game.manifest.json")));
 
 /** Create one facilitator-owned session from the immutable compiled bundle. */
-const createSession = async (manifest) => {
+const createSession = async (manifest, random) => {
   const store = new InMemorySessionStore();
   const created = await store.createSession({
     gameId: manifest.meta.id,
@@ -78,16 +78,17 @@ const createSession = async (manifest) => {
       credentialSha256
     }
   });
-  return { store, sessionId: created.session.sessionId };
+  return { store, sessionId: created.session.sessionId, random };
 };
 
 /** Dispatch one optimistic-concurrency protected public Game Intent. */
-const dispatch = async ({ store, sessionId, actionId, params = {} }) => {
+const dispatch = async ({ store, sessionId, random, actionId, params = {} }) => {
   const current = await store.getSession(sessionId);
   return dispatchRuntimeAction({
     sessionStore: store,
     credentialSha256,
     admissionController,
+    ...(random === undefined ? {} : { random }),
     input: {
       sessionId,
       actionId,
@@ -207,8 +208,8 @@ const placeAllAssets = async (session) => {
  * Market, cargo choice and their transition are intentionally still absent,
  * so the single direct phase edit is the bounded upstream substitution.
  */
-const prepareMovementBoundary = async (manifest, count = 5) => {
-  const session = await createSession(manifest);
+const prepareMovementBoundary = async (manifest, count = 5, random) => {
+  const session = await createSession(manifest, random);
   await addOddComposition(session, count);
   const finalized = await dispatch({
     ...session,
@@ -266,7 +267,7 @@ const attachWagonToCurrent = async (session) => {
 /**
  * Arrange all four order criteria without changing the authored collection
  * contract. An extra active locomotive gives one owner an aggregate count of
- * two; two other owners form the complete seeded-random tie.
+ * two; two other owners form the complete server-random tie.
  */
 const arrangeOrderHierarchy = async (session) => {
   let expected;
@@ -299,7 +300,6 @@ const arrangeOrderHierarchy = async (session) => {
     );
     objects.locomotives[extraId].attributes.nodeId = "terminal-6";
     objects.locomotives[extraId].attributes.actionPoints = -1;
-    state.secret.random.counters.unrelated = 7;
     expected = {
       east: locomotiveIds[0],
       rich: locomotiveIds[1],
@@ -527,7 +527,7 @@ test("generator owns an exact bounded order contract and composes in either orde
     }
   ]);
   assert.deepEqual(orderStep.tieBreak, {
-    kind: "seeded-random",
+    kind: "server-random",
     stream: "locomotive-order"
   });
   const skipAction = actual.root.logic.actions.find(
@@ -719,7 +719,7 @@ test("current locomotive and its attached wagon traverse twice without advancing
   const savedOrder = structuredClone(
     prepared.state.public.movement.locomotiveOrder
   );
-  const savedRandom = structuredClone(prepared.state.secret.random);
+  assert.equal(prepared.state.secret.random, undefined);
   const ownerTeamId =
     prepared.state.public.objects.locomotives[attachment.locomotiveId]
       .attributes.ownerTeamId;
@@ -745,7 +745,7 @@ test("current locomotive and its attached wagon traverse twice without advancing
     attachment.locomotiveId
   );
   assert.deepEqual(afterFirst.state.public.movement.locomotiveOrder, savedOrder);
-  assert.deepEqual(afterFirst.state.secret.random, savedRandom);
+  assert.equal(afterFirst.state.secret.random, undefined);
   assert.equal(afterFirst.state.public.session.phase, "operations");
   assert.deepEqual(afterFirst.state.public.log.at(-1), {
     eventType: "movement.locomotive.traversed",
@@ -790,7 +790,7 @@ test("current locomotive and its attached wagon traverse twice without advancing
     attachment.locomotiveId
   );
   assert.deepEqual(afterSecond.state.public.movement.locomotiveOrder, savedOrder);
-  assert.deepEqual(afterSecond.state.secret.random, savedRandom);
+  assert.equal(afterSecond.state.secret.random, undefined);
   assert.equal(afterSecond.state.public.session.phase, "operations");
   assert.deepEqual(afterSecond.state.public.log.at(-1).data, {
     kind: "locomotive-traverse",
@@ -888,13 +888,27 @@ test("traversal rejects invalid turn, current, action and graph state atomically
   });
 });
 
-test("east, coins, owner count and seeded ties produce one saved reproducible order", async () => {
+test("east, coins, owner count and server-random ties produce one saved order", async () => {
   const manifest = await loadManifest();
-  const first = await prepareMovementBoundary(manifest, 11);
-  const second = await prepareMovementBoundary(manifest, 11);
+  let firstSamples = 0;
+  let secondSamples = 0;
+  const first = await prepareMovementBoundary(manifest, 11, {
+    sampleRange: () => {
+      firstSamples += 1;
+      return 0;
+    }
+  });
+  const second = await prepareMovementBoundary(manifest, 11, {
+    sampleRange: () => {
+      secondSamples += 1;
+      return 0;
+    }
+  });
   const firstExpected = await arrangeOrderHierarchy(first);
   const secondExpected = await arrangeOrderHierarchy(second);
   assert.deepEqual(firstExpected, secondExpected);
+  const firstSamplesBeforePrepare = firstSamples;
+  const secondSamplesBeforePrepare = secondSamples;
 
   const firstPrepared = await prepareOrder(first);
   const secondPrepared = await prepareOrder(second);
@@ -910,16 +924,21 @@ test("east, coins, owner count and seeded ties produce one saved reproducible or
     [...firstExpected.tied].sort()
   );
   assert.equal(order[5], firstExpected.extra);
-  assert.equal(firstPrepared.state.secret.random.counters.unrelated, 7);
   assert.equal(
-    firstPrepared.state.secret.random.counters["locomotive-order"],
+    firstSamples - firstSamplesBeforePrepare,
     1,
-    "the complete tie must consume its dedicated named stream exactly once"
+    "the complete tie must sample exactly once"
   );
+  assert.equal(
+    secondSamples - secondSamplesBeforePrepare,
+    1,
+    "the injected equivalent sampler must reproduce the order"
+  );
+  assert.equal(firstPrepared.state.secret.random, undefined);
 
   // The saved order, rather than a new sort, drives at least two and then all
-  // explicit skips. No skip may consume any random stream.
-  const randomAfterPrepare = structuredClone(firstPrepared.state.secret.random);
+  // explicit skips. No skip may request another random sample.
+  const samplesAfterPrepare = firstSamples;
   for (let index = 0; index < order.length; index += 1) {
     const before = await first.store.getSession(first.sessionId);
     assert.equal(before.state.public.movement.currentLocomotiveId, order[index]);
@@ -949,7 +968,8 @@ test("east, coins, owner count and seeded ties produce one saved reproducible or
       latestSkipped?.data?.ownerTeamId,
       after.state.public.objects.locomotives[order[index]].attributes.ownerTeamId
     );
-    assert.deepEqual(after.state.secret.random, randomAfterPrepare);
+    assert.equal(firstSamples, samplesAfterPrepare);
+    assert.equal(after.state.secret.random, undefined);
     if (index < order.length - 1) {
       assert.equal(after.state.public.session.phase, "operations");
       assert.equal(

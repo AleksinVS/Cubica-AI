@@ -20,6 +20,7 @@ import {
   type VerifiedReadOnlyStateAccess
 } from "./stateModel.ts";
 import { randomBytes } from "node:crypto";
+import { createSessionRandomProvider } from "../runtime/sessionRandom.ts";
 import type {
   MechanicsExecutionContext,
   MechanicsExecutionInput,
@@ -238,7 +239,7 @@ function executeMechanicsTransactionInternal(
   assertMechanicsStateWithinBudget(input.state, limits, "input");
   assertMechanicsParamsWithinBudget(params, limits);
 
-  // The input snapshot remains untouched. Every state/RNG/event mutation below
+  // The input snapshot remains untouched. Every state/event mutation below
   // belongs to this candidate and disappears automatically if any step throws.
   const candidateState = structuredClone(input.state);
   const activePlayerId = readActivePlayerId(candidateState);
@@ -254,7 +255,9 @@ function executeMechanicsTransactionInternal(
     // and must never be smuggled into the untrusted action-parameter namespace.
     params,
     actor: { ...input.actorContext, activePlayerId: input.actorContext.activePlayerId ?? activePlayerId },
-    random: input.random ? structuredClone(input.random) : undefined,
+    // Production omits the input and therefore receives a cryptographic
+    // provider. Tests may replace only its bounded sampler in-process.
+    random: createSessionRandomProvider(input.random),
     results: new Map(),
     events: [],
     audit: [],
@@ -372,7 +375,6 @@ function executeMechanicsTransactionInternal(
 
   return {
     candidateState,
-    randomState: context.random,
     events: context.events,
     audit: context.audit,
     result: finalResult,

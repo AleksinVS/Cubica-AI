@@ -2,56 +2,24 @@
  * Materializes runtime-owned participant, turn and random state from a manifest.
  *
  * Game manifests declare a reusable participant template and allowed phases;
- * concrete participant ids and replay state belong to the session snapshot.
+ * concrete participant ids belong to the session snapshot. Author-provided
+ * generator state is always removed because production randomness is owned by
+ * the server and is not persisted.
  */
 import type {
   GameManifest,
   GameManifestPlayersTemplate
 } from "@cubica/contracts-manifest";
-import { createSessionRandomStreamsState } from "../runtime/sessionRandom.ts";
 
 type RuntimeState = Record<string, unknown>;
 
 export interface InitializeTurnBasedSessionOptions {
   /** Future launch surfaces may choose a value inside manifest player bounds. */
   participantCount?: number;
-  /** Test/editor replay hook; production callers omit this cryptographic seed. */
-  randomSeed?: string;
 }
 
 const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
-
-const SESSION_RANDOM_OPERATIONS = new Set(["random.dice.roll", "deck.shuffle", "deck.draw"]);
-
-/**
- * Detect every Mechanics operation that consumes the runtime-owned generator.
- *
- * A draw needs the generator even when the current deck is not empty because
- * its declared empty-deck policy may reshuffle the discard pile. Initializing
- * from the complete manifest keeps that future branch replay-safe as well.
- */
-const manifestUsesSessionRandomness = (value: unknown): boolean => {
-  if (Array.isArray(value)) {
-    return value.some(manifestUsesSessionRandomness);
-  }
-  if (!isObjectRecord(value)) {
-    return false;
-  }
-  if (value.op === "core.entities.order" &&
-      isObjectRecord(value.tieBreak) &&
-      value.tieBreak.kind === "seeded-random") {
-    return true;
-  }
-  if (typeof value.op === "string" && SESSION_RANDOM_OPERATIONS.has(value.op)) {
-    return true;
-  }
-  return Object.values(value).some(manifestUsesSessionRandomness);
-};
-
-/** Road planning consumes randomness only when several minimum routes exist. */
-const manifestUsesRandomRoadPlanning = (manifest: GameManifest): boolean =>
-  Object.values(manifest.networkModels ?? {}).some((network) => network.roadPlanning?.tieBreak === "session-random");
 
 const validateParticipantCount = (manifest: GameManifest, requested?: number): number => {
   const minimum = manifest.config.players.min;
@@ -106,15 +74,10 @@ export const initializeTurnBasedSessionState = (
   // snapshot would expose two competing sources of truth for player balances.
   delete state.playersTemplate;
 
-  if (manifestUsesSessionRandomness(manifest.mechanics) ||
-      manifestUsesRandomRoadPlanning(manifest)) {
-    const secretState = isObjectRecord(state.secret) ? state.secret : {};
-    // Random state is session-owned by contract. Always replace authoring data
-    // so a seed accidentally committed to a manifest cannot make every new
-    // production session consume the same predictable random sequence.
-    secretState.random = createSessionRandomStreamsState(options.randomSeed);
-    state.secret = secretState;
-  }
+  const declaredSecretState = isObjectRecord(state.secret) ? state.secret : undefined;
+  // Removing an authored value unconditionally keeps a game from smuggling a
+  // known seed into server-owned randomness.
+  if (declaredSecretState) delete declaredSecretState.random;
 
   return state;
 };

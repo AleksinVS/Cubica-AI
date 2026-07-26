@@ -6315,7 +6315,7 @@
         "pointer": "/root/mechanics"
       }
     ],
-    "/mechanics/moduleLock/cubica.random/algorithmVersions/randomStreams": [
+    "/mechanics/moduleLock/cubica.random/algorithmVersions/randomProvider": [
       {
         "file": "games/estate-race/authoring/game.authoring.json",
         "pointer": "/root/mechanics"

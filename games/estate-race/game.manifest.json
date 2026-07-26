@@ -362,7 +362,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:d39146d9803d4467791c8ba445e4ddca2bb32bf3d8c78d49dd6fe713a5e5c922"
+      "definitionHash": "sha256:d635f87674d54821a14ac3e4ae6318749c5c919284ff07b7a3ca48ec882991d8"
     },
     "property.buy.cell-02": {
       "capabilityFamily": "runtime.server",
@@ -400,7 +400,7 @@
         "planRef": "property.buy.cell-02"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6cbd5522be5e618726e6199858ba3ada411123f663dc7c0ad8db35d703648b4b"
+      "definitionHash": "sha256:a8535b2d3f2ac23e67af790fa1e7b89783412d176114222e7f14466f7082fc49"
     },
     "property.buy.cell-05": {
       "capabilityFamily": "runtime.server",
@@ -438,7 +438,7 @@
         "planRef": "property.buy.cell-05"
       },
       "invocation": "external",
-      "definitionHash": "sha256:16b7bf266142c726fc006fe285a502d99f0bfd6a1818a0a6ec1577e454d422f9"
+      "definitionHash": "sha256:0cb59d388abd52881f9f2a65fbe326c66ef2451b66d62af8d92a7ae7ce5459e5"
     },
     "property.buy.cell-08": {
       "capabilityFamily": "runtime.server",
@@ -476,7 +476,7 @@
         "planRef": "property.buy.cell-08"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6defbe8c53a7d9ccfbba4f213c9321b2f81e1b12c7c2f2fb8866e9b572506f61"
+      "definitionHash": "sha256:a916c5aaf1dfde32907c0ccaf5508f6709a0e0830a8683d39fa2548fe2f1475b"
     },
     "property.buy.cell-11": {
       "capabilityFamily": "runtime.server",
@@ -514,7 +514,7 @@
         "planRef": "property.buy.cell-11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:6e8dc21c58f12c8b50e9541ec5c35d0145d091066e76330bef4581ea816948cd"
+      "definitionHash": "sha256:0d95be5845a8f6082483432d16c05784f961500f0975fc2c2950a2065ebf3d3d"
     },
     "property.rent.cell-02": {
       "capabilityFamily": "runtime.server",
@@ -552,7 +552,7 @@
         "planRef": "property.rent.cell-02"
       },
       "invocation": "external",
-      "definitionHash": "sha256:30a8530cba79cbc2d3c0dabfcedef305a80a49ba0e18044c105edf5ffee7fc4c"
+      "definitionHash": "sha256:677e5f85ead533d5aa62fd04e2ff42443df8ff41212683290ff99e36efa3b6df"
     },
     "property.rent.cell-05": {
       "capabilityFamily": "runtime.server",
@@ -590,7 +590,7 @@
         "planRef": "property.rent.cell-05"
       },
       "invocation": "external",
-      "definitionHash": "sha256:e7d476091c7b7288cec5257d5285a71d0e5cdd9f966a0d3ce4abf76b1433bc71"
+      "definitionHash": "sha256:ddb5097bdb13ec92a76fbf5ced639b8fc923795609afaa6291af7219b4d9e96a"
     },
     "property.rent.cell-08": {
       "capabilityFamily": "runtime.server",
@@ -628,7 +628,7 @@
         "planRef": "property.rent.cell-08"
       },
       "invocation": "external",
-      "definitionHash": "sha256:78333cf00cad714744e33885e4c90fc866a85e403a3aff0544001e63a7e28a66"
+      "definitionHash": "sha256:5226c35c979e732935c0e5fd08f4856460aa12d31ea646de5854c355c4d0273b"
     },
     "property.rent.cell-11": {
       "capabilityFamily": "runtime.server",
@@ -666,7 +666,7 @@
         "planRef": "property.rent.cell-11"
       },
       "invocation": "external",
-      "definitionHash": "sha256:3bc7cecdf3a5e432f644cdbc93fa768a6d00aeef9f8ceaa375543948fb151bad"
+      "definitionHash": "sha256:944c3f7c63edf4119a1d68b6a6b8ed994f4be5e178eb424829e530fc74bb1cdb"
     },
     "turn.finish": {
       "capabilityFamily": "runtime.server",
@@ -686,7 +686,7 @@
         "required": []
       },
       "invocation": "external",
-      "definitionHash": "sha256:6d9dc903bc9e265caa33e60c24022e82f2b3e849d33935509de7b58739172ed5"
+      "definitionHash": "sha256:585b151faebcd1f4350ced1672364e553ebff5d0eb03adf26881f124dff0eae3"
     }
   },
   "mechanics": {
@@ -695,15 +695,15 @@
     "moduleLock": {
       "cubica.core": {
         "moduleId": "cubica.core",
-        "moduleVersion": "1.3.0",
-        "artifactHash": "sha256:a9d081db599b358d68e0c3b2d8c025bb64afc9643229b9908f976d921b36f594"
+        "moduleVersion": "1.4.3",
+        "artifactHash": "sha256:a1cc5b8f73e4cb7938441f81c25024edf6199e4524783a676205854f6506dc9c"
       },
       "cubica.random": {
         "moduleId": "cubica.random",
-        "moduleVersion": "1.0.2",
-        "artifactHash": "sha256:3161401518d589927b3c181dd356812e92a127e844b38ed04b4a6e1b51101510",
+        "moduleVersion": "1.1.0",
+        "artifactHash": "sha256:0d413ce30c9adf0c9a89adacf3e80f02ee9dc4b6b7642bc0c92b8315352991e1",
         "algorithmVersions": {
-          "randomStreams": "xoshiro128ss-streams-v1"
+          "randomProvider": "server-crypto-random-v1"
         }
       }
     },
@@ -1399,7 +1399,7 @@
     },
     "plans": {
       "turn.roll": {
-        "planHash": "sha256:f2ae8d117da7ca38a17acd4ad6c88225836913526371f0861206528bbd6661d1",
+        "planHash": "sha256:3dbf53ac99f804a1cbc69fd657703596674501003df425d7e8d1297fc885f5df",
         "transaction": {
           "steps": [
             {
@@ -2414,7 +2414,7 @@
         }
       },
       "property.buy.cell-02": {
-        "planHash": "sha256:e65d483c1cfeefb198324edb1c6d6916b9f17808b5de47baec341b4c39dd4845",
+        "planHash": "sha256:bb2837a58c1ed15fe25a2bf670b63ceefe66522be28daebce33cd406e7e7cf31",
         "transaction": {
           "steps": [
             {
@@ -2567,7 +2567,7 @@
         }
       },
       "property.buy.cell-05": {
-        "planHash": "sha256:502d6a944de4b685e43405977b9f976130cbf4911c058cbc1fc3032a76ccfff7",
+        "planHash": "sha256:f9905dfef9caf90343d327eccb1ebdc665dc7b1979b01bbd5a7462186a259a09",
         "transaction": {
           "steps": [
             {
@@ -2720,7 +2720,7 @@
         }
       },
       "property.buy.cell-08": {
-        "planHash": "sha256:892e554b86505ac36db4d38c8077a765ead3a0968c63395f7b65d111e9e37b88",
+        "planHash": "sha256:f63cd9a3e2c6824ef16fd526cbee8ac3d47d56c7e163c300670e6001f5e3b489",
         "transaction": {
           "steps": [
             {
@@ -2873,7 +2873,7 @@
         }
       },
       "property.buy.cell-11": {
-        "planHash": "sha256:dcdefefaee354ccc6d88795b3e1f25fe6f2a0ad5ffa2b298f0f1557a1d4dc251",
+        "planHash": "sha256:6430c0cc7dc89311226767e71ee957220a9e40b7c46ddd323d65dc0603b52f94",
         "transaction": {
           "steps": [
             {
@@ -3026,7 +3026,7 @@
         }
       },
       "property.rent.cell-02": {
-        "planHash": "sha256:90e1016bb5548d33c2763b24eaaf8a863c37e375f3b0717baef74a3795dd30f7",
+        "planHash": "sha256:9b0aeae03acde15a5dc41fa7549104e293434a805ca319843992fa450362258c",
         "transaction": {
           "steps": [
             {
@@ -3180,7 +3180,7 @@
         }
       },
       "property.rent.cell-05": {
-        "planHash": "sha256:a205597921d33e3a4e7325205f483783857dfb72ae982ee5122ce9684d5e3a4b",
+        "planHash": "sha256:8e1ce837a02eaaedb57ee19eb1b64a8356e663aa8e31ef57393ec54071570fd8",
         "transaction": {
           "steps": [
             {
@@ -3334,7 +3334,7 @@
         }
       },
       "property.rent.cell-08": {
-        "planHash": "sha256:97a770161206e03cf031c7046527909f2ff1b71c7396fa8b50c3c9f6a6e7e9ca",
+        "planHash": "sha256:bacc7931261d10463f7e2f253865d5cbb26bf1d2b37c7ca518ae9258c8d2a81c",
         "transaction": {
           "steps": [
             {
@@ -3488,7 +3488,7 @@
         }
       },
       "property.rent.cell-11": {
-        "planHash": "sha256:a6e07790710fd9bda4116890bba811f162a93013d050fc0cca5baba7948ee413",
+        "planHash": "sha256:19544f11f4cadabbfb5a6f85032248e5d2acf9093255a44c3bc69776f179c1ee",
         "transaction": {
           "steps": [
             {
@@ -3642,7 +3642,7 @@
         }
       },
       "turn.finish": {
-        "planHash": "sha256:a721da0df4a58bda9eb82d0cc6ddf8e3ec3e42c973f5fc0119f0ec1a8280f964",
+        "planHash": "sha256:98c8d06577057b661b6b27b61d48b856c6f60bfcf18d27b37511f22356ca9918",
         "transaction": {
           "steps": [
             {

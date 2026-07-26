@@ -37,7 +37,7 @@
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
       "not": { "enum": ["__proto__", "constructor", "prototype"] }
     },
-    "randomStreamId": {
+    "randomPurposeId": {
       "type": "string",
       "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$",
       "not": { "enum": ["__proto__", "constructor", "prototype"] }
@@ -1069,8 +1069,11 @@
           "type": "object",
           "required": ["kind", "stream"],
           "properties": {
-            "kind": { "const": "seeded-random" },
-            "stream": { "$ref": "#/$defs/identifier" }
+            "kind": { "const": "server-random" },
+            "stream": {
+              "$ref": "#/$defs/randomPurposeId",
+              "description": "Legacy field name for a stable random-purpose identifier; it does not create or select a persisted generator stream."
+            }
           },
           "additionalProperties": false
         }
@@ -1409,8 +1412,8 @@
         "op": { "const": "random.dice.roll" },
         "dice": { "type": "string", "pattern": "^[1-9][0-9]?d(?:[2-9]|[1-9][0-9]{1,2}|1000)$" },
         "stream": {
-          "$ref": "#/$defs/randomStreamId",
-          "description": "Stable named random stream; its counter advances independently from every other stream."
+          "$ref": "#/$defs/randomPurposeId",
+          "description": "Stable random-purpose identifier used for validation and audit context; no generator state is persisted."
         },
         "target": { "$ref": "#/$defs/stateRef" },
         "when": { "$ref": "#/$defs/predicate" }
@@ -1427,8 +1430,8 @@
         "deckId": { "$ref": "#/$defs/identifier" },
         "sourceCollection": { "$ref": "#/$defs/identifier" },
         "stream": {
-          "$ref": "#/$defs/randomStreamId",
-          "description": "Stable named random stream pinned into deck state for later automatic reshuffles."
+          "$ref": "#/$defs/randomPurposeId",
+          "description": "Stable random-purpose identifier retained with deck state so automatic reshuffles keep the same declared intent; no generator state is persisted."
         },
         "when": { "$ref": "#/$defs/predicate" }
       },

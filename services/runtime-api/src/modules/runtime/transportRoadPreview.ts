@@ -3,7 +3,7 @@
  *
  * Preview validates the same immutable action, role, resource references and
  * leading Mechanics assertions as authoritative dispatch. It never executes
- * payments or graph mutation and never advances the session random stream.
+ * payments or graph mutation and never reserves a later random result.
  */
 import type {
   GameManifestTransportNetworkModel,
@@ -20,9 +20,8 @@ import { executeMechanicsTransaction } from "../mechanics/index.ts";
 import { isRecord } from "../mechanics/stateModel.ts";
 import { RequestValidationError } from "../errors.ts";
 import {
-  chooseSessionValue,
-  readSessionRandomStream,
-  type SessionRandomStreamsState
+  createSessionRandomProvider,
+  type SessionRandomProviderInput
 } from "./sessionRandom.ts";
 import {
   prepareMinimumRegionRoadCandidates,
@@ -51,6 +50,7 @@ export const previewRuntimeTransportRoad = (options: {
   bundle: GameBundle;
   actorPlayerId?: string;
   sessionRole: "player" | "facilitator" | "assistant" | "observer";
+  random?: SessionRandomProviderInput;
   input: TransportRoadPreviewRequest;
 }): TransportRoadPreviewResponse => {
   try {
@@ -70,6 +70,7 @@ function previewOrThrow(options: {
   bundle: GameBundle;
   actorPlayerId?: string;
   sessionRole: "player" | "facilitator" | "assistant" | "observer";
+  random?: SessionRandomProviderInput;
   input: TransportRoadPreviewRequest;
 }): TransportRoadPreviewResponse {
   const { snapshot, bundle, input } = options;
@@ -150,11 +151,9 @@ function previewOrThrow(options: {
     to,
     excludedRegionIds: readExcludedRegionIds(snapshot.state, bundle, model)
   });
+  const random = createSessionRandomProvider(options.random);
   const selected = prepared.candidates.length > 1
-    ? chooseSessionValue(
-        readSessionRandomStream(readRandomStreams(snapshot.state), regionRoadRandomStreamId(graphStep.networkId)),
-        prepared.candidates
-      ).value
+    ? random.choose(regionRoadRandomStreamId(graphStep.networkId), prepared.candidates).value
     : prepared.candidates[0];
   const regionSegments = selected.regionSequence.length;
   return {
@@ -244,10 +243,4 @@ function objectPoint(object: JsonRecord): { x: number; y: number } {
   if (!isRecord(position) || typeof position.x !== "number" || !Number.isFinite(position.x) ||
       typeof position.y !== "number" || !Number.isFinite(position.y)) throw new Error("Graph position is invalid");
   return { x: position.x, y: position.y };
-}
-
-function readRandomStreams(state: RuntimeState): SessionRandomStreamsState {
-  const secret = isRecord(state.secret) ? state.secret : undefined;
-  if (!secret || !isRecord(secret.random)) throw new Error("Preview tie-breaking random state is unavailable");
-  return structuredClone(secret.random) as unknown as SessionRandomStreamsState;
 }

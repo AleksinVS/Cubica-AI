@@ -255,6 +255,12 @@
         "pointer": "/root/config/runtimeBlockers/1"
       }
     ],
+    "/config/runtimeBlockers/2": [
+      {
+        "file": "games/cards-money-trains/authoring/game.authoring.json",
+        "pointer": "/root/config/runtimeBlockers/2"
+      }
+    ],
     "/config/runtimeBlockers": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
@@ -2127,10 +2133,10 @@
         "pointer": "/root/content/data/movementTurn/order"
       }
     ],
-    "/content/data/movementTurn/namedRandomStream": [
+    "/content/data/movementTurn/randomPurposeId": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/content/data/movementTurn/namedRandomStream"
+        "pointer": "/root/content/data/movementTurn/randomPurposeId"
       }
     ],
     "/content/data/movementTurn/savedForWholePhase": [
@@ -50091,30 +50097,6 @@
         "pointer": "/root/state/secret"
       }
     ],
-    "/state/secret/random": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/state/secret/random"
-      }
-    ],
-    "/state/secret/random/alg": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/state/secret/random/alg"
-      }
-    ],
-    "/state/secret/random/seed": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/state/secret/random/seed"
-      }
-    ],
-    "/state/secret/random/counters": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/state/secret/random/counters"
-      }
-    ],
     "/state/secret/decks": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
@@ -73191,7 +73173,7 @@
         "pointer": "/root/mechanics"
       }
     ],
-    "/mechanics/moduleLock/cubica.random/algorithmVersions/randomStreams": [
+    "/mechanics/moduleLock/cubica.random/algorithmVersions/randomProvider": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
         "pointer": "/root/mechanics"
@@ -138471,48 +138453,6 @@
         "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
       }
     ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3/operation": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3/target": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3/target/endpoint": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3/value": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3/value/op": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
-    "/mechanics/plans/movement.order.prepare/transaction/steps/6/patches/3/value/value": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.order.prepare/transaction/steps/6"
-      }
-    ],
     "/mechanics/plans/movement.order.prepare/transaction/steps/7": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
@@ -185416,48 +185356,6 @@
       }
     ],
     "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/1/value/value": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2/operation": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2/target": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2/target/endpoint": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2/value": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2/value/op": [
-      {
-        "file": "games/cards-money-trains/authoring/game.authoring.json",
-        "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"
-      }
-    ],
-    "/mechanics/plans/movement.locomotive.skip/transaction/steps/9/patches/2/value/value": [
       {
         "file": "games/cards-money-trains/authoring/game.authoring.json",
         "pointer": "/root/mechanics/plans/movement.locomotive.skip/transaction/steps/9"

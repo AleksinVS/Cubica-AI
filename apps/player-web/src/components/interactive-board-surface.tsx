@@ -599,7 +599,7 @@ export function InteractiveBoardSurface({
                         <p className={styles.previewResult} role="status">
                           Сегментов по областям: {roadPreview.response.regionSegments}.
                           {roadPreview.response.candidateCount > 1
-                            ? ` Равноценных маршрутов: ${roadPreview.response.candidateCount}; выбран один воспроизводимый вариант.`
+                            ? ` Равноценных маршрутов: ${roadPreview.response.candidateCount}; при подтверждении система может выбрать другой равноценный вариант.`
                             : " Маршрут однозначен."}
                         </p>
                       ) : null}

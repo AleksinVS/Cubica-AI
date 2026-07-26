@@ -447,7 +447,7 @@ export const compileRegionRoadPlanning = (
   if (!planning) throw new Error("Transport network did not opt in to authoritative road planning");
   if (planning.mode !== REGION_ROAD_PLANNING_MODE ||
       planning.algorithmVersion !== REGION_ROAD_PLANNING_ALGORITHM ||
-      planning.tieBreak !== "session-random" || planning.boundaryPolicy !== REGION_ROAD_BOUNDARY_POLICY) {
+      planning.tieBreak !== "server-random" || planning.boundaryPolicy !== REGION_ROAD_BOUNDARY_POLICY) {
     throw new Error("Transport network declares an unsupported road-planning contract");
   }
   const regions = canonicalizeRoadPlanningRegions(model.regions);

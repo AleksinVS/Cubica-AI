@@ -342,7 +342,7 @@ const buildPrepareOrder = () => {
               }
             ],
             tieBreak: {
-              kind: "seeded-random",
+              kind: "server-random",
               stream: "locomotive-order"
             }
           },
@@ -1566,9 +1566,9 @@ const buildMovementOrderAuthoring = (sourceAuthoring) => {
       "network-node-position-x-descending",
       "owner-team-coins-descending",
       "owner-active-locomotive-count-descending",
-      "complete-tie-seeded-random"
+      "complete-tie-server-random"
     ],
-    namedRandomStream: "locomotive-order",
+    randomPurposeId: "locomotive-order",
     savedForWholePhase: true,
     actionPointsReset: 5,
     graphTraversal: "main-technical-review-network",

@@ -920,7 +920,7 @@ test("full mock data declares hidden decks and an immutable, fully typed Mechani
     }
   ]);
   assert.deepEqual(locomotiveOrderStep?.tieBreak, {
-    kind: "seeded-random",
+    kind: "server-random",
     stream: "locomotive-order"
   });
   assert.deepEqual(planOps("mock.cargo.deliver"), [

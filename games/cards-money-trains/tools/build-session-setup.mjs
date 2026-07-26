@@ -79,6 +79,53 @@ const ownedSetupBoardActionIds = new Set([
   "session.setup.place.wagon",
   "session.setup.place.locomotive"
 ]);
+const sessionCompletionCreateFields = new Map([
+  ["teams", new Set(["finalScoreBase"])],
+  ["wagons", new Set(["finalScoreOwnerTeamId", "finalPurchaseValue"])],
+  ["locomotives", new Set(["finalScoreOwnerTeamId", "finalPurchaseValue"])]
+]);
+const sessionCompletionAvailabilityEndpoint =
+  "public.session.canRequestFinish";
+
+/**
+ * Capture extensions added to setup-owned plans by the later completion slice.
+ *
+ * Setup rebuilds its base actions, but must not erase typed defaults or
+ * phase-derived UI availability that another game-local generator appended.
+ * Plan and step ids keep each fragment attached to its original command.
+ */
+const captureSessionCompletionPlanExtensions = (plans) => {
+  const createAttributes = new Map();
+  const availabilityPatches = new Map();
+  for (const [planId, plan] of Object.entries(plans)) {
+    if (!planId.startsWith(setupActionPrefix)) continue;
+    for (const step of plan.transaction.steps) {
+      const stepKey = `${planId}\0${step.id}`;
+      const preservedFields = sessionCompletionCreateFields.get(step.collection);
+      if (step.op === "core.entity.create" && preservedFields) {
+        const attributes = Object.fromEntries(
+          Object.entries(step.attributes).filter(([field]) =>
+            preservedFields.has(field)
+          )
+        );
+        if (Object.keys(attributes).length > 0) {
+          createAttributes.set(stepKey, attributes);
+        }
+      }
+      if (step.op === "core.state.patch") {
+        const patches = step.patches.filter(
+          (patch) =>
+            patch.operation === "set"
+            && patch.target?.endpoint === sessionCompletionAvailabilityEndpoint
+        );
+        if (patches.length > 0) {
+          availabilityPatches.set(stepKey, patches);
+        }
+      }
+    }
+  }
+  return { createAttributes, availabilityPatches };
+};
 
 const readJson = async (filePath) => JSON.parse(await readFile(filePath, "utf8"));
 const literal = (value) => ({ op: "value.literal", value });
@@ -477,7 +524,7 @@ const buildFinalize = () => {
               missing: "error"
             }],
             tieBreak: {
-              kind: "seeded-random",
+              kind: "server-random",
               stream: "session-setup-placement-order"
             }
           },
@@ -999,6 +1046,15 @@ const removeObsoleteFixedConstruction = (root) => {
 const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
+  const completionPlanExtensions =
+    captureSessionCompletionPlanExtensions(root.mechanics.plans);
+  const completionTeamFields = Object.fromEntries(
+    Object.entries(
+      root.mechanics.stateModel.collections.teams?.fields ?? {}
+    ).filter(([field]) =>
+      sessionCompletionCreateFields.get("teams").has(field)
+    )
+  );
   const { networkNodes, networkEdges } = buildNetworkObjects(
     network,
     root.state.public.objects?.networkEdges,
@@ -1178,7 +1234,8 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
         storage: { kind: "attribute", name: "news19ResolvedTurn" },
         valueType: "core.integer",
         access: "read-write"
-      }
+      },
+      ...completionTeamFields
     }
   };
   collections.networkNodes.fields.label = {
@@ -1333,6 +1390,24 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       }
     }
   }
+  // Reattach only the later completion slice's declared extensions. Every
+  // setup-owned base step still comes from this generator, while the captured
+  // values and patch order remain byte-for-byte stable under recomposition.
+  for (const generatedItem of generated) {
+    for (const step of generatedItem.plan.transaction.steps) {
+      const stepKey = `${generatedItem.action.id}\0${step.id}`;
+      const createAttributes =
+        completionPlanExtensions.createAttributes.get(stepKey);
+      if (createAttributes) {
+        Object.assign(step.attributes, createAttributes);
+      }
+      const availabilityPatches =
+        completionPlanExtensions.availabilityPatches.get(stepKey);
+      if (availabilityPatches) {
+        step.patches.push(...availabilityPatches);
+      }
+    }
+  }
   const preservedActions = root.logic.actions.filter(
     (candidate) => !candidate.id.startsWith(setupActionPrefix)
   );
@@ -1458,7 +1533,7 @@ const buildSessionSetupAuthoring = (sourceAuthoring, network) => {
       locomotiveGuild: { wagons: 0, locomotives: 1 }
     },
     placement: {
-      order: "server-seeded-random",
+      order: "server-random",
       controller: "facilitator",
       targets: "open terminals in the main technical network",
       maximumLocomotivesPerTerminal: 2,

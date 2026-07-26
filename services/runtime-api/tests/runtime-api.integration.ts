@@ -743,6 +743,74 @@ test("POST /actions returns the durable receipt for an exact command retry", asy
   assert.deepEqual(persisted.body.state, acceptedBody.state);
 });
 
+test("POST /actions exact retry of a random command does not sample again", async () => {
+  const store = new InMemorySessionStore<Record<string, unknown>>();
+  let sampleCalls = 0;
+  const randomApi = createRuntimeApiServer({
+    port: 0,
+    sessionStore: store,
+    random: {
+      sampleRange: () => {
+        sampleCalls += 1;
+        return 0;
+      }
+    }
+  });
+  await randomApi.start();
+  const randomBaseUrl = `http://127.0.0.1:${randomApi.port}`;
+  const randomRequest = async <T>(
+    urlPath: string,
+    body: Record<string, unknown>,
+    credential?: string
+  ): Promise<{ response: Response; body: T }> => {
+    const response = await fetch(`${randomBaseUrl}${urlPath}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(credential === undefined ? {} : { Authorization: `Bearer ${credential}` })
+      },
+      body: JSON.stringify(body)
+    });
+    return { response, body: await readJson<T>(response) };
+  };
+
+  try {
+    const created = await randomRequest<CreateSessionResponse>("/sessions", {
+      gameId: "estate-race"
+    });
+    assert.equal(created.response.status, 201, JSON.stringify(created.body));
+    const commandId = nextCommandId();
+    const command = {
+      sessionId: created.body.sessionId,
+      actionId: "turn.roll",
+      commandId,
+      expectedStateVersion: created.body.version.stateVersion,
+      params: {}
+    };
+
+    const accepted = await randomRequest<ActionResponse>(
+      "/actions",
+      command,
+      created.body.credential
+    );
+    assert.equal(accepted.response.status, 200, JSON.stringify(accepted.body));
+    assert.equal(sampleCalls, 2);
+    assert.deepEqual((accepted.body.state as any).public.board.lastRoll.values, [1, 1]);
+
+    const repeated = await randomRequest<ActionResponse>(
+      "/actions",
+      command,
+      created.body.credential
+    );
+    assert.equal(repeated.response.status, 200, JSON.stringify(repeated.body));
+    assert.deepEqual(repeated.body.receipt, accepted.body.receipt);
+    assert.deepEqual(repeated.body.state, accepted.body.state);
+    assert.equal(sampleCalls, 2);
+  } finally {
+    await randomApi.close();
+  }
+});
+
 test("POST /actions classifies a changed unknown action under an existing commandId as reuse", async () => {
   const created = await createSession({ gameId: "simple-choice" });
   const commandId = nextCommandId();
@@ -806,7 +874,7 @@ test("POST /action-previews/transport-road is read-only, schema-bounded and stal
   const previewApi = createRuntimeApiServer({
     port: 0,
     sessionStore: store,
-    createSessionRandomSeed: () => "00112233445566778899aabbccddeeff"
+    random: { sampleRange: () => 0 }
   });
   await previewApi.start();
   const previewBaseUrl = `http://127.0.0.1:${previewApi.port}`;
@@ -859,7 +927,7 @@ test("POST /action-previews/transport-road is read-only, schema-bounded and stal
     });
     const before = await store.getSession(sessionId);
     assert.ok(before);
-    const randomBefore = structuredClone((before.state as any).secret.random);
+    const stateBefore = structuredClone(before.state);
     const previewRequest = {
       sessionId,
       expectedStateVersion: before.version.stateVersion,
@@ -886,7 +954,7 @@ test("POST /action-previews/transport-road is read-only, schema-bounded and stal
     assert.equal(JSON.stringify(preview.body).includes("randomCounter"), false);
     const afterPreview = await store.getSession(sessionId);
     assert.deepEqual(afterPreview?.version, before.version);
-    assert.deepEqual((afterPreview?.state as any).secret.random, randomBefore);
+    assert.deepEqual(afterPreview?.state, stateBefore);
 
     const unsupportedParam = await localRequest<{ error: string }>(
       "/action-previews/transport-road",
@@ -958,7 +1026,7 @@ test("ADR-092 card-61 metricChanges reflects the applied conditional effect in b
   const api = createRuntimeApiServer({
     port: 0,
     sessionStore: store,
-    createSessionRandomSeed: () => "00112233445566778899aabbccddeeff"
+    random: { sampleRange: () => 0 }
   });
   await api.start();
   const localBaseUrl = `http://127.0.0.1:${api.port}`;

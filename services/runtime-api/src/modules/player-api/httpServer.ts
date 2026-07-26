@@ -21,6 +21,7 @@ import {
   CommandAdmissionRejectedError,
   type CommandAdmissionController
 } from "../runtime/commandAdmission.ts";
+import type { SessionRandomProviderInput } from "../runtime/sessionRandom.ts";
 import {
   clearPlayerFacingContentCache,
   contentService,
@@ -48,8 +49,8 @@ export interface RuntimeApiServerOptions {
   port?: number;
   /** Explicit dev/test seam; production resolves and validates environment config. */
   sessionStore?: SessionStorePort<RuntimeState>;
-  /** Deterministic-test seam; never populated from an HTTP request or environment variable. */
-  createSessionRandomSeed?: () => string;
+  /** Process-local deterministic-test seam; never populated from HTTP or environment. */
+  random?: SessionRandomProviderInput;
   /** Test seam for an isolated filesystem repository; production uses the singleton. */
   assetContentService?: Pick<ContentService, "getGameAssetIndex" | "getGameAssetFile" | "getGameStylesheetSource">;
   /** Shared command/Agent-Turn admission boundary for this runtime process. */
@@ -171,12 +172,11 @@ export function createRuntimeApiServer(options: RuntimeApiServerOptions = {}) {
   const commandAdmissionController = options.commandAdmissionController ??
     new BoundedInMemoryCommandAdmissionController();
   const sessionService = new SessionService({
-    sessionStore,
-    createSessionRandomSeed: options.createSessionRandomSeed
+    sessionStore
   });
   // Both mutation endpoints must share counters; constructing separate
   // controllers would let Agent Turns bypass the general command budget.
-  const runtimeService = new RuntimeService(commandAdmissionController);
+  const runtimeService = new RuntimeService(commandAdmissionController, options.random);
   const agentTurnService = new AgentTurnService(commandAdmissionController);
   let activePort = port;
   let closed = false;

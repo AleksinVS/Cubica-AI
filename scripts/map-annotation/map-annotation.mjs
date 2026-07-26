@@ -251,7 +251,7 @@ const createRoadPlanningContract = (regions, options) => {
     algorithmVersion,
     geometryVersion: options.geometryVersion,
     geometryHash: `sha256:${geometryHash}`,
-    tieBreak: "session-random",
+    tieBreak: "server-random",
     boundaryPolicy,
     ...(options.excludedRegionIdsEndpoint
       ? { excludedRegionIdsEndpoint: options.excludedRegionIdsEndpoint }

@@ -1,19 +1,17 @@
 /**
- * Neutral publication proofs for bounded random-stream reconstruction.
+ * Neutral publication proofs for the live server-random provider.
  *
  * These fixtures exercise the real semantic checker and exact module locks.
- * They contain no game names or gameplay rules: the assertions concern only
- * the universal cost of restoring a persisted deterministic stream.
+ * They contain no game names or gameplay rules. Publication reserves only the
+ * actual bounded sampling work because production stores no generator state
+ * and performs no historical reconstruction.
  */
 
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const { checkMechanicsBundle } = require("./mechanics-checker.cjs");
 const { mechanicsSha256 } = require("./mechanics-canonicalize.cjs");
-const {
-  MAX_SESSION_RANDOM_ADVANCE_WORK,
-  recommendedModuleLockForOperations
-} = require("./mechanics-modules.cjs");
+const { recommendedModuleLockForOperations } = require("./mechanics-modules.cjs");
 
 const API_VERSION = "cubica.dev/mechanics/v1alpha1";
 
@@ -197,7 +195,7 @@ function fixture() {
           transaction: {
             steps: [
               structuredClone(select),
-              order({ kind: "seeded-random", stream: "neutral.order" })
+              order({ kind: "server-random", stream: "neutral.order" })
             ]
           }
         }
@@ -213,17 +211,17 @@ function fixture() {
   };
 }
 
-test("checker reserves one maximum restoration for a dice sampler", () => {
+test("dice continuation reserves no historical reconstruction work", () => {
   const candidate = finalizeFixture(fixture());
   const checked = checkMechanicsBundle(candidate.mechanics, {
     actions: candidate.actions,
     objectModels: {},
     networkModels: {}
   });
-  assert.equal(checked.costs.dice.algorithmWork, MAX_SESSION_RANDOM_ADVANCE_WORK);
+  assert.equal(checked.costs.dice.algorithmWork, 0);
 });
 
-test("checker reserves one restoration for every possible complete tie group", () => {
+test("random tie groups add no historical reconstruction surcharge", () => {
   const candidate = finalizeFixture(fixture());
   const checked = checkMechanicsBundle(candidate.mechanics, {
     actions: candidate.actions,
@@ -233,17 +231,17 @@ test("checker reserves one restoration for every possible complete tie group", (
   assert.equal(
     checked.costs.randomOrder.algorithmWork -
       checked.costs.canonicalOrder.algorithmWork,
-    4 * MAX_SESSION_RANDOM_ADVANCE_WORK
+    0
   );
 });
 
-test("checker reserves one restoration for shuffle and possible draw reshuffle", () => {
+test("shuffle and draw add no historical reconstruction surcharge", () => {
   const candidate = finalizeFixture(fixture());
   const checked = checkMechanicsBundle(candidate.mechanics, {
     actions: candidate.actions,
     objectModels: {},
     networkModels: {}
   });
-  assert.equal(checked.costs.shuffle.algorithmWork, MAX_SESSION_RANDOM_ADVANCE_WORK);
-  assert.equal(checked.costs.draw.algorithmWork, MAX_SESSION_RANDOM_ADVANCE_WORK);
+  assert.equal(checked.costs.shuffle.algorithmWork, 0);
+  assert.equal(checked.costs.draw.algorithmWork, 0);
 });

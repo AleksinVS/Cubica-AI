@@ -346,7 +346,7 @@ test("generator materializes every physical source row and exact remaining gap",
   assert.deepEqual(
     manifest.content.data.cardLifecycle.workingInterpretations,
     [
-      "full-cargo-priority-tie-uses-deterministic-seeded-random-until-author-confirmation"
+      "full-cargo-priority-tie-uses-server-random-until-author-confirmation"
     ]
   );
   assert.ok(

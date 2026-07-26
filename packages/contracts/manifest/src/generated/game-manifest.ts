@@ -480,7 +480,7 @@ export interface GameManifestTransportRoadPlanning {
   algorithmVersion: "region-segment-minimum-v1";
   geometryVersion: string;
   geometryHash: string;
-  tieBreak: "session-random";
+  tieBreak: "server-random";
   boundaryPolicy: "lowest-region-id";
   excludedRegionIdsEndpoint?: GameManifestSafeIdentifier;
   navigationGraph: {

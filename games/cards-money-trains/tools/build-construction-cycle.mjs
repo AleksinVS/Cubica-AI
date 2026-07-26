@@ -1120,7 +1120,7 @@ const buildConstructionCycleAuthoring = (sourceAuthoring) => {
     algorithmVersion: "region-segment-minimum-v1",
     geometryVersion: "technical-placeholder-vertical-strips-v1",
     geometryHash,
-    tieBreak: "session-random",
+    tieBreak: "server-random",
     boundaryPolicy: "lowest-region-id",
     excludedRegionIdsEndpoint:
       "public.transportNetworks.main.excludedRegionIds",

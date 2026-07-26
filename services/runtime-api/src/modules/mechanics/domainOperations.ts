@@ -11,13 +11,7 @@ import type {
   GameManifestObjectModelMap,
   GameManifestTransportNetworkModel
 } from "@cubica/contracts-manifest";
-import {
-  chooseSessionValue,
-  readSessionRandomStream,
-  writeSessionRandomStream,
-  type SessionRandomState,
-  type SessionRandomStreamsState
-} from "../runtime/sessionRandom.ts";
+import type { SessionRandomProvider } from "../runtime/sessionRandom.ts";
 import {
   prepareMinimumRegionRoadCandidates,
   regionRoadRandomStreamId
@@ -234,13 +228,7 @@ function planRegionRoute(
       tieBreak: {
         policy: model.roadPlanning.tieBreak,
         candidateCount: planned?.candidates.length ?? 1,
-        selectedCandidateIndex: selected.index,
-        ...(selected.randomBefore && selected.randomAfter
-          ? {
-              randomCounterBefore: selected.randomBefore.counter,
-              randomCounterAfter: selected.randomAfter.counter
-            }
-          : {})
+        selectedCandidateIndex: selected.index
       }
     };
   }
@@ -675,38 +663,26 @@ function selectRoadCandidate(
 ): {
   value: RegionRoadCandidate;
   index: number;
-  randomBefore?: SessionRandomState;
-  randomAfter?: SessionRandomState;
 } | undefined {
   if (candidates === undefined) return undefined;
   if (candidates.length === 0) fail("MECHANICS_GRAPH_ROUTE_UNAVAILABLE", "Road planner returned no route candidate", stepId);
   if (candidates.length === 1) return { value: candidates[0], index: 0 };
-  const streams = requireRandomStreams(context, stepId);
+  const random = requireRandomProvider(context, stepId);
   const streamId = regionRoadRandomStreamId(networkId);
-  const random = readSessionRandomStream(streams, streamId);
-  const selected = chooseSessionValue(random, candidates, {
-    // `chooseSessionValue` deliberately skips both sampling and this charge
-    // for a singleton. A real tie restores the stream only after the budget
-    // accepts its bounded historical work.
-    charge: (units) => charge(context, "algorithmWork", units)
-  });
-  context.random = writeSessionRandomStream(streams, streamId, selected.random);
-  persistRandom(context);
-  return { ...selected, randomBefore: random, randomAfter: selected.random };
+  const selected = random.choose(streamId, candidates);
+  return { value: selected.value, index: selected.index };
 }
 
-function requireRandomStreams(context: MechanicsExecutionContext, stepId: string): SessionRandomStreamsState {
+function requireRandomProvider(
+  context: MechanicsExecutionContext,
+  stepId: string
+): SessionRandomProvider {
   if (context.random) return context.random;
-  const secret = isRecord(context.state.secret) ? context.state.secret : undefined;
-  if (!secret || !isRecord(secret.random)) fail("MECHANICS_RANDOM_STATE_MISSING", "Graph tie-breaking requires runtime random state", stepId);
-  context.random = secret.random as unknown as SessionRandomStreamsState;
-  return context.random;
-}
-
-function persistRandom(context: MechanicsExecutionContext): void {
-  if (!isRecord(context.state.secret)) context.state.secret = {};
-  (context.state.secret as JsonRecord).random = context.random;
-  charge(context, "writes");
+  fail(
+    "MECHANICS_RANDOM_PROVIDER_MISSING",
+    "Graph tie-breaking requires a runtime random provider",
+    stepId
+  );
 }
 
 function readExcludedRegionIds(model: GameManifestTransportNetworkModel, context: MechanicsExecutionContext): Array<string> {

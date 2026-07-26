@@ -104,7 +104,7 @@
         "algorithmVersion": "region-segment-minimum-v1",
         "geometryVersion": "mock-regions-v1",
         "geometryHash": "sha256:418915f2cb120b41bf6a7809c6864a3e53706ca0d825df799c7ec3cf8d53d7d0",
-        "tieBreak": "session-random",
+        "tieBreak": "server-random",
         "boundaryPolicy": "lowest-region-id",
         "excludedRegionIdsEndpoint": "public.transportNetworks.main.excludedRegionIds",
         "navigationGraph": {

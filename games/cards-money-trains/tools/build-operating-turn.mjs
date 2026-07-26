@@ -73,6 +73,11 @@ const ownedFlowStepIds = new Set([
   marketFlowStepId,
   reportingFlowStepId
 ]);
+const completionCreateFields = new Map([
+  ["wagons", new Set(["finalScoreOwnerTeamId", "finalPurchaseValue"])],
+  ["locomotives", new Set(["finalScoreOwnerTeamId", "finalPurchaseValue"])]
+]);
+const completionAvailabilityEndpoint = "public.session.canRequestFinish";
 
 const readJson = async (filePath) => JSON.parse(await readFile(filePath, "utf8"));
 const literal = (value) => ({ op: "value.literal", value });
@@ -1703,6 +1708,38 @@ const ownsOperatingId = (id) =>
   ownedExactActionIds.has(id)
   || ownedActionPrefixes.some((prefix) => id.startsWith(prefix));
 
+/** Preserve completion-owned fragments when rebuilding operating-owned plans. */
+const captureCompletionPlanExtensions = (plans) => {
+  const createAttributes = new Map();
+  const availabilityPatches = new Map();
+  for (const [planId, plan] of Object.entries(plans)) {
+    if (!ownsOperatingId(planId)) continue;
+    for (const step of plan.transaction.steps) {
+      const stepKey = `${planId}\0${step.id}`;
+      const preservedFields = completionCreateFields.get(step.collection);
+      if (step.op === "core.entity.create" && preservedFields) {
+        const attributes = Object.fromEntries(
+          Object.entries(step.attributes).filter(([field]) =>
+            preservedFields.has(field)
+          )
+        );
+        if (Object.keys(attributes).length > 0) {
+          createAttributes.set(stepKey, attributes);
+        }
+      }
+      if (step.op === "core.state.patch") {
+        const patches = step.patches.filter(
+          (patch) =>
+            patch.operation === "set"
+            && patch.target?.endpoint === completionAvailabilityEndpoint
+        );
+        if (patches.length > 0) availabilityPatches.set(stepKey, patches);
+      }
+    }
+  }
+  return { createAttributes, availabilityPatches };
+};
+
 /**
  * Apply only the game-local start and maintenance transformation.
  *
@@ -1713,6 +1750,8 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
   const authoring = structuredClone(sourceAuthoring);
   const root = authoring.root;
   const stateModel = root.mechanics.stateModel;
+  const completionExtensions =
+    captureCompletionPlanExtensions(root.mechanics.plans);
 
   declareMaintenanceField(stateModel.collections.locomotives, "locomotives");
   declareMaintenanceField(stateModel.collections.wagons, "wagons");
@@ -1786,6 +1825,16 @@ const buildOperatingTurnAuthoring = (sourceAuthoring) => {
     buildMarketFinish(),
     buildReportingFinish()
   ];
+  for (const generatedItem of generated) {
+    for (const step of generatedItem.plan.transaction.steps) {
+      const stepKey = `${generatedItem.action.id}\0${step.id}`;
+      const createAttributes = completionExtensions.createAttributes.get(stepKey);
+      if (createAttributes) Object.assign(step.attributes, createAttributes);
+      const availabilityPatches =
+        completionExtensions.availabilityPatches.get(stepKey);
+      if (availabilityPatches) step.patches.push(...availabilityPatches);
+    }
+  }
   const preservedActions = root.logic.actions.filter(
     (candidate) => !ownsOperatingId(candidate.id)
   );
