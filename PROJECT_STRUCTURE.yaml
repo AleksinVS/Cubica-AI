@@ -118,6 +118,20 @@ docs: # Архитектура, задачи, планирование
 draft: # Черновые материалы, эксперименты и прототипы; в карту структуры публикуются только явно описанные элементы (разовые отладочные файлы в корне — LEGACY-0073).
   Antarctica: directory... # Current Antarctica mechanics/scenario extraction source during migration.
   game-player-nextjs: directory... # Единственный UI-эталон игры Antarctica (вложенный git-репозиторий, commit 04a2be6): самодостаточный Next.js-прототип плеера без SDK-зависимостей; источник истины стилей и экранных состояний (S1, подсказка, журнал, leftsidebar) при сверке apps/player-web.
+  trains: # Авторские исходные материалы игры «Карты, деньги, поезда», полученные от автора и правообладателя. Это первоисточники, из которых выводятся все производные артефакты игры; сами файлы неизменяемы. Производные результаты распознавания и векторизации хранятся отдельно в подкаталоге «Игровая Карта — векторизация», а проверяемые аннотации — в games/cards-money-trains/annotations.
+    Игровая Карта — векторизация: directory... # Более ранние производные результаты распознавания и векторизации границ областей (SVG-сетки и контрольные PNG). Исторический материал предыдущих попыток замыкания сетки; текущим источником истины не является.
+    presentation.pptx: file # Авторская презентация игры. Вспомогательный материал по замыслу и оформлению.
+    Игровая Карта.png: file # Растровая карта 5079x3627 без нанесённой транспортной сети. Задаёт канонические координаты (canonical-map-pixels), в которых работают все отчёты по карте; привязка векторного слоя к этой системе выполнена аффинным преобразованием с ошибкой около 0.44 px.
+    Инструкция КДП — исправленная.pdf: file # Авторские правила игры в исправленной редакции. Первоисточник игровых механик.
+    Карта Гвиней  а4.ai: file # Первоисточник геометрии карты (файл формата PDF 1.6). Содержит растровую подложку 17717x11812 CMYK и векторный слой поверх неё: около 1004 обводок — границы областей, и 225 заливок. Из этого файла извлечены 978 путей-кандидатов границ; его sha256 зафиксирован в поле provenance.source отчёта vector-map.polygonization.review.json и в реестре происхождения games/cards-money-trains/asset-provenance.json. Права на публикацию производных подтверждены PM 2026-07-26.
+    Карта Гвиней  а4.pdf: file # Экспорт того же авторского файла карты в PDF. Вспомогательная копия для просмотра; в качестве источника геометрии используется .ai.
+    Колоди + Новости.xlsx: file # Авторские колоды карт и новостей в табличном виде. Первоисточник содержимого колод и новостных событий.
+    Копия Сценарий Карты Деньги Поезда 040225.docx: file # Авторский сценарий ведения игры от 04.02.2025. Первоисточник последовательности этапов сессии.
+    Копия Сценарий Карты Деньги Поезда 040225.pdf: file # PDF-версия авторского сценария для чтения и цитирования.
+    Начальная транспортная сеть CROP.jpg: file # Обрезанный фрагмент карты с начальной транспортной сетью; вспомогательный материал для сверки.
+    Начальная транспортная сеть.png: file # Растровая карта 5079x3627 с нанесённой начальной транспортной сетью. Источник поставляемого игрового фона assets/images/guinea-map.webp; sha256 и подтверждённые права зафиксированы в games/cards-money-trains/asset-provenance.json.
+    Описания стран Гвинеи 1 стол.docx: file # Авторские описания стран Гвинеи для первого стола. Первоисточник страновых текстов и стартовых условий.
+    Описания стран Гвинеи 1 стол.pdf: file # PDF-версия авторских описаний стран.
 games: # Пакеты игр и связанные ресурсы 
   ai-driven-choice: # Minimal AI-driven fixture used to prove the runtime Agent Turn path without game-specific runtime branches.
     authoring: # Editable ADR-030 authoring manifests for the ai-driven-choice fixture. Runtime manifests are generated from these files and should not be edited directly.
@@ -128,7 +142,7 @@ games: # Пакеты игр и связанные ресурсы
     design: directory... # Design-артефакты Antarctica: макеты (mockups) и design.json-описания экранов, читаются runtime-api и UI-манифестом.
     plugins: directory... # Project-local plugins for the Antarctica game. These plugins belong to the game project, not to the shared platform apps.
     ui: directory... # Скомпилированные UI-манифесты Antarctica по каналам доставки (генераты из authoring/ui, руками не править).
-  cards-money-trains: # Game-owned package for the facilitated business game «Карты, деньги, поезда». It contains authoring/runtime manifests, bounded fixtures, delivery assets, the player-web board plugin, and root-level asset-provenance.json governance metadata with source hashes, conversion details, and publication-rights status.
+  cards-money-trains: # Game-owned package for the facilitated business game «Карты, деньги, поезда». It contains authoring/runtime manifests, bounded fixtures, delivery assets, the player-web board plugin, and root-level asset-provenance.json — a provenance registry (list of records, validated against asset-provenance.schema.json) covering both delivered assets and author source materials, with source hashes, conversion details, and publication-rights status per record.
     annotations: directory... # Проверяемые аннотации авторской карты: координаты, транспортная сеть и будущие контуры областей до их контролируемой публикации в runtime-манифесте.
     assets: directory... # Game-owned delivery assets use the normative ADR-063 assets.json registry. Governance metadata is intentionally stored outside this delivery directory in the game-root asset-provenance.json file.
     authoring: directory... # Editable source manifests and confirmed game-owned configuration. Generated runtime and UI manifests are compiled from this directory.

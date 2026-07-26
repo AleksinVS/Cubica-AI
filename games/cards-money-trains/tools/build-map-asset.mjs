@@ -7,6 +7,15 @@
  * layer keeps one GPU texture and exact visual alignment; Phaser still renders
  * new roads and every changing state above it. This is game-owned asset
  * preparation and does not add game semantics to the shared player.
+ *
+ * `asset-provenance.json` is a registry (a list of records), not a single
+ * flat record: it also tracks author source materials that this tool never
+ * touches (the vector map first-source and its calibration raster). This
+ * tool therefore updates only its own registry entry, identified by
+ * PROVENANCE_ENTRY_ID, and leaves every other entry and the registry's
+ * top-level fields (schema reference, location notice, etc.) exactly as
+ * they were — the same way it previously preserved unrelated top-level keys
+ * with an object spread.
  */
 
 import { createHash } from "node:crypto";
@@ -26,6 +35,9 @@ const REPO_ROOT = path.resolve(GAME_ROOT, "..", "..");
 const SOURCE_PATH = path.join(REPO_ROOT, "draft", "trains", "Начальная транспортная сеть.png");
 const TARGET_PATH = path.join(GAME_ROOT, "assets", "images", "guinea-map.webp");
 const PROVENANCE_PATH = path.join(GAME_ROOT, "asset-provenance.json");
+// Stable id of this tool's own record inside the asset-provenance.json
+// registry (see games/cards-money-trains/asset-provenance.schema.json).
+const PROVENANCE_ENTRY_ID = "board-guinea-optimized";
 const CHECK = process.argv.slice(2).includes("--check");
 const UNKNOWN_ARGS = process.argv.slice(2).filter((argument) => argument !== "--check");
 if (UNKNOWN_ARGS.length > 0) {
@@ -55,34 +67,52 @@ const deliveryBytes = await sharp(sourceBytes)
   .toBuffer();
 const deliveryMetadata = await sharp(deliveryBytes).metadata();
 const currentProvenance = JSON.parse(readFileSync(PROVENANCE_PATH, "utf8"));
-const nextProvenance = {
-  ...currentProvenance,
-  delivery: {
-    mimeType: "image/webp",
-    width: deliveryMetadata.width,
-    height: deliveryMetadata.height,
-    byteSize: deliveryBytes.byteLength,
-    sha256: sha256(deliveryBytes)
-  },
-  source: {
-    path: "draft/trains/Начальная транспортная сеть.png",
-    mimeType: "image/png",
-    width: sourceMetadata.width,
-    height: sourceMetadata.height,
-    sha256: sha256(sourceBytes)
-  },
-  transform: {
-    tool: "sharp",
-    toolVersion: sharp.versions.sharp,
-    format: "webp",
-    maxWidth: 2560,
-    maxHeight: 1829,
-    fit: "inside",
-    quality: 84,
-    effort: 6,
-    smartSubsample: true
+const entryIndex = currentProvenance.entries.findIndex(
+  (entry) => entry.id === PROVENANCE_ENTRY_ID
+);
+if (entryIndex === -1) {
+  throw new Error(
+    `asset-provenance.json has no entry with id "${PROVENANCE_ENTRY_ID}"; ` +
+      "the registry entry must exist before this tool can refresh it."
+  );
+}
+const currentEntry = currentProvenance.entries[entryIndex];
+// Only the fields this tool actually derives are replaced. "rights" is a
+// human decision (recorded by the PM, not by this build step) and must be
+// carried over unchanged, together with the entry's own id/path/root/kind.
+const nextEntry = {
+  ...currentEntry,
+  contentType: "image/webp",
+  width: deliveryMetadata.width,
+  height: deliveryMetadata.height,
+  byteSize: deliveryBytes.byteLength,
+  sha256: sha256(deliveryBytes),
+  derivedFrom: {
+    source: {
+      path: "draft/trains/Начальная транспортная сеть.png",
+      root: "repo",
+      contentType: "image/png",
+      width: sourceMetadata.width,
+      height: sourceMetadata.height,
+      byteSize: sourceBytes.byteLength,
+      sha256: sha256(sourceBytes)
+    },
+    transform: {
+      tool: "sharp",
+      toolVersion: sharp.versions.sharp,
+      format: "webp",
+      maxWidth: 2560,
+      maxHeight: 1829,
+      fit: "inside",
+      quality: 84,
+      effort: 6,
+      smartSubsample: true
+    }
   }
 };
+const nextEntries = [...currentProvenance.entries];
+nextEntries[entryIndex] = nextEntry;
+const nextProvenance = { ...currentProvenance, entries: nextEntries };
 const provenanceBytes = Buffer.from(`${JSON.stringify(nextProvenance, null, 2)}\n`);
 
 if (CHECK) {
